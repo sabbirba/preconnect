@@ -1,0 +1,340 @@
+import 'dart:isolate';
+import 'package:flutter/material.dart';
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'package:do_not_disturb/do_not_disturb.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+// These functions need to be at the top level (outside any class)
+// because they will be called by the background isolate
+@pragma('vm:entry-point')
+Future<void> enableDnd() async {
+  final dnd = DoNotDisturbPlugin();
+  if (await dnd.isNotificationPolicyAccessGranted()) {
+    await dnd.setInterruptionFilter(InterruptionFilter.priority);
+    print('DND mode enabled');
+  }
+}
+
+@pragma('vm:entry-point')
+Future<void> disableDnd() async {
+  final dnd = DoNotDisturbPlugin();
+  if (await dnd.isNotificationPolicyAccessGranted()) {
+    await dnd.setInterruptionFilter(InterruptionFilter.all);
+    print('DND mode disabled');
+  }
+}
+
+class DoNotDisturbPage extends StatefulWidget {
+  @override
+  _DoNotDisturbPageState createState() => _DoNotDisturbPageState();
+}
+
+class _DoNotDisturbPageState extends State<DoNotDisturbPage> {
+  TimeOfDay _startTime = TimeOfDay(hour: 22, minute: 0); // Default: 10:00 PM
+  TimeOfDay _endTime = TimeOfDay(hour: 7, minute: 0); // Default: 7:00 AM
+  bool _isScheduleActive = false;
+  final DoNotDisturbPlugin _dnd = DoNotDisturbPlugin();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+    _checkPermissions();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _startTime = TimeOfDay(
+        hour: prefs.getInt('startHour') ?? 22,
+        minute: prefs.getInt('startMinute') ?? 0,
+      );
+      _endTime = TimeOfDay(
+        hour: prefs.getInt('endHour') ?? 7,
+        minute: prefs.getInt('endMinute') ?? 0,
+      );
+      _isScheduleActive = prefs.getBool('isScheduleActive') ?? false;
+    });
+
+    if (_isScheduleActive) {
+      _scheduleDndToggle();
+    }
+  }
+
+  Future<void> _saveSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('startHour', _startTime.hour);
+    await prefs.setInt('startMinute', _startTime.minute);
+    await prefs.setInt('endHour', _endTime.hour);
+    await prefs.setInt('endMinute', _endTime.minute);
+    await prefs.setBool('isScheduleActive', _isScheduleActive);
+  }
+
+  Future<void> _checkPermissions() async {
+    await Permission.accessNotificationPolicy.request();
+    await Permission.scheduleExactAlarm.request();
+
+    final granted = await _dnd.isNotificationPolicyAccessGranted();
+    if (!granted) {
+      await _dnd.openNotificationPolicyAccessSettings();
+    }
+  }
+
+  Future<void> _selectTime(BuildContext context, bool isStartTime) async {
+    final TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: isStartTime ? _startTime : _endTime,
+    );
+
+    if (pickedTime != null) {
+      setState(() {
+        if (isStartTime) {
+          _startTime = pickedTime;
+        } else {
+          _endTime = pickedTime;
+        }
+      });
+      await _saveSettings();
+      if (_isScheduleActive) {
+        _cancelSchedule();
+        _scheduleDndToggle();
+      }
+    }
+  }
+
+  Future<void> _toggleSchedule() async {
+    final granted = await _dnd.isNotificationPolicyAccessGranted();
+    if (!granted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Permission required for DND access.'),
+          action: SnackBarAction(
+            label: 'Settings',
+            onPressed: () async {
+              await _dnd.openNotificationPolicyAccessSettings();
+            },
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isScheduleActive = !_isScheduleActive;
+    });
+
+    if (_isScheduleActive) {
+      await _scheduleDndToggle();
+    } else {
+      await _cancelSchedule();
+    }
+
+    await _saveSettings();
+  }
+
+  Future<void> _cancelSchedule() async {
+    await AndroidAlarmManager.cancel(0); // Cancel start DND alarm
+    await AndroidAlarmManager.cancel(1); // Cancel end DND alarm
+  }
+
+  Future<void> _scheduleDndToggle() async {
+    await _cancelSchedule(); // Cancel any existing alarms first
+
+    // Calculate the next start and end times
+    final now = DateTime.now();
+
+    // Start time for today
+    DateTime startTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      _startTime.hour,
+      _startTime.minute,
+    );
+
+    // End time for today
+    DateTime endTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      _endTime.hour,
+      _endTime.minute,
+    );
+
+    // If end time is earlier in the day than start time, it means the end time is for the next day
+    if (_endTime.hour < _startTime.hour ||
+        (_endTime.hour == _startTime.hour &&
+            _endTime.minute < _startTime.minute)) {
+      endTime = endTime.add(Duration(days: 1));
+    }
+
+    // If start time has already passed for today, schedule for tomorrow
+    if (startTime.isBefore(now)) {
+      startTime = startTime.add(Duration(days: 1));
+
+      // If end time was for today but has already passed, also move it to tomorrow
+      if (endTime.isBefore(now)) {
+        endTime = endTime.add(Duration(days: 1));
+      }
+    }
+
+    // Schedule alarms to repeat daily
+    await AndroidAlarmManager.periodic(
+      Duration(days: 1),
+      0, // ID for start DND
+      enableDnd,
+      startAt: startTime,
+      exact: true,
+      wakeup: true,
+      rescheduleOnReboot: true,
+    );
+
+    await AndroidAlarmManager.periodic(
+      Duration(days: 1),
+      1, // ID for end DND
+      disableDnd,
+      startAt: endTime,
+      exact: true,
+      wakeup: true,
+      rescheduleOnReboot: true,
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('DND schedule activated'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  String _formatTimeOfDay(TimeOfDay timeOfDay) {
+    final hour = timeOfDay.hourOfPeriod;
+    final minute = timeOfDay.minute.toString().padLeft(2, '0');
+    final period = timeOfDay.period == DayPeriod.am ? 'AM' : 'PM';
+    return '${hour == 0 ? 12 : hour}:$minute $period';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Card(
+            elevation: 4,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'DND Schedule',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Start Time', style: TextStyle(fontSize: 16)),
+                          SizedBox(height: 8),
+                          OutlinedButton(
+                            onPressed: () => _selectTime(context, true),
+                            child: Text(
+                              _formatTimeOfDay(_startTime),
+                              style: TextStyle(fontSize: 18),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Icon(Icons.arrow_forward),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('End Time', style: TextStyle(fontSize: 16)),
+                          SizedBox(height: 8),
+                          OutlinedButton(
+                            onPressed: () => _selectTime(context, false),
+                            child: Text(
+                              _formatTimeOfDay(_endTime),
+                              style: TextStyle(fontSize: 18),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20),
+                  Center(
+                    child: ElevatedButton.icon(
+                      onPressed: _toggleSchedule,
+                      icon: Icon(
+                        _isScheduleActive ? Icons.stop : Icons.play_arrow,
+                      ),
+                      label: Text(
+                        _isScheduleActive
+                            ? 'Deactivate Schedule'
+                            : 'Activate Schedule',
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: 20),
+          if (_isScheduleActive)
+            Card(
+              elevation: 2,
+              color: Colors.green.shade50,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'DND will automatically turn on at ${_formatTimeOfDay(_startTime)} and turn off at ${_formatTimeOfDay(_endTime)} every day.',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          Spacer(),
+          Card(
+            elevation: 1,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'About DND Mode',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'When DND is active, notifications will be silenced except for priority contacts and alarms.',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
