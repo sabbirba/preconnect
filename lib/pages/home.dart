@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'student_info.dart';
 import 'class_schedule.dart';
 import 'alarms.dart';
 import 'exam_schedule.dart';
 import 'semester_calendar.dart';
 import 'do_not_disturb.dart';
-import 'login.dart'; // Make sure you have this route set up
+import 'login.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -56,13 +59,25 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (shouldLogout == true) {
-      // Add logout logic here (e.g., clear tokens)
+      // Clear secure storage
+      const FlutterSecureStorage secureStorage = FlutterSecureStorage();
+      await secureStorage.deleteAll();
 
-      // Navigate to login page
+      // Clear shared preferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+
+      // Clear WebView cookies/storage
+      final cookieManager = WebViewCookieManager();
+      await cookieManager.clearCookies();
+
+      // Optionally: clear other local caches or temp data
+
       if (context.mounted) {
-        Navigator.pushReplacement(
+        Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (_) => LoginScreen()),
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
         );
       }
     }

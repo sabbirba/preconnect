@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class StudentInfoPage extends StatefulWidget {
   const StudentInfoPage({super.key});
@@ -44,6 +45,13 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
       await _secureStorage.write(
         key: 'student_portfolio_id',
         value: student['id'].toString(),
+      );
+
+      // Save the `currentSemester` to SharedPreferences
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        'currentSemester',
+        student['currentSemester'] ?? 'N/A',
       );
 
       return student;
