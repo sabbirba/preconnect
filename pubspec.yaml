@@ -25,6 +25,7 @@ dependencies:
   qr: ^3.0.2
   mobile_scanner: ^7.1.4
   archive: ^4.0.7
+  flutter_alarmkit: ^0.0.10
 
 dev_dependencies:
   flutter_test:

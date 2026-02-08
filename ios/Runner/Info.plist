@@ -24,6 +24,37 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<key>NSAlarmKitUsageDescription</key>
+	<string>PreConnect uses alarms to notify you about classes.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_alarmkit._tcp</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>PreConnect needs access to the local network for AlarmKit.</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>FlutterSceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -47,5 +78,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>PreConnect needs camera access to scan QR codes.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>PreConnect needs photo access to scan QR codes from your gallery.</string>
 </dict>
 </plist>
