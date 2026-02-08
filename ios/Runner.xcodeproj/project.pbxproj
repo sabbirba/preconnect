@@ -636,6 +636,7 @@
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = PDSDVKUX9W;
 				ENABLE_BITCODE = NO;
+				ENABLE_APP_SHORTCUTS_FLEXIBLE_MATCHING = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = PreConnect;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
@@ -706,6 +707,7 @@
 			baseConfigurationReference = 441E75163D193CD209888E3E /* Pods-AlarmkitWidgetExtension.release.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
+				ENABLE_APP_SHORTCUTS_FLEXIBLE_MATCHING = NO;
 				INFOPLIST_FILE = AlarmkitWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -727,6 +729,7 @@
 			baseConfigurationReference = 4F094A0FD68FAEFFC5064665 /* Pods-AlarmkitWidgetExtension.debug.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
+				ENABLE_APP_SHORTCUTS_FLEXIBLE_MATCHING = NO;
 				INFOPLIST_FILE = AlarmkitWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -863,6 +866,7 @@
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = PDSDVKUX9W;
 				ENABLE_BITCODE = NO;
+				ENABLE_APP_SHORTCUTS_FLEXIBLE_MATCHING = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = PreConnect;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
@@ -889,6 +893,7 @@
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = PDSDVKUX9W;
 				ENABLE_BITCODE = NO;
+				ENABLE_APP_SHORTCUTS_FLEXIBLE_MATCHING = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = PreConnect;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
@@ -909,6 +914,7 @@
 			baseConfigurationReference = 675770BF3F25582D7401B94C /* Pods-AlarmkitWidgetExtension.profile.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
+				ENABLE_APP_SHORTCUTS_FLEXIBLE_MATCHING = NO;
 				INFOPLIST_FILE = AlarmkitWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (

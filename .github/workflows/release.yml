@@ -46,6 +46,12 @@ jobs:
         with:
           xcode-version: '26.2'
 
+      - name: Show Xcode & SDKs
+        if: matrix.platform == 'ios'
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
+
       - name: Cache Flutter Pub
         uses: actions/cache@v4
         with:
