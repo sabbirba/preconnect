@@ -1,0 +1,67 @@
+name: Publish Release
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish-release:
+    name: Publish Release
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.workflow_run.head_repository.full_name }}
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Read App Version
+        id: version
+        run: |
+          VERSION_LINE=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
+          VERSION_NAME=${VERSION_LINE%%+*}
+          VERSION_CODE=${VERSION_LINE#*+}
+          if [ "$VERSION_NAME" = "$VERSION_LINE" ]; then
+            VERSION_CODE=0
+          fi
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          pattern: "*-artifacts"
+          merge-multiple: true
+          path: artifacts
+
+      - name: Check Artifacts
+        id: assets
+        shell: bash
+        run: |
+          if ls artifacts/* >/dev/null 2>&1; then
+            echo "has_assets=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_assets=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        if: steps.assets.outputs.has_assets == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}-r${{ github.event.workflow_run.run_number }}
+          name: PreConnect v${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}
+          body: |
+            Automated release for PreConnect.
+
+            Version: ${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}
+            Commit: ${{ github.event.workflow_run.head_sha }}
+          files: |
+            artifacts/*

@@ -1,0 +1,234 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-platforms:
+    name: Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: android
+          - os: ubuntu-latest
+            platform: linux
+          - os: windows-latest
+            platform: windows
+          - os: macos-latest
+            platform: macos
+          - os: macos-latest
+            platform: ios
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        if: matrix.platform == 'android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Cache Flutter Pub
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            C:\Users\runneradmin\AppData\Local\Pub\Cache
+          key: ${{ runner.os }}-flutter-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-pub-
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            C:\Users\runneradmin\.gradle\caches
+            C:\Users\runneradmin\.gradle\wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/build.gradle*', 'android/**/settings.gradle*', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Install Linux Dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev libjsoncpp-dev
+
+      - name: Flutter Pub Get
+        run: flutter pub get
+
+      - name: Read App Version
+        id: version
+        shell: bash
+        run: |
+          VERSION_LINE=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
+          VERSION_NAME=${VERSION_LINE%%+*}
+          VERSION_CODE=${VERSION_LINE#*+}
+          if [ "$VERSION_NAME" = "$VERSION_LINE" ]; then
+            VERSION_CODE=0
+          fi
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+
+      - name: Check Android Signing Secrets
+        if: matrix.platform == 'android'
+        id: android_signing
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEYSTORE_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ANDROID_KEYSTORE_PASSWORD" ] && [ -n "$ANDROID_KEYSTORE_ALIAS" ] && [ -n "$ANDROID_KEY_PASSWORD" ]; then
+            echo "enabled=true" >> $GITHUB_OUTPUT
+          else
+            echo "Android signing secrets missing; skipping Android release builds."
+            echo "enabled=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Restore Android Keystore
+        if: matrix.platform == 'android' && steps.android_signing.outputs.enabled == 'true'
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/preconnect-release-key.jks
+          chmod 600 android/preconnect-release-key.jks
+          cat > android/key.properties <<EOF
+          storeFile=preconnect-release-key.jks
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
+
+      - name: Build Android APK (Release)
+        if: matrix.platform == 'android' && steps.android_signing.outputs.enabled == 'true'
+        run: flutter build apk --release --build-name ${{ steps.version.outputs.version_name }} --build-number ${{ steps.version.outputs.version_code }}
+
+      - name: Build Android AAB (Release)
+        if: matrix.platform == 'android' && steps.android_signing.outputs.enabled == 'true'
+        run: flutter build appbundle --release --build-name ${{ steps.version.outputs.version_name }} --build-number ${{ steps.version.outputs.version_code }}
+
+      - name: Build Desktop (Release)
+        if: matrix.platform != 'android' && matrix.platform != 'ios'
+        run: flutter build ${{ matrix.platform }} --release
+
+      - name: Build iOS App (Release, No Codesign)
+        if: matrix.platform == 'ios'
+        run: flutter build ios --release --no-codesign
+
+      - name: Build iOS IPA (Release, Signed)
+        if: matrix.platform == 'ios'
+        env:
+          IOS_P12_BASE64: ${{ secrets.IOS_P12_BASE64 }}
+          IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+          IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$IOS_P12_BASE64" ] || [ -z "$IOS_P12_PASSWORD" ] || [ -z "$IOS_PROFILE_BASE64" ]; then
+            echo "iOS signing secrets missing; skipping IPA export."
+            exit 0
+          fi
+          if [ ! -f ios/ExportOptions.plist ]; then
+            echo "Missing ios/ExportOptions.plist; skipping IPA export."
+            exit 0
+          fi
+          KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          echo "${{ secrets.IOS_P12_BASE64 }}" | base64 -d > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN_PATH" -P "${{ secrets.IOS_P12_PASSWORD }}" -T /usr/bin/codesign
+          security list-keychains -s "$KEYCHAIN_PATH"
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          echo "${{ secrets.IOS_PROFILE_BASE64 }}" | base64 -d > "$HOME/Library/MobileDevice/Provisioning Profiles/profile.mobileprovision"
+          flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+
+      - name: Package Android Release
+        if: matrix.platform == 'android' && steps.android_signing.outputs.enabled == 'true'
+        run: |
+          mkdir -p artifacts
+          cp build/app/outputs/flutter-apk/app-release.apk \
+            artifacts/PreConnect-android-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.apk
+          cp build/app/outputs/bundle/release/app-release.aab \
+            artifacts/PreConnect-android-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.aab
+
+      - name: Package Linux Release
+        if: matrix.platform == 'linux'
+        run: |
+          mkdir -p artifacts
+          tar -czf artifacts/PreConnect-linux-x64-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.tar.gz \
+            -C build/linux/x64/release \
+            bundle
+
+      - name: Package Windows Release
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          $exe = Get-ChildItem -Path "build/windows/x64/runner/Release" -Filter *.exe | Select-Object -First 1
+          if ($exe) {
+            Copy-Item $exe.FullName "artifacts/PreConnect-windows-x64-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.exe"
+          }
+
+      - name: Package macOS Release
+        if: matrix.platform == 'macos'
+        run: |
+          mkdir -p artifacts
+          APP_PATH=$(ls build/macos/Build/Products/Release/*.app 2>/dev/null | head -n1)
+          if [ -z "$APP_PATH" ]; then
+            echo "No macOS .app found"
+            exit 0
+          fi
+          APP_DIR=$(dirname "$APP_PATH")
+          APP_NAME=$(basename "$APP_PATH")
+          (cd "$APP_DIR" && zip -r -y \
+            "$GITHUB_WORKSPACE/artifacts/PreConnect-macos-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.zip" \
+            "$APP_NAME") || true
+
+      - name: Package iOS Release
+        if: matrix.platform == 'ios'
+        run: |
+          mkdir -p artifacts
+          if ls build/ios/ipa/*.ipa >/dev/null 2>&1; then
+            IPA_PATH=$(ls build/ios/ipa/*.ipa | head -n1)
+            cp "$IPA_PATH" \
+              "artifacts/PreConnect-ios-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.ipa"
+            exit 0
+          fi
+          APP_PATH=$(ls build/ios/iphoneos/*.app 2>/dev/null | head -n1)
+          if [ -z "$APP_PATH" ]; then
+            echo "No iOS .ipa or .app found"
+            exit 0
+          fi
+          APP_DIR=$(dirname "$APP_PATH")
+          APP_NAME=$(basename "$APP_PATH")
+          (cd "$APP_DIR" && zip -r -y \
+            "$GITHUB_WORKSPACE/artifacts/PreConnect-ios-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.zip" \
+            "$APP_NAME") || true
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-artifacts
+          path: artifacts/*
+          if-no-files-found: ignore

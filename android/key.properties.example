@@ -1,0 +1,4 @@
+storeFile=preconnect-release-key.jks
+storePassword=
+keyAlias=preconnect
+keyPassword=

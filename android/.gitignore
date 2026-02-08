@@ -1,0 +1,13 @@
+# Gradle
+/.gradle
+
+# Android Studio
+/local.properties
+/captures/
+
+# Generated
+/GeneratedPluginRegistrant.java
+
+# Signing
+/key.properties
+*.jks
