@@ -67,6 +67,19 @@ class _ClassScheduleState extends State<ClassSchedule> {
         }
       }
     }
+
+    for (final entries in grouped.values) {
+      entries.sort((a, b) {
+        final aSchedule = a["schedule"] as section.ClassSchedule;
+        final bSchedule = b["schedule"] as section.ClassSchedule;
+        final aStart = _timeToMinutes(aSchedule.startTime);
+        final bStart = _timeToMinutes(bSchedule.startTime);
+        if (aStart != bStart) return aStart.compareTo(bStart);
+        final aEnd = _timeToMinutes(aSchedule.endTime);
+        final bEnd = _timeToMinutes(bSchedule.endTime);
+        return aEnd.compareTo(bEnd);
+      });
+    }
     return _ScheduleData(grouped: grouped, nextSchedule: nextSchedule);
   }
 
@@ -119,6 +132,14 @@ class _ClassScheduleState extends State<ClassSchedule> {
     }
     final date = now.add(Duration(days: daysAhead));
     return DateTime(date.year, date.month, date.day, startHour, startMinute);
+  }
+
+  int _timeToMinutes(String time) {
+    final parts = time.split(':');
+    if (parts.length < 2) return 0;
+    final hour = int.tryParse(parts[0]) ?? 0;
+    final minute = int.tryParse(parts[1]) ?? 0;
+    return hour * 60 + minute;
   }
 
   @override
