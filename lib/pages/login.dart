@@ -30,7 +30,10 @@ class _LoginPageState extends State<LoginPage> {
       "&response_type=code"
       "&response_mode=query"
       "&scope=openid offline_access";
-
+  final String _defaultUa =
+      "Mozilla/5.0 (Linux; Android 14; Mobile) "
+      "AppleWebKit/537.36 (KHTML, like Gecko) "
+      "Chrome/120.0.0.0 Mobile Safari/537.36 PreConnect";
   bool _isLoggingIn = false;
 
   @override
@@ -39,7 +42,7 @@ class _LoginPageState extends State<LoginPage> {
     if (kIsWeb) return;
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+      ..setUserAgent(_defaultUa)
       ..setNavigationDelegate(
         NavigationDelegate(
           onNavigationRequest: (request) {
@@ -152,26 +155,38 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     return Scaffold(
-      body: Stack(
-        children: [
-          if (_webViewController != null)
-            WebViewWidget(controller: _webViewController!),
-          if (_isLoggingIn)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.08),
-                alignment: Alignment.center,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 12),
-                    Text("Loading...", style: TextStyle(fontSize: 14)),
-                  ],
+      resizeToAvoidBottomInset: false,
+      body: SafeArea(
+        child: PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) async {
+            final controller = _webViewController;
+            if (controller == null) return;
+            if (!mounted) return;
+            final navigator = Navigator.of(context);
+            if (await controller.canGoBack()) {
+              await controller.goBack();
+            } else {
+              navigator.maybePop();
+            }
+          },
+          child: Stack(
+            children: [
+              if (_webViewController != null)
+                Positioned.fill(
+                  child: WebViewWidget(controller: _webViewController!),
                 ),
-              ),
-            ),
-        ],
+              if (_isLoggingIn)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    alignment: Alignment.center,
+                    child: const SizedBox.shrink(),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -17,7 +17,7 @@ class FriendSchedulePage extends StatefulWidget {
 }
 
 class _FriendSchedulePageState extends State<FriendSchedulePage> {
-  List<FriendSchedule> decodedSchedules = [];
+  List<_FriendScheduleItem> decodedSchedules = [];
 
   @override
   void initState() {
@@ -31,7 +31,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
 
     if (encodedList == null) return;
 
-    List<FriendSchedule> allSchedules = [];
+    List<_FriendScheduleItem> allSchedules = [];
     List<String> validEntries = [];
 
     for (final base64Json in encodedList) {
@@ -43,7 +43,12 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
         final String originalJson = utf8.decode(decodeGzipJson);
 
         final parsed = jsonDecode(originalJson);
-        allSchedules.add(FriendSchedule.fromJson(parsed));
+        allSchedules.add(
+          _FriendScheduleItem(
+            encoded: base64Json,
+            friend: FriendSchedule.fromJson(parsed),
+          ),
+        );
         validEntries.add(base64Json);
       } catch (e) {
         // Sabbir
@@ -59,6 +64,116 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
 
   Future<void> _handleRefresh() async {
     await _loadSchedules();
+  }
+
+  Future<void> _deleteFriendSchedule(_FriendScheduleItem item) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        final displayName = item.friend.name.trim().isEmpty
+            ? 'this friend'
+            : item.friend.name;
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1E6BE3), Color(0xFF2C9DFF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: const [
+                      Icon(Icons.delete_outline, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text(
+                        'Remove Friend Schedule?',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'This will remove $displayName\'s shared schedule.',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.7),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFFD63B3B),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: const Text('Remove'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (shouldDelete != true) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final List<String> current =
+        prefs.getStringList("friendSchedules") ?? [];
+    final updated = current.where((e) => e != item.encoded).toList();
+    await prefs.setStringList("friendSchedules", updated);
+
+    setState(() {
+      decodedSchedules.removeWhere((e) => e.encoded == item.encoded);
+    });
   }
 
   @override
@@ -121,7 +236,8 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
               const BracuEmptyState(message: "No schedules found")
             else
               ...decodedSchedules.asMap().entries.map((entry) {
-                final friend = entry.value;
+                final item = entry.value;
+                final friend = item.friend;
                 final grouped = _groupByDay(friend);
                 final nextKey = _pickNextEntryKey(friend);
                 final orderedDays = _orderedDays(grouped.keys.toList());
@@ -130,7 +246,10 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _FriendHeader(friend: friend),
+                      _FriendHeader(
+                        friend: friend,
+                        onDelete: () => _deleteFriendSchedule(item),
+                      ),
                       const SizedBox(height: 12),
                       if (grouped.isEmpty)
                         BracuCard(
@@ -270,9 +389,10 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
 }
 
 class _FriendHeader extends StatelessWidget {
-  const _FriendHeader({required this.friend});
+  const _FriendHeader({required this.friend, required this.onDelete});
 
   final FriendSchedule friend;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -302,6 +422,11 @@ class _FriendHeader extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            tooltip: 'Remove schedule',
+            onPressed: onDelete,
+            icon: const Icon(Icons.delete_outline),
           ),
         ],
       ),
@@ -386,6 +511,13 @@ class _FriendScheduleEntry {
   final String? sectionName;
   final String? roomNumber;
   final String? faculties;
+}
+
+class _FriendScheduleItem {
+  const _FriendScheduleItem({required this.encoded, required this.friend});
+
+  final String encoded;
+  final FriendSchedule friend;
 }
 
 Map<String, List<_FriendScheduleEntry>> _groupByDay(FriendSchedule friend) {

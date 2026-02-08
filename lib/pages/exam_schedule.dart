@@ -155,16 +155,50 @@ class _ExamScheduleState extends State<ExamSchedule> {
           }
 
           final sections = snapshot.data!;
-          final midExams = sections.where(
+          final midExams = sections
+              .where(
             (s) =>
                 s.sectionSchedule.midExamDate != null &&
                 s.sectionSchedule.midExamStartTime != null,
-          );
-          final finalExams = sections.where(
+          )
+              .toList();
+          final finalExams = sections
+              .where(
             (s) =>
                 s.sectionSchedule.finalExamDate != null &&
                 s.sectionSchedule.finalExamStartTime != null,
-          );
+          )
+              .toList();
+
+          midExams.sort((a, b) {
+            final aTime = _parseExamDateTime(
+              a.sectionSchedule.midExamDate,
+              a.sectionSchedule.midExamStartTime,
+            );
+            final bTime = _parseExamDateTime(
+              b.sectionSchedule.midExamDate,
+              b.sectionSchedule.midExamStartTime,
+            );
+            if (aTime == null && bTime == null) return 0;
+            if (aTime == null) return 1;
+            if (bTime == null) return -1;
+            return aTime.compareTo(bTime);
+          });
+
+          finalExams.sort((a, b) {
+            final aTime = _parseExamDateTime(
+              a.sectionSchedule.finalExamDate,
+              a.sectionSchedule.finalExamStartTime,
+            );
+            final bTime = _parseExamDateTime(
+              b.sectionSchedule.finalExamDate,
+              b.sectionSchedule.finalExamStartTime,
+            );
+            if (aTime == null && bTime == null) return 0;
+            if (aTime == null) return 1;
+            if (bTime == null) return -1;
+            return aTime.compareTo(bTime);
+          });
 
           if (midExams.isEmpty && finalExams.isEmpty) {
             return RefreshIndicator(
