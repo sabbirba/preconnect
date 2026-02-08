@@ -129,11 +129,17 @@ jobs:
 
       - name: Build Desktop (Release)
         if: matrix.platform != 'android' && matrix.platform != 'ios'
-        run: flutter build ${{ matrix.platform }} --release
+        run: |
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            flutter config --enable-macos-desktop
+          fi
+          flutter build ${{ matrix.platform }} --release
 
       - name: Build iOS App (Release, No Codesign)
         if: matrix.platform == 'ios'
-        run: flutter build ios --release --no-codesign
+        run: |
+          flutter config --enable-ios
+          flutter build ios --release --no-codesign
 
       - name: Build iOS IPA (Release, Signed)
         if: matrix.platform == 'ios'
@@ -214,12 +220,11 @@ jobs:
             echo "No iOS .ipa or .app found"
             exit 0
           fi
-          APP_DIR=$(dirname "$APP_PATH")
-          APP_NAME=$(basename "$APP_PATH")
           IPA_NAME="PreConnect-ios-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}-unsigned.ipa"
-          (cd "$APP_DIR" && rm -rf Payload && mkdir -p Payload \
-            && cp -R "$APP_NAME" Payload/ \
-            && zip -r -y "$GITHUB_WORKSPACE/artifacts/$IPA_NAME" Payload) || true
+          rm -rf Payload
+          mkdir -p Payload
+          ditto "$APP_PATH" "Payload/$(basename "$APP_PATH")"
+          (cd Payload && zip -r -y "$GITHUB_WORKSPACE/artifacts/$IPA_NAME" .) || true
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
