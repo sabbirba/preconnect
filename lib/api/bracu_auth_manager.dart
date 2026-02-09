@@ -180,6 +180,10 @@ class BracuAuthManager {
             profile['programOrCourse'] ?? '',
           );
           await asyncPrefs.setString(
+            'programOrCourse',
+            profile['programOrCourse'] ?? '',
+          );
+          await asyncPrefs.setString(
             'currentSemester',
             profile['currentSemester'] ?? '',
           );
@@ -191,6 +195,7 @@ class BracuAuthManager {
             'photoFilePath',
             profile['filePath'] ?? '',
           );
+          await asyncPrefs.setString('filePath', profile['filePath'] ?? '');
           await asyncPrefs.setString(
             'academicType',
             profile['academicType'] ?? '',
@@ -257,20 +262,26 @@ class BracuAuthManager {
 
   Future<Map<String, String?>?> getProfile({bool fromFetch = false}) async {
     final keys = [
+      'id',
       'studentId',
       'fullName',
       'email',
+      'studentEmail',
       'program',
+      'programOrCourse',
       'currentSemester',
       'cgpa',
       'earnedCredit',
       'attemptedCredit',
       'enrolledSessionSemesterId',
+      'currentSessionSemesterId',
       'enrolledSemester',
       'departmentName',
+      'academicType',
       'bloodGroup',
       'mobileNo',
       'shortCode',
+      'filePath',
       'photoFilePath',
     ];
 
@@ -278,20 +289,26 @@ class BracuAuthManager {
         await SharedPreferencesWithCache.create(
           cacheOptions: const SharedPreferencesWithCacheOptions(
             allowList: <String>{
+              'id',
               'studentId',
               'fullName',
               'email',
+              'studentEmail',
               'program',
+              'programOrCourse',
               'currentSemester',
               'cgpa',
               'earnedCredit',
               'attemptedCredit',
               'enrolledSessionSemesterId',
+              'currentSessionSemesterId',
               'enrolledSemester',
               'departmentName',
+              'academicType',
               'bloodGroup',
               'mobileNo',
               'shortCode',
+              'filePath',
               'photoFilePath',
             },
           ),
@@ -306,6 +323,23 @@ class BracuAuthManager {
       profileData[key] = prefsWithCache.getString(key);
     }
 
+    final requiredKeys = <String>{
+      'studentId',
+      'fullName',
+      'program',
+      'currentSemester',
+      'enrolledSessionSemesterId',
+      'enrolledSemester',
+      'mobileNo',
+      'photoFilePath',
+    };
+    final bool anyRequiredMissing = requiredKeys.any((key) {
+      final value = profileData[key];
+      return value == null || value.isEmpty;
+    });
+    if (anyRequiredMissing && !fromFetch) {
+      return await fetchProfile(fromGet: true);
+    }
     return profileData;
   }
 

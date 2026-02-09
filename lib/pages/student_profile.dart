@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:preconnect/api/bracu_auth_manager.dart';
 import 'package:preconnect/model/payment_info.dart';
 import 'package:preconnect/model/attendance_info.dart';
@@ -21,6 +22,7 @@ class _StudentProfileState extends State<StudentProfile>
   String? _photoUrl;
   List<PaymentInfo> _payments = [];
   List<AttendanceInfo> _attendances = [];
+  Map<String, String?> _advising = {};
   bool _isRefreshing = false;
   late final AnimationController _refreshController;
 
@@ -34,6 +36,7 @@ class _StudentProfileState extends State<StudentProfile>
     unawaited(BracuAuthManager().fetchProfile());
     unawaited(BracuAuthManager().fetchPaymentInfo());
     unawaited(BracuAuthManager().fetchAttendanceInfo());
+    unawaited(BracuAuthManager().fetchAdvisingInfo());
     _loadProfile();
   }
 
@@ -99,6 +102,7 @@ class _StudentProfileState extends State<StudentProfile>
           })
           .whereType<AttendanceInfo>()
           .toList();
+      final advising = await BracuAuthManager().getAdvisingInfo();
 
       if (!mounted) return;
       setState(() {
@@ -106,6 +110,7 @@ class _StudentProfileState extends State<StudentProfile>
         _photoUrl = photoUrl;
         _payments = payments;
         _attendances = attendances;
+        _advising = advising ?? _advising;
       });
     } catch (_) {}
   }
@@ -151,6 +156,7 @@ class _StudentProfileState extends State<StudentProfile>
           })
           .whereType<AttendanceInfo>()
           .toList();
+      final advising = await BracuAuthManager().fetchAdvisingInfo();
 
       if (!mounted) return;
       setState(() {
@@ -158,6 +164,7 @@ class _StudentProfileState extends State<StudentProfile>
         _photoUrl = photoUrl ?? _photoUrl;
         _payments = payments.isNotEmpty ? payments : _payments;
         _attendances = attendances.isNotEmpty ? attendances : _attendances;
+        _advising = advising ?? _advising;
       });
     } catch (_) {}
     if (mounted) {
@@ -228,17 +235,26 @@ class _StudentProfileState extends State<StudentProfile>
                 : _AttendanceGraph(attendances: _attendances),
             if (_attendances.isNotEmpty) const SizedBox(height: 12),
             const SizedBox(height: 18),
+            const BracuSectionTitle(title: 'Advising'),
+            const SizedBox(height: 10),
+            BracuCard(
+              child: _AdvisingSummary(
+                data: _advising,
+                cgpa: (_profile?['cgpa'] ?? 'N/A').trim(),
+              ),
+            ),
+            const SizedBox(height: 18),
             const BracuSectionTitle(title: 'Payments'),
             const SizedBox(height: 10),
             _payments.isEmpty
                 ? const SizedBox.shrink()
                 : _PaymentGraph(payments: _payments),
             if (_payments.isNotEmpty) const SizedBox(height: 12),
-            BracuCard(
-              child: _payments.isEmpty
-                  ? const BracuEmptyState(message: 'No payments found')
-                  : Column(
-                      children: _payments.map((payment) {
+            if (_payments.isEmpty)
+              const BracuEmptyState(message: 'No payments found')
+            else
+              Column(
+                children: _payments.map((payment) {
                         final textSecondary = BracuPalette.textSecondary(
                           context,
                         );
@@ -247,74 +263,117 @@ class _StudentProfileState extends State<StudentProfile>
                           payment.dueDate.toIso8601String(),
                         );
                         final status = payment.paymentStatus;
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: status == 'PAID'
-                                      ? BracuPalette.accent.withValues(
-                                          alpha: 0.12,
-                                        )
-                                      : const Color(
-                                          0xFFFF8A34,
-                                        ).withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                alignment: Alignment.center,
-                                child: Icon(
-                                  Icons.payment,
-                                  size: 18,
-                                  color: status == 'PAID'
-                                      ? BracuPalette.accent
-                                      : const Color(0xFFFF8A34),
-                                ),
+                        final isPaid = status == 'PAID';
+                        final amount = _formatAmount(payment.totalAmount);
+                        final statusColor =
+                            isPaid ? BracuPalette.accent : const Color(0xFFFF8A34);
+                        final statusBg = statusColor.withValues(alpha: 0.14);
+                        final semester = formatSemester(payment.semesterSessionId);
+                        final paymentType = payment.paymentType;
+                        final cardTint = isPaid
+                            ? Colors.transparent
+                            : statusBg.withValues(alpha: 0.08);
+                        final cardBorder = isPaid
+                            ? BracuPalette.primary.withValues(alpha: 0.08)
+                            : statusBg.withValues(alpha: 0.6);
+                        return Container(
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: BracuPalette.primary.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: cardTint,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: cardBorder,
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Payslip: ${payment.payslipNumber}',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        color: textPrimary,
-                                      ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    'Payslip: ${payment.payslipNumber}',
+                                    style: TextStyle(
+                                      color: textSecondary,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${payment.paymentType} • ${formatSemester(payment.semesterSessionId)}',
-                                      style: TextStyle(color: textSecondary),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.copy_rounded,
+                                      size: 16,
                                     ),
-                                    Text(
-                                      'Status: $status${status != 'PAID' ? ' • Due: $dueDate' : ''}',
-                                      style: TextStyle(color: textSecondary),
+                                    visualDensity: VisualDensity.compact,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 28,
+                                      minHeight: 28,
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Requested: ${formatDate(payment.requestDate.toIso8601String())} '
-                                      '• Amount: ${_formatAmount(payment.totalAmount)}',
-                                      style: TextStyle(color: textSecondary),
+                                    tooltip: 'Copy payslip number',
+                                    onPressed: () {
+                                      Clipboard.setData(
+                                        ClipboardData(
+                                          text: payment.payslipNumber,
+                                        ),
+                                      );
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Payslip number copied',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    amount,
+                                    style: TextStyle(
+                                      color: textPrimary,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Due date: ${formatDate(payment.dueDate.toIso8601String())}',
-                                      style: TextStyle(color: textSecondary),
-                                    ),
-                                  ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              _InfoLine(
+                                label: paymentType,
+                                value: semester,
+                                isLabelBold: true,
+                                isValueBold: true,
+                              ),
+                              const SizedBox(height: 8),
+                              _InfoLine(
+                                label: 'Requested',
+                                value: formatDate(
+                                  payment.requestDate.toIso8601String(),
                                 ),
+                                isLabelBold: true,
+                                isValueBold: true,
+                              ),
+                              const SizedBox(height: 6),
+                              _InfoLine(
+                                label: status,
+                                value: !isPaid ? dueDate : 'Paid',
+                                isLabelBold: true,
+                                isValueBold: true,
                               ),
                             ],
+                            ),
                           ),
                         );
                       }).toList(),
                     ),
-            ),
             const SizedBox(height: 12),
           ],
         ),
@@ -436,6 +495,177 @@ class _PaymentGraph extends StatelessWidget {
     final rounded = amount.round();
     return '${formatter.format(rounded)} Taka';
   }
+}
+
+class _AdvisingSummary extends StatelessWidget {
+  const _AdvisingSummary({required this.data, required this.cgpa});
+
+  final Map<String, String?> data;
+  final String cgpa;
+
+  bool get _hasData {
+    return data.values.any((value) => value != null && value.trim().isNotEmpty);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_hasData) {
+      return const BracuEmptyState(message: 'No advising info found');
+    }
+
+    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = BracuPalette.textPrimary(context);
+    final pillBg = BracuPalette.primary.withValues(alpha: 0.12);
+
+    final start = formatDate(data['advisingStartDate']);
+    final end = formatDate(data['advisingEndDate']);
+    final phase = (data['advisingPhase'] ?? 'N/A').trim();
+    final totalCredit = (data['totalCredit'] ?? 'N/A').trim();
+    final earnedCredit = (data['earnedCredit'] ?? 'N/A').trim();
+    final semesterCount = (data['noOfSemester'] ?? 'N/A').trim();
+    final activeSessionRaw =
+        (data['activeSemesterSessionId'] ?? 'N/A').trim();
+    final activeSession = _formatSession(activeSessionRaw);
+    final displayCgpa = cgpa.isNotEmpty ? cgpa : 'N/A';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: pillBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.school_outlined,
+                size: 18,
+                color: BracuPalette.primary,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                phase,
+                style: TextStyle(
+                  color: textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Text(
+              start == end ? start : start,
+              style: TextStyle(
+                color: textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Divider(color: textSecondary.withValues(alpha: 0.25), height: 16),
+        _InfoLine(
+          label: 'Active Session',
+          value: activeSession,
+          isLabelBold: true,
+          isValueBold: true,
+        ),
+        _InfoLine(
+          label: 'Total Credit',
+          value: totalCredit,
+          isLabelBold: true,
+          isValueBold: true,
+        ),
+        _InfoLine(
+          label: 'Earned Credit',
+          value: earnedCredit,
+          isLabelBold: true,
+          isValueBold: true,
+        ),
+        _InfoLine(
+          label: 'CGPA',
+          value: displayCgpa,
+          isLabelBold: true,
+          isValueBold: true,
+        ),
+        _InfoLine(
+          label: 'Semesters',
+          value: semesterCount,
+          isLabelBold: true,
+          isValueBold: true,
+        ),
+      ],
+    );
+  }
+}
+
+class _InfoLine extends StatelessWidget {
+  const _InfoLine({
+    required this.label,
+    required this.value,
+    this.isValueBold = false,
+    this.isLabelBold = false,
+  });
+
+  final String label;
+  final String value;
+  final bool isValueBold;
+  final bool isLabelBold;
+
+  @override
+  Widget build(BuildContext context) {
+    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = BracuPalette.textPrimary(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: textSecondary,
+                fontWeight: isLabelBold ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 6,
+            child: Text(
+              value,
+              style: TextStyle(
+                color: textPrimary,
+                fontWeight: isValueBold ? FontWeight.w700 : FontWeight.w400,
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatSession(String raw) {
+  if (raw.trim().isEmpty || raw.trim() == 'N/A') return 'N/A';
+  final value = int.tryParse(raw.trim());
+  if (value == null) return raw;
+  final year = value ~/ 10;
+  final code = value % 10;
+  final label = switch (code) {
+    1 => 'Spring',
+    2 => 'Fall',
+    3 => 'Summer',
+    _ => 'Session',
+  };
+  return '$label $year';
 }
 
 class _BarRow extends StatelessWidget {

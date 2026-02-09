@@ -49,8 +49,14 @@ class _MyAppState extends State<MyApp> {
     if (loggedIn) {
       unawaited(BracuAuthManager().getProfile());
       unawaited(BracuAuthManager().getStudentSchedule());
+      unawaited(BracuAuthManager().getAttendanceInfo());
+      unawaited(BracuAuthManager().getPaymentInfo());
+      unawaited(BracuAuthManager().getAdvisingInfo());
       unawaited(BracuAuthManager().fetchProfile());
       unawaited(BracuAuthManager().fetchStudentSchedule());
+      unawaited(BracuAuthManager().fetchAttendanceInfo());
+      unawaited(BracuAuthManager().fetchPaymentInfo());
+      unawaited(BracuAuthManager().fetchAdvisingInfo());
     }
 
     return _StartupState(isLoggedIn: loggedIn);
@@ -120,6 +126,9 @@ class _AppGate extends StatelessWidget {
     return FutureBuilder<_StartupState>(
       future: startupFuture,
       builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const SizedBox.shrink();
+        }
         final isLoggedIn = snapshot.data?.isLoggedIn;
         if (isLoggedIn == true) {
           return const HomePage();
