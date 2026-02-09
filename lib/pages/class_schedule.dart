@@ -229,6 +229,7 @@ class _ClassScheduleState extends State<ClassSchedule> {
                       padding: const EdgeInsets.only(bottom: 10),
                       child: BracuCard(
                         isHighlighted: isHighlighted,
+                        highlightColor: BracuPalette.accent,
                         child: LayoutBuilder(
                           builder: (context, constraints) {
                             return Row(
@@ -257,6 +258,7 @@ class _ClassScheduleState extends State<ClassSchedule> {
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
+                                  flex: 7,
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -266,9 +268,6 @@ class _ClassScheduleState extends State<ClassSchedule> {
                                         style: const TextStyle(
                                           fontWeight: FontWeight.w600,
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        softWrap: false,
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
@@ -281,54 +280,42 @@ class _ClassScheduleState extends State<ClassSchedule> {
                                             context,
                                           ),
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        softWrap: false,
                                       ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 10),
-                                Flexible(
-                                  child: ConstrainedBox(
-                                    constraints: BoxConstraints(
-                                      maxWidth: constraints.maxWidth * 0.4,
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      children: [
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  flex: 4,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        room.toString(),
+                                        textAlign: TextAlign.right,
+                                        style: TextStyle(
+                                          color: BracuPalette.textPrimary(
+                                            context,
+                                          ),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      if (faculties != null &&
+                                          faculties.trim().isNotEmpty) ...[
+                                        const SizedBox(height: 2),
                                         Text(
-                                          room.toString(),
+                                          faculties,
+                                          textAlign: TextAlign.right,
                                           style: TextStyle(
-                                            color: BracuPalette.textPrimary(
+                                            fontSize: 12,
+                                            color: BracuPalette.textSecondary(
                                               context,
                                             ),
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700,
                                           ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          softWrap: false,
                                         ),
-                                        if (faculties != null &&
-                                            faculties.trim().isNotEmpty) ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            faculties,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            softWrap: false,
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: BracuPalette.textSecondary(
-                                                context,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
                                       ],
-                                    ),
+                                    ],
                                   ),
                                 ),
                               ],

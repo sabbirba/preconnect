@@ -228,21 +228,21 @@ class _StudentProfileState extends State<StudentProfile>
             const SizedBox(height: 6),
             CardSection(profile: _profile, photoUrl: _photoUrl),
             const SizedBox(height: 18),
+            const BracuSectionTitle(title: 'Academic'),
+            const SizedBox(height: 10),
+            BracuCard(
+              child: _AcademicSummary(
+                profile: _profile ?? const {},
+                advising: _advising,
+              ),
+            ),
+            const SizedBox(height: 18),
             const BracuSectionTitle(title: 'Attendance'),
             const SizedBox(height: 10),
             _attendances.isEmpty
                 ? const SizedBox.shrink()
                 : _AttendanceGraph(attendances: _attendances),
             if (_attendances.isNotEmpty) const SizedBox(height: 12),
-            const SizedBox(height: 18),
-            const BracuSectionTitle(title: 'Advising'),
-            const SizedBox(height: 10),
-            BracuCard(
-              child: _AdvisingSummary(
-                data: _advising,
-                cgpa: (_profile?['cgpa'] ?? 'N/A').trim(),
-              ),
-            ),
             const SizedBox(height: 18),
             const BracuSectionTitle(title: 'Payments'),
             const SizedBox(height: 10),
@@ -321,9 +321,6 @@ class _StudentProfileState extends State<StudentProfile>
                                                   fontWeight: FontWeight.w700,
                                                   fontSize: 14,
                                                 ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                softWrap: false,
                                               ),
                                             ),
                                             const SizedBox(width: 6),
@@ -373,10 +370,7 @@ class _StudentProfileState extends State<StudentProfile>
                                               fontWeight: FontWeight.w700,
                                               fontSize: 14,
                                             ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
                                             textAlign: TextAlign.right,
-                                            softWrap: false,
                                           ),
                                         ),
                                       ),
@@ -536,41 +530,50 @@ class _PaymentGraph extends StatelessWidget {
   }
 }
 
-class _AdvisingSummary extends StatelessWidget {
-  const _AdvisingSummary({required this.data, required this.cgpa});
+class _AcademicSummary extends StatelessWidget {
+  const _AcademicSummary({required this.profile, required this.advising});
 
-  final Map<String, String?> data;
-  final String cgpa;
+  final Map<String, String?> profile;
+  final Map<String, String?> advising;
 
-  bool get _hasData {
-    return data.values.any((value) => value != null && value.trim().isNotEmpty);
+  String _value(String key) {
+    final raw = (profile[key] ?? '').trim();
+    return raw.isEmpty ? 'N/A' : raw;
+  }
+
+  String _currentSession() {
+    final raw = (profile['currentSessionSemesterId'] ?? '').trim();
+    if (raw.isEmpty) return 'N/A';
+    return _formatSession(raw);
+  }
+
+  bool get _hasAdvisingData {
+    return advising.values.any((value) => value != null && value.trim().isNotEmpty);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_hasData) {
-      return const BracuEmptyState(message: 'No advising info found');
-    }
-
     final textSecondary = BracuPalette.textSecondary(context);
     final textPrimary = BracuPalette.textPrimary(context);
     final pillBg = BracuPalette.primary.withValues(alpha: 0.12);
-
-    final start = formatDate(data['advisingStartDate']);
-    final end = formatDate(data['advisingEndDate']);
-    final phase = _formatAdvisingPhase(data['advisingPhase']);
-    final totalCredit = (data['totalCredit'] ?? 'N/A').trim();
-    final earnedCredit = (data['earnedCredit'] ?? 'N/A').trim();
-    final semesterCount = (data['noOfSemester'] ?? 'N/A').trim();
-    final activeSessionRaw =
-        (data['activeSemesterSessionId'] ?? 'N/A').trim();
-    final activeSession = _formatSession(activeSessionRaw);
-    final displayCgpa = cgpa.isNotEmpty ? cgpa : 'N/A';
+    final cgpa = (profile['cgpa'] ?? 'N/A').trim();
+    final advisingPhase = _formatAdvisingPhase(advising['advisingPhase']);
+    final advisingStart = formatDate(advising['advisingStartDate']);
+    final advisingEnd = formatDate(advising['advisingEndDate']);
+    final advisingDate = advisingStart == 'N/A' && advisingEnd == 'N/A'
+        ? 'N/A'
+        : (advisingStart == advisingEnd
+            ? advisingStart
+            : '$advisingStart - $advisingEnd');
+    final activeSession = _formatSession(
+      (advising['activeSemesterSessionId'] ?? 'N/A').trim(),
+    );
+    final totalCredit = (advising['totalCredit'] ?? 'N/A').trim();
+    final earnedCredit = (advising['earnedCredit'] ?? 'N/A').trim();
+    final semesterCount = (advising['noOfSemester'] ?? 'N/A').trim();
     final totalNum = double.tryParse(totalCredit) ?? 0;
     final earnedNum = double.tryParse(earnedCredit) ?? 0;
-    final completion = totalNum == 0 ? 0 : (earnedNum / totalNum * 100);
-    final completionLabel = '${completion.toStringAsFixed(0)}%';
-    final earnedDisplay = earnedCredit;
+    final completion = totalNum == 0 ? 'N/A' : '${((earnedNum / totalNum) * 100).toStringAsFixed(0)}%';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -594,7 +597,7 @@ class _AdvisingSummary extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                phase,
+                'Session',
                 style: TextStyle(
                   color: textPrimary,
                   fontWeight: FontWeight.w700,
@@ -602,7 +605,7 @@ class _AdvisingSummary extends StatelessWidget {
               ),
             ),
             Text(
-              start == end ? start : start,
+              _currentSession(),
               style: TextStyle(
                 color: textPrimary,
                 fontWeight: FontWeight.w700,
@@ -613,41 +616,87 @@ class _AdvisingSummary extends StatelessWidget {
         const SizedBox(height: 10),
         Divider(color: textSecondary.withValues(alpha: 0.25), height: 16),
         _InfoLine(
-          label: 'Active Session',
-          value: activeSession,
+          label: 'Department',
+          value: _value('departmentName'),
           isLabelBold: true,
           isValueBold: true,
         ),
         _InfoLine(
-          label: 'Total Credit',
-          value: totalCredit,
+          label: 'Short Code',
+          value: _value('shortCode'),
           isLabelBold: true,
           isValueBold: true,
         ),
         _InfoLine(
-          label: 'Earned Credit',
-          value: earnedDisplay,
+          label: 'Program',
+          value: _value('programOrCourse'),
           isLabelBold: true,
           isValueBold: true,
         ),
         _InfoLine(
-          label: 'Completion',
-          value: completionLabel,
+          label: 'Email',
+          value: _value('email'),
           isLabelBold: true,
           isValueBold: true,
         ),
         _InfoLine(
-          label: 'CGPA',
-          value: displayCgpa,
+          label: 'Phone',
+          value: _value('mobileNo'),
           isLabelBold: true,
           isValueBold: true,
         ),
-        _InfoLine(
-          label: 'Semesters',
-          value: semesterCount,
-          isLabelBold: true,
-          isValueBold: true,
-        ),
+        if (_hasAdvisingData) ...[
+          const SizedBox(height: 10),
+          Divider(color: textSecondary.withValues(alpha: 0.25), height: 16),
+          _InfoLine(
+            label: 'Advising Phase',
+            value: advisingPhase,
+            isLabelBold: true,
+            isValueBold: true,
+          ),
+          _InfoLine(
+            label: 'Advising Date',
+            value: advisingDate,
+            isLabelBold: true,
+            isValueBold: true,
+          ),
+          _InfoLine(
+            label: 'Active Session',
+            value: activeSession,
+            isLabelBold: true,
+            isValueBold: true,
+          ),
+          _InfoLine(
+            label: 'Total Credit',
+            value: totalCredit,
+            isLabelBold: true,
+            isValueBold: true,
+          ),
+          _InfoLine(
+            label: 'Earned Credit',
+            value: earnedCredit,
+            isLabelBold: true,
+            isValueBold: true,
+          ),
+          _InfoLine(
+            label: 'Completion',
+            value: completion,
+            isLabelBold: true,
+            isValueBold: true,
+          ),
+          _InfoLine(
+            label: 'CGPA',
+            value: cgpa.isNotEmpty ? cgpa : 'N/A',
+            isLabelBold: true,
+            isValueBold: true,
+          ),
+          _InfoLine(
+            label: 'Semesters',
+            value: semesterCount,
+            isLabelBold: true,
+            isValueBold: true,
+          ),
+        ],
       ],
     );
   }
@@ -672,45 +721,35 @@ class _InfoLine extends StatelessWidget {
     final textPrimary = BracuPalette.textPrimary(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: textSecondary,
-                    fontWeight: isLabelBold ? FontWeight.w700 : FontWeight.w500,
-                    fontSize: 14,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 5,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: textSecondary,
+                fontWeight: isLabelBold ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 14,
               ),
-              const SizedBox(width: 10),
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: constraints.maxWidth * 0.5,
-                ),
-                child: IntrinsicWidth(
-                  child: Text(
-                    value,
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontWeight:
-                          isValueBold ? FontWeight.w700 : FontWeight.w400,
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.right,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
+              textAlign: TextAlign.left,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 7,
+            child: Text(
+              value,
+              style: TextStyle(
+                color: textPrimary,
+                fontWeight: isValueBold ? FontWeight.w700 : FontWeight.w400,
+                fontSize: 14,
               ),
-            ],
-          );
-        },
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
       ),
     );
   }

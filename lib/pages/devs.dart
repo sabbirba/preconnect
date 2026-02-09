@@ -227,16 +227,12 @@ class _DevGridTile extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontWeight: FontWeight.w600),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 2),
           Text(
             role,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
             style: TextStyle(color: textSecondary, fontSize: 12),
             textAlign: TextAlign.center,
           ),

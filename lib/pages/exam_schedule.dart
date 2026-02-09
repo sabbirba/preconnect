@@ -298,7 +298,7 @@ class _ExamScheduleState extends State<ExamSchedule> {
                       const SizedBox(height: 8),
                       BracuCard(
                         isHighlighted: isHighlighted,
-                        highlightColor: BracuPalette.primary,
+                        highlightColor: BracuPalette.accent,
                         child: Row(
                           children: [
                             Container(
@@ -322,6 +322,7 @@ class _ExamScheduleState extends State<ExamSchedule> {
                             ),
                             const SizedBox(width: 12),
                             Expanded(
+                              flex: 7,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -344,12 +345,33 @@ class _ExamScheduleState extends State<ExamSchedule> {
                                       ),
                                     ),
                                   ),
-                                  if (section.sectionType.isNotEmpty) ...[
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 4,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    section.roomNumber.isNotEmpty
+                                        ? section.roomNumber
+                                        : '--',
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                      color: BracuPalette.textPrimary(context),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                if (section.faculties.trim().isNotEmpty &&
+                                    section.faculties.trim().toUpperCase() !=
+                                        'OTHER') ...[
                                     const SizedBox(height: 2),
                                     Text(
-                                      section.sectionType,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                      section.faculties,
+                                      textAlign: TextAlign.right,
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: BracuPalette.textSecondary(
@@ -360,35 +382,6 @@ class _ExamScheduleState extends State<ExamSchedule> {
                                   ],
                                 ],
                               ),
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  section.roomNumber.isNotEmpty
-                                      ? section.roomNumber
-                                      : '--',
-                                  style: TextStyle(
-                                    color: BracuPalette.textPrimary(context),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                if (section.faculties.trim().isNotEmpty) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    section.faculties,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: BracuPalette.textSecondary(
-                                        context,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
                             ),
                           ],
                         ),
@@ -449,6 +442,7 @@ class _ExamScheduleState extends State<ExamSchedule> {
                             ),
                             const SizedBox(width: 12),
                             Expanded(
+                              flex: 7,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -471,12 +465,33 @@ class _ExamScheduleState extends State<ExamSchedule> {
                                       ),
                                     ),
                                   ),
-                                  if (section.sectionType.isNotEmpty) ...[
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 4,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    section.roomNumber.isNotEmpty
+                                        ? section.roomNumber
+                                        : '--',
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                      color: BracuPalette.textPrimary(context),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                if (section.faculties.trim().isNotEmpty &&
+                                    section.faculties.trim().toUpperCase() !=
+                                        'OTHER') ...[
                                     const SizedBox(height: 2),
                                     Text(
-                                      section.sectionType,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                      section.faculties,
+                                      textAlign: TextAlign.right,
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: BracuPalette.textSecondary(
@@ -487,35 +502,6 @@ class _ExamScheduleState extends State<ExamSchedule> {
                                   ],
                                 ],
                               ),
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  section.roomNumber.isNotEmpty
-                                      ? section.roomNumber
-                                      : '--',
-                                  style: TextStyle(
-                                    color: BracuPalette.textPrimary(context),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                if (section.faculties.trim().isNotEmpty) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    section.faculties,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: BracuPalette.textSecondary(
-                                        context,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
                             ),
                           ],
                         ),

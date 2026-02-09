@@ -14,7 +14,6 @@ class Section {
   final int capacity;
   final int consumedSeat;
   final SectionSchedule sectionSchedule;
-  final String sectionType;
   final String faculties;
   final String roomName;
   final String roomNumber;
@@ -38,7 +37,6 @@ class Section {
     required this.capacity,
     required this.consumedSeat,
     required this.sectionSchedule,
-    required this.sectionType,
     required this.faculties,
     required this.roomName,
     required this.roomNumber,
@@ -66,7 +64,6 @@ class Section {
       sectionSchedule: SectionSchedule.fromJson(
         jsonDecode(json['sectionSchedule']),
       ),
-      sectionType: json['sectionType'],
       faculties: json['faculties'],
       roomName: json['roomName'],
       roomNumber: json['roomNumber'],

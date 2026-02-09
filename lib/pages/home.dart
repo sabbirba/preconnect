@@ -911,6 +911,7 @@ class _ScheduleTile extends StatelessWidget {
     final textPrimary = BracuPalette.textPrimary(context);
     return BracuCard(
       isHighlighted: isHighlighted,
+      highlightColor: BracuPalette.accent,
       child: Row(
         children: [
           Container(
@@ -971,8 +972,6 @@ class _ScheduleTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     trailingSub!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 11, color: textSecondary),
                   ),
                 ],

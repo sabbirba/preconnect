@@ -346,6 +346,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
                                         ),
                                         const SizedBox(width: 12),
                                         Expanded(
+                                          flex: 7,
                                           child: Column(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
@@ -372,40 +373,44 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
                                             ],
                                           ),
                                         ),
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.end,
-                                          children: [
-                                            Text(
-                                              entry.roomNumber?.toString() ??
-                                                  '--',
-                                              style: TextStyle(
-                                                color: BracuPalette.textPrimary(
-                                                  context,
-                                                ),
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                            if (entry.faculties != null &&
-                                                entry.faculties!
-                                                    .trim()
-                                                    .isNotEmpty) ...[
-                                              const SizedBox(height: 2),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          flex: 4,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                            children: [
                                               Text(
-                                                entry.faculties!,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
+                                                entry.roomNumber?.toString() ??
+                                                    '--',
+                                                textAlign: TextAlign.right,
                                                 style: TextStyle(
-                                                  fontSize: 11,
-                                                  color:
-                                                      BracuPalette.textSecondary(
-                                                        context,
-                                                      ),
+                                                  color: BracuPalette.textPrimary(
+                                                    context,
+                                                  ),
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w700,
                                                 ),
                                               ),
+                                                if (entry.faculties != null &&
+                                                    entry.faculties!
+                                                        .trim()
+                                                        .isNotEmpty) ...[
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  entry.faculties!,
+                                                  textAlign: TextAlign.right,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color:
+                                                        BracuPalette.textSecondary(
+                                                          context,
+                                                        ),
+                                                  ),
+                                                ),
+                                              ],
                                             ],
-                                          ],
+                                          ),
                                         ),
                                       ],
                                     ),
