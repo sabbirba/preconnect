@@ -9,8 +9,5 @@
 # Google Mobile Ads
 -keep class com.google.android.gms.common.** { *; }
 
-# Firebase (if used)
--keep class com.google.firebase.** { *; }
-
 # Keep Kotlin metadata
 -keep class kotlin.Metadata { *; }
