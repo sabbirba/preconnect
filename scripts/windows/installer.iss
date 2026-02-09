@@ -2,6 +2,9 @@
 #define MyAppPublisher "PreConnect"
 #define MyAppURL "https://preconnect.app"
 #define MyAppExeName "PreConnect.exe"
+#ifndef AppVersionFull
+#define AppVersionFull AppVersion
+#endif
 
 [Setup]
 AppId={{A0C7B1E9-2F31-4E1A-9B0C-2B8E91A6C0A1}}
@@ -13,7 +16,7 @@ AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\\{#MyAppName}
 DefaultGroupName={#MyAppName}
-OutputBaseFilename={#MyAppName}-windows-release-{#AppVersion}
+OutputBaseFilename={#MyAppName}-windows-release-{#AppVersionFull}
 OutputDir=artifacts
 SetupIconFile=windows\\runner\\resources\\app_icon.ico
 UninstallDisplayIcon={app}\\{#MyAppExeName}
