@@ -321,7 +321,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
                                   padding: const EdgeInsets.only(bottom: 10),
                                   child: BracuCard(
                                     isHighlighted: isHighlighted,
-                                    highlightColor: BracuPalette.accent,
+                                    highlightColor: BracuPalette.primary,
                                     child: Row(
                                       children: [
                                         Container(

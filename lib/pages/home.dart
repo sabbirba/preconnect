@@ -662,126 +662,84 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        gradient: LinearGradient(
-          colors: isDark
-              ? const [Color(0xFF0A2A4A), Color(0xFF0F3B6D)]
-              : const [Color(0xFF1E6BE3), Color(0xFF2C9DFF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: isDark
-            ? const []
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 18,
-                  offset: const Offset(0, 10),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Student Overview',
+                style: TextStyle(
+                  color: BracuPalette.textPrimary(context),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
-              ],
-      ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Student Overview',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  InkWell(
-                    onTap: onLogout,
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.12)
-                            : Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        Icons.logout,
-                        size: 18,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _InfoPill(label: 'Student ID', value: studentId),
-                  const SizedBox(width: 12),
-                  _InfoPill(label: 'Phone', value: phone),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _InfoPill(label: 'Current Semester', value: currentSemester),
-                  const SizedBox(width: 12),
-                  _InfoPill(
-                    label: 'Enrolled Semester',
-                    value: enrolledSemester,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 10,
-                  horizontal: 12,
-                ),
+            ),
+            InkWell(
+              onTap: onLogout,
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? const Color(0xFF0F3B6D)
-                      : Colors.white.withValues(alpha: 0.18),
+                  color: BracuPalette.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Program',
-                      style: TextStyle(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white70
-                            : Colors.white.withValues(alpha: 0.85),
-                        fontSize: 11,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      program,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                child: const Icon(
+                  Icons.logout,
+                  size: 18,
+                  color: BracuPalette.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            _InfoPill(label: 'Student ID', value: studentId),
+            const SizedBox(width: 12),
+            _InfoPill(label: 'Phone', value: phone),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(
+            vertical: 10,
+            horizontal: 12,
+          ),
+          decoration: BoxDecoration(
+            color: BracuPalette.card(context),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: BracuPalette.primary.withValues(alpha: 0.14),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Program',
+                style: TextStyle(
+                  color: BracuPalette.textSecondary(context),
+                  fontSize: 11,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                program,
+                style: TextStyle(
+                  color: BracuPalette.textPrimary(context),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -794,19 +752,16 @@ class _InfoPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final pillColor = isDark
-        ? const Color(0xFF0F3B6D)
-        : Colors.white.withValues(alpha: 0.18);
-    final labelColor = isDark
-        ? Colors.white70
-        : Colors.white.withValues(alpha: 0.85);
+    final labelColor = BracuPalette.textSecondary(context);
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
         decoration: BoxDecoration(
-          color: pillColor,
+          color: BracuPalette.card(context),
           borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: BracuPalette.primary.withValues(alpha: 0.14),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -816,7 +771,7 @@ class _InfoPill extends StatelessWidget {
             Text(
               value,
               style: TextStyle(
-                color: Colors.white,
+                color: BracuPalette.textPrimary(context),
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -942,7 +897,7 @@ class _ScheduleTile extends StatelessWidget {
     final textPrimary = BracuPalette.textPrimary(context);
     return BracuCard(
       isHighlighted: isHighlighted,
-      highlightColor: BracuPalette.accent,
+      highlightColor: BracuPalette.primary,
       child: Row(
         children: [
           Container(

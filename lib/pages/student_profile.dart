@@ -531,26 +531,12 @@ class _AcademicSummary extends StatelessWidget {
   final Map<String, String?> profile;
   final Map<String, String?> advising;
 
-  String _value(String key) {
-    final raw = (profile[key] ?? '').trim();
-    return raw.isEmpty ? 'N/A' : raw;
-  }
-
-  String _currentSession() {
-    final raw = (profile['currentSessionSemesterId'] ?? '').trim();
-    if (raw.isEmpty) return 'N/A';
-    return _formatSession(raw);
-  }
-
   bool get _hasAdvisingData {
     return advising.values.any((value) => value != null && value.trim().isNotEmpty);
   }
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
-    final textPrimary = BracuPalette.textPrimary(context);
-    final cgpa = (profile['cgpa'] ?? 'N/A').trim();
     final advisingPhase = _formatAdvisingPhase(advising['advisingPhase']);
     final advisingStart = formatDate(advising['advisingStartDate']);
     final advisingEnd = formatDate(advising['advisingEndDate']);
@@ -561,148 +547,93 @@ class _AcademicSummary extends StatelessWidget {
             : '$advisingStart - $advisingEnd');
     final totalCredit = (advising['totalCredit'] ?? 'N/A').trim();
     final earnedCredit = (advising['earnedCredit'] ?? 'N/A').trim();
-    final semesterCount = (advising['noOfSemester'] ?? 'N/A').trim();
     final totalNum = double.tryParse(totalCredit) ?? 0;
     final earnedNum = double.tryParse(earnedCredit) ?? 0;
     final completionRatio =
         totalNum == 0 ? null : (earnedNum / totalNum).clamp(0.0, 1.0);
     final completion =
         completionRatio == null ? 'N/A' : '${(completionRatio * 100).toStringAsFixed(0)}%';
+    final currentSemester = (profile['currentSemester'] ?? '').trim().isNotEmpty
+        ? (profile['currentSemester'] ?? '').trim()
+        : _formatSession(
+            (profile['currentSessionSemesterId'] ?? 'N/A').trim(),
+          );
+    final fromSemester = (profile['enrolledSemester'] ?? '').trim().isNotEmpty
+        ? (profile['enrolledSemester'] ?? '').trim()
+        : _formatSession(
+            (profile['enrolledSessionSemesterId'] ?? 'N/A').trim(),
+          );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: BracuPalette.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              alignment: Alignment.center,
-              child: Icon(
-                Icons.school_outlined,
-                size: 20,
-                color: BracuPalette.primary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _currentSession(),
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _value('departmentName'),
-                    style: TextStyle(
-                      color: textSecondary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: BracuPalette.primary.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: BracuPalette.primary.withValues(alpha: 0.16),
-            ),
-          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(6, 4, 6, 6),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      'Completion',
-                      style: TextStyle(
-                        color: textSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: _BlueMetric(
+                      label: 'Current Semester',
+                      value: currentSemester,
+                      alignRight: false,
                     ),
                   ),
-                  Text(
-                    completion,
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontWeight: FontWeight.w700,
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: BracuPalette.primary.withValues(alpha: 0.18),
+                  ),
+                  Expanded(
+                    child: _BlueMetric(
+                      label: 'From Semester',
+                      value: fromSemester,
+                      alignRight: true,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              TweenAnimationBuilder<double>(
-                tween: Tween(
-                  begin: 0,
-                  end: completionRatio ?? 0,
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: completionRatio ?? 0,
+                  minHeight: 8,
+                  backgroundColor:
+                      BracuPalette.primary.withValues(alpha: 0.12),
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    BracuPalette.primary,
+                  ),
                 ),
-                duration: const Duration(milliseconds: 700),
-                builder: (context, value, child) {
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      value: completionRatio == null ? 0 : value,
-                      minHeight: 8,
-                      backgroundColor:
-                          BracuPalette.primary.withValues(alpha: 0.12),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        BracuPalette.primary,
-                      ),
-                    ),
-                  );
-                },
               ),
               const SizedBox(height: 10),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final itemWidth = (constraints.maxWidth - 12) / 3;
-                  return Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      _StatTile(
-                        label: 'Credits Earned',
-                        value: totalNum == 0
-                            ? 'N/A'
-                            : '${earnedNum.toStringAsFixed(0)} of ${totalNum.toStringAsFixed(0)}',
-                        width: itemWidth,
+              Row(
+                children: [
+                  Icon(
+                    Icons.check_circle_outline,
+                    size: 16,
+                    color: BracuPalette.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      completionRatio == null
+                          ? 'Completion data not available'
+                          : 'You have completed ${earnedNum.toStringAsFixed(0)} credits of ${totalNum.toStringAsFixed(0)} ($completion).',
+                      style: TextStyle(
+                        color: BracuPalette.textPrimary(context),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       ),
-                      _StatTile(
-                        label: 'CGPA',
-                        value: cgpa.isNotEmpty ? cgpa : 'N/A',
-                        width: itemWidth,
-                      ),
-                      _StatTile(
-                        label: 'Done',
-                        value: semesterCount.isEmpty ? 'N/A' : semesterCount,
-                        width: itemWidth,
-                      ),
-                    ],
-                  );
-                },
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
-        const SizedBox(height: 14),
         LayoutBuilder(
           builder: (context, constraints) {
             final half = (constraints.maxWidth - 12) / 2;
@@ -731,53 +662,6 @@ class _AcademicSummary extends StatelessWidget {
   }
 }
 
-class _StatTile extends StatelessWidget {
-  const _StatTile({
-    required this.label,
-    required this.value,
-    required this.width,
-  });
-
-  final String label;
-  final String value;
-  final double width;
-
-  @override
-  Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
-    final textPrimary = BracuPalette.textPrimary(context);
-    return Container(
-      width: width,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              color: textPrimary,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _MiniField extends StatelessWidget {
   const _MiniField({
     required this.label,
@@ -795,14 +679,7 @@ class _MiniField extends StatelessWidget {
     final textPrimary = BracuPalette.textPrimary(context);
     return Container(
       width: width,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: BracuPalette.card(context),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: BracuPalette.primary.withValues(alpha: 0.08),
-        ),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -825,6 +702,47 @@ class _MiniField extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _BlueMetric extends StatelessWidget {
+  const _BlueMetric({
+    required this.label,
+    required this.value,
+    required this.alignRight,
+  });
+
+  final String label;
+  final String value;
+  final bool alignRight;
+
+  @override
+  Widget build(BuildContext context) {
+    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = BracuPalette.textPrimary(context);
+    return Column(
+      crossAxisAlignment:
+          alignRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: textSecondary,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: TextStyle(
+            color: textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     );
   }
 }

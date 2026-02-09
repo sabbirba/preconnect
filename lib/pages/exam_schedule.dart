@@ -298,7 +298,7 @@ class _ExamScheduleState extends State<ExamSchedule> {
                       const SizedBox(height: 8),
                       BracuCard(
                         isHighlighted: isHighlighted,
-                        highlightColor: BracuPalette.accent,
+                        highlightColor: BracuPalette.primary,
                         child: Row(
                           children: [
                             Container(
@@ -418,7 +418,7 @@ class _ExamScheduleState extends State<ExamSchedule> {
                       const SizedBox(height: 8),
                       BracuCard(
                         isHighlighted: isHighlighted,
-                        highlightColor: BracuPalette.accent,
+                        highlightColor: BracuPalette.primary,
                         child: Row(
                           children: [
                             Container(

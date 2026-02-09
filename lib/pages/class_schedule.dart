@@ -229,7 +229,7 @@ class _ClassScheduleState extends State<ClassSchedule> {
                       padding: const EdgeInsets.only(bottom: 10),
                       child: BracuCard(
                         isHighlighted: isHighlighted,
-                        highlightColor: BracuPalette.accent,
+                        highlightColor: BracuPalette.primary,
                         child: LayoutBuilder(
                           builder: (context, constraints) {
                             return Row(

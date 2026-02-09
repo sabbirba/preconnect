@@ -337,7 +337,7 @@ class BracuCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final highlight = highlightColor ?? BracuPalette.primary;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseBorderColor = BracuPalette.primary.withValues(
+    final baseBorderColor = BracuPalette.textSecondary(context).withValues(
       alpha: isDark ? 0.35 : 0.18,
     );
     return Container(
