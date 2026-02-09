@@ -134,7 +134,6 @@ jobs:
       - name: Build iOS App (Release, No Codesign)
         if: matrix.platform == 'ios'
         run: |
-          flutter config --enable-ios
           flutter build ios --release --no-codesign
 
       - name: Build iOS IPA (Release, Signed)
@@ -168,13 +167,11 @@ jobs:
       - name: Build macOS App
         if: matrix.platform == 'macos'
         run: |
-          flutter config --enable-macos
           flutter build macos --release
 
       - name: Build Windows App
         if: matrix.platform == 'windows'
         run: |
-          flutter config --enable-windows
           flutter build windows --release
 
       - name: Package Android Release
