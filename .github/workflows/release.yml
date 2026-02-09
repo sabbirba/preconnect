@@ -114,7 +114,18 @@ jobs:
             ${{ runner.os }}-${{ matrix.platform }}-flutter-build-
 
       - name: Flutter Pub Get
-        run: flutter pub get
+        run: |
+          attempt=1
+          until [ $attempt -gt 3 ]; do
+            flutter pub get && break
+            echo "flutter pub get failed (attempt $attempt)."
+            attempt=$((attempt+1))
+            sleep $((5 * attempt))
+          done
+          if [ $attempt -gt 3 ]; then
+            echo "flutter pub get failed after 3 attempts."
+            exit 1
+          fi
 
       - name: Read App Version
         id: version
@@ -207,7 +218,17 @@ jobs:
       - name: Build Windows App
         if: matrix.platform == 'windows'
         run: |
-          flutter build windows --release
+          attempt=1
+          until [ $attempt -gt 3 ]; do
+            flutter build windows --release && break
+            echo "flutter build windows failed (attempt $attempt)."
+            attempt=$((attempt+1))
+            sleep $((10 * attempt))
+          done
+          if [ $attempt -gt 3 ]; then
+            echo "flutter build windows failed after 3 attempts."
+            exit 1
+          fi
 
       - name: Package Android Release
         if: matrix.platform == 'android' && steps.android_signing.outputs.enabled == 'true'
@@ -226,6 +247,10 @@ jobs:
             IPA_PATH=$(ls build/ios/ipa/*.ipa | head -n1)
             cp "$IPA_PATH" \
               "artifacts/PreConnect-ios-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.ipa"
+            exit 0
+          fi
+          if [ ! -d build/ios/iphoneos ]; then
+            echo "No iOS build output directory found"
             exit 0
           fi
           APP_PATH=$(find build/ios/iphoneos -maxdepth 1 -type d -name "*.app" | head -n1)
@@ -262,6 +287,11 @@ jobs:
           if (!(Test-Path $releaseDir)) {
             Write-Host "No Windows release directory found"
             exit 0
+          }
+          $exe = Get-ChildItem -Path $releaseDir -Filter *.exe | Select-Object -First 1
+          if ($null -eq $exe) {
+            Write-Host "No Windows .exe found in release directory"
+            exit 1
           }
           if (!(Get-Command choco -ErrorAction SilentlyContinue)) {
             Write-Host "Chocolatey not found on runner"
