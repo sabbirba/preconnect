@@ -269,7 +269,9 @@ class _StudentProfileState extends State<StudentProfile>
                             isPaid ? BracuPalette.accent : const Color(0xFFFF8A34);
                         final statusBg = statusColor.withValues(alpha: 0.14);
                         final semester = formatSemester(payment.semesterSessionId);
-                        final paymentType = payment.paymentType;
+                        final paymentType = _formatPaymentType(
+                          payment.paymentType,
+                        );
                         final cardTint = isPaid
                             ? Colors.transparent
                             : statusBg.withValues(alpha: 0.08);
@@ -295,57 +297,94 @@ class _StudentProfileState extends State<StudentProfile>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                              Row(
-                                children: [
-                                  Text(
-                                    'Payslip: ${payment.payslipNumber}',
-                                    style: TextStyle(
-                                      color: textSecondary,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.copy_rounded,
-                                      size: 16,
-                                    ),
-                                    visualDensity: VisualDensity.compact,
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(
-                                      minWidth: 28,
-                                      minHeight: 28,
-                                    ),
-                                    tooltip: 'Copy payslip number',
-                                    onPressed: () {
-                                      Clipboard.setData(
-                                        ClipboardData(
-                                          text: payment.payslipNumber,
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  return Row(
+                                    children: [
+                                      Flexible(
+                                        fit: FlexFit.loose,
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.receipt_long_rounded,
+                                              size: 16,
+                                              color: BracuPalette.primary,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Flexible(
+                                              fit: FlexFit.loose,
+                                              child: Text(
+                                                payment.payslipNumber,
+                                                style: TextStyle(
+                                                  color: textSecondary,
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 14,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                softWrap: false,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            IconButton(
+                                              icon: Icon(
+                                                Icons.copy_rounded,
+                                                size: 16,
+                                                color: textSecondary,
+                                              ),
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(
+                                                minWidth: 28,
+                                                minHeight: 28,
+                                              ),
+                                              tooltip:
+                                                  'Copy payslip number',
+                                              onPressed: () {
+                                                Clipboard.setData(
+                                                  ClipboardData(
+                                                    text: payment.payslipNumber,
+                                                  ),
+                                                );
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      'Payslip number copied',
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ],
                                         ),
-                                      );
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Payslip number copied',
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Align(
+                                          alignment: Alignment.centerRight,
+                                          child: Text(
+                                            amount,
+                                            style: TextStyle(
+                                              color: textPrimary,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 14,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            textAlign: TextAlign.right,
+                                            softWrap: false,
                                           ),
                                         ),
-                                      );
-                                    },
-                                  ),
-                                  const Spacer(),
-                                  Text(
-                                    amount,
-                                    style: TextStyle(
-                                      color: textPrimary,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
+                                      ),
+                                    ],
+                                  );
+                                },
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 8),
                               _InfoLine(
                                 label: paymentType,
                                 value: semester,
@@ -519,7 +558,7 @@ class _AdvisingSummary extends StatelessWidget {
 
     final start = formatDate(data['advisingStartDate']);
     final end = formatDate(data['advisingEndDate']);
-    final phase = (data['advisingPhase'] ?? 'N/A').trim();
+    final phase = _formatAdvisingPhase(data['advisingPhase']);
     final totalCredit = (data['totalCredit'] ?? 'N/A').trim();
     final earnedCredit = (data['earnedCredit'] ?? 'N/A').trim();
     final semesterCount = (data['noOfSemester'] ?? 'N/A').trim();
@@ -633,35 +672,74 @@ class _InfoLine extends StatelessWidget {
     final textPrimary = BracuPalette.textPrimary(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 4,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: textSecondary,
-                fontWeight: isLabelBold ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 14,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: textSecondary,
+                    fontWeight: isLabelBold ? FontWeight.w700 : FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-          ),
-          Expanded(
-            flex: 6,
-            child: Text(
-              value,
-              style: TextStyle(
-                color: textPrimary,
-                fontWeight: isValueBold ? FontWeight.w700 : FontWeight.w400,
-                fontSize: 14,
+              const SizedBox(width: 10),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: constraints.maxWidth * 0.5,
+                ),
+                child: IntrinsicWidth(
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontWeight:
+                          isValueBold ? FontWeight.w700 : FontWeight.w400,
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.right,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ),
-              textAlign: TextAlign.right,
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
+}
+
+String _formatPaymentType(String raw) {
+  final cleaned = raw.trim();
+  if (cleaned.isEmpty) return 'N/A';
+  final words = cleaned.split('_').where((w) => w.trim().isNotEmpty).toList();
+  if (words.isEmpty) return cleaned;
+  return words
+      .map((w) {
+        final lower = w.toLowerCase();
+        return lower[0].toUpperCase() + lower.substring(1);
+      })
+      .join(' ');
+}
+
+String _formatAdvisingPhase(String? raw) {
+  final cleaned = (raw ?? '').trim();
+  if (cleaned.isEmpty || cleaned == 'N/A') return 'N/A';
+  final words = cleaned.split('_').where((w) => w.trim().isNotEmpty).toList();
+  if (words.isEmpty) return cleaned;
+  return words
+      .map((w) {
+        final lower = w.toLowerCase();
+        return lower[0].toUpperCase() + lower.substring(1);
+      })
+      .join(' ');
 }
 
 String _formatSession(String raw) {
