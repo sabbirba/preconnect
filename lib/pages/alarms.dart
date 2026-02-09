@@ -4,8 +4,6 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
-import 'package:flutter_alarmkit/flutter_alarmkit.dart';
-import 'package:flutter/services.dart' show PlatformException;
 import 'package:preconnect/api/bracu_auth_manager.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -65,41 +63,12 @@ class _AlarmPageState extends State<AlarmPage> {
     final adjusted = classTime.subtract(Duration(minutes: minutesBefore));
     hour = adjusted.hour;
     minute = adjusted.minute;
-    final dayShift = adjusted.day.compareTo(classTime.day);
-
     if (Platform.isIOS) {
-      final weekdays = _mapWeekdays(days, shift: dayShift);
-      if (weekdays.isEmpty) return;
-      try {
-        final alarmkit = FlutterAlarmkit();
-        await alarmkit.getPlatformVersion();
-        final authorized = await alarmkit.requestAuthorization();
-        if (!authorized) {
-          if (!context.mounted) return;
-          _showThemedSnackBar(context, 'Alarm permission denied.');
-          return;
-        }
-        await alarmkit.scheduleRecurrentAlarm(
-          weekdays: weekdays,
-          hour: hour,
-          minute: minute,
-          label: '$courseCode Class Reminder ($minutesBefore min before)',
-          tintColor: '#1E6BE3',
-        );
-        if (!context.mounted) return;
-        _showThemedSnackBar(context, 'Alarm scheduled on iOS.');
-      } on PlatformException catch (e) {
-        if (!context.mounted) return;
-        _showThemedSnackBar(
-          context,
-          e.code == 'UNSUPPORTED'
-              ? 'AlarmKit requires iOS 26+.'
-              : 'Unable to schedule alarm on this iOS.',
-        );
-      } catch (_) {
-        if (!context.mounted) return;
-        _showThemedSnackBar(context, 'Unable to schedule alarm on this iOS.');
-      }
+      if (!context.mounted) return;
+      _showThemedSnackBar(
+        context,
+        'Feature coming soon for iOS.',
+      );
       return;
     }
 
@@ -155,49 +124,6 @@ class _AlarmPageState extends State<AlarmPage> {
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       ),
     );
-  }
-
-  Set<Weekday> _mapWeekdays(List<String> days, {int shift = 0}) {
-    Weekday? toWeekday(String day) {
-      switch (day.toUpperCase()) {
-        case 'MONDAY':
-          return Weekday.monday;
-        case 'TUESDAY':
-          return Weekday.tuesday;
-        case 'WEDNESDAY':
-          return Weekday.wednesday;
-        case 'THURSDAY':
-          return Weekday.thursday;
-        case 'FRIDAY':
-          return Weekday.friday;
-        case 'SATURDAY':
-          return Weekday.saturday;
-        case 'SUNDAY':
-          return Weekday.sunday;
-        default:
-          return null;
-      }
-    }
-
-    Weekday shiftWeekday(Weekday day, int shiftBy) {
-      final order = [
-        Weekday.monday,
-        Weekday.tuesday,
-        Weekday.wednesday,
-        Weekday.thursday,
-        Weekday.friday,
-        Weekday.saturday,
-        Weekday.sunday,
-      ];
-      final index = order.indexOf(day);
-      if (index < 0) return day;
-      final next = (index + shiftBy) % order.length;
-      return order[(next + order.length) % order.length];
-    }
-
-    final mapped = days.map(toWeekday).whereType<Weekday>().toSet();
-    if (shift == 0) return mapped;
-    return mapped.map((d) => shiftWeekday(d, shift)).toSet();
   }
 
   @override

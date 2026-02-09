@@ -10,6 +10,8 @@ import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/share_schedule.dart';
 import 'package:preconnect/pages/scan_schedule.dart';
 import 'package:preconnect/pages/friend_schedule.dart';
+import 'package:preconnect/pages/notifications.dart';
+import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
@@ -29,6 +31,7 @@ class _HomePageState extends State<HomePage> {
       onNavigate: _setTab,
       onLogout: () => _confirmLogout(context),
     ),
+    HomeTab.notifications: const NotificationPage(),
     HomeTab.profile: const StudentProfile(),
     HomeTab.studentSchedule: const ClassSchedule(),
     HomeTab.examSchedule: const ExamSchedule(),
@@ -36,6 +39,7 @@ class _HomePageState extends State<HomePage> {
     HomeTab.shareSchedule: const ShareSchedulePage(),
     HomeTab.scanSchedule: const ScanSchedulePage(),
     HomeTab.friendSchedule: FriendSchedulePage(onNavigate: _setTab),
+    HomeTab.devs: const DevsPage(),
   };
 
   void _setTab(HomeTab tab) {
@@ -363,6 +367,9 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                               _TopBar(
                                 name: profile['fullName'] ?? 'BRACU Student',
                                 photoUrl: photoUrl,
+                                onNotifications: () => widget.onNavigate(
+                                  HomeTab.notifications,
+                                ),
                               ),
                               const SizedBox(height: 18),
                               _SummaryCard(
@@ -424,6 +431,15 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                       HomeTab.friendSchedule,
                                     ),
                                   ),
+                                  _QuickActionCard(
+                                    icon: Icons.developer_mode_outlined,
+                                    title: 'Devs',
+                                    subtitle: 'About & Support',
+                                    color: const Color(0xFF2C9DFF),
+                                    onTap: () => widget.onNavigate(
+                                      HomeTab.devs,
+                                    ),
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 22),
@@ -478,10 +494,15 @@ class _HomeDashboardState extends State<_HomeDashboard> {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.name, required this.photoUrl});
+  const _TopBar({
+    required this.name,
+    required this.photoUrl,
+    required this.onNotifications,
+  });
 
   final String name;
   final String? photoUrl;
+  final VoidCallback onNotifications;
 
   @override
   Widget build(BuildContext context) {
@@ -549,7 +570,7 @@ class _TopBar extends StatelessWidget {
           ),
         ),
         IconButton(
-          onPressed: () {},
+          onPressed: onNotifications,
           icon: const Icon(Icons.notifications_none_outlined),
         ),
         const SizedBox(width: 4),

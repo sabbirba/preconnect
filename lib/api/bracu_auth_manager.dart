@@ -219,6 +219,11 @@ class BracuAuthManager {
             'studentEmail',
             profile['studentEmail'] ?? '',
           );
+          await asyncPrefs.setString(
+            'bloodGroup',
+            (profile['bloodGroup'] ?? profile['bloodGroupName'])?.toString() ??
+                '',
+          );
           await asyncPrefs.setString('mobileNo', profile['mobileNo'] ?? '');
           await asyncPrefs.setString('shortCode', profile['shortCode'] ?? '');
           await asyncPrefs.setString('fullName', profile['fullName'] ?? '');
@@ -260,8 +265,10 @@ class BracuAuthManager {
       'cgpa',
       'earnedCredit',
       'attemptedCredit',
+      'enrolledSessionSemesterId',
       'enrolledSemester',
       'departmentName',
+      'bloodGroup',
       'mobileNo',
       'shortCode',
       'photoFilePath',
@@ -279,8 +286,10 @@ class BracuAuthManager {
               'cgpa',
               'earnedCredit',
               'attemptedCredit',
+              'enrolledSessionSemesterId',
               'enrolledSemester',
               'departmentName',
+              'bloodGroup',
               'mobileNo',
               'shortCode',
               'photoFilePath',
@@ -297,17 +306,6 @@ class BracuAuthManager {
       profileData[key] = prefsWithCache.getString(key);
     }
 
-    bool isIncomplete = profileData.values.any(
-      (value) => value == null || value == '',
-    );
-
-    if (isIncomplete) {
-      if (fromFetch) {
-        return null;
-      }
-
-      return await fetchProfile(fromGet: true);
-    }
     return profileData;
   }
 

@@ -20,7 +20,7 @@ jobs:
         include:
           - os: ubuntu-22.04
             platform: android
-          - os: macos-26
+          - os: macos-latest
             platform: ios
 
     steps:
@@ -44,7 +44,7 @@ jobs:
         if: matrix.platform == 'ios'
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '26.2'
+          xcode-version: 'latest'
 
       - name: Show Xcode & SDKs
         if: matrix.platform == 'ios'

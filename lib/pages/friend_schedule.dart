@@ -6,6 +6,9 @@ import 'package:preconnect/model/friend_schedule.dart';
 import 'package:archive/archive.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/local_notifications.dart';
+import 'package:preconnect/tools/notification_store.dart';
+import 'package:preconnect/model/notification_item.dart';
 
 class FriendSchedulePage extends StatefulWidget {
   const FriendSchedulePage({super.key, required this.onNavigate});
@@ -33,6 +36,8 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
 
     List<_FriendScheduleItem> allSchedules = [];
     List<String> validEntries = [];
+    final seenEntries = prefs.getStringList('friendSchedules_seen') ?? [];
+    final List<_FriendScheduleItem> newSchedules = [];
 
     for (final base64Json in encodedList) {
       try {
@@ -50,16 +55,54 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
           ),
         );
         validEntries.add(base64Json);
+        if (!seenEntries.contains(base64Json)) {
+          newSchedules.add(
+            _FriendScheduleItem(
+              encoded: base64Json,
+              friend: FriendSchedule.fromJson(parsed),
+            ),
+          );
+        }
       } catch (e) {
         // Sabbir
       }
     }
 
     await prefs.setStringList("friendSchedules", validEntries);
+    await prefs.setStringList("friendSchedules_seen", validEntries);
 
     setState(() {
       decodedSchedules = allSchedules;
     });
+
+    if (newSchedules.isNotEmpty) {
+      final allEnabled = prefs.getBool('notif_all') ?? false;
+      final friendEnabled = prefs.getBool('notif_friend') ?? false;
+      if (allEnabled && friendEnabled) {
+        for (final item in newSchedules) {
+          final now = DateTime.now().toUtc();
+          final id = now.millisecondsSinceEpoch.remainder(1000000000);
+          final title = 'Friend Schedule Received';
+          final name = item.friend.name.trim();
+          final body =
+              name.isEmpty ? 'A friend shared a schedule.' : '$name shared a schedule.';
+          await LocalNotificationsService.instance.showLocalNotification(
+            id: id,
+            title: title,
+            body: body,
+          );
+          await NotificationStore.add(
+            NotificationItem(
+              id: id,
+              title: title,
+              message: body,
+              timeIso: now.toIso8601String(),
+              category: 'friend',
+            ),
+          );
+        }
+      }
+    }
   }
 
   Future<void> _handleRefresh() async {

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:preconnect/api/bracu_auth_manager.dart';
 import 'package:preconnect/model/payment_info.dart';
 import 'package:preconnect/model/attendance_info.dart';
+import 'package:preconnect/pages/card_section.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
 class StudentProfile extends StatefulWidget {
@@ -217,9 +218,8 @@ class _StudentProfileState extends State<StudentProfile>
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            _ProfileHeader(profile: _profile, photoUrl: _photoUrl),
-            const SizedBox(height: 12),
-            _ProfileGrid(profile: _profile),
+            const SizedBox(height: 6),
+            CardSection(profile: _profile, photoUrl: _photoUrl),
             const SizedBox(height: 18),
             const BracuSectionTitle(title: 'Attendance'),
             const SizedBox(height: 10),
@@ -316,176 +316,6 @@ class _StudentProfileState extends State<StudentProfile>
                     ),
             ),
             const SizedBox(height: 12),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.profile, required this.photoUrl});
-
-  final Map<String, String?>? profile;
-  final String? photoUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    final name = profile?['fullName'] ?? 'BRACU Student';
-    final email = profile?['email'] ?? 'N/A';
-    final mobile = profile?['mobileNo'] ?? 'N/A';
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: BracuPalette.card(context),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: BracuPalette.primary.withValues(alpha: 0.08)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              color: BracuPalette.primary.withValues(alpha: 0.12),
-            ),
-            child: photoUrl == null
-                ? const Icon(
-                    Icons.person,
-                    size: 36,
-                    color: BracuPalette.primary,
-                  )
-                : ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.network(
-                      photoUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
-                          Icons.person,
-                          size: 36,
-                          color: BracuPalette.primary,
-                        );
-                      },
-                    ),
-                  ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    color: textPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  email,
-                  style: TextStyle(color: textSecondary, fontSize: 12),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  mobile,
-                  style: TextStyle(color: textSecondary, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProfileGrid extends StatelessWidget {
-  const _ProfileGrid({required this.profile});
-
-  final Map<String, String?>? profile;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark
-        ? const Color(0xFF0F3B6D)
-        : BracuPalette.card(context);
-    final labelColor = BracuPalette.textSecondary(context);
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: BracuPalette.primary.withValues(alpha: 0.08)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              _ProfilePill(
-                label: 'Credits',
-                value: profile?['earnedCredit']?.toString() ?? 'N/A',
-                labelColor: labelColor,
-              ),
-              const SizedBox(width: 12),
-              _ProfilePill(
-                label: 'CGPA',
-                value: profile?['cgpa']?.toString() ?? 'N/A',
-                labelColor: labelColor,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProfilePill extends StatelessWidget {
-  const _ProfilePill({
-    required this.label,
-    required this.value,
-    required this.labelColor,
-  });
-
-  final String label;
-  final String value;
-  final Color labelColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-        decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? const Color(0xFF0A2A4A)
-              : Colors.white.withValues(alpha: 0.9),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: BracuPalette.primary.withValues(alpha: 0.08),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: TextStyle(color: labelColor, fontSize: 11)),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: TextStyle(
-                color: BracuPalette.textPrimary(context),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
           ],
         ),
       ),

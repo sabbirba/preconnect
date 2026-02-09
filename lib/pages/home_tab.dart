@@ -1,5 +1,6 @@
 enum HomeTab {
   dashboard,
+  notifications,
   profile,
   studentSchedule,
   examSchedule,
@@ -7,4 +8,5 @@ enum HomeTab {
   shareSchedule,
   scanSchedule,
   friendSchedule,
+  devs,
 }
