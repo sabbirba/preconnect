@@ -553,6 +553,7 @@ class _AcademicSummary extends StatelessWidget {
         totalNum == 0 ? null : (earnedNum / totalNum).clamp(0.0, 1.0);
     final completion =
         completionRatio == null ? 'N/A' : '${(completionRatio * 100).toStringAsFixed(0)}%';
+    final cgpa = (profile['cgpa'] ?? 'N/A').trim();
     final currentSemester = (profile['currentSemester'] ?? '').trim().isNotEmpty
         ? (profile['currentSemester'] ?? '').trim()
         : _formatSession(
@@ -609,27 +610,15 @@ class _AcademicSummary extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  Icon(
-                    Icons.check_circle_outline,
-                    size: 16,
-                    color: BracuPalette.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      completionRatio == null
-                          ? 'Completion data not available'
-                          : 'You have completed ${earnedNum.toStringAsFixed(0)} credits of ${totalNum.toStringAsFixed(0)} ($completion).',
-                      style: TextStyle(
-                        color: BracuPalette.textPrimary(context),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
+              Text(
+                completionRatio == null
+                    ? 'Completion data not available'
+                    : 'You have completed ${earnedNum.toStringAsFixed(0)} of ${totalNum.toStringAsFixed(0)} credits ($completion) in ${_formatShortCode(profile['shortCode'])}, with a CGPA of ${cgpa.isEmpty ? 'N/A' : cgpa}, across ${(advising['noOfSemester'] ?? 'N/A').trim()} semesters.',
+                style: TextStyle(
+                  color: BracuPalette.textPrimary(context),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -811,6 +800,12 @@ String _formatPaymentType(String raw) {
         return lower[0].toUpperCase() + lower.substring(1);
       })
       .join(' ');
+}
+
+String _formatShortCode(String? raw) {
+  final cleaned = (raw ?? '').trim();
+  if (cleaned.isEmpty) return 'N/A';
+  return cleaned.toUpperCase();
 }
 
 String _formatAdvisingPhase(String? raw) {
