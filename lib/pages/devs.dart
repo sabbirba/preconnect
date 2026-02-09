@@ -158,8 +158,8 @@ class DevsPage extends StatelessWidget {
                           child: LayoutBuilder(
                             builder: (context, constraints) {
                               final size = constraints.maxWidth;
-                              return Image.asset(
-                                'assets/bkash.png',
+                              return Image.network(
+                                'https://preconnect.app/bkash-qr.jpg',
                                 width: size,
                                 height: size,
                                 fit: BoxFit.contain,
