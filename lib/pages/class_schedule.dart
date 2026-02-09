@@ -215,7 +215,7 @@ class _ClassScheduleState extends State<ClassSchedule> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  BracuSectionTitle(title: day),
+                  BracuSectionTitle(title: formatWeekdayTitle(day)),
                   const SizedBox(height: 10),
                   ...schedules.map((entry) {
                     final s = entry["schedule"] as section.ClassSchedule;

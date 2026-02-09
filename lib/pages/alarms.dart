@@ -272,7 +272,7 @@ class _AlarmPageState extends State<AlarmPage> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
-                                '${s.day} • ${formatTimeRange(s.startTime, s.endTime)}',
+                                '${formatWeekdayTitle(s.day)} • ${formatTimeRange(s.startTime, s.endTime)}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: textPrimary,

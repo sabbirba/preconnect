@@ -309,7 +309,9 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              BracuSectionTitle(title: day),
+                              BracuSectionTitle(
+                                title: formatWeekdayTitle(day),
+                              ),
                               const SizedBox(height: 10),
                               ...entries.map((entry) {
                                 final isHighlighted =

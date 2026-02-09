@@ -151,6 +151,8 @@ class CardSectionState extends State<CardSection> {
                                       children: [
                                         Text(
                                           displayName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                             color: Colors.black,
                                             fontSize: 16,
@@ -161,6 +163,8 @@ class CardSectionState extends State<CardSection> {
                                         const SizedBox(height: 5),
                                         Text(
                                           displayProgram,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                             color: Colors.black,
                                             fontSize: 11,
@@ -381,6 +385,8 @@ class _InfoRow extends StatelessWidget {
           child: Text(
             value,
             style: textStyle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],

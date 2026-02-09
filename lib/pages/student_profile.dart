@@ -67,6 +67,20 @@ class _StudentProfileState extends State<StudentProfile>
     return int.tryParse(p.payslipNumber) ?? 0;
   }
 
+  int _comparePayments(PaymentInfo a, PaymentInfo b) {
+    final aPaid = a.paymentStatus == 'PAID';
+    final bPaid = b.paymentStatus == 'PAID';
+    if (aPaid != bPaid) {
+      return aPaid ? 1 : -1;
+    }
+    if (!aPaid) {
+      final dueCompare = a.dueDate.compareTo(b.dueDate);
+      if (dueCompare != 0) return dueCompare;
+      return _payslipSortValue(a).compareTo(_payslipSortValue(b));
+    }
+    return _payslipSortValue(b).compareTo(_payslipSortValue(a));
+  }
+
   Future<void> _loadProfile() async {
     try {
       final profile = await BracuAuthManager().getProfile();
@@ -83,11 +97,9 @@ class _StudentProfileState extends State<StudentProfile>
                   return null;
                 }
               })
-              .whereType<PaymentInfo>()
-              .toList()
-            ..sort(
-              (a, b) => _payslipSortValue(b).compareTo(_payslipSortValue(a)),
-            );
+          .whereType<PaymentInfo>()
+          .toList()
+            ..sort(_comparePayments);
 
       final List<dynamic> attendanceJson = _decodeList(
         await BracuAuthManager().getAttendanceInfo(),
@@ -137,11 +149,9 @@ class _StudentProfileState extends State<StudentProfile>
                   return null;
                 }
               })
-              .whereType<PaymentInfo>()
-              .toList()
-            ..sort(
-              (a, b) => _payslipSortValue(b).compareTo(_payslipSortValue(a)),
-            );
+          .whereType<PaymentInfo>()
+          .toList()
+            ..sort(_comparePayments);
 
       final List<dynamic> attendanceJson = _decodeList(
         await BracuAuthManager().fetchAttendanceInfo(),
@@ -228,8 +238,6 @@ class _StudentProfileState extends State<StudentProfile>
             const SizedBox(height: 6),
             CardSection(profile: _profile, photoUrl: _photoUrl),
             const SizedBox(height: 18),
-            const BracuSectionTitle(title: 'Academic'),
-            const SizedBox(height: 10),
             BracuCard(
               child: _AcademicSummary(
                 profile: _profile ?? const {},
@@ -254,7 +262,9 @@ class _StudentProfileState extends State<StudentProfile>
               const BracuEmptyState(message: 'No payments found')
             else
               Column(
-                children: _payments.map((payment) {
+                children: _payments.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final payment = entry.value;
                         final textSecondary = BracuPalette.textSecondary(
                           context,
                         );
@@ -300,79 +310,64 @@ class _StudentProfileState extends State<StudentProfile>
                               LayoutBuilder(
                                 builder: (context, constraints) {
                                   return Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Flexible(
-                                        fit: FlexFit.loose,
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(
-                                              Icons.receipt_long_rounded,
-                                              size: 16,
-                                              color: BracuPalette.primary,
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Flexible(
-                                              fit: FlexFit.loose,
-                                              child: Text(
-                                                payment.payslipNumber,
-                                                style: TextStyle(
-                                                  color: textSecondary,
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 6),
-                                            IconButton(
-                                              icon: Icon(
-                                                Icons.copy_rounded,
-                                                size: 16,
-                                                color: textSecondary,
-                                              ),
-                                              visualDensity:
-                                                  VisualDensity.compact,
-                                              padding: EdgeInsets.zero,
-                                              constraints: const BoxConstraints(
-                                                minWidth: 28,
-                                                minHeight: 28,
-                                              ),
-                                              tooltip:
-                                                  'Copy payslip number',
-                                              onPressed: () {
-                                                Clipboard.setData(
-                                                  ClipboardData(
-                                                    text: payment.payslipNumber,
-                                                  ),
-                                                );
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                      'Payslip number copied',
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Align(
-                                          alignment: Alignment.centerRight,
-                                          child: Text(
-                                            amount,
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            '${index + 1}.',
                                             style: TextStyle(
-                                              color: textPrimary,
+                                              color: BracuPalette.primary,
                                               fontWeight: FontWeight.w700,
                                               fontSize: 14,
                                             ),
-                                            textAlign: TextAlign.right,
                                           ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            payment.payslipNumber,
+                                            style: TextStyle(
+                                              color: textSecondary,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 0),
+                                          const SizedBox(width: 4),
+                                          GestureDetector(
+                                            onTap: () {
+                                              Clipboard.setData(
+                                                ClipboardData(
+                                                  text: payment.payslipNumber,
+                                                ),
+                                              );
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Payslip number copied',
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            child: Icon(
+                                              Icons.copy_rounded,
+                                              size: 14,
+                                              color: textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Text(
+                                        amount,
+                                        style: TextStyle(
+                                          color: textPrimary,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
                                         ),
+                                        textAlign: TextAlign.right,
                                       ),
                                     ],
                                   );
@@ -391,8 +386,8 @@ class _StudentProfileState extends State<StudentProfile>
                                 value: formatDate(
                                   payment.requestDate.toIso8601String(),
                                 ),
-                                isLabelBold: true,
-                                isValueBold: true,
+                                isLabelBold: false,
+                                isValueBold: false,
                               ),
                               const SizedBox(height: 6),
                               _InfoLine(
@@ -555,7 +550,6 @@ class _AcademicSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final textSecondary = BracuPalette.textSecondary(context);
     final textPrimary = BracuPalette.textPrimary(context);
-    final pillBg = BracuPalette.primary.withValues(alpha: 0.12);
     final cgpa = (profile['cgpa'] ?? 'N/A').trim();
     final advisingPhase = _formatAdvisingPhase(advising['advisingPhase']);
     final advisingStart = formatDate(advising['advisingStartDate']);
@@ -565,15 +559,15 @@ class _AcademicSummary extends StatelessWidget {
         : (advisingStart == advisingEnd
             ? advisingStart
             : '$advisingStart - $advisingEnd');
-    final activeSession = _formatSession(
-      (advising['activeSemesterSessionId'] ?? 'N/A').trim(),
-    );
     final totalCredit = (advising['totalCredit'] ?? 'N/A').trim();
     final earnedCredit = (advising['earnedCredit'] ?? 'N/A').trim();
     final semesterCount = (advising['noOfSemester'] ?? 'N/A').trim();
     final totalNum = double.tryParse(totalCredit) ?? 0;
     final earnedNum = double.tryParse(earnedCredit) ?? 0;
-    final completion = totalNum == 0 ? 'N/A' : '${((earnedNum / totalNum) * 100).toStringAsFixed(0)}%';
+    final completionRatio =
+        totalNum == 0 ? null : (earnedNum / totalNum).clamp(0.0, 1.0);
+    final completion =
+        completionRatio == null ? 'N/A' : '${(completionRatio * 100).toStringAsFixed(0)}%';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -581,123 +575,256 @@ class _AcademicSummary extends StatelessWidget {
         Row(
           children: [
             Container(
-              width: 32,
-              height: 32,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: pillBg,
-                borderRadius: BorderRadius.circular(10),
+                color: BracuPalette.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
               child: Icon(
                 Icons.school_outlined,
-                size: 18,
+                size: 20,
                 color: BracuPalette.primary,
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                'Session',
-                style: TextStyle(
-                  color: textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            Text(
-              _currentSession(),
-              style: TextStyle(
-                color: textPrimary,
-                fontWeight: FontWeight.w700,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _currentSession(),
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _value('departmentName'),
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
-        Divider(color: textSecondary.withValues(alpha: 0.25), height: 16),
-        _InfoLine(
-          label: 'Department',
-          value: _value('departmentName'),
-          isLabelBold: true,
-          isValueBold: true,
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: BracuPalette.primary.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: BracuPalette.primary.withValues(alpha: 0.16),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Completion',
+                      style: TextStyle(
+                        color: textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    completion,
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TweenAnimationBuilder<double>(
+                tween: Tween(
+                  begin: 0,
+                  end: completionRatio ?? 0,
+                ),
+                duration: const Duration(milliseconds: 700),
+                builder: (context, value, child) {
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value: completionRatio == null ? 0 : value,
+                      minHeight: 8,
+                      backgroundColor:
+                          BracuPalette.primary.withValues(alpha: 0.12),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        BracuPalette.primary,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final itemWidth = (constraints.maxWidth - 12) / 3;
+                  return Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _StatTile(
+                        label: 'Credits Earned',
+                        value: totalNum == 0
+                            ? 'N/A'
+                            : '${earnedNum.toStringAsFixed(0)} of ${totalNum.toStringAsFixed(0)}',
+                        width: itemWidth,
+                      ),
+                      _StatTile(
+                        label: 'CGPA',
+                        value: cgpa.isNotEmpty ? cgpa : 'N/A',
+                        width: itemWidth,
+                      ),
+                      _StatTile(
+                        label: 'Done',
+                        value: semesterCount.isEmpty ? 'N/A' : semesterCount,
+                        width: itemWidth,
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
         ),
-        _InfoLine(
-          label: 'Short Code',
-          value: _value('shortCode'),
-          isLabelBold: true,
-          isValueBold: true,
+        const SizedBox(height: 14),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final half = (constraints.maxWidth - 12) / 2;
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                if (_hasAdvisingData) ...[
+                  _MiniField(
+                    label: 'Advising Phase',
+                    value: advisingPhase,
+                    width: half,
+                  ),
+                  _MiniField(
+                    label: 'Advising Date',
+                    value: advisingDate,
+                    width: half,
+                  ),
+                ],
+              ],
+            );
+          },
         ),
-        _InfoLine(
-          label: 'Program',
-          value: _value('programOrCourse'),
-          isLabelBold: true,
-          isValueBold: true,
-        ),
-        _InfoLine(
-          label: 'Email',
-          value: _value('email'),
-          isLabelBold: true,
-          isValueBold: true,
-        ),
-        _InfoLine(
-          label: 'Phone',
-          value: _value('mobileNo'),
-          isLabelBold: true,
-          isValueBold: true,
-        ),
-        if (_hasAdvisingData) ...[
-          const SizedBox(height: 10),
-          Divider(color: textSecondary.withValues(alpha: 0.25), height: 16),
-          _InfoLine(
-            label: 'Advising Phase',
-            value: advisingPhase,
-            isLabelBold: true,
-            isValueBold: true,
+      ],
+    );
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.label,
+    required this.value,
+    required this.width,
+  });
+
+  final String label;
+  final String value;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = BracuPalette.textPrimary(context);
+    return Container(
+      width: width,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
           ),
-          _InfoLine(
-            label: 'Advising Date',
-            value: advisingDate,
-            isLabelBold: true,
-            isValueBold: true,
-          ),
-          _InfoLine(
-            label: 'Active Session',
-            value: activeSession,
-            isLabelBold: true,
-            isValueBold: true,
-          ),
-          _InfoLine(
-            label: 'Total Credit',
-            value: totalCredit,
-            isLabelBold: true,
-            isValueBold: true,
-          ),
-          _InfoLine(
-            label: 'Earned Credit',
-            value: earnedCredit,
-            isLabelBold: true,
-            isValueBold: true,
-          ),
-          _InfoLine(
-            label: 'Completion',
-            value: completion,
-            isLabelBold: true,
-            isValueBold: true,
-          ),
-          _InfoLine(
-            label: 'CGPA',
-            value: cgpa.isNotEmpty ? cgpa : 'N/A',
-            isLabelBold: true,
-            isValueBold: true,
-          ),
-          _InfoLine(
-            label: 'Semesters',
-            value: semesterCount,
-            isLabelBold: true,
-            isValueBold: true,
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              color: textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
-      ],
+      ),
+    );
+  }
+}
+
+class _MiniField extends StatelessWidget {
+  const _MiniField({
+    required this.label,
+    required this.value,
+    required this.width,
+  });
+
+  final String label;
+  final String value;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = BracuPalette.textPrimary(context);
+    return Container(
+      width: width,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: BracuPalette.card(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: BracuPalette.primary.withValues(alpha: 0.08),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              color: textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

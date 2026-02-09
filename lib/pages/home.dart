@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:preconnect/api/bracu_auth_manager.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/class_schedule.dart';
@@ -263,21 +264,21 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   String _todayName() {
     switch (DateTime.now().weekday) {
       case DateTime.monday:
-        return 'MONDAY';
+        return 'Monday';
       case DateTime.tuesday:
-        return 'TUESDAY';
+        return 'Tuesday';
       case DateTime.wednesday:
-        return 'WEDNESDAY';
+        return 'Wednesday';
       case DateTime.thursday:
-        return 'THURSDAY';
+        return 'Thursday';
       case DateTime.friday:
-        return 'FRIDAY';
+        return 'Friday';
       case DateTime.saturday:
-        return 'SATURDAY';
+        return 'Saturday';
       case DateTime.sunday:
-        return 'SUNDAY';
+        return 'Sunday';
       default:
-        return 'MONDAY';
+        return 'Monday';
     }
   }
 
@@ -355,9 +356,15 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                       final profile = snapshot.data?.profile ?? {};
                       final photoUrl = snapshot.data?.photoUrl;
                       final today = _todayName();
+                      final todayDate =
+                          DateFormat('d MMMM, y').format(DateTime.now());
                       final todayEntries =
                           (snapshot.data?.entries ?? [])
-                              .where((e) => e.day == today)
+                              .where(
+                                (e) =>
+                                    normalizeWeekday(e.day) ==
+                                    normalizeWeekday(today),
+                              )
                               .toList()
                             ..sort(
                               (a, b) =>
@@ -399,6 +406,64 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                 onLogout: widget.onLogout,
                               ),
                               const SizedBox(height: 22),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'Today is $today',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: BracuPalette.textPrimary(
+                                          context,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    todayDate,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: BracuPalette.textPrimary(context),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              if (todayEntries.isEmpty)
+                                const _ScheduleTile(
+                                  title: 'Enjoy your day',
+                                  subtitle: 'No Classes',
+                                  badge: '--',
+                                  color: _primary,
+                                )
+                              else
+                                ...todayEntries
+                                    .take(3)
+                                    .map(
+                                      (entry) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 10,
+                                        ),
+                                        child: _ScheduleTile(
+                                          title: entry.courseCode,
+                                          subtitle: formatTimeRange(
+                                            entry.startTime,
+                                            entry.endTime,
+                                          ),
+                                          trailing: entry.roomNumber,
+                                          trailingSub: entry.faculties,
+                                          badge: formatSectionBadge(
+                                            entry.sectionName,
+                                          ),
+                                          color: _primary,
+                                          isHighlighted: entry == nextEntry,
+                                        ),
+                                      ),
+                                    ),
+                              const SizedBox(height: 12),
+                              const SizedBox(height: 10),
                               const _SectionTitle(title: 'Quick Access'),
                               const SizedBox(height: 12),
                               Wrap(
@@ -458,40 +523,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 22),
-                              _SectionTitle(title: 'Today • $today'),
-                              const SizedBox(height: 12),
-                              if (todayEntries.isEmpty)
-                                const _ScheduleTile(
-                                  title: 'Enjoy your day',
-                                  subtitle: 'No Classes',
-                                  badge: '--',
-                                  color: _primary,
-                                )
-                              else
-                                ...todayEntries
-                                    .take(3)
-                                    .map(
-                                      (entry) => Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 10,
-                                        ),
-                                        child: _ScheduleTile(
-                                          title: entry.courseCode,
-                                          subtitle: formatTimeRange(
-                                            entry.startTime,
-                                            entry.endTime,
-                                          ),
-                                          trailing: entry.roomNumber,
-                                          trailingSub: entry.faculties,
-                                          badge: formatSectionBadge(
-                                            entry.sectionName,
-                                          ),
-                                          color: _primary,
-                                          isHighlighted: entry == nextEntry,
-                                        ),
-                                      ),
-                                    ),
                               const SizedBox(height: 12),
                             ],
                           ),

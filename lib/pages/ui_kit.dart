@@ -27,7 +27,7 @@ String formatDate(String? input) {
   }
   dt ??= DateTime.tryParse(raw);
   if (dt == null) return raw;
-  return DateFormat('d MMM, y').format(dt);
+  return DateFormat('d MMMM, y').format(dt);
 }
 
 String formatTime(String? input) {
@@ -64,6 +64,37 @@ String formatTimeRange(String? start, String? end) {
   if (e.isEmpty) return s;
   if (s.isEmpty) return e;
   return '$s - $e';
+}
+
+String normalizeWeekday(String? day) {
+  if (day == null) return '';
+  final trimmed = day.trim();
+  if (trimmed.isEmpty) return '';
+  return trimmed.toUpperCase();
+}
+
+String formatWeekdayTitle(String? day) {
+  final normalized = normalizeWeekday(day);
+  switch (normalized) {
+    case 'MONDAY':
+      return 'Monday';
+    case 'TUESDAY':
+      return 'Tuesday';
+    case 'WEDNESDAY':
+      return 'Wednesday';
+    case 'THURSDAY':
+      return 'Thursday';
+    case 'FRIDAY':
+      return 'Friday';
+    case 'SATURDAY':
+      return 'Saturday';
+    case 'SUNDAY':
+      return 'Sunday';
+    default:
+      if (day == null || day.trim().isEmpty) return '';
+      final lower = day.trim().toLowerCase();
+      return lower[0].toUpperCase() + lower.substring(1);
+  }
 }
 
 String formatTimeHour(String? input) {
