@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:preconnect/pages/ui_kit.dart';
-import 'package:android_intent_plus/android_intent.dart';
 import 'dart:io';
+import 'package:android_intent_plus/android_intent.dart';
 import 'package:preconnect/tools/local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:preconnect/pages/notification_sections/notification_tile.dart';
+import 'package:preconnect/pages/notification_sections/setting_tile.dart';
+import 'package:preconnect/pages/ui_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:preconnect/model/notification_item.dart';
 import 'package:preconnect/tools/notification_store.dart';
@@ -547,8 +549,8 @@ class _NotificationPageState extends State<NotificationPage>
                                 ),
                               ),
                               onDismissed: (_) => _deleteNotification(item),
-                              child: _NotificationTile(
-                                item: _NotificationItem(
+                              child: NotificationTile(
+                                item: NotificationTileItem(
                                   title: item.title,
                                   message: item.message,
                                   time: _formatTime(item.timeIso),
@@ -569,14 +571,14 @@ class _NotificationPageState extends State<NotificationPage>
                       BracuCard(
                         child: Column(
                           children: [
-                            _SettingTile(
+                            SettingTile(
                               title: 'All Notifications',
                               subtitle: 'Master switch for everything.',
                               value: allEnabled,
                               onChanged: _toggleAll,
                             ),
                             const Divider(height: 1),
-                            _SettingTile(
+                            SettingTile(
                               title: 'Class Reminders',
                               subtitle: 'Time-based alerts before class.',
                               value: classReminders,
@@ -586,7 +588,7 @@ class _NotificationPageState extends State<NotificationPage>
                               ),
                             ),
                             const Divider(height: 1),
-                            _SettingTile(
+                            SettingTile(
                               title: 'Exam Updates',
                               subtitle: 'Notices about exam schedules.',
                               value: examUpdates,
@@ -596,7 +598,7 @@ class _NotificationPageState extends State<NotificationPage>
                               ),
                             ),
                             const Divider(height: 1),
-                            _SettingTile(
+                            SettingTile(
                               title: 'Friend Schedules',
                               subtitle: 'Alerts for incoming shares.',
                               value: friendUpdates,
@@ -606,7 +608,7 @@ class _NotificationPageState extends State<NotificationPage>
                               ),
                             ),
                             const Divider(height: 1),
-                            _SettingTile(
+                            SettingTile(
                               title: 'System Alerts',
                               subtitle: 'Maintenance and security notices.',
                               value: systemAlerts,
@@ -642,101 +644,6 @@ class _NotificationPageState extends State<NotificationPage>
           ],
         ),
       ),
-    );
-  }
-}
-
-class _NotificationItem {
-  const _NotificationItem({
-    required this.title,
-    required this.message,
-    required this.time,
-    required this.icon,
-    required this.color,
-  });
-
-  final String title;
-  final String message;
-  final String time;
-  final IconData icon;
-  final Color color;
-}
-
-class _NotificationTile extends StatelessWidget {
-  const _NotificationTile({required this.item});
-
-  final _NotificationItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
-    final textPrimary = BracuPalette.textPrimary(context);
-    return BracuCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: item.color.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(item.icon, color: item.color, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  item.message,
-                  style: TextStyle(color: textSecondary, height: 1.3),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  item.time,
-                  style: TextStyle(fontSize: 11, color: textSecondary),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SettingTile extends StatelessWidget {
-  const _SettingTile({
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool>? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
-    return SwitchListTile.adaptive(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text(subtitle, style: TextStyle(color: textSecondary)),
-      value: value,
-      onChanged: onChanged,
     );
   }
 }

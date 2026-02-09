@@ -92,8 +92,8 @@ class CardSectionState extends State<CardSection> {
                   height: 0,
                   indent: 0,
                 ),
-                SizedBox(
-                  height: 138,
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 138),
                   child: Row(
                     children: [
                       Container(
@@ -141,21 +141,22 @@ class CardSectionState extends State<CardSection> {
                                 ),
                               ),
                               Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   Expanded(
                                     flex: 6,
                                     child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Text(
                                           displayName,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                             color: Colors.black,
-                                            fontSize: 16,
+                                            fontSize: 14,
                                             fontFamily: 'Poppins',
                                             fontWeight: FontWeight.w700,
                                           ),
@@ -163,13 +164,11 @@ class CardSectionState extends State<CardSection> {
                                         const SizedBox(height: 5),
                                         Text(
                                           displayProgram,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                             color: Colors.black,
-                                            fontSize: 11,
+                                            fontSize: 9,
                                             fontFamily: 'Poppins',
-                                            fontWeight: FontWeight.w600,
+                                            fontWeight: FontWeight.w700,
                                           ),
                                         ),
                                         const SizedBox(height: 8),

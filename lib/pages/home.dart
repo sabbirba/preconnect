@@ -14,6 +14,9 @@ import 'package:preconnect/pages/friend_schedule.dart';
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/home_tab.dart';
+import 'package:preconnect/pages/home_sections/exam_countdown.dart';
+import 'package:preconnect/pages/home_sections/student_overview.dart';
+import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
 
@@ -412,11 +415,14 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     return upcoming.first;
   }
 
-  String _formatExamDateTime(DateTime dt) {
+  String _formatExamSubtitle(DateTime dt) {
+    final diff = dt.difference(DateTime.now());
     final date = DateFormat('d MMMM, y').format(dt);
     final time = DateFormat('h:mm a').format(dt);
-    return '$date • $time';
+    return diff.inDays > 0 ? date : time;
   }
+
+
 
   String _highestCountdownValue(Duration diff) {
     final totalSeconds = diff.inSeconds;
@@ -551,87 +557,32 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                     widget.onNavigate(HomeTab.profile),
                               ),
                               const SizedBox(height: 18),
-                              _SummaryCard(
+                              StudentOverviewCard(
                                 studentId: profile['studentId'] ?? 'N/A',
-                                phone: profile['mobileNo'] ?? 'N/A',
-                                profileEmail: profile['email'] ?? 'N/A',
+                                phoneNumber: profile['mobileNo'] ?? 'N/A',
+                                studentEmail: profile['email'] ?? 'N/A',
                                 program: profile['program'] ?? 'N/A',
                                 onLogout: widget.onLogout,
+                                countdown: nextExam == null
+                                    ? null
+                                    : ExamCountdownCard(
+                                        title: nextExam.time
+                                                    .difference(DateTime.now())
+                                                    .inDays <=
+                                                3
+                                            ? '${nextExam.courseCode} ${nextExam.type} Exam'
+                                            : '${nextExam.type} Exam',
+                                        dateTimeLabel: _formatExamSubtitle(
+                                          nextExam.time,
+                                        ),
+                                        countdownValue: _highestCountdownValue(
+                                          nextExam.time
+                                              .difference(DateTime.now()),
+                                        ),
+                                        remaining: nextExam.time
+                                            .difference(DateTime.now()),
+                                      ),
                               ),
-                              if (nextExam != null) ...[
-                                const SizedBox(height: 12),
-                                BracuCard(
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 40,
-                                        height: 40,
-                                        decoration: BoxDecoration(
-                                          color: BracuPalette.primary
-                                              .withValues(alpha: 0.12),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          _highestCountdownValue(
-                                            nextExam.time.difference(
-                                              DateTime.now(),
-                                            ),
-                                          ),
-                                          style: const TextStyle(
-                                            color: BracuPalette.primary,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              nextExam.time
-                                                          .difference(DateTime.now())
-                                                          .inDays <=
-                                                      3
-                                                  ? '${nextExam.courseCode} ${nextExam.type} Exam'
-                                                  : '${nextExam.type} Exam',
-                                              style: TextStyle(
-                                                color: BracuPalette.textPrimary(
-                                                  context,
-                                                ),
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              _formatExamDateTime(
-                                                nextExam.time,
-                                              ),
-                                              style: TextStyle(
-                                                color:
-                                                    BracuPalette.textSecondary(
-                                                  context,
-                                                ),
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      _ExamCountdownDigital(
-                                        remaining: nextExam.time.difference(
-                                          DateTime.now(),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
                               const SizedBox(height: 22),
                               Row(
                                 children: [
@@ -880,179 +831,6 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({
-    required this.studentId,
-    required this.phone,
-    required this.profileEmail,
-    required this.program,
-    required this.onLogout,
-  });
-
-  final String studentId;
-  final String phone;
-  final String profileEmail;
-  final String program;
-  final Future<void> Function() onLogout;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Student Overview',
-                style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            InkWell(
-              onTap: onLogout,
-              borderRadius: BorderRadius.circular(14),
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: BracuPalette.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.logout,
-                  size: 18,
-                  color: BracuPalette.primary,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            _InfoPill(label: 'Student ID', value: studentId),
-            const SizedBox(width: 12),
-            _InfoPill(label: 'Phone Number', value: phone),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(
-            vertical: 10,
-            horizontal: 12,
-          ),
-          decoration: BoxDecoration(
-            color: BracuPalette.card(context),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: BracuPalette.primary.withValues(alpha: 0.14),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Student Email',
-                style: TextStyle(
-                  color: BracuPalette.textSecondary(context),
-                  fontSize: 11,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                profileEmail,
-                style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(
-            vertical: 10,
-            horizontal: 12,
-          ),
-          decoration: BoxDecoration(
-            color: BracuPalette.card(context),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: BracuPalette.primary.withValues(alpha: 0.14),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Program',
-                style: TextStyle(
-                  color: BracuPalette.textSecondary(context),
-                  fontSize: 11,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                program,
-                style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _InfoPill extends StatelessWidget {
-  const _InfoPill({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final labelColor = BracuPalette.textSecondary(context);
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-        decoration: BoxDecoration(
-          color: BracuPalette.card(context),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: BracuPalette.primary.withValues(alpha: 0.14),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: TextStyle(color: labelColor, fontSize: 11)),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: TextStyle(
-                color: BracuPalette.textPrimary(context),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.title});
@@ -1171,23 +949,7 @@ class _ScheduleTile extends StatelessWidget {
       highlightColor: BracuPalette.primary,
       child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              badge,
-              style: TextStyle(
-                color: color,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
+          SectionBadge(label: badge, color: color),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -1303,59 +1065,4 @@ class _ExamCountdownData {
   final DateTime time;
   final String courseCode;
   final String type;
-}
-
-class _ExamCountdownDigital extends StatelessWidget {
-  const _ExamCountdownDigital({required this.remaining});
-
-  final Duration remaining;
-
-  @override
-  Widget build(BuildContext context) {
-    final totalSeconds = remaining.inSeconds;
-    final safeSeconds = totalSeconds < 0 ? 0 : totalSeconds;
-    final days = safeSeconds ~/ 86400;
-    final hours = (safeSeconds ~/ 3600) % 24;
-    final minutes = (safeSeconds ~/ 60) % 60;
-    final seconds = safeSeconds % 60;
-
-    Widget cell(String value, String label) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              color: BracuPalette.textPrimary(context),
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              color: BracuPalette.textSecondary(context),
-              fontWeight: FontWeight.w600,
-              fontSize: 10,
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          cell(days.toString(), 'Days'),
-          const SizedBox(width: 8),
-          cell(hours.toString().padLeft(2, '0'), 'Hours'),
-          const SizedBox(width: 8),
-          cell(minutes.toString().padLeft(2, '0'), 'Minutes'),
-          const SizedBox(width: 8),
-          cell(seconds.toString().padLeft(2, '0'), 'Seconds'),
-        ],
-      );
-  }
 }

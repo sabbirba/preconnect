@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/bracu_auth_manager.dart';
 import 'package:preconnect/model/section_info.dart';
+import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
 class ExamSchedule extends StatefulWidget {
@@ -301,24 +302,9 @@ class _ExamScheduleState extends State<ExamSchedule> {
                         highlightColor: BracuPalette.primary,
                         child: Row(
                           children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: BracuPalette.primary.withValues(
-                                  alpha: 0.12,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                formatSectionBadge(section.sectionName),
-                                style: const TextStyle(
-                                  color: BracuPalette.primary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
+                            SectionBadge(
+                              label: formatSectionBadge(section.sectionName),
+                              color: BracuPalette.primary,
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -421,24 +407,9 @@ class _ExamScheduleState extends State<ExamSchedule> {
                         highlightColor: BracuPalette.primary,
                         child: Row(
                           children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: BracuPalette.accent.withValues(
-                                  alpha: 0.12,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                formatSectionBadge(section.sectionName),
-                                style: const TextStyle(
-                                  color: BracuPalette.accent,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
+                            SectionBadge(
+                              label: formatSectionBadge(section.sectionName),
+                              color: BracuPalette.accent,
                             ),
                             const SizedBox(width: 12),
                             Expanded(
