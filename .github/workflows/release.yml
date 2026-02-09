@@ -78,6 +78,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-flutter-pub-
 
+      - name: Cache CocoaPods
+        if: matrix.platform == 'ios' || matrix.platform == 'macos'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            macos/Pods
+            ~/.cocoapods
+            ~/Library/Caches/CocoaPods
+          key: ${{ runner.os }}-cocoapods-${{ hashFiles('ios/Podfile.lock', 'macos/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cocoapods-
+
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -89,6 +102,16 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/build.gradle*', 'android/**/settings.gradle*', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
+
+      - name: Cache Flutter Build
+        uses: actions/cache@v4
+        with:
+          path: |
+            build
+            .dart_tool
+          key: ${{ runner.os }}-${{ matrix.platform }}-flutter-build-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.platform }}-flutter-build-
 
       - name: Flutter Pub Get
         run: flutter pub get
