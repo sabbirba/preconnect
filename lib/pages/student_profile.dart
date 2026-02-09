@@ -527,6 +527,11 @@ class _AdvisingSummary extends StatelessWidget {
         (data['activeSemesterSessionId'] ?? 'N/A').trim();
     final activeSession = _formatSession(activeSessionRaw);
     final displayCgpa = cgpa.isNotEmpty ? cgpa : 'N/A';
+    final totalNum = double.tryParse(totalCredit) ?? 0;
+    final earnedNum = double.tryParse(earnedCredit) ?? 0;
+    final completion = totalNum == 0 ? 0 : (earnedNum / totalNum * 100);
+    final completionLabel = '${completion.toStringAsFixed(0)}%';
+    final earnedDisplay = earnedCredit;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -582,7 +587,13 @@ class _AdvisingSummary extends StatelessWidget {
         ),
         _InfoLine(
           label: 'Earned Credit',
-          value: earnedCredit,
+          value: earnedDisplay,
+          isLabelBold: true,
+          isValueBold: true,
+        ),
+        _InfoLine(
+          label: 'Completion',
+          value: completionLabel,
           isLabelBold: true,
           isValueBold: true,
         ),
