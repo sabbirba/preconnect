@@ -42,7 +42,7 @@ Flutter app for BRACU students (SSO login + Connect API).
 **Quick Start**
 ```bash
 flutter pub get
-flutter run --dart-define-from-file=.env
+flutter run
 ```
 
 **Local Config**
