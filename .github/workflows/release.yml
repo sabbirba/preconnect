@@ -276,9 +276,7 @@ jobs:
             exit 0
           fi
           DMG_NAME="PreConnect-macos-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.dmg"
-          PKG_NAME="PreConnect-macos-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.pkg"
           hdiutil create -volname "PreConnect" -srcfolder "$APP_PATH" -ov -format UDZO "$GITHUB_WORKSPACE/artifacts/$DMG_NAME"
-          pkgbuild --install-location /Applications --component "$APP_PATH" "$GITHUB_WORKSPACE/artifacts/$PKG_NAME"
 
       - name: Package Windows Release
         if: matrix.platform == 'windows'
