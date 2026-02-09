@@ -102,7 +102,7 @@ class DevsPage extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            childAspectRatio: 0.95,
+            childAspectRatio: 0.85,
             children: const [
               _DevGridTile(
                 name: 'NaiveInvestigator',
@@ -212,6 +212,7 @@ class _DevGridTile extends StatelessWidget {
     final textSecondary = BracuPalette.textSecondary(context);
     return BracuCard(
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           InkWell(
@@ -223,7 +224,7 @@ class _DevGridTile extends StatelessWidget {
               backgroundImage: NetworkImage(avatarUrl),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             name,
             maxLines: 1,
@@ -239,11 +240,11 @@ class _DevGridTile extends StatelessWidget {
             style: TextStyle(color: textSecondary, fontSize: 12),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Wrap(
             alignment: WrapAlignment.center,
-            spacing: 6,
-            runSpacing: 6,
+            spacing: 4,
+            runSpacing: 4,
             children: [
               _LinkChip(
                 label: 'GitHub',
