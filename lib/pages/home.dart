@@ -202,6 +202,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   static const _accent = Color(0xFF22B573);
 
   late Future<_HomeData> _future;
+  Timer? _countdownTicker;
+  bool _countdownActive = false;
 
   @override
   void initState() {
@@ -209,6 +211,26 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     unawaited(BracuAuthManager().fetchProfile());
     unawaited(BracuAuthManager().fetchStudentSchedule());
     _future = _loadData();
+  }
+
+  @override
+  void dispose() {
+    _countdownTicker?.cancel();
+    super.dispose();
+  }
+
+  void _ensureCountdownTicker(bool shouldRun) {
+    if (shouldRun && !_countdownActive) {
+      _countdownActive = true;
+      _countdownTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
+        setState(() {});
+      });
+    } else if (!shouldRun && _countdownActive) {
+      _countdownTicker?.cancel();
+      _countdownTicker = null;
+      _countdownActive = false;
+    }
   }
 
   Future<_HomeData> _loadData({bool forceRefresh = false}) async {
@@ -231,10 +253,12 @@ class _HomeDashboardState extends State<_HomeDashboard> {
 
     final photoUrl = _buildPhotoUrl(profile?['photoFilePath']);
     final List<_ScheduleEntry> entries = [];
+    final List<section.Section> sections = [];
     if (scheduleJson != null && scheduleJson.trim().isNotEmpty) {
       final decoded = (jsonDecode(scheduleJson) as List<dynamic>)
           .map((e) => section.Section.fromJson(e))
           .toList();
+      sections.addAll(decoded);
       for (final section in decoded) {
         for (final s in section.sectionSchedule.classSchedules) {
           entries.add(
@@ -251,7 +275,12 @@ class _HomeDashboardState extends State<_HomeDashboard> {
         }
       }
     }
-    return _HomeData(profile: profile, entries: entries, photoUrl: photoUrl);
+    return _HomeData(
+      profile: profile,
+      entries: entries,
+      photoUrl: photoUrl,
+      sections: sections,
+    );
   }
 
   Future<void> _handleRefresh() async {
@@ -280,6 +309,126 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       default:
         return 'Monday';
     }
+  }
+
+  DateTime? _parseExamDateTime(String? date, String? time) {
+    if (date == null || date.trim().isEmpty) return null;
+    final rawDate = date.trim();
+    final dateFormats = <DateFormat>[
+      DateFormat('yyyy-MM-dd'),
+      DateFormat('yyyy/MM/dd'),
+      DateFormat('yyyy.MM.dd'),
+      DateFormat('dd-MM-yyyy'),
+      DateFormat('dd/MM/yyyy'),
+      DateFormat('d/M/yyyy'),
+      DateFormat('d MMM yyyy'),
+      DateFormat('d MMM, yyyy'),
+      DateFormat('d-MMM-yyyy'),
+      DateFormat('MMM d, yyyy'),
+    ];
+
+    DateTime? datePart;
+    for (final f in dateFormats) {
+      try {
+        datePart = f.parseStrict(rawDate);
+        break;
+      } catch (_) {}
+    }
+    datePart ??= DateTime.tryParse(rawDate);
+    if (datePart == null) return null;
+
+    if (time == null || time.trim().isEmpty) {
+      return DateTime(datePart.year, datePart.month, datePart.day);
+    }
+
+    final rawTime = time.trim().toUpperCase();
+    final timeFormats = <DateFormat>[
+      DateFormat('HH:mm'),
+      DateFormat('H:mm'),
+      DateFormat('HH:mm:ss'),
+      DateFormat('H:mm:ss'),
+      DateFormat('hh:mm a'),
+      DateFormat('h:mm a'),
+      DateFormat('hh:mm:ss a'),
+      DateFormat('h:mm:ss a'),
+    ];
+    DateTime? timePart;
+    for (final f in timeFormats) {
+      try {
+        timePart = f.parseStrict(rawTime);
+        break;
+      } catch (_) {}
+    }
+    timePart ??= DateTime.tryParse(rawTime);
+
+    if (timePart == null) {
+      return DateTime(datePart.year, datePart.month, datePart.day);
+    }
+    return DateTime(
+      datePart.year,
+      datePart.month,
+      datePart.day,
+      timePart.hour,
+      timePart.minute,
+    );
+  }
+
+  _ExamCountdownData? _nextExamCountdown(List<section.Section> sections) {
+    final now = DateTime.now();
+    final exams = <_ExamCountdownData>[];
+    for (final s in sections) {
+      final schedule = s.sectionSchedule;
+      final mid = _parseExamDateTime(
+        schedule.midExamDate,
+        schedule.midExamStartTime,
+      );
+      if (mid != null) {
+        exams.add(
+          _ExamCountdownData(
+            time: mid,
+            courseCode: s.courseCode,
+            type: 'Mid',
+          ),
+        );
+      }
+      final fin = _parseExamDateTime(
+        schedule.finalExamDate,
+        schedule.finalExamStartTime,
+      );
+      if (fin != null) {
+        exams.add(
+          _ExamCountdownData(
+            time: fin,
+            courseCode: s.courseCode,
+            type: 'Final',
+          ),
+        );
+      }
+    }
+    final upcoming =
+        exams.where((e) => !e.time.isBefore(now)).toList()
+          ..sort((a, b) => a.time.compareTo(b.time));
+    if (upcoming.isEmpty) return null;
+    return upcoming.first;
+  }
+
+  String _formatExamDateTime(DateTime dt) {
+    final date = DateFormat('d MMMM, y').format(dt);
+    final time = DateFormat('h:mm a').format(dt);
+    return '$date • $time';
+  }
+
+  String _highestCountdownValue(Duration diff) {
+    final totalSeconds = diff.inSeconds;
+    final safeSeconds = totalSeconds < 0 ? 0 : totalSeconds;
+    final days = safeSeconds ~/ 86400;
+    if (days > 0) return days.toString().padLeft(2, '0');
+    final hours = (safeSeconds ~/ 3600) % 24;
+    if (hours > 0) return hours.toString().padLeft(2, '0');
+    final minutes = (safeSeconds ~/ 60) % 60;
+    if (minutes > 0) return minutes.toString().padLeft(2, '0');
+    final seconds = safeSeconds % 60;
+    return seconds.toString().padLeft(2, '0');
   }
 
   int _timeToMinutes(String time) {
@@ -378,6 +527,11 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                       if (todayEntries.isNotEmpty) {
                         nextEntry = _pickNextEntry(todayEntries, nowMinutes);
                       }
+                      final nextExam = _nextExamCountdown(
+                        snapshot.data?.sections ??
+                            const <section.Section>[],
+                      );
+                      _ensureCountdownTicker(nextExam != null);
 
                       return RefreshIndicator(
                         onRefresh: _handleRefresh,
@@ -393,18 +547,91 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                 onNotifications: () => widget.onNavigate(
                                   HomeTab.notifications,
                                 ),
+                                onProfileTap: () =>
+                                    widget.onNavigate(HomeTab.profile),
                               ),
                               const SizedBox(height: 18),
                               _SummaryCard(
                                 studentId: profile['studentId'] ?? 'N/A',
-                                currentSemester:
-                                    profile['currentSemester'] ?? 'N/A',
-                                program: profile['program'] ?? 'N/A',
-                                enrolledSemester:
-                                    profile['enrolledSemester'] ?? 'N/A',
                                 phone: profile['mobileNo'] ?? 'N/A',
+                                profileEmail: profile['email'] ?? 'N/A',
+                                program: profile['program'] ?? 'N/A',
                                 onLogout: widget.onLogout,
                               ),
+                              if (nextExam != null) ...[
+                                const SizedBox(height: 12),
+                                BracuCard(
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          color: BracuPalette.primary
+                                              .withValues(alpha: 0.12),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          _highestCountdownValue(
+                                            nextExam.time.difference(
+                                              DateTime.now(),
+                                            ),
+                                          ),
+                                          style: const TextStyle(
+                                            color: BracuPalette.primary,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              nextExam.time
+                                                          .difference(DateTime.now())
+                                                          .inDays <=
+                                                      3
+                                                  ? '${nextExam.courseCode} ${nextExam.type} Exam'
+                                                  : '${nextExam.type} Exam',
+                                              style: TextStyle(
+                                                color: BracuPalette.textPrimary(
+                                                  context,
+                                                ),
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              _formatExamDateTime(
+                                                nextExam.time,
+                                              ),
+                                              style: TextStyle(
+                                                color:
+                                                    BracuPalette.textSecondary(
+                                                  context,
+                                                ),
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      _ExamCountdownDigital(
+                                        remaining: nextExam.time.difference(
+                                          DateTime.now(),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 22),
                               Row(
                                 children: [
@@ -545,11 +772,13 @@ class _TopBar extends StatelessWidget {
     required this.name,
     required this.photoUrl,
     required this.onNotifications,
+    required this.onProfileTap,
   });
 
   final String name;
   final String? photoUrl;
   final VoidCallback onNotifications;
+  final VoidCallback onProfileTap;
 
   @override
   Widget build(BuildContext context) {
@@ -558,62 +787,70 @@ class _TopBar extends StatelessWidget {
     final textPrimary = BracuPalette.textPrimary(context);
     return Row(
       children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E6BE3),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          alignment: Alignment.center,
-          child: photoUrl == null
-              ? Text(
-                  initial.toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                )
-              : ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Image.network(
-                    photoUrl!,
-                    fit: BoxFit.cover,
-                    width: 42,
-                    height: 42,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Text(
-                        initial.toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-        ),
-        const SizedBox(width: 12),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Welcome Back',
-                style: TextStyle(fontSize: 12, color: textSecondary),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                name,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: textPrimary,
+          child: InkWell(
+            onTap: onProfileTap,
+            borderRadius: BorderRadius.circular(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E6BE3),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  alignment: Alignment.center,
+                  child: photoUrl == null
+                      ? Text(
+                          initial.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        )
+                      : ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Image.network(
+                            photoUrl!,
+                            fit: BoxFit.cover,
+                            width: 42,
+                            height: 42,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Text(
+                                initial.toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Welcome Back',
+                      style: TextStyle(fontSize: 12, color: textSecondary),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      name,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
         IconButton(
@@ -646,18 +883,16 @@ class _TopBar extends StatelessWidget {
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
     required this.studentId,
-    required this.currentSemester,
-    required this.program,
-    required this.enrolledSemester,
     required this.phone,
+    required this.profileEmail,
+    required this.program,
     required this.onLogout,
   });
 
   final String studentId;
-  final String currentSemester;
-  final String program;
-  final String enrolledSemester;
   final String phone;
+  final String profileEmail;
+  final String program;
   final Future<void> Function() onLogout;
 
   @override
@@ -700,8 +935,44 @@ class _SummaryCard extends StatelessWidget {
           children: [
             _InfoPill(label: 'Student ID', value: studentId),
             const SizedBox(width: 12),
-            _InfoPill(label: 'Phone', value: phone),
+            _InfoPill(label: 'Phone Number', value: phone),
           ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(
+            vertical: 10,
+            horizontal: 12,
+          ),
+          decoration: BoxDecoration(
+            color: BracuPalette.card(context),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: BracuPalette.primary.withValues(alpha: 0.14),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Student Email',
+                style: TextStyle(
+                  color: BracuPalette.textSecondary(context),
+                  fontSize: 11,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                profileEmail,
+                style: TextStyle(
+                  color: BracuPalette.textPrimary(context),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
         Container(
@@ -993,11 +1264,13 @@ class _HomeData {
     required this.profile,
     required this.entries,
     required this.photoUrl,
+    required this.sections,
   });
 
   final Map<String, String?>? profile;
   final List<_ScheduleEntry> entries;
   final String? photoUrl;
+  final List<section.Section> sections;
 }
 
 class _ScheduleEntry {
@@ -1018,4 +1291,71 @@ class _ScheduleEntry {
   final String sectionName;
   final String roomNumber;
   final String faculties;
+}
+
+class _ExamCountdownData {
+  _ExamCountdownData({
+    required this.time,
+    required this.courseCode,
+    required this.type,
+  });
+
+  final DateTime time;
+  final String courseCode;
+  final String type;
+}
+
+class _ExamCountdownDigital extends StatelessWidget {
+  const _ExamCountdownDigital({required this.remaining});
+
+  final Duration remaining;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalSeconds = remaining.inSeconds;
+    final safeSeconds = totalSeconds < 0 ? 0 : totalSeconds;
+    final days = safeSeconds ~/ 86400;
+    final hours = (safeSeconds ~/ 3600) % 24;
+    final minutes = (safeSeconds ~/ 60) % 60;
+    final seconds = safeSeconds % 60;
+
+    Widget cell(String value, String label) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: BracuPalette.textPrimary(context),
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              color: BracuPalette.textSecondary(context),
+              fontWeight: FontWeight.w600,
+              fontSize: 10,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          cell(days.toString(), 'Days'),
+          const SizedBox(width: 8),
+          cell(hours.toString().padLeft(2, '0'), 'Hours'),
+          const SizedBox(width: 8),
+          cell(minutes.toString().padLeft(2, '0'), 'Minutes'),
+          const SizedBox(width: 8),
+          cell(seconds.toString().padLeft(2, '0'), 'Seconds'),
+        ],
+      );
+  }
 }
