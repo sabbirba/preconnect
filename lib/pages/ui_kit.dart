@@ -125,6 +125,7 @@ class BracuPageScaffold extends StatelessWidget {
     required this.body,
     this.actions = const [],
     this.showMenu = false,
+    this.showBack = true,
   });
 
   final String title;
@@ -133,6 +134,7 @@ class BracuPageScaffold extends StatelessWidget {
   final Widget body;
   final List<Widget> actions;
   final bool showMenu;
+  final bool showBack;
 
   @override
   Widget build(BuildContext context) {
@@ -177,13 +179,16 @@ class BracuPageScaffold extends StatelessWidget {
               Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                    padding: showBack
+                        ? const EdgeInsets.fromLTRB(6, 12, 20, 8)
+                        : const EdgeInsets.fromLTRB(20, 12, 20, 8),
                     child: _PageHeader(
                       title: title,
                       subtitle: subtitle,
                       icon: icon,
                       actions: actions,
                       showMenu: showMenu,
+                      showBack: showBack,
                     ),
                   ),
                   Expanded(child: body),
@@ -204,6 +209,7 @@ class _PageHeader extends StatelessWidget {
     required this.icon,
     required this.actions,
     required this.showMenu,
+    required this.showBack,
   });
 
   final String title;
@@ -211,21 +217,48 @@ class _PageHeader extends StatelessWidget {
   final IconData icon;
   final List<Widget> actions;
   final bool showMenu;
+  final bool showBack;
 
   @override
   Widget build(BuildContext context) {
+    final navigator = Navigator.maybeOf(context, rootNavigator: true);
+    final canPop = navigator?.canPop() ?? false;
+    final backScope = BracuBackScope.maybeOf(context);
+    final canScopeBack = backScope?.canGoBack ?? false;
+    final hasBack = showBack && (canPop || canScopeBack);
     return Row(
       children: [
         if (showMenu) const SizedBox(width: 0, height: 0),
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: BracuPalette.primary,
-            borderRadius: BorderRadius.circular(14),
+        if (hasBack)
+          Transform.translate(
+            offset: const Offset(-2, 0),
+            child: InkResponse(
+              onTap: () {
+                if (canPop && navigator != null) {
+                  navigator.maybePop();
+                  return;
+                }
+                backScope?.onBack();
+              },
+              child: Icon(
+                Icons.chevron_left_rounded,
+                size: 28,
+                color: BracuPalette.textPrimary(context),
+              ),
+            ),
           ),
-          alignment: Alignment.center,
-          child: Icon(icon, color: Colors.white, size: 22),
+        Transform.translate(
+          offset: hasBack ? const Offset(-4, 0) : Offset.zero,
+          child: Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: BracuPalette.primary,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            alignment: Alignment.center,
+            child: Icon(icon, color: Colors.white, size: 22),
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -377,5 +410,26 @@ class _DecorBlob extends StatelessWidget {
         borderRadius: BorderRadius.circular(size / 2),
       ),
     );
+  }
+}
+
+class BracuBackScope extends InheritedWidget {
+  const BracuBackScope({
+    super.key,
+    required this.canGoBack,
+    required this.onBack,
+    required super.child,
+  });
+
+  final bool canGoBack;
+  final VoidCallback onBack;
+
+  static BracuBackScope? maybeOf(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<BracuBackScope>();
+  }
+
+  @override
+  bool updateShouldNotify(BracuBackScope oldWidget) {
+    return canGoBack != oldWidget.canGoBack;
   }
 }

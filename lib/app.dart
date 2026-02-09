@@ -44,7 +44,9 @@ class _MyAppState extends State<MyApp> {
     final savedTheme = prefs.getString('themeMode') ?? 'system';
     _themeMode.value = _decodeTheme(savedTheme);
 
-    final loggedIn = await BracuAuthManager().ensureSignedIn();
+    final loggedIn = await BracuAuthManager()
+        .ensureSignedIn()
+        .timeout(const Duration(seconds: 10), onTimeout: () => false);
 
     if (loggedIn) {
       unawaited(BracuAuthManager().getProfile());
@@ -98,6 +100,9 @@ class _MyAppState extends State<MyApp> {
             theme: lightTheme,
             darkTheme: darkTheme,
             themeMode: mode,
+            builder: (context, child) {
+              return child ?? const SizedBox.shrink();
+            },
             routes: {
               '/login': (context) => const LoginPage(),
               '/home': (context) => const HomePage(),
@@ -110,11 +115,13 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
+
 class _StartupState {
   const _StartupState({required this.isLoggedIn});
 
   final bool isLoggedIn;
 }
+
 
 class _AppGate extends StatelessWidget {
   const _AppGate({required this.startupFuture});
@@ -126,8 +133,19 @@ class _AppGate extends StatelessWidget {
     return FutureBuilder<_StartupState>(
       future: startupFuture,
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Scaffold(
+            body: Center(
+              child: Text('Startup failed. Please restart the app.'),
+            ),
+          );
+        }
         if (snapshot.connectionState != ConnectionState.done) {
-          return const SizedBox.shrink();
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
         }
         final isLoggedIn = snapshot.data?.isLoggedIn;
         if (isLoggedIn == true) {

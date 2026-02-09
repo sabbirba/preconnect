@@ -17,6 +17,8 @@ dependencies:
   shared_preferences: ^2.5.4
   http: ^1.6.0
   webview_flutter_android: ^4.10.11
+  webview_windows: ^0.2.2
+  webview_flutter_wkwebview: ^3.9.5
   connectivity_plus: ^7.0.0
   webview_flutter: ^4.13.1
   intl: ^0.20.2

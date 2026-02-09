@@ -48,6 +48,16 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void _handleBack() {
+    if (selectedTab == HomeTab.dashboard) return;
+    if (selectedTab == HomeTab.scanSchedule ||
+        selectedTab == HomeTab.shareSchedule) {
+      _setTab(HomeTab.friendSchedule);
+    } else {
+      _setTab(HomeTab.dashboard);
+    }
+  }
+
   Future<void> _confirmLogout(BuildContext context) async {
     final shouldLogout = await showDialog<bool>(
       context: context,
@@ -163,7 +173,13 @@ class _HomePageState extends State<HomePage> {
           }
         }
       },
-      child: Scaffold(body: pages[selectedTab]),
+      child: Scaffold(
+        body: BracuBackScope(
+          canGoBack: selectedTab != HomeTab.dashboard,
+          onBack: _handleBack,
+          child: pages[selectedTab]!,
+        ),
+      ),
     );
   }
 }
@@ -434,7 +450,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                   _QuickActionCard(
                                     icon: Icons.developer_mode_outlined,
                                     title: 'Devs',
-                                    subtitle: 'About & Support',
+                                    subtitle: 'About Us',
                                     color: const Color(0xFF2C9DFF),
                                     onTap: () => widget.onNavigate(
                                       HomeTab.devs,

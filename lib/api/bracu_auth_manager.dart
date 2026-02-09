@@ -1,16 +1,16 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:preconnect/tools/token_storage.dart';
 
 class BracuAuthManager {
   static final BracuAuthManager _instance = BracuAuthManager._internal();
   factory BracuAuthManager() => _instance;
   BracuAuthManager._internal();
 
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final TokenStorage _storage = TokenStorage.instance;
 
   Future<void> login(BuildContext context) async {
     Navigator.pushNamed(context, '/login');
@@ -34,9 +34,6 @@ class BracuAuthManager {
       }
 
       await _storage.deleteAll();
-
-      final SharedPreferencesAsync asyncPrefs = SharedPreferencesAsync();
-      await asyncPrefs.clear();
     } catch (e) {
       return;
     }

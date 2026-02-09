@@ -11,7 +11,7 @@ class DevsPage extends StatelessWidget {
     final textSecondary = BracuPalette.textSecondary(context);
     return BracuPageScaffold(
       title: 'Devs',
-      subtitle: 'Devs & Support',
+      subtitle: 'Devs',
       icon: Icons.developer_mode_outlined,
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),

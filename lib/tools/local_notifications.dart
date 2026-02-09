@@ -29,6 +29,7 @@ class LocalNotificationsService {
     const initSettings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
+      macOS: iosSettings,
     );
 
     await _plugin.initialize(settings: initSettings);
@@ -51,6 +52,12 @@ class LocalNotificationsService {
       await _plugin
           .resolvePlatformSpecificImplementation<
               IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
+    }
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS) {
+      await _plugin
+          .resolvePlatformSpecificImplementation<
+              MacOSFlutterLocalNotificationsPlugin>()
           ?.requestPermissions(alert: true, badge: true, sound: true);
     }
 
@@ -88,6 +95,11 @@ class LocalNotificationsService {
         presentSound: true,
         presentBadge: true,
       ),
+      macOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentSound: true,
+        presentBadge: true,
+      ),
     );
 
     await _plugin.show(
@@ -117,6 +129,11 @@ class LocalNotificationsService {
         icon: 'ic_stat_preconnect',
       ),
       iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentSound: true,
+        presentBadge: true,
+      ),
+      macOS: DarwinNotificationDetails(
         presentAlert: true,
         presentSound: true,
         presentBadge: true,

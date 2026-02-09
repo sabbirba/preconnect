@@ -1,13 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:preconnect/api/bracu_auth_manager.dart';
+import 'package:webview_windows/webview_windows.dart' as win;
 import 'home.dart';
+import 'package:preconnect/tools/token_storage.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,8 +19,12 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  final TokenStorage _secureStorage = TokenStorage.instance;
   WebViewController? _webViewController;
+  win.WebviewController? _winController;
+  StreamSubscription<String>? _winUrlSub;
+  StreamSubscription<win.HistoryChanged>? _winHistorySub;
+  bool _winCanGoBack = false;
   bool _handledRedirect = false;
 
   final String _clientId = "slm";
@@ -40,6 +46,10 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     if (kIsWeb) return;
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      _initWindowsWebview();
+      return;
+    }
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setUserAgent(_defaultUa)
@@ -62,6 +72,31 @@ class _LoginPageState extends State<LoginPage> {
       )
       ..loadRequest(Uri.parse(_authUrl));
     _configureCookies();
+  }
+
+  Future<void> _initWindowsWebview() async {
+    _winController = win.WebviewController();
+    try {
+      await _winController!.initialize();
+      await _winController!.setUserAgent(_defaultUa);
+      await _winController!
+          .setPopupWindowPolicy(win.WebviewPopupWindowPolicy.deny);
+      _winUrlSub = _winController!.url.listen((url) {
+        if (_isRedirectUrl(url)) {
+          _handleRedirect(url);
+        }
+      });
+      _winHistorySub = _winController!.historyChanged.listen((history) {
+        _winCanGoBack = history.canGoBack;
+      });
+      await _winController!.loadUrl(_authUrl);
+      if (mounted) setState(() {});
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('WebView failed to initialize.')),
+      );
+    }
   }
 
   Future<void> _configureCookies() async {
@@ -160,6 +195,18 @@ class _LoginPageState extends State<LoginPage> {
         child: PopScope(
           canPop: false,
           onPopInvokedWithResult: (didPop, result) async {
+            if (defaultTargetPlatform == TargetPlatform.windows) {
+              final controller = _winController;
+              if (controller == null) return;
+              if (!mounted) return;
+              final navigator = Navigator.of(context);
+              if (_winCanGoBack) {
+                await controller.goBack();
+              } else {
+                navigator.maybePop();
+              }
+              return;
+            }
             final controller = _webViewController;
             if (controller == null) return;
             if (!mounted) return;
@@ -172,7 +219,10 @@ class _LoginPageState extends State<LoginPage> {
           },
           child: Stack(
             children: [
-              if (_webViewController != null)
+              if (defaultTargetPlatform == TargetPlatform.windows &&
+                  _winController != null)
+                Positioned.fill(child: win.Webview(_winController!))
+              else if (_webViewController != null)
                 Positioned.fill(
                   child: WebViewWidget(controller: _webViewController!),
                 ),
@@ -189,5 +239,13 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _winUrlSub?.cancel();
+    _winHistorySub?.cancel();
+    _winController?.dispose();
+    super.dispose();
   }
 }

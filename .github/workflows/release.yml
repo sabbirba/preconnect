@@ -22,6 +22,8 @@ jobs:
             platform: android
           - os: macos-latest
             platform: ios
+          - os: macos-latest
+            platform: macos
 
     steps:
       - name: Checkout
@@ -41,13 +43,13 @@ jobs:
           cache: true
 
       - name: Set up Xcode
-        if: matrix.platform == 'ios'
+        if: matrix.platform == 'ios' || matrix.platform == 'macos'
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: 'latest'
 
       - name: Show Xcode & SDKs
-        if: matrix.platform == 'ios'
+        if: matrix.platform == 'ios' || matrix.platform == 'macos'
         run: |
           xcodebuild -version
           xcodebuild -showsdks
@@ -161,6 +163,12 @@ jobs:
           echo "${{ secrets.IOS_PROFILE_BASE64 }}" | base64 -d > "$HOME/Library/MobileDevice/Provisioning Profiles/profile.mobileprovision"
           flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
 
+      - name: Build macOS App
+        if: matrix.platform == 'macos'
+        run: |
+          flutter config --enable-macos
+          flutter build macos --release
+
       - name: Package Android Release
         if: matrix.platform == 'android' && steps.android_signing.outputs.enabled == 'true'
         run: |
@@ -190,6 +198,20 @@ jobs:
           mkdir -p Payload
           ditto "$APP_PATH" "Payload/$(basename "$APP_PATH")"
           (cd Payload && zip -r -y "$GITHUB_WORKSPACE/artifacts/$IPA_NAME" .) || true
+
+      - name: Package macOS Release
+        if: matrix.platform == 'macos'
+        run: |
+          mkdir -p artifacts
+          APP_PATH=$(find build/macos/Build/Products/Release -maxdepth 1 -type d -name "*.app" | head -n1)
+          if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
+            echo "No macOS .app found"
+            exit 0
+          fi
+          DMG_NAME="PreConnect-macos-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.dmg"
+          PKG_NAME="PreConnect-macos-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.pkg"
+          hdiutil create -volname "PreConnect" -srcfolder "$APP_PATH" -ov -format UDZO "$GITHUB_WORKSPACE/artifacts/$DMG_NAME"
+          pkgbuild --install-location /Applications --component "$APP_PATH" "$GITHUB_WORKSPACE/artifacts/$PKG_NAME"
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
