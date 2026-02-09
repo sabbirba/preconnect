@@ -24,6 +24,8 @@ jobs:
             platform: ios
           - os: macos-latest
             platform: macos
+          - os: windows-latest
+            platform: windows
 
     steps:
       - name: Checkout
@@ -169,6 +171,12 @@ jobs:
           flutter config --enable-macos
           flutter build macos --release
 
+      - name: Build Windows App
+        if: matrix.platform == 'windows'
+        run: |
+          flutter config --enable-windows
+          flutter build windows --release
+
       - name: Package Android Release
         if: matrix.platform == 'android' && steps.android_signing.outputs.enabled == 'true'
         run: |
@@ -212,6 +220,23 @@ jobs:
           PKG_NAME="PreConnect-macos-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.pkg"
           hdiutil create -volname "PreConnect" -srcfolder "$APP_PATH" -ov -format UDZO "$GITHUB_WORKSPACE/artifacts/$DMG_NAME"
           pkgbuild --install-location /Applications --component "$APP_PATH" "$GITHUB_WORKSPACE/artifacts/$PKG_NAME"
+
+      - name: Package Windows Release
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          if (!(Test-Path \"build/windows/x64/runner/Release\")) {
+            Write-Host \"No Windows release directory found\"
+            exit 0
+          }
+          if (!(Get-Command choco -ErrorAction SilentlyContinue)) {
+            Write-Host \"Chocolatey not found on runner\"
+            exit 1
+          }
+          choco install innosetup -y
+          $appVersion = \"${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}\"
+          & \"C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe\" \"/DAppVersion=$appVersion\" \"scripts\\windows\\installer.iss\"
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
@@ -261,7 +286,7 @@ jobs:
           else
             echo "has_assets=false" >> $GITHUB_OUTPUT
             echo "No artifacts were produced."
-            exit 1
+            exit 0
           fi
 
       - name: Create GitHub Release

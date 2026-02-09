@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "Student" "\0"
+            VALUE "CompanyName", "PreConnect" "\0"
+            VALUE "FileDescription", "PreConnect" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "Student" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "Student.exe" "\0"
-            VALUE "ProductName", "Student" "\0"
+            VALUE "InternalName", "PreConnect" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 PreConnect. All rights reserved." "\0"
+            VALUE "OriginalFilename", "PreConnect.exe" "\0"
+            VALUE "ProductName", "PreConnect" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
