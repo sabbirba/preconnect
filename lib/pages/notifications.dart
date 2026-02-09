@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:android_intent_plus/android_intent.dart';
+import 'dart:io';
 import 'package:preconnect/tools/local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:preconnect/model/notification_item.dart';
@@ -125,6 +127,9 @@ class _NotificationPageState extends State<NotificationPage>
       }
       systemGranted = true;
     }
+    if (value) {
+      await _requestExactAlarmOnce();
+    }
     setState(() {
       allEnabled = value;
       classReminders = value;
@@ -185,6 +190,9 @@ class _NotificationPageState extends State<NotificationPage>
         return;
       }
       systemGranted = true;
+    }
+    if (value) {
+      await _requestExactAlarmOnce();
     }
     setState(() {
       apply(value);
@@ -398,6 +406,22 @@ class _NotificationPageState extends State<NotificationPage>
 
   Future<void> _openSystemSettings() async {
     await openAppSettings();
+  }
+
+  Future<void> _requestExactAlarmOnce() async {
+    if (!Platform.isAndroid) return;
+    final prefs = await SharedPreferences.getInstance();
+    final shown = prefs.getBool('notif_exact_alarm_prompted') ?? false;
+    if (shown) return;
+    await prefs.setBool('notif_exact_alarm_prompted', true);
+    const intent = AndroidIntent(
+      action: 'android.settings.REQUEST_SCHEDULE_EXACT_ALARM',
+    );
+    try {
+      await intent.launch();
+    } catch (_) {
+      // Ignore intent failures; user can still enable in settings manually.
+    }
   }
 
   @override

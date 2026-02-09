@@ -88,7 +88,7 @@ class LocalNotificationsService {
         importance: Importance.max,
         priority: Priority.max,
         playSound: true,
-        icon: 'ic_stat_preconnect',
+        icon: 'ic_launcher',
       ),
       iOS: DarwinNotificationDetails(
         presentAlert: true,
@@ -126,7 +126,7 @@ class LocalNotificationsService {
         importance: Importance.max,
         priority: Priority.max,
         playSound: true,
-        icon: 'ic_stat_preconnect',
+        icon: 'ic_launcher',
       ),
       iOS: DarwinNotificationDetails(
         presentAlert: true,
