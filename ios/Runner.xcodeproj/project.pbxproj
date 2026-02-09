@@ -205,14 +205,6 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-			isa = PBXGroup;
-			children = (
-				1006460E104D2C0E3CDA0AB7 /* AppIntents.swift */,
-				995934A4206CDC824B03BB06 /* Info.plist */,
-				29A90CF41E6E2EC0B0EF0EA5 /* Assets.xcassets */,
-			);
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -234,19 +226,6 @@
 			productName = RunnerTests;
 			productReference = 331C8081294A63A400263BE5 /* RunnerTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
-		};
-			isa = PBXNativeTarget;
-			buildPhases = (
-				371DA36A87552A8BCA1E0986 /* [CP] Check Pods Manifest.lock */,
-				2993107C7E776FB31FD3E7F2 /* Sources */,
-				186C36A3802C32AB209BA254 /* Frameworks */,
-				4CD9A308B3F7E4E5875A4F94 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			productType = "com.apple.product-type.app-extension";
 		};
 		97C146ED1CF9000F007C117D /* Runner */ = {
 			isa = PBXNativeTarget;
@@ -908,15 +887,6 @@
 				97C147061CF9000F007C117D /* Debug */,
 				97C147071CF9000F007C117D /* Release */,
 				249021D4217E4FDB00AE95B9 /* Profile */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				783A6BD9F725E14761D26E5B /* Release */,
-				946E20F454F64AEC39E50364 /* Debug */,
-				C9DFBC224C7C19AE5ADA91A4 /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
