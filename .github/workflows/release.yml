@@ -223,17 +223,18 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
-          if (!(Test-Path \"build/windows/x64/runner/Release\")) {
-            Write-Host \"No Windows release directory found\"
+          $releaseDir = Join-Path $PWD "build\\windows\\x64\\runner\\Release"
+          if (!(Test-Path $releaseDir)) {
+            Write-Host "No Windows release directory found"
             exit 0
           }
           if (!(Get-Command choco -ErrorAction SilentlyContinue)) {
-            Write-Host \"Chocolatey not found on runner\"
+            Write-Host "Chocolatey not found on runner"
             exit 1
           }
           choco install innosetup -y
-          $appVersion = \"${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}\"
-          & \"C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe\" \"/DAppVersion=$appVersion\" \"scripts\\windows\\installer.iss\"
+          $appVersion = "${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}"
+          & "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe" "/DAppVersion=$appVersion" "scripts\\windows\\installer.iss"
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
