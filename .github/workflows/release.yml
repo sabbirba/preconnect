@@ -114,6 +114,7 @@ jobs:
             ${{ runner.os }}-${{ matrix.platform }}-flutter-build-
 
       - name: Flutter Pub Get
+        shell: bash
         run: |
           attempt=1
           until [ $attempt -gt 3 ]; do
@@ -217,6 +218,7 @@ jobs:
 
       - name: Build Windows App
         if: matrix.platform == 'windows'
+        shell: bash
         run: |
           attempt=1
           until [ $attempt -gt 3 ]; do
