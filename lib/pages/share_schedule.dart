@@ -244,7 +244,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
       if (kIsWeb) {
         await Share.shareXFiles([
           XFile.fromData(bytes, mimeType: 'image/png', name: fileName),
-        ], text: 'Scan my schedule QR to import in Friends Schedule.');
+        ], text: 'Scan my schedule QR to import in PreConnect App.');
         return;
       }
 
@@ -254,7 +254,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
 
       await Share.shareXFiles([
         XFile(file.path),
-      ], text: 'Scan my schedule QR to import in Friends Schedule.');
+      ], text: 'Scan my schedule QR to import in PreConnect App.');
     } catch (e) {
       if (!mounted) return;
       showAppSnackBar(context, 'Unable to share QR code');
@@ -283,47 +283,39 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
               BracuCard(
                 child: RepaintBoundary(
                   key: _qrKey,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.all(12),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final size = constraints.maxWidth;
-                          if (_base64Data == null) {
-                            return SizedBox(
-                              height: size,
-                              child: Center(
-                                child: Text(
-                                  'No QR data available',
-                                  style: TextStyle(
-                                    color: BracuPalette.textSecondary(context),
-                                  ),
+                  child: Container(
+                    decoration: const BoxDecoration(color: Colors.white),
+                    padding: const EdgeInsets.all(12),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final size = constraints.maxWidth;
+                        if (_base64Data == null) {
+                          return SizedBox(
+                            height: size,
+                            child: Center(
+                              child: Text(
+                                'No QR data available',
+                                style: TextStyle(
+                                  color: BracuPalette.textSecondary(context),
                                 ),
                               ),
-                            );
-                          }
-
-                          return Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                width: size,
-                                height: size,
-                                child: CustomPaint(
-                                  size: Size.square(size),
-                                  painter: QrPainter(
-                                    _base64Data!,
-                                    fgColor: Colors.black,
-                                    bgColor: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
                           );
-                        },
-                      ),
+                        }
+
+                        return SizedBox(
+                          width: size,
+                          height: size,
+                          child: CustomPaint(
+                            size: Size.square(size),
+                            painter: QrPainter(
+                              _base64Data!,
+                              fgColor: const Color(0xFF000000),
+                              bgColor: const Color(0xFFFFFFFF),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),
