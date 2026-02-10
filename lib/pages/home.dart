@@ -19,6 +19,7 @@ import 'package:preconnect/pages/home_sections/student_overview.dart';
 import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -701,6 +702,12 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                   ),
                                 ],
                               ),
+                              const SizedBox(height: 16),
+                              _OpenWebCard(
+                                onTap: () => _openUrl(
+                                  'https://preconnect.app',
+                                ),
+                              ),
                               const SizedBox(height: 12),
                             ],
                           ),
@@ -716,6 +723,14 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       ),
     );
   }
+}
+
+Future<void> _openUrl(String url) async {
+  final uri = Uri.parse(url);
+  await launchUrl(
+    uri,
+    mode: LaunchMode.inAppBrowserView,
+  );
 }
 
 class _TopBar extends StatelessWidget {
@@ -806,9 +821,12 @@ class _TopBar extends StatelessWidget {
         ),
         IconButton(
           onPressed: onNotifications,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          visualDensity: VisualDensity.compact,
           icon: const Icon(Icons.notifications_none_outlined),
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 2),
         ValueListenableBuilder<ThemeMode>(
           valueListenable: ThemeController.of(context),
           builder: (context, mode, _) {
@@ -819,6 +837,9 @@ class _TopBar extends StatelessWidget {
                 context,
                 isDark ? ThemeMode.light : ThemeMode.dark,
               ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              visualDensity: VisualDensity.compact,
               icon: Icon(
                 isDark ? Icons.wb_sunny_outlined : Icons.dark_mode_outlined,
                 color: BracuPalette.primary,
@@ -845,6 +866,69 @@ class _SectionTitle extends StatelessWidget {
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: BracuPalette.textPrimary(context),
+      ),
+    );
+  }
+}
+
+class _OpenWebCard extends StatelessWidget {
+  const _OpenWebCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: BracuPalette.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: BracuPalette.card(context),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: BracuPalette.textSecondary(context).withValues(alpha: 0.2),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: BracuPalette.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.open_in_new,
+                  color: BracuPalette.primary,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Open PreConnect Web',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: BracuPalette.textPrimary(context),
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                color: BracuPalette.textSecondary(context),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

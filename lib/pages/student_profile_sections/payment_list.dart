@@ -13,7 +13,6 @@ class PaymentList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: payments.asMap().entries.map((entry) {
-        final index = entry.key;
         final payment = entry.value;
         final textSecondary = BracuPalette.textSecondary(context);
         final textPrimary = BracuPalette.textPrimary(context);
@@ -24,7 +23,8 @@ class PaymentList extends StatelessWidget {
         final statusColor =
             isPaid ? BracuPalette.accent : const Color(0xFFFF8A34);
         final statusBg = statusColor.withValues(alpha: 0.14);
-        final semester = _formatSemester(payment.semesterSessionId);
+        final semester =
+            formatSemesterFromSessionIdInt(payment.semesterSessionId);
         final paymentType = _formatPaymentType(payment.paymentType);
         final cardTint =
             isPaid ? Colors.transparent : statusBg.withValues(alpha: 0.08);
@@ -58,15 +58,12 @@ class PaymentList extends StatelessWidget {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              '${index + 1}.',
-                              style: TextStyle(
-                                color: BracuPalette.primary,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                              ),
+                            Icon(
+                              Icons.receipt_long,
+                              size: 16,
+                              color: BracuPalette.primary,
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 6),
                             Text(
                               payment.payslipNumber,
                               style: TextStyle(
@@ -204,28 +201,6 @@ String _formatPaymentType(String raw) {
         return lower[0].toUpperCase() + lower.substring(1);
       })
       .join(' ');
-}
-
-String _formatSemester(int semesterSessionId) {
-  final year = semesterSessionId ~/ 10;
-  final semesterCode = semesterSessionId % 10;
-
-  String semester;
-  switch (semesterCode) {
-    case 1:
-      semester = 'Fall';
-      break;
-    case 2:
-      semester = 'Summer';
-      break;
-    case 3:
-      semester = 'Spring';
-      break;
-    default:
-      semester = 'Unknown';
-  }
-
-  return '$semester $year';
 }
 
 String _formatAmount(double amount) {

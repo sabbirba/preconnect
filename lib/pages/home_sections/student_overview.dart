@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class StudentOverviewCard extends StatelessWidget {
+class StudentOverviewCard extends StatefulWidget {
   const StudentOverviewCard({
     super.key,
     required this.studentId,
@@ -20,123 +21,161 @@ class StudentOverviewCard extends StatelessWidget {
   final Widget? countdown;
 
   @override
+  State<StudentOverviewCard> createState() => _StudentOverviewCardState();
+}
+
+class _StudentOverviewCardState extends State<StudentOverviewCard>
+    with SingleTickerProviderStateMixin {
+  static const String _prefsKey = 'student_overview_expanded';
+  bool _isExpanded = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExpandedState();
+  }
+
+  Future<void> _loadExpandedState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getBool(_prefsKey);
+    if (!mounted || stored == null) return;
+    setState(() {
+      _isExpanded = stored;
+    });
+  }
+
+  void _toggleExpanded() {
+    setState(() {
+      _isExpanded = !_isExpanded;
+    });
+    _persistExpandedState();
+  }
+
+  Future<void> _persistExpandedState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefsKey, _isExpanded);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor =
-        isDark ? BracuPalette.textPrimary(context) : Colors.white;
+    final titleColor = BracuPalette.textPrimary(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
-            color: isDark ? BracuPalette.card(context) : null,
-            border: isDark
-                ? Border.all(
-                    color: BracuPalette.primary.withValues(alpha: 0.18),
-                  )
-                : null,
-            gradient: isDark
-                ? null
-                : const LinearGradient(
-                    colors: [Color(0xFF1E6BE3), Color(0xFF2C9DFF)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Student Overview',
-                        style: TextStyle(
-                          color: titleColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                Expanded(
+                  child: Text(
+                    'Overview',
+                    style: TextStyle(
+                      color: titleColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
                     ),
-                    InkWell(
-                      onTap: onLogout,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: _toggleExpanded,
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
                       borderRadius: BorderRadius.circular(14),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? BracuPalette.primary.withValues(alpha: 0.12)
-                              : Colors.white.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(
-                          Icons.logout,
-                          size: 18,
-                          color: isDark ? BracuPalette.primary : Colors.white,
-                        ),
-                      ),
                     ),
-                  ],
+                    child: Icon(
+                      _isExpanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      size: 20,
+                      color: BracuPalette.primary,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 12),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final half = (constraints.maxWidth - 12) / 2;
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            _OverviewPill(
-                              label: 'Student ID',
-                              value: studentId,
-                              width: half,
-                              isDark: isDark,
-                            ),
-                            const SizedBox(width: 12),
-                            _OverviewPill(
-                              label: 'Phone Number',
-                              value: phoneNumber,
-                              width: half,
-                              isDark: isDark,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        _OverviewPill(
-                          label: 'Student Email',
-                          value: studentEmail,
-                          width: constraints.maxWidth,
-                          isDark: isDark,
-                        ),
-                        const SizedBox(height: 12),
-                        _OverviewPill(
-                          label: 'Program',
-                          value: program,
-                          width: constraints.maxWidth,
-                          isDark: isDark,
-                        ),
-                      ],
-                    );
-                  },
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: widget.onLogout,
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      Icons.logout,
+                      size: 18,
+                      color: isDark
+                          ? BracuPalette.primary
+                          : BracuPalette.primary,
+                    ),
+                  ),
                 ),
-                if (countdown != null) ...[
-                  const SizedBox(height: 12),
-                  countdown!,
-                ],
               ],
             ),
-          ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeInOut,
+              child: _isExpanded
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 12),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final half = (constraints.maxWidth - 12) / 2;
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    _OverviewPill(
+                                      label: 'Student ID',
+                                      value: widget.studentId,
+                                      width: half,
+                                      isDark: isDark,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    _OverviewPill(
+                                      label: 'Phone Number',
+                                      value: widget.phoneNumber,
+                                      width: half,
+                                      isDark: isDark,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                _OverviewPill(
+                                  label: 'Student Email',
+                                  value: widget.studentEmail,
+                                  width: constraints.maxWidth,
+                                  isDark: isDark,
+                                ),
+                                const SizedBox(height: 12),
+                                _OverviewPill(
+                                  label: 'Program',
+                                  value: widget.program,
+                                  width: constraints.maxWidth,
+                                  isDark: isDark,
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
+            if (widget.countdown != null) ...[
+              const SizedBox(height: 12),
+              widget.countdown!,
+            ],
+          ],
         ),
         const SizedBox(height: 12),
       ],
@@ -161,15 +200,12 @@ class _OverviewPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final background = isDark
         ? BracuPalette.primary.withValues(alpha: 0.12)
-        : Colors.white.withValues(alpha: 0.16);
+        : BracuPalette.card(context);
     final borderColor = isDark
         ? BracuPalette.primary.withValues(alpha: 0.18)
-        : Colors.white.withValues(alpha: 0.18);
-    final labelColor = isDark
-        ? BracuPalette.textSecondary(context)
-        : Colors.white.withValues(alpha: 0.8);
-    final valueColor =
-        isDark ? BracuPalette.textPrimary(context) : Colors.white;
+        : Colors.black12;
+    final labelColor = BracuPalette.textSecondary(context);
+    final valueColor = BracuPalette.textPrimary(context);
     return Container(
       width: width,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
