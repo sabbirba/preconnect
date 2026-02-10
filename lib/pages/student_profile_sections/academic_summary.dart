@@ -73,8 +73,8 @@ class _AcademicSummary extends StatelessWidget {
     final semesterCount = int.tryParse(semesterCountRaw);
     final semesterWord = (semesterCount ?? 0) == 1 ? 'semester' : 'semesters';
     final semesterLine = semesterCount == null
-        ? 'You have completed your current semester from $enrolledSemester.'
-        : 'You have completed ${_ordinal(semesterCountRaw)} $semesterWord from $enrolledSemester.';
+        ? 'Completed your current semester from $enrolledSemester.'
+        : 'Completed ${_ordinal(semesterCountRaw)} $semesterWord from $enrolledSemester.';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

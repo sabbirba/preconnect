@@ -7,7 +7,6 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/bracu_auth_manager.dart';
-import 'package:preconnect/pages/shared_widgets/in_app_webview.dart';
 import 'package:webview_windows/webview_windows.dart' as win;
 import 'home.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -48,6 +47,27 @@ class _LoginPageState extends State<LoginPage> {
       _initWindowsWebview();
       return;
     }
+    _webViewController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent(kPreconnectUserAgent)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onNavigationRequest: (request) {
+            if (_isRedirectUrl(request.url)) {
+              _handleRedirect(request.url);
+              return NavigationDecision.prevent;
+            }
+            return NavigationDecision.navigate;
+          },
+          onPageStarted: (url) {
+            if (_isRedirectUrl(url)) {
+              _handleRedirect(url);
+            }
+          },
+        ),
+      )
+      ..loadRequest(Uri.parse(_authUrl));
+    _configureCookies(_webViewController!);
   }
 
   Future<void> _initWindowsWebview() async {
@@ -196,30 +216,9 @@ class _LoginPageState extends State<LoginPage> {
               if (defaultTargetPlatform == TargetPlatform.windows &&
                   _winController != null)
                 Positioned.fill(child: win.Webview(_winController!))
-              else
+              else if (_webViewController != null)
                 Positioned.fill(
-                  child: InAppWebView(
-                    initialUrl: _authUrl,
-                    userAgent: kPreconnectUserAgent,
-                    navigationDelegate: NavigationDelegate(
-                      onNavigationRequest: (request) {
-                        if (_isRedirectUrl(request.url)) {
-                          _handleRedirect(request.url);
-                          return NavigationDecision.prevent;
-                        }
-                        return NavigationDecision.navigate;
-                      },
-                      onPageStarted: (url) {
-                        if (_isRedirectUrl(url)) {
-                          _handleRedirect(url);
-                        }
-                      },
-                    ),
-                    onControllerReady: (controller) async {
-                      _webViewController = controller;
-                      await _configureCookies(controller);
-                    },
-                  ),
+                  child: WebViewWidget(controller: _webViewController!),
                 ),
               if (_isLoggingIn)
                 Positioned.fill(

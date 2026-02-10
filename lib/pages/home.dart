@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/bracu_auth_manager.dart';
@@ -19,10 +18,9 @@ import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/home_sections/exam_countdown.dart';
 import 'package:preconnect/pages/home_sections/student_overview.dart';
 import 'package:preconnect/pages/shared_widgets/section_badge.dart';
-import 'package:preconnect/pages/shared_widgets/in_app_webview.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/user_agent.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -215,8 +213,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   static const _accent = Color(0xFF22B573);
 
   late Future<_HomeData> _future;
-  Timer? _countdownTicker;
-  bool _countdownActive = false;
   bool _overviewExpanded = true;
 
   @override
@@ -230,22 +226,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
 
   @override
   void dispose() {
-    _countdownTicker?.cancel();
     super.dispose();
-  }
-
-  void _ensureCountdownTicker(bool shouldRun) {
-    if (shouldRun && !_countdownActive) {
-      _countdownActive = true;
-      _countdownTicker = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (!mounted) return;
-        setState(() {});
-      });
-    } else if (!shouldRun && _countdownActive) {
-      _countdownTicker?.cancel();
-      _countdownTicker = null;
-      _countdownActive = false;
-    }
   }
 
   Future<void> _primeOverviewState() async {
@@ -445,28 +426,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     return upcoming.first;
   }
 
-  String _formatExamSubtitle(DateTime dt) {
-    final diff = dt.difference(DateTime.now());
-    final date = DateFormat('d MMMM, y').format(dt);
-    final time = DateFormat('h:mm a').format(dt);
-    return diff.inDays > 0 ? date : time;
-  }
-
-
-
-  String _highestCountdownValue(Duration diff) {
-    final totalSeconds = diff.inSeconds;
-    final safeSeconds = totalSeconds < 0 ? 0 : totalSeconds;
-    final days = safeSeconds ~/ 86400;
-    if (days > 0) return days.toString().padLeft(2, '0');
-    final hours = (safeSeconds ~/ 3600) % 24;
-    if (hours > 0) return hours.toString().padLeft(2, '0');
-    final minutes = (safeSeconds ~/ 60) % 60;
-    if (minutes > 0) return minutes.toString().padLeft(2, '0');
-    final seconds = safeSeconds % 60;
-    return seconds.toString().padLeft(2, '0');
-  }
-
   int _timeToMinutes(String time) {
     final parts = time.split(':');
     if (parts.length < 2) return 0;
@@ -567,8 +526,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                         snapshot.data?.sections ??
                             const <section.Section>[],
                       );
-                      _ensureCountdownTicker(nextExam != null);
-
                       return RefreshIndicator(
                         onRefresh: _handleRefresh,
                         child: SingleChildScrollView(
@@ -604,15 +561,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                                 3
                                             ? '${nextExam.courseCode} ${nextExam.type} Exam'
                                             : '${nextExam.type} Exam',
-                                        dateTimeLabel: _formatExamSubtitle(
-                                          nextExam.time,
-                                        ),
-                                        countdownValue: _highestCountdownValue(
-                                          nextExam.time
-                                              .difference(DateTime.now()),
-                                        ),
-                                        remaining: nextExam.time
-                                            .difference(DateTime.now()),
+                                        targetDateTime: nextExam.time,
                                       ),
                               ),
                               const SizedBox(height: 22),
@@ -733,9 +682,9 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 12),
                               _OpenWebCard(
-                                onTap: () => _openInAppWeb(
+                                onTap: () => _openPreconnectWeb(
                                   context,
                                   'https://preconnect.app',
                                 ),
@@ -807,6 +756,10 @@ class _TopBar extends StatelessWidget {
                             fit: BoxFit.cover,
                             width: 42,
                             height: 42,
+                            cacheWidth: 84,
+                            cacheHeight: 84,
+                            filterQuality: FilterQuality.low,
+                            gaplessPlayback: true,
                             errorBuilder: (context, error, stackTrace) {
                               return Text(
                                 initial.toUpperCase(),
@@ -955,25 +908,18 @@ class _OpenWebCard extends StatelessWidget {
   }
 }
 
-Future<void> _openInAppWeb(BuildContext context, String url) async {
-  if (kIsWeb ||
-      !(Platform.isAndroid || Platform.isIOS || Platform.isMacOS || Platform.isWindows)) {
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('In-app web is not available here.')),
-    );
-    return;
+Future<void> _openPreconnectWeb(BuildContext context, String url) async {
+  final uri = Uri.parse(url);
+  final mode = kIsWeb ? LaunchMode.platformDefault : LaunchMode.inAppBrowserView;
+  var launched = await launchUrl(uri, mode: mode);
+  if (!launched && !kIsWeb) {
+    launched = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
   }
-  await Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (context) => InAppWebPage(
-        title: 'PreConnect Web',
-        initialUrl: url,
-        immersive: false,
-        userAgent: kPreconnectUserAgent,
-      ),
-    ),
-  );
+  if (!launched && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Unable to open browser.')),
+    );
+  }
 }
 
 class _QuickActionCard extends StatelessWidget {
