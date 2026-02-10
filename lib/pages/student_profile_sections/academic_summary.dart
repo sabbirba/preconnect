@@ -119,12 +119,18 @@ class _AcademicSummary extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  cgpa.isEmpty ? 'N/A' : cgpa,
-                  style: TextStyle(
-                    color: textPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                GestureDetector(
+                  onTap: () => copyToClipboard(
+                    context,
+                    cgpa.isEmpty ? 'N/A' : cgpa,
+                  ),
+                  child: Text(
+                    cgpa.isEmpty ? 'N/A' : cgpa,
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],

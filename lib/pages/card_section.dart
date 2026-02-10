@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter_flip_card/flutter_flip_card.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:preconnect/pages/ui_kit.dart';
 
 class CardSection extends StatefulWidget {
   const CardSection({super.key, required this.profile, required this.photoUrl});
@@ -175,6 +176,7 @@ class CardSectionState extends State<CardSection> {
                                         _InfoRow(
                                           label: 'Student ID',
                                           value: displayStudentId,
+                                          enableCopy: true,
                                         ),
                                         const SizedBox(height: 5),
                                         _InfoRow(
@@ -356,10 +358,15 @@ class CardSectionState extends State<CardSection> {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
+  const _InfoRow({
+    required this.label,
+    required this.value,
+    this.enableCopy = false,
+  });
 
   final String label;
   final String value;
+  final bool enableCopy;
 
   @override
   Widget build(BuildContext context) {
@@ -381,12 +388,22 @@ class _InfoRow extends StatelessWidget {
         const Text(':', style: textStyle),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(
-            value,
-            style: textStyle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          child: enableCopy
+              ? GestureDetector(
+                  onTap: () => copyToClipboard(context, value),
+                  child: Text(
+                    value,
+                    style: textStyle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                )
+              : Text(
+                  value,
+                  style: textStyle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
         ),
       ],
     );
