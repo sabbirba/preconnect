@@ -7,6 +7,7 @@ import 'package:preconnect/tools/qrpainter.dart';
 import 'package:archive/archive.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:preconnect/tools/refresh_bus.dart';
 
 class ShareSchedulePage extends StatefulWidget {
   const ShareSchedulePage({super.key});
@@ -28,6 +29,21 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
     unawaited(BracuAuthManager().fetchProfile());
     unawaited(BracuAuthManager().fetchStudentSchedule());
     _loadCachedAndRefresh();
+    RefreshBus.instance.addListener(_onRefreshSignal);
+  }
+
+  @override
+  void dispose() {
+    RefreshBus.instance.removeListener(_onRefreshSignal);
+    super.dispose();
+  }
+
+  void _onRefreshSignal() {
+    if (!mounted) return;
+    if (RefreshBus.instance.reason == 'share_schedule') {
+      return;
+    }
+    unawaited(_fetchAndConvertSchedule(forceRefresh: true));
   }
 
   Future<void> _loadCachedAndRefresh() async {
@@ -178,6 +194,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
     await prefs.remove('qr_hash');
     await prefs.remove('qr_payload_version');
     await _fetchAndConvertSchedule(forceRefresh: true);
+    RefreshBus.instance.notify(reason: 'share_schedule');
   }
 
   @override

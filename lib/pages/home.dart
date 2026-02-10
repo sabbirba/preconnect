@@ -21,6 +21,7 @@ import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/notification_scheduler.dart';
+import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -169,6 +170,7 @@ class _HomePageState extends State<HomePage> {
     if (shouldLogout == true) {
       if (!context.mounted) return;
       await BracuAuthManager().logout();
+      RefreshBus.instance.notify(reason: 'auth');
       if (!context.mounted) return;
       Navigator.pushReplacementNamed(context, '/login');
     }
@@ -231,6 +233,21 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     super.initState();
     _future = _loadData();
     unawaited(NotificationScheduler.syncSchedules());
+    RefreshBus.instance.addListener(_onRefreshSignal);
+  }
+
+  @override
+  void dispose() {
+    RefreshBus.instance.removeListener(_onRefreshSignal);
+    super.dispose();
+  }
+
+  void _onRefreshSignal() {
+    if (!mounted) return;
+    if (RefreshBus.instance.reason == 'home_dashboard') {
+      return;
+    }
+    unawaited(_handleRefresh());
   }
 
   Future<_HomeData> _loadData({bool forceRefresh = false}) async {
@@ -288,6 +305,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       _future = _loadData(forceRefresh: true);
     });
     await _future;
+    RefreshBus.instance.notify(reason: 'home_dashboard');
   }
 
   String _todayName() {

@@ -9,6 +9,7 @@ import 'package:flutter/services.dart' show PlatformException;
 import 'package:preconnect/api/bracu_auth_manager.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/refresh_bus.dart';
 
 class AlarmPage extends StatefulWidget {
   const AlarmPage({super.key});
@@ -26,6 +27,21 @@ class _AlarmPageState extends State<AlarmPage> {
     super.initState();
     unawaited(BracuAuthManager().fetchStudentSchedule());
     _futureSections = _fetchSchedule();
+    RefreshBus.instance.addListener(_onRefreshSignal);
+  }
+
+  @override
+  void dispose() {
+    RefreshBus.instance.removeListener(_onRefreshSignal);
+    super.dispose();
+  }
+
+  void _onRefreshSignal() {
+    if (!mounted) return;
+    if (RefreshBus.instance.reason == 'alarms') {
+      return;
+    }
+    unawaited(_handleRefresh());
   }
 
   Future<List<Section>> _fetchSchedule({bool forceRefresh = false}) async {
@@ -88,6 +104,7 @@ class _AlarmPageState extends State<AlarmPage> {
         );
         if (!context.mounted) return;
         showAppSnackBar(context, 'Alarm scheduled on iOS.');
+        RefreshBus.instance.notify(reason: 'alarms');
       } on PlatformException catch (e) {
         if (!context.mounted) return;
         showAppSnackBar(
@@ -135,6 +152,7 @@ class _AlarmPageState extends State<AlarmPage> {
       await intent.launch();
       if (!context.mounted) return;
       showAppSnackBar(context, 'Alarm opened in Clock app.');
+      RefreshBus.instance.notify(reason: 'alarms');
     } catch (_) {
       if (!context.mounted) return;
       showAppSnackBar(context, 'Unable to open alarm on Android.');

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/local_notifications.dart';
 import 'package:preconnect/tools/notification_store.dart';
 import 'package:preconnect/model/notification_item.dart';
+import 'package:preconnect/tools/refresh_bus.dart';
 
 class FriendSchedulePage extends StatefulWidget {
   const FriendSchedulePage({super.key, required this.onNavigate});
@@ -28,6 +30,21 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
   void initState() {
     super.initState();
     _loadSchedules();
+    RefreshBus.instance.addListener(_onRefreshSignal);
+  }
+
+  @override
+  void dispose() {
+    RefreshBus.instance.removeListener(_onRefreshSignal);
+    super.dispose();
+  }
+
+  void _onRefreshSignal() {
+    if (!mounted) return;
+    if (RefreshBus.instance.reason == 'friend_schedule') {
+      return;
+    }
+    unawaited(_loadSchedules());
   }
   Future<void> _loadSchedules() async {
     final prefs = await SharedPreferences.getInstance();

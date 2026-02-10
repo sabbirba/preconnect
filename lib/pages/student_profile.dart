@@ -10,6 +10,7 @@ import 'package:preconnect/pages/student_profile_sections/attendance_graph.dart'
 import 'package:preconnect/pages/student_profile_sections/payment_graph.dart';
 import 'package:preconnect/pages/student_profile_sections/payment_list.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/refresh_bus.dart';
 
 class StudentProfile extends StatefulWidget {
   const StudentProfile({super.key});
@@ -40,12 +41,22 @@ class _StudentProfileState extends State<StudentProfile>
     unawaited(BracuAuthManager().fetchAttendanceInfo());
     unawaited(BracuAuthManager().fetchAdvisingInfo());
     _loadProfile();
+    RefreshBus.instance.addListener(_onRefreshSignal);
   }
 
   @override
   void dispose() {
     _refreshController.dispose();
+    RefreshBus.instance.removeListener(_onRefreshSignal);
     super.dispose();
+  }
+
+  void _onRefreshSignal() {
+    if (!mounted) return;
+    if (RefreshBus.instance.reason == 'student_profile') {
+      return;
+    }
+    unawaited(_refreshProfile());
   }
 
   List<dynamic> _decodeList(String? raw) {
@@ -187,6 +198,7 @@ class _StudentProfileState extends State<StudentProfile>
         ..stop()
         ..reset();
     }
+    RefreshBus.instance.notify(reason: 'student_profile');
   }
 
   String? _buildPhotoUrl(String? photoFilePath) {

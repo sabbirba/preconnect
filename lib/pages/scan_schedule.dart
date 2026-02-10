@@ -9,6 +9,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/refresh_bus.dart';
 
 class ScanSchedulePage extends StatefulWidget {
   const ScanSchedulePage({super.key});
@@ -136,6 +137,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
 
       await _saveScannedValue(value);
       _controller.stop();
+      RefreshBus.instance.notify(reason: 'scan_schedule');
     } finally {
       if (mounted) {
         setState(() => _isPicking = false);

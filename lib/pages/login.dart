@@ -12,6 +12,7 @@ import 'home.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/user_agent.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/refresh_bus.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -151,6 +152,7 @@ class _LoginPageState extends State<LoginPage> {
       unawaited(BracuAuthManager().fetchProfile());
       unawaited(BracuAuthManager().fetchStudentSchedule());
 
+      RefreshBus.instance.notify(reason: 'auth');
       if (mounted) {
         Navigator.pushReplacement(
           context,

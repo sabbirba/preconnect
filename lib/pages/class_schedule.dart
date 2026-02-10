@@ -5,6 +5,7 @@ import 'package:preconnect/api/bracu_auth_manager.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/refresh_bus.dart';
 
 class ClassSchedule extends StatefulWidget {
   const ClassSchedule({super.key});
@@ -33,13 +34,23 @@ class _ClassScheduleState extends State<ClassSchedule> {
     unawaited(BracuAuthManager().fetchStudentSchedule());
     _future = _loadSchedule();
     ClassSchedule.jumpSignal.addListener(_onJumpRequested);
+    RefreshBus.instance.addListener(_onRefreshSignal);
   }
 
   @override
   void dispose() {
     ClassSchedule.jumpSignal.removeListener(_onJumpRequested);
     _scrollController.dispose();
+    RefreshBus.instance.removeListener(_onRefreshSignal);
     super.dispose();
+  }
+
+  void _onRefreshSignal() {
+    if (!mounted) return;
+    if (RefreshBus.instance.reason == 'class_schedule') {
+      return;
+    }
+    unawaited(_handleRefresh());
   }
 
   void _onJumpRequested() {
@@ -138,6 +149,7 @@ class _ClassScheduleState extends State<ClassSchedule> {
       _future = _loadSchedule(forceRefresh: true);
     });
     await _future;
+    RefreshBus.instance.notify(reason: 'class_schedule');
   }
 
   DateTime? _nextOccurrence({

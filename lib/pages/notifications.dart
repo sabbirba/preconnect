@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:preconnect/model/notification_item.dart';
 import 'package:preconnect/tools/notification_store.dart';
+import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/api/bracu_auth_manager.dart';
 import 'package:preconnect/model/section_info.dart';
 
@@ -38,12 +40,23 @@ class _NotificationPageState extends State<NotificationPage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _bootstrap();
+    RefreshBus.instance.addListener(_onRefreshSignal);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    RefreshBus.instance.removeListener(_onRefreshSignal);
     super.dispose();
+  }
+
+  void _onRefreshSignal() {
+    if (!mounted) return;
+    if (RefreshBus.instance.reason == 'notifications') {
+      return;
+    }
+    unawaited(_syncSchedules());
+    unawaited(_reloadItems());
   }
 
   @override
@@ -80,6 +93,14 @@ class _NotificationPageState extends State<NotificationPage>
         });
       }
     }
+  }
+
+  Future<void> _reloadItems() async {
+    final items = await NotificationStore.load();
+    if (!mounted) return;
+    setState(() {
+      _items = items;
+    });
   }
 
   Future<void> _savePrefs() async {
@@ -141,6 +162,7 @@ class _NotificationPageState extends State<NotificationPage>
     });
     await _savePrefs();
     await _syncSchedules();
+    RefreshBus.instance.notify(reason: 'notifications');
     if (value) {
       await _pushLocalNotification(
         title: 'PreConnect',
@@ -202,6 +224,7 @@ class _NotificationPageState extends State<NotificationPage>
     });
     await _savePrefs();
     await _syncSchedules();
+    RefreshBus.instance.notify(reason: 'notifications');
   }
 
   Future<void> _syncSchedules() async {
