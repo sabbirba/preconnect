@@ -2,7 +2,8 @@
 
 # PreConnect
 
-Fast, calm academic companion app
+Fast, Calm Academic Companion App.
+An initiative run by [BRAC University](https://bracu.ac.bd) students.
 
 ![GitHub Release](https://img.shields.io/github/v/release/sabbirba/preconnect?label=latest%20version&&color=dark-green) ![License](https://img.shields.io/badge/license-GPL3.0-blue)
 

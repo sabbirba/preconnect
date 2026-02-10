@@ -76,7 +76,7 @@ class _AlarmPageState extends State<AlarmPage> {
         final authorized = await alarmkit.requestAuthorization();
         if (!authorized) {
           if (!context.mounted) return;
-          _showThemedSnackBar(context, 'Alarm permission denied.');
+          showAppSnackBar(context, 'Alarm permission denied.');
           return;
         }
         await alarmkit.scheduleRecurrentAlarm(
@@ -87,10 +87,10 @@ class _AlarmPageState extends State<AlarmPage> {
           tintColor: '#1E6BE3',
         );
         if (!context.mounted) return;
-        _showThemedSnackBar(context, 'Alarm scheduled on iOS.');
+        showAppSnackBar(context, 'Alarm scheduled on iOS.');
       } on PlatformException catch (e) {
         if (!context.mounted) return;
-        _showThemedSnackBar(
+        showAppSnackBar(
           context,
           e.code == 'UNSUPPORTED'
               ? 'AlarmKit requires iOS 26+.'
@@ -98,7 +98,7 @@ class _AlarmPageState extends State<AlarmPage> {
         );
       } catch (_) {
         if (!context.mounted) return;
-        _showThemedSnackBar(context, 'Unable to schedule alarm on this iOS.');
+        showAppSnackBar(context, 'Unable to schedule alarm on this iOS.');
       }
       return;
     }
@@ -134,27 +134,11 @@ class _AlarmPageState extends State<AlarmPage> {
     try {
       await intent.launch();
       if (!context.mounted) return;
-      _showThemedSnackBar(context, 'Alarm opened in Clock app.');
+      showAppSnackBar(context, 'Alarm opened in Clock app.');
     } catch (_) {
       if (!context.mounted) return;
-      _showThemedSnackBar(context, 'Unable to open alarm on Android.');
+      showAppSnackBar(context, 'Unable to open alarm on Android.');
     }
-  }
-
-  void _showThemedSnackBar(BuildContext context, String message) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(color: Colors.white),
-        ),
-        backgroundColor: isDark ? const Color(0xFF1E6BE3) : BracuPalette.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      ),
-    );
   }
 
   Set<Weekday> _mapWeekdays(List<String> days, {int shift = 0}) {

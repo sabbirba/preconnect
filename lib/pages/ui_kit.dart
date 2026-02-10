@@ -70,9 +70,21 @@ void copyToClipboard(BuildContext context, String text) {
   final value = text.trim();
   if (value.isEmpty) return;
   Clipboard.setData(ClipboardData(text: value));
+  showAppSnackBar(context, 'Copied to clipboard');
+}
+
+void showAppSnackBar(BuildContext context, String message) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
   ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text('Copied to clipboard'),
+    SnackBar(
+      content: Text(
+        message,
+        style: const TextStyle(color: Colors.white),
+      ),
+      backgroundColor: isDark ? const Color(0xFF1E6BE3) : BracuPalette.primary,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
     ),
   );
 }

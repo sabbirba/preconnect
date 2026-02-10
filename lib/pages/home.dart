@@ -21,6 +21,7 @@ import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -604,64 +605,104 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                     ),
                               const SizedBox(height: 12),
                               const SizedBox(height: 10),
-                              const _SectionTitle(title: 'Quick Access'),
-                              const SizedBox(height: 12),
-                              Wrap(
-                                spacing: 12,
-                                runSpacing: 12,
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  _QuickActionCard(
-                                    icon: Icons.person_outline,
-                                    title: 'Profile',
-                                    subtitle: 'Info & ID',
-                                    color: _primary,
-                                    onTap: () =>
-                                        widget.onNavigate(HomeTab.profile),
+                                  const Expanded(
+                                    child: _SectionTitle(title: 'Quick Access'),
                                   ),
-                                  _QuickActionCard(
-                                    icon: Icons.schedule_outlined,
-                                    title: 'Schedule',
-                                    subtitle: 'Classes',
-                                    color: _accent,
-                                    onTap: () => widget.onNavigate(
-                                      HomeTab.studentSchedule,
-                                    ),
-                                  ),
-                                  _QuickActionCard(
-                                    icon: Icons.alarm_outlined,
-                                    title: 'Alarms',
-                                    subtitle: 'Reminders',
-                                    color: const Color(0xFFFF8A34),
-                                    onTap: () =>
-                                        widget.onNavigate(HomeTab.alarms),
-                                  ),
-                                  _QuickActionCard(
-                                    icon: Icons.event_note_outlined,
-                                    title: 'Exams',
-                                    subtitle: 'Dates',
-                                    color: const Color(0xFF7C56FF),
-                                    onTap: () =>
-                                        widget.onNavigate(HomeTab.examSchedule),
-                                  ),
-                                  _QuickActionCard(
-                                    icon: Icons.people_outline,
-                                    title: 'Friends',
-                                    subtitle: 'Schedules',
-                                    color: const Color(0xFF5B8DEF),
-                                    onTap: () => widget.onNavigate(
-                                      HomeTab.friendSchedule,
-                                    ),
-                                  ),
-                                  _QuickActionCard(
-                                    icon: Icons.developer_mode_outlined,
-                                    title: 'Devs',
-                                    subtitle: 'About Us',
-                                    color: const Color(0xFF2C9DFF),
-                                    onTap: () => widget.onNavigate(
-                                      HomeTab.devs,
+                                  InkWell(
+                                    borderRadius: BorderRadius.circular(8),
+                                    onTap: () {
+                                      Share.share(
+                                        'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
+                                        subject:
+                                            'PreConnect.app • Prepare Connect Succeed',
+                                      );
+                                    },
+                                    child: const SizedBox(
+                                      width: 28,
+                                      height: 28,
+                                      child: Icon(
+                                        Icons.share_outlined,
+                                        size: 18,
+                                      ),
                                     ),
                                   ),
                                 ],
+                              ),
+                              const SizedBox(height: 12),
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  const spacing = 12.0;
+                                  final width =
+                                      (constraints.maxWidth - spacing * 2) /
+                                          3;
+                                  return Wrap(
+                                    spacing: spacing,
+                                    runSpacing: spacing,
+                                    children: [
+                                      _QuickActionCard(
+                                        width: width,
+                                        icon: Icons.person_outline,
+                                        title: 'Profile',
+                                        subtitle: 'Info & ID',
+                                        color: _primary,
+                                        onTap: () =>
+                                            widget.onNavigate(HomeTab.profile),
+                                      ),
+                                      _QuickActionCard(
+                                        width: width,
+                                        icon: Icons.schedule_outlined,
+                                        title: 'Classes',
+                                        subtitle: 'Schedules',
+                                        color: _accent,
+                                        onTap: () => widget.onNavigate(
+                                          HomeTab.studentSchedule,
+                                        ),
+                                      ),
+                                      _QuickActionCard(
+                                        width: width,
+                                        icon: Icons.alarm_outlined,
+                                        title: 'Alarms',
+                                        subtitle: 'Reminders',
+                                        color: const Color(0xFFFF8A34),
+                                        onTap: () =>
+                                            widget.onNavigate(HomeTab.alarms),
+                                      ),
+                                      _QuickActionCard(
+                                        width: width,
+                                        icon: Icons.event_note_outlined,
+                                        title: 'Exams',
+                                        subtitle: 'Dates',
+                                        color: const Color(0xFF7C56FF),
+                                        onTap: () => widget.onNavigate(
+                                          HomeTab.examSchedule,
+                                        ),
+                                      ),
+                                      _QuickActionCard(
+                                        width: width,
+                                        icon: Icons.people_outline,
+                                        title: 'Friends',
+                                        subtitle: 'Schedules',
+                                        color: const Color(0xFF5B8DEF),
+                                        onTap: () => widget.onNavigate(
+                                          HomeTab.friendSchedule,
+                                        ),
+                                      ),
+                                      _QuickActionCard(
+                                        width: width,
+                                        icon: Icons.developer_mode_outlined,
+                                        title: 'Devs',
+                                        subtitle: 'About Us',
+                                        color: const Color(0xFF2C9DFF),
+                                        onTap: () => widget.onNavigate(
+                                          HomeTab.devs,
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
                               ),
                               const SizedBox(height: 12),
                               _OpenWebCard(
@@ -868,13 +909,27 @@ class _OpenWebCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  'Open PreConnect Web',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: BracuPalette.textPrimary(context),
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Open PreConnect Web',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: BracuPalette.textPrimary(context),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'PreConnect.app • Prepare Connect Succeed',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: BracuPalette.textSecondary(context),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Icon(
@@ -897,14 +952,13 @@ Future<void> _openPreconnectWeb(BuildContext context, String url) async {
     launched = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
   }
   if (!launched && context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Unable to open browser.')),
-    );
+    showAppSnackBar(context, 'Unable to open browser.');
   }
 }
 
 class _QuickActionCard extends StatelessWidget {
   const _QuickActionCard({
+    required this.width,
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -912,6 +966,7 @@ class _QuickActionCard extends StatelessWidget {
     required this.onTap,
   });
 
+  final double width;
   final IconData icon;
   final String title;
   final String subtitle;
@@ -927,7 +982,7 @@ class _QuickActionCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
       child: Container(
-        width: (MediaQuery.of(context).size.width - 52) / 2,
+        width: width,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: BracuPalette.card(context),

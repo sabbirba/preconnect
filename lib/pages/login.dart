@@ -11,6 +11,7 @@ import 'package:webview_windows/webview_windows.dart' as win;
 import 'home.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/user_agent.dart';
+import 'package:preconnect/pages/ui_kit.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -89,9 +90,7 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted) setState(() {});
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('WebView failed to initialize.')),
-      );
+      showAppSnackBar(context, 'WebView failed to initialize.');
     }
   }
 
@@ -160,9 +159,7 @@ class _LoginPageState extends State<LoginPage> {
       }
     } else {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login failed. Please try again.')),
-      );
+      showAppSnackBar(context, 'Login failed. Please try again.');
     }
   }
 

@@ -100,9 +100,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
     if (_isPicking) return;
     if (kIsWeb) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gallery scan is not supported on web')),
-      );
+      showAppSnackBar(context, 'Gallery scan is not supported on web');
       return;
     }
     setState(() => _isPicking = true);
@@ -110,9 +108,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
       final granted = await _ensureGalleryPermission();
       if (!granted) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gallery permission denied')),
-        );
+        showAppSnackBar(context, 'Gallery permission denied');
         return;
       }
       final picker = ImagePicker();
@@ -123,18 +119,14 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
       final BarcodeCapture? capture = await _controller.analyzeImage(imagePath);
       if (capture == null || capture.barcodes.isEmpty) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No QR code found in image')),
-        );
+        showAppSnackBar(context, 'No QR code found in image');
         return;
       }
 
       final value = capture.barcodes.first.rawValue;
       if (value == null || value.trim().isEmpty) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid QR code')),
-        );
+        showAppSnackBar(context, 'Invalid QR code');
         return;
       }
 

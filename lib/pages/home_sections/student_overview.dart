@@ -76,12 +76,14 @@ class StudentOverviewCard extends StatelessWidget {
                               label: 'Student ID',
                               value: studentId,
                               width: half,
+                              enableCopy: true,
                             ),
                             const SizedBox(width: 12),
                             _OverviewTile(
                               label: 'Phone',
                               value: phoneNumber,
                               width: half,
+                              enableCopy: true,
                             ),
                           ],
                         ),
@@ -199,17 +201,17 @@ class _OverviewHeader extends StatelessWidget {
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: BracuPalette.card(context),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: baseBorderColor),
             ),
             child: Text(
               displaySemester,
               style: TextStyle(
                 color: BracuPalette.primary,
-                fontSize: 10,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -225,11 +227,13 @@ class _OverviewTile extends StatelessWidget {
     required this.label,
     required this.value,
     required this.width,
+    this.enableCopy = false,
   });
 
   final String label;
   final String value;
   final double width;
+  final bool enableCopy;
 
   @override
   Widget build(BuildContext context) {
@@ -259,17 +263,32 @@ class _OverviewTile extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: BracuPalette.textPrimary(context),
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              height: 1.2,
-            ),
-          ),
+          enableCopy
+              ? GestureDetector(
+                  onTap: () => copyToClipboard(context, value),
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: BracuPalette.textPrimary(context),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      height: 1.2,
+                    ),
+                  ),
+                )
+              : Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: BracuPalette.textPrimary(context),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    height: 1.2,
+                  ),
+                ),
         ],
       ),
     );

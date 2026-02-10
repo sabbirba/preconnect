@@ -327,16 +327,7 @@ class _SupportNumberRow extends StatelessWidget {
                   onTap: () async {
                     await Clipboard.setData(ClipboardData(text: number));
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Number copied'),
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        ),
-                      );
+                      showAppSnackBar(context, 'Number copied');
                     }
                   },
                   borderRadius: BorderRadius.circular(8),
@@ -387,21 +378,7 @@ class _SupportNumberRow extends StatelessWidget {
                             const ClipboardData(text: 'PreConnect App'),
                           );
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Text('Reference copied'),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                margin: const EdgeInsets.fromLTRB(
-                                  16,
-                                  0,
-                                  16,
-                                  16,
-                                ),
-                              ),
-                            );
+                            showAppSnackBar(context, 'Reference copied');
                           }
                         },
                         borderRadius: BorderRadius.circular(8),

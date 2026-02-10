@@ -117,14 +117,7 @@ class _NotificationPageState extends State<NotificationPage>
 
   void _showSnackBar(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      ),
-    );
+    showAppSnackBar(context, message);
   }
 
   Future<void> _toggleAll(bool value) async {

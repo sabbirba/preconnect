@@ -57,25 +57,12 @@ class _AcademicSummary extends StatelessWidget {
     final completionRatio =
         totalNum == 0 ? 0.0 : (earnedNum / totalNum).clamp(0.0, 1.0);
     final cgpa = (profile['cgpa'] ?? 'N/A').trim();
-    final currentSemesterRaw = (profile['currentSemester'] ?? '').trim();
-    final currentSemester = currentSemesterRaw.isNotEmpty
-        ? formatSemesterTitle(currentSemesterRaw)
-        : formatSemesterFromSessionId(
-            (profile['currentSessionSemesterId'] ?? 'N/A').trim(),
-          );
     final enrolledSemesterRaw = (profile['enrolledSemester'] ?? '').trim();
     final enrolledSemester = enrolledSemesterRaw.isNotEmpty
         ? formatSemesterTitle(enrolledSemesterRaw)
         : formatSemesterFromSessionId(
             (profile['enrolledSessionSemesterId'] ?? 'N/A').trim(),
           );
-    final semesterCountRaw = (advising['noOfSemester'] ?? '').trim();
-    final semesterCount = int.tryParse(semesterCountRaw);
-    final semesterWord = (semesterCount ?? 0) == 1 ? 'semester' : 'semesters';
-    final semesterLine = semesterCount == null
-        ? 'Completed your current semester from $enrolledSemester.'
-        : 'Completed ${_ordinal(semesterCountRaw)} $semesterWord from $enrolledSemester.';
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -87,7 +74,7 @@ class _AcademicSummary extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Current',
+                    'From',
                     style: TextStyle(
                       color: textSecondary,
                       fontSize: 12,
@@ -96,7 +83,7 @@ class _AcademicSummary extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    currentSemester,
+                    enrolledSemester,
                     style: TextStyle(
                       color: textPrimary,
                       fontSize: 16,
@@ -137,16 +124,7 @@ class _AcademicSummary extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 14),
-        Text(
-          semesterLine,
-          style: TextStyle(
-            color: textPrimary,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
@@ -181,10 +159,4 @@ class _AcademicSummary extends StatelessWidget {
       ],
     );
   }
-}
-
-String _ordinal(String value) {
-  final number = int.tryParse(value);
-  if (number == null) return value;
-  return number.toString();
 }
