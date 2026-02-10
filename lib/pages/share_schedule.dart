@@ -1,12 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:ui';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:preconnect/api/bracu_auth_manager.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/tools/qrpainter.dart';
 import 'package:archive/archive.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
 class ShareSchedulePage extends StatefulWidget {
@@ -197,6 +203,58 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
     RefreshBus.instance.notify(reason: 'share_schedule');
   }
 
+  Future<void> _shareQrCode() async {
+    if (_base64Data == null) {
+      if (!mounted) return;
+      showAppSnackBar(context, 'No QR data available to share');
+      return;
+    }
+
+    try {
+      final boundary = _qrKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) {
+        if (!mounted) return;
+        showAppSnackBar(context, 'Unable to capture QR code');
+        return;
+      }
+
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ImageByteFormat.png);
+      if (byteData == null) {
+        if (!mounted) return;
+        showAppSnackBar(context, 'Unable to capture QR code');
+        return;
+      }
+
+      final bytes = byteData.buffer.asUint8List();
+      const fileName = 'preconnect_schedule_qr.png';
+
+      if (kIsWeb) {
+        await Share.shareXFiles([
+          XFile.fromData(
+            bytes,
+            mimeType: 'image/png',
+            name: fileName,
+          ),
+        ], text: 'Scan my schedule QR to import.');
+        return;
+      }
+
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/$fileName');
+      await file.writeAsBytes(bytes, flush: true);
+
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'Scan my schedule QR to import.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showAppSnackBar(context, 'Unable to share QR code');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BracuPageScaffold(
@@ -261,6 +319,44 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
                         );
                       },
                     ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: _shareQrCode,
+                borderRadius: BorderRadius.circular(18),
+                child: BracuCard(
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: BracuPalette.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.share_outlined,
+                          color: BracuPalette.primary,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Share QR Code',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward,
+                        color: BracuPalette.textSecondary(context),
+                        size: 18,
+                      ),
+                    ],
                   ),
                 ),
               ),

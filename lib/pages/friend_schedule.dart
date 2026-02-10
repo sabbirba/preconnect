@@ -1,7 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
+import 'package:image_picker/image_picker.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:archive/archive.dart';
@@ -15,7 +20,10 @@ import 'package:preconnect/model/notification_item.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
 class FriendSchedulePage extends StatefulWidget {
-  const FriendSchedulePage({super.key, required this.onNavigate});
+  const FriendSchedulePage({
+    super.key,
+    required this.onNavigate,
+  });
 
   final void Function(HomeTab tab) onNavigate;
 
@@ -25,6 +33,8 @@ class FriendSchedulePage extends StatefulWidget {
 
 class _FriendSchedulePageState extends State<FriendSchedulePage> {
   List<FriendScheduleItem> decodedSchedules = [];
+  final MobileScannerController _galleryScanner = MobileScannerController();
+  bool _isPicking = false;
 
   @override
   void initState() {
@@ -36,6 +46,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
   @override
   void dispose() {
     RefreshBus.instance.removeListener(_onRefreshSignal);
+    _galleryScanner.dispose();
     super.dispose();
   }
 
@@ -125,6 +136,122 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
 
   Future<void> _handleRefresh() async {
     await _loadSchedules();
+  }
+
+  String? _extractFriendId(String base64Data) {
+    try {
+      final Uint8List decodeBase64Json = base64.decode(base64Data);
+      final List<int> decodeGzipJson = GZipDecoder().decodeBytes(
+        decodeBase64Json,
+      );
+      final String originalJson = utf8.decode(decodeGzipJson);
+      final parsed = jsonDecode(originalJson);
+      if (parsed is Map<String, dynamic>) {
+        return parsed['id']?.toString();
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<void> _saveScannedValue(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    List<String> currentList = prefs.getStringList("friendSchedules") ?? [];
+
+    if (!currentList.contains(value)) {
+      final scannedId = _extractFriendId(value);
+      if (scannedId != null && scannedId.trim().isNotEmpty) {
+        currentList = currentList.where((entry) {
+          final existingId = _extractFriendId(entry);
+          if (existingId == null) return true;
+          return existingId.trim() != scannedId.trim();
+        }).toList();
+      }
+      currentList.add(value);
+      await prefs.setStringList("friendSchedules", currentList);
+    }
+
+    await prefs.setStringList("friendSchedules", currentList);
+  }
+
+  Future<void> _scanFromGallery() async {
+    if (_isPicking) return;
+    if (kIsWeb) {
+      if (!mounted) return;
+      showAppSnackBar(context, 'Gallery scan is not supported on web');
+      return;
+    }
+    setState(() => _isPicking = true);
+    try {
+      final granted = await _ensureGalleryPermission();
+      if (!granted) {
+        if (!mounted) return;
+        showAppSnackBar(context, 'Gallery permission denied');
+        return;
+      }
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      if (image == null) return;
+
+      final imagePath = await _ensureReadableImagePath(image);
+      final BarcodeCapture? capture =
+          await _galleryScanner.analyzeImage(imagePath);
+      if (capture == null || capture.barcodes.isEmpty) {
+        if (!mounted) return;
+        showAppSnackBar(context, 'No QR code found in image');
+        return;
+      }
+
+      final value = capture.barcodes.first.rawValue;
+      if (value == null || value.trim().isEmpty) {
+        if (!mounted) return;
+        showAppSnackBar(context, 'Invalid QR code');
+        return;
+      }
+
+      await _saveScannedValue(value);
+      await _loadSchedules();
+    } finally {
+      if (mounted) {
+        setState(() => _isPicking = false);
+      }
+    }
+  }
+
+  Future<bool> _ensureGalleryPermission() async {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      final photos = await Permission.photos.request();
+      return photos.isGranted || photos.isLimited;
+    }
+    if (defaultTargetPlatform == TargetPlatform.macOS) {
+      return true;
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final photos = await Permission.photos.request();
+      if (photos.isGranted) return true;
+      final storage = await Permission.storage.request();
+      return storage.isGranted;
+    }
+    return true;
+  }
+
+  Future<String> _ensureReadableImagePath(XFile image) async {
+    if (!Platform.isIOS && !Platform.isMacOS) {
+      return image.path;
+    }
+    try {
+      final bytes = await image.readAsBytes();
+      if (bytes.isEmpty) return image.path;
+      final ext = image.path.split('.').last;
+      final safeExt = ext.isEmpty ? 'png' : ext;
+      final tempFile = File(
+        '${Directory.systemTemp.path}/preconnect_scan_${DateTime.now().millisecondsSinceEpoch}.$safeExt',
+      );
+      await tempFile.writeAsBytes(bytes, flush: true);
+      return tempFile.path;
+    } catch (_) {
+      return image.path;
+    }
   }
 
   Future<void> _deleteFriendSchedule(FriendScheduleItem item) async {
@@ -260,29 +387,44 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
               ),
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                FriendActionCard(
-                  icon: Icons.qr_code_scanner,
-                  title: 'Scan',
-                  subtitle: 'Schedule',
-                  color: const Color(0xFF2AA8A8),
-                  onTap: () {
-                    widget.onNavigate(HomeTab.scanSchedule);
-                  },
-                ),
-                FriendActionCard(
-                  icon: Icons.qr_code_2,
-                  title: 'Share',
-                  subtitle: 'Schedule',
-                  color: const Color(0xFF22B573),
-                  onTap: () {
-                    widget.onNavigate(HomeTab.shareSchedule);
-                  },
-                ),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                const spacing = 12.0;
+                const aspect = 1.02;
+                return GridView.count(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: spacing,
+                  crossAxisSpacing: spacing,
+                  childAspectRatio: aspect,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    FriendActionCard(
+                      icon: Icons.qr_code_scanner,
+                      title: 'Scan',
+                      subtitle: 'Schedule',
+                      color: const Color(0xFF2AA8A8),
+                      onTap: () => widget.onNavigate(HomeTab.scanSchedule),
+                    ),
+                    FriendActionCard(
+                      icon: Icons.photo_library_rounded,
+                      title: 'Gallery',
+                      subtitle: 'Scan QR',
+                      color: const Color(0xFFEF6C35),
+                      onTap: _scanFromGallery,
+                    ),
+                    FriendActionCard(
+                      icon: Icons.qr_code_2,
+                      title: 'Share',
+                      subtitle: 'Schedule',
+                      color: const Color(0xFF22B573),
+                      onTap: () {
+                        widget.onNavigate(HomeTab.shareSchedule);
+                      },
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 22),
             Text(

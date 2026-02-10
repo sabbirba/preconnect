@@ -9,6 +9,7 @@ class FriendActionCard extends StatelessWidget {
     required this.subtitle,
     required this.color,
     required this.onTap,
+    this.width,
   });
 
   final IconData icon;
@@ -16,6 +17,7 @@ class FriendActionCard extends StatelessWidget {
   final String subtitle;
   final Color color;
   final VoidCallback onTap;
+  final double? width;
 
   @override
   Widget build(BuildContext context) {
@@ -26,8 +28,8 @@ class FriendActionCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
       child: Container(
-        width: (MediaQuery.of(context).size.width - 52) / 2,
-        padding: const EdgeInsets.all(14),
+        width: width,
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: BracuPalette.card(context),
           borderRadius: BorderRadius.circular(18),
@@ -52,7 +54,7 @@ class FriendActionCard extends StatelessWidget {
               ),
               child: Icon(icon, color: color, size: 22),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               title,
               style: TextStyle(
@@ -60,11 +62,15 @@ class FriendActionCard extends StatelessWidget {
                 fontWeight: FontWeight.w600,
                 color: textPrimary,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 1),
             Text(
               subtitle,
               style: TextStyle(fontSize: 11, color: textSecondary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
