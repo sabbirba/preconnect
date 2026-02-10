@@ -182,7 +182,11 @@ class _AppGate extends StatelessWidget {
           );
         }
         if (snapshot.connectionState != ConnectionState.done) {
-          return const LoginPage();
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
         }
         final isLoggedIn = snapshot.data?.isLoggedIn;
         if (isLoggedIn == true) {

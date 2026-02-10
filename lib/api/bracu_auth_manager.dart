@@ -96,6 +96,12 @@ class BracuAuthManager {
     final expired = await isTokenExpired();
     if (!expired) return true;
 
+    final List<ConnectivityResult> connectivityResult = await Connectivity()
+        .checkConnectivity();
+    if (connectivityResult.contains(ConnectivityResult.none)) {
+      return true;
+    }
+
     final refreshed = await refreshToken();
     if (refreshed) return true;
 
