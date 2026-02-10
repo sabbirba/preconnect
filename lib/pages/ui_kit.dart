@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -73,20 +74,48 @@ void copyToClipboard(BuildContext context, String text) {
   showAppSnackBar(context, 'Copied to clipboard');
 }
 
+DateTime? _lastSnackAt;
+String? _lastSnackMessage;
+Timer? _snackAutoTimer;
+
 void showAppSnackBar(BuildContext context, String message) {
+  final trimmed = message.trim();
+  if (trimmed.isEmpty) return;
+  final now = DateTime.now();
+  if (_lastSnackMessage == trimmed &&
+      _lastSnackAt != null &&
+      now.difference(_lastSnackAt!) < const Duration(milliseconds: 1200)) {
+    return;
+  }
+  _lastSnackMessage = trimmed;
+  _lastSnackAt = now;
   final isDark = Theme.of(context).brightness == Brightness.dark;
-  ScaffoldMessenger.of(context).showSnackBar(
+  final messenger = ScaffoldMessenger.of(context);
+  _snackAutoTimer?.cancel();
+  messenger.clearSnackBars();
+  messenger.showSnackBar(
     SnackBar(
       content: Text(
-        message,
+        trimmed,
         style: const TextStyle(color: Colors.white),
       ),
       backgroundColor: isDark ? const Color(0xFF1E6BE3) : BracuPalette.primary,
+      duration: const Duration(seconds: 3),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      action: SnackBarAction(
+        label: 'Close',
+        textColor: Colors.white,
+        onPressed: () {
+          messenger.hideCurrentSnackBar();
+        },
+      ),
     ),
   );
+  _snackAutoTimer = Timer(const Duration(seconds: 3), () {
+    messenger.hideCurrentSnackBar();
+  });
 }
 
 String normalizeWeekday(String? day) {
