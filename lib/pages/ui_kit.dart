@@ -97,6 +97,40 @@ String formatWeekdayTitle(String? day) {
   }
 }
 
+String formatSemesterTitle(String? raw) {
+  if (raw == null) return 'N/A';
+  final cleaned = raw.trim();
+  if (cleaned.isEmpty || cleaned == 'N/A') return 'N/A';
+  final normalized = cleaned.replaceAll(RegExp(r'[_-]+'), ' ');
+  final parts = normalized.split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
+  final titled = parts.map((part) {
+    if (RegExp(r'^\d+$').hasMatch(part)) return part;
+    final lower = part.toLowerCase();
+    return lower[0].toUpperCase() + lower.substring(1);
+  }).join(' ');
+  return titled;
+}
+
+String formatSemesterFromSessionIdInt(int semesterSessionId) {
+  final year = semesterSessionId ~/ 10;
+  final code = semesterSessionId % 10;
+  final label = switch (code) {
+    1 => 'Spring',
+    2 => 'Fall',
+    3 => 'Summer',
+    _ => 'Session',
+  };
+  return '$label $year';
+}
+
+String formatSemesterFromSessionId(String raw) {
+  final cleaned = raw.trim();
+  if (cleaned.isEmpty || cleaned == 'N/A') return 'N/A';
+  final value = int.tryParse(cleaned);
+  if (value == null) return formatSemesterTitle(cleaned);
+  return formatSemesterFromSessionIdInt(value);
+}
+
 String formatTimeHour(String? input) {
   final t = formatTime(input);
   if (t.isEmpty) return '--';
