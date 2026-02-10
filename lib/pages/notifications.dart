@@ -203,10 +203,8 @@ class _NotificationPageState extends State<NotificationPage>
     });
     await NotificationStore.delete(item.id);
   }
-  Future<void> _toggleSetting(
-    bool value,
-    void Function(bool) apply,
-  ) async {
+
+  Future<void> _toggleSetting(bool value, void Function(bool) apply) async {
     if (value && !systemGranted) {
       final granted = await _ensureSystemPermission();
       if (!granted) {
@@ -544,9 +542,7 @@ class _NotificationPageState extends State<NotificationPage>
                     const BracuLoading()
                   else if (_items.isEmpty)
                     const Center(
-                      child: BracuEmptyState(
-                        message: 'No notifications yet.',
-                      ),
+                      child: BracuEmptyState(message: 'No notifications yet.'),
                     )
                   else
                     ListView(
@@ -560,8 +556,9 @@ class _NotificationPageState extends State<NotificationPage>
                               direction: DismissDirection.endToStart,
                               background: Container(
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFD63B3B)
-                                      .withValues(alpha: 0.15),
+                                  color: const Color(
+                                    0xFFD63B3B,
+                                  ).withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(18),
                                 ),
                                 alignment: Alignment.centerRight,

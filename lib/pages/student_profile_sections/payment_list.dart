@@ -19,14 +19,17 @@ class PaymentList extends StatelessWidget {
         final status = payment.paymentStatus;
         final isPaid = status == 'PAID';
         final amount = _formatAmount(payment.totalAmount);
-        final statusColor =
-            isPaid ? BracuPalette.accent : const Color(0xFFFF8A34);
+        final statusColor = isPaid
+            ? BracuPalette.accent
+            : const Color(0xFFFF8A34);
         final statusBg = statusColor.withValues(alpha: 0.14);
-        final semester =
-            formatSemesterFromSessionIdInt(payment.semesterSessionId);
+        final semester = formatSemesterFromSessionIdInt(
+          payment.semesterSessionId,
+        );
         final paymentType = _formatPaymentType(payment.paymentType);
-        final cardTint =
-            isPaid ? Colors.transparent : statusBg.withValues(alpha: 0.08);
+        final cardTint = isPaid
+            ? Colors.transparent
+            : statusBg.withValues(alpha: 0.08);
         final cardBorder = isPaid
             ? BracuPalette.primary.withValues(alpha: 0.08)
             : statusBg.withValues(alpha: 0.6);
@@ -42,9 +45,7 @@ class PaymentList extends StatelessWidget {
             decoration: BoxDecoration(
               color: cardTint,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: cardBorder,
-              ),
+              border: Border.all(color: cardBorder),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -80,10 +81,7 @@ class PaymentList extends StatelessWidget {
                             const SizedBox(width: 4),
                             GestureDetector(
                               onTap: () {
-                                copyToClipboard(
-                                  context,
-                                  payment.payslipNumber,
-                                );
+                                copyToClipboard(context, payment.payslipNumber);
                               },
                               child: Icon(
                                 Icons.copy_rounded,

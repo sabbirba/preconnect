@@ -77,8 +77,9 @@ class _LoginPageState extends State<LoginPage> {
     try {
       await _winController!.initialize();
       await _winController!.setUserAgent(kPreconnectUserAgent);
-      await _winController!
-          .setPopupWindowPolicy(win.WebviewPopupWindowPolicy.deny);
+      await _winController!.setPopupWindowPolicy(
+        win.WebviewPopupWindowPolicy.deny,
+      );
       _winUrlSub = _winController!.url.listen((url) {
         if (_isRedirectUrl(url)) {
           _handleRedirect(url);

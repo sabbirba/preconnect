@@ -20,10 +20,7 @@ import 'package:preconnect/model/notification_item.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
 class FriendSchedulePage extends StatefulWidget {
-  const FriendSchedulePage({
-    super.key,
-    required this.onNavigate,
-  });
+  const FriendSchedulePage({super.key, required this.onNavigate});
 
   final void Function(HomeTab tab) onNavigate;
 
@@ -57,6 +54,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
     }
     unawaited(_loadSchedules());
   }
+
   Future<void> _loadSchedules() async {
     final prefs = await SharedPreferences.getInstance();
     final List<String>? encodedList = prefs.getStringList("friendSchedules");
@@ -113,8 +111,9 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
           final id = now.millisecondsSinceEpoch.remainder(1000000000);
           final title = 'Friend Schedule Received';
           final name = item.friend.name.trim();
-          final body =
-              name.isEmpty ? 'A friend shared a schedule.' : '$name shared a schedule.';
+          final body = name.isEmpty
+              ? 'A friend shared a schedule.'
+              : '$name shared a schedule.';
           await LocalNotificationsService.instance.showLocalNotification(
             id: id,
             title: title,
@@ -194,8 +193,9 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
       if (image == null) return;
 
       final imagePath = await _ensureReadableImagePath(image);
-      final BarcodeCapture? capture =
-          await _galleryScanner.analyzeImage(imagePath);
+      final BarcodeCapture? capture = await _galleryScanner.analyzeImage(
+        imagePath,
+      );
       if (capture == null || capture.barcodes.isEmpty) {
         if (!mounted) return;
         showAppSnackBar(context, 'No QR code found in image');
@@ -262,7 +262,9 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
             ? 'this friend'
             : item.friend.name;
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           insetPadding: const EdgeInsets.symmetric(horizontal: 24),
           child: Container(
             decoration: BoxDecoration(
@@ -355,8 +357,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
     if (shouldDelete != true) return;
 
     final prefs = await SharedPreferences.getInstance();
-    final List<String> current =
-        prefs.getStringList("friendSchedules") ?? [];
+    final List<String> current = prefs.getStringList("friendSchedules") ?? [];
     final updated = current.where((e) => e != item.encoded).toList();
     await prefs.setStringList("friendSchedules", updated);
 

@@ -14,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/refresh_guard.dart';
 
 class ShareSchedulePage extends StatefulWidget {
   const ShareSchedulePage({super.key});
@@ -49,7 +50,14 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
     if (RefreshBus.instance.reason == 'share_schedule') {
       return;
     }
-    unawaited(_fetchAndConvertSchedule(forceRefresh: true));
+    unawaited(_refreshIfOnline());
+  }
+
+  Future<void> _refreshIfOnline({bool notify = false}) async {
+    if (!await ensureOnline(context, notify: notify)) {
+      return;
+    }
+    await _fetchAndConvertSchedule(forceRefresh: true);
   }
 
   Future<void> _loadCachedAndRefresh() async {
@@ -195,6 +203,9 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
   }
 
   Future<void> _handleRefresh() async {
+    if (!await ensureOnline(context)) {
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('qr_base64');
     await prefs.remove('qr_hash');
@@ -211,8 +222,8 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
     }
 
     try {
-      final boundary = _qrKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
+      final boundary =
+          _qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) {
         if (!mounted) return;
         showAppSnackBar(context, 'Unable to capture QR code');
@@ -232,11 +243,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
 
       if (kIsWeb) {
         await Share.shareXFiles([
-          XFile.fromData(
-            bytes,
-            mimeType: 'image/png',
-            name: fileName,
-          ),
+          XFile.fromData(bytes, mimeType: 'image/png', name: fileName),
         ], text: 'Scan my schedule QR to import in Friends Schedule.');
         return;
       }
@@ -245,10 +252,9 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
       final file = File('${tempDir.path}/$fileName');
       await file.writeAsBytes(bytes, flush: true);
 
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'Scan my schedule QR to import in Friends Schedule.',
-      );
+      await Share.shareXFiles([
+        XFile(file.path),
+      ], text: 'Scan my schedule QR to import in Friends Schedule.');
     } catch (e) {
       if (!mounted) return;
       showAppSnackBar(context, 'Unable to share QR code');
@@ -275,31 +281,31 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
               const BracuSectionTitle(title: 'Your QR Code'),
               const SizedBox(height: 10),
               BracuCard(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    color: Colors.white,
-                    padding: const EdgeInsets.all(12),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final size = constraints.maxWidth;
-                        if (_base64Data == null) {
-                          return SizedBox(
-                            height: size,
-                            child: Center(
-                              child: Text(
-                                'No QR data available',
-                                style: TextStyle(
-                                  color: BracuPalette.textSecondary(context),
+                child: RepaintBoundary(
+                  key: _qrKey,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.all(12),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final size = constraints.maxWidth;
+                          if (_base64Data == null) {
+                            return SizedBox(
+                              height: size,
+                              child: Center(
+                                child: Text(
+                                  'No QR data available',
+                                  style: TextStyle(
+                                    color: BracuPalette.textSecondary(context),
+                                  ),
                                 ),
                               ),
-                            ),
-                          );
-                        }
+                            );
+                          }
 
-                        return RepaintBoundary(
-                          key: _qrKey,
-                          child: Column(
+                          return Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               SizedBox(
@@ -315,9 +321,9 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
                                 ),
                               ),
                             ],
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),

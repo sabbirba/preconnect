@@ -15,9 +15,9 @@ class AcademicSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = BracuPalette.textSecondary(context).withValues(
-      alpha: isDark ? 0.35 : 0.18,
-    );
+    final borderColor = BracuPalette.textSecondary(
+      context,
+    ).withValues(alpha: isDark ? 0.35 : 0.18);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -52,13 +52,14 @@ class _AcademicSummary extends StatelessWidget {
     final textSecondary = BracuPalette.textSecondary(context);
     final totalNum = _parseDouble(advising['totalCredit']);
     final earnedNum = _parseDouble(advising['earnedCredit']);
-    final completionRatio =
-        totalNum == 0 ? 0.0 : (earnedNum / totalNum).clamp(0.0, 1.0);
+    final completionRatio = totalNum == 0
+        ? 0.0
+        : (earnedNum / totalNum).clamp(0.0, 1.0);
     final cgpa = _displayOrNA(profile['cgpa']);
-    final semesterCount =
-        int.tryParse((advising['noOfSemester'] ?? '').trim());
-    final semesterCountDisplay =
-        semesterCount == null ? 'N/A' : _ordinal(semesterCount);
+    final semesterCount = int.tryParse((advising['noOfSemester'] ?? '').trim());
+    final semesterCountDisplay = semesterCount == null
+        ? 'N/A'
+        : _ordinal(semesterCount);
     final enrolledSemester = _semesterTitle(
       profile['enrolledSemester'],
       profile['enrolledSessionSemesterId'],
@@ -132,10 +133,7 @@ class _AcademicSummary extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   GestureDetector(
-                    onTap: () => copyToClipboard(
-                      context,
-                      cgpa,
-                    ),
+                    onTap: () => copyToClipboard(context, cgpa),
                     child: Text(
                       cgpa,
                       style: TextStyle(

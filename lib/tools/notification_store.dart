@@ -14,9 +14,7 @@ class NotificationStore {
         final decoded = jsonDecode(entry);
         if (decoded is Map) {
           items.add(
-            NotificationItem.fromJson(
-              Map<String, dynamic>.from(decoded),
-            ),
+            NotificationItem.fromJson(Map<String, dynamic>.from(decoded)),
           );
         }
       } catch (_) {}

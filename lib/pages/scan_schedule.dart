@@ -33,7 +33,9 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
     super.dispose();
   }
 
-  Future<void> _ensureCameraPermission({bool openSettingsOnDeny = false}) async {
+  Future<void> _ensureCameraPermission({
+    bool openSettingsOnDeny = false,
+  }) async {
     if (defaultTargetPlatform == TargetPlatform.macOS) {
       setState(() => _cameraGranted = true);
       return;
@@ -138,8 +140,9 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
                                     });
                                     await _saveScannedValue(value);
                                     _controller.stop();
-                                    RefreshBus.instance
-                                        .notify(reason: 'scan_schedule');
+                                    RefreshBus.instance.notify(
+                                      reason: 'scan_schedule',
+                                    );
                                   },
                                 )
                               : Center(

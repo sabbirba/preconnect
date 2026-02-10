@@ -95,10 +95,7 @@ void showAppSnackBar(BuildContext context, String message) {
   messenger.clearSnackBars();
   messenger.showSnackBar(
     SnackBar(
-      content: Text(
-        trimmed,
-        style: const TextStyle(color: Colors.white),
-      ),
+      content: Text(trimmed, style: const TextStyle(color: Colors.white)),
       backgroundColor: isDark ? const Color(0xFF1E6BE3) : BracuPalette.primary,
       duration: const Duration(seconds: 3),
       behavior: SnackBarBehavior.floating,
@@ -155,11 +152,13 @@ String formatSemesterTitle(String? raw) {
   if (cleaned.isEmpty || cleaned == 'N/A') return 'N/A';
   final normalized = cleaned.replaceAll(RegExp(r'[_-]+'), ' ');
   final parts = normalized.split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
-  final titled = parts.map((part) {
-    if (RegExp(r'^\d+$').hasMatch(part)) return part;
-    final lower = part.toLowerCase();
-    return lower[0].toUpperCase() + lower.substring(1);
-  }).join(' ');
+  final titled = parts
+      .map((part) {
+        if (RegExp(r'^\d+$').hasMatch(part)) return part;
+        final lower = part.toLowerCase();
+        return lower[0].toUpperCase() + lower.substring(1);
+      })
+      .join(' ');
   return titled;
 }
 
@@ -423,9 +422,9 @@ class BracuCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final highlight = highlightColor ?? BracuPalette.primary;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseBorderColor = BracuPalette.textSecondary(context).withValues(
-      alpha: isDark ? 0.35 : 0.18,
-    );
+    final baseBorderColor = BracuPalette.textSecondary(
+      context,
+    ).withValues(alpha: isDark ? 0.35 : 0.18);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(

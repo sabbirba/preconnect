@@ -109,6 +109,12 @@ class BracuAuthManager {
     return false;
   }
 
+  Future<bool> hasConnection() async {
+    final List<ConnectivityResult> connectivityResult = await Connectivity()
+        .checkConnectivity();
+    return !connectivityResult.contains(ConnectivityResult.none);
+  }
+
   Future<DateTime> getTokenExpiryTime() async {
     final token = await _storage.read(key: 'access_token');
 

@@ -11,6 +11,7 @@ import 'package:preconnect/pages/student_profile_sections/payment_graph.dart';
 import 'package:preconnect/pages/student_profile_sections/payment_list.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/refresh_guard.dart';
 
 class StudentProfile extends StatefulWidget {
   const StudentProfile({super.key});
@@ -56,7 +57,7 @@ class _StudentProfileState extends State<StudentProfile>
     if (RefreshBus.instance.reason == 'student_profile') {
       return;
     }
-    unawaited(_refreshProfile());
+    unawaited(_refreshProfile(notify: false));
   }
 
   List<dynamic> _decodeList(String? raw) {
@@ -110,8 +111,8 @@ class _StudentProfileState extends State<StudentProfile>
                   return null;
                 }
               })
-          .whereType<PaymentInfo>()
-          .toList()
+              .whereType<PaymentInfo>()
+              .toList()
             ..sort(_comparePayments);
 
       final List<dynamic> attendanceJson = _decodeList(
@@ -140,7 +141,10 @@ class _StudentProfileState extends State<StudentProfile>
     } catch (_) {}
   }
 
-  Future<void> _refreshProfile() async {
+  Future<void> _refreshProfile({bool notify = true}) async {
+    if (!await ensureOnline(context, notify: notify)) {
+      return;
+    }
     if (!_isRefreshing) {
       setState(() {
         _isRefreshing = true;
@@ -162,8 +166,8 @@ class _StudentProfileState extends State<StudentProfile>
                   return null;
                 }
               })
-          .whereType<PaymentInfo>()
-          .toList()
+              .whereType<PaymentInfo>()
+              .toList()
             ..sort(_comparePayments);
 
       final List<dynamic> attendanceJson = _decodeList(
@@ -198,7 +202,9 @@ class _StudentProfileState extends State<StudentProfile>
         ..stop()
         ..reset();
     }
-    RefreshBus.instance.notify(reason: 'student_profile');
+    if (notify) {
+      RefreshBus.instance.notify(reason: 'student_profile');
+    }
   }
 
   String? _buildPhotoUrl(String? photoFilePath) {

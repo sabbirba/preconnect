@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+
 class StudentOverviewCard extends StatelessWidget {
   const StudentOverviewCard({
     super.key,
@@ -46,10 +47,7 @@ class StudentOverviewCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                _IconButton(
-                  icon: Icons.logout,
-                  onTap: onLogout,
-                ),
+                _IconButton(icon: Icons.logout, onTap: onLogout),
               ],
             ),
             const SizedBox(height: 10),
@@ -123,11 +121,7 @@ class _IconButton extends StatelessWidget {
           color: BracuPalette.primary.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: BracuPalette.primary,
-        ),
+        child: Icon(icon, size: 18, color: BracuPalette.primary),
       ),
     );
   }
@@ -152,9 +146,9 @@ class _OverviewHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final baseBorderColor = BracuPalette.textSecondary(context).withValues(
-      alpha: isDark ? 0.35 : 0.18,
-    );
+    final baseBorderColor = BracuPalette.textSecondary(
+      context,
+    ).withValues(alpha: isDark ? 0.35 : 0.18);
     final normalizedSemester = formatSemesterTitle(currentSemester);
     final fallbackSemester = formatSemesterFromSessionId(
       currentSessionSemesterId,
@@ -238,9 +232,9 @@ class _OverviewTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final tileColor = BracuPalette.card(context);
-    final baseBorderColor = BracuPalette.textSecondary(context).withValues(
-      alpha: isDark ? 0.35 : 0.18,
-    );
+    final baseBorderColor = BracuPalette.textSecondary(
+      context,
+    ).withValues(alpha: isDark ? 0.35 : 0.18);
     return Container(
       width: width,
       padding: const EdgeInsets.all(12),

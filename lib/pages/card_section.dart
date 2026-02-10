@@ -23,8 +23,9 @@ class CardSectionState extends State<CardSection> {
     final fullName = (profile['fullName'] ?? '').trim();
     final degreeName = (profile['program'] ?? '').trim();
     final studentId = (profile['studentId'] ?? '').trim();
-    final enrolledSession =
-        int.tryParse((profile['enrolledSessionSemesterId'] ?? '').trim());
+    final enrolledSession = int.tryParse(
+      (profile['enrolledSessionSemesterId'] ?? '').trim(),
+    );
     final validation = enrolledSession == null
         ? 'N/A'
         : '31-12-${(enrolledSession ~/ 10) + 5}';
@@ -44,191 +45,196 @@ class CardSectionState extends State<CardSection> {
           animationDuration: const Duration(milliseconds: 300),
           axis: FlipAxis.vertical,
           frontWidget: Center(
-              child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.black),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color.fromRGBO(0, 0, 0, 0.18),
-                  offset: Offset(0, 4),
-                  blurRadius: 6,
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
-                  child: Row(
-                    children: [
-                      SvgPicture.asset(
-                        'assets/bracu.svg',
-                        width: 34,
-                        height: 34,
-                        fit: BoxFit.contain,
-                      ),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            'BRAC University',
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              fontSize: 21,
-                              color: Colors.black,
-                              fontWeight: FontWeight.w700,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.black),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color.fromRGBO(0, 0, 0, 0.18),
+                    offset: Offset(0, 4),
+                    blurRadius: 6,
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+                    child: Row(
+                      children: [
+                        SvgPicture.asset(
+                          'assets/bracu.svg',
+                          width: 34,
+                          height: 34,
+                          fit: BoxFit.contain,
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              'BRAC University',
+                              textAlign: TextAlign.right,
+                              style: TextStyle(
+                                fontSize: 21,
+                                color: Colors.black,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const Divider(
-                  color: Colors.black,
-                  thickness: 0.9,
-                  height: 0,
-                  indent: 0,
-                ),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 138),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 38,
-                        alignment: Alignment.center,
+                  const Divider(
+                    color: Colors.black,
+                    thickness: 0.9,
+                    height: 0,
+                    indent: 0,
+                  ),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 138),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 38,
+                          alignment: Alignment.center,
                           decoration: const BoxDecoration(
                             color: Color(0xFFEFF2F4),
                             borderRadius: BorderRadius.only(
                               bottomLeft: Radius.circular(16),
                             ),
                           ),
-                        child: RotatedBox(
-                          quarterTurns: 3,
-                          child: Text(
-                            "STUDENT",
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 18,
-                              letterSpacing: 1.4,
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w600,
+                          child: RotatedBox(
+                            quarterTurns: 3,
+                            child: Text(
+                              "STUDENT",
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 18,
+                                letterSpacing: 1.4,
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF7BB3D3),
-                            borderRadius: BorderRadius.only(
-                              bottomRight: Radius.circular(16),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF7BB3D3),
+                              borderRadius: BorderRadius.only(
+                                bottomRight: Radius.circular(16),
+                              ),
                             ),
-                          ),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Opacity(
-                                opacity: 0.06,
-                                child: SvgPicture.asset(
-                                  "assets/bracu.svg",
-                                  height: 120,
-                                  width: 120,
-                                  fit: BoxFit.contain,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Opacity(
+                                  opacity: 0.06,
+                                  child: SvgPicture.asset(
+                                    "assets/bracu.svg",
+                                    height: 120,
+                                    width: 120,
+                                    fit: BoxFit.contain,
+                                  ),
                                 ),
-                              ),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Expanded(
-                                    flex: 6,
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          displayName,
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 14,
-                                            fontFamily: 'Poppins',
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 5),
-                                        Text(
-                                          displayProgram,
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 9,
-                                            fontFamily: 'Poppins',
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        _InfoRow(
-                                          label: 'Student ID',
-                                          value: displayStudentId,
-                                          enableCopy: true,
-                                        ),
-                                        const SizedBox(height: 5),
-                                        _InfoRow(
-                                          label: 'Blood Group',
-                                          value: displayBloodGroup,
-                                        ),
-                                        const SizedBox(height: 5),
-                                        _InfoRow(
-                                          label: 'Validity',
-                                          value: validation,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  SizedBox(
-                                    width: 90,
-                                    height: 106,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      clipBehavior: Clip.antiAlias,
-                                      child: photoUrl == null || photoUrl.isEmpty
-                                          ? const SizedBox.expand()
-                                          : Image.network(
-                                              photoUrl,
-                                              fit: BoxFit.cover,
-                                              alignment: Alignment.center,
-                                              errorBuilder: (
-                                                context,
-                                                error,
-                                                stackTrace,
-                                              ) {
-                                                return const SizedBox.expand();
-                                              },
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Expanded(
+                                      flex: 6,
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            displayName,
+                                            style: TextStyle(
+                                              color: Colors.black,
+                                              fontSize: 14,
+                                              fontFamily: 'Poppins',
+                                              fontWeight: FontWeight.w700,
                                             ),
+                                          ),
+                                          const SizedBox(height: 5),
+                                          Text(
+                                            displayProgram,
+                                            style: TextStyle(
+                                              color: Colors.black,
+                                              fontSize: 9,
+                                              fontFamily: 'Poppins',
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          _InfoRow(
+                                            label: 'Student ID',
+                                            value: displayStudentId,
+                                            enableCopy: true,
+                                          ),
+                                          const SizedBox(height: 5),
+                                          _InfoRow(
+                                            label: 'Blood Group',
+                                            value: displayBloodGroup,
+                                          ),
+                                          const SizedBox(height: 5),
+                                          _InfoRow(
+                                            label: 'Validity',
+                                            value: validation,
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                    const SizedBox(width: 10),
+                                    SizedBox(
+                                      width: 90,
+                                      height: 106,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                        clipBehavior: Clip.antiAlias,
+                                        child:
+                                            photoUrl == null || photoUrl.isEmpty
+                                            ? const SizedBox.expand()
+                                            : Image.network(
+                                                photoUrl,
+                                                fit: BoxFit.cover,
+                                                alignment: Alignment.center,
+                                                errorBuilder:
+                                                    (
+                                                      context,
+                                                      error,
+                                                      stackTrace,
+                                                    ) {
+                                                      return const SizedBox.expand();
+                                                    },
+                                              ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          )),
+          ),
           backWidget: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
@@ -257,8 +263,7 @@ class CardSectionState extends State<CardSection> {
                 ),
 
                 Container(
-                  padding: const EdgeInsets.fromLTRB(
-                      48, 24, 2, 12),
+                  padding: const EdgeInsets.fromLTRB(48, 24, 2, 12),
 
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -378,13 +383,7 @@ class _InfoRow extends StatelessWidget {
     );
     return Row(
       children: [
-        SizedBox(
-          width: 74,
-          child: Text(
-            label,
-            style: textStyle,
-          ),
-        ),
+        SizedBox(width: 74, child: Text(label, style: textStyle)),
         const Text(':', style: textStyle),
         const SizedBox(width: 8),
         Expanded(

@@ -22,6 +22,7 @@ import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/notification_scheduler.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/refresh_guard.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -37,9 +38,9 @@ class _HomePageState extends State<HomePage> {
 
   late final Map<HomeTab, WidgetBuilder> pages = {
     HomeTab.dashboard: (_) => _HomeDashboard(
-          onNavigate: _setTab,
-          onLogout: () => _confirmLogout(context),
-        ),
+      onNavigate: _setTab,
+      onLogout: () => _confirmLogout(context),
+    ),
     HomeTab.notifications: (_) => const NotificationPage(),
     HomeTab.profile: (_) => const StudentProfile(),
     HomeTab.studentSchedule: (_) => const ClassSchedule(),
@@ -101,10 +102,7 @@ class _HomePageState extends State<HomePage> {
               children: [
                 Row(
                   children: [
-                    const Icon(
-                      Icons.logout,
-                      color: BracuPalette.primary,
-                    ),
+                    const Icon(Icons.logout, color: BracuPalette.primary),
                     const SizedBox(width: 8),
                     Text(
                       'Confirm Sign Out?',
@@ -133,8 +131,7 @@ class _HomePageState extends State<HomePage> {
                         style: OutlinedButton.styleFrom(
                           foregroundColor: BracuPalette.primary,
                           side: BorderSide(
-                            color:
-                                BracuPalette.primary.withValues(alpha: 0.6),
+                            color: BracuPalette.primary.withValues(alpha: 0.6),
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -247,7 +244,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     if (RefreshBus.instance.reason == 'home_dashboard') {
       return;
     }
-    unawaited(_handleRefresh());
+    unawaited(_handleRefresh(notify: false));
   }
 
   Future<_HomeData> _loadData({bool forceRefresh = false}) async {
@@ -300,12 +297,17 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     );
   }
 
-  Future<void> _handleRefresh() async {
+  Future<void> _handleRefresh({bool notify = true}) async {
+    if (!await ensureOnline(context, notify: notify)) {
+      return;
+    }
     setState(() {
       _future = _loadData(forceRefresh: true);
     });
     await _future;
-    RefreshBus.instance.notify(reason: 'home_dashboard');
+    if (notify) {
+      RefreshBus.instance.notify(reason: 'home_dashboard');
+    }
   }
 
   String _todayName() {
@@ -402,11 +404,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       );
       if (mid != null) {
         exams.add(
-          _ExamCountdownData(
-            time: mid,
-            courseCode: s.courseCode,
-            type: 'Mid',
-          ),
+          _ExamCountdownData(time: mid, courseCode: s.courseCode, type: 'Mid'),
         );
       }
       final fin = _parseExamDateTime(
@@ -423,9 +421,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
         );
       }
     }
-    final upcoming =
-        exams.where((e) => !e.time.isBefore(now)).toList()
-          ..sort((a, b) => a.time.compareTo(b.time));
+    final upcoming = exams.where((e) => !e.time.isBefore(now)).toList()
+      ..sort((a, b) => a.time.compareTo(b.time));
     if (upcoming.isEmpty) return null;
     return upcoming.first;
   }
@@ -504,8 +501,9 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                       final profile = snapshot.data?.profile ?? {};
                       final photoUrl = snapshot.data?.photoUrl;
                       final today = _todayName();
-                      final todayDate =
-                          DateFormat('d MMMM, y').format(DateTime.now());
+                      final todayDate = DateFormat(
+                        'd MMMM, y',
+                      ).format(DateTime.now());
                       final todayEntries =
                           (snapshot.data?.entries ?? [])
                               .where(
@@ -527,8 +525,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                         nextEntry = _pickNextEntry(todayEntries, nowMinutes);
                       }
                       final nextExam = _nextExamCountdown(
-                        snapshot.data?.sections ??
-                            const <section.Section>[],
+                        snapshot.data?.sections ?? const <section.Section>[],
                       );
                       return RefreshIndicator(
                         onRefresh: _handleRefresh,
@@ -541,9 +538,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                               _TopBar(
                                 name: profile['fullName'] ?? 'BRACU Student',
                                 photoUrl: photoUrl,
-                                onNotifications: () => widget.onNavigate(
-                                  HomeTab.notifications,
-                                ),
+                                onNotifications: () =>
+                                    widget.onNavigate(HomeTab.notifications),
                                 onProfileTap: () =>
                                     widget.onNavigate(HomeTab.profile),
                               ),
@@ -556,8 +552,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                 currentSemester:
                                     profile['currentSemester'] ?? 'N/A',
                                 currentSessionSemesterId:
-                                    profile['currentSessionSemesterId'] ??
-                                        '',
+                                    profile['currentSessionSemesterId'] ?? '',
                                 onLogout: widget.onLogout,
                                 countdown: nextExam == null
                                     ? null
@@ -567,8 +562,11 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                           HomeTab.examSchedule,
                                         ),
                                         child: ExamCountdownCard(
-                                          title: nextExam.time
-                                                      .difference(DateTime.now())
+                                          title:
+                                              nextExam.time
+                                                      .difference(
+                                                        DateTime.now(),
+                                                      )
                                                       .inDays <=
                                                   3
                                               ? '${nextExam.courseCode} ${nextExam.type} Exam'
@@ -579,9 +577,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                               ),
                               const SizedBox(height: 22),
                               InkWell(
-                                onTap: () => widget.onNavigate(
-                                  HomeTab.studentSchedule,
-                                ),
+                                onTap: () =>
+                                    widget.onNavigate(HomeTab.studentSchedule),
                                 child: Row(
                                   children: [
                                     Expanded(
@@ -601,8 +598,9 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
-                                        color:
-                                            BracuPalette.textPrimary(context),
+                                        color: BracuPalette.textPrimary(
+                                          context,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -683,8 +681,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                 builder: (context, constraints) {
                                   const spacing = 12.0;
                                   final width =
-                                      (constraints.maxWidth - spacing * 2) /
-                                          3;
+                                      (constraints.maxWidth - spacing * 2) / 3;
                                   return Wrap(
                                     spacing: spacing,
                                     runSpacing: spacing,
@@ -743,9 +740,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                         title: 'Devs',
                                         subtitle: 'About Us',
                                         color: const Color(0xFF2C9DFF),
-                                        onTap: () => widget.onNavigate(
-                                          HomeTab.devs,
-                                        ),
+                                        onTap: () =>
+                                            widget.onNavigate(HomeTab.devs),
                                       ),
                                     ],
                                   );
@@ -898,7 +894,6 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.title});
 
@@ -993,7 +988,9 @@ class _OpenWebCard extends StatelessWidget {
 
 Future<void> _openPreconnectWeb(BuildContext context, String url) async {
   final uri = Uri.parse(url);
-  final mode = kIsWeb ? LaunchMode.platformDefault : LaunchMode.inAppBrowserView;
+  final mode = kIsWeb
+      ? LaunchMode.platformDefault
+      : LaunchMode.inAppBrowserView;
   var launched = await launchUrl(uri, mode: mode);
   if (!launched && !kIsWeb) {
     launched = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);

@@ -7,6 +7,7 @@ import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/refresh_guard.dart';
 
 class ExamSchedule extends StatefulWidget {
   const ExamSchedule({super.key});
@@ -51,7 +52,7 @@ class _ExamScheduleState extends State<ExamSchedule> {
     if (RefreshBus.instance.reason == 'exam_schedule') {
       return;
     }
-    unawaited(_handleRefresh());
+    unawaited(_handleRefresh(notify: false));
   }
 
   void _onJumpRequested() {
@@ -159,14 +160,19 @@ class _ExamScheduleState extends State<ExamSchedule> {
     return decoded.map((e) => Section.fromJson(e)).toList();
   }
 
-  Future<void> _handleRefresh() async {
+  Future<void> _handleRefresh({bool notify = true}) async {
+    if (!await ensureOnline(context, notify: notify)) {
+      return;
+    }
     setState(() {
       _didScroll = false;
       _scrollRetry = false;
       _future = _fetchExamSections(forceRefresh: true);
     });
     await _future;
-    RefreshBus.instance.notify(reason: 'exam_schedule');
+    if (notify) {
+      RefreshBus.instance.notify(reason: 'exam_schedule');
+    }
   }
 
   @override
@@ -219,17 +225,17 @@ class _ExamScheduleState extends State<ExamSchedule> {
           final sections = snapshot.data!;
           final midExams = sections
               .where(
-            (s) =>
-                s.sectionSchedule.midExamDate != null &&
-                s.sectionSchedule.midExamStartTime != null,
-          )
+                (s) =>
+                    s.sectionSchedule.midExamDate != null &&
+                    s.sectionSchedule.midExamStartTime != null,
+              )
               .toList();
           final finalExams = sections
               .where(
-            (s) =>
-                s.sectionSchedule.finalExamDate != null &&
-                s.sectionSchedule.finalExamStartTime != null,
-          )
+                (s) =>
+                    s.sectionSchedule.finalExamDate != null &&
+                    s.sectionSchedule.finalExamStartTime != null,
+              )
               .toList();
 
           midExams.sort((a, b) {
@@ -417,9 +423,9 @@ class _ExamScheduleState extends State<ExamSchedule> {
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
-                                if (section.faculties.trim().isNotEmpty &&
-                                    section.faculties.trim().toUpperCase() !=
-                                        'OTHER') ...[
+                                  if (section.faculties.trim().isNotEmpty &&
+                                      section.faculties.trim().toUpperCase() !=
+                                          'OTHER') ...[
                                     const SizedBox(height: 2),
                                     Text(
                                       section.faculties,
@@ -526,9 +532,9 @@ class _ExamScheduleState extends State<ExamSchedule> {
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
-                                if (section.faculties.trim().isNotEmpty &&
-                                    section.faculties.trim().toUpperCase() !=
-                                        'OTHER') ...[
+                                  if (section.faculties.trim().isNotEmpty &&
+                                      section.faculties.trim().toUpperCase() !=
+                                          'OTHER') ...[
                                     const SizedBox(height: 2),
                                     Text(
                                       section.faculties,

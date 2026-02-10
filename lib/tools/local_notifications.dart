@@ -37,7 +37,8 @@ class LocalNotificationsService {
 
     final android = _plugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (android != null) {
       const channel = AndroidNotificationChannel(
         channelId,
@@ -52,7 +53,8 @@ class LocalNotificationsService {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
       await _plugin
           .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>()
+            IOSFlutterLocalNotificationsPlugin
+          >()
           ?.requestPermissions(alert: true, badge: true, sound: true);
     }
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
@@ -64,7 +66,8 @@ class LocalNotificationsService {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS) {
       await _plugin
           .resolvePlatformSpecificImplementation<
-              MacOSFlutterLocalNotificationsPlugin>()
+            MacOSFlutterLocalNotificationsPlugin
+          >()
           ?.requestPermissions(alert: true, badge: true, sound: true);
     }
 

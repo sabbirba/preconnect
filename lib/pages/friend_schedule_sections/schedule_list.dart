@@ -39,9 +39,7 @@ class FriendScheduleSection extends StatelessWidget {
             BracuCard(
               child: Text(
                 'No schedule shared.',
-                style: TextStyle(
-                  color: BracuPalette.textSecondary(context),
-                ),
+                style: TextStyle(color: BracuPalette.textSecondary(context)),
               ),
             )
           else
@@ -50,9 +48,7 @@ class FriendScheduleSection extends StatelessWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  BracuSectionTitle(
-                    title: formatWeekdayTitle(day),
-                  ),
+                  BracuSectionTitle(title: formatWeekdayTitle(day)),
                   const SizedBox(height: 10),
                   ...entries.map((entry) {
                     final isHighlighted =
@@ -106,9 +102,7 @@ class FriendScheduleSection extends StatelessWidget {
                                     entry.roomNumber?.toString() ?? '--',
                                     textAlign: TextAlign.right,
                                     style: TextStyle(
-                                      color: BracuPalette.textPrimary(
-                                        context,
-                                      ),
+                                      color: BracuPalette.textPrimary(context),
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -190,9 +184,8 @@ Map<String, List<_FriendScheduleEntry>> _groupByDay(FriendSchedule friend) {
 
   for (final entries in grouped.values) {
     entries.sort(
-      (a, b) => _timeToMinutes(a.startTime).compareTo(
-        _timeToMinutes(b.startTime),
-      ),
+      (a, b) =>
+          _timeToMinutes(a.startTime).compareTo(_timeToMinutes(b.startTime)),
     );
   }
   return grouped;

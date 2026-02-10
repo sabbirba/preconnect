@@ -14,12 +14,12 @@ class NotificationItem {
   final String category;
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'message': message,
-        'timeIso': timeIso,
-        'category': category,
-      };
+    'id': id,
+    'title': title,
+    'message': message,
+    'timeIso': timeIso,
+    'category': category,
+  };
 
   static NotificationItem fromJson(Map<String, dynamic> json) {
     final rawId = json['id'];

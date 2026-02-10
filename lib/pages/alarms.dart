@@ -10,6 +10,7 @@ import 'package:preconnect/api/bracu_auth_manager.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/refresh_guard.dart';
 
 class AlarmPage extends StatefulWidget {
   const AlarmPage({super.key});
@@ -41,7 +42,7 @@ class _AlarmPageState extends State<AlarmPage> {
     if (RefreshBus.instance.reason == 'alarms') {
       return;
     }
-    unawaited(_handleRefresh());
+    unawaited(_handleRefresh(notify: false));
   }
 
   Future<List<Section>> _fetchSchedule({bool forceRefresh = false}) async {
@@ -59,7 +60,10 @@ class _AlarmPageState extends State<AlarmPage> {
     return decoded.map((e) => Section.fromJson(e)).toList();
   }
 
-  Future<void> _handleRefresh() async {
+  Future<void> _handleRefresh({bool notify = true}) async {
+    if (!await ensureOnline(context, notify: notify)) {
+      return;
+    }
     setState(() {
       _futureSections = _fetchSchedule(forceRefresh: true);
     });
@@ -269,9 +273,7 @@ class _AlarmPageState extends State<AlarmPage> {
               itemCount: sections.length + 1,
               itemBuilder: (context, index) {
                 if (index == sections.length) {
-                  return const Padding(
-                    padding: EdgeInsets.only(top: 12),
-                  );
+                  return const Padding(padding: EdgeInsets.only(top: 12));
                 }
                 final section = sections[index];
                 final schedules = section.sectionSchedule.classSchedules;

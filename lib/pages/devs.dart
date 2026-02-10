@@ -22,10 +22,7 @@ class DevsPage extends StatelessWidget {
               children: [
                 const Text(
                   'PreConnect - Initiative Run by Students',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 6),
                 const SizedBox(height: 10),
@@ -139,7 +136,10 @@ class DevsPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Theme.of(context).brightness == Brightness.dark
                         ? const Color(0xFF0B0B0B)
@@ -169,9 +169,7 @@ class DevsPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      _SupportNumberRow(
-                        number: '01865493144',
-                      ),
+                      _SupportNumberRow(number: '01865493144'),
                     ],
                   ),
                 ),
@@ -201,10 +199,7 @@ class _DevGridTile extends StatelessWidget {
 
   Future<void> _openUrl(String url) async {
     final uri = Uri.parse(url);
-    await launchUrl(
-      uri,
-      mode: LaunchMode.inAppBrowserView,
-    );
+    await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
   }
 
   @override
@@ -242,10 +237,7 @@ class _DevGridTile extends StatelessWidget {
             spacing: 4,
             runSpacing: 4,
             children: [
-              _LinkChip(
-                label: 'GitHub',
-                onTap: () => _openUrl(githubUrl),
-              ),
+              _LinkChip(label: 'GitHub', onTap: () => _openUrl(githubUrl)),
               if (facebookUrl.isNotEmpty)
                 _LinkChip(
                   label: 'Facebook',
@@ -291,10 +283,7 @@ class _LinkChip extends StatelessWidget {
 
 Future<void> _openRepo(BuildContext context) async {
   final uri = Uri.parse('https://github.com/sabbirba/preconnect');
-  await launchUrl(
-    uri,
-    mode: LaunchMode.inAppBrowserView,
-  );
+  await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
 }
 
 class _SupportNumberRow extends StatelessWidget {
@@ -345,10 +334,7 @@ class _SupportNumberRow extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               'bKash / Nagad / Upay',
-              style: TextStyle(
-                color: textSecondary,
-                fontSize: 11,
-              ),
+              style: TextStyle(color: textSecondary, fontSize: 11),
             ),
             const SizedBox(height: 4),
             SizedBox(
@@ -357,10 +343,7 @@ class _SupportNumberRow extends StatelessWidget {
                 children: [
                   Text(
                     'Send money with reference',
-                    style: TextStyle(
-                      color: textSecondary,
-                      fontSize: 11,
-                    ),
+                    style: TextStyle(color: textSecondary, fontSize: 11),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 2),

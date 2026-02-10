@@ -62,9 +62,10 @@ class _MyAppState extends State<MyApp> {
     final savedTheme = prefs.getString('themeMode') ?? 'system';
     _themeMode.value = _decodeTheme(savedTheme);
 
-    final loggedIn = await BracuAuthManager()
-        .ensureSignedIn()
-        .timeout(const Duration(seconds: 10), onTimeout: () => false);
+    final loggedIn = await BracuAuthManager().ensureSignedIn().timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => false,
+    );
 
     return _StartupState(isLoggedIn: loggedIn);
   }
@@ -77,7 +78,8 @@ class _MyAppState extends State<MyApp> {
     try {
       final info = await InAppUpdate.checkForUpdate();
       final availability = info.updateAvailability;
-      if (availability == UpdateAvailability.developerTriggeredUpdateInProgress &&
+      if (availability ==
+              UpdateAvailability.developerTriggeredUpdateInProgress &&
           info.immediateUpdateAllowed) {
         await InAppUpdate.performImmediateUpdate();
         return;
@@ -91,13 +93,13 @@ class _MyAppState extends State<MyApp> {
       }
       if (info.flexibleUpdateAllowed) {
         _updateSubscription?.cancel();
-        _updateSubscription = InAppUpdate.installUpdateListener.listen(
-          (status) {
-            if (status == InstallStatus.downloaded) {
-              InAppUpdate.completeFlexibleUpdate();
-            }
-          },
-        );
+        _updateSubscription = InAppUpdate.installUpdateListener.listen((
+          status,
+        ) {
+          if (status == InstallStatus.downloaded) {
+            InAppUpdate.completeFlexibleUpdate();
+          }
+        });
         await InAppUpdate.startFlexibleUpdate();
       }
     } catch (_) {
@@ -156,13 +158,11 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
-
 class _StartupState {
   const _StartupState({required this.isLoggedIn});
 
   final bool isLoggedIn;
 }
-
 
 class _AppGate extends StatelessWidget {
   const _AppGate({required this.startupFuture});
@@ -183,9 +183,7 @@ class _AppGate extends StatelessWidget {
         }
         if (snapshot.connectionState != ConnectionState.done) {
           return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
+            body: Center(child: CircularProgressIndicator()),
           );
         }
         final isLoggedIn = snapshot.data?.isLoggedIn;

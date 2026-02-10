@@ -6,6 +6,7 @@ import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/refresh_guard.dart';
 
 class ClassSchedule extends StatefulWidget {
   const ClassSchedule({super.key});
@@ -50,7 +51,7 @@ class _ClassScheduleState extends State<ClassSchedule> {
     if (RefreshBus.instance.reason == 'class_schedule') {
       return;
     }
-    unawaited(_handleRefresh());
+    unawaited(_handleRefresh(notify: false));
   }
 
   void _onJumpRequested() {
@@ -142,14 +143,19 @@ class _ClassScheduleState extends State<ClassSchedule> {
     return _ScheduleData(grouped: grouped, nextSchedule: nextSchedule);
   }
 
-  Future<void> _handleRefresh() async {
+  Future<void> _handleRefresh({bool notify = true}) async {
+    if (!await ensureOnline(context, notify: notify)) {
+      return;
+    }
     setState(() {
       _didScroll = false;
       _scrollRetry = false;
       _future = _loadSchedule(forceRefresh: true);
     });
     await _future;
-    RefreshBus.instance.notify(reason: 'class_schedule');
+    if (notify) {
+      RefreshBus.instance.notify(reason: 'class_schedule');
+    }
   }
 
   DateTime? _nextOccurrence({
@@ -290,7 +296,8 @@ class _ClassScheduleState extends State<ClassSchedule> {
 
                     final isHighlighted = nextSchedule == s;
                     if (isHighlighted) {
-                      highlightToken = '${day}_${s.startTime}_${s.endTime}_$code';
+                      highlightToken =
+                          '${day}_${s.startTime}_${s.endTime}_$code';
                       _highlightKey ??= GlobalKey();
                     }
                     return Padding(
@@ -325,10 +332,7 @@ class _ClassScheduleState extends State<ClassSchedule> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        formatTimeRange(
-                                          s.startTime,
-                                          s.endTime,
-                                        ),
+                                        formatTimeRange(s.startTime, s.endTime),
                                         style: TextStyle(
                                           color: BracuPalette.textSecondary(
                                             context,
@@ -386,8 +390,7 @@ class _ClassScheduleState extends State<ClassSchedule> {
           }
           children.add(const SizedBox(height: 8));
 
-          if (highlightToken != null &&
-              highlightToken != _lastHighlightToken) {
+          if (highlightToken != null && highlightToken != _lastHighlightToken) {
             _lastHighlightToken = highlightToken;
             _didScroll = false;
             _scrollRetry = false;
