@@ -237,7 +237,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
             mimeType: 'image/png',
             name: fileName,
           ),
-        ], text: 'Scan my schedule QR to import.');
+        ], text: 'Scan my schedule QR to import in Friends Schedule.');
         return;
       }
 
@@ -247,7 +247,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
 
       await Share.shareXFiles(
         [XFile(file.path)],
-        text: 'Scan my schedule QR to import.',
+        text: 'Scan my schedule QR to import in Friends Schedule.',
       );
     } catch (e) {
       if (!mounted) return;
