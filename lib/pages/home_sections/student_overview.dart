@@ -36,7 +36,7 @@ class StudentOverviewCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Student Overview',
+                    'Overview',
                     style: TextStyle(
                       color: titleColor,
                       fontSize: 16,
@@ -176,9 +176,11 @@ class _OverviewHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  shortCode.isNotEmpty
-                      ? shortCode
-                      : (studentId.isEmpty ? 'N/A' : studentId),
+                  _headerTitle(
+                    shortCode: shortCode,
+                    studentId: studentId,
+                    semester: displaySemester,
+                  ),
                   style: TextStyle(
                     color: BracuPalette.textPrimary(context),
                     fontSize: 14,
@@ -189,8 +191,9 @@ class _OverviewHeader extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   department.isEmpty ? 'N/A' : department,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                  overflow: TextOverflow.fade,
+                  softWrap: true,
                   style: TextStyle(
                     color: BracuPalette.textSecondary(context),
                     fontSize: 11,
@@ -200,25 +203,21 @@ class _OverviewHeader extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: BracuPalette.card(context),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: baseBorderColor),
-            ),
-            child: Text(
-              displaySemester,
-              style: TextStyle(
-                color: BracuPalette.primary,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
         ],
       ),
     );
+  }
+
+  String _headerTitle({
+    required String shortCode,
+    required String studentId,
+    required String semester,
+  }) {
+    final left = shortCode.isNotEmpty
+        ? shortCode
+        : (studentId.isEmpty ? 'N/A' : studentId);
+    final right = semester.isEmpty ? 'N/A' : semester;
+    return '${left.toUpperCase()} ${right.toUpperCase()}';
   }
 }
 
@@ -267,7 +266,7 @@ class _OverviewTile extends StatelessWidget {
               ? GestureDetector(
                   onTap: () => copyToClipboard(context, value),
                   child: Text(
-                    value,
+                    value.toUpperCase(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -279,7 +278,7 @@ class _OverviewTile extends StatelessWidget {
                   ),
                 )
               : Text(
-                  value,
+                  value.toUpperCase(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(

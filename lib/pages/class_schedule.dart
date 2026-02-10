@@ -9,18 +9,65 @@ import 'package:preconnect/pages/ui_kit.dart';
 class ClassSchedule extends StatefulWidget {
   const ClassSchedule({super.key});
 
+  static final ValueNotifier<int> jumpSignal = ValueNotifier<int>(0);
+
+  static void requestJump() {
+    jumpSignal.value++;
+  }
+
   @override
   State<ClassSchedule> createState() => _ClassScheduleState();
 }
 
 class _ClassScheduleState extends State<ClassSchedule> {
   late Future<_ScheduleData> _future;
+  final ScrollController _scrollController = ScrollController();
+  GlobalKey? _highlightKey;
+  String? _lastHighlightToken;
+  bool _didScroll = false;
+  bool _scrollRetry = false;
 
   @override
   void initState() {
     super.initState();
     unawaited(BracuAuthManager().fetchStudentSchedule());
     _future = _loadSchedule();
+    ClassSchedule.jumpSignal.addListener(_onJumpRequested);
+  }
+
+  @override
+  void dispose() {
+    ClassSchedule.jumpSignal.removeListener(_onJumpRequested);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onJumpRequested() {
+    _didScroll = false;
+    _scrollRetry = false;
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _attemptScrollToHighlight() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = _highlightKey?.currentContext;
+      if (context == null) {
+        if (!_scrollRetry) {
+          _scrollRetry = true;
+          _attemptScrollToHighlight();
+        }
+        return;
+      }
+      Scrollable.ensureVisible(
+        context,
+        alignment: 0.5,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeOutCubic,
+      );
+      _didScroll = true;
+    });
   }
 
   Future<_ScheduleData> _loadSchedule({bool forceRefresh = false}) async {
@@ -86,6 +133,8 @@ class _ClassScheduleState extends State<ClassSchedule> {
 
   Future<void> _handleRefresh() async {
     setState(() {
+      _didScroll = false;
+      _scrollRetry = false;
       _future = _loadSchedule(forceRefresh: true);
     });
     await _future;
@@ -208,6 +257,8 @@ class _ClassScheduleState extends State<ClassSchedule> {
           days = days.where((day) => keys.contains(day)).toList();
 
           final children = <Widget>[];
+          String? highlightToken;
+          _highlightKey = null;
           for (var i = 0; i < days.length; i++) {
             final day = days[i];
             final schedules = grouped[day]!;
@@ -226,9 +277,14 @@ class _ClassScheduleState extends State<ClassSchedule> {
                     final faculties = entry["faculties"] as String?;
 
                     final isHighlighted = nextSchedule == s;
+                    if (isHighlighted) {
+                      highlightToken = '${day}_${s.startTime}_${s.endTime}_$code';
+                      _highlightKey ??= GlobalKey();
+                    }
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: BracuCard(
+                        key: isHighlighted ? _highlightKey : null,
                         isHighlighted: isHighlighted,
                         highlightColor: BracuPalette.primary,
                         child: LayoutBuilder(
@@ -318,10 +374,21 @@ class _ClassScheduleState extends State<ClassSchedule> {
           }
           children.add(const SizedBox(height: 8));
 
+          if (highlightToken != null &&
+              highlightToken != _lastHighlightToken) {
+            _lastHighlightToken = highlightToken;
+            _didScroll = false;
+            _scrollRetry = false;
+          }
+          if (!_didScroll && _highlightKey != null) {
+            _attemptScrollToHighlight();
+          }
+
           return RefreshIndicator(
             onRefresh: _handleRefresh,
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+              controller: _scrollController,
               children: children,
             ),
           );

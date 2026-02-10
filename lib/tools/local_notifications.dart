@@ -87,6 +87,7 @@ class LocalNotificationsService {
     required String title,
     required String body,
   }) async {
+    await initialize();
     const details = NotificationDetails(
       android: AndroidNotificationDetails(
         channelId,
@@ -123,7 +124,7 @@ class LocalNotificationsService {
     required String title,
     required String body,
   }) async {
-    await _initializeTimeZone();
+    await initialize();
     final tzTime = tz.TZDateTime.from(scheduledAt, tz.local);
     const details = NotificationDetails(
       android: AndroidNotificationDetails(

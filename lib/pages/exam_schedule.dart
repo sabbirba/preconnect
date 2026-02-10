@@ -10,18 +10,65 @@ import 'package:preconnect/pages/ui_kit.dart';
 class ExamSchedule extends StatefulWidget {
   const ExamSchedule({super.key});
 
+  static final ValueNotifier<int> jumpSignal = ValueNotifier<int>(0);
+
+  static void requestJump() {
+    jumpSignal.value++;
+  }
+
   @override
   State<ExamSchedule> createState() => _ExamScheduleState();
 }
 
 class _ExamScheduleState extends State<ExamSchedule> {
   late Future<List<Section>> _future;
+  final ScrollController _scrollController = ScrollController();
+  GlobalKey? _highlightKey;
+  String? _lastHighlightKey;
+  bool _didScroll = false;
+  bool _scrollRetry = false;
 
   @override
   void initState() {
     super.initState();
     unawaited(BracuAuthManager().fetchStudentSchedule());
     _future = _fetchExamSections();
+    ExamSchedule.jumpSignal.addListener(_onJumpRequested);
+  }
+
+  @override
+  void dispose() {
+    ExamSchedule.jumpSignal.removeListener(_onJumpRequested);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onJumpRequested() {
+    _didScroll = false;
+    _scrollRetry = false;
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _attemptScrollToHighlight() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = _highlightKey?.currentContext;
+      if (context == null) {
+        if (!_scrollRetry) {
+          _scrollRetry = true;
+          _attemptScrollToHighlight();
+        }
+        return;
+      }
+      Scrollable.ensureVisible(
+        context,
+        alignment: 0.5,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeOutCubic,
+      );
+      _didScroll = true;
+    });
   }
 
   DateTime? _parseExamDateTime(String? date, String? time) {
@@ -103,6 +150,8 @@ class _ExamScheduleState extends State<ExamSchedule> {
 
   Future<void> _handleRefresh() async {
     setState(() {
+      _didScroll = false;
+      _scrollRetry = false;
       _future = _fetchExamSections(forceRefresh: true);
     });
     await _future;
@@ -274,6 +323,7 @@ class _ExamScheduleState extends State<ExamSchedule> {
           final highlightedKey = ongoingExamKey ?? nextExamKey;
 
           final children = <Widget>[];
+          _highlightKey = null;
 
           if (midExams.isNotEmpty) {
             children.add(const BracuSectionTitle(title: 'Midterm'));
@@ -283,6 +333,9 @@ class _ExamScheduleState extends State<ExamSchedule> {
                 final schedule = section.sectionSchedule;
                 final isHighlighted =
                     highlightedKey == '${section.sectionId}-mid';
+                if (isHighlighted) {
+                  _highlightKey ??= GlobalKey();
+                }
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Column(
@@ -298,6 +351,7 @@ class _ExamScheduleState extends State<ExamSchedule> {
                       ),
                       const SizedBox(height: 8),
                       BracuCard(
+                        key: isHighlighted ? _highlightKey : null,
                         isHighlighted: isHighlighted,
                         highlightColor: BracuPalette.primary,
                         child: Row(
@@ -388,6 +442,9 @@ class _ExamScheduleState extends State<ExamSchedule> {
                 final schedule = section.sectionSchedule;
                 final isHighlighted =
                     highlightedKey == '${section.sectionId}-final';
+                if (isHighlighted) {
+                  _highlightKey ??= GlobalKey();
+                }
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Column(
@@ -403,6 +460,7 @@ class _ExamScheduleState extends State<ExamSchedule> {
                       ),
                       const SizedBox(height: 8),
                       BracuCard(
+                        key: isHighlighted ? _highlightKey : null,
                         isHighlighted: isHighlighted,
                         highlightColor: BracuPalette.primary,
                         child: Row(
@@ -486,10 +544,20 @@ class _ExamScheduleState extends State<ExamSchedule> {
 
           children.add(const SizedBox(height: 8));
 
+          if (highlightedKey != null && highlightedKey != _lastHighlightKey) {
+            _lastHighlightKey = highlightedKey;
+            _didScroll = false;
+            _scrollRetry = false;
+          }
+          if (!_didScroll && _highlightKey != null) {
+            _attemptScrollToHighlight();
+          }
+
           return RefreshIndicator(
             onRefresh: _handleRefresh,
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+              controller: _scrollController,
               children: children,
             ),
           );

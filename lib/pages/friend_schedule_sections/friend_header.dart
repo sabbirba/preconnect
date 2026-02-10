@@ -44,7 +44,7 @@ class FriendHeaderCard extends StatelessWidget {
           IconButton(
             tooltip: 'Remove schedule',
             onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline),
+            icon: const Icon(Icons.delete_outline_rounded),
           ),
         ],
       ),

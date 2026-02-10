@@ -29,7 +29,6 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
     super.initState();
     _loadSchedules();
   }
-
   Future<void> _loadSchedules() async {
     final prefs = await SharedPreferences.getInstance();
     final List<String>? encodedList = prefs.getStringList("friendSchedules");
@@ -124,11 +123,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1E6BE3), Color(0xFF2C9DFF)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: BracuPalette.card(context),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.18),
@@ -144,13 +139,16 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    children: const [
-                      Icon(Icons.delete_outline, color: Colors.white),
-                      SizedBox(width: 8),
+                    children: [
+                      const Icon(
+                        Icons.delete_outline_rounded,
+                        color: BracuPalette.primary,
+                      ),
+                      const SizedBox(width: 8),
                       Text(
                         'Remove Friend Schedule?',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: BracuPalette.textPrimary(context),
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
@@ -161,7 +159,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
                   Text(
                     'This will remove $displayName\'s shared schedule.',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: BracuPalette.textSecondary(context),
                       fontSize: 13,
                     ),
                   ),
@@ -172,9 +170,11 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(context, false),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
+                            foregroundColor: BracuPalette.primary,
                             side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.7),
+                              color: BracuPalette.primary.withValues(
+                                alpha: 0.6,
+                              ),
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
@@ -188,8 +188,8 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
                         child: ElevatedButton(
                           onPressed: () => Navigator.pop(context, true),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFFD63B3B),
+                            backgroundColor: BracuPalette.primary,
+                            foregroundColor: Colors.white,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),

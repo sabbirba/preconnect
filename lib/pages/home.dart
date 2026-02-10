@@ -20,6 +20,7 @@ import 'package:preconnect/pages/home_sections/student_overview.dart';
 import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/notification_scheduler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -52,6 +53,11 @@ class _HomePageState extends State<HomePage> {
   final Set<HomeTab> _builtTabs = {HomeTab.dashboard};
 
   void _setTab(HomeTab tab) {
+    if (tab == HomeTab.studentSchedule) {
+      ClassSchedule.requestJump();
+    } else if (tab == HomeTab.examSchedule) {
+      ExamSchedule.requestJump();
+    }
     setState(() {
       selectedTab = tab;
     });
@@ -77,11 +83,7 @@ class _HomePageState extends State<HomePage> {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            gradient: const LinearGradient(
-              colors: [Color(0xFF1E6BE3), Color(0xFF2C9DFF)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: BracuPalette.card(context),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.18),
@@ -97,13 +99,16 @@ class _HomePageState extends State<HomePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  children: const [
-                    Icon(Icons.logout, color: Colors.white),
-                    SizedBox(width: 8),
+                  children: [
+                    const Icon(
+                      Icons.logout,
+                      color: BracuPalette.primary,
+                    ),
+                    const SizedBox(width: 8),
                     Text(
                       'Confirm Sign Out?',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: BracuPalette.textPrimary(context),
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -114,7 +119,7 @@ class _HomePageState extends State<HomePage> {
                 Text(
                   'Sign out will clear cached data. You can sign in again for fresh data.',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: BracuPalette.textSecondary(context),
                     fontSize: 13,
                   ),
                 ),
@@ -125,9 +130,10 @@ class _HomePageState extends State<HomePage> {
                       child: OutlinedButton(
                         onPressed: () => Navigator.of(context).pop(false),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
+                          foregroundColor: BracuPalette.primary,
                           side: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.7),
+                            color:
+                                BracuPalette.primary.withValues(alpha: 0.6),
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -141,8 +147,8 @@ class _HomePageState extends State<HomePage> {
                       child: ElevatedButton(
                         onPressed: () => Navigator.of(context).pop(true),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF1E6BE3),
+                          backgroundColor: BracuPalette.primary,
+                          foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -224,6 +230,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   void initState() {
     super.initState();
     _future = _loadData();
+    unawaited(NotificationScheduler.syncSchedules());
   }
 
   Future<_HomeData> _loadData({bool forceRefresh = false}) async {
@@ -536,48 +543,65 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                 onLogout: widget.onLogout,
                                 countdown: nextExam == null
                                     ? null
-                                    : ExamCountdownCard(
-                                        title: nextExam.time
-                                                    .difference(DateTime.now())
-                                                    .inDays <=
-                                                3
-                                            ? '${nextExam.courseCode} ${nextExam.type} Exam'
-                                            : '${nextExam.type} Exam',
-                                        targetDateTime: nextExam.time,
+                                    : InkWell(
+                                        borderRadius: BorderRadius.circular(18),
+                                        onTap: () => widget.onNavigate(
+                                          HomeTab.examSchedule,
+                                        ),
+                                        child: ExamCountdownCard(
+                                          title: nextExam.time
+                                                      .difference(DateTime.now())
+                                                      .inDays <=
+                                                  3
+                                              ? '${nextExam.courseCode} ${nextExam.type} Exam'
+                                              : '${nextExam.type} Exam',
+                                          targetDateTime: nextExam.time,
+                                        ),
                                       ),
                               ),
                               const SizedBox(height: 22),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      'Today is $today',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: BracuPalette.textPrimary(
-                                          context,
+                              InkWell(
+                                onTap: () => widget.onNavigate(
+                                  HomeTab.studentSchedule,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'Today is $today',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: BracuPalette.textPrimary(
+                                            context,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  Text(
-                                    todayDate,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: BracuPalette.textPrimary(context),
+                                    Text(
+                                      todayDate,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color:
+                                            BracuPalette.textPrimary(context),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                               const SizedBox(height: 12),
                               if (todayEntries.isEmpty)
-                                const _ScheduleTile(
-                                  title: 'Enjoy your day',
-                                  subtitle: 'No Classes',
-                                  badge: '--',
-                                  color: _primary,
+                                InkWell(
+                                  onTap: () => widget.onNavigate(
+                                    HomeTab.studentSchedule,
+                                  ),
+                                  child: const _ScheduleTile(
+                                    title: 'Enjoy your day',
+                                    subtitle: 'No Classes',
+                                    badge: '--',
+                                    color: _primary,
+                                  ),
                                 )
                               else
                                 ...todayEntries
@@ -587,19 +611,24 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                         padding: const EdgeInsets.only(
                                           bottom: 10,
                                         ),
-                                        child: _ScheduleTile(
-                                          title: entry.courseCode,
-                                          subtitle: formatTimeRange(
-                                            entry.startTime,
-                                            entry.endTime,
+                                        child: InkWell(
+                                          onTap: () => widget.onNavigate(
+                                            HomeTab.studentSchedule,
                                           ),
-                                          trailing: entry.roomNumber,
-                                          trailingSub: entry.faculties,
-                                          badge: formatSectionBadge(
-                                            entry.sectionName,
+                                          child: _ScheduleTile(
+                                            title: entry.courseCode,
+                                            subtitle: formatTimeRange(
+                                              entry.startTime,
+                                              entry.endTime,
+                                            ),
+                                            trailing: entry.roomNumber,
+                                            trailingSub: entry.faculties,
+                                            badge: formatSectionBadge(
+                                              entry.sectionName,
+                                            ),
+                                            color: _primary,
+                                            isHighlighted: entry == nextEntry,
                                           ),
-                                          color: _primary,
-                                          isHighlighted: entry == nextEntry,
                                         ),
                                       ),
                                     ),
