@@ -21,6 +21,32 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
   final MobileScannerController _controller = MobileScannerController();
   String? scannedValue;
   bool _isPicking = false;
+  bool _cameraGranted = true;
+
+  Future<void> _ensureCameraPermission({bool openSettingsOnDeny = false}) async {
+    if (defaultTargetPlatform == TargetPlatform.macOS) {
+      setState(() => _cameraGranted = true);
+      return;
+    }
+    if (kIsWeb) {
+      setState(() => _cameraGranted = false);
+      return;
+    }
+    final status = await Permission.camera.status;
+    if (!mounted) return;
+    if (openSettingsOnDeny &&
+        (status.isPermanentlyDenied || status.isRestricted)) {
+      setState(() => _cameraGranted = false);
+      await openAppSettings();
+      return;
+    }
+    final requested = await Permission.camera.request();
+    if (!mounted) return;
+    setState(() => _cameraGranted = requested.isGranted);
+    if (!requested.isGranted && openSettingsOnDeny) {
+      await openAppSettings();
+    }
+  }
 
   bool get _supportsGalleryScan {
     if (kIsWeb) return false;
@@ -184,21 +210,37 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
                       aspectRatio: 1,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(16),
-                        child: MobileScanner(
-                          controller: _controller,
-                          onDetect: (capture) async {
-                            final barcode = capture.barcodes.first;
-                            if (barcode.rawValue != null) {
-                              final value = barcode.rawValue!;
-                              setState(() {
-                                scannedValue = value;
-                              });
+                        child: _cameraGranted
+                            ? MobileScanner(
+                                controller: _controller,
+                                onDetect: (capture) async {
+                                  final barcode = capture.barcodes.first;
+                                  if (barcode.rawValue != null) {
+                                    final value = barcode.rawValue!;
+                                    setState(() {
+                                      scannedValue = value;
+                                    });
 
-                              await _saveScannedValue(value);
-                              _controller.stop();
-                            }
-                          },
-                        ),
+                                    await _saveScannedValue(value);
+                                    _controller.stop();
+                                  }
+                                },
+                              )
+                            : Center(
+                                child: TextButton(
+                                  onPressed: () => _ensureCameraPermission(
+                                    openSettingsOnDeny: true,
+                                  ),
+                                  child: Text(
+                                    'Tap to enable camera',
+                                    style: TextStyle(
+                                      color: BracuPalette.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
                       ),
                     ),
                   ),

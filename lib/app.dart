@@ -48,19 +48,6 @@ class _MyAppState extends State<MyApp> {
         .ensureSignedIn()
         .timeout(const Duration(seconds: 10), onTimeout: () => false);
 
-    if (loggedIn) {
-      unawaited(BracuAuthManager().getProfile());
-      unawaited(BracuAuthManager().getStudentSchedule());
-      unawaited(BracuAuthManager().getAttendanceInfo());
-      unawaited(BracuAuthManager().getPaymentInfo());
-      unawaited(BracuAuthManager().getAdvisingInfo());
-      unawaited(BracuAuthManager().fetchProfile());
-      unawaited(BracuAuthManager().fetchStudentSchedule());
-      unawaited(BracuAuthManager().fetchAttendanceInfo());
-      unawaited(BracuAuthManager().fetchPaymentInfo());
-      unawaited(BracuAuthManager().fetchAdvisingInfo());
-    }
-
     return _StartupState(isLoggedIn: loggedIn);
   }
 
@@ -141,11 +128,7 @@ class _AppGate extends StatelessWidget {
           );
         }
         if (snapshot.connectionState != ConnectionState.done) {
-          return const Scaffold(
-            body: Center(
-              child: SizedBox.shrink(),
-            ),
-          );
+          return const LoginPage();
         }
         final isLoggedIn = snapshot.data?.isLoggedIn;
         if (isLoggedIn == true) {
