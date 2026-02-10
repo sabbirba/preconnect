@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/model/payment_info.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -64,26 +63,26 @@ class PaymentList extends StatelessWidget {
                               color: BracuPalette.primary,
                             ),
                             const SizedBox(width: 6),
-                            Text(
-                              payment.payslipNumber,
-                              style: TextStyle(
-                                color: textSecondary,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
+                            GestureDetector(
+                              onTap: () => copyToClipboard(
+                                context,
+                                payment.payslipNumber,
+                              ),
+                              child: Text(
+                                payment.payslipNumber,
+                                style: TextStyle(
+                                  color: textSecondary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 4),
                             GestureDetector(
                               onTap: () {
-                                Clipboard.setData(
-                                  ClipboardData(
-                                    text: payment.payslipNumber,
-                                  ),
-                                );
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Payslip number copied'),
-                                  ),
+                                copyToClipboard(
+                                  context,
+                                  payment.payslipNumber,
                                 );
                               },
                               child: Icon(
@@ -94,14 +93,17 @@ class PaymentList extends StatelessWidget {
                             ),
                           ],
                         ),
-                        Text(
-                          amount,
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
+                        GestureDetector(
+                          onTap: () => copyToClipboard(context, amount),
+                          child: Text(
+                            amount,
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                            textAlign: TextAlign.right,
                           ),
-                          textAlign: TextAlign.right,
                         ),
                       ],
                     );

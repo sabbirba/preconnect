@@ -66,6 +66,17 @@ String formatTimeRange(String? start, String? end) {
   return '$s - $e';
 }
 
+void copyToClipboard(BuildContext context, String text) {
+  final value = text.trim();
+  if (value.isEmpty) return;
+  Clipboard.setData(ClipboardData(text: value));
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Copied to clipboard'),
+    ),
+  );
+}
+
 String normalizeWeekday(String? day) {
   if (day == null) return '';
   final trimmed = day.trim();
