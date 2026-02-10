@@ -22,8 +22,17 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<key>NSAlarmKitUsageDescription</key>
+	<string>PreConnect uses alarms to notify you about classes.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_dartVmService._tcp</string>
+		<string>_alarmkit._tcp</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>PreConnect needs access to the local network for AlarmKit.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -72,5 +81,7 @@
 	<string>PreConnect needs camera access to scan QR codes.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>PreConnect needs photo access to scan QR codes from your gallery.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>PreConnect needs permission to save QR codes to your gallery.</string>
 </dict>
 </plist>

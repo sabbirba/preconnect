@@ -1,10 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:preconnect/api/bracu_auth_manager.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/tools/qrpainter.dart';
 import 'package:archive/archive.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -20,6 +26,14 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
   String? _base64Data;
   bool isLoading = false;
   String? errorMessage;
+  final GlobalKey _qrKey = GlobalKey();
+  bool _includeFooterForCapture = false;
+
+  bool get _supportsGallerySave {
+    if (kIsWeb) return false;
+    return defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+  }
 
   @override
   void initState() {
@@ -179,6 +193,57 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
     await _fetchAndConvertSchedule(forceRefresh: true);
   }
 
+  Future<bool> _ensureGalleryPermission() async {
+    if (Platform.isAndroid) {
+      final photos = await Permission.photos.request();
+      if (photos.isGranted) return true;
+      final storage = await Permission.storage.request();
+      return storage.isGranted;
+    }
+    final photos = await Permission.photos.request();
+    return photos.isGranted;
+  }
+
+  Future<void> _saveQrToGallery() async {
+    if (_base64Data == null) return;
+    if (!await _ensureGalleryPermission()) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Permission denied')),
+      );
+      return;
+    }
+
+    try {
+      setState(() => _includeFooterForCapture = true);
+      await WidgetsBinding.instance.endOfFrame;
+
+      final boundary =
+          _qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) return;
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      final pngBytes = byteData?.buffer.asUint8List();
+      if (pngBytes == null) return;
+
+      final result = await ImageGallerySaver.saveImage(
+        pngBytes,
+        name: 'preconnect_qr_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      final isSuccess = (result['isSuccess'] ?? result['success']) == true;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isSuccess ? 'Saved to gallery' : 'Failed to save QR'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _includeFooterForCapture = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BracuPageScaffold(
@@ -204,35 +269,100 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
                   child: Container(
                     color: Colors.white,
                     padding: const EdgeInsets.all(12),
-                    child: AspectRatio(
-                      aspectRatio: 1,
-                      child: _base64Data == null
-                          ? Center(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final size = constraints.maxWidth;
+                        if (_base64Data == null) {
+                          return SizedBox(
+                            height: size,
+                            child: Center(
                               child: Text(
                                 'No QR data available',
                                 style: TextStyle(
                                   color: BracuPalette.textSecondary(context),
                                 ),
                               ),
-                            )
-                          : LayoutBuilder(
-                              builder: (context, constraints) {
-                                final size = constraints.maxWidth;
-                                return CustomPaint(
+                            ),
+                          );
+                        }
+
+                        return RepaintBoundary(
+                          key: _qrKey,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: size,
+                                height: size,
+                                child: CustomPaint(
                                   size: Size.square(size),
                                   painter: QrPainter(
                                     _base64Data!,
                                     fgColor: Colors.black,
                                     bgColor: Colors.white,
                                   ),
-                                );
-                              },
-                            ),
+                                ),
+                              ),
+                              if (_includeFooterForCapture) ...[
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Generated from PreConnect App',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: BracuPalette.textSecondary(context),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),
               ),
               const SizedBox(height: 14),
+              if (_supportsGallerySave) ...[
+                InkWell(
+                  onTap: _saveQrToGallery,
+                  borderRadius: BorderRadius.circular(18),
+                  child: BracuCard(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: BracuPalette.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.download_rounded,
+                            color: BracuPalette.primary,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Save to Gallery',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_forward,
+                          color: BracuPalette.textSecondary(context),
+                          size: 18,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
               const BracuSectionTitle(title: 'How to use'),
               const SizedBox(height: 10),
               BracuCard(

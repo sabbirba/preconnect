@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/bracu_auth_manager.dart';
@@ -17,9 +19,10 @@ import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/home_sections/exam_countdown.dart';
 import 'package:preconnect/pages/home_sections/student_overview.dart';
 import 'package:preconnect/pages/shared_widgets/section_badge.dart';
+import 'package:preconnect/pages/shared_widgets/in_app_webview.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:preconnect/tools/user_agent.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -46,6 +49,9 @@ class _HomePageState extends State<HomePage> {
     HomeTab.friendSchedule: FriendSchedulePage(onNavigate: _setTab),
     HomeTab.devs: const DevsPage(),
   };
+  late final List<HomeTab> _tabOrder = HomeTab.values;
+  late final List<Widget> _tabPages =
+      _tabOrder.map((tab) => pages[tab]!).toList();
 
   void _setTab(HomeTab tab) {
     setState(() {
@@ -182,7 +188,10 @@ class _HomePageState extends State<HomePage> {
         body: BracuBackScope(
           canGoBack: selectedTab != HomeTab.dashboard,
           onBack: _handleBack,
-          child: pages[selectedTab]!,
+          child: IndexedStack(
+            index: selectedTab.index,
+            children: _tabPages,
+          ),
         ),
       ),
     );
@@ -208,6 +217,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   late Future<_HomeData> _future;
   Timer? _countdownTicker;
   bool _countdownActive = false;
+  bool _overviewExpanded = true;
 
   @override
   void initState() {
@@ -215,6 +225,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     unawaited(BracuAuthManager().fetchProfile());
     unawaited(BracuAuthManager().fetchStudentSchedule());
     _future = _loadData();
+    _primeOverviewState();
   }
 
   @override
@@ -235,6 +246,14 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       _countdownTicker = null;
       _countdownActive = false;
     }
+  }
+
+  Future<void> _primeOverviewState() async {
+    await StudentOverviewStore.load();
+    if (!mounted) return;
+    setState(() {
+      _overviewExpanded = StudentOverviewStore.current;
+    });
   }
 
   Future<_HomeData> _loadData({bool forceRefresh = false}) async {
@@ -279,12 +298,22 @@ class _HomeDashboardState extends State<_HomeDashboard> {
         }
       }
     }
+    await StudentOverviewStore.load();
+    _overviewExpanded = StudentOverviewStore.current;
     return _HomeData(
       profile: profile,
       entries: entries,
       photoUrl: photoUrl,
       sections: sections,
     );
+  }
+
+  Future<void> _setOverviewExpanded(bool value) async {
+    if (_overviewExpanded == value) return;
+    setState(() {
+      _overviewExpanded = value;
+    });
+    await StudentOverviewStore.set(value);
   }
 
   Future<void> _handleRefresh() async {
@@ -564,6 +593,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                 studentEmail: profile['email'] ?? 'N/A',
                                 program: profile['program'] ?? 'N/A',
                                 onLogout: widget.onLogout,
+                                isExpanded: _overviewExpanded,
+                                onExpandedChanged: _setOverviewExpanded,
                                 countdown: nextExam == null
                                     ? null
                                     : ExamCountdownCard(
@@ -704,7 +735,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                               ),
                               const SizedBox(height: 16),
                               _OpenWebCard(
-                                onTap: () => _openUrl(
+                                onTap: () => _openInAppWeb(
+                                  context,
                                   'https://preconnect.app',
                                 ),
                               ),
@@ -723,14 +755,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       ),
     );
   }
-}
-
-Future<void> _openUrl(String url) async {
-  final uri = Uri.parse(url);
-  await launchUrl(
-    uri,
-    mode: LaunchMode.inAppBrowserView,
-  );
 }
 
 class _TopBar extends StatelessWidget {
@@ -890,11 +914,8 @@ class _OpenWebCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: BracuPalette.card(context),
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: BracuPalette.textSecondary(context).withValues(alpha: 0.2),
-            ),
           ),
           child: Row(
             children: [
@@ -932,6 +953,26 @@ class _OpenWebCard extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> _openInAppWeb(BuildContext context, String url) async {
+  if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('In-app web is not available here.')),
+    );
+    return;
+  }
+  await Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (context) => InAppWebPage(
+        title: 'PreConnect Web',
+        initialUrl: url,
+        immersive: false,
+        userAgent: kPreconnectUserAgent,
+      ),
+    ),
+  );
 }
 
 class _QuickActionCard extends StatelessWidget {

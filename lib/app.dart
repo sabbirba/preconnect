@@ -143,7 +143,7 @@ class _AppGate extends StatelessWidget {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Scaffold(
             body: Center(
-              child: CircularProgressIndicator(),
+              child: SizedBox.shrink(),
             ),
           );
         }

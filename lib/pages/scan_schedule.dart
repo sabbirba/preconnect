@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:archive/archive.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -16,6 +18,13 @@ class ScanSchedulePage extends StatefulWidget {
 class _ScanSchedulePageState extends State<ScanSchedulePage> {
   final MobileScannerController _controller = MobileScannerController();
   String? scannedValue;
+  bool _isPicking = false;
+
+  bool get _supportsGalleryScan {
+    if (kIsWeb) return false;
+    return defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+  }
 
   Future<void> _saveScannedValue(String value) async {
     final prefs = await SharedPreferences.getInstance();
@@ -56,6 +65,53 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
   Future<void> _handleRefresh() async {
     setState(() => scannedValue = null);
     _controller.start();
+  }
+
+  Future<void> _scanFromGallery() async {
+    if (_isPicking) return;
+    if (kIsWeb) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gallery scan is not supported on web')),
+      );
+      return;
+    }
+    setState(() => _isPicking = true);
+    try {
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      if (image == null) return;
+
+      final BarcodeCapture? capture =
+          await _controller.analyzeImage(image.path);
+      if (capture == null || capture.barcodes.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No QR code found in image')),
+        );
+        return;
+      }
+
+      final value = capture.barcodes.first.rawValue;
+      if (value == null || value.trim().isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid QR code')),
+        );
+        return;
+      }
+
+      setState(() {
+        scannedValue = value;
+      });
+
+      await _saveScannedValue(value);
+      _controller.stop();
+    } finally {
+      if (mounted) {
+        setState(() => _isPicking = false);
+      }
+    }
   }
 
   @override
@@ -100,6 +156,48 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
                     ),
                   ),
                   const SizedBox(height: 14),
+                  if (_supportsGalleryScan) ...[
+                    InkWell(
+                      onTap: _scanFromGallery,
+                      borderRadius: BorderRadius.circular(18),
+                      child: BracuCard(
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: BracuPalette.primary.withValues(
+                                  alpha: 0.12,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.photo_library_outlined,
+                                color: BracuPalette.primary,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Text(
+                                'Scan from Gallery',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward,
+                              color: BracuPalette.textSecondary(context),
+                              size: 18,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   BracuCard(
                     child: Row(
                       children: [

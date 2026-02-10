@@ -2,6 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+const String studentOverviewPrefsKey = 'student_overview_expanded';
+
+class StudentOverviewStore {
+  static bool? _cachedExpanded;
+
+  static bool get current => _cachedExpanded ?? true;
+
+  static Future<void> load() async {
+    if (_cachedExpanded != null) return;
+    final prefs = await SharedPreferences.getInstance();
+    _cachedExpanded = prefs.getBool(studentOverviewPrefsKey) ?? true;
+  }
+
+  static Future<void> set(bool value) async {
+    _cachedExpanded = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(studentOverviewPrefsKey, value);
+  }
+}
+
 class StudentOverviewCard extends StatefulWidget {
   const StudentOverviewCard({
     super.key,
@@ -10,7 +30,9 @@ class StudentOverviewCard extends StatefulWidget {
     required this.studentEmail,
     required this.program,
     required this.onLogout,
+    required this.isExpanded,
     this.countdown,
+    this.onExpandedChanged,
   });
 
   final String studentId;
@@ -18,7 +40,9 @@ class StudentOverviewCard extends StatefulWidget {
   final String studentEmail;
   final String program;
   final Future<void> Function() onLogout;
+  final bool isExpanded;
   final Widget? countdown;
+  final ValueChanged<bool>? onExpandedChanged;
 
   @override
   State<StudentOverviewCard> createState() => _StudentOverviewCardState();
@@ -26,34 +50,38 @@ class StudentOverviewCard extends StatefulWidget {
 
 class _StudentOverviewCardState extends State<StudentOverviewCard>
     with SingleTickerProviderStateMixin {
-  static const String _prefsKey = 'student_overview_expanded';
-  bool _isExpanded = true;
+  late final AnimationController _expandController;
 
   @override
   void initState() {
     super.initState();
-    _loadExpandedState();
+    _expandController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+      value: widget.isExpanded ? 1.0 : 0.0,
+    );
   }
 
-  Future<void> _loadExpandedState() async {
-    final prefs = await SharedPreferences.getInstance();
-    final stored = prefs.getBool(_prefsKey);
-    if (!mounted || stored == null) return;
-    setState(() {
-      _isExpanded = stored;
-    });
+  @override
+  void didUpdateWidget(covariant StudentOverviewCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isExpanded != oldWidget.isExpanded) {
+      if (widget.isExpanded) {
+        _expandController.forward();
+      } else {
+        _expandController.reverse();
+      }
+    }
   }
 
   void _toggleExpanded() {
-    setState(() {
-      _isExpanded = !_isExpanded;
-    });
-    _persistExpandedState();
+    widget.onExpandedChanged?.call(!widget.isExpanded);
   }
 
-  Future<void> _persistExpandedState() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_prefsKey, _isExpanded);
+  @override
+  void dispose() {
+    _expandController.dispose();
+    super.dispose();
   }
 
   @override
@@ -80,7 +108,7 @@ class _StudentOverviewCardState extends State<StudentOverviewCard>
                 ),
                 const SizedBox(width: 8),
                 InkWell(
-                  onTap: _toggleExpanded,
+                  onTap: () => _toggleExpanded(),
                   borderRadius: BorderRadius.circular(14),
                   child: Container(
                     padding: const EdgeInsets.all(6),
@@ -89,7 +117,7 @@ class _StudentOverviewCardState extends State<StudentOverviewCard>
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Icon(
-                      _isExpanded
+                      widget.isExpanded
                           ? Icons.keyboard_arrow_up
                           : Icons.keyboard_arrow_down,
                       size: 20,
@@ -118,58 +146,58 @@ class _StudentOverviewCardState extends State<StudentOverviewCard>
                 ),
               ],
             ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeInOut,
-              child: _isExpanded
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 12),
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final half = (constraints.maxWidth - 12) / 2;
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+            ClipRect(
+              child: SizeTransition(
+                sizeFactor: _expandController,
+                axisAlignment: -1,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 12),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final half = (constraints.maxWidth - 12) / 2;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                Row(
-                                  children: [
-                                    _OverviewPill(
-                                      label: 'Student ID',
-                                      value: widget.studentId,
-                                      width: half,
-                                      isDark: isDark,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    _OverviewPill(
-                                      label: 'Phone Number',
-                                      value: widget.phoneNumber,
-                                      width: half,
-                                      isDark: isDark,
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
                                 _OverviewPill(
-                                  label: 'Student Email',
-                                  value: widget.studentEmail,
-                                  width: constraints.maxWidth,
+                                  label: 'Student ID',
+                                  value: widget.studentId,
+                                  width: half,
                                   isDark: isDark,
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(width: 12),
                                 _OverviewPill(
-                                  label: 'Program',
-                                  value: widget.program,
-                                  width: constraints.maxWidth,
+                                  label: 'Phone Number',
+                                  value: widget.phoneNumber,
+                                  width: half,
                                   isDark: isDark,
                                 ),
                               ],
-                            );
-                          },
-                        ),
-                      ],
-                    )
-                  : const SizedBox.shrink(),
+                            ),
+                            const SizedBox(height: 12),
+                            _OverviewPill(
+                              label: 'Student Email',
+                              value: widget.studentEmail,
+                              width: constraints.maxWidth,
+                              isDark: isDark,
+                            ),
+                            const SizedBox(height: 12),
+                            _OverviewPill(
+                              label: 'Program',
+                              value: widget.program,
+                              width: constraints.maxWidth,
+                              isDark: isDark,
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
             ),
             if (widget.countdown != null) ...[
               const SizedBox(height: 12),

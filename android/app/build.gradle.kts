@@ -9,6 +9,10 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+
+fun envOrProp(name: String): String? =
+    (findProperty(name) as String?) ?: System.getenv(name)
+
 android {
     val keystoreProperties = Properties()
     val keystorePropertiesFile = rootProject.file("key.properties")
@@ -31,8 +35,10 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
     }
 
     defaultConfig {
@@ -49,13 +55,13 @@ android {
 
     signingConfigs {
         create("release") {
-            val storeFilePath = keystoreProperties.getProperty("storeFile")
+            val storeFilePath = envOrProp("storeFile")
             if (!storeFilePath.isNullOrBlank()) {
                 storeFile = rootProject.file(storeFilePath)
             }
-            storePassword = keystoreProperties.getProperty("storePassword")
-            keyAlias = keystoreProperties.getProperty("keyAlias")
-            keyPassword = keystoreProperties.getProperty("keyPassword")
+            storePassword = envOrProp("storePassword")
+            keyAlias = envOrProp("keyAlias")
+            keyPassword = envOrProp("keyPassword")
         }
     }
 

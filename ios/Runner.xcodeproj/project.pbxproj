@@ -8,9 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		18146629F7A64B75F6504AD4 /* AlarmkitWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107057201038182A1015482C /* AlarmkitWidget.swift */; };
 		18B4265238ED5E51D6DBBB88 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 29A90CF41E6E2EC0B0EF0EA5 /* Assets.xcassets */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
+		45E7E488C6E77DF95C7A9315 /* AlarmkitWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CB8FB1FA898FEEE0F853903 /* AlarmkitWidgetBundle.swift */; };
+		460DF1754F489C0346D8FB93 /* AlarmkitWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 243E2C42A36C75412BFE839F /* AlarmkitWidgetExtension.appex */; };
+		6E6A791CB0218081D3330F5B /* AlarmkitWidgetLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EDDB615786A69812A9955A4 /* AlarmkitWidgetLiveActivity.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		76D2E1887C4F172436928D37 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A0010352B57DE49435A035B3 /* Pods_Runner.framework */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
@@ -18,6 +22,7 @@
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		AC10BAFAD0AF8850BD933029 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 387F21CB0ADCD64780015C32 /* Foundation.framework */; };
 		D6DA0317D51ADADFA6E2C079 /* AppIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1006460E104D2C0E3CDA0AB7 /* AppIntents.swift */; };
+		DB2C6CCAA169BEEBBFBBCDB5 /* Pods_AlarmkitWidgetExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A8120CD28C7F7A5EB261D857 /* Pods_AlarmkitWidgetExtension.framework */; };
 		DF714ABA26A28C5BDF3A2673 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C333762A416B095B9E4665BC /* Pods_RunnerTests.framework */; };
 /* End PBXBuildFile section */
 
@@ -34,6 +39,7 @@
 			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 80F437744B18B551B2CCB37E;
+			remoteInfo = AlarmkitWidgetExtension;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -54,6 +60,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
+				460DF1754F489C0346D8FB93 /* AlarmkitWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -63,15 +70,26 @@
 /* Begin PBXFileReference section */
 		0E8317A1A22A525C23BBA818 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		1006460E104D2C0E3CDA0AB7 /* AppIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppIntents.swift; sourceTree = "<group>"; };
+		107057201038182A1015482C /* AlarmkitWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AlarmkitWidget.swift; path = AlarmkitWidget.swift; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
+		1572E01B0558A7FB7EC769EC /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = Info.plist; path = Info.plist; sourceTree = "<group>"; };
+		243E2C42A36C75412BFE839F /* AlarmkitWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AlarmkitWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		2F3E9C2A9E1A4F5B9C1D2E41 /* AlarmkitWidgetExtension.Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = AlarmkitWidgetExtension.Debug.xcconfig; path = Flutter/AlarmkitWidgetExtension.Debug.xcconfig; sourceTree = "<group>"; };
+		2F3E9C2A9E1A4F5B9C1D2E42 /* AlarmkitWidgetExtension.Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = AlarmkitWidgetExtension.Release.xcconfig; path = Flutter/AlarmkitWidgetExtension.Release.xcconfig; sourceTree = "<group>"; };
+		2F3E9C2A9E1A4F5B9C1D2E43 /* AlarmkitWidgetExtension.Profile.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = AlarmkitWidgetExtension.Profile.xcconfig; path = Flutter/AlarmkitWidgetExtension.Profile.xcconfig; sourceTree = "<group>"; };
 		29A90CF41E6E2EC0B0EF0EA5 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		31B56FD46216E16B34D33298 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		387F21CB0ADCD64780015C32 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
+		3CB8FB1FA898FEEE0F853903 /* AlarmkitWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AlarmkitWidgetBundle.swift; path = AlarmkitWidgetBundle.swift; sourceTree = "<group>"; };
+		441E75163D193CD209888E3E /* Pods-AlarmkitWidgetExtension.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AlarmkitWidgetExtension.release.xcconfig"; path = "Target Support Files/Pods-AlarmkitWidgetExtension/Pods-AlarmkitWidgetExtension.release.xcconfig"; sourceTree = "<group>"; };
 		47E0F5FD734DE81365B045DA /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
+		4EDDB615786A69812A9955A4 /* AlarmkitWidgetLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AlarmkitWidgetLiveActivity.swift; path = AlarmkitWidgetLiveActivity.swift; sourceTree = "<group>"; };
+		4F094A0FD68FAEFFC5064665 /* Pods-AlarmkitWidgetExtension.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AlarmkitWidgetExtension.debug.xcconfig"; path = "Target Support Files/Pods-AlarmkitWidgetExtension/Pods-AlarmkitWidgetExtension.debug.xcconfig"; sourceTree = "<group>"; };
+		675770BF3F25582D7401B94C /* Pods-AlarmkitWidgetExtension.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AlarmkitWidgetExtension.profile.xcconfig"; path = "Target Support Files/Pods-AlarmkitWidgetExtension/Pods-AlarmkitWidgetExtension.profile.xcconfig"; sourceTree = "<group>"; };
 		6CDDE4F3E085510F38015958 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -86,6 +104,7 @@
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		995934A4206CDC824B03BB06 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A0010352B57DE49435A035B3 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		A8120CD28C7F7A5EB261D857 /* Pods_AlarmkitWidgetExtension.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_AlarmkitWidgetExtension.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		C333762A416B095B9E4665BC /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F7482C8B6AA50F71F615AA66 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -96,6 +115,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AC10BAFAD0AF8850BD933029 /* Foundation.framework in Frameworks */,
+				DB2C6CCAA169BEEBBFBBCDB5 /* Pods_AlarmkitWidgetExtension.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -118,6 +138,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		FFACA6BCD26E055BA4603D10 /* AlarmkitWidget */ = {
+			isa = PBXGroup;
+			children = (
+				107057201038182A1015482C /* AlarmkitWidget.swift */,
+				3CB8FB1FA898FEEE0F853903 /* AlarmkitWidgetBundle.swift */,
+				4EDDB615786A69812A9955A4 /* AlarmkitWidgetLiveActivity.swift */,
+				1006460E104D2C0E3CDA0AB7 /* AppIntents.swift */,
+				29A90CF41E6E2EC0B0EF0EA5 /* Assets.xcassets */,
+				1572E01B0558A7FB7EC769EC /* Info.plist */,
+			);
+			name = AlarmkitWidget;
+			path = AlarmkitWidget;
+			sourceTree = "<group>";
+		};
 		331C8082294A63A400263BE5 /* RunnerTests */ = {
 			isa = PBXGroup;
 			children = (
@@ -135,6 +169,9 @@
 				6CDDE4F3E085510F38015958 /* Pods-RunnerTests.debug.xcconfig */,
 				0E8317A1A22A525C23BBA818 /* Pods-RunnerTests.release.xcconfig */,
 				31B56FD46216E16B34D33298 /* Pods-RunnerTests.profile.xcconfig */,
+				4F094A0FD68FAEFFC5064665 /* Pods-AlarmkitWidgetExtension.debug.xcconfig */,
+				441E75163D193CD209888E3E /* Pods-AlarmkitWidgetExtension.release.xcconfig */,
+				675770BF3F25582D7401B94C /* Pods-AlarmkitWidgetExtension.profile.xcconfig */,
 			);
 			name = Pods;
 			path = Pods;
@@ -146,6 +183,9 @@
 				3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */,
 				9740EEB21CF90195004384FC /* Debug.xcconfig */,
 				7AFA3C8E1D35360C0083082E /* Release.xcconfig */,
+				2F3E9C2A9E1A4F5B9C1D2E41 /* AlarmkitWidgetExtension.Debug.xcconfig */,
+				2F3E9C2A9E1A4F5B9C1D2E42 /* AlarmkitWidgetExtension.Release.xcconfig */,
+				2F3E9C2A9E1A4F5B9C1D2E43 /* AlarmkitWidgetExtension.Profile.xcconfig */,
 				9740EEB31CF90195004384FC /* Generated.xcconfig */,
 			);
 			name = Flutter;
@@ -154,6 +194,7 @@
 		97C146E51CF9000F007C117D = {
 			isa = PBXGroup;
 			children = (
+				FFACA6BCD26E055BA4603D10 /* AlarmkitWidget */,
 				9740EEB11CF90186004384FC /* Flutter */,
 				97C146F01CF9000F007C117D /* Runner */,
 				97C146EF1CF9000F007C117D /* Products */,
@@ -168,6 +209,7 @@
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
+				243E2C42A36C75412BFE839F /* AlarmkitWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -199,6 +241,7 @@
 			isa = PBXGroup;
 			children = (
 				A0010352B57DE49435A035B3 /* Pods_Runner.framework */,
+				A8120CD28C7F7A5EB261D857 /* Pods_AlarmkitWidgetExtension.framework */,
 				C333762A416B095B9E4665BC /* Pods_RunnerTests.framework */,
 				D3465A1370946F9D4AE8EE37 /* iOS */,
 			);
@@ -227,6 +270,24 @@
 			productReference = 331C8081294A63A400263BE5 /* RunnerTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		80F437744B18B551B2CCB37E /* AlarmkitWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B4667DFF68D967634E4B3DAA /* Build configuration list for PBXNativeTarget "AlarmkitWidgetExtension" */;
+			buildPhases = (
+				371DA36A87552A8BCA1E0986 /* [CP] Check Pods Manifest.lock */,
+				2993107C7E776FB31FD3E7F2 /* Sources */,
+				186C36A3802C32AB209BA254 /* Frameworks */,
+				4CD9A308B3F7E4E5875A4F94 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AlarmkitWidgetExtension;
+			productName = AlarmkitWidgetExtension;
+			productReference = 243E2C42A36C75412BFE839F /* AlarmkitWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		97C146ED1CF9000F007C117D /* Runner */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 97C147051CF9000F007C117D /* Build configuration list for PBXNativeTarget "Runner" */;
@@ -237,7 +298,7 @@
 				97C146EB1CF9000F007C117D /* Frameworks */,
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
-				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
+				C1A2B3C4D5E6F7890A1B2C3D /* Embed Flutter */,
 				AD8FECCE30CD8CAF2A587ECD /* [CP] Embed Pods Frameworks */,
 				14D5EA31F6FA5482E76061CB /* [CP] Copy Pods Resources */,
 				BCE6489811287C8337EE2BF3 /* Embed Foundation Extensions */,
@@ -287,6 +348,7 @@
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
+				80F437744B18B551B2CCB37E /* AlarmkitWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -353,27 +415,27 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-AlarmkitWidgetExtension-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		3B06AD1E1E4923F5004D2608 /* Thin Binary */ = {
+		C1A2B3C4D5E6F7890A1B2C3D /* Embed Flutter */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputPaths = (
-				"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}",
 			);
-			name = "Thin Binary";
+			name = "Embed Flutter";
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin";
+			shellScript = "set -e\nset -u\nset -o pipefail\n\nif [ -f \"${SRCROOT}/Flutter/ephemeral/Flutter-Generated.xcconfig\" ]; then\n  source \"${SRCROOT}/Flutter/ephemeral/Flutter-Generated.xcconfig\"\nfi\n\n\"${FLUTTER_ROOT}/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin\n";
 		};
 		7A5ABE9AA5CBF9532EE7AA05 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -459,6 +521,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				D6DA0317D51ADADFA6E2C079 /* AppIntents.swift in Sources */,
+				18146629F7A64B75F6504AD4 /* AlarmkitWidget.swift in Sources */,
+				45E7E488C6E77DF95C7A9315 /* AlarmkitWidgetBundle.swift in Sources */,
+				6E6A791CB0218081D3330F5B /* AlarmkitWidgetLiveActivity.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -573,7 +638,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				DEVELOPMENT_TEAM = PDSDVKUX9W;
+				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				ENABLE_BITCODE = NO;
 				ENABLE_APP_SHORTCUTS_FLEXIBLE_MATCHING = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -643,8 +708,15 @@
 		};
 		783A6BD9F725E14761D26E5B /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 2F3E9C2A9E1A4F5B9C1D2E42 /* AlarmkitWidgetExtension.Release.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
+				INFOPLIST_KEY_CFBundleShortVersionString = "$(FLUTTER_BUILD_NAME)";
+				INFOPLIST_KEY_CFBundleVersion = "$(FLUTTER_BUILD_NUMBER)";
+				INFOPLIST_FILE = AlarmkitWidget/Info.plist;
 				ENABLE_APP_SHORTCUTS_FLEXIBLE_MATCHING = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -652,6 +724,9 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_NAME = AlarmkitWidgetExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sabbirba.preconnect.AlarmkitWidget;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
@@ -661,8 +736,15 @@
 		};
 		946E20F454F64AEC39E50364 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 2F3E9C2A9E1A4F5B9C1D2E41 /* AlarmkitWidgetExtension.Debug.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
+				INFOPLIST_KEY_CFBundleShortVersionString = "$(FLUTTER_BUILD_NAME)";
+				INFOPLIST_KEY_CFBundleVersion = "$(FLUTTER_BUILD_NUMBER)";
+				INFOPLIST_FILE = AlarmkitWidget/Info.plist;
 				ENABLE_APP_SHORTCUTS_FLEXIBLE_MATCHING = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -670,6 +752,9 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_NAME = AlarmkitWidgetExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sabbirba.preconnect.AlarmkitWidget;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
@@ -795,7 +880,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				DEVELOPMENT_TEAM = PDSDVKUX9W;
+				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				ENABLE_BITCODE = NO;
 				ENABLE_APP_SHORTCUTS_FLEXIBLE_MATCHING = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -822,7 +907,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				DEVELOPMENT_TEAM = PDSDVKUX9W;
+				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				ENABLE_BITCODE = NO;
 				ENABLE_APP_SHORTCUTS_FLEXIBLE_MATCHING = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -842,8 +927,15 @@
 		};
 		C9DFBC224C7C19AE5ADA91A4 /* Profile */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 2F3E9C2A9E1A4F5B9C1D2E43 /* AlarmkitWidgetExtension.Profile.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
+				INFOPLIST_KEY_CFBundleShortVersionString = "$(FLUTTER_BUILD_NAME)";
+				INFOPLIST_KEY_CFBundleVersion = "$(FLUTTER_BUILD_NUMBER)";
+				INFOPLIST_FILE = AlarmkitWidget/Info.plist;
 				ENABLE_APP_SHORTCUTS_FLEXIBLE_MATCHING = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -851,6 +943,9 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_NAME = AlarmkitWidgetExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sabbirba.preconnect.AlarmkitWidget;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
@@ -867,6 +962,16 @@
 				331C8088294A63A400263BE5 /* Debug */,
 				331C8089294A63A400263BE5 /* Release */,
 				331C808A294A63A400263BE5 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B4667DFF68D967634E4B3DAA /* Build configuration list for PBXNativeTarget "AlarmkitWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				946E20F454F64AEC39E50364 /* Debug */,
+				783A6BD9F725E14761D26E5B /* Release */,
+				C9DFBC224C7C19AE5ADA91A4 /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
