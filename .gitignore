@@ -30,7 +30,8 @@ android/key.properties
 .pub-cache/
 .pub/
 /build/
-public
+android/.kotlin/*
+public/*
 
 # Web related
 

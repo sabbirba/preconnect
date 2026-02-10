@@ -32,24 +32,23 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   HomeTab selectedTab = HomeTab.dashboard;
 
-  late final Map<HomeTab, Widget> pages = {
-    HomeTab.dashboard: _HomeDashboard(
-      onNavigate: _setTab,
-      onLogout: () => _confirmLogout(context),
-    ),
-    HomeTab.notifications: const NotificationPage(),
-    HomeTab.profile: const StudentProfile(),
-    HomeTab.studentSchedule: const ClassSchedule(),
-    HomeTab.examSchedule: const ExamSchedule(),
-    HomeTab.alarms: const AlarmPage(),
-    HomeTab.shareSchedule: const ShareSchedulePage(),
-    HomeTab.scanSchedule: const ScanSchedulePage(),
-    HomeTab.friendSchedule: FriendSchedulePage(onNavigate: _setTab),
-    HomeTab.devs: const DevsPage(),
+  late final Map<HomeTab, WidgetBuilder> pages = {
+    HomeTab.dashboard: (_) => _HomeDashboard(
+          onNavigate: _setTab,
+          onLogout: () => _confirmLogout(context),
+        ),
+    HomeTab.notifications: (_) => const NotificationPage(),
+    HomeTab.profile: (_) => const StudentProfile(),
+    HomeTab.studentSchedule: (_) => const ClassSchedule(),
+    HomeTab.examSchedule: (_) => const ExamSchedule(),
+    HomeTab.alarms: (_) => const AlarmPage(),
+    HomeTab.shareSchedule: (_) => const ShareSchedulePage(),
+    HomeTab.scanSchedule: (_) => const ScanSchedulePage(),
+    HomeTab.friendSchedule: (_) => FriendSchedulePage(onNavigate: _setTab),
+    HomeTab.devs: (_) => const DevsPage(),
   };
   late final List<HomeTab> _tabOrder = HomeTab.values;
-  late final List<Widget> _tabPages =
-      _tabOrder.map((tab) => pages[tab]!).toList();
+  final Set<HomeTab> _builtTabs = {HomeTab.dashboard};
 
   void _setTab(HomeTab tab) {
     setState(() {
@@ -188,7 +187,13 @@ class _HomePageState extends State<HomePage> {
           onBack: _handleBack,
           child: IndexedStack(
             index: selectedTab.index,
-            children: _tabPages,
+            children: _tabOrder.map((tab) {
+              if (tab == selectedTab || _builtTabs.contains(tab)) {
+                _builtTabs.add(tab);
+                return pages[tab]!(context);
+              }
+              return const SizedBox.shrink();
+            }).toList(),
           ),
         ),
       ),
@@ -213,28 +218,11 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   static const _accent = Color(0xFF22B573);
 
   late Future<_HomeData> _future;
-  bool _overviewExpanded = true;
 
   @override
   void initState() {
     super.initState();
-    unawaited(BracuAuthManager().fetchProfile());
-    unawaited(BracuAuthManager().fetchStudentSchedule());
     _future = _loadData();
-    _primeOverviewState();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
-  Future<void> _primeOverviewState() async {
-    await StudentOverviewStore.load();
-    if (!mounted) return;
-    setState(() {
-      _overviewExpanded = StudentOverviewStore.current;
-    });
   }
 
   Future<_HomeData> _loadData({bool forceRefresh = false}) async {
@@ -279,22 +267,12 @@ class _HomeDashboardState extends State<_HomeDashboard> {
         }
       }
     }
-    await StudentOverviewStore.load();
-    _overviewExpanded = StudentOverviewStore.current;
     return _HomeData(
       profile: profile,
       entries: entries,
       photoUrl: photoUrl,
       sections: sections,
     );
-  }
-
-  Future<void> _setOverviewExpanded(bool value) async {
-    if (_overviewExpanded == value) return;
-    setState(() {
-      _overviewExpanded = value;
-    });
-    await StudentOverviewStore.set(value);
   }
 
   Future<void> _handleRefresh() async {
@@ -546,12 +524,15 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                               const SizedBox(height: 18),
                               StudentOverviewCard(
                                 studentId: profile['studentId'] ?? 'N/A',
+                                shortCode: profile['shortCode'] ?? '',
                                 phoneNumber: profile['mobileNo'] ?? 'N/A',
-                                studentEmail: profile['email'] ?? 'N/A',
-                                program: profile['program'] ?? 'N/A',
+                                department: profile['departmentName'] ?? 'N/A',
+                                currentSemester:
+                                    profile['currentSemester'] ?? 'N/A',
+                                currentSessionSemesterId:
+                                    profile['currentSessionSemesterId'] ??
+                                        '',
                                 onLogout: widget.onLogout,
-                                isExpanded: _overviewExpanded,
-                                onExpandedChanged: _setOverviewExpanded,
                                 countdown: nextExam == null
                                     ? null
                                     : ExamCountdownCard(
