@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:in_app_update/in_app_update.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:preconnect/api/bracu_auth_manager.dart';
 import 'package:preconnect/pages/home.dart';
@@ -17,6 +19,22 @@ class _MyAppState extends State<MyApp> {
     ThemeMode.system,
   );
   late final Future<_StartupState> _startupFuture = _bootstrap();
+  StreamSubscription<InstallStatus>? _updateSubscription;
+  bool _didCheckForUpdates = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeCheckForUpdates();
+    });
+  }
+
+  @override
+  void dispose() {
+    _updateSubscription?.cancel();
+    super.dispose();
+  }
 
   ThemeMode _decodeTheme(String raw) {
     switch (raw) {
@@ -49,6 +67,42 @@ class _MyAppState extends State<MyApp> {
         .timeout(const Duration(seconds: 10), onTimeout: () => false);
 
     return _StartupState(isLoggedIn: loggedIn);
+  }
+
+  Future<void> _maybeCheckForUpdates() async {
+    if (_didCheckForUpdates || !Platform.isAndroid) {
+      return;
+    }
+    _didCheckForUpdates = true;
+    try {
+      final info = await InAppUpdate.checkForUpdate();
+      final availability = info.updateAvailability;
+      if (availability == UpdateAvailability.developerTriggeredUpdateInProgress &&
+          info.immediateUpdateAllowed) {
+        await InAppUpdate.performImmediateUpdate();
+        return;
+      }
+      if (availability != UpdateAvailability.updateAvailable) {
+        return;
+      }
+      if (info.immediateUpdateAllowed) {
+        await InAppUpdate.performImmediateUpdate();
+        return;
+      }
+      if (info.flexibleUpdateAllowed) {
+        _updateSubscription?.cancel();
+        _updateSubscription = InAppUpdate.installUpdateListener.listen(
+          (status) {
+            if (status == InstallStatus.downloaded) {
+              InAppUpdate.completeFlexibleUpdate();
+            }
+          },
+        );
+        await InAppUpdate.startFlexibleUpdate();
+      }
+    } catch (_) {
+      // Ignore update errors to avoid blocking startup.
+    }
   }
 
   @override
