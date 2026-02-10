@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
@@ -23,7 +25,8 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
   bool get _supportsGalleryScan {
     if (kIsWeb) return false;
     return defaultTargetPlatform == TargetPlatform.android ||
-        defaultTargetPlatform == TargetPlatform.iOS;
+        defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS;
   }
 
   Future<void> _saveScannedValue(String value) async {
@@ -78,12 +81,20 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
     }
     setState(() => _isPicking = true);
     try {
+      final granted = await _ensureGalleryPermission();
+      if (!granted) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gallery permission denied')),
+        );
+        return;
+      }
       final picker = ImagePicker();
       final XFile? image = await picker.pickImage(source: ImageSource.gallery);
       if (image == null) return;
 
-      final BarcodeCapture? capture =
-          await _controller.analyzeImage(image.path);
+      final imagePath = await _ensureReadableImagePath(image);
+      final BarcodeCapture? capture = await _controller.analyzeImage(imagePath);
       if (capture == null || capture.barcodes.isEmpty) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -111,6 +122,42 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
       if (mounted) {
         setState(() => _isPicking = false);
       }
+    }
+  }
+
+  Future<bool> _ensureGalleryPermission() async {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      final photos = await Permission.photos.request();
+      return photos.isGranted || photos.isLimited;
+    }
+    if (defaultTargetPlatform == TargetPlatform.macOS) {
+      return true;
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final photos = await Permission.photos.request();
+      if (photos.isGranted) return true;
+      final storage = await Permission.storage.request();
+      return storage.isGranted;
+    }
+    return true;
+  }
+
+  Future<String> _ensureReadableImagePath(XFile image) async {
+    if (!Platform.isIOS && !Platform.isMacOS) {
+      return image.path;
+    }
+    try {
+      final bytes = await image.readAsBytes();
+      if (bytes.isEmpty) return image.path;
+      final ext = image.path.split('.').last;
+      final safeExt = ext.isEmpty ? 'png' : ext;
+      final tempFile = File(
+        '${Directory.systemTemp.path}/preconnect_scan_${DateTime.now().millisecondsSinceEpoch}.$safeExt',
+      );
+      await tempFile.writeAsBytes(bytes, flush: true);
+      return tempFile.path;
+    } catch (_) {
+      return image.path;
     }
   }
 

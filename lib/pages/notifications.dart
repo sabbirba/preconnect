@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:android_intent_plus/android_intent.dart';
@@ -91,11 +92,17 @@ class _NotificationPageState extends State<NotificationPage>
   }
 
   Future<bool> _checkSystemPermission() async {
+    if (defaultTargetPlatform == TargetPlatform.macOS) {
+      return true;
+    }
     final status = await Permission.notification.status;
     return status.isGranted || status.isLimited;
   }
 
   Future<bool> _ensureSystemPermission() async {
+    if (defaultTargetPlatform == TargetPlatform.macOS) {
+      return true;
+    }
     final status = await Permission.notification.request();
     return status.isGranted || status.isLimited;
   }

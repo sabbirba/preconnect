@@ -172,7 +172,9 @@ class _InAppWebViewState extends State<InAppWebView> {
         ),
       );
 
-    if (widget.userAgent != null && widget.userAgent!.isNotEmpty) {
+    if (widget.userAgent != null &&
+        widget.userAgent!.isNotEmpty &&
+        defaultTargetPlatform == TargetPlatform.android) {
       _controller.setUserAgent(widget.userAgent!);
     }
     unawaited(_startLoading());

@@ -956,7 +956,8 @@ class _OpenWebCard extends StatelessWidget {
 }
 
 Future<void> _openInAppWeb(BuildContext context, String url) async {
-  if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) {
+  if (kIsWeb ||
+      !(Platform.isAndroid || Platform.isIOS || Platform.isMacOS || Platform.isWindows)) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('In-app web is not available here.')),
