@@ -34,9 +34,15 @@ class BracuAuthManager {
       }
 
       await _storage.deleteAll();
+      await _clearCachedData();
     } catch (e) {
       return;
     }
+  }
+
+  Future<void> _clearCachedData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
   }
 
   Future<bool> refreshToken() async {
