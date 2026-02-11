@@ -16,48 +16,76 @@ class ScanSchedulePage extends StatefulWidget {
   State<ScanSchedulePage> createState() => _ScanSchedulePageState();
 }
 
-class _ScanSchedulePageState extends State<ScanSchedulePage> {
-  final MobileScannerController _controller = MobileScannerController();
+class _ScanSchedulePageState extends State<ScanSchedulePage>
+    with WidgetsBindingObserver {
+  final MobileScannerController _controller = MobileScannerController(
+    autoStart: false,
+  );
   String? scannedValue;
-  bool _cameraGranted = true;
+  bool? _cameraGranted;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _ensureCameraPermission();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!mounted) return;
+    if (state == AppLifecycleState.resumed) {
+      if (_cameraGranted == true && scannedValue == null) {
+        _startScanner();
+      }
+      return;
+    }
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _controller.stop();
+    }
   }
 
   Future<void> _ensureCameraPermission({
     bool openSettingsOnDeny = false,
   }) async {
-    if (defaultTargetPlatform == TargetPlatform.macOS) {
-      setState(() => _cameraGranted = true);
-      return;
-    }
     if (kIsWeb) {
-      setState(() => _cameraGranted = false);
+      if (mounted) setState(() => _cameraGranted = false);
       return;
     }
-    final status = await Permission.camera.status;
-    if (!mounted) return;
-    if (openSettingsOnDeny &&
-        (status.isPermanentlyDenied || status.isRestricted)) {
-      setState(() => _cameraGranted = false);
-      await openAppSettings();
-      return;
+    final grantedByPlatform = defaultTargetPlatform == TargetPlatform.macOS;
+    PermissionStatus requested = PermissionStatus.granted;
+    if (!grantedByPlatform) {
+      final status = await Permission.camera.status;
+      requested = status.isGranted ? status : await Permission.camera.request();
     }
-    final requested = await Permission.camera.request();
     if (!mounted) return;
     setState(() => _cameraGranted = requested.isGranted);
-    if (!requested.isGranted && openSettingsOnDeny) {
+    if (requested.isGranted) {
+      _startScanner();
+    } else if (openSettingsOnDeny) {
       await openAppSettings();
     }
+  }
+
+  Future<void> _startScanner() async {
+    if (!mounted || _cameraGranted != true || scannedValue != null) {
+      return;
+    }
+    if (_controller.value.isRunning) {
+      return;
+    }
+    try {
+      await _controller.start();
+    } catch (_) {}
   }
 
   Future<void> _saveScannedValue(String value) async {
@@ -98,7 +126,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
 
   Future<void> _handleRefresh() async {
     setState(() => scannedValue = null);
-    _controller.start();
+    await _startScanner();
   }
 
   @override
@@ -125,41 +153,111 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
                         aspectRatio: 1,
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(16),
-                          child: _cameraGranted
+                          child: _cameraGranted == true
                               ? MobileScanner(
                                   controller: _controller,
+                                  errorBuilder: (context, error) {
+                                    final isPermissionError =
+                                        error.errorCode ==
+                                        MobileScannerErrorCode.permissionDenied;
+                                    final message =
+                                        (error.errorDetails?.message
+                                                ?.trim()
+                                                .isNotEmpty ??
+                                            false)
+                                        ? error.errorDetails!.message!
+                                        : error.errorCode.message;
+                                    return Container(
+                                      color: Colors.black,
+                                      alignment: Alignment.center,
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.error_outline,
+                                            color: Colors.white,
+                                            size: 34,
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Text(
+                                            message,
+                                            textAlign: TextAlign.center,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          if (isPermissionError)
+                                            InkWell(
+                                              onTap: openAppSettings,
+                                              child: const Text(
+                                                'Camera permission denied. Tap to open system settings.',
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w600,
+                                                  decoration:
+                                                      TextDecoration.underline,
+                                                ),
+                                              ),
+                                            )
+                                          else
+                                            TextButton(
+                                              onPressed: () =>
+                                                  _ensureCameraPermission(
+                                                    openSettingsOnDeny: true,
+                                                  ),
+                                              child: const Text(
+                                                'Retry Camera',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    );
+                                  },
                                   onDetect: (capture) async {
+                                    if (scannedValue != null) return;
                                     if (capture.barcodes.isEmpty) return;
                                     final barcode = capture.barcodes.first;
                                     final value = barcode.rawValue;
                                     if (value == null || value.trim().isEmpty) {
                                       return;
                                     }
-                                    setState(() {
-                                      scannedValue = value;
-                                    });
+                                    if (!mounted) return;
+                                    setState(() => scannedValue = value);
                                     await _saveScannedValue(value);
-                                    _controller.stop();
+                                    await _controller.stop();
                                     RefreshBus.instance.notify(
                                       reason: 'scan_schedule',
                                     );
                                   },
                                 )
-                              : Center(
-                                  child: TextButton(
-                                    onPressed: () => _ensureCameraPermission(
-                                      openSettingsOnDeny: true,
-                                    ),
-                                    child: Text(
-                                      'Tap to enable camera',
-                                      style: TextStyle(
-                                        color: BracuPalette.primary,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ),
+                              : (_cameraGranted == null
+                                    ? const Center(
+                                        child: CircularProgressIndicator(),
+                                      )
+                                    : Center(
+                                        child: TextButton(
+                                          onPressed: () =>
+                                              _ensureCameraPermission(
+                                                openSettingsOnDeny: true,
+                                              ),
+                                          child: Text(
+                                            'Tap to enable camera',
+                                            style: TextStyle(
+                                              color: BracuPalette.primary,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      )),
                         ),
                       ),
                     ),
@@ -216,7 +314,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
                           InkWell(
                             onTap: () {
                               setState(() => scannedValue = null);
-                              _controller.start();
+                              _startScanner();
                             },
                             borderRadius: BorderRadius.circular(18),
                             child: BracuCard(
