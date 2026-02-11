@@ -4,6 +4,7 @@ import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
 import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/time_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CompareSchedulesPage extends StatefulWidget {
@@ -116,22 +117,16 @@ class CompareSchedulesPage extends StatefulWidget {
   }
 
   static int _compareTime(String time1, String time2) {
-    final t1 = _parseTime(time1);
-    final t2 = _parseTime(time2);
+    final t1 = _timeToMinutes(time1);
+    final t2 = _timeToMinutes(time2);
+    if (t1 == null && t2 == null) return time1.compareTo(time2);
+    if (t1 == null) return 1;
+    if (t2 == null) return -1;
     return t1.compareTo(t2);
   }
 
-  static int _parseTime(String time) {
-    final parts = time.trim().split(' ');
-    final timeParts = parts[0].split(':');
-    var hour = int.parse(timeParts[0]);
-    final minute = int.parse(timeParts[1]);
-    final isPM = parts.length > 1 && parts[1].toUpperCase() == 'PM';
-
-    if (isPM && hour != 12) hour += 12;
-    if (!isPM && hour == 12) hour = 0;
-
-    return hour * 60 + minute;
+  static int? _timeToMinutes(String time) {
+    return BracuTime.toMinutes(time);
   }
 
   static String _normalizeDay(String raw) {
@@ -276,12 +271,15 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
       final day = (slot['day'] ?? '').toString();
       final start = (slot['startTime'] ?? '').toString();
       final end = (slot['endTime'] ?? '').toString();
+      final subtitle = formatTimeRange(start, end);
       entries.add(
         _DayCompareEntry(
           day: day,
           type: _CompareType.free,
           title: 'Free',
-          subtitle: '$start - $end',
+          subtitle: subtitle.isEmpty ? '$start - $end' : subtitle,
+          startMinutes: CompareSchedulesPage._timeToMinutes(start),
+          endMinutes: CompareSchedulesPage._timeToMinutes(end),
           key: 'free|$day|$start|$end',
         ),
       );
@@ -291,12 +289,15 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
       final day = (slot['day'] ?? '').toString();
       final start = (slot['startTime'] ?? '').toString();
       final end = (slot['endTime'] ?? '').toString();
+      final subtitle = formatTimeRange(start, end);
       entries.add(
         _DayCompareEntry(
           day: day,
           type: _CompareType.busy,
           title: 'Busy',
-          subtitle: '$start - $end',
+          subtitle: subtitle.isEmpty ? '$start - $end' : subtitle,
+          startMinutes: CompareSchedulesPage._timeToMinutes(start),
+          endMinutes: CompareSchedulesPage._timeToMinutes(end),
           key: 'busy|$day|$start|$end',
         ),
       );
@@ -316,6 +317,8 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
             type: _CompareType.common,
             title: code,
             subtitle: 'Common class',
+            startMinutes: null,
+            endMinutes: null,
             key: 'common|general|$code',
           ),
         );
@@ -327,6 +330,8 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
               type: _CompareType.common,
               title: code,
               subtitle: 'Common class',
+              startMinutes: null,
+              endMinutes: null,
               key: 'common|$day|$code',
             ),
           );
@@ -378,6 +383,18 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
         final ap = _pinnedEntries.contains(a.key) ? 0 : 1;
         final bp = _pinnedEntries.contains(b.key) ? 0 : 1;
         if (ap != bp) return ap.compareTo(bp);
+        final aStart = a.startMinutes;
+        final bStart = b.startMinutes;
+        if (aStart != null || bStart != null) {
+          if (aStart == null) return 1;
+          if (bStart == null) return -1;
+          if (aStart != bStart) return aStart.compareTo(bStart);
+          final aEnd = a.endMinutes;
+          final bEnd = b.endMinutes;
+          if (aEnd != null && bEnd != null && aEnd != bEnd) {
+            return aEnd.compareTo(bEnd);
+          }
+        }
         return a.subtitle.compareTo(b.subtitle);
       });
     }
@@ -613,6 +630,8 @@ class _DayCompareEntry {
     required this.type,
     required this.title,
     required this.subtitle,
+    required this.startMinutes,
+    required this.endMinutes,
     required this.key,
   });
 
@@ -620,5 +639,7 @@ class _DayCompareEntry {
   final _CompareType type;
   final String title;
   final String subtitle;
+  final int? startMinutes;
+  final int? endMinutes;
   final String key;
 }

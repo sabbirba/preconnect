@@ -24,6 +24,7 @@ import 'package:preconnect/tools/notification_scheduler.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/refresh_guard.dart';
+import 'package:preconnect/tools/time_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -332,74 +333,12 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     }
   }
 
-  DateTime? _parseExamDateTime(String? date, String? time) {
-    if (date == null || date.trim().isEmpty) return null;
-    final rawDate = date.trim();
-    final dateFormats = <DateFormat>[
-      DateFormat('yyyy-MM-dd'),
-      DateFormat('yyyy/MM/dd'),
-      DateFormat('yyyy.MM.dd'),
-      DateFormat('dd-MM-yyyy'),
-      DateFormat('dd/MM/yyyy'),
-      DateFormat('d/M/yyyy'),
-      DateFormat('d MMM yyyy'),
-      DateFormat('d MMM, yyyy'),
-      DateFormat('d-MMM-yyyy'),
-      DateFormat('MMM d, yyyy'),
-    ];
-
-    DateTime? datePart;
-    for (final f in dateFormats) {
-      try {
-        datePart = f.parseStrict(rawDate);
-        break;
-      } catch (_) {}
-    }
-    datePart ??= DateTime.tryParse(rawDate);
-    if (datePart == null) return null;
-
-    if (time == null || time.trim().isEmpty) {
-      return DateTime(datePart.year, datePart.month, datePart.day);
-    }
-
-    final rawTime = time.trim().toUpperCase();
-    final timeFormats = <DateFormat>[
-      DateFormat('HH:mm'),
-      DateFormat('H:mm'),
-      DateFormat('HH:mm:ss'),
-      DateFormat('H:mm:ss'),
-      DateFormat('hh:mm a'),
-      DateFormat('h:mm a'),
-      DateFormat('hh:mm:ss a'),
-      DateFormat('h:mm:ss a'),
-    ];
-    DateTime? timePart;
-    for (final f in timeFormats) {
-      try {
-        timePart = f.parseStrict(rawTime);
-        break;
-      } catch (_) {}
-    }
-    timePart ??= DateTime.tryParse(rawTime);
-
-    if (timePart == null) {
-      return DateTime(datePart.year, datePart.month, datePart.day);
-    }
-    return DateTime(
-      datePart.year,
-      datePart.month,
-      datePart.day,
-      timePart.hour,
-      timePart.minute,
-    );
-  }
-
   _ExamCountdownData? _nextExamCountdown(List<section.Section> sections) {
     final now = DateTime.now();
     final exams = <_ExamCountdownData>[];
     for (final s in sections) {
       final schedule = s.sectionSchedule;
-      final mid = _parseExamDateTime(
+      final mid = BracuTime.parseDateTime(
         schedule.midExamDate,
         schedule.midExamStartTime,
       );
@@ -408,7 +347,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
           _ExamCountdownData(time: mid, courseCode: s.courseCode, type: 'Mid'),
         );
       }
-      final fin = _parseExamDateTime(
+      final fin = BracuTime.parseDateTime(
         schedule.finalExamDate,
         schedule.finalExamStartTime,
       );
@@ -429,11 +368,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   }
 
   int _timeToMinutes(String time) {
-    final parts = time.split(':');
-    if (parts.length < 2) return 0;
-    final hour = int.tryParse(parts[0]) ?? 0;
-    final minute = int.tryParse(parts[1]) ?? 0;
-    return hour * 60 + minute;
+    return BracuTime.toMinutes(time) ?? 0;
   }
 
   _ScheduleEntry? _pickNextEntry(List<_ScheduleEntry> entries, int nowMinutes) {

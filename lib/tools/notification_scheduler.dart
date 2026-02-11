@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:preconnect/api/bracu_auth_manager.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/tools/local_notifications.dart';
+import 'package:preconnect/tools/time_utils.dart';
 
 class NotificationScheduler {
   NotificationScheduler._();
@@ -68,7 +69,7 @@ class NotificationScheduler {
       final start = DateTime.tryParse(schedule.classStartDate);
       final end = DateTime.tryParse(schedule.classEndDate);
       for (final cls in schedule.classSchedules) {
-        final weekday = _weekdayFromName(cls.day);
+        final weekday = BracuTime.weekdayFromName(cls.day);
         if (weekday == null) continue;
         for (var i = 0; i <= 7; i++) {
           final date = now.add(Duration(days: i));
@@ -90,7 +91,8 @@ class NotificationScheduler {
             id: id,
             scheduledAt: scheduledAt,
             title: '${section.courseCode} Class',
-            body: 'Starts at ${cls.startTime} in ${section.roomNumber}.',
+            body:
+                'Starts at ${_formatTimeOnly(time)} in ${section.roomNumber}.',
           );
           ids.add(id);
         }
@@ -107,11 +109,11 @@ class NotificationScheduler {
 
     for (final section in sections) {
       final schedule = section.sectionSchedule;
-      final mid = _parseExamDateTime(
+      final mid = BracuTime.parseDateTime(
         schedule.midExamDate,
         schedule.midExamStartTime,
       );
-      final fin = _parseExamDateTime(
+      final fin = BracuTime.parseDateTime(
         schedule.finalExamDate,
         schedule.finalExamStartTime,
       );
@@ -144,58 +146,11 @@ class NotificationScheduler {
     return ((sectionId * 1000003) + base + typeHash) % 1000000000;
   }
 
-  static int? _weekdayFromName(String day) {
-    switch (day.toUpperCase()) {
-      case 'MONDAY':
-        return DateTime.monday;
-      case 'TUESDAY':
-        return DateTime.tuesday;
-      case 'WEDNESDAY':
-        return DateTime.wednesday;
-      case 'THURSDAY':
-        return DateTime.thursday;
-      case 'FRIDAY':
-        return DateTime.friday;
-      case 'SATURDAY':
-        return DateTime.saturday;
-      case 'SUNDAY':
-        return DateTime.sunday;
-      default:
-        return null;
-    }
-  }
-
   static DateTime? _parseTime(String? raw) {
-    if (raw == null) return null;
-    final cleaned = raw.trim();
-    if (cleaned.isEmpty) return null;
-    final parts = cleaned.split(':');
-    if (parts.length < 2) return null;
-    final hour = int.tryParse(parts[0]);
-    final minute = int.tryParse(parts[1]);
-    if (hour == null || minute == null) return null;
-    return DateTime(0, 1, 1, hour, minute);
-  }
-
-  static DateTime? _parseExamDateTime(String? date, String? time) {
-    if (date == null || time == null) return null;
-    final dateParsed = DateTime.tryParse(date.trim());
-    if (dateParsed == null) return null;
-    final timeParsed = _parseTime(time);
-    if (timeParsed == null) return null;
-    return DateTime(
-      dateParsed.year,
-      dateParsed.month,
-      dateParsed.day,
-      timeParsed.hour,
-      timeParsed.minute,
-    );
+    return BracuTime.parseTime(raw);
   }
 
   static String _formatTimeOnly(DateTime input) {
-    final hour = input.hour % 12 == 0 ? 12 : input.hour % 12;
-    final minute = input.minute.toString().padLeft(2, '0');
-    final suffix = input.hour >= 12 ? 'PM' : 'AM';
-    return '$hour:$minute $suffix';
+    return BracuTime.formatDateTime(input);
   }
 }

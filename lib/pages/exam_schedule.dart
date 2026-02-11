@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:preconnect/api/bracu_auth_manager.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/refresh_guard.dart';
+import 'package:preconnect/tools/time_utils.dart';
 
 class ExamSchedule extends StatefulWidget {
   const ExamSchedule({super.key});
@@ -81,68 +81,6 @@ class _ExamScheduleState extends State<ExamSchedule> {
       );
       _didScroll = true;
     });
-  }
-
-  DateTime? _parseExamDateTime(String? date, String? time) {
-    if (date == null || date.trim().isEmpty) return null;
-    final rawDate = date.trim();
-    final dateFormats = <DateFormat>[
-      DateFormat('yyyy-MM-dd'),
-      DateFormat('yyyy/MM/dd'),
-      DateFormat('yyyy.MM.dd'),
-      DateFormat('dd-MM-yyyy'),
-      DateFormat('dd/MM/yyyy'),
-      DateFormat('d/M/yyyy'),
-      DateFormat('d MMM yyyy'),
-      DateFormat('d MMM, yyyy'),
-      DateFormat('d-MMM-yyyy'),
-      DateFormat('MMM d, yyyy'),
-    ];
-
-    DateTime? datePart;
-    for (final f in dateFormats) {
-      try {
-        datePart = f.parseStrict(rawDate);
-        break;
-      } catch (_) {}
-    }
-    datePart ??= DateTime.tryParse(rawDate);
-    if (datePart == null) return null;
-
-    if (time == null || time.trim().isEmpty) {
-      return DateTime(datePart.year, datePart.month, datePart.day);
-    }
-
-    final rawTime = time.trim().toUpperCase();
-    final timeFormats = <DateFormat>[
-      DateFormat('HH:mm'),
-      DateFormat('H:mm'),
-      DateFormat('HH:mm:ss'),
-      DateFormat('H:mm:ss'),
-      DateFormat('hh:mm a'),
-      DateFormat('h:mm a'),
-      DateFormat('hh:mm:ss a'),
-      DateFormat('h:mm:ss a'),
-    ];
-    DateTime? timePart;
-    for (final f in timeFormats) {
-      try {
-        timePart = f.parseStrict(rawTime);
-        break;
-      } catch (_) {}
-    }
-    timePart ??= DateTime.tryParse(rawTime);
-
-    if (timePart == null) {
-      return DateTime(datePart.year, datePart.month, datePart.day);
-    }
-    return DateTime(
-      datePart.year,
-      datePart.month,
-      datePart.day,
-      timePart.hour,
-      timePart.minute,
-    );
   }
 
   Future<List<Section>> _fetchExamSections({bool forceRefresh = false}) async {
@@ -239,11 +177,11 @@ class _ExamScheduleState extends State<ExamSchedule> {
               .toList();
 
           midExams.sort((a, b) {
-            final aTime = _parseExamDateTime(
+            final aTime = BracuTime.parseDateTime(
               a.sectionSchedule.midExamDate,
               a.sectionSchedule.midExamStartTime,
             );
-            final bTime = _parseExamDateTime(
+            final bTime = BracuTime.parseDateTime(
               b.sectionSchedule.midExamDate,
               b.sectionSchedule.midExamStartTime,
             );
@@ -254,11 +192,11 @@ class _ExamScheduleState extends State<ExamSchedule> {
           });
 
           finalExams.sort((a, b) {
-            final aTime = _parseExamDateTime(
+            final aTime = BracuTime.parseDateTime(
               a.sectionSchedule.finalExamDate,
               a.sectionSchedule.finalExamStartTime,
             );
-            final bTime = _parseExamDateTime(
+            final bTime = BracuTime.parseDateTime(
               b.sectionSchedule.finalExamDate,
               b.sectionSchedule.finalExamStartTime,
             );
@@ -288,11 +226,11 @@ class _ExamScheduleState extends State<ExamSchedule> {
           DateTime? ongoingExamEnd;
           String? ongoingExamKey;
           for (final s in sections) {
-            final midTime = _parseExamDateTime(
+            final midTime = BracuTime.parseDateTime(
               s.sectionSchedule.midExamDate,
               s.sectionSchedule.midExamStartTime,
             );
-            final midEndTime = _parseExamDateTime(
+            final midEndTime = BracuTime.parseDateTime(
               s.sectionSchedule.midExamDate,
               s.sectionSchedule.midExamEndTime,
             );
@@ -312,11 +250,11 @@ class _ExamScheduleState extends State<ExamSchedule> {
                 }
               }
             }
-            final finalTime = _parseExamDateTime(
+            final finalTime = BracuTime.parseDateTime(
               s.sectionSchedule.finalExamDate,
               s.sectionSchedule.finalExamStartTime,
             );
-            final finalEndTime = _parseExamDateTime(
+            final finalEndTime = BracuTime.parseDateTime(
               s.sectionSchedule.finalExamDate,
               s.sectionSchedule.finalExamEndTime,
             );

@@ -7,6 +7,7 @@ import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/refresh_guard.dart';
+import 'package:preconnect/tools/time_utils.dart';
 
 class ClassSchedule extends StatefulWidget {
   const ClassSchedule({super.key});
@@ -177,15 +178,14 @@ class _ClassScheduleState extends State<ClassSchedule> {
     final targetWeekday = dayMap[day.toUpperCase()];
     if (targetWeekday == null) return null;
 
-    final startParts = startTime.split(':');
-    if (startParts.length < 2) return null;
-    final startHour = int.tryParse(startParts[0]) ?? 0;
-    final startMinute = int.tryParse(startParts[1]) ?? 0;
+    final startParsed = BracuTime.parseHourMinute(startTime);
+    if (startParsed == null) return null;
+    final (startHour, startMinute) = startParsed;
     final startMinutes = startHour * 60 + startMinute;
 
-    final endParts = endTime.split(':');
-    final endHour = endParts.length >= 2 ? int.tryParse(endParts[0]) ?? 0 : 0;
-    final endMinute = endParts.length >= 2 ? int.tryParse(endParts[1]) ?? 0 : 0;
+    final endParsed = BracuTime.parseHourMinute(endTime);
+    final endHour = endParsed?.$1 ?? 0;
+    final endMinute = endParsed?.$2 ?? 0;
     final endMinutes = endHour * 60 + endMinute;
 
     int daysAhead = (targetWeekday - now.weekday + 7) % 7;
@@ -203,11 +203,7 @@ class _ClassScheduleState extends State<ClassSchedule> {
   }
 
   int _timeToMinutes(String time) {
-    final parts = time.split(':');
-    if (parts.length < 2) return 0;
-    final hour = int.tryParse(parts[0]) ?? 0;
-    final minute = int.tryParse(parts[1]) ?? 0;
-    return hour * 60 + minute;
+    return BracuTime.toMinutes(time) ?? 0;
   }
 
   @override

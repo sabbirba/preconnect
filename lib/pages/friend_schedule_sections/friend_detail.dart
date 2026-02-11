@@ -6,6 +6,7 @@ import 'package:preconnect/pages/friend_schedule_sections/compare_schedules.dart
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
 import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/time_utils.dart';
 
 class FriendDetailPage extends StatefulWidget {
   const FriendDetailPage({
@@ -252,6 +253,17 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
     final widgets = <Widget>[];
     for (final day in sortedDays) {
       final entries = grouped[day]!;
+      entries.sort((a, b) {
+        final aStart = _timeToMinutes(a['startTime']?.toString());
+        final bStart = _timeToMinutes(b['startTime']?.toString());
+        if (aStart != bStart) return aStart.compareTo(bStart);
+        final aEnd = _timeToMinutes(a['endTime']?.toString());
+        final bEnd = _timeToMinutes(b['endTime']?.toString());
+        if (aEnd != bEnd) return aEnd.compareTo(bEnd);
+        return (a['courseCode']?.toString() ?? '').compareTo(
+          b['courseCode']?.toString() ?? '',
+        );
+      });
       widgets.add(
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,5 +349,9 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
       );
     }
     return widgets;
+  }
+
+  int _timeToMinutes(String? raw) {
+    return BracuTime.toMinutes(raw) ?? 24 * 60;
   }
 }

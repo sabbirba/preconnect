@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/time_utils.dart';
 
 class FriendScheduleItem {
   const FriendScheduleItem({
@@ -66,14 +66,7 @@ class FriendScheduleSection extends StatelessWidget {
 }
 
 (int hour, int minute)? _parse24h(String raw) {
-  final formatted = formatTime(raw);
-  if (formatted.isEmpty || formatted == raw.trim().toUpperCase()) return null;
-  try {
-    final dt = DateFormat('h:mm a').parseStrict(formatted);
-    return (dt.hour, dt.minute);
-  } catch (_) {
-    return null;
-  }
+  return BracuTime.parseHourMinute(raw);
 }
 
 String? _pickNextClassSummary(FriendSchedule friend) {

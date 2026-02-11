@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:preconnect/tools/time_utils.dart';
 
 class FriendSchedule {
   final String name;
@@ -60,14 +61,7 @@ class Course {
     List<CourseSchedule> schedules = [];
 
     String convertTime(String time24) {
-      if (time24.isEmpty) return '';
-      final parts = time24.split(':');
-      int hour = int.parse(parts[0]);
-      final minute = parts[1];
-      final period = hour >= 12 ? 'PM' : 'AM';
-      if (hour > 12) hour -= 12;
-      if (hour == 0) hour = 12;
-      return '$hour:$minute $period';
+      return BracuTime.format(time24);
     }
 
     String convertDay(String day) {

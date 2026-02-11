@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:preconnect/tools/time_utils.dart';
 
 String formatDate(String? input) {
   if (input == null || input.trim().isEmpty) return 'N/A';
@@ -32,39 +33,11 @@ String formatDate(String? input) {
 }
 
 String formatTime(String? input) {
-  if (input == null || input.trim().isEmpty) return '';
-  final raw = input.trim().toUpperCase();
-  final candidates = <DateFormat>[
-    DateFormat('HH:mm'),
-    DateFormat('H:mm'),
-    DateFormat('HH:mm:ss'),
-    DateFormat('H:mm:ss'),
-    DateFormat('hh:mm a'),
-    DateFormat('h:mm a'),
-    DateFormat('hh:mm:ss a'),
-    DateFormat('h:mm:ss a'),
-  ];
-
-  DateTime? dt;
-  for (final f in candidates) {
-    try {
-      dt = f.parseStrict(raw);
-      break;
-    } catch (_) {}
-  }
-  if (dt == null) {
-    return raw;
-  }
-  return DateFormat('h:mm a').format(dt);
+  return BracuTime.format(input);
 }
 
 String formatTimeRange(String? start, String? end) {
-  final s = formatTime(start);
-  final e = formatTime(end);
-  if (s.isEmpty && e.isEmpty) return '';
-  if (e.isEmpty) return s;
-  if (s.isEmpty) return e;
-  return '$s - $e';
+  return BracuTime.range(start, end);
 }
 
 void copyToClipboard(BuildContext context, String text) {

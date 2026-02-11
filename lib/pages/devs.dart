@@ -1,194 +1,234 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/cached_image.dart';
 
-class DevsPage extends StatelessWidget {
+class DevsPage extends StatefulWidget {
   const DevsPage({super.key});
+
+  @override
+  State<DevsPage> createState() => _DevsPageState();
+}
+
+class _DevsPageState extends State<DevsPage> {
+  late Future<String> _subtitleFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _subtitleFuture = _buildVersionSubtitle();
+  }
+
+  Future<String> _buildVersionSubtitle() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      final version = info.version.trim();
+      final build = info.buildNumber.trim();
+      if (version.isEmpty && build.isEmpty) return 'App Version';
+      if (build.isEmpty) return 'v$version';
+      return 'v$version ($build)';
+    } catch (_) {
+      return 'App Version';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final textSecondary = BracuPalette.textSecondary(context);
-    return BracuPageScaffold(
-      title: 'Devs',
-      subtitle: 'Devs',
-      icon: Icons.developer_mode_outlined,
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
-        children: [
-          BracuCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'PreConnect - Initiative Run by Students',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 6),
-                const SizedBox(height: 10),
-                Text(
-                  'Community driven and free for every student.',
-                  style: TextStyle(color: textSecondary),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Bug reports, feature requests, and ideas are welcome. '
-                  'Please create issues in our GitHub repo.',
-                  style: TextStyle(color: textSecondary),
-                ),
-                const SizedBox(height: 12),
-                InkWell(
-                  onTap: () => _openRepo(context),
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: BracuPalette.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: BracuPalette.primary.withValues(alpha: 0.18),
+    return FutureBuilder<String>(
+      future: _subtitleFuture,
+      builder: (context, snapshot) {
+        final subtitle = snapshot.data ?? 'App Version';
+        return BracuPageScaffold(
+          title: 'Devs & Support',
+          subtitle: subtitle,
+          icon: Icons.developer_mode_outlined,
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
+            children: [
+              BracuCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'PreConnect - Initiative Run by Students',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: BracuPalette.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.open_in_new,
-                            size: 16,
-                            color: BracuPalette.primary,
+                    const SizedBox(height: 6),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Community driven and free for every student.',
+                      style: TextStyle(color: textSecondary),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Bug reports, feature requests, and ideas are welcome. '
+                      'Please create issues in our GitHub repo.',
+                      style: TextStyle(color: textSecondary),
+                    ),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: () => _openRepo(context),
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: BracuPalette.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: BracuPalette.primary.withValues(alpha: 0.18),
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        const Expanded(
-                          child: Text(
-                            'View Repository',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: BracuPalette.primary,
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: BracuPalette.primary.withValues(
+                                  alpha: 0.12,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.open_in_new,
+                                size: 16,
+                                color: BracuPalette.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Text(
+                                'View Repository',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: BracuPalette.primary,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              size: 14,
+                              color: BracuPalette.primary.withValues(
+                                alpha: 0.7,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              const BracuSectionTitle(title: 'Core Team'),
+              const SizedBox(height: 10),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 0.85,
+                children: const [
+                  _DevGridTile(
+                    name: 'NaiveInvestigator',
+                    role: 'Lead Developer',
+                    avatarUrl: 'https://github.com/NaiveInvestigator.png',
+                    githubUrl: 'https://github.com/NaiveInvestigator',
+                    facebookUrl: '',
+                  ),
+                  _DevGridTile(
+                    name: 'Sabbir Bin Abbas',
+                    role: 'Developer & UI/UX',
+                    avatarUrl: 'https://github.com/sabbirba.png',
+                    githubUrl: 'https://github.com/sabbirba',
+                    facebookUrl: 'https://facebook.com/Sabbirba10',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              const BracuSectionTitle(title: 'Funding & Support'),
+              const SizedBox(height: 10),
+              BracuCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'iOS Funding',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'App Store publishing needs the \$99/year Apple Developer '
+                      'membership. Any contribution towards this funding will be highly appreciated.',
+                      style: TextStyle(color: textSecondary),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF0B0B0B)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: BracuPalette.primary.withValues(alpha: 0.12),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              color: Colors.white,
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final size = constraints.maxWidth;
+                                  return CachedImage(
+                                    url: 'https://preconnect.app/bkash-qr.jpg',
+                                    width: size,
+                                    height: size,
+                                    fit: BoxFit.contain,
+                                    placeholder: const Center(
+                                      child: SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    ),
+                                    error: const Icon(Icons.qr_code_2_rounded),
+                                  );
+                                },
+                              ),
                             ),
                           ),
-                        ),
-                        Icon(
-                          Icons.arrow_forward_ios,
-                          size: 14,
-                          color: BracuPalette.primary.withValues(alpha: 0.7),
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                          _SupportNumberRow(number: '01865493144'),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          const BracuSectionTitle(title: 'Core Team'),
-          const SizedBox(height: 10),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 0.85,
-            children: const [
-              _DevGridTile(
-                name: 'NaiveInvestigator',
-                role: 'Lead Developer',
-                avatarUrl: 'https://github.com/NaiveInvestigator.png',
-                githubUrl: 'https://github.com/NaiveInvestigator',
-                facebookUrl: '',
-              ),
-              _DevGridTile(
-                name: 'Sabbir Bin Abbas',
-                role: 'Developer & UI/UX',
-                avatarUrl: 'https://github.com/sabbirba.png',
-                githubUrl: 'https://github.com/sabbirba',
-                facebookUrl: 'https://facebook.com/Sabbirba10',
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          const BracuSectionTitle(title: 'Funding & Support'),
-          const SizedBox(height: 10),
-          BracuCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'iOS Funding',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'App Store publishing needs the \$99/year Apple Developer '
-                  'membership. Any contribution towards this funding will be highly appreciated.',
-                  style: TextStyle(color: textSecondary),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? const Color(0xFF0B0B0B)
-                        : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: BracuPalette.primary.withValues(alpha: 0.12),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          color: Colors.white,
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              final size = constraints.maxWidth;
-                              return CachedImage(
-                                url: 'https://preconnect.app/bkash-qr.jpg',
-                                width: size,
-                                height: size,
-                                fit: BoxFit.contain,
-                                placeholder: const Center(
-                                  child: SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                                ),
-                                error: const Icon(Icons.qr_code_2_rounded),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      _SupportNumberRow(number: '01865493144'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

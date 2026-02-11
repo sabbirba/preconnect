@@ -11,6 +11,7 @@ import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/refresh_guard.dart';
+import 'package:preconnect/tools/time_utils.dart';
 
 class AlarmPage extends StatefulWidget {
   const AlarmPage({super.key});
@@ -77,9 +78,13 @@ class _AlarmPageState extends State<AlarmPage> {
     String courseCode,
     int minutesBefore,
   ) async {
-    final timeParts = startTime.split(':');
-    var hour = int.parse(timeParts[0]);
-    var minute = int.parse(timeParts[1]);
+    final parsed = BracuTime.parseHourMinute(startTime);
+    if (parsed == null) {
+      if (!context.mounted) return;
+      showAppSnackBar(context, 'Unable to parse class time.');
+      return;
+    }
+    var (hour, minute) = parsed;
 
     final classTime = DateTime(2025, 1, 2, hour, minute);
     final adjusted = classTime.subtract(Duration(minutes: minutesBefore));
