@@ -13,6 +13,7 @@ import 'package:archive/archive.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_action_card.dart';
 import 'package:preconnect/pages/friend_schedule_sections/schedule_list.dart';
+import 'package:preconnect/pages/friend_schedule_sections/friend_detail.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/local_notifications.dart';
 import 'package:preconnect/tools/notification_store.dart';
@@ -30,20 +31,29 @@ class FriendSchedulePage extends StatefulWidget {
 
 class _FriendSchedulePageState extends State<FriendSchedulePage> {
   List<FriendScheduleItem> decodedSchedules = [];
+  Map<String, FriendMetadata> _metadata = {};
   final MobileScannerController _galleryScanner = MobileScannerController();
+  final TextEditingController _searchController = TextEditingController();
   bool _isPicking = false;
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _loadSchedules();
     RefreshBus.instance.addListener(_onRefreshSignal);
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
   }
 
   @override
   void dispose() {
     RefreshBus.instance.removeListener(_onRefreshSignal);
     _galleryScanner.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -58,6 +68,22 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
   Future<void> _loadSchedules() async {
     final prefs = await SharedPreferences.getInstance();
     final List<String>? encodedList = prefs.getStringList("friendSchedules");
+
+    // Load metadata
+    final metadataJson = prefs.getString('friendMetadata');
+    if (metadataJson != null) {
+      try {
+        final Map<String, dynamic> decoded = jsonDecode(metadataJson);
+        _metadata = decoded.map(
+          (key, value) => MapEntry(
+            key,
+            FriendMetadata.fromJson(value as Map<String, dynamic>),
+          ),
+        );
+      } catch (_) {
+        _metadata = {};
+      }
+    }
 
     if (encodedList == null) return;
 
@@ -75,10 +101,14 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
         final String originalJson = utf8.decode(decodeGzipJson);
 
         final parsed = jsonDecode(originalJson);
+        final friendSchedule = FriendSchedule.fromJson(parsed);
+        final metadata = _metadata[friendSchedule.id];
+        
         allSchedules.add(
           FriendScheduleItem(
             encoded: base64Json,
-            friend: FriendSchedule.fromJson(parsed),
+            friend: friendSchedule,
+            metadata: metadata,
           ),
         );
         validEntries.add(base64Json);
@@ -86,7 +116,8 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
           newSchedules.add(
             FriendScheduleItem(
               encoded: base64Json,
-              friend: FriendSchedule.fromJson(parsed),
+              friend: friendSchedule,
+              metadata: metadata,
             ),
           );
         }
@@ -97,6 +128,13 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
 
     await prefs.setStringList("friendSchedules", validEntries);
     await prefs.setStringList("friendSchedules_seen", validEntries);
+
+    // Sort: favorites first, then alphabetically by display name
+    allSchedules.sort((a, b) {
+      if (a.isFavorite && !b.isFavorite) return -1;
+      if (!a.isFavorite && b.isFavorite) return 1;
+      return a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase());
+    });
 
     setState(() {
       decodedSchedules = allSchedules;
@@ -366,6 +404,303 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
     });
   }
 
+  Future<void> _saveMetadata() async {
+    final prefs = await SharedPreferences.getInstance();
+    final json = jsonEncode(
+      _metadata.map((key, value) => MapEntry(key, value.toJson())),
+    );
+    await prefs.setString('friendMetadata', json);
+  }
+
+  Future<void> _toggleFavorite(FriendScheduleItem item) async {
+    final friendId = item.friend.id;
+    final currentMetadata = _metadata[friendId];
+    final newMetadata = (currentMetadata ?? FriendMetadata(friendId: friendId))
+        .copyWith(isFavorite: !(currentMetadata?.isFavorite ?? false));
+
+    setState(() {
+      _metadata[friendId] = newMetadata;
+    });
+
+    await _saveMetadata();
+    await _loadSchedules();
+  }
+
+  Future<void> _editNickname(FriendScheduleItem item) async {
+    final controller = TextEditingController(
+      text: item.metadata?.nickname ?? '',
+    );
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: BracuPalette.card(context),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.edit_outlined,
+                        color: BracuPalette.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Edit Nickname',
+                        style: TextStyle(
+                          color: BracuPalette.textPrimary(context),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: item.friend.name.isEmpty
+                          ? 'Enter nickname'
+                          : item.friend.name,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: BracuPalette.primary,
+                            side: BorderSide(
+                              color: BracuPalette.primary.withValues(
+                                alpha: 0.6,
+                              ),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () =>
+                              Navigator.pop(context, controller.text.trim()),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: BracuPalette.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: const Text('Save'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (result == null) return;
+
+    final friendId = item.friend.id;
+    final currentMetadata = _metadata[friendId];
+    final newMetadata = (currentMetadata ?? FriendMetadata(friendId: friendId))
+        .copyWith(nickname: result.isEmpty ? null : result);
+
+    setState(() {
+      _metadata[friendId] = newMetadata;
+    });
+
+    await _saveMetadata();
+    await _loadSchedules();
+  }
+
+  List<FriendScheduleItem> get _filteredSchedules {
+    if (_searchQuery.isEmpty) return decodedSchedules;
+
+    return decodedSchedules.where((item) {
+      final displayName = item.displayName.toLowerCase();
+      final friendId = item.friend.id.toLowerCase();
+      return displayName.contains(_searchQuery) ||
+          friendId.contains(_searchQuery);
+    }).toList();
+  }
+
+  Future<void> _addDummyFriends() async {
+    final dummyFriends = [
+      {
+        "name": "Ahmed Hassan",
+        "id": "21101234",
+        "photoFilePath": null,
+        "photoUrl": null,
+        "courses": [
+          {
+            "courseCode": "CSE110",
+            "sectionName": "1",
+            "roomNumber": "NAC501",
+            "faculties": "Dr. Rahman",
+            "schedule": [
+              {"day": "Sunday", "startTime": "08:00 AM", "endTime": "09:30 AM"},
+              {"day": "Tuesday", "startTime": "08:00 AM", "endTime": "09:30 AM"},
+            ]
+          },
+          {
+            "courseCode": "CSE111",
+            "sectionName": "3",
+            "roomNumber": "NAC503",
+            "faculties": "Ms. Khan",
+            "schedule": [
+              {"day": "Monday", "startTime": "11:00 AM", "endTime": "12:30 PM"},
+              {"day": "Wednesday", "startTime": "11:00 AM", "endTime": "12:30 PM"},
+            ]
+          },
+          {
+            "courseCode": "MAT120",
+            "sectionName": "2",
+            "roomNumber": "NAC301",
+            "faculties": "Dr. Ahmed",
+            "schedule": [
+              {"day": "Sunday", "startTime": "02:00 PM", "endTime": "03:30 PM"},
+              {"day": "Thursday", "startTime": "02:00 PM", "endTime": "03:30 PM"},
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Fatima Ali",
+        "id": "21105678",
+        "photoFilePath": null,
+        "photoUrl": null,
+        "courses": [
+          {
+            "courseCode": "CSE110",
+            "sectionName": "2",
+            "roomNumber": "NAC502",
+            "faculties": "Dr. Rahman",
+            "schedule": [
+              {"day": "Sunday", "startTime": "09:40 AM", "endTime": "11:10 AM"},
+              {"day": "Tuesday", "startTime": "09:40 AM", "endTime": "11:10 AM"},
+            ]
+          },
+          {
+            "courseCode": "ENG101",
+            "sectionName": "5",
+            "roomNumber": "NAC201",
+            "faculties": "Ms. Begum",
+            "schedule": [
+              {"day": "Monday", "startTime": "08:00 AM", "endTime": "09:30 AM"},
+              {"day": "Wednesday", "startTime": "08:00 AM", "endTime": "09:30 AM"},
+            ]
+          },
+          {
+            "courseCode": "PHY111",
+            "sectionName": "1",
+            "roomNumber": "SCI101",
+            "faculties": "Dr. Hossain",
+            "schedule": [
+              {"day": "Saturday", "startTime": "11:20 AM", "endTime": "12:50 PM"},
+              {"day": "Thursday", "startTime": "11:20 AM", "endTime": "12:50 PM"},
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Rafiq Islam",
+        "id": "21109012",
+        "photoFilePath": null,
+        "photoUrl": null,
+        "courses": [
+          {
+            "courseCode": "CSE220",
+            "sectionName": "4",
+            "roomNumber": "NAC701",
+            "faculties": "Dr. Karim",
+            "schedule": [
+              {"day": "Sunday", "startTime": "11:20 AM", "endTime": "12:50 PM"},
+              {"day": "Tuesday", "startTime": "11:20 AM", "endTime": "12:50 PM"},
+            ]
+          },
+          {
+            "courseCode": "CSE221",
+            "sectionName": "2",
+            "roomNumber": "NAC702",
+            "faculties": "Ms. Sultana",
+            "schedule": [
+              {"day": "Monday", "startTime": "02:00 PM", "endTime": "03:30 PM"},
+              {"day": "Wednesday", "startTime": "02:00 PM", "endTime": "03:30 PM"},
+            ]
+          },
+          {
+            "courseCode": "MAT216",
+            "sectionName": "1",
+            "roomNumber": "NAC302",
+            "faculties": "Dr. Alam",
+            "schedule": [
+              {"day": "Saturday", "startTime": "08:00 AM", "endTime": "09:30 AM"},
+              {"day": "Thursday", "startTime": "08:00 AM", "endTime": "09:30 AM"},
+            ]
+          }
+        ]
+      },
+    ];
+
+    final prefs = await SharedPreferences.getInstance();
+    List<String> currentList = prefs.getStringList("friendSchedules") ?? [];
+
+    for (final friendData in dummyFriends) {
+      final jsonString = jsonEncode(friendData);
+      final gzipped = GZipEncoder().encode(utf8.encode(jsonString));
+      final encoded = base64.encode(gzipped);
+
+      if (!currentList.contains(encoded)) {
+        currentList.add(encoded);
+      }
+    }
+
+    await prefs.setStringList("friendSchedules", currentList);
+    await _loadSchedules();
+
+    if (!mounted) return;
+    showAppSnackBar(context, '${dummyFriends.length} dummy friends added!');
+  }
+
   @override
   Widget build(BuildContext context) {
     final textPrimary = BracuPalette.textPrimary(context);
@@ -379,13 +714,26 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            Text(
-              'Scan & Share',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: textPrimary,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Scan & Share',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: textPrimary,
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _addDummyFriends,
+                  icon: const Icon(Icons.bug_report, size: 18),
+                  label: const Text('Test Data'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             LayoutBuilder(
@@ -428,25 +776,94 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
               },
             ),
             const SizedBox(height: 22),
-            Text(
-              'Friends',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: textPrimary,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Friends',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: textPrimary,
+                    ),
+                  ),
+                ),
+                if (decodedSchedules.isNotEmpty)
+                  Text(
+                    '${decodedSchedules.length}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: BracuPalette.textSecondary(context),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 12),
-            if (decodedSchedules.isEmpty)
+            if (decodedSchedules.isNotEmpty) ...[
+              TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search friends...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () => _searchController.clear(),
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (_filteredSchedules.isEmpty && decodedSchedules.isEmpty)
               const BracuEmptyState(message: "No schedules found")
+            else if (_filteredSchedules.isEmpty && _searchQuery.isNotEmpty)
+              BracuCard(
+                child: Center(
+                  child: Text(
+                    'No friends match "$_searchQuery"',
+                    style: TextStyle(
+                      color: BracuPalette.textSecondary(context),
+                    ),
+                  ),
+                ),
+              )
             else
-              ...decodedSchedules.map(
+              ..._filteredSchedules.map(
                 (item) => FriendScheduleSection(
                   item: item,
                   onDelete: () => _deleteFriendSchedule(item),
+                  onToggleFavorite: () => _toggleFavorite(item),
+                  onEditNickname: () => _editNickname(item),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => FriendDetailPage(
+                          friend: item.friend,
+                          displayName: item.displayName,
+                          isFavorite: item.isFavorite,
+                          onToggleFavorite: () => _toggleFavorite(item),
+                          onEditNickname: () => _editNickname(item),
+                          onDelete: () {
+                            _deleteFriendSchedule(item);
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
-            if (decodedSchedules.isNotEmpty) ...[
+            if (_filteredSchedules.isNotEmpty) ...[
               const SizedBox(height: 6),
               const SizedBox(height: 12),
             ],

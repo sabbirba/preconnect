@@ -5,10 +5,22 @@ import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
 class FriendScheduleItem {
-  const FriendScheduleItem({required this.encoded, required this.friend});
+  const FriendScheduleItem({
+    required this.encoded,
+    required this.friend,
+    this.metadata,
+  });
 
   final String encoded;
   final FriendSchedule friend;
+  final FriendMetadata? metadata;
+
+  String get displayName =>
+      metadata?.nickname?.trim().isNotEmpty == true
+          ? metadata!.nickname!
+          : friend.name;
+
+  bool get isFavorite => metadata?.isFavorite ?? false;
 }
 
 class FriendScheduleSection extends StatelessWidget {
@@ -16,10 +28,16 @@ class FriendScheduleSection extends StatelessWidget {
     super.key,
     required this.item,
     required this.onDelete,
+    this.onToggleFavorite,
+    this.onEditNickname,
+    this.onTap,
   });
 
   final FriendScheduleItem item;
   final VoidCallback onDelete;
+  final VoidCallback? onToggleFavorite;
+  final VoidCallback? onEditNickname;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -29,11 +47,19 @@ class FriendScheduleSection extends StatelessWidget {
     final orderedDays = _orderedDays(grouped.keys.toList());
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.only(bottom: 9),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          FriendHeaderCard(friend: friend, onDelete: onDelete),
+          FriendHeaderCard(
+            friend: friend,
+            onDelete: onDelete,
+            displayName: item.displayName,
+            isFavorite: item.isFavorite,
+            onToggleFavorite: onToggleFavorite,
+            onEditNickname: onEditNickname,
+            onTap: onTap,
+          ),
           const SizedBox(height: 12),
           if (grouped.isEmpty)
             BracuCard(
@@ -44,7 +70,8 @@ class FriendScheduleSection extends StatelessWidget {
             )
           else
             ...orderedDays.map((day) {
-              final entries = grouped[day]!;
+              final entries = grouped[day] ?? [];
+              if (entries.isEmpty) return const SizedBox.shrink();
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

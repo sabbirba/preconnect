@@ -87,3 +87,43 @@ class CourseSchedule {
     );
   }
 }
+
+/// Metadata for friend schedules (nickname, favorite status)
+class FriendMetadata {
+  final String friendId;
+  final String? nickname;
+  final bool isFavorite;
+
+  FriendMetadata({
+    required this.friendId,
+    this.nickname,
+    this.isFavorite = false,
+  });
+
+  factory FriendMetadata.fromJson(Map<String, dynamic> json) {
+    return FriendMetadata(
+      friendId: json['friendId'] ?? '',
+      nickname: json['nickname']?.toString(),
+      isFavorite: json['isFavorite'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'friendId': friendId,
+      'nickname': nickname,
+      'isFavorite': isFavorite,
+    };
+  }
+
+  FriendMetadata copyWith({
+    String? nickname,
+    bool? isFavorite,
+  }) {
+    return FriendMetadata(
+      friendId: friendId,
+      nickname: nickname ?? this.nickname,
+      isFavorite: isFavorite ?? this.isFavorite,
+    );
+  }
+}

@@ -7,46 +7,94 @@ class FriendHeaderCard extends StatelessWidget {
     super.key,
     required this.friend,
     required this.onDelete,
+    this.displayName,
+    this.isFavorite = false,
+    this.onToggleFavorite,
+    this.onEditNickname,
+    this.onTap,
   });
 
   final FriendSchedule friend;
   final VoidCallback onDelete;
+  final String? displayName;
+  final bool isFavorite;
+  final VoidCallback? onToggleFavorite;
+  final VoidCallback? onEditNickname;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final textPrimary = BracuPalette.textPrimary(context);
     final textSecondary = BracuPalette.textSecondary(context);
-    return BracuCard(
-      child: Row(
-        children: [
-          FriendAvatar(name: friend.name, photoUrl: friend.photoUrl),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  friend.name.trim().isEmpty ? 'Friend' : friend.name,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: textPrimary,
+    final nameToShow = displayName?.trim().isNotEmpty == true
+        ? displayName!
+        : (friend.name.trim().isEmpty ? 'Friend' : friend.name);
+    
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: BracuCard(
+        child: Row(
+          children: [
+            FriendAvatar(name: friend.name, photoUrl: friend.photoUrl),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      if (isFavorite) ...[
+                        const Icon(
+                          Icons.star_rounded,
+                          color: Color(0xFFFFA726),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                      Expanded(
+                        child: Text(
+                          nameToShow,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  friend.id.trim().isEmpty ? 'ID: N/A' : 'ID: ${friend.id}',
-                  style: TextStyle(fontSize: 12, color: textSecondary),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    friend.id.trim().isEmpty ? 'ID: N/A' : 'ID: ${friend.id}',
+                    style: TextStyle(fontSize: 12, color: textSecondary),
+                  ),
+                ],
+              ),
             ),
-          ),
-          IconButton(
-            tooltip: 'Remove schedule',
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline_rounded),
-          ),
-        ],
+            if (onToggleFavorite != null)
+              IconButton(
+                tooltip: isFavorite ? 'Remove from favorites' : 'Add to favorites',
+                onPressed: onToggleFavorite,
+                icon: Icon(
+                  isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+                  color: isFavorite ? const Color(0xFFFFA726) : null,
+                ),
+              ),
+            if (onEditNickname != null)
+              IconButton(
+                tooltip: 'Edit nickname',
+                onPressed: onEditNickname,
+                icon: const Icon(Icons.edit_outlined),
+              ),
+            IconButton(
+              tooltip: 'Remove schedule',
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_outline_rounded),
+            ),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
       ),
     );
   }
