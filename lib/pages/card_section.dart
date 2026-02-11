@@ -110,7 +110,7 @@ class CardSectionState extends State<CardSection> {
                           width: 38,
                           alignment: Alignment.center,
                           decoration: const BoxDecoration(
-                            color: Color(0xFFEFF2F4),
+                            color: Colors.transparent,
                             borderRadius: BorderRadius.only(
                               bottomLeft: Radius.circular(16),
                             ),

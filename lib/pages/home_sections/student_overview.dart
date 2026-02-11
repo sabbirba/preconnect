@@ -78,7 +78,7 @@ class StudentOverviewCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 12),
                             _OverviewTile(
-                              label: 'Phone',
+                              label: 'Phone Number',
                               value: phoneNumber,
                               width: half,
                               enableCopy: true,

@@ -53,7 +53,7 @@ class _DevsPageState extends State<DevsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'PreConnect - Initiative Run by Students',
+                      'PreConnect App Runs by Students',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,

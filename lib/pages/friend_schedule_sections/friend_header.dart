@@ -50,14 +50,6 @@ class FriendHeaderCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      if (isFavorite) ...[
-                        const Icon(
-                          Icons.star_rounded,
-                          color: BracuPalette.favorite,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 4),
-                      ],
                       Expanded(
                         child: Text(
                           nameToShow,
@@ -68,6 +60,14 @@ class FriendHeaderCard extends StatelessWidget {
                           ),
                         ),
                       ),
+                      if (isFavorite) ...[
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.star_rounded,
+                          color: BracuPalette.favorite,
+                          size: 18,
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 4),

@@ -21,8 +21,8 @@ class _MyAppState extends State<MyApp> {
   );
   late final Future<_StartupState> _startupFuture = _bootstrap();
   StreamSubscription<InstallStatus>? _updateSubscription;
-  bool _isCheckingForUpdates = false;
-  bool _hasStartedFlexibleUpdate = false;
+  Future<void>? _updateCheckInFlight;
+  _UpdatePolicy _updatePolicy = _UpdatePolicy.normal;
 
   @override
   void initState() {
@@ -79,11 +79,8 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _maybeCheckForUpdates() async {
-    if (!Platform.isAndroid || _isCheckingForUpdates) {
-      return;
-    }
-    _isCheckingForUpdates = true;
-    try {
+    if (!Platform.isAndroid || _updateCheckInFlight != null) return;
+    _updateCheckInFlight = () async {
       final info = await InAppUpdate.checkForUpdate();
       final availability = info.updateAvailability;
 
@@ -92,44 +89,63 @@ class _MyAppState extends State<MyApp> {
         return;
       }
 
-      if (availability ==
-              UpdateAvailability.developerTriggeredUpdateInProgress &&
-          info.immediateUpdateAllowed) {
-        await InAppUpdate.performImmediateUpdate();
+      final shouldRunImmediate =
+          info.immediateUpdateAllowed &&
+          (availability ==
+                  UpdateAvailability.developerTriggeredUpdateInProgress ||
+              (availability == UpdateAvailability.updateAvailable &&
+                  _updatePolicy != _UpdatePolicy.skipImmediateForSession));
+
+      if (shouldRunImmediate) {
+        await _runImmediateUpdate();
         return;
       }
-      if (availability != UpdateAvailability.updateAvailable) {
-        return;
+      if (availability == UpdateAvailability.updateAvailable &&
+          info.flexibleUpdateAllowed &&
+          _updateSubscription == null) {
+        await _startFlexibleUpdate();
       }
-      if (info.immediateUpdateAllowed) {
-        await InAppUpdate.performImmediateUpdate();
-        return;
-      }
-      if (info.flexibleUpdateAllowed && !_hasStartedFlexibleUpdate) {
-        _hasStartedFlexibleUpdate = true;
-        _updateSubscription?.cancel();
-        _updateSubscription = InAppUpdate.installUpdateListener.listen((
-          status,
-        ) {
-          if (status == InstallStatus.downloaded) {
-            InAppUpdate.completeFlexibleUpdate();
-          } else if (status == InstallStatus.installed ||
-              status == InstallStatus.failed ||
-              status == InstallStatus.canceled) {
-            _hasStartedFlexibleUpdate = false;
-            _updateSubscription?.cancel();
-            _updateSubscription = null;
-          }
-        });
-        final result = await InAppUpdate.startFlexibleUpdate();
-        if (result != AppUpdateResult.success) {
-          _hasStartedFlexibleUpdate = false;
-        }
-      }
+    }();
+
+    try {
+      await _updateCheckInFlight;
     } catch (_) {
     } finally {
-      _isCheckingForUpdates = false;
+      _updateCheckInFlight = null;
     }
+  }
+
+  Future<void> _runImmediateUpdate() async {
+    try {
+      if (await InAppUpdate.performImmediateUpdate() !=
+          AppUpdateResult.success) {
+        _updatePolicy = _UpdatePolicy.skipImmediateForSession;
+      }
+    } catch (_) {
+      _updatePolicy = _UpdatePolicy.skipImmediateForSession;
+    }
+  }
+
+  Future<void> _startFlexibleUpdate() async {
+    _updateSubscription = InAppUpdate.installUpdateListener.listen((status) {
+      if (status == InstallStatus.downloaded) {
+        InAppUpdate.completeFlexibleUpdate();
+      } else if ({
+        InstallStatus.installed,
+        InstallStatus.failed,
+        InstallStatus.canceled,
+      }.contains(status)) {
+        _clearUpdateSubscription();
+      }
+    });
+    if (await InAppUpdate.startFlexibleUpdate() != AppUpdateResult.success) {
+      _clearUpdateSubscription();
+    }
+  }
+
+  void _clearUpdateSubscription() {
+    _updateSubscription?.cancel();
+    _updateSubscription = null;
   }
 
   @override
@@ -188,6 +204,8 @@ class _StartupState {
 
   final bool isLoggedIn;
 }
+
+enum _UpdatePolicy { normal, skipImmediateForSession }
 
 class _AppGate extends StatelessWidget {
   const _AppGate({required this.startupFuture});
