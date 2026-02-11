@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter_flip_card/flutter_flip_card.dart';
@@ -5,10 +6,11 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
 class CardSection extends StatefulWidget {
-  const CardSection({super.key, required this.profile, required this.photoUrl});
+  const CardSection({super.key, required this.profile, required this.photoUrl, this.cachedImageFile});
 
   final Map<String, String?>? profile;
   final String? photoUrl;
+  final File? cachedImageFile;
 
   @override
   CardSectionState createState() => CardSectionState();
@@ -207,19 +209,29 @@ class CardSectionState extends State<CardSection> {
                                         child:
                                             photoUrl == null || photoUrl.isEmpty
                                             ? const SizedBox.expand()
-                                            : Image.network(
-                                                photoUrl,
-                                                fit: BoxFit.cover,
-                                                alignment: Alignment.center,
-                                                errorBuilder:
-                                                    (
-                                                      context,
-                                                      error,
-                                                      stackTrace,
-                                                    ) {
-                                                      return const SizedBox.expand();
-                                                    },
-                                              ),
+                                            : widget.cachedImageFile != null
+                                              ? Image.file(
+                                                  widget.cachedImageFile!,
+                                                  fit: BoxFit.cover,
+                                                  alignment: Alignment.center,
+                                                  errorBuilder:
+                                                      (context, error, stackTrace) {
+                                                        return const SizedBox.expand();
+                                                      },
+                                                )
+                                              : Image.network(
+                                                  photoUrl,
+                                                  fit: BoxFit.cover,
+                                                  alignment: Alignment.center,
+                                                  errorBuilder:
+                                                      (
+                                                        context,
+                                                        error,
+                                                        stackTrace,
+                                                      ) {
+                                                        return const SizedBox.expand();
+                                                      },
+                                                ),
                                       ),
                                     ),
                                   ],

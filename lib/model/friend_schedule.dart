@@ -59,6 +59,24 @@ class Course {
     
     List<CourseSchedule> schedules = [];
     
+    // Convert 24-hour time to 12-hour format
+    String convertTime(String time24) {
+      if (time24.isEmpty) return '';
+      final parts = time24.split(':');
+      int hour = int.parse(parts[0]);
+      final minute = parts[1];
+      final period = hour >= 12 ? 'PM' : 'AM';
+      if (hour > 12) hour -= 12;
+      if (hour == 0) hour = 12;
+      return '$hour:$minute $period';
+    }
+    
+    // Convert uppercase day to title case
+    String convertDay(String day) {
+      if (day.isEmpty) return '';
+      return day[0].toUpperCase() + day.substring(1).toLowerCase();
+    }
+    
     // Handle real API format (sectionSchedule.classSchedules)
     if (json['sectionSchedule'] != null) {
       var sectionSchedule = json['sectionSchedule'];
@@ -66,35 +84,21 @@ class Course {
       // If it's a string, parse it as JSON
       if (sectionSchedule is String) {
         try {
+          print('Decoding sectionSchedule string...');
           sectionSchedule = jsonDecode(sectionSchedule);
+          print('Decoded successfully, type: ${sectionSchedule.runtimeType}');
         } catch (e) {
           print('Error parsing sectionSchedule: $e');
+          sectionSchedule = null;
         }
       }
       
       if (sectionSchedule is Map) {
         final classSchedules = sectionSchedule['classSchedules'] as List<dynamic>? ?? [];
+        print('Found ${classSchedules.length} classSchedules');
         
         schedules = classSchedules.map((e) {
           final schedule = e as Map<String, dynamic>;
-          
-          // Convert 24-hour time to 12-hour format
-          String convertTime(String time24) {
-            if (time24.isEmpty) return '';
-            final parts = time24.split(':');
-            int hour = int.parse(parts[0]);
-            final minute = parts[1];
-            final period = hour >= 12 ? 'PM' : 'AM';
-            if (hour > 12) hour -= 12;
-            if (hour == 0) hour = 12;
-            return '$hour:$minute $period';
-          }
-          
-          // Convert uppercase day to title case
-          String convertDay(String day) {
-            if (day.isEmpty) return '';
-            return day[0].toUpperCase() + day.substring(1).toLowerCase();
-          }
           
           return CourseSchedule(
             day: convertDay(schedule['day']?.toString() ?? ''),
@@ -102,10 +106,15 @@ class Course {
             endTime: convertTime(schedule['endTime']?.toString() ?? ''),
           );
         }).toList();
+        
+        print('Parsed ${schedules.length} schedule items');
+      } else {
+        print('sectionSchedule is not a Map after parsing: ${sectionSchedule?.runtimeType}');
       }
     }
     // Handle dummy data format (schedule array directly)
     else if (json['schedule'] != null) {
+      print('Using dummy data format');
       schedules = (json['schedule'] as List<dynamic>? ?? [])
           .map((e) => CourseSchedule.fromJson(e))
           .toList();

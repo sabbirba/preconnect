@@ -739,12 +739,11 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
             LayoutBuilder(
               builder: (context, constraints) {
                 const spacing = 12.0;
-                const aspect = 1.02;
                 return GridView.count(
                   crossAxisCount: 3,
                   mainAxisSpacing: spacing,
                   crossAxisSpacing: spacing,
-                  childAspectRatio: aspect,
+                  childAspectRatio: 1.0,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   children: [

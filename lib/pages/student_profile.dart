@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/bracu_auth_manager.dart';
 import 'package:preconnect/model/payment_info.dart';
@@ -10,6 +11,7 @@ import 'package:preconnect/pages/student_profile_sections/attendance_graph.dart'
 import 'package:preconnect/pages/student_profile_sections/payment_graph.dart';
 import 'package:preconnect/pages/student_profile_sections/payment_list.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/profile_image_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/refresh_guard.dart';
 
@@ -24,6 +26,7 @@ class _StudentProfileState extends State<StudentProfile>
     with SingleTickerProviderStateMixin {
   Map<String, String?>? _profile = {};
   String? _photoUrl;
+  File? _cachedImageFile;
   List<PaymentInfo> _payments = [];
   List<AttendanceInfo> _attendances = [];
   Map<String, String?> _advising = {};
@@ -99,6 +102,7 @@ class _StudentProfileState extends State<StudentProfile>
     try {
       final profile = await BracuAuthManager().getProfile();
       final photoUrl = _buildPhotoUrl(profile?['photoFilePath']);
+      final cachedImage = await ProfileImageCache.instance.getProfileImage(photoUrl);
       final List<dynamic> paymentsJson = _decodeList(
         await BracuAuthManager().getPaymentInfo(),
       );
@@ -134,6 +138,7 @@ class _StudentProfileState extends State<StudentProfile>
       setState(() {
         _profile = profile;
         _photoUrl = photoUrl;
+        _cachedImageFile = cachedImage;
         _payments = payments;
         _attendances = attendances;
         _advising = advising ?? _advising;
@@ -154,6 +159,8 @@ class _StudentProfileState extends State<StudentProfile>
     try {
       final profile = await BracuAuthManager().fetchProfile();
       final photoUrl = _buildPhotoUrl(profile?['photoFilePath']);
+      ProfileImageCache.instance.invalidate();
+      final cachedImage = await ProfileImageCache.instance.getProfileImage(photoUrl);
       final List<dynamic> paymentsJson = _decodeList(
         await BracuAuthManager().fetchPaymentInfo(),
       );
@@ -189,6 +196,7 @@ class _StudentProfileState extends State<StudentProfile>
       setState(() {
         _profile = profile ?? _profile;
         _photoUrl = photoUrl ?? _photoUrl;
+        _cachedImageFile = cachedImage ?? _cachedImageFile;
         _payments = payments.isNotEmpty ? payments : _payments;
         _attendances = attendances.isNotEmpty ? attendances : _attendances;
         _advising = advising ?? _advising;
@@ -228,7 +236,7 @@ class _StudentProfileState extends State<StudentProfile>
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
             const SizedBox(height: 6),
-            CardSection(profile: _profile, photoUrl: _photoUrl),
+            CardSection(profile: _profile, photoUrl: _photoUrl, cachedImageFile: _cachedImageFile),
             const SizedBox(height: 18),
             AcademicSummaryCard(
               profile: _profile ?? const {},
