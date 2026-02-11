@@ -47,7 +47,7 @@ class FriendScheduleSection extends StatelessWidget {
     final orderedDays = _orderedDays(grouped.keys.toList());
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 9),
+      padding: const EdgeInsets.only(bottom: 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

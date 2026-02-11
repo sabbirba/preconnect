@@ -291,15 +291,21 @@ class CompareSchedulesPage extends StatelessWidget {
     List<Course> myCourses,
     List<Course> friendCourses,
   ) {
+    print('=== COMPARE SCHEDULES DEBUG ===');
+    print('My courses count: ${myCourses.length}');
+    print('Friend courses count: ${friendCourses.length}');
+    
     final freeSlots = <Map<String, dynamic>>[];
     final busySlots = <Map<String, dynamic>>[];
     final commonClasses = <String>{};
 
     // Find common classes
     for (final myCourse in myCourses) {
+      print('My course: ${myCourse.courseCode}, schedules: ${myCourse.schedule.length}');
       for (final friendCourse in friendCourses) {
         if (myCourse.courseCode == friendCourse.courseCode) {
           commonClasses.add(myCourse.courseCode);
+          print('Found common class: ${myCourse.courseCode}');
         }
       }
     }
@@ -307,12 +313,17 @@ class CompareSchedulesPage extends StatelessWidget {
     // Build schedule maps by day and time
     final myScheduleMap = _buildScheduleMap(myCourses);
     final friendScheduleMap = _buildScheduleMap(friendCourses);
+    
+    print('My schedule map days: ${myScheduleMap.keys}');
+    print('Friend schedule map days: ${friendScheduleMap.keys}');
 
     final days = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
 
     for (final day in days) {
       final mySlots = myScheduleMap[day] ?? [];
       final friendSlots = friendScheduleMap[day] ?? [];
+
+      print('$day - My slots: ${mySlots.length}, Friend slots: ${friendSlots.length}');
 
       if (mySlots.isEmpty || friendSlots.isEmpty) continue;
 
@@ -366,6 +377,10 @@ class CompareSchedulesPage extends StatelessWidget {
         });
       }
     }
+
+    print('Free slots found: ${freeSlots.length}');
+    print('Busy slots found: ${busySlots.length}');
+    print('Common classes found: ${commonClasses.length}');
 
     return {
       'freeSlots': freeSlots,

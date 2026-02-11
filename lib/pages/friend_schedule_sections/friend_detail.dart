@@ -29,6 +29,7 @@ class FriendDetailPage extends StatefulWidget {
 
 class _FriendDetailPageState extends State<FriendDetailPage> {
   Map<String, dynamic>? _comparison;
+  List<Course>? _mySchedule;
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -65,6 +66,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
       );
 
       setState(() {
+        _mySchedule = myCourses;
         _comparison = comparison;
         _isLoading = false;
       });
@@ -159,6 +161,83 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                             ],
                           ),
                         ),
+                        if (widget.friend.courses.isNotEmpty)
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              try {
+                                print('Fetching schedule...');
+                                final jsonString = await BracuAuthManager().getStudentSchedule();
+                                print('Got schedule: ${jsonString?.substring(0, 100)}');
+                                if (jsonString == null || jsonString.isEmpty) {
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Please log in to compare schedules'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                try {
+                                  final parsed = jsonDecode(jsonString);
+                                  print('Parsed JSON type: ${parsed.runtimeType}');
+                                  print('Has courses key: ${parsed is Map && parsed.containsKey('courses')}');
+                                  
+                                  final coursesData = parsed is Map ? parsed['courses'] : parsed;
+                                  print('Courses data: ${coursesData.runtimeType}');
+                                  
+                                  final List<Course> myCourses = (coursesData as List<dynamic>? ?? [])
+                                      .map((e) {
+                                        print('Parsing course: ${e.runtimeType}');
+                                        print('Course JSON keys: ${(e as Map<String, dynamic>).keys}');
+                                        print('Course data: $e');
+                                        return Course.fromJson(e);
+                                      })
+                                      .toList();
+
+                                  if (!mounted) return;
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => CompareSchedulesPage(
+                                        mySchedule: myCourses,
+                                        friendItem: widget.friend,
+                                      ),
+                                    ),
+                                  );
+                                } catch (parseError, stackTrace) {
+                                  print('Parse error: $parseError');
+                                  print('Stack trace: $stackTrace');
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Parse error: $parseError'),
+                                      duration: const Duration(seconds: 3),
+                                    ),
+                                  );
+                                }
+                              } catch (e, stackTrace) {
+                                print('Error: $e');
+                                print('Stack: $stackTrace');
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Failed: $e'),
+                                    duration: const Duration(seconds: 3),
+                                  ),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.compare_arrows, size: 18),
+                            label: const Text('Compare'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: BracuPalette.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              textStyle: const TextStyle(fontSize: 13),
+                            ),
+                          ),
                       ],
                     ),
                   ],
@@ -170,9 +249,9 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
             // Comparison Section (if available)
             if (_comparison != null) ...[
               _buildComparisonSection(context, _comparison!),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
             ],
-
+            
             // Friend's Schedule
             Text(
               '${nameToShow}\'s Schedule',
