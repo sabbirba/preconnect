@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/cached_image.dart';
+import 'package:preconnect/tools/cached_image.dart';
 
 class FriendHeaderCard extends StatelessWidget {
   const FriendHeaderCard({
@@ -158,21 +160,29 @@ class FriendAvatar extends StatelessWidget {
             )
           : ClipRRect(
               borderRadius: BorderRadius.circular(radius),
-              child: Image.network(
-                photoUrl!,
+              child: CachedImage(
+                url: photoUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Center(
-                    child: Text(
-                      _initials(),
-                      style: TextStyle(
-                        color: BracuPalette.primary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: fontSize,
-                      ),
+                placeholder: Center(
+                  child: Text(
+                    _initials(),
+                    style: TextStyle(
+                      color: BracuPalette.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: fontSize,
                     ),
-                  );
-                },
+                  ),
+                ),
+                error: Center(
+                  child: Text(
+                    _initials(),
+                    style: TextStyle(
+                      color: BracuPalette.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: fontSize,
+                    ),
+                  ),
+                ),
               ),
             ),
     );

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/cached_image.dart';
 
 class DevsPage extends StatelessWidget {
   const DevsPage({super.key});
@@ -158,11 +159,21 @@ class DevsPage extends StatelessWidget {
                           child: LayoutBuilder(
                             builder: (context, constraints) {
                               final size = constraints.maxWidth;
-                              return Image.network(
-                                'https://preconnect.app/bkash-qr.jpg',
+                              return CachedImage(
+                                url: 'https://preconnect.app/bkash-qr.jpg',
                                 width: size,
                                 height: size,
                                 fit: BoxFit.contain,
+                                placeholder: const Center(
+                                  child: SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                ),
+                                error: const Icon(Icons.qr_code_2_rounded),
                               );
                             },
                           ),
@@ -202,6 +213,17 @@ class _DevGridTile extends StatelessWidget {
     await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
   }
 
+  Widget _avatarPlaceholder(BuildContext context) {
+    final initial = name.trim().isNotEmpty
+        ? name.trim().substring(0, 1).toUpperCase()
+        : '?';
+    return Container(
+      color: BracuPalette.primary.withValues(alpha: 0.12),
+      alignment: Alignment.center,
+      child: Text(initial, style: const TextStyle(fontWeight: FontWeight.w700)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final textSecondary = BracuPalette.textSecondary(context);
@@ -213,10 +235,17 @@ class _DevGridTile extends StatelessWidget {
           InkWell(
             onTap: () => _openUrl(githubUrl),
             borderRadius: BorderRadius.circular(24),
-            child: CircleAvatar(
-              radius: 22,
-              backgroundColor: BracuPalette.primary.withValues(alpha: 0.12),
-              backgroundImage: NetworkImage(avatarUrl),
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: ClipOval(
+                child: CachedImage(
+                  url: avatarUrl,
+                  fit: BoxFit.cover,
+                  placeholder: _avatarPlaceholder(context),
+                  error: _avatarPlaceholder(context),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 6),

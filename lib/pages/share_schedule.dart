@@ -241,10 +241,14 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
       final bytes = byteData.buffer.asUint8List();
       const fileName = 'preconnect_schedule_qr.png';
 
+      const shareText =
+          "Scan my schedule QR to import in PreConnect's Friends Schedule.\n"
+          'App link: https://play.google.com/store/apps/details?id=com.sabbirba.preconnect';
+
       if (kIsWeb) {
         await Share.shareXFiles([
           XFile.fromData(bytes, mimeType: 'image/png', name: fileName),
-        ], text: 'Scan my schedule QR to import in PreConnect App.');
+        ], text: shareText);
         return;
       }
 
@@ -252,9 +256,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
       final file = File('${tempDir.path}/$fileName');
       await file.writeAsBytes(bytes, flush: true);
 
-      await Share.shareXFiles([
-        XFile(file.path),
-      ], text: 'Scan my schedule QR to import in PreConnect App.');
+      await Share.shareXFiles([XFile(file.path)], text: shareText);
     } catch (e) {
       if (!mounted) return;
       showAppSnackBar(context, 'Unable to share QR code');

@@ -21,6 +21,7 @@ import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/notification_scheduler.dart';
+import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/refresh_guard.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -665,12 +666,34 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                             'PreConnect.app • Prepare Connect Succeed',
                                       );
                                     },
-                                    child: const SizedBox(
-                                      width: 28,
-                                      height: 28,
-                                      child: Icon(
-                                        Icons.share_outlined,
-                                        size: 18,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.share_outlined,
+                                            size: 14,
+                                            color: BracuPalette.textPrimary(
+                                              context,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Share',
+                                            softWrap: false,
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: BracuPalette.textPrimary(
+                                                context,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -816,25 +839,32 @@ class _TopBar extends StatelessWidget {
                         )
                       : ClipRRect(
                           borderRadius: BorderRadius.circular(14),
-                          child: Image.network(
-                            photoUrl!,
+                          child: CachedImage(
+                            url: photoUrl!,
                             fit: BoxFit.cover,
                             width: 42,
                             height: 42,
-                            cacheWidth: 84,
-                            cacheHeight: 84,
                             filterQuality: FilterQuality.low,
-                            gaplessPlayback: true,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Text(
+                            placeholder: Center(
+                              child: Text(
                                 initial.toUpperCase(),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
                                   fontWeight: FontWeight.w600,
                                 ),
-                              );
-                            },
+                              ),
+                            ),
+                            error: Center(
+                              child: Text(
+                                initial.toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                 ),

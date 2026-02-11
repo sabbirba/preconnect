@@ -1,9 +1,9 @@
-import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:barcode_widget/barcode_widget.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_flip_card/flutter_flip_card.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/cached_image.dart';
 
 class CardSection extends StatefulWidget {
   const CardSection({super.key, required this.profile, required this.photoUrl, this.cachedImageFile});
@@ -209,29 +209,14 @@ class CardSectionState extends State<CardSection> {
                                         child:
                                             photoUrl == null || photoUrl.isEmpty
                                             ? const SizedBox.expand()
-                                            : widget.cachedImageFile != null
-                                              ? Image.file(
-                                                  widget.cachedImageFile!,
-                                                  fit: BoxFit.cover,
-                                                  alignment: Alignment.center,
-                                                  errorBuilder:
-                                                      (context, error, stackTrace) {
-                                                        return const SizedBox.expand();
-                                                      },
-                                                )
-                                              : Image.network(
-                                                  photoUrl,
-                                                  fit: BoxFit.cover,
-                                                  alignment: Alignment.center,
-                                                  errorBuilder:
-                                                      (
-                                                        context,
-                                                        error,
-                                                        stackTrace,
-                                                      ) {
-                                                        return const SizedBox.expand();
-                                                      },
-                                                ),
+                                            : CachedImage(
+                                                url: photoUrl,
+                                                fit: BoxFit.cover,
+                                                alignment: Alignment.center,
+                                                placeholder:
+                                                    const SizedBox.expand(),
+                                                error: const SizedBox.expand(),
+                                              ),
                                       ),
                                     ),
                                   ],
