@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -665,12 +666,34 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                             'PreConnect.app • Prepare Connect Succeed',
                                       );
                                     },
-                                    child: const SizedBox(
-                                      width: 28,
-                                      height: 28,
-                                      child: Icon(
-                                        Icons.share_outlined,
-                                        size: 18,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.share_outlined,
+                                            size: 14,
+                                            color: BracuPalette.textPrimary(
+                                              context,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Share',
+                                            softWrap: false,
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: BracuPalette.textPrimary(
+                                                context,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -816,22 +839,38 @@ class _TopBar extends StatelessWidget {
                         )
                       : ClipRRect(
                           borderRadius: BorderRadius.circular(14),
-                          child: Image.network(
-                            photoUrl!,
+                          child: CachedNetworkImage(
+                            imageUrl: photoUrl!,
                             fit: BoxFit.cover,
                             width: 42,
                             height: 42,
-                            cacheWidth: 84,
-                            cacheHeight: 84,
+                            memCacheWidth: 84,
+                            memCacheHeight: 84,
                             filterQuality: FilterQuality.low,
-                            gaplessPlayback: true,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Text(
-                                initial.toUpperCase(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
+                            fadeInDuration: Duration.zero,
+                            fadeOutDuration: Duration.zero,
+                            useOldImageOnUrlChange: true,
+                            placeholder: (context, url) {
+                              return Center(
+                                child: Text(
+                                  initial.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorWidget: (context, url, error) {
+                              return Center(
+                                child: Text(
+                                  initial.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               );
                             },

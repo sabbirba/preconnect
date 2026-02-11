@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -91,10 +92,24 @@ class FriendAvatar extends StatelessWidget {
             )
           : ClipRRect(
               borderRadius: BorderRadius.circular(14),
-              child: Image.network(
-                photoUrl!,
+              child: CachedNetworkImage(
+                imageUrl: photoUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
+                fadeInDuration: Duration.zero,
+                fadeOutDuration: Duration.zero,
+                useOldImageOnUrlChange: true,
+                placeholder: (context, url) {
+                  return Center(
+                    child: Text(
+                      _initials(),
+                      style: const TextStyle(
+                        color: BracuPalette.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  );
+                },
+                errorWidget: (context, url, error) {
                   return Center(
                     child: Text(
                       _initials(),
