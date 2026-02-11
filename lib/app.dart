@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:preconnect/api/bracu_auth_manager.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/login.dart';
+import 'package:preconnect/pages/onboarding.dart';
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -148,11 +149,11 @@ class _MyAppState extends State<MyApp> {
       colorScheme: const ColorScheme.dark(
         primary: Color(0xFF1E6BE3),
         secondary: Color(0xFF22B573),
-        surface: Color(0xFF0B0B0B),
+        surface: Colors.black,
         onSurface: Colors.white,
       ),
       scaffoldBackgroundColor: Colors.black,
-      dialogTheme: const DialogThemeData(backgroundColor: Color(0xFF0B0B0B)),
+      dialogTheme: const DialogThemeData(backgroundColor: Colors.black),
       useMaterial3: true,
     );
 
@@ -214,7 +215,7 @@ class _AppGate extends StatelessWidget {
         if (isLoggedIn == true) {
           return const HomePage();
         }
-        return const LoginPage();
+        return const OnboardingPage();
       },
     );
   }

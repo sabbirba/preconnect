@@ -182,7 +182,7 @@ class BracuPalette {
   static const Color favorite = Color(0xFFFFA726);
   static const Color danger = Color(0xFFD63B3B);
   static const Color cardLight = Colors.white;
-  static const Color cardDark = Color(0xFF0B0B0B);
+  static const Color cardDark = Colors.black;
 
   static bool _isDark(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark;

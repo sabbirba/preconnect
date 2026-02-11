@@ -17,6 +17,52 @@ import 'package:preconnect/tools/refresh_bus.dart';
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
+  static const String clientId = "slm";
+  static const String redirectUri = "https://connect.bracu.ac.bd/";
+  static const String authUrl =
+      "https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect/auth"
+      "?client_id=slm"
+      "&redirect_uri=https%3A%2F%2Fconnect.bracu.ac.bd%2F"
+      "&response_type=code"
+      "&response_mode=query"
+      "&scope=openid offline_access";
+  static WebViewController? _preloadedWebViewController;
+  static bool _isPreloadingWebView = false;
+
+  static Future<void> preloadNextPage() async {
+    if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) return;
+    if (_preloadedWebViewController != null || _isPreloadingWebView) return;
+    _isPreloadingWebView = true;
+    try {
+      final controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setUserAgent(kPreconnectUserAgent)
+        ..loadRequest(Uri.parse(authUrl));
+      await _configureCookies(controller);
+      _preloadedWebViewController = controller;
+    } catch (_) {
+      _preloadedWebViewController = null;
+    } finally {
+      _isPreloadingWebView = false;
+    }
+  }
+
+  static WebViewController? takePreloadedWebView() {
+    final controller = _preloadedWebViewController;
+    _preloadedWebViewController = null;
+    return controller;
+  }
+
+  static Future<void> _configureCookies(WebViewController controller) async {
+    final platform = controller.platform;
+    if (platform is AndroidWebViewController) {
+      final cookieManager = AndroidWebViewCookieManager(
+        PlatformWebViewCookieManagerCreationParams(),
+      );
+      await cookieManager.setAcceptThirdPartyCookies(platform, true);
+    }
+  }
+
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
@@ -30,15 +76,6 @@ class _LoginPageState extends State<LoginPage> {
   bool _winCanGoBack = false;
   bool _handledRedirect = false;
 
-  final String _clientId = "slm";
-  final String _redirectUri = "https://connect.bracu.ac.bd/";
-  final String _authUrl =
-      "https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect/auth"
-      "?client_id=slm"
-      "&redirect_uri=https%3A%2F%2Fconnect.bracu.ac.bd%2F"
-      "&response_type=code"
-      "&response_mode=query"
-      "&scope=openid offline_access";
   bool _isLoggingIn = false;
 
   @override
@@ -49,27 +86,37 @@ class _LoginPageState extends State<LoginPage> {
       _initWindowsWebview();
       return;
     }
-    _webViewController = WebViewController()
+    _webViewController =
+        LoginPage.takePreloadedWebView() ?? _buildMobileWebView();
+    _attachNavigationDelegate(_webViewController!);
+  }
+
+  WebViewController _buildMobileWebView() {
+    final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setUserAgent(kPreconnectUserAgent)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onNavigationRequest: (request) {
-            if (_isRedirectUrl(request.url)) {
-              _handleRedirect(request.url);
-              return NavigationDecision.prevent;
-            }
-            return NavigationDecision.navigate;
-          },
-          onPageStarted: (url) {
-            if (_isRedirectUrl(url)) {
-              _handleRedirect(url);
-            }
-          },
-        ),
-      )
-      ..loadRequest(Uri.parse(_authUrl));
-    _configureCookies(_webViewController!);
+      ..loadRequest(Uri.parse(LoginPage.authUrl));
+    LoginPage._configureCookies(controller);
+    return controller;
+  }
+
+  void _attachNavigationDelegate(WebViewController controller) {
+    controller.setNavigationDelegate(
+      NavigationDelegate(
+        onNavigationRequest: (request) {
+          if (_isRedirectUrl(request.url)) {
+            _handleRedirect(request.url);
+            return NavigationDecision.prevent;
+          }
+          return NavigationDecision.navigate;
+        },
+        onPageStarted: (url) {
+          if (_isRedirectUrl(url)) {
+            _handleRedirect(url);
+          }
+        },
+      ),
+    );
   }
 
   Future<void> _initWindowsWebview() async {
@@ -88,21 +135,11 @@ class _LoginPageState extends State<LoginPage> {
       _winHistorySub = _winController!.historyChanged.listen((history) {
         _winCanGoBack = history.canGoBack;
       });
-      await _winController!.loadUrl(_authUrl);
+      await _winController!.loadUrl(LoginPage.authUrl);
       if (mounted) setState(() {});
     } catch (_) {
       if (!mounted) return;
       showAppSnackBar(context, 'WebView failed to initialize.');
-    }
-  }
-
-  Future<void> _configureCookies(WebViewController controller) async {
-    final platform = controller.platform;
-    if (platform is AndroidWebViewController) {
-      final cookieManager = AndroidWebViewCookieManager(
-        PlatformWebViewCookieManagerCreationParams(),
-      );
-      await cookieManager.setAcceptThirdPartyCookies(platform, true);
     }
   }
 
@@ -134,9 +171,9 @@ class _LoginPageState extends State<LoginPage> {
       headers: {"Content-Type": "application/x-www-form-urlencoded"},
       body: {
         "grant_type": "authorization_code",
-        "client_id": _clientId,
+        "client_id": LoginPage.clientId,
         "code": code,
-        "redirect_uri": _redirectUri,
+        "redirect_uri": LoginPage.redirectUri,
       },
     );
 
