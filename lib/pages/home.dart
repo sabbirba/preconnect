@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -22,6 +21,7 @@ import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/notification_scheduler.dart';
+import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/refresh_guard.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -839,41 +839,32 @@ class _TopBar extends StatelessWidget {
                         )
                       : ClipRRect(
                           borderRadius: BorderRadius.circular(14),
-                          child: CachedNetworkImage(
-                            imageUrl: photoUrl!,
+                          child: CachedImage(
+                            url: photoUrl!,
                             fit: BoxFit.cover,
                             width: 42,
                             height: 42,
-                            memCacheWidth: 84,
-                            memCacheHeight: 84,
                             filterQuality: FilterQuality.low,
-                            fadeInDuration: Duration.zero,
-                            fadeOutDuration: Duration.zero,
-                            useOldImageOnUrlChange: true,
-                            placeholder: (context, url) {
-                              return Center(
-                                child: Text(
-                                  initial.toUpperCase(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                            placeholder: Center(
+                              child: Text(
+                                initial.toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
                                 ),
-                              );
-                            },
-                            errorWidget: (context, url, error) {
-                              return Center(
-                                child: Text(
-                                  initial.toUpperCase(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                              ),
+                            ),
+                            error: Center(
+                              child: Text(
+                                initial.toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
                                 ),
-                              );
-                            },
+                              ),
+                            ),
                           ),
                         ),
                 ),

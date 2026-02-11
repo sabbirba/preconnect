@@ -1,9 +1,9 @@
 import 'package:barcode_widget/barcode_widget.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_flip_card/flutter_flip_card.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/cached_image.dart';
 
 class CardSection extends StatefulWidget {
   const CardSection({super.key, required this.profile, required this.photoUrl});
@@ -208,19 +208,13 @@ class CardSectionState extends State<CardSection> {
                                         child:
                                             photoUrl == null || photoUrl.isEmpty
                                             ? const SizedBox.expand()
-                                            : CachedNetworkImage(
-                                                imageUrl: photoUrl,
+                                            : CachedImage(
+                                                url: photoUrl,
                                                 fit: BoxFit.cover,
                                                 alignment: Alignment.center,
-                                                fadeInDuration: Duration.zero,
-                                                fadeOutDuration: Duration.zero,
-                                                useOldImageOnUrlChange: true,
-                                                errorWidget: (context, url, error) {
-                                                  return const SizedBox.expand();
-                                                },
-                                                placeholder: (context, url) {
-                                                  return const SizedBox.expand();
-                                                },
+                                                placeholder:
+                                                    const SizedBox.expand(),
+                                                error: const SizedBox.expand(),
                                               ),
                                       ),
                                     ),

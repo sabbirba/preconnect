@@ -1,7 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/cached_image.dart';
 
 class FriendHeaderCard extends StatelessWidget {
   const FriendHeaderCard({
@@ -92,34 +92,27 @@ class FriendAvatar extends StatelessWidget {
             )
           : ClipRRect(
               borderRadius: BorderRadius.circular(14),
-              child: CachedNetworkImage(
-                imageUrl: photoUrl!,
+              child: CachedImage(
+                url: photoUrl!,
                 fit: BoxFit.cover,
-                fadeInDuration: Duration.zero,
-                fadeOutDuration: Duration.zero,
-                useOldImageOnUrlChange: true,
-                placeholder: (context, url) {
-                  return Center(
-                    child: Text(
-                      _initials(),
-                      style: const TextStyle(
-                        color: BracuPalette.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
+                placeholder: Center(
+                  child: Text(
+                    _initials(),
+                    style: const TextStyle(
+                      color: BracuPalette.primary,
+                      fontWeight: FontWeight.w700,
                     ),
-                  );
-                },
-                errorWidget: (context, url, error) {
-                  return Center(
-                    child: Text(
-                      _initials(),
-                      style: const TextStyle(
-                        color: BracuPalette.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
+                  ),
+                ),
+                error: Center(
+                  child: Text(
+                    _initials(),
+                    style: const TextStyle(
+                      color: BracuPalette.primary,
+                      fontWeight: FontWeight.w700,
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             ),
     );
