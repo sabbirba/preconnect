@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -129,10 +130,27 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
     await prefs.setStringList("friendSchedules", validEntries);
     await prefs.setStringList("friendSchedules_seen", validEntries);
 
-    // Sort: favorites first, then alphabetically by display name
+    // Sort: favorites first, then by next class time
     allSchedules.sort((a, b) {
       if (a.isFavorite && !b.isFavorite) return -1;
       if (!a.isFavorite && b.isFavorite) return 1;
+      
+      final aTime = _getNextClassTime(a.friend);
+      final bTime = _getNextClassTime(b.friend);
+      
+      // If both have no next class, sort alphabetically
+      if (aTime == null && bTime == null) {
+        return a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase());
+      }
+      // If only one has no next class, put it at the end
+      if (aTime == null) return 1;
+      if (bTime == null) return -1;
+      
+      // Compare by time
+      final comparison = aTime.compareTo(bTime);
+      if (comparison != 0) return comparison;
+      
+      // If times are equal, sort alphabetically
       return a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase());
     });
 
@@ -719,5 +737,65 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
         ),
       ),
     );
+  }
+
+  /// Helper function to get the next class time for a friend's schedule.
+  /// Returns null if there are no courses or if time parsing fails.
+  DateTime? _getNextClassTime(FriendSchedule friend) {
+    if (friend.courses.isEmpty) return null;
+
+    final dayMap = {
+      'SATURDAY': DateTime.saturday,
+      'SUNDAY': DateTime.sunday,
+      'MONDAY': DateTime.monday,
+      'TUESDAY': DateTime.tuesday,
+      'WEDNESDAY': DateTime.wednesday,
+      'THURSDAY': DateTime.thursday,
+      'FRIDAY': DateTime.friday,
+    };
+
+    final now = DateTime.now();
+    final nowMinutes = now.hour * 60 + now.minute;
+    DateTime? best;
+
+    for (final course in friend.courses) {
+      for (final s in course.schedule) {
+        final normalizedDay = normalizeWeekday(s.day);
+        final targetWeekday = dayMap[normalizedDay];
+        if (targetWeekday == null) continue;
+
+        int daysAhead = (targetWeekday - now.weekday + 7) % 7;
+
+        final parsed = _parse24h(s.startTime);
+        if (parsed == null) continue;
+        final (h, m) = parsed;
+        final startMinutes = h * 60 + m;
+
+        if (daysAhead == 0 && nowMinutes >= startMinutes) {
+          daysAhead = 7;
+        }
+
+        final candidate = DateTime(now.year, now.month, now.day, h, m)
+            .add(Duration(days: daysAhead));
+
+        if (best == null || candidate.isBefore(best)) {
+          best = candidate;
+        }
+      }
+    }
+    return best;
+  }
+
+  /// Parses a time string via the ui_kit [formatTime] helper and returns
+  /// the hour (24-h) and minute as a record, or `null` when unparseable.
+  (int hour, int minute)? _parse24h(String raw) {
+    final formatted = formatTime(raw);
+    if (formatted.isEmpty || formatted == raw.trim().toUpperCase()) return null;
+    try {
+      final dt = DateFormat('h:mm a').parseStrict(formatted);
+      return (dt.hour, dt.minute);
+    } catch (_) {
+      return null;
+    }
   }
 }

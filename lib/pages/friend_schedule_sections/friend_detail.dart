@@ -292,6 +292,13 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
     for (final day in sortedDays) {
       final entries = grouped[day]!;
       
+      // Sort entries by start time
+      entries.sort((a, b) {
+        final aTime = _parseTimeToMinutes(a['startTime'] as String);
+        final bTime = _parseTimeToMinutes(b['startTime'] as String);
+        return aTime.compareTo(bTime);
+      });
+      
       widgets.add(
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -584,5 +591,28 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
         ),
       ),
     );
+  }
+
+  /// Helper function to parse time string to minutes for sorting
+  int _parseTimeToMinutes(String time) {
+    try {
+      final formatted = formatTime(time);
+      final parts = formatted.split(' ');
+      if (parts.isEmpty) return 0;
+      
+      final timeParts = parts[0].split(':');
+      if (timeParts.length < 2) return 0;
+      
+      var hour = int.tryParse(timeParts[0]) ?? 0;
+      final minute = int.tryParse(timeParts[1]) ?? 0;
+      final isPM = parts.length > 1 && parts[1].toUpperCase() == 'PM';
+      
+      if (isPM && hour != 12) hour += 12;
+      if (!isPM && hour == 12) hour = 0;
+      
+      return hour * 60 + minute;
+    } catch (_) {
+      return 0;
+    }
   }
 }
