@@ -53,9 +53,7 @@ class NotificationScheduler {
       } else {
         await prefs.setStringList('notif_ids_exam', []);
       }
-    } catch (_) {
-      // Avoid blocking app startup on scheduling failures.
-    }
+    } catch (_) {}
   }
 
   static Future<List<int>> _scheduleClassReminders(

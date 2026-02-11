@@ -15,10 +15,9 @@ class FriendScheduleItem {
   final FriendSchedule friend;
   final FriendMetadata? metadata;
 
-  String get displayName =>
-      metadata?.nickname?.trim().isNotEmpty == true
-          ? metadata!.nickname!
-          : friend.name;
+  String get displayName => metadata?.nickname?.trim().isNotEmpty == true
+      ? metadata!.nickname!
+      : friend.name;
 
   bool get isFavorite => metadata?.isFavorite ?? false;
 }
@@ -27,17 +26,19 @@ class FriendScheduleSection extends StatelessWidget {
   const FriendScheduleSection({
     super.key,
     required this.item,
-    required this.onDelete,
+    this.onDelete,
     this.onToggleFavorite,
     this.onEditNickname,
     this.onTap,
+    this.showActions = true,
   });
 
   final FriendScheduleItem item;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
   final VoidCallback? onToggleFavorite;
   final VoidCallback? onEditNickname;
   final VoidCallback? onTap;
+  final bool showActions;
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +51,7 @@ class FriendScheduleSection extends StatelessWidget {
       child: FriendHeaderCard(
         friend: friend,
         onDelete: onDelete,
+        showActions: showActions,
         displayName: item.displayName,
         isFavorite: item.isFavorite,
         onToggleFavorite: onToggleFavorite,
@@ -63,8 +65,6 @@ class FriendScheduleSection extends StatelessWidget {
   }
 }
 
-/// Parses a time string via the ui_kit [formatTime] helper and returns
-/// the hour (24-h) and minute as a record, or `null` when unparseable.
 (int hour, int minute)? _parse24h(String raw) {
   final formatted = formatTime(raw);
   if (formatted.isEmpty || formatted == raw.trim().toUpperCase()) return null;
@@ -76,8 +76,6 @@ class FriendScheduleSection extends StatelessWidget {
   }
 }
 
-/// Returns a short summary of the friend's next upcoming class,
-/// e.g. "Next: CSE110 Sun 8:00 AM".
 String? _pickNextClassSummary(FriendSchedule friend) {
   if (friend.courses.isEmpty) return null;
 
@@ -113,14 +111,20 @@ String? _pickNextClassSummary(FriendSchedule friend) {
         daysAhead = 7;
       }
 
-      final candidate = DateTime(now.year, now.month, now.day, h, m)
-          .add(Duration(days: daysAhead));
+      final candidate = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        h,
+        m,
+      ).add(Duration(days: daysAhead));
 
       if (best == null || candidate.isBefore(best)) {
         best = candidate;
         final shortDay = formatWeekdayTitle(s.day);
-        final displayDay =
-            shortDay.length > 3 ? shortDay.substring(0, 3) : shortDay;
+        final displayDay = shortDay.length > 3
+            ? shortDay.substring(0, 3)
+            : shortDay;
         final displayTime = formatTime(s.startTime);
         bestLabel = 'Next: ${course.courseCode} $displayDay $displayTime';
       }

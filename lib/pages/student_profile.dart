@@ -102,7 +102,9 @@ class _StudentProfileState extends State<StudentProfile>
     try {
       final profile = await BracuAuthManager().getProfile();
       final photoUrl = _buildPhotoUrl(profile?['photoFilePath']);
-      final cachedImage = await ProfileImageCache.instance.getProfileImage(photoUrl);
+      final cachedImage = await ProfileImageCache.instance.getProfileImage(
+        photoUrl,
+      );
       final List<dynamic> paymentsJson = _decodeList(
         await BracuAuthManager().getPaymentInfo(),
       );
@@ -160,7 +162,9 @@ class _StudentProfileState extends State<StudentProfile>
       final profile = await BracuAuthManager().fetchProfile();
       final photoUrl = _buildPhotoUrl(profile?['photoFilePath']);
       ProfileImageCache.instance.invalidate();
-      final cachedImage = await ProfileImageCache.instance.getProfileImage(photoUrl);
+      final cachedImage = await ProfileImageCache.instance.getProfileImage(
+        photoUrl,
+      );
       final List<dynamic> paymentsJson = _decodeList(
         await BracuAuthManager().fetchPaymentInfo(),
       );
@@ -236,7 +240,11 @@ class _StudentProfileState extends State<StudentProfile>
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
             const SizedBox(height: 6),
-            CardSection(profile: _profile, photoUrl: _photoUrl, cachedImageFile: _cachedImageFile),
+            CardSection(
+              profile: _profile,
+              photoUrl: _photoUrl,
+              cachedImageFile: _cachedImageFile,
+            ),
             const SizedBox(height: 18),
             AcademicSummaryCard(
               profile: _profile ?? const {},

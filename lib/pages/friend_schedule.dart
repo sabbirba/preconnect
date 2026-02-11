@@ -65,11 +65,18 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
     unawaited(_loadSchedules());
   }
 
+  void _sortSchedules(List<FriendScheduleItem> items) {
+    items.sort((a, b) {
+      if (a.isFavorite && !b.isFavorite) return -1;
+      if (!a.isFavorite && b.isFavorite) return 1;
+      return a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase());
+    });
+  }
+
   Future<void> _loadSchedules() async {
     final prefs = await SharedPreferences.getInstance();
     final List<String>? encodedList = prefs.getStringList("friendSchedules");
 
-    // Load metadata
     final metadataJson = prefs.getString('friendMetadata');
     if (metadataJson != null) {
       try {
@@ -103,7 +110,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
         final parsed = jsonDecode(originalJson);
         final friendSchedule = FriendSchedule.fromJson(parsed);
         final metadata = _metadata[friendSchedule.id];
-        
+
         allSchedules.add(
           FriendScheduleItem(
             encoded: base64Json,
@@ -121,20 +128,13 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
             ),
           );
         }
-      } catch (e) {
-        // Sabbir
-      }
+      } catch (_) {}
     }
 
     await prefs.setStringList("friendSchedules", validEntries);
     await prefs.setStringList("friendSchedules_seen", validEntries);
 
-    // Sort: favorites first, then alphabetically by display name
-    allSchedules.sort((a, b) {
-      if (a.isFavorite && !b.isFavorite) return -1;
-      if (!a.isFavorite && b.isFavorite) return 1;
-      return a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase());
-    });
+    _sortSchedules(allSchedules);
 
     setState(() {
       decodedSchedules = allSchedules;
@@ -292,7 +292,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
     }
   }
 
-  Future<void> _deleteFriendSchedule(FriendScheduleItem item) async {
+  Future<bool> _deleteFriendSchedule(FriendScheduleItem item) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -305,17 +305,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
           ),
           insetPadding: const EdgeInsets.symmetric(horizontal: 24),
           child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: BracuPalette.card(context),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.18),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
+            decoration: _buildDialogDecoration(context),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
               child: Column(
@@ -392,7 +382,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
       },
     );
 
-    if (shouldDelete != true) return;
+    if (shouldDelete != true) return false;
 
     final prefs = await SharedPreferences.getInstance();
     final List<String> current = prefs.getStringList("friendSchedules") ?? [];
@@ -402,6 +392,29 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
     setState(() {
       decodedSchedules.removeWhere((e) => e.encoded == item.encoded);
     });
+    return true;
+  }
+
+  BoxDecoration _buildDialogDecoration(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      color: BracuPalette.card(context),
+      border: Border.all(
+        color: BracuPalette.textSecondary(
+          context,
+        ).withValues(alpha: isDark ? 0.35 : 0.18),
+      ),
+      boxShadow: isDark
+          ? const []
+          : [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+    );
   }
 
   Future<void> _saveMetadata() async {
@@ -412,6 +425,17 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
     await prefs.setString('friendMetadata', json);
   }
 
+  void _applyMetadataToDecodedSchedules() {
+    decodedSchedules = decodedSchedules.map((item) {
+      return FriendScheduleItem(
+        encoded: item.encoded,
+        friend: item.friend,
+        metadata: _metadata[item.friend.id],
+      );
+    }).toList();
+    _sortSchedules(decodedSchedules);
+  }
+
   Future<void> _toggleFavorite(FriendScheduleItem item) async {
     final friendId = item.friend.id;
     final currentMetadata = _metadata[friendId];
@@ -420,13 +444,13 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
 
     setState(() {
       _metadata[friendId] = newMetadata;
+      _applyMetadataToDecodedSchedules();
     });
 
     await _saveMetadata();
-    await _loadSchedules();
   }
 
-  Future<void> _editNickname(FriendScheduleItem item) async {
+  Future<String?> _editNickname(FriendScheduleItem item) async {
     final controller = TextEditingController(
       text: item.metadata?.nickname ?? '',
     );
@@ -440,17 +464,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
           ),
           insetPadding: const EdgeInsets.symmetric(horizontal: 24),
           child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: BracuPalette.card(context),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.18),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
+            decoration: _buildDialogDecoration(context),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
               child: Column(
@@ -464,13 +478,28 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
                         color: BracuPalette.primary,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        'Edit Nickname',
-                        style: TextStyle(
-                          color: BracuPalette.textPrimary(context),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                      Expanded(
+                        child: Text(
+                          'Edit Nickname',
+                          style: TextStyle(
+                            color: BracuPalette.textPrimary(context),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, ''),
+                        style: TextButton.styleFrom(
+                          foregroundColor: BracuPalette.textSecondary(context),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 0,
+                          ),
+                          minimumSize: const Size(0, 0),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text('Reset'),
                       ),
                     ],
                   ),
@@ -537,7 +566,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
       },
     );
 
-    if (result == null) return;
+    if (result == null) return null;
 
     final friendId = item.friend.id;
     final currentMetadata = _metadata[friendId];
@@ -546,10 +575,13 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
 
     setState(() {
       _metadata[friendId] = newMetadata;
+      _applyMetadataToDecodedSchedules();
     });
 
     await _saveMetadata();
-    await _loadSchedules();
+    return newMetadata.nickname?.trim().isNotEmpty == true
+        ? newMetadata.nickname!
+        : item.friend.name;
   }
 
   List<FriendScheduleItem> get _filteredSchedules {
@@ -566,6 +598,9 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
   @override
   Widget build(BuildContext context) {
     final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = BracuPalette.textSecondary(context);
+    final totalFriends = decodedSchedules.length;
+    final scheduleWord = totalFriends == 1 ? 'Schedule' : 'Schedules';
     return BracuPageScaffold(
       title: 'Friend Schedule',
       subtitle: 'Shared Schedules',
@@ -592,7 +627,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
                   crossAxisCount: 3,
                   mainAxisSpacing: spacing,
                   crossAxisSpacing: spacing,
-                  childAspectRatio: 1.0,
+                  childAspectRatio: 0.95,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   children: [
@@ -600,21 +635,21 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
                       icon: Icons.qr_code_scanner,
                       title: 'Scan',
                       subtitle: 'Schedule',
-                      color: const Color(0xFF2AA8A8),
+                      color: BracuPalette.info,
                       onTap: () => widget.onNavigate(HomeTab.scanSchedule),
                     ),
                     FriendActionCard(
                       icon: Icons.photo_library_rounded,
                       title: 'Gallery',
                       subtitle: 'Scan QR',
-                      color: const Color(0xFFEF6C35),
+                      color: BracuPalette.warning,
                       onTap: _scanFromGallery,
                     ),
                     FriendActionCard(
                       icon: Icons.qr_code_2,
                       title: 'Share',
                       subtitle: 'Schedule',
-                      color: const Color(0xFF22B573),
+                      color: BracuPalette.accent,
                       onTap: () {
                         widget.onNavigate(HomeTab.shareSchedule);
                       },
@@ -636,23 +671,23 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
                     ),
                   ),
                 ),
-                if (decodedSchedules.isNotEmpty)
-                  Text(
-                    '${decodedSchedules.length}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: BracuPalette.textSecondary(context),
-                    ),
+                Text(
+                  '$totalFriends $scheduleWord',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
                   ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
             if (decodedSchedules.isNotEmpty) ...[
               TextField(
                 controller: _searchController,
+                autofocus: false,
                 decoration: InputDecoration(
-                  hintText: 'Search friends...',
+                  hintText: 'Search',
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
@@ -688,9 +723,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
               ..._filteredSchedules.map(
                 (item) => FriendScheduleSection(
                   item: item,
-                  onDelete: () => _deleteFriendSchedule(item),
-                  onToggleFavorite: () => _toggleFavorite(item),
-                  onEditNickname: () => _editNickname(item),
+                  showActions: false,
                   onTap: () {
                     Navigator.push(
                       context,
@@ -699,12 +732,9 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
                           friend: item.friend,
                           displayName: item.displayName,
                           isFavorite: item.isFavorite,
-                          onToggleFavorite: () => _toggleFavorite(item),
-                          onEditNickname: () => _editNickname(item),
-                          onDelete: () {
-                            _deleteFriendSchedule(item);
-                            Navigator.of(context).pop();
-                          },
+                          onToggleFavorite: () async => _toggleFavorite(item),
+                          onEditNickname: () async => _editNickname(item),
+                          onDelete: () async => _deleteFriendSchedule(item),
                         ),
                       ),
                     );

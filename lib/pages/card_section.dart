@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_flip_card/flutter_flip_card.dart';
@@ -6,7 +7,12 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/cached_image.dart';
 
 class CardSection extends StatefulWidget {
-  const CardSection({super.key, required this.profile, required this.photoUrl, this.cachedImageFile});
+  const CardSection({
+    super.key,
+    required this.profile,
+    required this.photoUrl,
+    this.cachedImageFile,
+  });
 
   final Map<String, String?>? profile;
   final String? photoUrl;

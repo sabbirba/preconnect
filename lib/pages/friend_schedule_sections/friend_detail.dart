@@ -1,10 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/bracu_auth_manager.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/friend_schedule_sections/compare_schedules.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
+import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'dart:convert';
 
 class FriendDetailPage extends StatefulWidget {
   const FriendDetailPage({
@@ -20,62 +21,83 @@ class FriendDetailPage extends StatefulWidget {
   final FriendSchedule friend;
   final String? displayName;
   final bool isFavorite;
-  final VoidCallback onToggleFavorite;
-  final VoidCallback onEditNickname;
-  final VoidCallback onDelete;
+  final Future<void> Function() onToggleFavorite;
+  final Future<String?> Function() onEditNickname;
+  final Future<bool> Function() onDelete;
 
   @override
   State<FriendDetailPage> createState() => _FriendDetailPageState();
 }
 
 class _FriendDetailPageState extends State<FriendDetailPage> {
-  Map<String, dynamic>? _comparison;
-  List<Course>? _mySchedule;
-  bool _isLoading = true;
-  String? _errorMessage;
+  late bool _isFavorite = widget.isFavorite;
+  late String? _displayName = widget.displayName?.trim().isNotEmpty == true
+      ? widget.displayName
+      : null;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadComparison();
+  Future<List<Course>?> _loadMyCourses() async {
+    final jsonString = await BracuAuthManager().getStudentSchedule();
+    if (jsonString == null || jsonString.isEmpty) return null;
+    final parsed = jsonDecode(jsonString);
+    final coursesData = parsed is Map ? parsed['courses'] : parsed;
+    return (coursesData as List<dynamic>? ?? [])
+        .map((e) => Course.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
-  Future<void> _loadComparison() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
+  Future<void> _openCompare() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
     try {
-      final jsonString = await BracuAuthManager().getStudentSchedule();
-      if (jsonString == null || jsonString.isEmpty) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = null; // Don't show error, just don't compare
-        });
+      final myCourses = await _loadMyCourses();
+      if (myCourses == null || myCourses.isEmpty) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Please log in to compare schedules'),
+            duration: Duration(seconds: 2),
+          ),
+        );
         return;
       }
-
-      final parsed = jsonDecode(jsonString);
-      final List<Course> myCourses = (parsed['courses'] as List<dynamic>? ?? [])
-          .map((e) => Course.fromJson(e))
-          .toList();
-
-      final comparison = CompareSchedulesPage.compareSchedules(
-        myCourses,
-        widget.friend.courses,
+      final myProfile = await BracuAuthManager().getProfile();
+      final myPhotoUrl = _buildPhotoUrl(myProfile?['photoFilePath']);
+      navigator.push(
+        MaterialPageRoute(
+          builder: (context) => CompareSchedulesPage(
+            mySchedule: myCourses,
+            friendItem: widget.friend,
+            myPhotoUrl: myPhotoUrl,
+          ),
+        ),
       );
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Could not parse schedule data.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
 
-      setState(() {
-        _mySchedule = myCourses;
-        _comparison = comparison;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = null; // Silently fail, just show friend's schedule
-      });
+  String? _buildPhotoUrl(String? photoFilePath) {
+    if (photoFilePath == null || photoFilePath.isEmpty) return null;
+    final encoded = base64Url
+        .encode(utf8.encode(photoFilePath))
+        .replaceAll('=', '');
+    return 'https://connect.bracu.ac.bd/cdn/img/thumb/$encoded.jpg';
+  }
+
+  @override
+  void didUpdateWidget(covariant FriendDetailPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isFavorite != widget.isFavorite) {
+      _isFavorite = widget.isFavorite;
+    }
+    if (oldWidget.displayName != widget.displayName) {
+      _displayName = widget.displayName?.trim().isNotEmpty == true
+          ? widget.displayName
+          : null;
     }
   }
 
@@ -83,164 +105,101 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
   Widget build(BuildContext context) {
     final textPrimary = BracuPalette.textPrimary(context);
     final textSecondary = BracuPalette.textSecondary(context);
-    final nameToShow = widget.displayName?.trim().isNotEmpty == true
-        ? widget.displayName!
+    final nameToShow = _displayName?.trim().isNotEmpty == true
+        ? _displayName!
         : widget.friend.name;
+    final courseCount = widget.friend.courses.length;
+    final headerTitle =
+        '$courseCount ${courseCount == 1 ? 'Schedule' : 'Schedules'}';
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(nameToShow),
+      body: BracuPageScaffold(
+        title: headerTitle,
+        subtitle: 'Shared Schedule',
+        icon: Icons.person_rounded,
         actions: [
-          if (widget.onToggleFavorite != null)
-            IconButton(
-              tooltip: widget.isFavorite ? 'Remove from favorites' : 'Add to favorites',
-              onPressed: widget.onToggleFavorite,
-              icon: Icon(
-                widget.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
-                color: widget.isFavorite ? const Color(0xFFFFA726) : null,
-              ),
+          IconButton(
+            tooltip: _isFavorite ? 'Remove from favorites' : 'Add to favorites',
+            onPressed: () async {
+              setState(() => _isFavorite = !_isFavorite);
+              await widget.onToggleFavorite();
+            },
+            icon: Icon(
+              _isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+              color: _isFavorite ? BracuPalette.favorite : null,
             ),
-          if (widget.onEditNickname != null)
-            IconButton(
-              tooltip: 'Edit nickname',
-              onPressed: widget.onEditNickname,
-              icon: const Icon(Icons.edit_outlined),
-            ),
+          ),
+          IconButton(
+            tooltip: 'Edit nickname',
+            onPressed: () async {
+              final updated = await widget.onEditNickname();
+              if (!mounted || updated == null) return;
+              setState(() => _displayName = updated);
+            },
+            icon: const Icon(Icons.edit_outlined),
+          ),
           IconButton(
             tooltip: 'Remove schedule',
-            onPressed: () {
-              widget.onDelete();
-              Navigator.pop(context);
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              final deleted = await widget.onDelete();
+              if (!mounted || !deleted) return;
+              navigator.maybePop();
             },
             icon: const Icon(Icons.delete_outline_rounded),
           ),
         ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadComparison,
-        child: ListView(
+        body: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            // Friend Info Card
             BracuCard(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              child: Row(
+                children: [
+                  FriendAvatar(
+                    name: widget.friend.name,
+                    photoUrl: widget.friend.photoUrl,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        FriendAvatar(
-                          name: widget.friend.name,
-                          photoUrl: widget.friend.photoUrl,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                nameToShow,
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: textPrimary,
-                                ),
-                              ),
-                              Text(
-                                widget.friend.id.trim().isEmpty
-                                    ? 'ID: N/A'
-                                    : 'ID: ${widget.friend.id}',
-                                style: TextStyle(fontSize: 14, color: textSecondary),
-                              ),
-                            ],
+                        Text(
+                          nameToShow,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: textPrimary,
                           ),
                         ),
-                        if (widget.friend.courses.isNotEmpty)
-                          ElevatedButton.icon(
-                            onPressed: () async {
-                              try {
-                                final jsonString = await BracuAuthManager().getStudentSchedule();
-                                if (jsonString == null || jsonString.isEmpty) {
-                                  if (!mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Please log in to compare schedules'),
-                                      duration: Duration(seconds: 2),
-                                    ),
-                                  );
-                                  return;
-                                }
-
-                                try {
-                                  final parsed = jsonDecode(jsonString);
-                                  final coursesData = parsed is Map ? parsed['courses'] : parsed;
-                                  final List<Course> myCourses = (coursesData as List<dynamic>? ?? [])
-                                      .map((e) => Course.fromJson(e as Map<String, dynamic>))
-                                      .toList();
-
-                                  if (!mounted) return;
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => CompareSchedulesPage(
-                                        mySchedule: myCourses,
-                                        friendItem: widget.friend,
-                                      ),
-                                    ),
-                                  );
-                                } catch (_) {
-                                  if (!mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Could not parse schedule data.'),
-                                      duration: Duration(seconds: 3),
-                                    ),
-                                  );
-                                }
-                              } catch (_) {
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Failed to load schedule.'),
-                                    duration: Duration(seconds: 3),
-                                  ),
-                                );
-                              }
-                            },
-                            icon: const Icon(Icons.compare_arrows, size: 18),
-                            label: const Text('Compare'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: BracuPalette.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              textStyle: const TextStyle(fontSize: 13),
-                            ),
-                          ),
+                        Text(
+                          widget.friend.id.trim().isEmpty
+                              ? 'ID: N/A'
+                              : 'ID: ${widget.friend.id}',
+                          style: TextStyle(fontSize: 11, color: textSecondary),
+                        ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                  if (widget.friend.courses.isNotEmpty)
+                    IconButton(
+                      tooltip: 'Compare schedules',
+                      style: IconButton.styleFrom(
+                        foregroundColor: BracuPalette.primary,
+                        side: BorderSide(
+                          color: BracuPalette.primary.withValues(alpha: 0.6),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: _openCompare,
+                      icon: const Icon(Icons.compare_arrows_rounded),
+                    ),
+                ],
               ),
             ),
             const SizedBox(height: 20),
-
-            // Comparison Section (if available)
-            if (_comparison != null) ...[
-              _buildComparisonSection(context, _comparison!),
-              const SizedBox(height: 12),
-            ],
-            
-            // Friend's Schedule
-            Text(
-              '${nameToShow}\'s Schedule',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: textPrimary,
-              ),
-            ),
-            const SizedBox(height: 12),
             if (widget.friend.courses.isEmpty)
               BracuCard(
                 child: Padding(
@@ -260,20 +219,15 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
   }
 
   List<Widget> _buildScheduleByDay(BuildContext context) {
-    // Group course entries by day (case-insensitive)
     final Map<String, List<Map<String, dynamic>>> grouped = {};
-    
+
     for (final course in widget.friend.courses) {
       for (final schedule in course.schedule) {
-        // Normalise to title case so "SUNDAY" and "Sunday" both work
         final day = schedule.day.trim().isEmpty
             ? schedule.day
             : schedule.day[0].toUpperCase() +
-                schedule.day.substring(1).toLowerCase();
-        if (!grouped.containsKey(day)) {
-          grouped[day] = [];
-        }
-        grouped[day]!.add({
+                  schedule.day.substring(1).toLowerCase();
+        grouped.putIfAbsent(day, () => []).add({
           'courseCode': course.courseCode,
           'sectionName': course.sectionName,
           'roomNumber': course.roomNumber,
@@ -284,305 +238,104 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
       }
     }
 
-    // Order days
-    final orderedDays = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    final sortedDays = orderedDays.where((day) => grouped.containsKey(day)).toList();
+    const orderedDays = [
+      'Saturday',
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+    ];
+    final sortedDays = orderedDays.where(grouped.containsKey).toList();
 
-    List<Widget> widgets = [];
+    final widgets = <Widget>[];
     for (final day in sortedDays) {
       final entries = grouped[day]!;
-      
       widgets.add(
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                day,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: BracuPalette.primary,
-                ),
-              ),
-            ),
-            ...entries.map((entry) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: BracuCard(
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: BracuPalette.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        entry['sectionName'] ?? '',
-                        style: TextStyle(
-                          color: BracuPalette.primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+            BracuSectionTitle(title: day),
+            const SizedBox(height: 10),
+            ...entries.map(
+              (entry) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: BracuCard(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SectionBadge(
+                        label: formatSectionBadge(
+                          entry['sectionName']?.toString(),
                         ),
+                        color: BracuPalette.primary,
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 7,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            entry['courseCode'] ?? '',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${entry['startTime']} - ${entry['endTime']}',
-                            style: TextStyle(
-                              color: BracuPalette.textSecondary(context),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 4,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            entry['roomNumber']?.toString() ?? '--',
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              color: BracuPalette.textPrimary(context),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          if (entry['faculties'] != null && entry['faculties'].trim().isNotEmpty) ...[
-                            const SizedBox(height: 2),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 7,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Text(
-                              entry['faculties'],
-                              textAlign: TextAlign.right,
+                              entry['courseCode'] ?? '',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              formatTimeRange(
+                                entry['startTime']?.toString(),
+                                entry['endTime']?.toString(),
+                              ),
                               style: TextStyle(
-                                fontSize: 12,
                                 color: BracuPalette.textSecondary(context),
                               ),
                             ),
                           ],
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 4,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              entry['roomNumber']?.toString() ?? '--',
+                              textAlign: TextAlign.right,
+                              style: TextStyle(
+                                color: BracuPalette.textPrimary(context),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            if (entry['faculties'] != null &&
+                                entry['faculties'].trim().isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                entry['faculties'],
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: BracuPalette.textSecondary(context),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            )),
-            const SizedBox(height: 12),
+            ),
+            const SizedBox(height: 6),
           ],
         ),
       );
     }
     return widgets;
-  }
-
-  Widget _buildComparisonSection(BuildContext context, Map<String, dynamic> comparison) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final freeSlots = (comparison['freeSlots'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-    final commonClasses = (comparison['commonClasses'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-    final busySlots = (comparison['busySlots'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Schedule Comparison',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: textPrimary,
-          ),
-        ),
-        const SizedBox(height: 12),
-        
-        // Free Slots
-        if (freeSlots.isNotEmpty) ...[
-          Text(
-            'Free Together (${freeSlots.length})',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF4CAF50),
-            ),
-          ),
-          const SizedBox(height: 8),
-          ...freeSlots.take(3).map((slot) => _buildSlotCard(
-            context,
-            slot,
-            const Color(0xFF4CAF50),
-            Icons.check_circle_outline,
-          )),
-          if (freeSlots.length > 3)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                '+ ${freeSlots.length - 3} more free slots',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: BracuPalette.textSecondary(context),
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          const SizedBox(height: 16),
-        ],
-
-        // Common Classes
-        if (commonClasses.isNotEmpty) ...[
-          Text(
-            'Common Classes (${commonClasses.length})',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF2196F3),
-            ),
-          ),
-          const SizedBox(height: 8),
-          ...commonClasses.take(3).map((cls) => _buildClassCard(context, cls)),
-          if (commonClasses.length > 3)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                '+ ${commonClasses.length - 3} more common classes',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: BracuPalette.textSecondary(context),
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          const SizedBox(height: 16),
-        ],
-
-        // Busy Slots
-        if (busySlots.isNotEmpty) ...[
-          Text(
-            'Both Busy (${busySlots.length})',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFFFF9800),
-            ),
-          ),
-          const SizedBox(height: 8),
-          ...busySlots.take(2).map((slot) => _buildSlotCard(
-            context,
-            slot,
-            const Color(0xFFFF9800),
-            Icons.schedule,
-          )),
-          if (busySlots.length > 2)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                '+ ${busySlots.length - 2} more busy times',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: BracuPalette.textSecondary(context),
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildSlotCard(
-    BuildContext context,
-    Map<String, dynamic> slot,
-    Color color,
-    IconData icon,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: BracuCard(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      slot['day'] ?? '',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: BracuPalette.textPrimary(context),
-                        fontSize: 13,
-                      ),
-                    ),
-                    Text(
-                      '${slot['startTime']} - ${slot['endTime']}',
-                      style: TextStyle(
-                        color: BracuPalette.textSecondary(context),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildClassCard(BuildContext context, Map<String, dynamic> cls) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: BracuCard(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Icon(Icons.school, color: const Color(0xFF2196F3), size: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${cls['courseCode']} - ${cls['sectionName']}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: BracuPalette.textPrimary(context),
-                        fontSize: 13,
-                      ),
-                    ),
-                    Text(
-                      cls['roomNumber'] ?? 'No room',
-                      style: TextStyle(
-                        color: BracuPalette.textSecondary(context),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

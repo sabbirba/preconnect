@@ -56,10 +56,9 @@ class Course {
   factory Course.fromJson(Map<String, dynamic> json) {
     final roomNumber =
         json['roomNumber']?.toString() ?? json['roomName']?.toString();
-    
+
     List<CourseSchedule> schedules = [];
-    
-    // Convert 24-hour time to 12-hour format
+
     String convertTime(String time24) {
       if (time24.isEmpty) return '';
       final parts = time24.split(':');
@@ -70,18 +69,15 @@ class Course {
       if (hour == 0) hour = 12;
       return '$hour:$minute $period';
     }
-    
-    // Convert uppercase day to title case
+
     String convertDay(String day) {
       if (day.isEmpty) return '';
       return day[0].toUpperCase() + day.substring(1).toLowerCase();
     }
-    
-    // Handle real API format (sectionSchedule.classSchedules)
+
     if (json['sectionSchedule'] != null) {
       var sectionSchedule = json['sectionSchedule'];
-      
-      // If it's a string, parse it as JSON
+
       if (sectionSchedule is String) {
         try {
           sectionSchedule = jsonDecode(sectionSchedule);
@@ -89,9 +85,10 @@ class Course {
           sectionSchedule = null;
         }
       }
-      
+
       if (sectionSchedule is Map) {
-        final classSchedules = sectionSchedule['classSchedules'] as List<dynamic>? ?? [];
+        final classSchedules =
+            sectionSchedule['classSchedules'] as List<dynamic>? ?? [];
         schedules = classSchedules.map((e) {
           final schedule = e as Map<String, dynamic>;
           return CourseSchedule(
@@ -101,14 +98,12 @@ class Course {
           );
         }).toList();
       }
-    }
-    // Handle QR-shared format (schedule array directly on the course)
-    else if (json['schedule'] != null) {
+    } else if (json['schedule'] != null) {
       schedules = (json['schedule'] as List<dynamic>? ?? [])
           .map((e) => CourseSchedule.fromJson(e))
           .toList();
     }
-    
+
     return Course(
       courseCode: json['courseCode'] ?? '',
       sectionName: json['sectionName']?.toString(),
@@ -139,7 +134,6 @@ class CourseSchedule {
   }
 }
 
-/// Metadata for friend schedules (nickname, favorite status)
 class FriendMetadata {
   final String friendId;
   final String? nickname;
@@ -167,10 +161,7 @@ class FriendMetadata {
     };
   }
 
-  FriendMetadata copyWith({
-    String? nickname,
-    bool? isFavorite,
-  }) {
+  FriendMetadata copyWith({String? nickname, bool? isFavorite}) {
     return FriendMetadata(
       friendId: friendId,
       nickname: nickname ?? this.nickname,

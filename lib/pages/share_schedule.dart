@@ -335,7 +335,9 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: BracuPalette.primary.withValues(alpha: 0.12),
+                                color: BracuPalette.primary.withValues(
+                                  alpha: 0.12,
+                                ),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(
@@ -357,7 +359,6 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
                       ),
                     ),
                   ),
-
                 ],
               ),
               const SizedBox(height: 14),

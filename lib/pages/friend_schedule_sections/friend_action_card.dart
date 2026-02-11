@@ -24,6 +24,9 @@ class FriendActionCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textSecondary = BracuPalette.textSecondary(context);
     final textPrimary = BracuPalette.textPrimary(context);
+    final borderColor = BracuPalette.textSecondary(
+      context,
+    ).withValues(alpha: isDark ? 0.35 : 0.18);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
@@ -33,6 +36,7 @@ class FriendActionCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: BracuPalette.card(context),
           borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: borderColor),
           boxShadow: isDark
               ? const []
               : [

@@ -204,6 +204,10 @@ class BracuPalette {
   static const Color bgBottomLight = Color(0xFFF3FFF4);
   static const Color primary = Color(0xFF1E6BE3);
   static const Color accent = Color(0xFF22B573);
+  static const Color info = Color(0xFF2C9DFF);
+  static const Color warning = Color(0xFFEF6C35);
+  static const Color favorite = Color(0xFFFFA726);
+  static const Color danger = Color(0xFFD63B3B);
   static const Color cardLight = Colors.white;
   static const Color cardDark = Color(0xFF0B0B0B);
 

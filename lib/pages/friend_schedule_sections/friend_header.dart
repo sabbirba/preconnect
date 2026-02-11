@@ -1,30 +1,32 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/cached_image.dart';
 
 class FriendHeaderCard extends StatelessWidget {
   const FriendHeaderCard({
     super.key,
     required this.friend,
-    required this.onDelete,
+    this.onDelete,
     this.displayName,
     this.subtitle,
     this.isFavorite = false,
     this.onToggleFavorite,
     this.onEditNickname,
     this.onTap,
+    this.showActions = true,
   });
 
   final FriendSchedule friend;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
   final String? displayName;
   final String? subtitle;
   final bool isFavorite;
   final VoidCallback? onToggleFavorite;
   final VoidCallback? onEditNickname;
   final VoidCallback? onTap;
+  final bool showActions;
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +35,7 @@ class FriendHeaderCard extends StatelessWidget {
     final nameToShow = displayName?.trim().isNotEmpty == true
         ? displayName!
         : (friend.name.trim().isEmpty ? 'Friend' : friend.name);
-    
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -51,7 +53,7 @@ class FriendHeaderCard extends StatelessWidget {
                       if (isFavorite) ...[
                         const Icon(
                           Icons.star_rounded,
-                          color: Color(0xFFFFA726),
+                          color: BracuPalette.favorite,
                           size: 18,
                         ),
                         const SizedBox(width: 4),
@@ -60,7 +62,7 @@ class FriendHeaderCard extends StatelessWidget {
                         child: Text(
                           nameToShow,
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: textPrimary,
                           ),
@@ -71,38 +73,41 @@ class FriendHeaderCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     friend.id.trim().isEmpty ? 'ID: N/A' : 'ID: ${friend.id}',
-                    style: TextStyle(fontSize: 12, color: textSecondary),
+                    style: TextStyle(fontSize: 11, color: textSecondary),
                   ),
-                  if (subtitle != null) ...[  
+                  if (subtitle != null) ...[
                     const SizedBox(height: 2),
                     Text(
                       subtitle!,
-                      style: TextStyle(fontSize: 12, color: textSecondary),
+                      style: TextStyle(fontSize: 11, color: textSecondary),
                     ),
                   ],
                 ],
               ),
             ),
-            if (onToggleFavorite != null)
+            if (showActions && onToggleFavorite != null)
               IconButton(
-                tooltip: isFavorite ? 'Remove from favorites' : 'Add to favorites',
+                tooltip: isFavorite
+                    ? 'Remove from favorites'
+                    : 'Add to favorites',
                 onPressed: onToggleFavorite,
                 icon: Icon(
                   isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
-                  color: isFavorite ? const Color(0xFFFFA726) : null,
+                  color: isFavorite ? BracuPalette.favorite : null,
                 ),
               ),
-            if (onEditNickname != null)
+            if (showActions && onEditNickname != null)
               IconButton(
                 tooltip: 'Edit nickname',
                 onPressed: onEditNickname,
                 icon: const Icon(Icons.edit_outlined),
               ),
-            IconButton(
-              tooltip: 'Remove schedule',
-              onPressed: onDelete,
-              icon: const Icon(Icons.delete_outline_rounded),
-            ),
+            if (showActions && onDelete != null)
+              IconButton(
+                tooltip: 'Remove schedule',
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline_rounded),
+              ),
             const Icon(Icons.chevron_right),
           ],
         ),
@@ -137,9 +142,21 @@ class FriendAvatar extends StatelessWidget {
         .toUpperCase();
   }
 
+  String? _resolvePhotoUrl(String? raw) {
+    final value = raw?.trim() ?? '';
+    if (value.isEmpty) return null;
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
+    }
+    if (value.startsWith('data:image/')) return value;
+    final encoded = base64Url.encode(utf8.encode(value)).replaceAll('=', '');
+    return 'https://connect.bracu.ac.bd/cdn/img/thumb/$encoded.jpg';
+  }
+
   @override
   Widget build(BuildContext context) {
     final fontSize = size > 50 ? 20.0 : 14.0;
+    final resolvedPhotoUrl = _resolvePhotoUrl(photoUrl);
     return Container(
       width: size,
       height: size,
@@ -147,7 +164,7 @@ class FriendAvatar extends StatelessWidget {
         color: BracuPalette.primary.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(radius),
       ),
-      child: photoUrl == null || photoUrl!.trim().isEmpty
+      child: resolvedPhotoUrl == null
           ? Center(
               child: Text(
                 _initials(),
@@ -161,7 +178,7 @@ class FriendAvatar extends StatelessWidget {
           : ClipRRect(
               borderRadius: BorderRadius.circular(radius),
               child: CachedImage(
-                url: photoUrl!,
+                url: resolvedPhotoUrl,
                 fit: BoxFit.cover,
                 placeholder: Center(
                   child: Text(

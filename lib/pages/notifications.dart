@@ -85,7 +85,6 @@ class _NotificationPageState extends State<NotificationPage>
       _items = await NotificationStore.load();
       await _syncSchedules();
     } catch (_) {
-      // Keep UI responsive even if scheduling fails.
     } finally {
       if (mounted) {
         setState(() {
@@ -270,7 +269,6 @@ class _NotificationPageState extends State<NotificationPage>
         await prefs.setStringList('notif_ids_exam', []);
       }
     } catch (_) {
-      // Ignore scheduling errors to avoid blocking UI.
     } finally {
       _scheduling = false;
     }
@@ -442,9 +440,7 @@ class _NotificationPageState extends State<NotificationPage>
     );
     try {
       await intent.launch();
-    } catch (_) {
-      // Ignore intent failures; user can still enable in settings manually.
-    }
+    } catch (_) {}
   }
 
   @override

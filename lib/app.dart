@@ -20,11 +20,13 @@ class _MyAppState extends State<MyApp> {
   );
   late final Future<_StartupState> _startupFuture = _bootstrap();
   StreamSubscription<InstallStatus>? _updateSubscription;
-  bool _didCheckForUpdates = false;
+  bool _isCheckingForUpdates = false;
+  bool _hasStartedFlexibleUpdate = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(_lifecycleObserver);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeCheckForUpdates();
     });
@@ -32,9 +34,14 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(_lifecycleObserver);
     _updateSubscription?.cancel();
     super.dispose();
   }
+
+  late final WidgetsBindingObserver _lifecycleObserver = _LifecycleObserver(
+    onResumed: _maybeCheckForUpdates,
+  );
 
   ThemeMode _decodeTheme(String raw) {
     switch (raw) {
@@ -71,13 +78,19 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _maybeCheckForUpdates() async {
-    if (_didCheckForUpdates || !Platform.isAndroid) {
+    if (!Platform.isAndroid || _isCheckingForUpdates) {
       return;
     }
-    _didCheckForUpdates = true;
+    _isCheckingForUpdates = true;
     try {
       final info = await InAppUpdate.checkForUpdate();
       final availability = info.updateAvailability;
+
+      if (info.installStatus == InstallStatus.downloaded) {
+        await InAppUpdate.completeFlexibleUpdate();
+        return;
+      }
+
       if (availability ==
               UpdateAvailability.developerTriggeredUpdateInProgress &&
           info.immediateUpdateAllowed) {
@@ -91,19 +104,30 @@ class _MyAppState extends State<MyApp> {
         await InAppUpdate.performImmediateUpdate();
         return;
       }
-      if (info.flexibleUpdateAllowed) {
+      if (info.flexibleUpdateAllowed && !_hasStartedFlexibleUpdate) {
+        _hasStartedFlexibleUpdate = true;
         _updateSubscription?.cancel();
         _updateSubscription = InAppUpdate.installUpdateListener.listen((
           status,
         ) {
           if (status == InstallStatus.downloaded) {
             InAppUpdate.completeFlexibleUpdate();
+          } else if (status == InstallStatus.installed ||
+              status == InstallStatus.failed ||
+              status == InstallStatus.canceled) {
+            _hasStartedFlexibleUpdate = false;
+            _updateSubscription?.cancel();
+            _updateSubscription = null;
           }
         });
-        await InAppUpdate.startFlexibleUpdate();
+        final result = await InAppUpdate.startFlexibleUpdate();
+        if (result != AppUpdateResult.success) {
+          _hasStartedFlexibleUpdate = false;
+        }
       }
     } catch (_) {
-      // Ignore update errors to avoid blocking startup.
+    } finally {
+      _isCheckingForUpdates = false;
     }
   }
 
@@ -223,5 +247,18 @@ class ThemeController extends InheritedWidget {
   @override
   bool updateShouldNotify(ThemeController oldWidget) {
     return notifier != oldWidget.notifier;
+  }
+}
+
+class _LifecycleObserver extends WidgetsBindingObserver {
+  _LifecycleObserver({required this.onResumed});
+
+  final VoidCallback onResumed;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      onResumed();
+    }
   }
 }

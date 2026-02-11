@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
@@ -12,7 +11,6 @@ class ProfileImageCache {
   Future<File?> getProfileImage(String? photoUrl) async {
     if (photoUrl == null || photoUrl.isEmpty) return null;
 
-    // Return in-memory reference if already resolved this session
     if (_cachedFile != null && _cachedFile!.existsSync()) {
       return _cachedFile;
     }
@@ -20,15 +18,12 @@ class ProfileImageCache {
     final dir = await getApplicationSupportDirectory();
     final file = File('${dir.path}/profile_photo.jpg');
 
-    // Serve from disk if already cached
     if (file.existsSync() && file.lengthSync() > 0) {
       _cachedFile = file;
-      // Refresh in background so next launch has latest
       _downloadInBackground(photoUrl, file);
       return file;
     }
 
-    // First time — download synchronously
     try {
       final response = await http.get(Uri.parse(photoUrl));
       if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
@@ -50,7 +45,6 @@ class ProfileImageCache {
     } catch (_) {}
   }
 
-  /// Call after profile refresh to force re-download next time
   void invalidate() {
     _cachedFile = null;
   }

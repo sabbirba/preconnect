@@ -63,10 +63,36 @@ class _CachedImageState extends State<CachedImage> {
     return 'img_cache_$encoded';
   }
 
+  Uint8List? _tryDecodeInline(String value) {
+    final raw = value.trim();
+    if (raw.isEmpty) return null;
+    if (raw.startsWith('data:image/')) {
+      final i = raw.indexOf(',');
+      if (i <= 0 || i >= raw.length - 1) return null;
+      final payload = raw.substring(i + 1);
+      return base64Decode(payload);
+    }
+    if (raw.startsWith('http://') || raw.startsWith('https://')) return null;
+    try {
+      return base64Decode(base64.normalize(raw));
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _load() async {
     if (_loading) return;
     final url = widget.url.trim();
     if (url.isEmpty) return;
+
+    final inlineBytes = _tryDecodeInline(url);
+    if (inlineBytes != null && inlineBytes.isNotEmpty) {
+      setState(() {
+        _bytes = inlineBytes;
+        _loading = false;
+      });
+      return;
+    }
 
     final memoryHit = _memoryCache[url];
     if (memoryHit != null) {
