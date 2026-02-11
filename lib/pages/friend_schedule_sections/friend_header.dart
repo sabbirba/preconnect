@@ -8,6 +8,7 @@ class FriendHeaderCard extends StatelessWidget {
     required this.friend,
     required this.onDelete,
     this.displayName,
+    this.subtitle,
     this.isFavorite = false,
     this.onToggleFavorite,
     this.onEditNickname,
@@ -17,6 +18,7 @@ class FriendHeaderCard extends StatelessWidget {
   final FriendSchedule friend;
   final VoidCallback onDelete;
   final String? displayName;
+  final String? subtitle;
   final bool isFavorite;
   final VoidCallback? onToggleFavorite;
   final VoidCallback? onEditNickname;
@@ -69,6 +71,13 @@ class FriendHeaderCard extends StatelessWidget {
                     friend.id.trim().isEmpty ? 'ID: N/A' : 'ID: ${friend.id}',
                     style: TextStyle(fontSize: 12, color: textSecondary),
                   ),
+                  if (subtitle != null) ...[  
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle!,
+                      style: TextStyle(fontSize: 12, color: textSecondary),
+                    ),
+                  ],
                 ],
               ),
             ),

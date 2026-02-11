@@ -563,144 +563,6 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
     }).toList();
   }
 
-  Future<void> _addDummyFriends() async {
-    final dummyFriends = [
-      {
-        "name": "Ahmed Hassan",
-        "id": "21101234",
-        "photoFilePath": null,
-        "photoUrl": null,
-        "courses": [
-          {
-            "courseCode": "CSE110",
-            "sectionName": "1",
-            "roomNumber": "NAC501",
-            "faculties": "Dr. Rahman",
-            "schedule": [
-              {"day": "Sunday", "startTime": "08:00 AM", "endTime": "09:30 AM"},
-              {"day": "Tuesday", "startTime": "08:00 AM", "endTime": "09:30 AM"},
-            ]
-          },
-          {
-            "courseCode": "CSE111",
-            "sectionName": "3",
-            "roomNumber": "NAC503",
-            "faculties": "Ms. Khan",
-            "schedule": [
-              {"day": "Monday", "startTime": "11:00 AM", "endTime": "12:30 PM"},
-              {"day": "Wednesday", "startTime": "11:00 AM", "endTime": "12:30 PM"},
-            ]
-          },
-          {
-            "courseCode": "MAT120",
-            "sectionName": "2",
-            "roomNumber": "NAC301",
-            "faculties": "Dr. Ahmed",
-            "schedule": [
-              {"day": "Sunday", "startTime": "02:00 PM", "endTime": "03:30 PM"},
-              {"day": "Thursday", "startTime": "02:00 PM", "endTime": "03:30 PM"},
-            ]
-          }
-        ]
-      },
-      {
-        "name": "Fatima Ali",
-        "id": "21105678",
-        "photoFilePath": null,
-        "photoUrl": null,
-        "courses": [
-          {
-            "courseCode": "CSE110",
-            "sectionName": "2",
-            "roomNumber": "NAC502",
-            "faculties": "Dr. Rahman",
-            "schedule": [
-              {"day": "Sunday", "startTime": "09:40 AM", "endTime": "11:10 AM"},
-              {"day": "Tuesday", "startTime": "09:40 AM", "endTime": "11:10 AM"},
-            ]
-          },
-          {
-            "courseCode": "ENG101",
-            "sectionName": "5",
-            "roomNumber": "NAC201",
-            "faculties": "Ms. Begum",
-            "schedule": [
-              {"day": "Monday", "startTime": "08:00 AM", "endTime": "09:30 AM"},
-              {"day": "Wednesday", "startTime": "08:00 AM", "endTime": "09:30 AM"},
-            ]
-          },
-          {
-            "courseCode": "PHY111",
-            "sectionName": "1",
-            "roomNumber": "SCI101",
-            "faculties": "Dr. Hossain",
-            "schedule": [
-              {"day": "Saturday", "startTime": "11:20 AM", "endTime": "12:50 PM"},
-              {"day": "Thursday", "startTime": "11:20 AM", "endTime": "12:50 PM"},
-            ]
-          }
-        ]
-      },
-      {
-        "name": "Rafiq Islam",
-        "id": "21109012",
-        "photoFilePath": null,
-        "photoUrl": null,
-        "courses": [
-          {
-            "courseCode": "CSE220",
-            "sectionName": "4",
-            "roomNumber": "NAC701",
-            "faculties": "Dr. Karim",
-            "schedule": [
-              {"day": "Sunday", "startTime": "11:20 AM", "endTime": "12:50 PM"},
-              {"day": "Tuesday", "startTime": "11:20 AM", "endTime": "12:50 PM"},
-            ]
-          },
-          {
-            "courseCode": "CSE221",
-            "sectionName": "2",
-            "roomNumber": "NAC702",
-            "faculties": "Ms. Sultana",
-            "schedule": [
-              {"day": "Monday", "startTime": "02:00 PM", "endTime": "03:30 PM"},
-              {"day": "Wednesday", "startTime": "02:00 PM", "endTime": "03:30 PM"},
-            ]
-          },
-          {
-            "courseCode": "MAT216",
-            "sectionName": "1",
-            "roomNumber": "NAC302",
-            "faculties": "Dr. Alam",
-            "schedule": [
-              {"day": "Saturday", "startTime": "08:00 AM", "endTime": "09:30 AM"},
-              {"day": "Thursday", "startTime": "08:00 AM", "endTime": "09:30 AM"},
-            ]
-          }
-        ]
-      },
-    ];
-
-    final prefs = await SharedPreferences.getInstance();
-    List<String> currentList = prefs.getStringList("friendSchedules") ?? [];
-
-    for (final friendData in dummyFriends) {
-      final jsonString = jsonEncode(friendData);
-      final gzipped = GZipEncoder().encode(utf8.encode(jsonString));
-      final encoded = base64.encode(gzipped);
-
-      if (!currentList.contains(encoded)) {
-        currentList.add(encoded);
-      }
-    }
-
-    await prefs.setStringList("friendSchedules", currentList);
-    await _loadSchedules();
-
-    if (!mounted) return;
-    showAppSnackBar(context, '${dummyFriends.length} dummy friends added!');
-  }
-
   @override
   Widget build(BuildContext context) {
     final textPrimary = BracuPalette.textPrimary(context);
@@ -714,26 +576,13 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Scan & Share',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: textPrimary,
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: _addDummyFriends,
-                  icon: const Icon(Icons.bug_report, size: 18),
-                  label: const Text('Test Data'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                ),
-              ],
+            Text(
+              'Scan & Share',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: textPrimary,
+              ),
             ),
             const SizedBox(height: 12),
             LayoutBuilder(

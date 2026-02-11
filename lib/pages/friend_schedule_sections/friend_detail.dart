@@ -165,9 +165,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                           ElevatedButton.icon(
                             onPressed: () async {
                               try {
-                                print('Fetching schedule...');
                                 final jsonString = await BracuAuthManager().getStudentSchedule();
-                                print('Got schedule: ${jsonString?.substring(0, 100)}');
                                 if (jsonString == null || jsonString.isEmpty) {
                                   if (!mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -181,19 +179,9 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
 
                                 try {
                                   final parsed = jsonDecode(jsonString);
-                                  print('Parsed JSON type: ${parsed.runtimeType}');
-                                  print('Has courses key: ${parsed is Map && parsed.containsKey('courses')}');
-                                  
                                   final coursesData = parsed is Map ? parsed['courses'] : parsed;
-                                  print('Courses data: ${coursesData.runtimeType}');
-                                  
                                   final List<Course> myCourses = (coursesData as List<dynamic>? ?? [])
-                                      .map((e) {
-                                        print('Parsing course: ${e.runtimeType}');
-                                        print('Course JSON keys: ${(e as Map<String, dynamic>).keys}');
-                                        print('Course data: $e');
-                                        return Course.fromJson(e);
-                                      })
+                                      .map((e) => Course.fromJson(e as Map<String, dynamic>))
                                       .toList();
 
                                   if (!mounted) return;
@@ -206,25 +194,21 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                                       ),
                                     ),
                                   );
-                                } catch (parseError, stackTrace) {
-                                  print('Parse error: $parseError');
-                                  print('Stack trace: $stackTrace');
+                                } catch (_) {
                                   if (!mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Parse error: $parseError'),
-                                      duration: const Duration(seconds: 3),
+                                    const SnackBar(
+                                      content: Text('Could not parse schedule data.'),
+                                      duration: Duration(seconds: 3),
                                     ),
                                   );
                                 }
-                              } catch (e, stackTrace) {
-                                print('Error: $e');
-                                print('Stack: $stackTrace');
+                              } catch (_) {
                                 if (!mounted) return;
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Failed: $e'),
-                                    duration: const Duration(seconds: 3),
+                                  const SnackBar(
+                                    content: Text('Failed to load schedule.'),
+                                    duration: Duration(seconds: 3),
                                   ),
                                 );
                               }
@@ -281,15 +265,20 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
   }
 
   List<Widget> _buildScheduleByDay(BuildContext context) {
-    // Group course entries by day
+    // Group course entries by day (case-insensitive)
     final Map<String, List<Map<String, dynamic>>> grouped = {};
     
     for (final course in widget.friend.courses) {
       for (final schedule in course.schedule) {
-        if (!grouped.containsKey(schedule.day)) {
-          grouped[schedule.day] = [];
+        // Normalise to title case so "SUNDAY" and "Sunday" both work
+        final day = schedule.day.trim().isEmpty
+            ? schedule.day
+            : schedule.day[0].toUpperCase() +
+                schedule.day.substring(1).toLowerCase();
+        if (!grouped.containsKey(day)) {
+          grouped[day] = [];
         }
-        grouped[schedule.day]!.add({
+        grouped[day]!.add({
           'courseCode': course.courseCode,
           'sectionName': course.sectionName,
           'roomNumber': course.roomNumber,

@@ -84,37 +84,26 @@ class Course {
       // If it's a string, parse it as JSON
       if (sectionSchedule is String) {
         try {
-          print('Decoding sectionSchedule string...');
           sectionSchedule = jsonDecode(sectionSchedule);
-          print('Decoded successfully, type: ${sectionSchedule.runtimeType}');
-        } catch (e) {
-          print('Error parsing sectionSchedule: $e');
+        } catch (_) {
           sectionSchedule = null;
         }
       }
       
       if (sectionSchedule is Map) {
         final classSchedules = sectionSchedule['classSchedules'] as List<dynamic>? ?? [];
-        print('Found ${classSchedules.length} classSchedules');
-        
         schedules = classSchedules.map((e) {
           final schedule = e as Map<String, dynamic>;
-          
           return CourseSchedule(
             day: convertDay(schedule['day']?.toString() ?? ''),
             startTime: convertTime(schedule['startTime']?.toString() ?? ''),
             endTime: convertTime(schedule['endTime']?.toString() ?? ''),
           );
         }).toList();
-        
-        print('Parsed ${schedules.length} schedule items');
-      } else {
-        print('sectionSchedule is not a Map after parsing: ${sectionSchedule?.runtimeType}');
       }
     }
-    // Handle dummy data format (schedule array directly)
+    // Handle QR-shared format (schedule array directly on the course)
     else if (json['schedule'] != null) {
-      print('Using dummy data format');
       schedules = (json['schedule'] as List<dynamic>? ?? [])
           .map((e) => CourseSchedule.fromJson(e))
           .toList();

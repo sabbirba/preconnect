@@ -16,21 +16,33 @@ class ScanSchedulePage extends StatefulWidget {
   State<ScanSchedulePage> createState() => _ScanSchedulePageState();
 }
 
-class _ScanSchedulePageState extends State<ScanSchedulePage> {
+class _ScanSchedulePageState extends State<ScanSchedulePage>
+    with WidgetsBindingObserver {
   final MobileScannerController _controller = MobileScannerController();
   String? scannedValue;
-  bool _cameraGranted = true;
+  bool _cameraGranted = false;
+  bool _awaitingSettings = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _ensureCameraPermission();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _awaitingSettings) {
+      _awaitingSettings = false;
+      _ensureCameraPermission();
+    }
   }
 
   Future<void> _ensureCameraPermission({
@@ -46,16 +58,22 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
     }
     final status = await Permission.camera.status;
     if (!mounted) return;
+    if (status.isGranted || status.isLimited) {
+      setState(() => _cameraGranted = true);
+      return;
+    }
     if (openSettingsOnDeny &&
         (status.isPermanentlyDenied || status.isRestricted)) {
       setState(() => _cameraGranted = false);
+      _awaitingSettings = true;
       await openAppSettings();
       return;
     }
     final requested = await Permission.camera.request();
     if (!mounted) return;
-    setState(() => _cameraGranted = requested.isGranted);
-    if (!requested.isGranted && openSettingsOnDeny) {
+    setState(() => _cameraGranted = requested.isGranted || requested.isLimited);
+    if (!requested.isGranted && !requested.isLimited && openSettingsOnDeny) {
+      _awaitingSettings = true;
       await openAppSettings();
     }
   }
