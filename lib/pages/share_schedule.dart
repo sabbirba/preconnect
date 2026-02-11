@@ -328,30 +328,52 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
                   Expanded(
                     child: InkWell(
                       onTap: _shareQrCode,
-                      borderRadius: BorderRadius.circular(18),
-                      child: BracuCard(
-                        child: Column(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: BracuPalette.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: BracuPalette.primary.withValues(alpha: 0.18),
+                          ),
+                        ),
+                        child: Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(12),
+                              width: 28,
+                              height: 28,
                               decoration: BoxDecoration(
                                 color: BracuPalette.primary.withValues(
                                   alpha: 0.12,
                                 ),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(8),
                               ),
+                              alignment: Alignment.center,
                               child: const Icon(
                                 Icons.qr_code_scanner,
+                                size: 16,
                                 color: BracuPalette.primary,
-                                size: 32,
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Share via QR',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Text(
+                                'Share via QR',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: BracuPalette.primary,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              size: 14,
+                              color: BracuPalette.primary.withValues(
+                                alpha: 0.7,
                               ),
                             ),
                           ],
@@ -369,7 +391,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '• QR Code: Share your schedule by showing the QR code to your friend. They scan it to add you.',
+                      'Share your schedule by showing the QR code to your friend. They scan it to add you.',
                       style: TextStyle(
                         color: BracuPalette.textSecondary(context),
                       ),
