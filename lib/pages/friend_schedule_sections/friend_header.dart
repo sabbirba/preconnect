@@ -110,10 +110,18 @@ class FriendHeaderCard extends StatelessWidget {
 }
 
 class FriendAvatar extends StatelessWidget {
-  const FriendAvatar({super.key, required this.name, required this.photoUrl});
+  const FriendAvatar({
+    super.key,
+    required this.name,
+    required this.photoUrl,
+    this.size = 44,
+    this.radius = 14,
+  });
 
   final String name;
   final String? photoUrl;
+  final double size;
+  final double radius;
 
   String _initials() {
     final parts = name
@@ -129,25 +137,27 @@ class FriendAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fontSize = size > 50 ? 20.0 : 14.0;
     return Container(
-      width: 44,
-      height: 44,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         color: BracuPalette.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(radius),
       ),
       child: photoUrl == null || photoUrl!.trim().isEmpty
           ? Center(
               child: Text(
                 _initials(),
-                style: const TextStyle(
+                style: TextStyle(
                   color: BracuPalette.primary,
                   fontWeight: FontWeight.w700,
+                  fontSize: fontSize,
                 ),
               ),
             )
           : ClipRRect(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(radius),
               child: Image.network(
                 photoUrl!,
                 fit: BoxFit.cover,
@@ -155,9 +165,10 @@ class FriendAvatar extends StatelessWidget {
                   return Center(
                     child: Text(
                       _initials(),
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: BracuPalette.primary,
                         fontWeight: FontWeight.w700,
+                        fontSize: fontSize,
                       ),
                     ),
                   );

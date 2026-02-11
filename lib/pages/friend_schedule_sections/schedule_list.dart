@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -62,7 +63,21 @@ class FriendScheduleSection extends StatelessWidget {
   }
 }
 
-/// Returns a short summary of the friend's next upcoming class, e.g. "Next: CSE110 Sun 8:00 AM".
+/// Parses a time string via the ui_kit [formatTime] helper and returns
+/// the hour (24-h) and minute as a record, or `null` when unparseable.
+(int hour, int minute)? _parse24h(String raw) {
+  final formatted = formatTime(raw);
+  if (formatted.isEmpty || formatted == raw.trim().toUpperCase()) return null;
+  try {
+    final dt = DateFormat('h:mm a').parseStrict(formatted);
+    return (dt.hour, dt.minute);
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Returns a short summary of the friend's next upcoming class,
+/// e.g. "Next: CSE110 Sun 8:00 AM".
 String? _pickNextClassSummary(FriendSchedule friend) {
   if (friend.courses.isEmpty) return null;
 
@@ -83,19 +98,15 @@ String? _pickNextClassSummary(FriendSchedule friend) {
 
   for (final course in friend.courses) {
     for (final s in course.schedule) {
-      final targetWeekday = dayMap[s.day.toUpperCase()];
+      final normalizedDay = normalizeWeekday(s.day);
+      final targetWeekday = dayMap[normalizedDay];
       if (targetWeekday == null) continue;
 
       int daysAhead = (targetWeekday - now.weekday + 7) % 7;
 
-      // Parse start time for comparison
-      final timeParts = s.startTime.split(RegExp(r'[:\s]+'));
-      int h = int.tryParse(timeParts.isNotEmpty ? timeParts[0] : '') ?? 0;
-      final m = int.tryParse(timeParts.length > 1 ? timeParts[1] : '') ?? 0;
-      final isPm = s.startTime.toUpperCase().contains('PM') && h != 12;
-      final isAm12 = s.startTime.toUpperCase().contains('AM') && h == 12;
-      if (isPm) h += 12;
-      if (isAm12) h = 0;
+      final parsed = _parse24h(s.startTime);
+      if (parsed == null) continue;
+      final (h, m) = parsed;
       final startMinutes = h * 60 + m;
 
       if (daysAhead == 0 && nowMinutes >= startMinutes) {
@@ -107,8 +118,11 @@ String? _pickNextClassSummary(FriendSchedule friend) {
 
       if (best == null || candidate.isBefore(best)) {
         best = candidate;
-        final shortDay = s.day.length > 3 ? s.day.substring(0, 3) : s.day;
-        bestLabel = 'Next: ${course.courseCode} $shortDay ${s.startTime}';
+        final shortDay = formatWeekdayTitle(s.day);
+        final displayDay =
+            shortDay.length > 3 ? shortDay.substring(0, 3) : shortDay;
+        final displayTime = formatTime(s.startTime);
+        bestLabel = 'Next: ${course.courseCode} $displayDay $displayTime';
       }
     }
   }

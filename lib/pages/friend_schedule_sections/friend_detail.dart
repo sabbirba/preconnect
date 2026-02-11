@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:preconnect/api/bracu_auth_manager.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/friend_schedule_sections/compare_schedules.dart';
+import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'dart:convert';
 
@@ -129,15 +130,9 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                   children: [
                     Row(
                       children: [
-                        CircleAvatar(
-                          backgroundColor: BracuPalette.primary.withValues(alpha: 0.1),
-                          child: Text(
-                            nameToShow.isNotEmpty ? nameToShow[0].toUpperCase() : '?',
-                            style: TextStyle(
-                              color: BracuPalette.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                        FriendAvatar(
+                          name: widget.friend.name,
+                          photoUrl: widget.friend.photoUrl,
                         ),
                         const SizedBox(width: 12),
                         Expanded(

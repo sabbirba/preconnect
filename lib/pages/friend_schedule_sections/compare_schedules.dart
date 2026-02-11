@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:preconnect/model/friend_schedule.dart';
+import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
 class CompareSchedulesPage extends StatelessWidget {
@@ -84,43 +85,10 @@ class CompareSchedulesPage extends StatelessWidget {
   Widget _buildAvatar(String name, String? photoUrl) {
     return Column(
       children: [
-        Container(
+        SizedBox(
           width: 60,
           height: 60,
-          decoration: BoxDecoration(
-            color: BracuPalette.primary.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: photoUrl == null || photoUrl.isEmpty
-              ? Center(
-                  child: Text(
-                    _getInitials(name),
-                    style: const TextStyle(
-                      color: BracuPalette.primary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 20,
-                    ),
-                  ),
-                )
-              : ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.network(
-                    photoUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Center(
-                        child: Text(
-                          _getInitials(name),
-                          style: const TextStyle(
-                            color: BracuPalette.primary,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 20,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
+          child: FriendAvatar(name: name, photoUrl: photoUrl, size: 60, radius: 16),
         ),
         const SizedBox(height: 8),
         Text(
@@ -132,13 +100,6 @@ class CompareSchedulesPage extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  String _getInitials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
-    if (parts.isEmpty) return 'U';
-    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-    return (parts.first.substring(0, 1) + parts[1].substring(0, 1)).toUpperCase();
   }
 
   Widget _buildSectionTitle(BuildContext context, String title, IconData icon) {
