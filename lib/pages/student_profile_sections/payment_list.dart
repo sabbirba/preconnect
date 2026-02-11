@@ -41,11 +41,8 @@ class PaymentList extends StatelessWidget {
             : const Color(0xFFFF8A34).withValues(alpha: 0.16);
         return Container(
           margin: const EdgeInsets.symmetric(vertical: 8),
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            color: BracuPalette.primary.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(16),
-          ),
+          padding: EdgeInsets.zero,
+          decoration: const BoxDecoration(),
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
