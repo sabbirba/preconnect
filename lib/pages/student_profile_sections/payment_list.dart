@@ -33,6 +33,12 @@ class PaymentList extends StatelessWidget {
         final cardBorder = isPaid
             ? BracuPalette.primary.withValues(alpha: 0.08)
             : statusBg.withValues(alpha: 0.6);
+        final iconColor = isPaid
+            ? BracuPalette.accent
+            : const Color(0xFFFF8A34);
+        final iconBg = isPaid
+            ? BracuPalette.accent.withValues(alpha: 0.16)
+            : const Color(0xFFFF8A34).withValues(alpha: 0.16);
         return Container(
           margin: const EdgeInsets.symmetric(vertical: 8),
           padding: const EdgeInsets.all(2),
@@ -55,42 +61,65 @@ class PaymentList extends StatelessWidget {
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.receipt_long,
-                              size: 16,
-                              color: BracuPalette.primary,
-                            ),
-                            const SizedBox(width: 6),
-                            GestureDetector(
-                              onTap: () => copyToClipboard(
-                                context,
-                                payment.payslipNumber,
-                              ),
-                              child: Text(
-                                payment.payslipNumber,
-                                style: TextStyle(
-                                  color: textSecondary,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 26,
+                                height: 26,
+                                decoration: BoxDecoration(
+                                  color: iconBg,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.credit_card_rounded,
+                                  size: 14,
+                                  color: iconColor,
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            GestureDetector(
-                              onTap: () {
-                                copyToClipboard(context, payment.payslipNumber);
-                              },
-                              child: Icon(
-                                Icons.copy_rounded,
-                                size: 14,
-                                color: textSecondary,
+                              const SizedBox(width: 10),
+                              Flexible(
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () => copyToClipboard(
+                                        context,
+                                        payment.payslipNumber,
+                                      ),
+                                      child: Text(
+                                        payment.payslipNumber,
+                                        style: TextStyle(
+                                          color: textPrimary,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 15,
+                                          letterSpacing: 0.2,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    GestureDetector(
+                                      onTap: () {
+                                        copyToClipboard(
+                                          context,
+                                          payment.payslipNumber,
+                                        );
+                                      },
+                                      child: Icon(
+                                        Icons.copy_rounded,
+                                        size: 15,
+                                        color: textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 10),
                         GestureDetector(
                           onTap: () => copyToClipboard(context, amount),
                           child: Text(
