@@ -74,6 +74,7 @@ class _LoginPageState extends State<LoginPage> {
   StreamSubscription<String>? _winUrlSub;
   StreamSubscription<win.HistoryChanged>? _winHistorySub;
   bool _winCanGoBack = false;
+  String _winCurrentUrl = LoginPage.authUrl;
   bool _handledRedirect = false;
 
   bool _isLoggingIn = false;
@@ -128,6 +129,9 @@ class _LoginPageState extends State<LoginPage> {
         win.WebviewPopupWindowPolicy.deny,
       );
       _winUrlSub = _winController!.url.listen((url) {
+        if (url.trim().isNotEmpty) {
+          _winCurrentUrl = url;
+        }
         if (_isRedirectUrl(url)) {
           _handleRedirect(url);
         }
@@ -203,6 +207,18 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _handlePullToRefresh() async {
+    if (_isLoggingIn) return;
+    _handledRedirect = false;
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      final controller = _winController;
+      if (controller == null) return;
+      await controller.loadUrl(_winCurrentUrl);
+      return;
+    }
+    await _webViewController?.reload();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (kIsWeb) {
@@ -223,49 +239,64 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: SafeArea(
-        child: PopScope(
-          canPop: false,
-          onPopInvokedWithResult: (didPop, result) async {
-            if (defaultTargetPlatform == TargetPlatform.windows) {
-              final controller = _winController;
-              if (controller == null) return;
-              if (!mounted) return;
-              final navigator = Navigator.of(context);
-              if (_winCanGoBack) {
-                await controller.goBack();
-              } else {
-                navigator.maybePop();
-              }
-              return;
-            }
-            final controller = _webViewController;
-            if (controller == null) return;
-            if (!mounted) return;
-            final navigator = Navigator.of(context);
-            if (await controller.canGoBack()) {
-              await controller.goBack();
-            } else {
-              navigator.maybePop();
-            }
-          },
-          child: Stack(
-            children: [
-              if (defaultTargetPlatform == TargetPlatform.windows &&
-                  _winController != null)
-                Positioned.fill(child: win.Webview(_winController!))
-              else if (_webViewController != null)
-                Positioned.fill(
-                  child: WebViewWidget(controller: _webViewController!),
-                ),
-              if (_isLoggingIn)
-                Positioned.fill(
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    alignment: Alignment.center,
-                    child: const SizedBox.shrink(),
+        child: RefreshIndicator(
+          onRefresh: _handlePullToRefresh,
+          child: LayoutBuilder(
+            builder: (context, constraints) => ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(
+                  height: constraints.maxHeight,
+                  child: PopScope(
+                    canPop: false,
+                    onPopInvokedWithResult: (didPop, result) async {
+                      if (defaultTargetPlatform == TargetPlatform.windows) {
+                        final controller = _winController;
+                        if (controller == null) return;
+                        if (!mounted) return;
+                        final navigator = Navigator.of(context);
+                        if (_winCanGoBack) {
+                          await controller.goBack();
+                        } else {
+                          navigator.maybePop();
+                        }
+                        return;
+                      }
+                      final controller = _webViewController;
+                      if (controller == null) return;
+                      if (!mounted) return;
+                      final navigator = Navigator.of(context);
+                      if (await controller.canGoBack()) {
+                        await controller.goBack();
+                      } else {
+                        navigator.maybePop();
+                      }
+                    },
+                    child: Stack(
+                      children: [
+                        if (defaultTargetPlatform == TargetPlatform.windows &&
+                            _winController != null)
+                          Positioned.fill(child: win.Webview(_winController!))
+                        else if (_webViewController != null)
+                          Positioned.fill(
+                            child: WebViewWidget(
+                              controller: _webViewController!,
+                            ),
+                          ),
+                        if (_isLoggingIn)
+                          Positioned.fill(
+                            child: Container(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              alignment: Alignment.center,
+                              child: const SizedBox.shrink(),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -87,36 +86,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
           ),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
               child: Column(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      ValueListenableBuilder<ThemeMode>(
-                        valueListenable: ThemeController.of(context),
-                        builder: (context, mode, _) {
-                          final isDarkMode =
-                              Theme.of(context).brightness == Brightness.dark;
-                          return IconButton(
-                            tooltip: isDarkMode
-                                ? 'Switch to light'
-                                : 'Switch to dark',
-                            onPressed: () => ThemeController.setTheme(
-                              context,
-                              isDarkMode ? ThemeMode.light : ThemeMode.dark,
-                            ),
-                            icon: Icon(
-                              isDarkMode
-                                  ? Icons.wb_sunny_outlined
-                                  : Icons.dark_mode_outlined,
-                              color: BracuPalette.primary,
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
                   Expanded(
                     child: SingleChildScrollView(
                       child: Column(

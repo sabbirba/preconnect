@@ -51,8 +51,26 @@ class FriendHeaderCard extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          nameToShow,
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(text: nameToShow),
+                              if (isFavorite)
+                                const WidgetSpan(
+                                  alignment: PlaceholderAlignment.middle,
+                                  child: Padding(
+                                    padding: EdgeInsets.only(left: 4),
+                                    child: Icon(
+                                      Icons.star_rounded,
+                                      color: BracuPalette.favorite,
+                                      size: 14,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -60,14 +78,6 @@ class FriendHeaderCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (isFavorite) ...[
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.star_rounded,
-                          color: BracuPalette.favorite,
-                          size: 18,
-                        ),
-                      ],
                     ],
                   ),
                   const SizedBox(height: 4),

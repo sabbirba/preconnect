@@ -57,14 +57,21 @@ class _HomePageState extends State<HomePage> {
   final Set<HomeTab> _builtTabs = {HomeTab.dashboard};
 
   void _setTab(HomeTab tab) {
-    if (tab == HomeTab.studentSchedule) {
-      ClassSchedule.requestJump();
-    } else if (tab == HomeTab.examSchedule) {
-      ExamSchedule.requestJump();
-    }
+    final shouldJumpClass = tab == HomeTab.studentSchedule;
+    final shouldJumpExam = tab == HomeTab.examSchedule;
     setState(() {
       selectedTab = tab;
     });
+    if (shouldJumpClass || shouldJumpExam) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || selectedTab != tab) return;
+        if (shouldJumpClass) {
+          ClassSchedule.requestJump();
+        } else if (shouldJumpExam) {
+          ExamSchedule.requestJump();
+        }
+      });
+    }
   }
 
   void _handleBack() {

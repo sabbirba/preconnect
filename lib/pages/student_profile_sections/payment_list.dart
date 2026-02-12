@@ -149,8 +149,15 @@ class PaymentList extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 _InfoLine(
-                  label: status,
-                  value: !isPaid ? dueDate : 'Paid',
+                  label: 'Due',
+                  value: dueDate,
+                  isLabelBold: true,
+                  isValueBold: true,
+                ),
+                const SizedBox(height: 6),
+                _InfoLine(
+                  label: 'Status',
+                  value: isPaid ? 'Paid' : 'Due',
                   isLabelBold: true,
                   isValueBold: true,
                 ),
