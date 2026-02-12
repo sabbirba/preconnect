@@ -149,7 +149,7 @@ class PaymentList extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 _InfoLine(
-                  label: 'Due',
+                  label: 'Due Date',
                   value: dueDate,
                   isLabelBold: true,
                   isValueBold: true,
