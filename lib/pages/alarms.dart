@@ -264,7 +264,7 @@ class _AlarmPageState extends State<AlarmPage> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: const [
                   SizedBox(height: 160),
-                  BracuEmptyState(message: 'No classes found'),
+                  BracuEmptyState(message: 'No class found'),
                 ],
               ),
             );

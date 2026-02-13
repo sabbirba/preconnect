@@ -550,7 +550,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                     HomeTab.studentSchedule,
                                   ),
                                   child: const _ScheduleTile(
-                                    title: 'No Classes Today',
+                                    title: 'No Class Today',
                                     subtitle: 'Enjoy your day...',
                                     badge: '--',
                                     color: _primary,
