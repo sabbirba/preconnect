@@ -1,0 +1,74 @@
+name: Dependabot Auto Merge
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    if: >
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      startsWith(github.event.pull_request.head.ref, 'dependabot/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Dependabot Metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Approve PR
+        if: >
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            try {
+              await github.rest.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                event: 'APPROVE',
+                body: 'Auto-approving Dependabot update.',
+              });
+              core.info('Approved PR #' + pr.number);
+            } catch (e) {
+              core.info('Approval skipped: ' + e.message);
+            }
+
+      - name: Enable Auto Merge (Squash)
+        if: >
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            try {
+              await github.graphql(
+                `mutation($pullRequestId: ID!) {
+                  enablePullRequestAutoMerge(
+                    input: { pullRequestId: $pullRequestId, mergeMethod: SQUASH }
+                  ) {
+                    clientMutationId
+                  }
+                }`,
+                { pullRequestId: pr.node_id },
+              );
+              core.info('Enabled auto-merge for PR #' + pr.number);
+            } catch (e) {
+              core.setFailed(
+                'Could not enable auto-merge. Make sure auto-merge is enabled in repository settings. ' +
+                e.message,
+              );
+            }
