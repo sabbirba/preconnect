@@ -595,11 +595,14 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                   ),
                                   InkWell(
                                     borderRadius: BorderRadius.circular(8),
-                                    onTap: () {
-                                      Share.share(
-                                        'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
-                                        subject:
-                                            'PreConnect.app • Prepare Connect Succeed',
+                                    onTap: () async {
+                                      await SharePlus.instance.share(
+                                        ShareParams(
+                                          text:
+                                              'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
+                                          subject:
+                                              'PreConnect.app • Prepare Connect Succeed',
+                                        ),
                                       );
                                     },
                                     child: Padding(

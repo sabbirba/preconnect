@@ -30,17 +30,14 @@ dependencies:
   flutter_svg: ^2.0.10
   url_launcher: ^6.3.0
   image_picker: ^1.1.2
-  share_plus: ^10.0.2
+  share_plus: ^12.0.1
   path_provider: ^2.1.4
   in_app_update: ^4.2.5
-  package_info_plus: ^8.0.2
+  package_info_plus: ^9.0.0
   
 
 
 dev_dependencies:
-  flutter_test:
-    sdk: flutter
-
   flutter_lints: ^6.0.0
   flutter_native_splash: ^2.4.7
 
