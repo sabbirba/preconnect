@@ -1,6 +1,5 @@
 enum HomeTab {
   dashboard,
-  notifications,
   profile,
   studentSchedule,
   examSchedule,

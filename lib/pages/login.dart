@@ -7,7 +7,6 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/bracu_auth_manager.dart';
-import 'package:webview_windows/webview_windows.dart' as win;
 import 'home.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/user_agent.dart';
@@ -70,11 +69,6 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TokenStorage _secureStorage = TokenStorage.instance;
   WebViewController? _webViewController;
-  win.WebviewController? _winController;
-  StreamSubscription<String>? _winUrlSub;
-  StreamSubscription<win.HistoryChanged>? _winHistorySub;
-  bool _winCanGoBack = false;
-  String _winCurrentUrl = LoginPage.authUrl;
   bool _handledRedirect = false;
 
   bool _isLoggingIn = false;
@@ -82,11 +76,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    if (kIsWeb) return;
-    if (defaultTargetPlatform == TargetPlatform.windows) {
-      _initWindowsWebview();
-      return;
-    }
+    if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) return;
     _webViewController =
         LoginPage.takePreloadedWebView() ?? _buildMobileWebView();
     _attachNavigationDelegate(_webViewController!);
@@ -118,33 +108,6 @@ class _LoginPageState extends State<LoginPage> {
         },
       ),
     );
-  }
-
-  Future<void> _initWindowsWebview() async {
-    _winController = win.WebviewController();
-    try {
-      await _winController!.initialize();
-      await _winController!.setUserAgent(kPreconnectUserAgent);
-      await _winController!.setPopupWindowPolicy(
-        win.WebviewPopupWindowPolicy.deny,
-      );
-      _winUrlSub = _winController!.url.listen((url) {
-        if (url.trim().isNotEmpty) {
-          _winCurrentUrl = url;
-        }
-        if (_isRedirectUrl(url)) {
-          _handleRedirect(url);
-        }
-      });
-      _winHistorySub = _winController!.historyChanged.listen((history) {
-        _winCanGoBack = history.canGoBack;
-      });
-      await _winController!.loadUrl(LoginPage.authUrl);
-      if (mounted) setState(() {});
-    } catch (_) {
-      if (!mounted) return;
-      showAppSnackBar(context, 'WebView failed to initialize.');
-    }
   }
 
   bool _isRedirectUrl(String url) {
@@ -210,25 +173,19 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _handlePullToRefresh() async {
     if (_isLoggingIn) return;
     _handledRedirect = false;
-    if (defaultTargetPlatform == TargetPlatform.windows) {
-      final controller = _winController;
-      if (controller == null) return;
-      await controller.loadUrl(_winCurrentUrl);
-      return;
-    }
     await _webViewController?.reload();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (kIsWeb) {
+    if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) {
       return Scaffold(
         body: const Center(
           child: Padding(
             padding: EdgeInsets.all(16),
             child: Text(
-              "Login is not supported on the web build.\n\n"
-              "Run this app on Android/iOS (or a desktop build with WebView support) to sign in via BRACU SSO.",
+              "Login is not supported on this platform.\n\n"
+              "Run this app on Android/iOS (or macOS) to sign in via BRACU SSO.",
               textAlign: TextAlign.center,
             ),
           ),
@@ -250,18 +207,6 @@ class _LoginPageState extends State<LoginPage> {
                   child: PopScope(
                     canPop: false,
                     onPopInvokedWithResult: (didPop, result) async {
-                      if (defaultTargetPlatform == TargetPlatform.windows) {
-                        final controller = _winController;
-                        if (controller == null) return;
-                        if (!mounted) return;
-                        final navigator = Navigator.of(context);
-                        if (_winCanGoBack) {
-                          await controller.goBack();
-                        } else {
-                          navigator.maybePop();
-                        }
-                        return;
-                      }
                       final controller = _webViewController;
                       if (controller == null) return;
                       if (!mounted) return;
@@ -274,10 +219,7 @@ class _LoginPageState extends State<LoginPage> {
                     },
                     child: Stack(
                       children: [
-                        if (defaultTargetPlatform == TargetPlatform.windows &&
-                            _winController != null)
-                          Positioned.fill(child: win.Webview(_winController!))
-                        else if (_webViewController != null)
+                        if (_webViewController != null)
                           Positioned.fill(
                             child: WebViewWidget(
                               controller: _webViewController!,
@@ -305,9 +247,6 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    _winUrlSub?.cancel();
-    _winHistorySub?.cancel();
-    _winController?.dispose();
     super.dispose();
   }
 }

@@ -136,7 +136,7 @@ lib/
   api/               Auth & API client
   model/             Data models
   pages/             UI screens & sections
-  tools/             Utilities (notifications, caching, etc.)
+  tools/             Utilities (caching, helpers, etc.)
 android/             Android configuration (Kotlin)
 ios/                 iOS configuration (Swift)
 macos/               macOS shell

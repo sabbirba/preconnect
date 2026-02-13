@@ -15,9 +15,6 @@ import 'package:preconnect/pages/friend_schedule_sections/friend_action_card.dar
 import 'package:preconnect/pages/friend_schedule_sections/schedule_list.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_detail.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/local_notifications.dart';
-import 'package:preconnect/tools/notification_store.dart';
-import 'package:preconnect/model/notification_item.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
 class FriendSchedulePage extends StatefulWidget {
@@ -96,8 +93,6 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
 
     List<FriendScheduleItem> allSchedules = [];
     List<String> validEntries = [];
-    final seenEntries = prefs.getStringList('friendSchedules_seen') ?? [];
-    final List<FriendScheduleItem> newSchedules = [];
 
     for (final base64Json in encodedList) {
       try {
@@ -119,15 +114,6 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
           ),
         );
         validEntries.add(base64Json);
-        if (!seenEntries.contains(base64Json)) {
-          newSchedules.add(
-            FriendScheduleItem(
-              encoded: base64Json,
-              friend: friendSchedule,
-              metadata: metadata,
-            ),
-          );
-        }
       } catch (_) {}
     }
 
@@ -139,36 +125,6 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
     setState(() {
       decodedSchedules = allSchedules;
     });
-
-    if (newSchedules.isNotEmpty) {
-      final allEnabled = prefs.getBool('notif_all') ?? false;
-      final friendEnabled = prefs.getBool('notif_friend') ?? false;
-      if (allEnabled && friendEnabled) {
-        for (final item in newSchedules) {
-          final now = DateTime.now().toUtc();
-          final id = now.millisecondsSinceEpoch.remainder(1000000000);
-          final title = 'Friend Schedule Received';
-          final name = item.friend.name.trim();
-          final body = name.isEmpty
-              ? 'A friend shared a schedule.'
-              : '$name shared a schedule.';
-          await LocalNotificationsService.instance.showLocalNotification(
-            id: id,
-            title: title,
-            body: body,
-          );
-          await NotificationStore.add(
-            NotificationItem(
-              id: id,
-              title: title,
-              message: body,
-              timeIso: now.toIso8601String(),
-              category: 'friend',
-            ),
-          );
-        }
-      }
-    }
   }
 
   Future<void> _handleRefresh() async {

@@ -12,7 +12,6 @@ import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/share_schedule.dart';
 import 'package:preconnect/pages/scan_schedule.dart';
 import 'package:preconnect/pages/friend_schedule.dart';
-import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/home_sections/exam_countdown.dart';
@@ -20,7 +19,6 @@ import 'package:preconnect/pages/home_sections/student_overview.dart';
 import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/notification_scheduler.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/refresh_guard.dart';
@@ -43,7 +41,6 @@ class _HomePageState extends State<HomePage> {
       onNavigate: _setTab,
       onLogout: () => _confirmLogout(context),
     ),
-    HomeTab.notifications: (_) => const NotificationPage(),
     HomeTab.profile: (_) => const StudentProfile(),
     HomeTab.studentSchedule: (_) => const ClassSchedule(),
     HomeTab.examSchedule: (_) => const ExamSchedule(),
@@ -238,7 +235,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   void initState() {
     super.initState();
     _future = _loadData();
-    unawaited(NotificationScheduler.syncSchedules());
     RefreshBus.instance.addListener(_onRefreshSignal);
   }
 
@@ -481,8 +477,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                               _TopBar(
                                 name: profile['fullName'] ?? 'BRACU Student',
                                 photoUrl: photoUrl,
-                                onNotifications: () =>
-                                    widget.onNavigate(HomeTab.notifications),
                                 onProfileTap: () =>
                                     widget.onNavigate(HomeTab.profile),
                               ),
@@ -556,8 +550,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                     HomeTab.studentSchedule,
                                   ),
                                   child: const _ScheduleTile(
-                                    title: 'Enjoy your day',
-                                    subtitle: 'No Classes',
+                                    title: 'No Classes Today',
+                                    subtitle: 'Enjoy your day...',
                                     badge: '--',
                                     color: _primary,
                                   ),
@@ -740,13 +734,11 @@ class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.name,
     required this.photoUrl,
-    required this.onNotifications,
     required this.onProfileTap,
   });
 
   final String name;
   final String? photoUrl;
-  final VoidCallback onNotifications;
   final VoidCallback onProfileTap;
 
   @override
@@ -833,14 +825,6 @@ class _TopBar extends StatelessWidget {
             ),
           ),
         ),
-        IconButton(
-          onPressed: onNotifications,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-          visualDensity: VisualDensity.compact,
-          icon: const Icon(Icons.notifications_none_outlined),
-        ),
-        const SizedBox(width: 2),
         ValueListenableBuilder<ThemeMode>(
           valueListenable: ThemeController.of(context),
           builder: (context, mode, _) {

@@ -32,9 +32,6 @@ jobs:
           - os: macos-latest
             platform: macos
             allow_failure: true
-          - os: windows-latest
-            platform: windows
-            allow_failure: true
 
     steps:
       - name: Checkout
@@ -216,21 +213,6 @@ jobs:
         run: |
           flutter build macos --release
 
-      - name: Build Windows App
-        if: matrix.platform == 'windows'
-        shell: bash
-        run: |
-          attempt=1
-          until [ $attempt -gt 3 ]; do
-            flutter build windows --release && break
-            echo "flutter build windows failed (attempt $attempt)."
-            attempt=$((attempt+1))
-            sleep $((10 * attempt))
-          done
-          if [ $attempt -gt 3 ]; then
-            echo "flutter build windows failed after 3 attempts."
-            exit 1
-          fi
 
       - name: Package Android Release
         if: matrix.platform == 'android' && steps.android_signing.outputs.enabled == 'true'
@@ -277,56 +259,6 @@ jobs:
           fi
           DMG_NAME="PreConnect-macos-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.dmg"
           hdiutil create -volname "PreConnect" -srcfolder "$APP_PATH" -ov -format UDZO "$GITHUB_WORKSPACE/artifacts/$DMG_NAME"
-
-      - name: Package Windows Release
-        if: matrix.platform == 'windows'
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
-          $releaseDir = Join-Path $PWD "build\\windows\\x64\\runner\\Release"
-          if (!(Test-Path $releaseDir)) {
-            Write-Host "No Windows release directory found"
-            exit 0
-          }
-          $exe = Get-ChildItem -Path $releaseDir -Filter *.exe | Select-Object -First 1
-          if ($null -eq $exe) {
-            Write-Host "No Windows .exe found in release directory"
-            exit 1
-          }
-          if (!(Get-Command choco -ErrorAction SilentlyContinue)) {
-            Write-Host "Chocolatey not found on runner"
-            exit 1
-          }
-          $installed = $false
-          foreach ($attempt in 1..3) {
-            try {
-              choco install innosetup -y --no-progress
-              $installed = $true
-              break
-            } catch {
-              Write-Host "Chocolatey install failed (attempt $attempt)."
-              Start-Sleep -Seconds (5 * $attempt)
-            }
-          }
-          if (-not $installed) {
-            Write-Host "Chocolatey install failed after 3 attempts."
-            exit 1
-          }
-          $appVersion = "${{ steps.version.outputs.version_name }}"
-          $appVersionFull = "${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}"
-          $isccCandidates = @(
-            "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe",
-            "C:\\Program Files\\Inno Setup 6\\ISCC.exe"
-          )
-          $isccPath = $isccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-          if (-not $isccPath) {
-            $isccPath = (Get-Command ISCC.exe -ErrorAction SilentlyContinue)?.Source
-          }
-          if (-not $isccPath) {
-            Write-Host "ISCC.exe not found"
-            exit 1
-          }
-          & $isccPath "/DAppVersion=$appVersion" "/DAppVersionFull=$appVersionFull" "scripts\\windows\\installer.iss"
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

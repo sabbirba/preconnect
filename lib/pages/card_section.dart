@@ -6,6 +6,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/cached_image.dart';
 
+const String _bracuLogoSvgUrl =
+    'https://www.bracu.ac.bd/sites/all/themes/sloth/images/f-logo.svg';
+
 class CardSection extends StatefulWidget {
   const CardSection({
     super.key,
@@ -72,8 +75,8 @@ class CardSectionState extends State<CardSection> {
                     padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
                     child: Row(
                       children: [
-                        SvgPicture.asset(
-                          'assets/bracu.svg',
+                        SvgPicture.network(
+                          _bracuLogoSvgUrl,
                           width: 34,
                           height: 34,
                           fit: BoxFit.contain,
@@ -143,8 +146,8 @@ class CardSectionState extends State<CardSection> {
                               children: [
                                 Opacity(
                                   opacity: 0.06,
-                                  child: SvgPicture.asset(
-                                    "assets/bracu.svg",
+                                  child: SvgPicture.network(
+                                    _bracuLogoSvgUrl,
                                     height: 120,
                                     width: 120,
                                     fit: BoxFit.contain,
@@ -257,8 +260,8 @@ class CardSectionState extends State<CardSection> {
               children: [
                 Opacity(
                   opacity: 0.1,
-                  child: SvgPicture.asset(
-                    "assets/bracu.svg",
+                  child: SvgPicture.network(
+                    _bracuLogoSvgUrl,
                     height: 120,
                     width: 140,
                     fit: BoxFit.contain,
