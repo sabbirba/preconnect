@@ -66,7 +66,7 @@ jobs:
           xcodebuild -showsdks
 
       - name: Cache Flutter Pub
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.pub-cache
@@ -77,7 +77,7 @@ jobs:
 
       - name: Cache CocoaPods
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ios/Pods
@@ -89,7 +89,7 @@ jobs:
             ${{ runner.os }}-cocoapods-
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.gradle/caches
@@ -101,7 +101,7 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Cache Flutter Build
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             build
