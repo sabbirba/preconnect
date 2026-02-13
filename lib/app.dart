@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:in_app_update/in_app_update.dart';
@@ -20,9 +19,7 @@ class _MyAppState extends State<MyApp> {
     ThemeMode.system,
   );
   late final Future<_StartupState> _startupFuture = _bootstrap();
-  StreamSubscription<InstallStatus>? _updateSubscription;
   Future<void>? _updateCheckInFlight;
-  _UpdatePolicy _updatePolicy = _UpdatePolicy.normal;
 
   @override
   void initState() {
@@ -36,7 +33,6 @@ class _MyAppState extends State<MyApp> {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(_lifecycleObserver);
-    _updateSubscription?.cancel();
     super.dispose();
   }
 
@@ -84,26 +80,14 @@ class _MyAppState extends State<MyApp> {
       final info = await InAppUpdate.checkForUpdate();
       final availability = info.updateAvailability;
 
-      if (info.installStatus == InstallStatus.downloaded) {
-        await InAppUpdate.completeFlexibleUpdate();
-        return;
-      }
-
       final shouldRunImmediate =
           info.immediateUpdateAllowed &&
-          (availability ==
-                  UpdateAvailability.developerTriggeredUpdateInProgress ||
-              (availability == UpdateAvailability.updateAvailable &&
-                  _updatePolicy != _UpdatePolicy.skipImmediateForSession));
+          (availability == UpdateAvailability.updateAvailable ||
+              availability ==
+                  UpdateAvailability.developerTriggeredUpdateInProgress);
 
       if (shouldRunImmediate) {
         await _runImmediateUpdate();
-        return;
-      }
-      if (availability == UpdateAvailability.updateAvailable &&
-          info.flexibleUpdateAllowed &&
-          _updateSubscription == null) {
-        await _startFlexibleUpdate();
       }
     }();
 
@@ -117,35 +101,8 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> _runImmediateUpdate() async {
     try {
-      if (await InAppUpdate.performImmediateUpdate() !=
-          AppUpdateResult.success) {
-        _updatePolicy = _UpdatePolicy.skipImmediateForSession;
-      }
-    } catch (_) {
-      _updatePolicy = _UpdatePolicy.skipImmediateForSession;
-    }
-  }
-
-  Future<void> _startFlexibleUpdate() async {
-    _updateSubscription = InAppUpdate.installUpdateListener.listen((status) {
-      if (status == InstallStatus.downloaded) {
-        InAppUpdate.completeFlexibleUpdate();
-      } else if ({
-        InstallStatus.installed,
-        InstallStatus.failed,
-        InstallStatus.canceled,
-      }.contains(status)) {
-        _clearUpdateSubscription();
-      }
-    });
-    if (await InAppUpdate.startFlexibleUpdate() != AppUpdateResult.success) {
-      _clearUpdateSubscription();
-    }
-  }
-
-  void _clearUpdateSubscription() {
-    _updateSubscription?.cancel();
-    _updateSubscription = null;
+      await InAppUpdate.performImmediateUpdate();
+    } catch (_) {}
   }
 
   @override
@@ -204,8 +161,6 @@ class _StartupState {
 
   final bool isLoggedIn;
 }
-
-enum _UpdatePolicy { normal, skipImmediateForSession }
 
 class _AppGate extends StatelessWidget {
   const _AppGate({required this.startupFuture});
