@@ -375,6 +375,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Read Android package and version
         id: android_meta
@@ -391,7 +393,42 @@ jobs:
           echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
+      - name: Check if app version changed
+        id: version_changed
+        shell: bash
+        run: |
+          CURRENT_VERSION=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
+          BEFORE_SHA="${{ github.event.before }}"
+          AFTER_SHA="${{ github.sha }}"
+
+          # For push events, detect whether pubspec.yaml version line changed anywhere in the pushed range.
+          if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ] && git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+            if git diff --name-only "$BEFORE_SHA" "$AFTER_SHA" | grep -qx 'pubspec.yaml'; then
+              OLD_VERSION=$(git show "$BEFORE_SHA:pubspec.yaml" 2>/dev/null | grep '^version:' | head -n1 | awk '{print $2}' || true)
+              NEW_VERSION=$(git show "$AFTER_SHA:pubspec.yaml" 2>/dev/null | grep '^version:' | head -n1 | awk '{print $2}' || true)
+              if [ -n "$OLD_VERSION" ] && [ -n "$NEW_VERSION" ] && [ "$OLD_VERSION" != "$NEW_VERSION" ]; then
+                echo "changed=true" >> "$GITHUB_OUTPUT"
+                echo "Version changed in push range: '$OLD_VERSION' -> '$NEW_VERSION'"
+                exit 0
+              fi
+            fi
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Version unchanged in push range; skipping Google Play production publish."
+            exit 0
+          fi
+
+          # Fallback for manual runs / first commit: compare with previous commit when available.
+          PREVIOUS_VERSION=$(git show HEAD^:pubspec.yaml 2>/dev/null | grep '^version:' | head -n1 | awk '{print $2}' || true)
+          if [ -z "$PREVIOUS_VERSION" ] || [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Version changed: '$PREVIOUS_VERSION' -> '$CURRENT_VERSION'"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Version unchanged ('$CURRENT_VERSION'); skipping Google Play production publish."
+          fi
+
       - name: Download Android artifacts
+        if: steps.version_changed.outputs.changed == 'true'
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
@@ -399,6 +436,7 @@ jobs:
           path: artifacts/android
 
       - name: Resolve AAB file
+        if: steps.version_changed.outputs.changed == 'true'
         id: aab
         shell: bash
         run: |
@@ -413,6 +451,7 @@ jobs:
           echo "Using AAB: $AAB_FILE"
 
       - name: Check Google Play credentials
+        if: steps.version_changed.outputs.changed == 'true'
         id: play_auth
         shell: bash
         env:
@@ -426,6 +465,7 @@ jobs:
           fi
 
       - name: Validate Google Play publish prerequisites
+        if: steps.version_changed.outputs.changed == 'true'
         shell: bash
         run: |
           if [ "${{ steps.aab.outputs.found }}" != "true" ]; then
@@ -437,8 +477,40 @@ jobs:
             exit 1
           fi
 
+      - name: Generate Play release notes from commits
+        if: steps.version_changed.outputs.changed == 'true'
+        id: play_notes
+        shell: bash
+        run: |
+          LAST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n1 || true)
+          if [ -n "$LAST_TAG" ]; then
+            RANGE="$LAST_TAG..HEAD"
+          else
+            RANGE="HEAD"
+          fi
+
+          NOTES_DIR="play-whatsnew"
+          mkdir -p "$NOTES_DIR"
+
+          NOTES=$(if [ "$RANGE" = "HEAD" ]; then
+            git log --max-count=8 --pretty=format:'- %s'
+          else
+            git log "$RANGE" --max-count=8 --pretty=format:'- %s'
+          fi)
+
+          if [ -z "$NOTES" ]; then
+            NOTES="- Maintenance updates and bug fixes."
+          fi
+
+          # Google Play "What's new" has short per-locale limits.
+          NOTES=$(printf '%s' "$NOTES" | head -c 480)
+
+          printf '%s\n' "$NOTES" > "$NOTES_DIR/whatsnew-en-US"
+
+          echo "dir=$NOTES_DIR" >> "$GITHUB_OUTPUT"
+
       - name: Upload AAB to Google Play (Production)
-        if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
+        if: steps.version_changed.outputs.changed == 'true' && steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
         uses: r0adkll/upload-google-play@v1.1.3
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
@@ -448,3 +520,4 @@ jobs:
           status: completed
           releaseName: PreConnect v${{ steps.android_meta.outputs.version_name }}+${{ steps.android_meta.outputs.version_code }}
           changesNotSentForReview: false
+          whatsNewDirectory: ${{ steps.play_notes.outputs.dir }}
