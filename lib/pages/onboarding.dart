@@ -346,7 +346,7 @@ class _BrandLockup extends StatelessWidget {
           child: Transform.translate(
             offset: const Offset(10, 0),
             child: SvgPicture.network(
-              'https://www.bracu.ac.bd/sites/all/themes/sloth/images/f-logo.svg',
+              'https://preconnect.app/logo.svg',
               width: 210,
               height: 56,
               colorFilter: ColorFilter.mode(logoColor, BlendMode.srcIn),
