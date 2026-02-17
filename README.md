@@ -5,8 +5,7 @@
 Fast, Calm Academic Companion App.
 An initiative run by [BRAC University](https://bracu.ac.bd) students.
 
-![GitHub Release](https://img.shields.io/github/v/release/sabbirba/preconnect?label=latest%20version&&color=dark-green) ![License](https://img.shields.io/badge/license-GPL3.0-blue)
-[![All Contributors](https://img.shields.io/badge/all_contributors-0-orange.svg?style=flat-square)](#contributors)
+![GitHub Release](https://img.shields.io/github/v/release/sabbirba/preconnect?label=latest%20version&&color=dark-green) ![License](https://img.shields.io/badge/license-GPL3.0-blue) ![GitHub contributors](https://img.shields.io/github/contributors/sabbirba/preconnect?color=red&link=https%3A%2F%2Fgithub.com%2Fsabbirba%2Fpreconnect%2Fblob%2Fmain%2FCONTRIBUTING.md)
 
 </div>
 
