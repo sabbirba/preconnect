@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class RamadanTiming {
   RamadanTiming._();
 
-  static const String _statusUrl = 'https://ramadan.munafio.com/api/check';
+  static const String _statusUrl = 'https://preconnect.app/api/ramadan';
   static const Duration _requestTimeout = Duration(seconds: 2);
   static const Duration _cacheTtl = Duration(hours: 6);
   static const String _prefsIsRamadanKey = 'ramadan_is_ramadan';
@@ -93,7 +93,6 @@ class RamadanTiming {
         _lastCheckAt = DateTime.fromMillisecondsSinceEpoch(epochMs);
       }
     } catch (_) {
-      // To ignore loading errors and start with empty cache.
     } finally {
       _cacheLoaded = true;
     }
@@ -112,7 +111,6 @@ class RamadanTiming {
         lastCheckAt.millisecondsSinceEpoch,
       );
     } catch (_) {
-      // To ignore persistence errors and keep memory cache.
     }
   }
 
@@ -134,12 +132,7 @@ class RamadanTiming {
         return (value: _cachedIsRamadan ?? false, fromNetwork: false);
       }
 
-      final data = payload['data'];
-      if (data is! Map<String, dynamic>) {
-        return (value: _cachedIsRamadan ?? false, fromNetwork: false);
-      }
-
-      final value = data['isRamadan'];
+      final value = payload['isRamadan'];
       if (value is bool) {
         return (value: value, fromNetwork: true);
       }

@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:preconnect/api/bracu_auth_manager.dart';
+import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/profile_service.dart';
+import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/friend_schedule_sections/compare_schedules.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
@@ -51,7 +53,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
   }
 
   Future<List<Course>?> _loadMyCourses() async {
-    final jsonString = await BracuAuthManager().getStudentSchedule();
+    final jsonString = await ScheduleService().getStudentSchedule();
     if (jsonString == null || jsonString.isEmpty) return null;
     final parsed = jsonDecode(jsonString);
     final coursesData = parsed is Map ? parsed['courses'] : parsed;
@@ -74,8 +76,8 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
         );
         return;
       }
-      final myProfile = await BracuAuthManager().getProfile();
-      final myPhotoUrl = _buildPhotoUrl(myProfile?['photoFilePath']);
+      final myProfile = await ProfileService().getProfile();
+      final myPhotoUrl = ApiConfig.photoUrl(myProfile?['photoFilePath']);
       navigator.push(
         MaterialPageRoute(
           builder: (context) => CompareSchedulesPage(
@@ -96,13 +98,6 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
     }
   }
 
-  String? _buildPhotoUrl(String? photoFilePath) {
-    if (photoFilePath == null || photoFilePath.isEmpty) return null;
-    final encoded = base64Url
-        .encode(utf8.encode(photoFilePath))
-        .replaceAll('=', '');
-    return 'https://connect.bracu.ac.bd/cdn/img/thumb/$encoded.jpg';
-  }
 
   void _attemptScrollToHighlight() {
     WidgetsBinding.instance.addPostFrameCallback((_) {

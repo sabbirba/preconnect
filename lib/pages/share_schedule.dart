@@ -5,7 +5,8 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:preconnect/api/bracu_auth_manager.dart';
+import 'package:preconnect/api/profile_service.dart';
+import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/tools/qrpainter.dart';
 import 'package:archive/archive.dart';
@@ -33,8 +34,8 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
   @override
   void initState() {
     super.initState();
-    unawaited(BracuAuthManager().fetchProfile());
-    unawaited(BracuAuthManager().fetchStudentSchedule());
+    unawaited(ProfileService().fetchProfile());
+    unawaited(ScheduleService().fetchStudentSchedule());
     _loadCachedAndRefresh();
     RefreshBus.instance.addListener(_onRefreshSignal);
   }
@@ -103,23 +104,23 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
 
     try {
       if (!forceRefresh) {
-        unawaited(BracuAuthManager().fetchProfile());
+        unawaited(ProfileService().fetchProfile());
       }
-      final cachedProfile = await BracuAuthManager().getProfile();
+      final cachedProfile = await ProfileService().getProfile();
       final profile = forceRefresh
-          ? await BracuAuthManager().fetchProfile()
-          : (cachedProfile ?? await BracuAuthManager().fetchProfile());
+          ? await ProfileService().fetchProfile()
+          : (cachedProfile ?? await ProfileService().fetchProfile());
       final fullName = profile?['fullName'] ?? '';
       final studentId = profile?['studentId'] ?? '';
       final photoFilePath = profile?['photoFilePath'] ?? '';
 
       if (!forceRefresh) {
-        unawaited(BracuAuthManager().fetchStudentSchedule());
+        unawaited(ScheduleService().fetchStudentSchedule());
       }
-      final cachedSchedule = await BracuAuthManager().getStudentSchedule();
+      final cachedSchedule = await ScheduleService().getStudentSchedule();
       final jsonString = forceRefresh
-          ? await BracuAuthManager().fetchStudentSchedule()
-          : (cachedSchedule ?? await BracuAuthManager().fetchStudentSchedule());
+          ? await ScheduleService().fetchStudentSchedule()
+          : (cachedSchedule ?? await ScheduleService().fetchStudentSchedule());
       if (jsonString == null || jsonString.trim().isEmpty) {
         if (_base64Data == null) {
           setState(() {

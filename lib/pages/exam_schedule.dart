@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:preconnect/api/bracu_auth_manager.dart';
+import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -33,7 +33,7 @@ class _ExamScheduleState extends State<ExamSchedule> {
   @override
   void initState() {
     super.initState();
-    unawaited(BracuAuthManager().fetchStudentSchedule());
+    unawaited(ScheduleService().fetchStudentSchedule());
     _future = _fetchExamSections();
     ExamSchedule.jumpSignal.addListener(_onJumpRequested);
     RefreshBus.instance.addListener(_onRefreshSignal);
@@ -85,11 +85,11 @@ class _ExamScheduleState extends State<ExamSchedule> {
 
   Future<List<Section>> _fetchExamSections({bool forceRefresh = false}) async {
     if (forceRefresh) {
-      await BracuAuthManager().fetchStudentSchedule();
+      await ScheduleService().fetchStudentSchedule();
     } else {
-      unawaited(BracuAuthManager().fetchStudentSchedule());
+      unawaited(ScheduleService().fetchStudentSchedule());
     }
-    final jsonString = await BracuAuthManager().getStudentSchedule();
+    final jsonString = await ScheduleService().getStudentSchedule();
     if (jsonString == null || jsonString.trim().isEmpty) {
       return const [];
     }

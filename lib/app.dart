@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:preconnect/api/bracu_auth_manager.dart';
+import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/onboarding.dart';
@@ -86,7 +86,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _validateSessionInBackground() async {
-    final signedIn = await BracuAuthManager().ensureSignedIn().timeout(
+    final signedIn = await AuthService().ensureSignedIn().timeout(
       const Duration(seconds: 10),
       onTimeout: () => true,
     );

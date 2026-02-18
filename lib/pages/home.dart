@@ -3,7 +3,10 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:preconnect/api/bracu_auth_manager.dart';
+import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/auth_service.dart';
+import 'package:preconnect/api/profile_service.dart';
+import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/class_schedule.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
@@ -173,7 +176,7 @@ class _HomePageState extends State<HomePage> {
 
     if (shouldLogout == true) {
       if (!context.mounted) return;
-      await BracuAuthManager().logout();
+      await AuthService().logout();
       RefreshBus.instance.notify(reason: 'auth');
       if (!context.mounted) return;
       Navigator.pushReplacementNamed(context, '/onboarding');
@@ -255,11 +258,11 @@ class _HomeDashboardState extends State<_HomeDashboard> {
 
   Future<_HomeData> _loadData({bool forceRefresh = false}) async {
     final profileFuture = forceRefresh
-        ? BracuAuthManager().fetchProfile()
-        : BracuAuthManager().getProfile();
+        ? ProfileService().fetchProfile()
+        : ProfileService().getProfile();
     final scheduleFuture = forceRefresh
-        ? BracuAuthManager().fetchStudentSchedule()
-        : BracuAuthManager().getStudentSchedule();
+        ? ScheduleService().fetchStudentSchedule()
+        : ScheduleService().getStudentSchedule();
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
 
     final results = await Future.wait<dynamic>([
@@ -273,11 +276,11 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     final isRamadan = results[2] as bool;
 
     if (!forceRefresh) {
-      profile ??= await BracuAuthManager().fetchProfile();
-      scheduleJson ??= await BracuAuthManager().fetchStudentSchedule();
+      profile ??= await ProfileService().fetchProfile();
+      scheduleJson ??= await ScheduleService().fetchStudentSchedule();
     }
 
-    final photoUrl = _buildPhotoUrl(profile?['photoFilePath']);
+    final photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
     final List<_ScheduleEntry> entries = [];
     final List<section.Section> sections = [];
     if (scheduleJson != null && scheduleJson.trim().isNotEmpty) {
@@ -404,13 +407,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     return null;
   }
 
-  String? _buildPhotoUrl(String? photoFilePath) {
-    if (photoFilePath == null || photoFilePath.isEmpty) return null;
-    final encoded = base64Url
-        .encode(utf8.encode(photoFilePath))
-        .replaceAll('=', '');
-    return 'https://connect.bracu.ac.bd/cdn/img/thumb/$encoded.jpg';
-  }
 
   @override
   Widget build(BuildContext context) {

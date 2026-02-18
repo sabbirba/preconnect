@@ -6,7 +6,7 @@ import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
 import 'package:flutter_alarmkit/flutter_alarmkit.dart';
 import 'package:flutter/services.dart' show PlatformException;
-import 'package:preconnect/api/bracu_auth_manager.dart';
+import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
@@ -28,7 +28,7 @@ class _AlarmPageState extends State<AlarmPage> {
   @override
   void initState() {
     super.initState();
-    unawaited(BracuAuthManager().fetchStudentSchedule());
+    unawaited(ScheduleService().fetchStudentSchedule());
     _futureData = _fetchSchedule();
     RefreshBus.instance.addListener(_onRefreshSignal);
   }
@@ -50,11 +50,11 @@ class _AlarmPageState extends State<AlarmPage> {
   Future<_AlarmData> _fetchSchedule({bool forceRefresh = false}) async {
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
     if (forceRefresh) {
-      await BracuAuthManager().fetchStudentSchedule();
+      await ScheduleService().fetchStudentSchedule();
     } else {
-      unawaited(BracuAuthManager().fetchStudentSchedule());
+      unawaited(ScheduleService().fetchStudentSchedule());
     }
-    final jsonString = await BracuAuthManager().getStudentSchedule();
+    final jsonString = await ScheduleService().getStudentSchedule();
     if (jsonString == null || jsonString.trim().isEmpty) {
       final isRamadan = await ramadanFuture;
       return _AlarmData(sections: const [], isRamadan: isRamadan);

@@ -6,7 +6,12 @@ import 'package:flutter/foundation.dart'
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:http/http.dart' as http;
-import 'package:preconnect/api/bracu_auth_manager.dart';
+import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/profile_service.dart';
+import 'package:preconnect/api/schedule_service.dart';
+import 'package:preconnect/api/payment_service.dart';
+import 'package:preconnect/api/attendance_service.dart';
+import 'package:preconnect/api/advising_service.dart';
 import 'home.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/user_agent.dart';
@@ -16,15 +21,6 @@ import 'package:preconnect/tools/refresh_bus.dart';
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
-  static const String clientId = "slm";
-  static const String redirectUri = "https://connect.bracu.ac.bd/";
-  static const String authUrl =
-      "https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect/auth"
-      "?client_id=slm"
-      "&redirect_uri=https%3A%2F%2Fconnect.bracu.ac.bd%2F"
-      "&response_type=code"
-      "&response_mode=query"
-      "&scope=openid offline_access";
   static WebViewController? _preloadedWebViewController;
   static bool _isPreloadingWebView = false;
 
@@ -36,7 +32,7 @@ class LoginPage extends StatefulWidget {
       final controller = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setUserAgent(kPreconnectUserAgent)
-        ..loadRequest(Uri.parse(authUrl));
+        ..loadRequest(Uri.parse(ApiConfig.authUrl));
       await _configureCookies(controller);
       _preloadedWebViewController = controller;
     } catch (_) {
@@ -86,7 +82,7 @@ class _LoginPageState extends State<LoginPage> {
     final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setUserAgent(kPreconnectUserAgent)
-      ..loadRequest(Uri.parse(LoginPage.authUrl));
+      ..loadRequest(Uri.parse(ApiConfig.authUrl));
     LoginPage._configureCookies(controller);
     return controller;
   }
@@ -130,17 +126,14 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _exchangeCodeForToken(String code) async {
-    const String tokenUrl =
-        "https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect/token";
-
     final response = await http.post(
-      Uri.parse(tokenUrl),
+      Uri.parse(ApiConfig.tokenEndpoint),
       headers: {"Content-Type": "application/x-www-form-urlencoded"},
       body: {
         "grant_type": "authorization_code",
-        "client_id": LoginPage.clientId,
+        "client_id": ApiConfig.clientId,
         "code": code,
-        "redirect_uri": LoginPage.redirectUri,
+        "redirect_uri": ApiConfig.redirectUri,
       },
     );
 
@@ -152,13 +145,13 @@ class _LoginPageState extends State<LoginPage> {
       await _secureStorage.write(key: 'access_token', value: accessToken);
       await _secureStorage.write(key: 'refresh_token', value: refreshToken);
 
-      unawaited(BracuAuthManager().getProfile());
-      unawaited(BracuAuthManager().getStudentSchedule());
-      unawaited(BracuAuthManager().fetchProfile());
-      unawaited(BracuAuthManager().fetchStudentSchedule());
-      unawaited(BracuAuthManager().fetchPaymentInfo());
-      unawaited(BracuAuthManager().fetchAttendanceInfo());
-      unawaited(BracuAuthManager().fetchAdvisingInfo());
+      unawaited(ProfileService().getProfile());
+      unawaited(ScheduleService().getStudentSchedule());
+      unawaited(ProfileService().fetchProfile());
+      unawaited(ScheduleService().fetchStudentSchedule());
+      unawaited(PaymentService().fetchPaymentInfo());
+      unawaited(AttendanceService().fetchAttendanceInfo());
+      unawaited(AdvisingService().fetchAdvisingInfo());
 
       RefreshBus.instance.notify(reason: 'auth');
       if (mounted) {

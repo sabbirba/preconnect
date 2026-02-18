@@ -2,7 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:preconnect/api/bracu_auth_manager.dart';
+import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/advising_service.dart';
+import 'package:preconnect/api/attendance_service.dart';
+import 'package:preconnect/api/payment_service.dart';
+import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/model/payment_info.dart';
 import 'package:preconnect/model/attendance_info.dart';
 import 'package:preconnect/pages/card_section.dart';
@@ -40,10 +44,10 @@ class _StudentProfileState extends State<StudentProfile>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
-    unawaited(BracuAuthManager().fetchProfile());
-    unawaited(BracuAuthManager().fetchPaymentInfo());
-    unawaited(BracuAuthManager().fetchAttendanceInfo());
-    unawaited(BracuAuthManager().fetchAdvisingInfo());
+    unawaited(ProfileService().fetchProfile());
+    unawaited(PaymentService().fetchPaymentInfo());
+    unawaited(AttendanceService().fetchAttendanceInfo());
+    unawaited(AdvisingService().fetchAdvisingInfo());
     _loadProfile();
     RefreshBus.instance.addListener(_onRefreshSignal);
   }
@@ -100,13 +104,13 @@ class _StudentProfileState extends State<StudentProfile>
 
   Future<void> _loadProfile() async {
     try {
-      final profile = await BracuAuthManager().getProfile();
-      final photoUrl = _buildPhotoUrl(profile?['photoFilePath']);
+      final profile = await ProfileService().getProfile();
+      final photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
       final cachedImage = await ProfileImageCache.instance.getProfileImage(
         photoUrl,
       );
       final List<dynamic> paymentsJson = _decodeList(
-        await BracuAuthManager().getPaymentInfo(),
+        await PaymentService().getPaymentInfo(),
       );
       final List<PaymentInfo> payments =
           paymentsJson
@@ -122,7 +126,7 @@ class _StudentProfileState extends State<StudentProfile>
             ..sort(_comparePayments);
 
       final List<dynamic> attendanceJson = _decodeList(
-        await BracuAuthManager().getAttendanceInfo(),
+        await AttendanceService().getAttendanceInfo(),
       );
       final attendances = attendanceJson
           .map<AttendanceInfo?>((e) {
@@ -134,7 +138,7 @@ class _StudentProfileState extends State<StudentProfile>
           })
           .whereType<AttendanceInfo>()
           .toList();
-      final advising = await BracuAuthManager().getAdvisingInfo();
+      final advising = await AdvisingService().getAdvisingInfo();
 
       if (!mounted) return;
       setState(() {
@@ -159,14 +163,14 @@ class _StudentProfileState extends State<StudentProfile>
       _refreshController.repeat();
     }
     try {
-      final profile = await BracuAuthManager().fetchProfile();
-      final photoUrl = _buildPhotoUrl(profile?['photoFilePath']);
+      final profile = await ProfileService().fetchProfile();
+      final photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
       ProfileImageCache.instance.invalidate();
       final cachedImage = await ProfileImageCache.instance.getProfileImage(
         photoUrl,
       );
       final List<dynamic> paymentsJson = _decodeList(
-        await BracuAuthManager().fetchPaymentInfo(),
+        await PaymentService().fetchPaymentInfo(),
       );
       final List<PaymentInfo> payments =
           paymentsJson
@@ -182,7 +186,7 @@ class _StudentProfileState extends State<StudentProfile>
             ..sort(_comparePayments);
 
       final List<dynamic> attendanceJson = _decodeList(
-        await BracuAuthManager().fetchAttendanceInfo(),
+        await AttendanceService().fetchAttendanceInfo(),
       );
       final attendances = attendanceJson
           .map<AttendanceInfo?>((e) {
@@ -194,7 +198,7 @@ class _StudentProfileState extends State<StudentProfile>
           })
           .whereType<AttendanceInfo>()
           .toList();
-      final advising = await BracuAuthManager().fetchAdvisingInfo();
+      final advising = await AdvisingService().fetchAdvisingInfo();
 
       if (!mounted) return;
       setState(() {
@@ -217,14 +221,6 @@ class _StudentProfileState extends State<StudentProfile>
     if (notify) {
       RefreshBus.instance.notify(reason: 'student_profile');
     }
-  }
-
-  String? _buildPhotoUrl(String? photoFilePath) {
-    if (photoFilePath == null || photoFilePath.isEmpty) return null;
-    final encoded = base64Url
-        .encode(utf8.encode(photoFilePath))
-        .replaceAll('=', '');
-    return 'https://connect.bracu.ac.bd/cdn/img/thumb/$encoded.jpg';
   }
 
   @override
