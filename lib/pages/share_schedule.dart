@@ -15,7 +15,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
-import 'package:preconnect/tools/refresh_guard.dart';
 
 class ShareSchedulePage extends StatefulWidget {
   const ShareSchedulePage({super.key});

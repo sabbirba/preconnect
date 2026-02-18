@@ -14,9 +14,13 @@ import 'package:preconnect/api/attendance_service.dart';
 import 'package:preconnect/api/advising_service.dart';
 import 'home.dart';
 import 'package:preconnect/tools/token_storage.dart';
-import 'package:preconnect/tools/user_agent.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+
+const String _preconnectUserAgent =
+    'Mozilla/5.0 (Linux; Android 14; Mobile) '
+    'AppleWebKit/537.36 (KHTML, like Gecko) '
+    'Chrome/120.0.0.0 Mobile Safari/537.36 PreConnect';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -31,7 +35,7 @@ class LoginPage extends StatefulWidget {
     try {
       final controller = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setUserAgent(kPreconnectUserAgent)
+        ..setUserAgent(_preconnectUserAgent)
         ..loadRequest(Uri.parse(ApiConfig.authUrl));
       await _configureCookies(controller);
       _preloadedWebViewController = controller;
@@ -81,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
   WebViewController _buildMobileWebView() {
     final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setUserAgent(kPreconnectUserAgent)
+      ..setUserAgent(_preconnectUserAgent)
       ..loadRequest(Uri.parse(ApiConfig.authUrl));
     LoginPage._configureCookies(controller);
     return controller;

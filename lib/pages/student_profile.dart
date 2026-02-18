@@ -17,7 +17,6 @@ import 'package:preconnect/pages/student_profile_sections/payment_list.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/profile_image_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
-import 'package:preconnect/tools/refresh_guard.dart';
 
 class StudentProfile extends StatefulWidget {
   const StudentProfile({super.key});

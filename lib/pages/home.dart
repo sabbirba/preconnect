@@ -10,22 +10,19 @@ import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/class_schedule.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
-import 'package:preconnect/pages/alarms.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/share_schedule.dart';
-import 'package:preconnect/pages/scan_schedule.dart';
-import 'package:preconnect/pages/friend_schedule.dart';
-import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/home_sections/exam_countdown.dart';
 import 'package:preconnect/pages/home_sections/student_overview.dart';
 import 'package:preconnect/pages/shared_widgets/section_badge.dart';
+import 'package:preconnect/deferred/extended_features.dart'
+    deferred as extended_features;
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
-import 'package:preconnect/tools/refresh_guard.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
@@ -39,6 +36,9 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   HomeTab selectedTab = HomeTab.dashboard;
+  Future<void>? _extendedFeaturesLoad;
+  bool _extendedFeaturesReady = false;
+  int _tabSwitchToken = 0;
 
   late final Map<HomeTab, WidgetBuilder> pages = {
     HomeTab.dashboard: (_) => _HomeDashboard(
@@ -48,16 +48,46 @@ class _HomePageState extends State<HomePage> {
     HomeTab.profile: (_) => const StudentProfile(),
     HomeTab.studentSchedule: (_) => const ClassSchedule(),
     HomeTab.examSchedule: (_) => const ExamSchedule(),
-    HomeTab.alarms: (_) => const AlarmPage(),
+    HomeTab.alarms: (_) => extended_features.buildAlarmPage(),
     HomeTab.shareSchedule: (_) => const ShareSchedulePage(),
-    HomeTab.scanSchedule: (_) => const ScanSchedulePage(),
-    HomeTab.friendSchedule: (_) => FriendSchedulePage(onNavigate: _setTab),
-    HomeTab.devs: (_) => const DevsPage(),
+    HomeTab.scanSchedule: (_) => extended_features.buildScanSchedulePage(),
+    HomeTab.friendSchedule: (_) =>
+        extended_features.buildFriendSchedulePage(_setTab),
+    HomeTab.devs: (_) => extended_features.buildDevsPage(),
   };
   late final List<HomeTab> _tabOrder = HomeTab.values;
   final Set<HomeTab> _builtTabs = {HomeTab.dashboard};
 
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadExtendedFeatures());
+  }
+
   void _setTab(HomeTab tab) {
+    final requestToken = ++_tabSwitchToken;
+
+    if (_isDeferredTab(tab) && !_extendedFeaturesReady) {
+      unawaited(_switchWhenLoaded(requestToken, tab, _loadExtendedFeatures));
+      return;
+    }
+
+    _applyTabSelection(tab);
+  }
+
+  Future<void> _switchWhenLoaded(
+    int requestToken,
+    HomeTab tab,
+    Future<void> Function() loader,
+  ) async {
+    try {
+      await loader();
+      if (!mounted || _tabSwitchToken != requestToken) return;
+      _applyTabSelection(tab);
+    } catch (_) {}
+  }
+
+  void _applyTabSelection(HomeTab tab) {
     final shouldJumpClass = tab == HomeTab.studentSchedule;
     final shouldJumpExam = tab == HomeTab.examSchedule;
     setState(() {
@@ -73,6 +103,18 @@ class _HomePageState extends State<HomePage> {
         }
       });
     }
+  }
+
+  bool _isDeferredTab(HomeTab tab) =>
+      tab == HomeTab.scanSchedule ||
+      tab == HomeTab.friendSchedule ||
+      tab == HomeTab.alarms ||
+      tab == HomeTab.devs;
+
+  Future<void> _loadExtendedFeatures() async {
+    if (_extendedFeaturesReady) return;
+    await (_extendedFeaturesLoad ??= extended_features.loadLibrary());
+    _extendedFeaturesReady = true;
   }
 
   void _handleBack() {
@@ -406,7 +448,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     }
     return null;
   }
-
 
   @override
   Widget build(BuildContext context) {

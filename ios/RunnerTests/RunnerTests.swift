@@ -6,7 +6,6 @@ class RunnerTests: XCTestCase {
 
   func testExample() {
 
-
   }
 
 }

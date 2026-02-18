@@ -14,8 +14,6 @@ allprojects {
 val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
 rootProject.layout.buildDirectory.value(newBuildDir)
 
-
-// Load .env into project properties (org.gradle.project.*) when enabled
 if (providers.gradleProperty("dotenv").orNull == "true") {
     val envFile = rootProject.file(".env")
     if (envFile.exists()) {

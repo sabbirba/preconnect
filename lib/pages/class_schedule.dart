@@ -7,7 +7,6 @@ import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
-import 'package:preconnect/tools/refresh_guard.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 class ClassSchedule extends StatefulWidget {

@@ -4,7 +4,6 @@ set -e
 ENV_FILE="${SRCROOT}/../.env"
 OUT_FILE="${SRCROOT}/Flutter/Env.xcconfig"
 
-# Always write a file so xcconfig include is satisfied.
 echo "// Generated from .env; do not edit." > "$OUT_FILE"
 
 if [ -f "$ENV_FILE" ]; then

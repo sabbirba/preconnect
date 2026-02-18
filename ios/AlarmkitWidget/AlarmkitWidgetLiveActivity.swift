@@ -13,11 +13,9 @@ public struct NeverMetadata: AlarmMetadata, Codable, Hashable {
 struct AlarmkitLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: AlarmAttributes<NeverMetadata>.self) { context in
-            // Lock Screen / Notification Center
             lockScreenView(attributes: context.attributes, state: context.state)
         } dynamicIsland: { context in
             DynamicIsland {
-                // Expanded
                 DynamicIslandExpandedRegion(.leading) {
                     alarmTitle(attributes: context.attributes, state: context.state)
                 }
@@ -38,8 +36,6 @@ struct AlarmkitLiveActivity: Widget {
             .keylineTint(context.attributes.tintColor)
         }
     }
-
-    // MARK: Lock Screen
 
     func lockScreenView(
         attributes: AlarmAttributes<NeverMetadata>,
@@ -66,8 +62,6 @@ struct AlarmkitLiveActivity: Widget {
             AlarmControls(presentation: attributes.presentation, state: state)
         }
     }
-
-    // MARK: Shared Subviews
 
     @ViewBuilder
     func countdownView(
@@ -113,8 +107,6 @@ struct AlarmkitLiveActivity: Widget {
     }
 }
 
-// MARK: - Progress Indicator
-
 @available(iOS 26.0, *)
 struct AlarmProgressView: View {
     let mode: AlarmPresentationState.Mode
@@ -150,8 +142,6 @@ struct AlarmProgressView: View {
     }
 }
 
-// MARK: - Control Buttons
-
 @available(iOS 26.0, *)
 struct AlarmControls: View {
     let presentation: AlarmPresentation
@@ -175,7 +165,6 @@ struct AlarmControls: View {
             default:
                 EmptyView()
             }
-            // Always show the stop button
             ButtonView(config: presentation.alert.stopButton,
                        intent: StopIntent(alarmID: state.alarmID.uuidString),
                        tint: .red)

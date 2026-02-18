@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/model/payment_info.dart';
-import 'package:preconnect/pages/shared_widgets/progress_bar.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
 class PaymentGraph extends StatelessWidget {

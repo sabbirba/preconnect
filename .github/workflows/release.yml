@@ -97,7 +97,7 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/build.gradle*', 'android/**/settings.gradle*', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('androidbuild.gradle*', 'androidsettings.gradle*', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
@@ -214,7 +214,6 @@ jobs:
         run: |
           flutter build macos --release
 
-
       - name: Package Android Release
         if: matrix.platform == 'android' && steps.android_signing.outputs.enabled == 'true'
         run: |
@@ -228,160 +227,7 @@ jobs:
         if: matrix.platform == 'ios'
         run: |
           mkdir -p artifacts
-          if ls build/ios/ipa/*.ipa >/dev/null 2>&1; then
-            IPA_PATH=$(ls build/ios/ipa/*.ipa | head -n1)
-            cp "$IPA_PATH" \
-              "artifacts/PreConnect-ios-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.ipa"
-            exit 0
-          fi
-          if [ ! -d build/ios/iphoneos ]; then
-            echo "No iOS build output directory found"
-            exit 0
-          fi
-          APP_PATH=$(find build/ios/iphoneos -maxdepth 1 -type d -name "*.app" | head -n1)
-          if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
-            echo "No iOS .ipa or .app found"
-            exit 0
-          fi
-          IPA_NAME="PreConnect-ios-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}-unsigned.ipa"
-          rm -rf Payload
-          mkdir -p Payload
-          ditto "$APP_PATH" "Payload/$(basename "$APP_PATH")"
-          (cd Payload && zip -r -y "$GITHUB_WORKSPACE/artifacts/$IPA_NAME" .) || true
-
-      - name: Package macOS Release
-        if: matrix.platform == 'macos'
-        run: |
-          mkdir -p artifacts
-          APP_PATH=$(find build/macos/Build/Products/Release -maxdepth 1 -type d -name "*.app" | head -n1)
-          if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
-            echo "No macOS .app found"
-            exit 0
-          fi
-          DMG_NAME="PreConnect-macos-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.dmg"
-          hdiutil create -volname "PreConnect" -srcfolder "$APP_PATH" -ov -format UDZO "$GITHUB_WORKSPACE/artifacts/$DMG_NAME"
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v6
-        with:
-          name: ${{ matrix.platform }}-artifacts
-          path: artifacts/*
-          if-no-files-found: ignore
-
-  publish-release:
-    name: Publish Release
-    runs-on: ubuntu-latest
-    needs: build-platforms
-    timeout-minutes: 15
-    permissions:
-      contents: write
-      actions: read
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Read App Version
-        id: version
-        shell: bash
-        run: |
-          VERSION_LINE=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
-          VERSION_NAME=${VERSION_LINE%%+*}
-          VERSION_CODE=${VERSION_LINE#*+}
-          if [ "$VERSION_NAME" = "$VERSION_LINE" ]; then
-            VERSION_CODE=0
-          fi
-          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
-
-      - name: Download Artifacts
-        uses: actions/download-artifact@v7
-        with:
-          pattern: "*-artifacts"
-          merge-multiple: true
-          path: artifacts
-
-      - name: Check Artifacts
-        id: assets
-        shell: bash
-        run: |
-          if [ -d artifacts ] && find artifacts -type f -print -quit | grep -q .; then
-            echo "has_assets=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_assets=false" >> $GITHUB_OUTPUT
-            echo "No artifacts were produced."
-            exit 0
-          fi
-
-      - name: Generate Release Notes From Commits
-        id: notes
-        if: steps.assets.outputs.has_assets == 'true'
-        shell: bash
-        run: |
-          LAST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n1 || true)
-          if [ -n "$LAST_TAG" ]; then
-            RANGE="$LAST_TAG..HEAD"
-          else
-            RANGE="HEAD"
-          fi
-
-          NOTES_FILE="release-notes.md"
-          {
-            echo "# PreConnect Release Notes"
-            echo
-            echo "## Version"
-            echo "- Version: ${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}"
-            echo "- Commit: ${{ github.sha }}"
-            if [ -n "$LAST_TAG" ]; then
-              echo "- Since: $LAST_TAG"
-            else
-              echo "- Since: initial release history"
-            fi
-            echo
-            echo "## Changes"
-            if [ "$RANGE" = "HEAD" ]; then
-              git log --max-count=100 --pretty=format:'- %s (%h)'
-            else
-              git log "$RANGE" --pretty=format:'- %s (%h)'
-            fi
-            echo
-          } > "$NOTES_FILE"
-
-          echo "file=$NOTES_FILE" >> "$GITHUB_OUTPUT"
-
-      - name: Create GitHub Release
-        if: steps.assets.outputs.has_assets == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}-r${{ github.run_number }}
-          target_commitish: ${{ github.sha }}
-          name: PreConnect v${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}
-          body_path: ${{ steps.notes.outputs.file }}
-          files: |
-            artifacts/**
-
-  publish-google-play:
-    name: Publish Google Play (Android)
-    runs-on: ubuntu-latest
-    needs: build-platforms
-    timeout-minutes: 20
-    permissions:
-      contents: read
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Read Android package and version
-        id: android_meta
-        shell: bash
-        run: |
-          PACKAGE_NAME=$(grep -E 'applicationId\s*=' android/app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
+          if ls build/ios/ipa\1/')
           VERSION_LINE=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
           VERSION_NAME=${VERSION_LINE%%+*}
           VERSION_CODE=${VERSION_LINE#*+}
@@ -400,7 +246,6 @@ jobs:
           BEFORE_SHA="${{ github.event.before }}"
           AFTER_SHA="${{ github.sha }}"
 
-          # For push events, detect whether pubspec.yaml version line changed anywhere in the pushed range.
           if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ] && git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
             if git diff --name-only "$BEFORE_SHA" "$AFTER_SHA" | grep -qx 'pubspec.yaml'; then
               OLD_VERSION=$(git show "$BEFORE_SHA:pubspec.yaml" 2>/dev/null | grep '^version:' | head -n1 | awk '{print $2}' || true)
@@ -416,7 +261,6 @@ jobs:
             exit 0
           fi
 
-          # Fallback for manual runs / first commit: compare with previous commit when available.
           PREVIOUS_VERSION=$(git show HEAD^:pubspec.yaml 2>/dev/null | grep '^version:' | head -n1 | awk '{print $2}' || true)
           if [ -z "$PREVIOUS_VERSION" ] || [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -487,7 +331,6 @@ jobs:
 
           NOTES="Automated publishing for version ${{ steps.android_meta.outputs.version_name }}+${{ steps.android_meta.outputs.version_code }}."
 
-          # Google Play "What's new" has short per-locale limits.
           NOTES=$(printf '%s\n' "$NOTES" | awk -v max=480 '
             BEGIN { len = 0 }
             {

@@ -2,7 +2,7 @@ name: preconnect
 description: "Your personalised student portal for BRAC University"
 publish_to: 'none'
 
-version: 1.4.2+202602439
+version: 1.4.3+202602440
 
 environment:
   sdk: ^3.8.1
@@ -38,7 +38,6 @@ dependencies:
   package_info_plus: ^9.0.0
   
 
-
 dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_native_splash: ^2.4.7
@@ -57,7 +56,10 @@ flutter_native_splash:
     image: "web/icons/Icon-512.png"
     image_dark: "web/icons/Icon-512.png"
 
-
 flutter:
 
   uses-material-design: true
+  deferred-components:
+    - name: extended_features
+      libraries:
+        - package:preconnect/deferred/extended_features.dart

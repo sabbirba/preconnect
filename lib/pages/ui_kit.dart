@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 String formatDate(String? input) {
@@ -45,6 +46,14 @@ void copyToClipboard(BuildContext context, String text) {
   if (value.isEmpty) return;
   Clipboard.setData(ClipboardData(text: value));
   showAppSnackBar(context, 'Copied to clipboard');
+}
+
+Future<bool> ensureOnline(BuildContext context, {bool notify = true}) async {
+  final online = await ApiClient().hasConnection();
+  if (!online && notify && context.mounted) {
+    showAppSnackBar(context, 'Offline. Showing cached data.');
+  }
+  return online;
 }
 
 DateTime? _lastSnackAt;
@@ -206,6 +215,34 @@ class BracuPalette {
 
   static Color textSecondary(BuildContext context) {
     return _isDark(context) ? Colors.white70 : Colors.black54;
+  }
+}
+
+class SimpleProgressBar extends StatelessWidget {
+  const SimpleProgressBar({
+    super.key,
+    required this.value,
+    required this.color,
+    this.height = 8,
+    this.backgroundAlpha = 0.12,
+  });
+
+  final double value;
+  final Color color;
+  final double height;
+  final double backgroundAlpha;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: LinearProgressIndicator(
+        value: value,
+        minHeight: height,
+        backgroundColor: color.withValues(alpha: backgroundAlpha),
+        valueColor: AlwaysStoppedAnimation<Color>(color),
+      ),
+    );
   }
 }
 

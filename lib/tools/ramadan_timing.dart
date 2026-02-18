@@ -19,7 +19,6 @@ class RamadanTiming {
   static Future<void>? _cacheLoadInflight;
   static Future<bool>? _inflight;
 
-  // Based on BRACU Ramadan class timing announcement (2026).
   static const Map<String, (int start, int end)> _ramadanSlots = {
     '480-560': (480, 545),
     '570-650': (555, 620),

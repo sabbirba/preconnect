@@ -2,8 +2,11 @@ package com.sabbirba.preconnect
 
 import com.android.installreferrer.api.InstallReferrerClient
 import com.android.installreferrer.api.InstallReferrerStateListener
+import com.google.android.gms.common.moduleinstall.ModuleInstall
+import com.google.android.gms.common.moduleinstall.ModuleInstallRequest
 import com.google.android.play.core.integrity.IntegrityManagerFactory
 import com.google.android.play.core.integrity.StandardIntegrityManager
+import com.google.mlkit.vision.barcode.BarcodeScanning
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -14,8 +17,20 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        warmUpBarcodeModel()
         configureIntegrityChannel(flutterEngine)
         configureInstallReferrerChannel(flutterEngine)
+    }
+
+    private fun warmUpBarcodeModel() {
+        try {
+            val moduleInstallClient = ModuleInstall.getClient(applicationContext)
+            val request = ModuleInstallRequest.newBuilder()
+                .addApi(BarcodeScanning.getClient())
+                .build()
+            moduleInstallClient.installModules(request)
+        } catch (_: Exception) {
+        }
     }
 
     private fun configureIntegrityChannel(flutterEngine: FlutterEngine) {

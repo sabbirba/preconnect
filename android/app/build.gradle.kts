@@ -9,7 +9,6 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-
 fun envOrProp(name: String): String? =
     (findProperty(name) as String?) ?: System.getenv(name)
 
@@ -35,6 +34,12 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
+    packaging {
+        jniLibs {
+            excludes += setOf("**/x86_64/*.so", "lib/x86_64/*.so")
+        }
+    }
+
     kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
@@ -45,6 +50,9 @@ android {
 
         applicationId = "com.sabbirba.preconnect"
 
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+        }
 
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
@@ -52,6 +60,8 @@ android {
         versionName = flutter.versionName
 
     }
+
+    dynamicFeatures += setOf(":extended_features")
 
     signingConfigs {
         create("release") {
@@ -91,6 +101,8 @@ dependencies {
     implementation("com.google.android.play:feature-delivery-ktx:2.1.0")
     implementation("com.google.android.play:app-update:2.1.0")
     implementation("com.google.android.play:app-update-ktx:2.1.0")
+    implementation("com.google.android.gms:play-services-base:18.7.2")
+    implementation("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.1")
     implementation("com.google.android.play:integrity:1.4.0")
     implementation("com.android.installreferrer:installreferrer:2.2")
     implementation("com.google.android.play:core-common:2.0.4")
