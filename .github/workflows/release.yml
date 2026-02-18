@@ -144,7 +144,18 @@ jobs:
         id: android_meta
         shell: bash
         run: |
-          PACKAGE_NAME=$(grep '^applicationId ' android/app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
+          set -euo pipefail
+          PACKAGE_NAME=""
+          if [ -f android/app/build.gradle.kts ]; then
+            PACKAGE_NAME=$(grep -E '^[[:space:]]*applicationId[[:space:]]*=' android/app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/' || true)
+          fi
+          if [ -z "$PACKAGE_NAME" ] && [ -f android/app/build.gradle ]; then
+            PACKAGE_NAME=$(grep -E '^[[:space:]]*applicationId[[:space:]]+' android/app/build.gradle | head -n1 | sed -E 's/.*"([^"]+)".*/\1/' || true)
+          fi
+          if [ -z "$PACKAGE_NAME" ]; then
+            echo "Failed to detect Android package name from Gradle files."
+            exit 1
+          fi
           VERSION_LINE=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
           VERSION_NAME=${VERSION_LINE%%+*}
           VERSION_CODE=${VERSION_LINE#*+}
