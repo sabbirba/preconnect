@@ -65,9 +65,3 @@ struct AlarmkitWidget: Widget {
         .description("This is an example widget.")
     }
 }
-
-    AlarmkitWidget()
-} timeline: {
-    SimpleEntry(date: .now, emoji: "😀")
-    SimpleEntry(date: .now, emoji: "🤩")
-}

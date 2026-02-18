@@ -97,7 +97,7 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('androidbuild.gradle*', 'androidsettings.gradle*', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/build.gradle*', 'android/settings.gradle*', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
@@ -138,6 +138,22 @@ jobs:
           fi
           echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+
+      - name: Read Android metadata
+        if: matrix.platform == 'android'
+        id: android_meta
+        shell: bash
+        run: |
+          PACKAGE_NAME=$(grep '^applicationId ' android/app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
+          VERSION_LINE=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
+          VERSION_NAME=${VERSION_LINE%%+*}
+          VERSION_CODE=${VERSION_LINE#*+}
+          if [ "$VERSION_NAME" = "$VERSION_LINE" ]; then
+            VERSION_CODE=0
+          fi
+          echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
       - name: Check Android Signing Secrets
         if: matrix.platform == 'android'
@@ -227,18 +243,23 @@ jobs:
         if: matrix.platform == 'ios'
         run: |
           mkdir -p artifacts
-          if ls build/ios/ipa\1/')
-          VERSION_LINE=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
-          VERSION_NAME=${VERSION_LINE%%+*}
-          VERSION_CODE=${VERSION_LINE#*+}
-          if [ "$VERSION_NAME" = "$VERSION_LINE" ]; then
-            VERSION_CODE=0
+          if ls build/ios/ipa/*.ipa >/dev/null 2>&1; then
+            cp build/ios/ipa/*.ipa artifacts/
           fi
-          echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
-          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
-          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          if [ -d build/ios/archive ]; then
+            cp -R build/ios/archive/*.xcarchive artifacts/ || true
+          fi
+
+      - name: Upload Android artifacts
+        if: matrix.platform == 'android' && steps.android_signing.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-artifacts
+          path: artifacts
+          if-no-files-found: error
 
       - name: Check if app version changed
+        if: matrix.platform == 'android'
         id: version_changed
         shell: bash
         run: |
@@ -270,23 +291,15 @@ jobs:
             echo "Version unchanged ('$CURRENT_VERSION'); skipping Google Play production publish."
           fi
 
-      - name: Download Android artifacts
-        if: steps.version_changed.outputs.changed == 'true'
-        uses: actions/download-artifact@v7
-        continue-on-error: true
-        with:
-          name: android-artifacts
-          path: artifacts/android
-
       - name: Resolve AAB file
-        if: steps.version_changed.outputs.changed == 'true'
+        if: matrix.platform == 'android' && steps.version_changed.outputs.changed == 'true'
         id: aab
         shell: bash
         run: |
-          AAB_FILE=$(find artifacts/android -type f -name "*.aab" | head -n1 || true)
+          AAB_FILE=$(find artifacts -type f -name "*.aab" | head -n1 || true)
           if [ -z "$AAB_FILE" ]; then
             echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "No .aab file found in downloaded artifacts."
+            echo "No .aab file found in artifacts directory."
             exit 0
           fi
           echo "found=true" >> "$GITHUB_OUTPUT"
@@ -294,7 +307,7 @@ jobs:
           echo "Using AAB: $AAB_FILE"
 
       - name: Check Google Play credentials
-        if: steps.version_changed.outputs.changed == 'true'
+        if: matrix.platform == 'android' && steps.version_changed.outputs.changed == 'true'
         id: play_auth
         shell: bash
         env:
@@ -308,7 +321,7 @@ jobs:
           fi
 
       - name: Validate Google Play publish prerequisites
-        if: steps.version_changed.outputs.changed == 'true'
+        if: matrix.platform == 'android' && steps.version_changed.outputs.changed == 'true'
         shell: bash
         run: |
           if [ "${{ steps.aab.outputs.found }}" != "true" ]; then
@@ -321,7 +334,7 @@ jobs:
           fi
 
       - name: Generate Play release notes from commits
-        if: steps.version_changed.outputs.changed == 'true'
+        if: matrix.platform == 'android' && steps.version_changed.outputs.changed == 'true'
         id: play_notes
         shell: bash
         run: |
@@ -353,7 +366,7 @@ jobs:
           echo "dir=$NOTES_DIR" >> "$GITHUB_OUTPUT"
 
       - name: Upload AAB to Google Play (Production)
-        if: steps.version_changed.outputs.changed == 'true' && steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
+        if: matrix.platform == 'android' && steps.version_changed.outputs.changed == 'true' && steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
         uses: r0adkll/upload-google-play@v1.1.3
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
