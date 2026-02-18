@@ -140,7 +140,6 @@ lib/
 android/             Android configuration (Kotlin)
 ios/                 iOS configuration (Swift)
 macos/               macOS shell
-linux/               Linux shell
 web/                 Web shell
 assets/              Icons & SVGs
 scripts/             Build & CI helpers

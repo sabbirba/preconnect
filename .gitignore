@@ -83,11 +83,5 @@ chruby-0.3.9
 **/macos/**/Flutter/ephemeral/
 **/macos/**/Pods/
 
-# Windows
-**/windows/flutter/ephemeral/
-
-# Linux
-**/linux/flutter/ephemeral/
-
 # Crashlytics
 crashlytics-build.properties

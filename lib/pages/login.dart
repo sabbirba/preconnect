@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart'
-    show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:http/http.dart' as http;
@@ -25,7 +24,7 @@ class LoginPage extends StatefulWidget {
   static bool _isPreloadingWebView = false;
 
   static Future<void> preloadNextPage() async {
-    if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) return;
+    if (kIsWeb) return;
     if (_preloadedWebViewController != null || _isPreloadingWebView) return;
     _isPreloadingWebView = true;
     try {
@@ -72,7 +71,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) return;
+    if (kIsWeb) return;
     _webViewController =
         LoginPage.takePreloadedWebView() ?? _buildMobileWebView();
     _attachNavigationDelegate(_webViewController!);
@@ -174,7 +173,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) {
+    if (kIsWeb) {
       return Scaffold(
         body: const Center(
           child: Padding(
