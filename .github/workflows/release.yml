@@ -91,13 +91,12 @@ jobs:
             ${{ runner.os }}-cocoapods-
 
       - name: Cache Gradle
+        if: matrix.platform == 'android'
         uses: actions/cache@v5.0.3
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-            C:\Users\runneradmin\.gradle\caches
-            C:\Users\runneradmin\.gradle\wrapper
           key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/build.gradle*', 'android/**/settings.gradle*', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
