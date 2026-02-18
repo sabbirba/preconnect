@@ -6,6 +6,9 @@ import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/onboarding.dart';
+import 'package:preconnect/tools/in_app_review_prompt.dart';
+import 'package:preconnect/tools/play_install_referrer.dart';
+import 'package:preconnect/tools/play_integrity.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
 class AppBootstrapState {
@@ -58,7 +61,10 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     WidgetsBinding.instance.addObserver(_lifecycleObserver);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      PlayIntegrity.prepare().catchError((_) {});
+      PlayInstallReferrer.prefetch().catchError((_) {});
       _maybeCheckForUpdates();
+      InAppReviewPrompt.maybePrompt();
       if (_initialLoggedIn) {
         _validateSessionInBackground();
       }

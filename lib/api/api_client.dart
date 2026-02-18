@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_exceptions.dart';
 import 'package:preconnect/api/auth_service.dart';
+import 'package:preconnect/tools/play_install_referrer.dart';
+import 'package:preconnect/tools/play_integrity.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
 class ApiClient {
@@ -29,7 +31,7 @@ class ApiClient {
 
     final response = await http.get(
       Uri.parse(url),
-      headers: _authHeaders(token),
+      headers: await _authHeaders(token, method: 'GET', url: url),
     );
 
     if (response.statusCode == 200) return response;
@@ -48,7 +50,7 @@ class ApiClient {
 
       final retryResponse = await http.get(
         Uri.parse(url),
-        headers: _authHeaders(newToken),
+        headers: await _authHeaders(newToken, method: 'GET', url: url),
       );
 
       if (retryResponse.statusCode == 200) return retryResponse;
@@ -85,8 +87,38 @@ class ApiClient {
     }
   }
 
-  Map<String, String> _authHeaders(String token) => {
-        'Authorization': 'Bearer $token',
-        ...ApiConfig.apiHeaders,
-      };
+  Future<Map<String, String>> _authHeaders(
+    String token, {
+    required String method,
+    required String url,
+    String body = '',
+  }) async {
+    final headers = <String, String>{
+      'Authorization': 'Bearer $token',
+      ...ApiConfig.apiHeaders,
+    };
+
+    try {
+      final integrityToken = await PlayIntegrity.tokenForRequest(
+        method: method,
+        url: url,
+        body: body,
+      );
+      if (integrityToken != null && integrityToken.isNotEmpty) {
+        headers['X-Play-Integrity-Token'] = integrityToken;
+        headers['X-Play-Integrity-Request-Hash'] = PlayIntegrity.requestHash(
+          method: method,
+          url: url,
+          body: body,
+        );
+      }
+    } catch (_) {}
+
+    try {
+      final installReferrerHeaders = await PlayInstallReferrer.headers();
+      headers.addAll(installReferrerHeaders);
+    } catch (_) {}
+
+    return headers;
+  }
 }

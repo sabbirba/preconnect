@@ -2,6 +2,8 @@ import 'dart:convert';
 
 class ApiConfig {
   ApiConfig._();
+  static const String playIntegrityCloudProjectNumberEnv =
+      String.fromEnvironment('PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER');
 
   static const String ssoBase =
       'https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect';
@@ -34,6 +36,12 @@ class ApiConfig {
     'Accept': 'application/json',
   };
 
+  static int? get playIntegrityCloudProjectNumber {
+    final value = playIntegrityCloudProjectNumberEnv.trim();
+    if (value.isEmpty) return null;
+    return int.tryParse(value);
+  }
+
   static const List<String> paymentTypes = [
     'ADMISSION_FEE',
     'REGISTRATION_FEE',
@@ -61,12 +69,12 @@ class ApiConfig {
   ];
 
   static String advisingUrl(String studentId) {
-    final phasesQuery =
-        advisingPhases.map((p) => 'advisingPhase=$p').join('&');
+    final phasesQuery = advisingPhases.map((p) => 'advisingPhase=$p').join('&');
     return '$connectApiBase${advisingPath(studentId)}?$phasesQuery';
   }
 
-  static const String authUrl = '$authEndpoint'
+  static const String authUrl =
+      '$authEndpoint'
       '?client_id=$clientId'
       '&redirect_uri=https%3A%2F%2Fconnect.bracu.ac.bd%2F'
       '&response_type=code'
@@ -75,8 +83,7 @@ class ApiConfig {
 
   static String? photoUrl(String? filePath) {
     if (filePath == null || filePath.isEmpty) return null;
-    final encoded =
-        base64Url.encode(utf8.encode(filePath)).replaceAll('=', '');
+    final encoded = base64Url.encode(utf8.encode(filePath)).replaceAll('=', '');
     return '$cdnBase/img/thumb/$encoded.jpg';
   }
 }
