@@ -1,3 +1,1 @@
 #include? "Pods/Target Support Files/Pods-AlarmkitWidgetExtension/Pods-AlarmkitWidgetExtension.debug.xcconfig"
-#include "Generated.xcconfig"
-#include "Env.xcconfig"
