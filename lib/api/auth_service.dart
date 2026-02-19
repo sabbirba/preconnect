@@ -8,6 +8,8 @@ import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/profile_image_cache.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
+enum TokenRefreshStatus { refreshed, invalidSession, retryableFailure }
+
 class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
@@ -46,10 +48,12 @@ class AuthService {
     CachedImage.clearMemoryCache();
   }
 
-  Future<bool> refreshToken() async {
+  Future<TokenRefreshStatus> refreshTokenStatus() async {
     try {
       final refreshToken = await _storage.read(key: 'refresh_token');
-      if (refreshToken == null || refreshToken.isEmpty) return false;
+      if (refreshToken == null || refreshToken.isEmpty) {
+        return TokenRefreshStatus.invalidSession;
+      }
 
       final response = await http.post(
         Uri.parse(ApiConfig.tokenEndpoint),
@@ -62,21 +66,32 @@ class AuthService {
       );
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        await _storage.write(
-          key: 'access_token',
-          value: data['access_token'],
-        );
-        await _storage.write(
-          key: 'refresh_token',
-          value: data['refresh_token'],
-        );
-        return true;
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final accessToken = data['access_token'] as String?;
+        final newRefreshToken = data['refresh_token'] as String?;
+        if (accessToken == null ||
+            accessToken.isEmpty ||
+            newRefreshToken == null ||
+            newRefreshToken.isEmpty) {
+          return TokenRefreshStatus.invalidSession;
+        }
+        await _storage.write(key: 'access_token', value: accessToken);
+        await _storage.write(key: 'refresh_token', value: newRefreshToken);
+        return TokenRefreshStatus.refreshed;
       }
-      return false;
-    } catch (e) {
-      return false;
+
+      if (response.statusCode == 400 || response.statusCode == 401) {
+        return TokenRefreshStatus.invalidSession;
+      }
+
+      return TokenRefreshStatus.retryableFailure;
+    } catch (_) {
+      return TokenRefreshStatus.retryableFailure;
     }
+  }
+
+  Future<bool> refreshToken() async {
+    return (await refreshTokenStatus()) == TokenRefreshStatus.refreshed;
   }
 
   Future<bool> isLoggedIn() async {
@@ -93,8 +108,9 @@ class AuthService {
 
     if (!await ApiClient().hasConnection()) return true;
 
-    final refreshed = await refreshToken();
-    if (refreshed) return true;
+    final refreshStatus = await refreshTokenStatus();
+    if (refreshStatus == TokenRefreshStatus.refreshed) return true;
+    if (refreshStatus == TokenRefreshStatus.retryableFailure) return true;
 
     await logout();
     return false;

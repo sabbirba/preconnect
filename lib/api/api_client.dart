@@ -37,10 +37,16 @@ class ApiClient {
     if (response.statusCode == 200) return response;
 
     if (response.statusCode == 401) {
-      final refreshed = await AuthService().refreshToken();
-      if (!refreshed) {
+      final refreshStatus = await AuthService().refreshTokenStatus();
+      if (refreshStatus == TokenRefreshStatus.invalidSession) {
         await AuthService().logout();
         throw const SessionExpiredException();
+      }
+      if (refreshStatus == TokenRefreshStatus.retryableFailure) {
+        throw ApiException(
+          401,
+          'Token refresh failed due to transient connectivity issues',
+        );
       }
 
       final newToken = await getAccessToken();
@@ -54,9 +60,12 @@ class ApiClient {
       );
 
       if (retryResponse.statusCode == 200) return retryResponse;
+      if (retryResponse.statusCode == 401) {
+        await AuthService().logout();
+        throw const SessionExpiredException();
+      }
 
-      await AuthService().logout();
-      throw const SessionExpiredException();
+      throw ApiException(retryResponse.statusCode, retryResponse.body);
     }
 
     throw ApiException(response.statusCode, response.body);
