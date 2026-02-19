@@ -19,7 +19,7 @@ class RamadanTiming {
   static Future<void>? _cacheLoadInflight;
   static Future<bool>? _inflight;
 
-  // Based on BRACU Ramadan class timing announcement (2026).
+  // Based on BRACU Ramadan class and lab timing (2026).
   static const Map<String, (int start, int end)> _ramadanSlots = {
     '480-560': (480, 545),
     '570-650': (555, 620),
@@ -29,6 +29,13 @@ class RamadanTiming {
     '930-1010': (855, 920),
     '1020-1100': (930, 995),
     '1110-1290': (960, 1080),
+    '480-650': (480, 620),
+    '570-740': (555, 695),
+    '660-830': (630, 770),
+    '750-920': (705, 845),
+    '840-1010': (780, 920),
+    '930-1100': (855, 995),
+    '1020-1290': (930, 1080),
   };
 
   static Future<bool> isRamadan({bool forceRefresh = false}) async {
@@ -110,8 +117,7 @@ class RamadanTiming {
         _prefsLastCheckKey,
         lastCheckAt.millisecondsSinceEpoch,
       );
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   static Future<({bool value, bool fromNetwork})> _fetchIsRamadan() async {
