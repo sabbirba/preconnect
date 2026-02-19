@@ -334,11 +334,6 @@ jobs:
             echo "## Version"
             echo "- Version: ${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}"
             echo "- Commit: ${{ github.sha }}"
-            if [ -n "$LAST_TAG" ]; then
-              echo "- Since: $LAST_TAG"
-            else
-              echo "- Since: initial release history"
-            fi
             echo
             echo "## Changes"
             if [ "$RANGE" = "HEAD" ]; then
