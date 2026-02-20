@@ -74,6 +74,7 @@ class _MyAppState extends State<MyApp> {
   late final bool _canOpenOffline = widget.bootstrapState.canOpenOffline;
   Future<bool>? _updateCheckInFlight;
   bool _didAttemptReviewThisSession = false;
+  bool _didOpenStoreForUpdateThisSession = false;
 
   @override
   void initState() {
@@ -164,12 +165,9 @@ class _MyAppState extends State<MyApp> {
         return immediateResult != null;
       }
 
-      if (info.flexibleUpdateAllowed) {
-        final flexibleResult = await _runFlexibleUpdate();
-        return flexibleResult != null;
-      }
-
-      return false;
+      if (_didOpenStoreForUpdateThisSession) return true;
+      _didOpenStoreForUpdateThisSession = true;
+      return await _openStoreForUpdate();
     }();
 
     try {
@@ -181,20 +179,16 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  Future<AppUpdateResult?> _runFlexibleUpdate() async {
-    try {
-      return await InAppUpdate.startFlexibleUpdate();
-    } catch (_) {
-      return null;
-    }
-  }
-
   Future<AppUpdateResult?> _runImmediateUpdate() async {
     try {
       return await InAppUpdate.performImmediateUpdate();
     } catch (_) {
       return null;
     }
+  }
+
+  Future<bool> _openStoreForUpdate() async {
+    return await InAppReviewPrompt.openStoreListing();
   }
 
   Future<void> _completeFlexibleUpdate() async {
