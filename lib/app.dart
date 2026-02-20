@@ -73,6 +73,7 @@ class _MyAppState extends State<MyApp> {
   late final bool _initialLoggedIn = widget.bootstrapState.isLoggedIn;
   late final bool _canOpenOffline = widget.bootstrapState.canOpenOffline;
   Future<bool>? _updateCheckInFlight;
+  bool _didAttemptReviewThisSession = false;
 
   @override
   void initState() {
@@ -104,9 +105,9 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> _runForegroundChecks() async {
     final didTriggerUpdateFlow = await _maybeCheckForUpdates();
-    if (!didTriggerUpdateFlow) {
-      await InAppReviewPrompt.maybePrompt();
-    }
+    if (didTriggerUpdateFlow || _didAttemptReviewThisSession) return;
+    _didAttemptReviewThisSession = true;
+    await InAppReviewPrompt.maybePrompt();
   }
 
   Future<void> _persistTheme(ThemeMode mode) async {
@@ -149,23 +150,23 @@ class _MyAppState extends State<MyApp> {
 
       final shouldResumeImmediate =
           availability == UpdateAvailability.developerTriggeredUpdateInProgress;
-      if (shouldResumeImmediate && info.immediateUpdateAllowed) {
-        await _runImmediateUpdate();
-        return true;
+      if (shouldResumeImmediate) {
+        final resumedResult = await _runImmediateUpdate();
+        return resumedResult != null;
       }
 
       if (availability != UpdateAvailability.updateAvailable) {
         return false;
       }
 
-      if (info.flexibleUpdateAllowed) {
-        await _runFlexibleUpdate();
-        return true;
+      if (info.immediateUpdateAllowed) {
+        final immediateResult = await _runImmediateUpdate();
+        return immediateResult != null;
       }
 
-      if (info.immediateUpdateAllowed) {
-        await _runImmediateUpdate();
-        return true;
+      if (info.flexibleUpdateAllowed) {
+        final flexibleResult = await _runFlexibleUpdate();
+        return flexibleResult != null;
       }
 
       return false;
@@ -180,16 +181,20 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  Future<void> _runFlexibleUpdate() async {
+  Future<AppUpdateResult?> _runFlexibleUpdate() async {
     try {
-      await InAppUpdate.startFlexibleUpdate();
-    } catch (_) {}
+      return await InAppUpdate.startFlexibleUpdate();
+    } catch (_) {
+      return null;
+    }
   }
 
-  Future<void> _runImmediateUpdate() async {
+  Future<AppUpdateResult?> _runImmediateUpdate() async {
     try {
-      await InAppUpdate.performImmediateUpdate();
-    } catch (_) {}
+      return await InAppUpdate.performImmediateUpdate();
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _completeFlexibleUpdate() async {
