@@ -13,10 +13,15 @@ class ApiClient {
   ApiClient._internal();
 
   final TokenStorage _storage = TokenStorage.instance;
+  static const Duration _requestTimeout = Duration(seconds: 12);
 
   Future<bool> hasConnection() async {
-    final result = await Connectivity().checkConnectivity();
-    return !result.contains(ConnectivityResult.none);
+    try {
+      final result = await Connectivity().checkConnectivity();
+      return !result.contains(ConnectivityResult.none);
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<String?> getAccessToken() async {
@@ -29,10 +34,12 @@ class ApiClient {
       throw const UnauthenticatedException();
     }
 
-    final response = await http.get(
-      Uri.parse(url),
-      headers: await _authHeaders(token, method: 'GET', url: url),
-    );
+    final response = await http
+        .get(
+          Uri.parse(url),
+          headers: await _authHeaders(token, method: 'GET', url: url),
+        )
+        .timeout(_requestTimeout);
 
     if (response.statusCode == 200) return response;
 
@@ -54,10 +61,12 @@ class ApiClient {
         throw const SessionExpiredException();
       }
 
-      final retryResponse = await http.get(
-        Uri.parse(url),
-        headers: await _authHeaders(newToken, method: 'GET', url: url),
-      );
+      final retryResponse = await http
+          .get(
+            Uri.parse(url),
+            headers: await _authHeaders(newToken, method: 'GET', url: url),
+          )
+          .timeout(_requestTimeout);
 
       if (retryResponse.statusCode == 200) return retryResponse;
       if (retryResponse.statusCode == 401) {

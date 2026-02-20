@@ -14,7 +14,6 @@ import 'package:preconnect/api/advising_service.dart';
 import 'home.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/user_agent.dart';
-import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
 class LoginPage extends StatefulWidget {
@@ -63,6 +62,7 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final TokenStorage _secureStorage = TokenStorage.instance;
+  static const Duration _loginRequestTimeout = Duration(seconds: 12);
   WebViewController? _webViewController;
   bool _handledRedirect = false;
 
@@ -119,50 +119,56 @@ class _LoginPageState extends State<LoginPage> {
     if (authCode != null) {
       _handledRedirect = true;
       setState(() => _isLoggingIn = true);
-      await _exchangeCodeForToken(authCode);
-      setState(() => _isLoggingIn = false);
+      try {
+        await _exchangeCodeForToken(authCode);
+      } finally {
+        if (mounted) {
+          setState(() => _isLoggingIn = false);
+        }
+      }
     }
   }
 
   Future<void> _exchangeCodeForToken(String code) async {
-    final response = await http.post(
-      Uri.parse(ApiConfig.tokenEndpoint),
-      headers: {"Content-Type": "application/x-www-form-urlencoded"},
-      body: {
-        "grant_type": "authorization_code",
-        "client_id": ApiConfig.clientId,
-        "code": code,
-        "redirect_uri": ApiConfig.redirectUri,
-      },
-    );
+    try {
+      final response = await http
+          .post(
+            Uri.parse(ApiConfig.tokenEndpoint),
+            headers: {"Content-Type": "application/x-www-form-urlencoded"},
+            body: {
+              "grant_type": "authorization_code",
+              "client_id": ApiConfig.clientId,
+              "code": code,
+              "redirect_uri": ApiConfig.redirectUri,
+            },
+          )
+          .timeout(_loginRequestTimeout);
 
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> data = json.decode(response.body);
-      final String accessToken = data["access_token"];
-      final String refreshToken = data["refresh_token"];
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final String accessToken = data["access_token"];
+        final String refreshToken = data["refresh_token"];
 
-      await _secureStorage.write(key: 'access_token', value: accessToken);
-      await _secureStorage.write(key: 'refresh_token', value: refreshToken);
+        await _secureStorage.write(key: 'access_token', value: accessToken);
+        await _secureStorage.write(key: 'refresh_token', value: refreshToken);
 
-      unawaited(ProfileService().getProfile());
-      unawaited(ScheduleService().getStudentSchedule());
-      unawaited(ProfileService().fetchProfile());
-      unawaited(ScheduleService().fetchStudentSchedule());
-      unawaited(PaymentService().fetchPaymentInfo());
-      unawaited(AttendanceService().fetchAttendanceInfo());
-      unawaited(AdvisingService().fetchAdvisingInfo());
+        unawaited(ProfileService().getProfile());
+        unawaited(ScheduleService().getStudentSchedule());
+        unawaited(ProfileService().fetchProfile());
+        unawaited(ScheduleService().fetchStudentSchedule());
+        unawaited(PaymentService().fetchPaymentInfo());
+        unawaited(AttendanceService().fetchAttendanceInfo());
+        unawaited(AdvisingService().fetchAdvisingInfo());
 
-      RefreshBus.instance.notify(reason: 'auth');
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
-        );
+        RefreshBus.instance.notify(reason: 'auth');
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomePage()),
+          );
+        }
       }
-    } else {
-      if (!mounted) return;
-      showAppSnackBar(context, 'Login failed. Please try again.');
-    }
+    } catch (_) {}
   }
 
   Future<void> _handlePullToRefresh() async {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:in_app_update/in_app_update.dart';
@@ -12,10 +13,15 @@ import 'package:preconnect/tools/play_integrity.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
 class AppBootstrapState {
-  const AppBootstrapState({required this.themeMode, required this.isLoggedIn});
+  const AppBootstrapState({
+    required this.themeMode,
+    required this.isLoggedIn,
+    required this.canOpenOffline,
+  });
 
   final ThemeMode themeMode;
   final bool isLoggedIn;
+  final bool canOpenOffline;
 }
 
 class MyApp extends StatefulWidget {
@@ -27,10 +33,21 @@ class MyApp extends StatefulWidget {
     final prefs = await SharedPreferences.getInstance();
     final savedTheme = prefs.getString('themeMode') ?? 'system';
     final token = await TokenStorage.instance.read(key: 'access_token');
+    final hasToken = token != null && token.isNotEmpty;
+    final canOpenOffline = !hasToken && _hasOfflineSnapshot(prefs);
     return AppBootstrapState(
       themeMode: _decodeTheme(savedTheme),
-      isLoggedIn: token != null && token.isNotEmpty,
+      isLoggedIn: hasToken,
+      canOpenOffline: canOpenOffline,
     );
+  }
+
+  static bool _hasOfflineSnapshot(SharedPreferences prefs) {
+    final studentId = (prefs.getString('studentId') ?? '').trim();
+    final fullName = (prefs.getString('fullName') ?? '').trim();
+    final schedule = (prefs.getString('StudentSchedule') ?? '').trim();
+    if (schedule.isNotEmpty) return true;
+    return studentId.isNotEmpty && fullName.isNotEmpty;
   }
 
   static ThemeMode _decodeTheme(String raw) {
@@ -54,7 +71,8 @@ class _MyAppState extends State<MyApp> {
   );
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   late final bool _initialLoggedIn = widget.bootstrapState.isLoggedIn;
-  Future<void>? _updateCheckInFlight;
+  late final bool _canOpenOffline = widget.bootstrapState.canOpenOffline;
+  Future<bool>? _updateCheckInFlight;
 
   @override
   void initState() {
@@ -63,8 +81,7 @@ class _MyAppState extends State<MyApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       PlayIntegrity.prepare().catchError((_) {});
       PlayInstallReferrer.prefetch().catchError((_) {});
-      _maybeCheckForUpdates();
-      InAppReviewPrompt.maybePrompt();
+      _handleForegroundEngagement();
       if (_initialLoggedIn) {
         _validateSessionInBackground();
       }
@@ -78,8 +95,19 @@ class _MyAppState extends State<MyApp> {
   }
 
   late final WidgetsBindingObserver _lifecycleObserver = _LifecycleObserver(
-    onResumed: _maybeCheckForUpdates,
+    onResumed: _handleForegroundEngagement,
   );
+
+  void _handleForegroundEngagement() {
+    unawaited(_runForegroundChecks());
+  }
+
+  Future<void> _runForegroundChecks() async {
+    final didTriggerUpdateFlow = await _maybeCheckForUpdates();
+    if (!didTriggerUpdateFlow) {
+      await InAppReviewPrompt.maybePrompt();
+    }
+  }
 
   Future<void> _persistTheme(ThemeMode mode) async {
     final prefs = await SharedPreferences.getInstance();
@@ -104,8 +132,11 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  Future<void> _maybeCheckForUpdates() async {
-    if (!Platform.isAndroid || _updateCheckInFlight != null) return;
+  Future<bool> _maybeCheckForUpdates() async {
+    if (!Platform.isAndroid) return false;
+    final inFlight = _updateCheckInFlight;
+    if (inFlight != null) return inFlight;
+
     _updateCheckInFlight = () async {
       final info = await InAppUpdate.checkForUpdate();
       final availability = info.updateAvailability;
@@ -113,42 +144,28 @@ class _MyAppState extends State<MyApp> {
 
       if (installStatus == InstallStatus.downloaded) {
         await _completeFlexibleUpdate();
-        return;
-      }
-
-      final shouldResumeImmediate =
-          availability == UpdateAvailability.developerTriggeredUpdateInProgress;
-      if (shouldResumeImmediate && info.immediateUpdateAllowed) {
-        await _runImmediateUpdate();
-        return;
+        return true;
       }
 
       if (availability != UpdateAvailability.updateAvailable) {
-        return;
-      }
-
-      if (info.immediateUpdateAllowed) {
-        await _runImmediateUpdate();
-        return;
+        return false;
       }
 
       if (info.flexibleUpdateAllowed) {
         await _runFlexibleUpdate();
+        return true;
       }
+
+      return false;
     }();
 
     try {
-      await _updateCheckInFlight;
+      return await _updateCheckInFlight!;
     } catch (_) {
+      return false;
     } finally {
       _updateCheckInFlight = null;
     }
-  }
-
-  Future<void> _runImmediateUpdate() async {
-    try {
-      await InAppUpdate.performImmediateUpdate();
-    } catch (_) {}
   }
 
   Future<void> _runFlexibleUpdate() async {
@@ -208,7 +225,9 @@ class _MyAppState extends State<MyApp> {
               '/home': (context) => const HomePage(),
               '/onboarding': (context) => const OnboardingPage(),
             },
-            home: _initialLoggedIn ? const HomePage() : const OnboardingPage(),
+            home: (_initialLoggedIn || _canOpenOffline)
+                ? const HomePage()
+                : const OnboardingPage(),
           ),
         );
       },

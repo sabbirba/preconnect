@@ -16,6 +16,7 @@ class AuthService {
   AuthService._internal();
 
   final TokenStorage _storage = TokenStorage.instance;
+  static const Duration _authRequestTimeout = Duration(seconds: 12);
 
   Future<void> login(BuildContext context) async {
     Navigator.pushNamed(context, '/login');
@@ -25,14 +26,16 @@ class AuthService {
     try {
       final refreshToken = await _storage.read(key: 'refresh_token');
       if (refreshToken != null && refreshToken.isNotEmpty) {
-        await http.post(
-          Uri.parse(ApiConfig.logoutEndpoint),
-          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-          body: {
-            'client_id': ApiConfig.clientId,
-            'refresh_token': refreshToken,
-          },
-        );
+        await http
+            .post(
+              Uri.parse(ApiConfig.logoutEndpoint),
+              headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+              body: {
+                'client_id': ApiConfig.clientId,
+                'refresh_token': refreshToken,
+              },
+            )
+            .timeout(_authRequestTimeout);
       }
     } catch (_) {}
     await _clearLocalSessionData();
@@ -55,15 +58,17 @@ class AuthService {
         return TokenRefreshStatus.invalidSession;
       }
 
-      final response = await http.post(
-        Uri.parse(ApiConfig.tokenEndpoint),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: {
-          'grant_type': 'refresh_token',
-          'refresh_token': refreshToken,
-          'client_id': ApiConfig.clientId,
-        },
-      );
+      final response = await http
+          .post(
+            Uri.parse(ApiConfig.tokenEndpoint),
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: {
+              'grant_type': 'refresh_token',
+              'refresh_token': refreshToken,
+              'client_id': ApiConfig.clientId,
+            },
+          )
+          .timeout(_authRequestTimeout);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
