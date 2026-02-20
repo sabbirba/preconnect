@@ -419,6 +419,37 @@ jobs:
             echo "Version unchanged ('$CURRENT_VERSION'); skipping Google Play production publish."
           fi
 
+      - name: Validate Android versionCode increases
+        if: steps.version_changed.outputs.changed == 'true'
+        shell: bash
+        run: |
+          BEFORE_SHA="${{ github.event.before }}"
+          PREVIOUS_VERSION=$(git show HEAD^:pubspec.yaml 2>/dev/null | grep '^version:' | head -n1 | awk '{print $2}' || true)
+
+          if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ] && git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+            PREVIOUS_VERSION=$(git show "$BEFORE_SHA:pubspec.yaml" 2>/dev/null | grep '^version:' | head -n1 | awk '{print $2}' || true)
+          fi
+
+          PREVIOUS_CODE="${PREVIOUS_VERSION#*+}"
+          CURRENT_CODE="${{ steps.android_meta.outputs.version_code }}"
+
+          if [ -z "$PREVIOUS_VERSION" ] || [ -z "$PREVIOUS_CODE" ]; then
+            echo "Could not determine previous version; skipping monotonic check."
+            exit 0
+          fi
+
+          if ! [[ "$PREVIOUS_CODE" =~ ^[0-9]+$ && "$CURRENT_CODE" =~ ^[0-9]+$ ]]; then
+            echo "::error::Invalid versionCode format. Previous='$PREVIOUS_CODE' Current='$CURRENT_CODE'"
+            exit 1
+          fi
+
+          if [ "$CURRENT_CODE" -le "$PREVIOUS_CODE" ]; then
+            echo "::error::Android versionCode must increase. Previous=$PREVIOUS_CODE, current=$CURRENT_CODE"
+            exit 1
+          fi
+
+          echo "Android versionCode monotonic check passed: $PREVIOUS_CODE -> $CURRENT_CODE"
+
       - name: Download Android artifacts
         if: steps.version_changed.outputs.changed == 'true'
         uses: actions/download-artifact@v7

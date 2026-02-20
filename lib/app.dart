@@ -147,12 +147,24 @@ class _MyAppState extends State<MyApp> {
         return true;
       }
 
+      final shouldResumeImmediate =
+          availability == UpdateAvailability.developerTriggeredUpdateInProgress;
+      if (shouldResumeImmediate && info.immediateUpdateAllowed) {
+        await _runImmediateUpdate();
+        return true;
+      }
+
       if (availability != UpdateAvailability.updateAvailable) {
         return false;
       }
 
       if (info.flexibleUpdateAllowed) {
         await _runFlexibleUpdate();
+        return true;
+      }
+
+      if (info.immediateUpdateAllowed) {
+        await _runImmediateUpdate();
         return true;
       }
 
@@ -171,6 +183,12 @@ class _MyAppState extends State<MyApp> {
   Future<void> _runFlexibleUpdate() async {
     try {
       await InAppUpdate.startFlexibleUpdate();
+    } catch (_) {}
+  }
+
+  Future<void> _runImmediateUpdate() async {
+    try {
+      await InAppUpdate.performImmediateUpdate();
     } catch (_) {}
   }
 
