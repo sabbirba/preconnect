@@ -660,11 +660,14 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(
-                                            Icons.star_border_rounded,
-                                            size: 14,
-                                            color: BracuPalette.textPrimary(
-                                              context,
+                                          SizedBox(
+                                            width: 16,
+                                            child: Icon(
+                                              Icons.star_border_rounded,
+                                              size: 17,
+                                              color: BracuPalette.textPrimary(
+                                                context,
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(width: 6),
@@ -704,11 +707,14 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(
-                                            Icons.share_outlined,
-                                            size: 14,
-                                            color: BracuPalette.textPrimary(
-                                              context,
+                                          SizedBox(
+                                            width: 16,
+                                            child: Icon(
+                                              Icons.share_outlined,
+                                              size: 14,
+                                              color: BracuPalette.textPrimary(
+                                                context,
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(width: 6),

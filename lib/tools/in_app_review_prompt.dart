@@ -59,14 +59,9 @@ class InAppReviewPrompt {
 
       final inAppReview = InAppReview.instance;
       final available = await inAppReview.isAvailable();
-      if (!available) {
-        final openedStore = await openStoreListing();
-        if (openedStore) {
-          await prefs.setInt(_lastPromptKey, now.millisecondsSinceEpoch);
-        }
-        return;
-      }
+      if (!available) return;
       await inAppReview.requestReview();
+      await prefs.setInt(_lastPromptKey, now.millisecondsSinceEpoch);
     } catch (_) {}
   }
 
