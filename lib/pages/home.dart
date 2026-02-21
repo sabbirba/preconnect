@@ -650,6 +650,43 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                   InkWell(
                                     borderRadius: BorderRadius.circular(8),
                                     onTap: () async {
+                                      await InAppReviewPrompt.openStoreListing();
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.star_border_rounded,
+                                            size: 14,
+                                            color: BracuPalette.textPrimary(
+                                              context,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Rate',
+                                            softWrap: false,
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: BracuPalette.textPrimary(
+                                                context,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  InkWell(
+                                    borderRadius: BorderRadius.circular(8),
+                                    onTap: () async {
                                       await SharePlus.instance.share(
                                         ShareParams(
                                           text:
@@ -677,43 +714,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                           const SizedBox(width: 6),
                                           Text(
                                             'Share',
-                                            softWrap: false,
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                              color: BracuPalette.textPrimary(
-                                                context,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  InkWell(
-                                    borderRadius: BorderRadius.circular(8),
-                                    onTap: () async {
-                                      await InAppReviewPrompt.openStoreListing();
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.star_border_rounded,
-                                            size: 16,
-                                            color: BracuPalette.textPrimary(
-                                              context,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            'Rate',
                                             softWrap: false,
                                             style: TextStyle(
                                               fontSize: 16,
