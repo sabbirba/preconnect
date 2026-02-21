@@ -112,24 +112,44 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _handleRedirect(String url) async {
-    if (_handledRedirect) return;
+    if (_handledRedirect || _isLoggingIn) return;
     final Uri uri = Uri.parse(url);
     final String? authCode = uri.queryParameters["code"];
 
-    if (authCode != null) {
-      _handledRedirect = true;
+    if (authCode == null || authCode.isEmpty) return;
+
+    _handledRedirect = true;
+    if (mounted) {
       setState(() => _isLoggingIn = true);
-      try {
-        await _exchangeCodeForToken(authCode);
-      } finally {
+    }
+
+    var needsRetry = false;
+    try {
+      final didLogin = await _exchangeCodeForToken(authCode);
+      if (!didLogin) {
+        needsRetry = true;
         if (mounted) {
-          setState(() => _isLoggingIn = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Login failed. Please try again.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         }
       }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoggingIn = false);
+      }
+    }
+
+    if (needsRetry && mounted) {
+      _handledRedirect = false;
+      await _webViewController?.loadRequest(Uri.parse(ApiConfig.authUrl));
     }
   }
 
-  Future<void> _exchangeCodeForToken(String code) async {
+  Future<bool> _exchangeCodeForToken(String code) async {
     try {
       final response = await http
           .post(
@@ -144,31 +164,42 @@ class _LoginPageState extends State<LoginPage> {
           )
           .timeout(_loginRequestTimeout);
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        final String accessToken = data["access_token"];
-        final String refreshToken = data["refresh_token"];
+      if (response.statusCode != 200) return false;
 
-        await _secureStorage.write(key: 'access_token', value: accessToken);
-        await _secureStorage.write(key: 'refresh_token', value: refreshToken);
+      final data = json.decode(response.body);
+      if (data is! Map<String, dynamic>) return false;
 
-        unawaited(ProfileService().getProfile());
-        unawaited(ScheduleService().getStudentSchedule());
-        unawaited(ProfileService().fetchProfile());
-        unawaited(ScheduleService().fetchStudentSchedule());
-        unawaited(PaymentService().fetchPaymentInfo());
-        unawaited(AttendanceService().fetchAttendanceInfo());
-        unawaited(AdvisingService().fetchAdvisingInfo());
-
-        RefreshBus.instance.notify(reason: 'auth');
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const HomePage()),
-          );
-        }
+      final accessToken = data["access_token"] as String?;
+      final refreshToken = data["refresh_token"] as String?;
+      if (accessToken == null ||
+          accessToken.isEmpty ||
+          refreshToken == null ||
+          refreshToken.isEmpty) {
+        return false;
       }
-    } catch (_) {}
+
+      await _secureStorage.write(key: 'access_token', value: accessToken);
+      await _secureStorage.write(key: 'refresh_token', value: refreshToken);
+
+      unawaited(ProfileService().getProfile());
+      unawaited(ScheduleService().getStudentSchedule());
+      unawaited(ProfileService().fetchProfile());
+      unawaited(ScheduleService().fetchStudentSchedule());
+      unawaited(PaymentService().fetchPaymentInfo());
+      unawaited(AttendanceService().fetchAttendanceInfo());
+      unawaited(AdvisingService().fetchAdvisingInfo());
+
+      RefreshBus.instance.notify(reason: 'auth');
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomePage()),
+        );
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _handlePullToRefresh() async {
