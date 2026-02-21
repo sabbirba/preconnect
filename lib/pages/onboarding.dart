@@ -60,8 +60,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final overlayStyle = SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      systemStatusBarContrastEnforced: false,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
       systemNavigationBarIconBrightness: isDark
           ? Brightness.light
           : Brightness.dark,
@@ -238,93 +241,66 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [Colors.black, Colors.black]
-              : [Colors.white.withValues(alpha: 0.95), const Color(0xFFEAF4FF)],
-        ),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : BracuPalette.primary.withValues(alpha: 0.10),
-        ),
-        boxShadow: [
-          if (!isDark)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.07),
-              blurRadius: 30,
-              offset: const Offset(0, 14),
-            ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            height: 210,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.03)
-                  : const Color(0xFFF5F9FF),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Positioned(
-                  top: 18,
-                  left: 16,
-                  child: _BadgeIcon(
-                    icon: Icons.school_outlined,
-                    color: BracuPalette.accent,
-                  ),
-                ),
-                Positioned(
-                  top: 22,
-                  right: 16,
-                  child: _BadgeIcon(
-                    icon: Icons.schedule_outlined,
-                    color: const Color(0xFF7C56FF),
-                  ),
-                ),
-                Positioned(
-                  bottom: 20,
-                  left: 20,
-                  child: _BadgeIcon(
-                    icon: Icons.alarm_outlined,
-                    color: const Color(0xFFEF6C35),
-                  ),
-                ),
-                Positioned(
-                  bottom: 26,
-                  right: 20,
-                  child: _BadgeIcon(
-                    icon: Icons.people_outline,
-                    color: const Color(0xFF5B8DEF),
-                  ),
-                ),
-                _BrandLockup(isDark: isDark),
-              ],
-            ),
+    return Column(
+      children: [
+        Container(
+          height: 210,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.03)
+                : const Color(0xFFF5F9FF),
           ),
-          const SizedBox(height: 14),
-          Text(
-            'Prepare. Connect. Succeed.',
-            style: TextStyle(
-              color: BracuPalette.textPrimary(context),
-              fontWeight: FontWeight.w700,
-              fontSize: 16,
-            ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Positioned(
+                top: 18,
+                left: 16,
+                child: _BadgeIcon(
+                  icon: Icons.school_outlined,
+                  color: BracuPalette.accent,
+                ),
+              ),
+              Positioned(
+                top: 22,
+                right: 16,
+                child: _BadgeIcon(
+                  icon: Icons.schedule_outlined,
+                  color: const Color(0xFF7C56FF),
+                ),
+              ),
+              Positioned(
+                bottom: 20,
+                left: 20,
+                child: _BadgeIcon(
+                  icon: Icons.alarm_outlined,
+                  color: const Color(0xFFEF6C35),
+                ),
+              ),
+              Positioned(
+                bottom: 26,
+                right: 20,
+                child: _BadgeIcon(
+                  icon: Icons.people_outline,
+                  color: const Color(0xFF5B8DEF),
+                ),
+              ),
+              _BrandLockup(isDark: isDark),
+            ],
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          'Prepare. Connect. Succeed.',
+          style: TextStyle(
+            color: BracuPalette.textPrimary(context),
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+          ),
+        ),
+      ],
     );
   }
 }

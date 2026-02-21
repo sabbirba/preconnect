@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:preconnect/api/auth_service.dart';
@@ -234,7 +235,26 @@ class _MyAppState extends State<MyApp> {
             darkTheme: darkTheme,
             themeMode: mode,
             builder: (context, child) {
-              return child ?? const SizedBox.shrink();
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              final overlayStyle = SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                systemStatusBarContrastEnforced: false,
+                statusBarIconBrightness: isDark
+                    ? Brightness.light
+                    : Brightness.dark,
+                statusBarBrightness: isDark
+                    ? Brightness.dark
+                    : Brightness.light,
+                systemNavigationBarColor: Colors.transparent,
+                systemNavigationBarContrastEnforced: false,
+                systemNavigationBarIconBrightness: isDark
+                    ? Brightness.light
+                    : Brightness.dark,
+              );
+              return AnnotatedRegion<SystemUiOverlayStyle>(
+                value: overlayStyle,
+                child: child ?? const SizedBox.shrink(),
+              );
             },
             navigatorKey: _navigatorKey,
             routes: {
