@@ -145,7 +145,9 @@ class _LoginPageState extends State<LoginPage> {
 
     if (needsRetry && mounted) {
       _handledRedirect = false;
-      await _webViewController?.loadRequest(Uri.parse(ApiConfig.authUrl));
+      try {
+        await _webViewController?.loadRequest(Uri.parse(ApiConfig.authUrl));
+      } catch (_) {}
     }
   }
 
