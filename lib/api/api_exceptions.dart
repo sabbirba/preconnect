@@ -33,5 +33,5 @@ class CacheEmptyException extends PreConnectException {
 
 class MissingDependencyException extends PreConnectException {
   const MissingDependencyException(String field)
-      : super('Missing required field: $field');
+    : super('Missing required field: $field');
 }

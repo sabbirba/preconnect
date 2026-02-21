@@ -25,8 +25,7 @@ class AttendanceService {
       return getAttendanceInfo(fromFetch: true);
     }
 
-    final url =
-        '${ApiConfig.connectApiBase}${ApiConfig.attendancePath(id)}';
+    final url = '${ApiConfig.connectApiBase}${ApiConfig.attendancePath(id)}';
 
     return _client.fetchWithFallback<String>(
       url: url,

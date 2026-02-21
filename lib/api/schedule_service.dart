@@ -25,8 +25,7 @@ class ScheduleService {
       return getStudentSchedule(fromFetch: true);
     }
 
-    final url =
-        '${ApiConfig.connectApiBase}${ApiConfig.schedulePath(id)}';
+    final url = '${ApiConfig.connectApiBase}${ApiConfig.schedulePath(id)}';
 
     return _client.fetchWithFallback<String>(
       url: url,

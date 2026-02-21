@@ -98,7 +98,6 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
     }
   }
 
-
   void _attemptScrollToHighlight() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final context = _highlightKey?.currentContext;

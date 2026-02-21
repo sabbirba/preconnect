@@ -23,6 +23,7 @@ import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/cached_image.dart';
+import 'package:preconnect/tools/holiday_status.dart';
 import 'package:preconnect/tools/in_app_review_prompt.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
@@ -265,16 +266,21 @@ class _HomeDashboardState extends State<_HomeDashboard> {
         ? ScheduleService().fetchStudentSchedule()
         : ScheduleService().getStudentSchedule();
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
+    final holidayFuture = HolidayTiming.getTodayStatus(
+      forceRefresh: forceRefresh,
+    );
 
     final results = await Future.wait<dynamic>([
       profileFuture,
       scheduleFuture,
       ramadanFuture,
+      holidayFuture,
     ]);
 
     Map<String, String?>? profile = results[0] as Map<String, String?>?;
     String? scheduleJson = results[1] as String?;
     final isRamadan = results[2] as bool;
+    final holidayStatus = results[3] as HolidayStatus;
 
     if (!forceRefresh) {
       profile ??= await ProfileService().fetchProfile();
@@ -316,6 +322,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       photoUrl: photoUrl,
       sections: sections,
       isRamadan: isRamadan,
+      holiday: holidayStatus,
     );
   }
 
@@ -449,6 +456,9 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                       final profile = snapshot.data?.profile ?? {};
                       final photoUrl = snapshot.data?.photoUrl;
                       final isRamadan = snapshot.data?.isRamadan ?? false;
+                      final holidayStatus =
+                          snapshot.data?.holiday ?? HolidayStatus.empty;
+                      final isTodayHoliday = holidayStatus.isTodayHoliday;
                       final today = _todayName();
                       final todayDate = DateFormat(
                         'd MMMM, y',
@@ -466,12 +476,15 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                   _timeToMinutes(a.startTime) -
                                   _timeToMinutes(b.startTime),
                             );
+                      final visibleEntries = isTodayHoliday
+                          ? <_ScheduleEntry>[]
+                          : todayEntries;
                       final nowMinutes = _timeToMinutes(
                         '${DateTime.now().hour}:${DateTime.now().minute}',
                       );
                       _ScheduleEntry? nextEntry;
-                      if (todayEntries.isNotEmpty) {
-                        nextEntry = _pickNextEntry(todayEntries, nowMinutes);
+                      if (visibleEntries.isNotEmpty) {
+                        nextEntry = _pickNextEntry(visibleEntries, nowMinutes);
                       }
                       final nextExam = _nextExamCountdown(
                         snapshot.data?.sections ?? const <section.Section>[],
@@ -581,21 +594,24 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                     ),
                                   ),
                                 ),
-                              if (todayEntries.isEmpty)
+                              if (isTodayHoliday || visibleEntries.isEmpty)
                                 InkWell(
                                   onTap: () => widget.onNavigate(
                                     HomeTab.studentSchedule,
                                   ),
-                                  child: const _ScheduleTile(
-                                    title: 'No Class Today',
-                                    subtitle:
-                                        'Enjoy your day off or check your schedule.',
-                                    badge: '--',
+                                  child: _ScheduleTile(
+                                    title: isTodayHoliday
+                                        ? 'National Holiday'
+                                        : 'No Class Today',
+                                    subtitle: isTodayHoliday
+                                        ? holidayStatus.displayNames
+                                        : 'Enjoy your day off or check your schedule.',
+                                    badge: isTodayHoliday ? 'OFF' : '--',
                                     color: _primary,
                                   ),
                                 )
                               else
-                                ...todayEntries
+                                ...visibleEntries
                                     .take(3)
                                     .map(
                                       (entry) => Padding(
@@ -1214,6 +1230,7 @@ class _HomeData {
     required this.photoUrl,
     required this.sections,
     required this.isRamadan,
+    required this.holiday,
   });
 
   final Map<String, String?>? profile;
@@ -1221,6 +1238,7 @@ class _HomeData {
   final String? photoUrl;
   final List<section.Section> sections;
   final bool isRamadan;
+  final HolidayStatus holiday;
 }
 
 class _ScheduleEntry {

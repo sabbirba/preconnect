@@ -45,9 +45,7 @@ class ProfileService {
     'photoFilePath',
   };
 
-  Future<Map<String, String?>?> fetchProfile({
-    bool fromGet = false,
-  }) async {
+  Future<Map<String, String?>?> fetchProfile({bool fromGet = false}) async {
     final url = '${ApiConfig.connectApiBase}${ApiConfig.profilePath}';
 
     return _client.fetchWithFallback<Map<String, String?>>(
@@ -121,13 +119,11 @@ class ProfileService {
           await asyncPrefs.setString('shortCode', profile['shortCode'] ?? '');
           await asyncPrefs.setString('fullName', profile['fullName'] ?? '');
           await asyncPrefs.setString('email', profile['studentEmail'] ?? '');
-          await asyncPrefs.setString(
-            'cgpa',
-            profile['cgpa']?.toString() ?? '',
-          );
+          await asyncPrefs.setString('cgpa', profile['cgpa']?.toString() ?? '');
         }
       },
-      readCache: ({required bool fromFetch}) => getProfile(fromFetch: fromFetch),
+      readCache: ({required bool fromFetch}) =>
+          getProfile(fromFetch: fromFetch),
     );
   }
 
