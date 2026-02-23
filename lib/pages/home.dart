@@ -267,14 +267,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
         : ScheduleService().getStudentSchedule();
     final ramadanFuture = RamadanTiming.getRamadanStatus(
       forceRefresh: forceRefresh,
-      onLocationInfo: (message) {
-        if (!mounted) return;
-        showAppSnackBar(context, message);
-      },
-      onLocationFailure: (message) {
-        if (!mounted) return;
-        showAppSnackBar(context, message);
-      },
     );
     final holidayFuture = HolidayTiming.getTodayStatus(
       forceRefresh: forceRefresh,

@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:preconnect/tools/live_location.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -12,7 +11,6 @@ class RamadanStatus {
     this.sehriEndsAt,
     this.iftarAt,
     this.prayerTimes = const {},
-    this.usedLiveLocation = false,
   });
 
   final bool isRamadan;
@@ -20,7 +18,6 @@ class RamadanStatus {
   final String? sehriEndsAt;
   final String? iftarAt;
   final Map<String, String> prayerTimes;
-  final bool usedLiveLocation;
 }
 
 class RamadanTiming {
@@ -65,8 +62,6 @@ class RamadanTiming {
 
   static Future<RamadanStatus> getRamadanStatus({
     bool forceRefresh = false,
-    void Function(String message)? onLocationInfo,
-    void Function(String message)? onLocationFailure,
   }) async {
     await _ensureCacheLoaded();
 
@@ -86,24 +81,15 @@ class RamadanTiming {
       return _inflight!;
     }
 
-    _inflight = _refreshRamadanStatus(
-      now: now,
-      onLocationInfo: onLocationInfo,
-      onLocationFailure: onLocationFailure,
-    );
+    _inflight = _refreshRamadanStatus(now: now);
     return _inflight!;
   }
 
   static Future<RamadanStatus> _refreshRamadanStatus({
     required DateTime now,
-    void Function(String message)? onLocationInfo,
-    void Function(String message)? onLocationFailure,
   }) async {
     try {
-      final result = await _fetchRamadanStatus(
-        onLocationInfo: onLocationInfo,
-        onLocationFailure: onLocationFailure,
-      );
+      final result = await _fetchRamadanStatus();
       _cachedStatus = result.value;
       _cachedIsRamadan = result.value.isRamadan;
       if (result.fromNetwork) {
@@ -165,27 +151,10 @@ class RamadanTiming {
     } catch (_) {}
   }
 
-  static Future<({RamadanStatus value, bool fromNetwork})> _fetchRamadanStatus({
-    void Function(String message)? onLocationInfo,
-    void Function(String message)? onLocationFailure,
-  }) async {
-    final location = await tryGetLiveLocation(
-      onInfo: onLocationInfo,
-      onFailure: onLocationFailure,
-    );
-    if (location != null) {
-      final payload = await _fetchPayload(lat: location.lat, lon: location.lon);
-      final parsed = _parseStatus(payload, usedLiveLocation: true);
-      if (parsed != null) {
-        return (value: parsed, fromNetwork: true);
-      }
-    }
-
+  static Future<({RamadanStatus value, bool fromNetwork})>
+  _fetchRamadanStatus() async {
     final fallbackPayload = await _fetchPayload();
-    final parsedFallback = _parseStatus(
-      fallbackPayload,
-      usedLiveLocation: false,
-    );
+    final parsedFallback = _parseStatus(fallbackPayload);
     if (parsedFallback != null) {
       return (value: parsedFallback, fromNetwork: true);
     }
@@ -197,18 +166,13 @@ class RamadanTiming {
     );
   }
 
-  static Future<Map<String, dynamic>?> _fetchPayload({
-    double? lat,
-    double? lon,
-  }) async {
+  static Future<Map<String, dynamic>?> _fetchPayload() async {
     try {
-      final uri = Uri.parse(_statusUrl).replace(
-        queryParameters: lat != null && lon != null
-            ? {'lat': lat.toStringAsFixed(6), 'lon': lon.toStringAsFixed(6)}
-            : null,
-      );
       final response = await http
-          .get(uri, headers: const {'Accept': 'application/json'})
+          .get(
+            Uri.parse(_statusUrl),
+            headers: const {'Accept': 'application/json'},
+          )
           .timeout(_requestTimeout);
 
       if (response.statusCode != 200 || response.body.trim().isEmpty) {
@@ -226,10 +190,7 @@ class RamadanTiming {
     }
   }
 
-  static RamadanStatus? _parseStatus(
-    Map<String, dynamic>? payload, {
-    required bool usedLiveLocation,
-  }) {
+  static RamadanStatus? _parseStatus(Map<String, dynamic>? payload) {
     if (payload == null) return null;
 
     final isRamadanValue = payload['isRamadan'];
@@ -260,7 +221,6 @@ class RamadanTiming {
       sehriEndsAt: sehriEndsAt,
       iftarAt: iftarAt,
       prayerTimes: prayerTimes,
-      usedLiveLocation: usedLiveLocation,
     );
   }
 
