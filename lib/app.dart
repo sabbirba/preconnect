@@ -67,45 +67,30 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  static const String _dismissedUpdateVersionCodeKey =
+      'dismissedUpdateVersionCode';
   late final ValueNotifier<ThemeMode> _themeMode = ValueNotifier<ThemeMode>(
     widget.bootstrapState.themeMode,
   );
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   late final bool _initialLoggedIn = widget.bootstrapState.isLoggedIn;
   late final bool _canOpenOffline = widget.bootstrapState.canOpenOffline;
-  Future<bool>? _updateCheckInFlight;
   bool _didAttemptReviewThisSession = false;
-  bool _didOpenStoreForUpdateThisSession = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(_lifecycleObserver);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       PlayIntegrity.prepare().catchError((_) {});
       PlayInstallReferrer.prefetch().catchError((_) {});
-      _handleForegroundEngagement();
+      unawaited(_runStartupChecks());
       if (_initialLoggedIn) {
         _validateSessionInBackground();
       }
     });
   }
 
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(_lifecycleObserver);
-    super.dispose();
-  }
-
-  late final WidgetsBindingObserver _lifecycleObserver = _LifecycleObserver(
-    onResumed: _handleForegroundEngagement,
-  );
-
-  void _handleForegroundEngagement() {
-    unawaited(_runForegroundChecks());
-  }
-
-  Future<void> _runForegroundChecks() async {
+  Future<void> _runStartupChecks() async {
     final didTriggerUpdateFlow = await _maybeCheckForUpdates();
     if (didTriggerUpdateFlow || _didAttemptReviewThisSession) return;
     _didAttemptReviewThisSession = true;
@@ -137,10 +122,7 @@ class _MyAppState extends State<MyApp> {
 
   Future<bool> _maybeCheckForUpdates() async {
     if (!Platform.isAndroid) return false;
-    final inFlight = _updateCheckInFlight;
-    if (inFlight != null) return inFlight;
-
-    _updateCheckInFlight = () async {
+    try {
       final info = await InAppUpdate.checkForUpdate();
       final availability = info.updateAvailability;
       final installStatus = info.installStatus;
@@ -150,41 +132,94 @@ class _MyAppState extends State<MyApp> {
         return true;
       }
 
-      final shouldResumeImmediate =
-          availability == UpdateAvailability.developerTriggeredUpdateInProgress;
-      if (shouldResumeImmediate) {
-        final resumedResult = await _runImmediateUpdate();
-        return resumedResult != null;
-      }
-
       if (availability != UpdateAvailability.updateAvailable) {
         return false;
       }
 
-      if (info.immediateUpdateAllowed) {
-        final immediateResult = await _runImmediateUpdate();
-        return immediateResult != null;
+      final availableVersionCode = info.availableVersionCode;
+      if (availableVersionCode != null) {
+        final dismissedVersionCode = await _readDismissedUpdateVersionCode();
+        if (dismissedVersionCode == availableVersionCode) {
+          return false;
+        }
       }
 
-      if (_didOpenStoreForUpdateThisSession) return true;
-      _didOpenStoreForUpdateThisSession = true;
-      return await _openStoreForUpdate();
-    }();
-
-    try {
-      return await _updateCheckInFlight!;
+      return await _showStartupUpdatePrompt(info);
     } catch (_) {
       return false;
-    } finally {
-      _updateCheckInFlight = null;
     }
   }
 
-  Future<AppUpdateResult?> _runImmediateUpdate() async {
+  Future<bool> _showStartupUpdatePrompt(AppUpdateInfo info) async {
+    final context = _navigatorKey.currentContext;
+    if (context == null) return false;
+    final shouldUpdate = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return AlertDialog(
+          titlePadding: const EdgeInsets.fromLTRB(20, 14, 8, 8),
+          title: Row(
+            children: [
+              const Expanded(child: Text('Update available')),
+              IconButton(
+                tooltip: 'Close',
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+          content: const Text(
+            'A newer version of PreConnect is available. Update now for fixes and improvements.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Later'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Update'),
+            ),
+          ],
+        );
+      },
+    );
+    if (shouldUpdate != true) {
+      final versionCode = info.availableVersionCode;
+      if (versionCode != null) {
+        await _saveDismissedUpdateVersionCode(versionCode);
+      }
+      return true;
+    }
+    await _clearDismissedUpdateVersionCode();
+    if (info.flexibleUpdateAllowed) {
+      return await _runFlexibleUpdate();
+    }
+    return await _openStoreForUpdate();
+  }
+
+  Future<int?> _readDismissedUpdateVersionCode() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_dismissedUpdateVersionCodeKey);
+  }
+
+  Future<void> _saveDismissedUpdateVersionCode(int versionCode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_dismissedUpdateVersionCodeKey, versionCode);
+  }
+
+  Future<void> _clearDismissedUpdateVersionCode() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_dismissedUpdateVersionCodeKey);
+  }
+
+  Future<bool> _runFlexibleUpdate() async {
     try {
-      return await InAppUpdate.performImmediateUpdate();
+      final result = await InAppUpdate.startFlexibleUpdate();
+      return result == AppUpdateResult.success;
     } catch (_) {
-      return null;
+      return false;
     }
   }
 
@@ -299,18 +334,5 @@ class ThemeController extends InheritedWidget {
   @override
   bool updateShouldNotify(ThemeController oldWidget) {
     return notifier != oldWidget.notifier;
-  }
-}
-
-class _LifecycleObserver extends WidgetsBindingObserver {
-  _LifecycleObserver({required this.onResumed});
-
-  final VoidCallback onResumed;
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      onResumed();
-    }
   }
 }

@@ -687,15 +687,18 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                           Divider(
                                             height: 14,
                                             thickness: 1,
-                                            color: Colors.black.withValues(
-                                              alpha:
-                                                  Theme.of(
-                                                        context,
-                                                      ).brightness ==
-                                                      Brightness.dark
-                                                  ? 0.18
-                                                  : 0.06,
-                                            ),
+                                            color:
+                                                BracuPalette.textSecondary(
+                                                  context,
+                                                ).withValues(
+                                                  alpha:
+                                                      Theme.of(
+                                                            context,
+                                                          ).brightness ==
+                                                          Brightness.dark
+                                                      ? 0.20
+                                                      : 0.12,
+                                                ),
                                           ),
                                         ],
                                         if (ramadan.sehriEndsAt != null ||
@@ -747,16 +750,18 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                                   Divider(
                                                     height: 10,
                                                     thickness: 1,
-                                                    color: Colors.black
-                                                        .withValues(
+                                                    color:
+                                                        BracuPalette.textSecondary(
+                                                          context,
+                                                        ).withValues(
                                                           alpha:
                                                               Theme.of(
                                                                     context,
                                                                   ).brightness ==
                                                                   Brightness
                                                                       .dark
-                                                              ? 0.18
-                                                              : 0.06,
+                                                              ? 0.20
+                                                              : 0.12,
                                                         ),
                                                   ),
                                               ],
@@ -1438,52 +1443,45 @@ class _RamadanTopCountdown extends StatelessWidget {
     }
     return SizedBox(
       width: double.infinity,
-      child: StreamBuilder<DateTime>(
-        stream: Stream<DateTime>.periodic(
+      child: StreamBuilder<int>(
+        stream: Stream<int>.periodic(
           const Duration(seconds: 1),
-          (_) => DateTime.now(),
+          (tick) => tick,
         ),
-        initialData: DateTime.now(),
         builder: (context, snapshot) {
-          final now = snapshot.data ?? DateTime.now();
-          final countdown = _countdownTo(targetTime!, now);
-          if (countdown == null) return const SizedBox.shrink();
-          return Column(
+          final now = DateTime.now();
+          final remaining = _durationTo(targetTime!, now);
+          if (remaining == null) return const SizedBox.shrink();
+          return Row(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    ramadanDay == null ? 'Ramadan' : 'Ramadan Day $ramadanDay',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: BracuPalette.textPrimary(context),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$targetLabel • ${BracuTime.format(targetTime)}',
+                      style: TextStyle(
+                        color: BracuPalette.textSecondary(context),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: BracuPalette.warning.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '$targetLabel in $countdown',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: BracuPalette.textPrimary(context),
-                  ),
+                    const SizedBox(height: 2),
+                    Text(
+                      ramadanDay == null
+                          ? 'Ramadan'
+                          : 'Ramadan Day $ramadanDay',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: BracuPalette.textPrimary(context),
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(width: 8),
+              _RamadanCountdownDigital(remaining: remaining),
             ],
           );
         },
@@ -1491,7 +1489,7 @@ class _RamadanTopCountdown extends StatelessWidget {
     );
   }
 
-  String? _countdownTo(String targetTime, DateTime now) {
+  Duration? _durationTo(String targetTime, DateTime now) {
     final parsed = BracuTime.parseTime(targetTime);
     if (parsed == null) return null;
     var target = DateTime(
@@ -1504,11 +1502,59 @@ class _RamadanTopCountdown extends StatelessWidget {
     if (!target.isAfter(now)) {
       target = target.add(const Duration(days: 1));
     }
-    final diff = target.difference(now);
-    final hours = diff.inHours.toString().padLeft(2, '0');
-    final minutes = (diff.inMinutes % 60).toString().padLeft(2, '0');
-    final seconds = (diff.inSeconds % 60).toString().padLeft(2, '0');
-    return '$hours:$minutes:$seconds';
+    return target.difference(now);
+  }
+}
+
+class _RamadanCountdownDigital extends StatelessWidget {
+  const _RamadanCountdownDigital({required this.remaining});
+
+  final Duration remaining;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalSeconds = remaining.inSeconds;
+    final safeSeconds = totalSeconds < 0 ? 0 : totalSeconds;
+    final hours = safeSeconds ~/ 3600;
+    final minutes = (safeSeconds ~/ 60) % 60;
+    final seconds = safeSeconds % 60;
+
+    Widget cell(String value, String label) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: BracuPalette.textPrimary(context),
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              color: BracuPalette.textSecondary(context),
+              fontWeight: FontWeight.w600,
+              fontSize: 10,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        cell(hours.toString().padLeft(2, '0'), 'Hours'),
+        const SizedBox(width: 8),
+        cell(minutes.toString().padLeft(2, '0'), 'Minutes'),
+        const SizedBox(width: 8),
+        cell(seconds.toString().padLeft(2, '0'), 'Seconds'),
+      ],
+    );
   }
 }
 

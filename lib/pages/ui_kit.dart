@@ -404,7 +404,7 @@ class BracuCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final baseBorderColor = BracuPalette.textSecondary(
       context,
-    ).withValues(alpha: isDark ? 0.35 : 0.18);
+    ).withValues(alpha: isDark ? 0.22 : 0.16);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
