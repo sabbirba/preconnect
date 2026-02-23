@@ -83,6 +83,8 @@
 		<string>PreConnect needs photo access to scan QR codes from your gallery.</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>PreConnect needs permission to save QR codes to your gallery.</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>PreConnect uses your location to fetch local Ramadan prayer times.</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>

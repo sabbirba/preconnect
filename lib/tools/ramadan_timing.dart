@@ -1,8 +1,27 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:preconnect/tools/live_location.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class RamadanStatus {
+  const RamadanStatus({
+    required this.isRamadan,
+    this.ramadanDay,
+    this.sehriEndsAt,
+    this.iftarAt,
+    this.prayerTimes = const {},
+    this.usedLiveLocation = false,
+  });
+
+  final bool isRamadan;
+  final int? ramadanDay;
+  final String? sehriEndsAt;
+  final String? iftarAt;
+  final Map<String, String> prayerTimes;
+  final bool usedLiveLocation;
+}
 
 class RamadanTiming {
   RamadanTiming._();
@@ -15,9 +34,10 @@ class RamadanTiming {
 
   static DateTime? _lastCheckAt;
   static bool? _cachedIsRamadan;
+  static RamadanStatus? _cachedStatus;
   static bool _cacheLoaded = false;
   static Future<void>? _cacheLoadInflight;
-  static Future<bool>? _inflight;
+  static Future<RamadanStatus>? _inflight;
 
   // Based on BRACU Ramadan class and lab timing (2026).
   static const Map<String, (int start, int end)> _ramadanSlots = {
@@ -39,31 +59,53 @@ class RamadanTiming {
   };
 
   static Future<bool> isRamadan({bool forceRefresh = false}) async {
+    final status = await getRamadanStatus(forceRefresh: forceRefresh);
+    return status.isRamadan;
+  }
+
+  static Future<RamadanStatus> getRamadanStatus({
+    bool forceRefresh = false,
+    void Function(String message)? onLocationInfo,
+    void Function(String message)? onLocationFailure,
+  }) async {
     await _ensureCacheLoaded();
 
     final now = DateTime.now();
+    final hasCompleteCachedStatus = _isCompleteStatus(_cachedStatus);
     final hasFreshCache =
         !forceRefresh &&
-        _cachedIsRamadan != null &&
+        hasCompleteCachedStatus &&
         _lastCheckAt != null &&
         now.difference(_lastCheckAt!) <= _cacheTtl;
 
     if (hasFreshCache) {
-      return _cachedIsRamadan!;
+      return _cachedStatus!;
     }
 
     if (_inflight != null) {
       return _inflight!;
     }
 
-    _inflight = _refreshIsRamadan(now: now);
+    _inflight = _refreshRamadanStatus(
+      now: now,
+      onLocationInfo: onLocationInfo,
+      onLocationFailure: onLocationFailure,
+    );
     return _inflight!;
   }
 
-  static Future<bool> _refreshIsRamadan({required DateTime now}) async {
+  static Future<RamadanStatus> _refreshRamadanStatus({
+    required DateTime now,
+    void Function(String message)? onLocationInfo,
+    void Function(String message)? onLocationFailure,
+  }) async {
     try {
-      final result = await _fetchIsRamadan();
-      _cachedIsRamadan = result.value;
+      final result = await _fetchRamadanStatus(
+        onLocationInfo: onLocationInfo,
+        onLocationFailure: onLocationFailure,
+      );
+      _cachedStatus = result.value;
+      _cachedIsRamadan = result.value.isRamadan;
       if (result.fromNetwork) {
         _lastCheckAt = now;
         await _persistCache();
@@ -96,6 +138,9 @@ class RamadanTiming {
       final epochMs = prefs.getInt(_prefsLastCheckKey);
 
       _cachedIsRamadan = isRamadan;
+      if (isRamadan != null) {
+        _cachedStatus = RamadanStatus(isRamadan: isRamadan);
+      }
       if (epochMs != null) {
         _lastCheckAt = DateTime.fromMillisecondsSinceEpoch(epochMs);
       }
@@ -120,33 +165,118 @@ class RamadanTiming {
     } catch (_) {}
   }
 
-  static Future<({bool value, bool fromNetwork})> _fetchIsRamadan() async {
+  static Future<({RamadanStatus value, bool fromNetwork})> _fetchRamadanStatus({
+    void Function(String message)? onLocationInfo,
+    void Function(String message)? onLocationFailure,
+  }) async {
+    final location = await tryGetLiveLocation(
+      onInfo: onLocationInfo,
+      onFailure: onLocationFailure,
+    );
+    if (location != null) {
+      final payload = await _fetchPayload(lat: location.lat, lon: location.lon);
+      final parsed = _parseStatus(payload, usedLiveLocation: true);
+      if (parsed != null) {
+        return (value: parsed, fromNetwork: true);
+      }
+    }
+
+    final fallbackPayload = await _fetchPayload();
+    final parsedFallback = _parseStatus(
+      fallbackPayload,
+      usedLiveLocation: false,
+    );
+    if (parsedFallback != null) {
+      return (value: parsedFallback, fromNetwork: true);
+    }
+
+    return (
+      value:
+          _cachedStatus ?? RamadanStatus(isRamadan: _cachedIsRamadan ?? false),
+      fromNetwork: false,
+    );
+  }
+
+  static Future<Map<String, dynamic>?> _fetchPayload({
+    double? lat,
+    double? lon,
+  }) async {
     try {
+      final uri = Uri.parse(_statusUrl).replace(
+        queryParameters: lat != null && lon != null
+            ? {'lat': lat.toStringAsFixed(6), 'lon': lon.toStringAsFixed(6)}
+            : null,
+      );
       final response = await http
-          .get(
-            Uri.parse(_statusUrl),
-            headers: const {'Accept': 'application/json'},
-          )
+          .get(uri, headers: const {'Accept': 'application/json'})
           .timeout(_requestTimeout);
 
       if (response.statusCode != 200 || response.body.trim().isEmpty) {
-        return (value: _cachedIsRamadan ?? false, fromNetwork: false);
+        return null;
       }
 
       final payload = jsonDecode(response.body);
       if (payload is! Map<String, dynamic>) {
-        return (value: _cachedIsRamadan ?? false, fromNetwork: false);
+        return null;
       }
 
-      final value = payload['isRamadan'];
-      if (value is bool) {
-        return (value: value, fromNetwork: true);
-      }
-
-      return (value: _cachedIsRamadan ?? false, fromNetwork: false);
+      return payload;
     } catch (_) {
-      return (value: _cachedIsRamadan ?? false, fromNetwork: false);
+      return null;
     }
+  }
+
+  static RamadanStatus? _parseStatus(
+    Map<String, dynamic>? payload, {
+    required bool usedLiveLocation,
+  }) {
+    if (payload == null) return null;
+
+    final isRamadanValue = payload['isRamadan'];
+    final isRamadan = isRamadanValue is bool
+        ? isRamadanValue
+        : (_cachedIsRamadan ?? false);
+    final ramadanDay = switch (payload['ramadanDay']) {
+      int value => value,
+      num value => value.toInt(),
+      _ => null,
+    };
+    final sehriEndsAt = _asTimeString(payload['sehriEndsAt']);
+    final iftarAt = _asTimeString(payload['iftarAt']);
+    final prayerTimes = <String, String>{};
+    final prayerTimesRaw = payload['prayerTimes'];
+    if (prayerTimesRaw is Map) {
+      for (final entry in prayerTimesRaw.entries) {
+        final key = entry.key?.toString().trim() ?? '';
+        final value = _asTimeString(entry.value);
+        if (key.isEmpty || value == null) continue;
+        prayerTimes[key] = value;
+      }
+    }
+
+    return RamadanStatus(
+      isRamadan: isRamadan,
+      ramadanDay: ramadanDay,
+      sehriEndsAt: sehriEndsAt,
+      iftarAt: iftarAt,
+      prayerTimes: prayerTimes,
+      usedLiveLocation: usedLiveLocation,
+    );
+  }
+
+  static String? _asTimeString(Object? value) {
+    if (value is! String) return null;
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return null;
+    return trimmed;
+  }
+
+  static bool _isCompleteStatus(RamadanStatus? status) {
+    if (status == null) return false;
+    if (!status.isRamadan) return true;
+    if (status.prayerTimes.isNotEmpty) return true;
+    if (status.sehriEndsAt != null || status.iftarAt != null) return true;
+    return false;
   }
 
   static ({String startTime, String endTime, bool adjusted}) adjustRange(

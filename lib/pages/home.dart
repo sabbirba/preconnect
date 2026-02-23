@@ -265,7 +265,17 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     final scheduleFuture = forceRefresh
         ? ScheduleService().fetchStudentSchedule()
         : ScheduleService().getStudentSchedule();
-    final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
+    final ramadanFuture = RamadanTiming.getRamadanStatus(
+      forceRefresh: forceRefresh,
+      onLocationInfo: (message) {
+        if (!mounted) return;
+        showAppSnackBar(context, message);
+      },
+      onLocationFailure: (message) {
+        if (!mounted) return;
+        showAppSnackBar(context, message);
+      },
+    );
     final holidayFuture = HolidayTiming.getTodayStatus(
       forceRefresh: forceRefresh,
     );
@@ -279,7 +289,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
 
     Map<String, String?>? profile = results[0] as Map<String, String?>?;
     String? scheduleJson = results[1] as String?;
-    final isRamadan = results[2] as bool;
+    final ramadan = results[2] as RamadanStatus;
+    final isRamadan = ramadan.isRamadan;
     final holidayStatus = results[3] as HolidayStatus;
 
     if (!forceRefresh) {
@@ -322,6 +333,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       photoUrl: photoUrl,
       sections: sections,
       isRamadan: isRamadan,
+      ramadan: ramadan,
       holiday: holidayStatus,
     );
   }
@@ -415,6 +427,32 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     return null;
   }
 
+  String? _nextRamadanTarget({String? sehri, String? iftar}) {
+    DateTime? nextOccurrence(String? time) {
+      final parsed = BracuTime.parseTime(time);
+      if (parsed == null) return null;
+      final now = DateTime.now();
+      var target = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        parsed.hour,
+        parsed.minute,
+      );
+      if (!target.isAfter(now)) {
+        target = target.add(const Duration(days: 1));
+      }
+      return target;
+    }
+
+    final sehriAt = nextOccurrence(sehri);
+    final iftarAt = nextOccurrence(iftar);
+    if (sehriAt == null && iftarAt == null) return null;
+    if (sehriAt == null) return 'Iftar';
+    if (iftarAt == null) return 'Sehri';
+    return sehriAt.isBefore(iftarAt) ? 'Sehri' : 'Iftar';
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -455,7 +493,32 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                     builder: (context, snapshot) {
                       final profile = snapshot.data?.profile ?? {};
                       final photoUrl = snapshot.data?.photoUrl;
-                      final isRamadan = snapshot.data?.isRamadan ?? false;
+                      final ramadan =
+                          snapshot.data?.ramadan ??
+                          const RamadanStatus(isRamadan: false);
+                      final isRamadan = ramadan.isRamadan;
+                      final nextCountdownTarget = _nextRamadanTarget(
+                        sehri: ramadan.sehriEndsAt,
+                        iftar: ramadan.iftarAt,
+                      );
+                      final orderedPrayerKeys = const [
+                        'Fajr',
+                        'Dhuhr',
+                        'Asr',
+                        'Maghrib',
+                        'Isha',
+                      ];
+                      final prayerEntries = <(String, String)>[];
+                      for (final key in orderedPrayerKeys) {
+                        final value = ramadan.prayerTimes[key];
+                        if (value == null || value.trim().isEmpty) continue;
+                        prayerEntries.add((key, value));
+                      }
+                      for (final entry in ramadan.prayerTimes.entries) {
+                        if (orderedPrayerKeys.contains(entry.key)) continue;
+                        if (entry.value.trim().isEmpty) continue;
+                        prayerEntries.add((entry.key, entry.value));
+                      }
                       final holidayStatus =
                           snapshot.data?.holiday ?? HolidayStatus.empty;
                       final isTodayHoliday = holidayStatus.isTodayHoliday;
@@ -535,7 +598,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                         ),
                                       ),
                               ),
-                              const SizedBox(height: 22),
+                              const SizedBox(height: 12),
                               InkWell(
                                 onTap: () =>
                                     widget.onNavigate(HomeTab.studentSchedule),
@@ -567,33 +630,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              if (isRamadan)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: BracuCard(
-                                    child: Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.access_time_filled_rounded,
-                                          color: BracuPalette.accent,
-                                          size: 18,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Text(
-                                            'Ramadan class timing is active.',
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              color: BracuPalette.textSecondary(
-                                                context,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
                               if (isTodayHoliday || visibleEntries.isEmpty)
                                 InkWell(
                                   onTap: () => widget.onNavigate(
@@ -639,7 +675,105 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                         ),
                                       ),
                                     ),
-                              const SizedBox(height: 12),
+                              if (isRamadan)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: BracuCard(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        if (nextCountdownTarget != null) ...[
+                                          _RamadanTopCountdown(
+                                            ramadanDay: ramadan.ramadanDay,
+                                            targetLabel: nextCountdownTarget,
+                                            targetTime:
+                                                nextCountdownTarget == 'Sehri'
+                                                ? ramadan.sehriEndsAt
+                                                : ramadan.iftarAt,
+                                          ),
+                                          Divider(
+                                            height: 14,
+                                            thickness: 1,
+                                            color: Colors.black.withValues(
+                                              alpha:
+                                                  Theme.of(
+                                                        context,
+                                                      ).brightness ==
+                                                      Brightness.dark
+                                                  ? 0.18
+                                                  : 0.06,
+                                            ),
+                                          ),
+                                        ],
+                                        if (ramadan.sehriEndsAt != null ||
+                                            ramadan.iftarAt != null) ...[
+                                          Row(
+                                            children: [
+                                              if (ramadan.sehriEndsAt != null)
+                                                Expanded(
+                                                  child: _RamadanHeroTime(
+                                                    label: 'Sehri',
+                                                    value: BracuTime.format(
+                                                      ramadan.sehriEndsAt,
+                                                    ),
+                                                  ),
+                                                ),
+                                              if (ramadan.sehriEndsAt != null &&
+                                                  ramadan.iftarAt != null)
+                                                const SizedBox(width: 10),
+                                              if (ramadan.iftarAt != null)
+                                                Expanded(
+                                                  child: _RamadanHeroTime(
+                                                    label: 'Iftar',
+                                                    value: BracuTime.format(
+                                                      ramadan.iftarAt,
+                                                    ),
+                                                    alignRight: true,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 12),
+                                        ],
+                                        if (prayerEntries.isNotEmpty)
+                                          Column(
+                                            children: [
+                                              for (
+                                                var i = 0;
+                                                i < prayerEntries.length;
+                                                i++
+                                              ) ...[
+                                                _RamadanTimeRow(
+                                                  label: prayerEntries[i].$1,
+                                                  value: BracuTime.format(
+                                                    prayerEntries[i].$2,
+                                                  ),
+                                                ),
+                                                if (i !=
+                                                    prayerEntries.length - 1)
+                                                  Divider(
+                                                    height: 10,
+                                                    thickness: 1,
+                                                    color: Colors.black
+                                                        .withValues(
+                                                          alpha:
+                                                              Theme.of(
+                                                                    context,
+                                                                  ).brightness ==
+                                                                  Brightness
+                                                                      .dark
+                                                              ? 0.18
+                                                              : 0.06,
+                                                        ),
+                                                  ),
+                                              ],
+                                            ],
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               const SizedBox(height: 10),
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -1210,6 +1344,182 @@ class _ScheduleTile extends StatelessWidget {
   }
 }
 
+class _RamadanTimeRow extends StatelessWidget {
+  const _RamadanTimeRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: BracuPalette.textPrimary(context),
+          ),
+        ),
+        const Spacer(),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: BracuPalette.textSecondary(context),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RamadanHeroTime extends StatelessWidget {
+  const _RamadanHeroTime({
+    required this.label,
+    required this.value,
+    this.alignRight = false,
+  });
+
+  final String label;
+  final String value;
+  final bool alignRight;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = label.toLowerCase() == 'sehri'
+        ? Icons.nightlight_round
+        : Icons.wb_sunny_outlined;
+    return Column(
+      crossAxisAlignment: alignRight
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: BracuPalette.textSecondary(context)),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: BracuPalette.textSecondary(context),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          textAlign: alignRight ? TextAlign.right : TextAlign.left,
+          style: TextStyle(
+            fontSize: 19,
+            fontWeight: FontWeight.w800,
+            color: BracuPalette.textPrimary(context),
+            height: 1.0,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RamadanTopCountdown extends StatelessWidget {
+  const _RamadanTopCountdown({
+    required this.ramadanDay,
+    required this.targetLabel,
+    required this.targetTime,
+  });
+
+  final int? ramadanDay;
+  final String targetLabel;
+  final String? targetTime;
+
+  @override
+  Widget build(BuildContext context) {
+    if (targetTime == null || targetTime!.trim().isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return SizedBox(
+      width: double.infinity,
+      child: StreamBuilder<DateTime>(
+        stream: Stream<DateTime>.periodic(
+          const Duration(seconds: 1),
+          (_) => DateTime.now(),
+        ),
+        initialData: DateTime.now(),
+        builder: (context, snapshot) {
+          final now = snapshot.data ?? DateTime.now();
+          final countdown = _countdownTo(targetTime!, now);
+          if (countdown == null) return const SizedBox.shrink();
+          return Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    ramadanDay == null ? 'Ramadan' : 'Ramadan Day $ramadanDay',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: BracuPalette.textPrimary(context),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: BracuPalette.warning.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$targetLabel in $countdown',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: BracuPalette.textPrimary(context),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  String? _countdownTo(String targetTime, DateTime now) {
+    final parsed = BracuTime.parseTime(targetTime);
+    if (parsed == null) return null;
+    var target = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      parsed.hour,
+      parsed.minute,
+    );
+    if (!target.isAfter(now)) {
+      target = target.add(const Duration(days: 1));
+    }
+    final diff = target.difference(now);
+    final hours = diff.inHours.toString().padLeft(2, '0');
+    final minutes = (diff.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (diff.inSeconds % 60).toString().padLeft(2, '0');
+    return '$hours:$minutes:$seconds';
+  }
+}
+
 class _DecorBlob extends StatelessWidget {
   const _DecorBlob({required this.color, required this.size});
 
@@ -1236,6 +1546,7 @@ class _HomeData {
     required this.photoUrl,
     required this.sections,
     required this.isRamadan,
+    required this.ramadan,
     required this.holiday,
   });
 
@@ -1244,6 +1555,7 @@ class _HomeData {
   final String? photoUrl;
   final List<section.Section> sections;
   final bool isRamadan;
+  final RamadanStatus ramadan;
   final HolidayStatus holiday;
 }
 

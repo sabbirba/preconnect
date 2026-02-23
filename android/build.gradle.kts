@@ -1,7 +1,5 @@
 import com.android.build.gradle.LibraryExtension
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.gradle.api.tasks.compile.JavaCompile
 
 allprojects {
     repositories {
@@ -56,30 +54,8 @@ subprojects {
 }
 
 subprojects {
-    tasks.withType<JavaCompile>().configureEach {
-        sourceCompatibility = "17"
-        targetCompatibility = "17"
-        options.compilerArgs.add("-Xlint:-options")
-        options.compilerArgs.add("-Xlint:-unchecked")
-    }
     tasks.withType<KotlinCompile>().configureEach {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
-        }
-    }
-}
-
-gradle.projectsEvaluated {
-    subprojects {
-        tasks.withType<JavaCompile>().configureEach {
-            sourceCompatibility = "17"
-            targetCompatibility = "17"
-        }
-        tasks.withType<KotlinCompile>().configureEach {
-            compilerOptions {
-                jvmTarget.set(JvmTarget.JVM_17)
-            }
-        }
+        compilerOptions.freeCompilerArgs.add("-Xjsr305=strict")
     }
 }
 

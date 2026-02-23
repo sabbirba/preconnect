@@ -66,39 +66,33 @@ class StudentOverviewCard extends StatelessWidget {
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final half = (constraints.maxWidth - 12) / 2;
-                    return Column(
+                    return Row(
                       children: [
-                        Row(
-                          children: [
-                            _OverviewTile(
-                              label: 'Student ID',
-                              value: studentId,
-                              width: half,
-                              enableCopy: true,
-                            ),
-                            const SizedBox(width: 12),
-                            _OverviewTile(
-                              label: 'Phone Number',
-                              value: phoneNumber,
-                              width: half,
-                              enableCopy: true,
-                            ),
-                          ],
+                        _OverviewTile(
+                          label: 'Student ID',
+                          value: studentId,
+                          width: half,
+                          enableCopy: true,
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(width: 12),
+                        _OverviewTile(
+                          label: 'Phone Number',
+                          value: phoneNumber,
+                          width: half,
+                          enableCopy: true,
+                        ),
                       ],
                     );
                   },
                 ),
                 if (countdown != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   countdown!,
                 ],
               ],
             ),
           ],
         ),
-        const SizedBox(height: 12),
       ],
     );
   }
