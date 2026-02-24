@@ -18,6 +18,25 @@ class RamadanStatus {
   final String? sehriEndsAt;
   final String? iftarAt;
   final Map<String, String> prayerTimes;
+
+  Map<String, dynamic> toCacheJson() {
+    return <String, dynamic>{
+      'isRamadan': isRamadan,
+      'ramadanDay': ramadanDay,
+      'sehriEndsAt': sehriEndsAt,
+      'iftarAt': iftarAt,
+      'prayerTimes': prayerTimes,
+    };
+  }
+
+  static RamadanStatus fromCache(dynamic json) {
+    if (json is! Map) {
+      return const RamadanStatus(isRamadan: false);
+    }
+    final payload = Map<String, dynamic>.from(json);
+    return RamadanTiming._parseStatus(payload) ??
+        const RamadanStatus(isRamadan: false);
+  }
 }
 
 class RamadanTiming {
@@ -26,8 +45,13 @@ class RamadanTiming {
   static const String _statusUrl = 'https://preconnect.app/api/ramadan';
   static const Duration _requestTimeout = Duration(seconds: 2);
   static const Duration _cacheTtl = Duration(hours: 6);
+  static const String _prefsStatusKey = 'ramadan_status_json';
   static const String _prefsIsRamadanKey = 'ramadan_is_ramadan';
   static const String _prefsLastCheckKey = 'ramadan_last_check_epoch_ms';
+  static final ({DateTime start, DateTime end}) _knownRamadanWindow2026 = (
+    start: DateTime(2026, 2, 18),
+    end: DateTime(2026, 3, 19),
+  );
 
   static DateTime? _lastCheckAt;
   static bool? _cachedIsRamadan;
@@ -90,13 +114,16 @@ class RamadanTiming {
   }) async {
     try {
       final result = await _fetchRamadanStatus();
-      _cachedStatus = result.value;
-      _cachedIsRamadan = result.value.isRamadan;
+      final value = result.fromNetwork
+          ? result.value
+          : _fallbackOfflineStatus();
+      _cachedStatus = value;
+      _cachedIsRamadan = value.isRamadan;
       if (result.fromNetwork) {
         _lastCheckAt = now;
         await _persistCache();
       }
-      return result.value;
+      return value;
     } finally {
       _inflight = null;
     }
@@ -120,12 +147,19 @@ class RamadanTiming {
   static Future<void> _loadCacheFromPrefs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      final statusRaw = prefs.getString(_prefsStatusKey);
       final isRamadan = prefs.getBool(_prefsIsRamadanKey);
       final epochMs = prefs.getInt(_prefsLastCheckKey);
 
-      _cachedIsRamadan = isRamadan;
-      if (isRamadan != null) {
-        _cachedStatus = RamadanStatus(isRamadan: isRamadan);
+      if (statusRaw != null && statusRaw.trim().isNotEmpty) {
+        final status = RamadanStatus.fromCache(jsonDecode(statusRaw));
+        _cachedStatus = status;
+        _cachedIsRamadan = status.isRamadan;
+      } else {
+        _cachedIsRamadan = isRamadan;
+        if (isRamadan != null) {
+          _cachedStatus = RamadanStatus(isRamadan: isRamadan);
+        }
       }
       if (epochMs != null) {
         _lastCheckAt = DateTime.fromMillisecondsSinceEpoch(epochMs);
@@ -139,10 +173,12 @@ class RamadanTiming {
   static Future<void> _persistCache() async {
     final cached = _cachedIsRamadan;
     final lastCheckAt = _lastCheckAt;
-    if (cached == null || lastCheckAt == null) return;
+    final status = _cachedStatus;
+    if (cached == null || lastCheckAt == null || status == null) return;
 
     try {
       final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefsStatusKey, jsonEncode(status.toCacheJson()));
       await prefs.setBool(_prefsIsRamadanKey, cached);
       await prefs.setInt(
         _prefsLastCheckKey,
@@ -164,6 +200,27 @@ class RamadanTiming {
           _cachedStatus ?? RamadanStatus(isRamadan: _cachedIsRamadan ?? false),
       fromNetwork: false,
     );
+  }
+
+  static RamadanStatus _fallbackOfflineStatus() {
+    final cached = _cachedStatus;
+    if (cached != null && _isCacheForToday()) {
+      return cached;
+    }
+
+    if (_isWithinKnownRamadanWindow(DateTime.now())) {
+      final window = _knownRamadanWindow2026;
+      final day = DateTime.now().difference(window.start).inDays + 1;
+      return RamadanStatus(
+        isRamadan: true,
+        ramadanDay: day > 0 ? day : null,
+        sehriEndsAt: cached?.sehriEndsAt,
+        iftarAt: cached?.iftarAt,
+        prayerTimes: cached?.prayerTimes ?? const {},
+      );
+    }
+
+    return cached ?? const RamadanStatus(isRamadan: false);
   }
 
   static Future<Map<String, dynamic>?> _fetchPayload() async {
@@ -237,6 +294,33 @@ class RamadanTiming {
     if (status.prayerTimes.isNotEmpty) return true;
     if (status.sehriEndsAt != null || status.iftarAt != null) return true;
     return false;
+  }
+
+  static bool _isCacheForToday() {
+    final lastCheck = _lastCheckAt;
+    if (lastCheck == null) return false;
+    final now = DateTime.now();
+    return now.year == lastCheck.year &&
+        now.month == lastCheck.month &&
+        now.day == lastCheck.day;
+  }
+
+  static bool _isWithinKnownRamadanWindow(DateTime date) {
+    final window = _knownRamadanWindow2026;
+    final start = DateTime(
+      window.start.year,
+      window.start.month,
+      window.start.day,
+    );
+    final end = DateTime(
+      window.end.year,
+      window.end.month,
+      window.end.day,
+      23,
+      59,
+      59,
+    );
+    return !date.isBefore(start) && !date.isAfter(end);
   }
 
   static ({String startTime, String endTime, bool adjusted}) adjustRange(
