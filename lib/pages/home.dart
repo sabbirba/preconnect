@@ -894,7 +894,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                             text:
                                                 'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
                                             subject:
-                                                'PreConnect.app • Prepare Connect Succeed',
+                                                'PreConnect.app • Prepare. Connect. Succeed.',
                                           ),
                                         );
                                       },
@@ -1222,7 +1222,7 @@ class _OpenWebCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'PreConnect.app • Prepare Connect Succeed',
+                      'PreConnect.app • Prepare. Connect. Succeed.',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,

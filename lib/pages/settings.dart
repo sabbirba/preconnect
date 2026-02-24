@@ -72,14 +72,14 @@ class _SettingsPageState extends State<SettingsPage> {
             if (_isLoading)
               const BracuLoading(label: 'Loading settings...')
             else ...[
-              const BracuSectionTitle(title: 'Card Visibility'),
+              const BracuSectionTitle(title: 'Visibility'),
               const SizedBox(height: 10),
               BracuCard(
                 child: Column(
                   children: [
                     _ToggleRow(
-                      title: 'Exam Countdown Card',
-                      subtitle: 'Show upcoming exam countdown card',
+                      title: 'Exam Countdown',
+                      subtitle: 'Show upcoming exam countdown section',
                       value: _showExamCountdownCard,
                       onChanged: _setShowExamCountdownCard,
                     ),
@@ -93,8 +93,8 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                     _ToggleRow(
-                      title: 'Ramadan Card',
-                      subtitle: 'Show Ramadan countdown and prayer times',
+                      title: 'Ramadan & Prayer Times',
+                      subtitle: 'Show Ramadan and prayer times',
                       value: _showRamadanCard,
                       onChanged: _setShowRamadanCard,
                     ),
@@ -108,7 +108,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                     _ToggleRow(
-                      title: 'Quick Access Section',
+                      title: 'Quick Access',
                       subtitle: 'Show quick shortcuts section',
                       value: _showQuickAccessSection,
                       onChanged: _setShowQuickAccessSection,
