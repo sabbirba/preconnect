@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="launch_background">#00000000</color>
+    <color name="shortcut_profile_bg">#00000000</color>
+    <color name="shortcut_classes_bg">#00000000</color>
+    <color name="shortcut_exams_bg">#00000000</color>
+    <color name="shortcut_friends_bg">#00000000</color>
 </resources>

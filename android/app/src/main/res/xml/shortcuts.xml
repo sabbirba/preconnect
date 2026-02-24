@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="profile"
+        android:enabled="true"
+        android:icon="@drawable/shortcut_profile_fg"
+        android:shortcutShortLabel="@string/shortcut_profile_short"
+        android:shortcutLongLabel="@string/shortcut_profile_long">
+        <intent
+            android:action="quick.profile"
+            android:targetPackage="com.sabbirba.preconnect"
+            android:targetClass="com.sabbirba.preconnect.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="classes"
+        android:enabled="true"
+        android:icon="@drawable/shortcut_classes_fg"
+        android:shortcutShortLabel="@string/shortcut_classes_short"
+        android:shortcutLongLabel="@string/shortcut_classes_long">
+        <intent
+            android:action="quick.classes"
+            android:targetPackage="com.sabbirba.preconnect"
+            android:targetClass="com.sabbirba.preconnect.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="exams"
+        android:enabled="true"
+        android:icon="@drawable/shortcut_exams_fg"
+        android:shortcutShortLabel="@string/shortcut_exams_short"
+        android:shortcutLongLabel="@string/shortcut_exams_long">
+        <intent
+            android:action="quick.exams"
+            android:targetPackage="com.sabbirba.preconnect"
+            android:targetClass="com.sabbirba.preconnect.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="friends"
+        android:enabled="true"
+        android:icon="@drawable/shortcut_friends_fg"
+        android:shortcutShortLabel="@string/shortcut_friends_short"
+        android:shortcutLongLabel="@string/shortcut_friends_long">
+        <intent
+            android:action="quick.friends"
+            android:targetPackage="com.sabbirba.preconnect"
+            android:targetClass="com.sabbirba.preconnect.MainActivity" />
+    </shortcut>
+</shortcuts>

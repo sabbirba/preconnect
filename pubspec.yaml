@@ -35,7 +35,6 @@ dependencies:
   path_provider: ^2.1.5
   in_app_update: ^4.2.5
   in_app_review: ^2.0.11
-  flutter_shortcut_plus: ^1.0.0
   package_info_plus: ^9.0.0
   
 
@@ -62,5 +61,3 @@ flutter_native_splash:
 flutter:
 
   uses-material-design: true
-  assets:
-    - assets/shortcuts/

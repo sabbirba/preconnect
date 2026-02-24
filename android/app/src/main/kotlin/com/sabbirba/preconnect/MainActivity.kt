@@ -2,6 +2,8 @@ package com.sabbirba.preconnect
 
 import com.android.installreferrer.api.InstallReferrerClient
 import com.android.installreferrer.api.InstallReferrerStateListener
+import android.content.Intent
+import android.os.Bundle
 import com.google.android.play.core.integrity.IntegrityManagerFactory
 import com.google.android.play.core.integrity.StandardIntegrityManager
 import io.flutter.embedding.android.FlutterActivity
@@ -9,8 +11,36 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private val shortcutExtraKey = "flutter_shortcut"
+    private val shortcutPrefsKey = "flutter.pending_shortcut_action"
     private var standardTokenProvider: StandardIntegrityManager.StandardIntegrityTokenProvider? = null
     private val integrityManager by lazy { IntegrityManagerFactory.createStandard(applicationContext) }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        cacheShortcutAction(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        cacheShortcutAction(intent)
+    }
+
+    private fun cacheShortcutAction(intent: Intent?) {
+        if (intent == null) return
+        val shortcutAction = intent.getStringExtra(shortcutExtraKey)
+        val launchAction = intent.action
+        val action = when {
+            !shortcutAction.isNullOrBlank() -> shortcutAction
+            !launchAction.isNullOrBlank() && launchAction.startsWith("quick.") -> launchAction
+            else -> null
+        }
+        if (action.isNullOrBlank()) return
+        getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
+            .edit()
+            .putString(shortcutPrefsKey, action)
+            .apply()
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

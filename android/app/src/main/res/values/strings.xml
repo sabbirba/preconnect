@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shortcut_profile_short">Profile</string>
+    <string name="shortcut_profile_long">Open Profile</string>
+    <string name="shortcut_classes_short">Classes</string>
+    <string name="shortcut_classes_long">Open Classes</string>
+    <string name="shortcut_exams_short">Exams</string>
+    <string name="shortcut_exams_long">Open Exams</string>
+    <string name="shortcut_friends_short">Friends</string>
+    <string name="shortcut_friends_long">Open Friends</string>
+</resources>
