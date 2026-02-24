@@ -37,12 +37,28 @@ import 'package:share_plus/share_plus.dart';
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
+  static final StreamController<HomeTab> _shortcutTabController =
+      StreamController<HomeTab>.broadcast();
+  static HomeTab? _pendingShortcutTab;
+
+  static void requestShortcutTab(HomeTab tab) {
+    _pendingShortcutTab = tab;
+    _shortcutTabController.add(tab);
+  }
+
+  static HomeTab? takePendingShortcutTab() {
+    final pending = _pendingShortcutTab;
+    _pendingShortcutTab = null;
+    return pending;
+  }
+
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
   HomeTab selectedTab = HomeTab.settings;
+  StreamSubscription<HomeTab>? _shortcutTabSubscription;
 
   late final Map<HomeTab, WidgetBuilder> pages = {
     HomeTab.settings: (_) => const SettingsPage(),
@@ -65,10 +81,27 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    final pendingShortcutTab = HomePage.takePendingShortcutTab();
+    if (pendingShortcutTab != null) {
+      selectedTab = pendingShortcutTab;
+      _builtTabs.add(pendingShortcutTab);
+    }
+    _shortcutTabSubscription = HomePage._shortcutTabController.stream.listen((
+      tab,
+    ) {
+      if (!mounted) return;
+      _setTab(tab);
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || selectedTab != HomeTab.settings) return;
       _setTab(HomeTab.dashboard);
     });
+  }
+
+  @override
+  void dispose() {
+    _shortcutTabSubscription?.cancel();
+    super.dispose();
   }
 
   void _setTab(HomeTab tab) {

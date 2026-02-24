@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_shortcut_plus/flutter_shortcut.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/pages/home.dart';
+import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/tools/play_install_referrer.dart';
@@ -66,6 +69,14 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  static const String _pendingShortcutPrefsKey = 'pending_shortcut_action';
+  static const String _shortcutProfile = 'quick.profile';
+  static const String _shortcutClasses = 'quick.classes';
+  static const String _shortcutAlarms = 'quick.alarms';
+  static const String _shortcutExams = 'quick.exams';
+  static const String _shortcutFriends = 'quick.friends';
+  static const String _shortcutDevs = 'quick.devs';
+
   late final ValueNotifier<ThemeMode> _themeMode = ValueNotifier<ThemeMode>(
     widget.bootstrapState.themeMode,
   );
@@ -79,11 +90,120 @@ class _MyAppState extends State<MyApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       PlayIntegrity.prepare().catchError((_) {});
       PlayInstallReferrer.prefetch().catchError((_) {});
+      unawaited(_setupQuickAccessShortcuts());
       unawaited(_runStartupChecks());
       if (_initialLoggedIn) {
         _validateSessionInBackground();
       }
     });
+  }
+
+  Future<void> _setupQuickAccessShortcuts() async {
+    if (kIsWeb) return;
+    try {
+      await FlutterShortcut.initialize(debug: false);
+      await FlutterShortcut.clearShortcutItems();
+      await FlutterShortcut.setShortcutItems(
+        shortcutItems: const <ShortcutItem>[
+          ShortcutItem(
+            id: 'profile',
+            action: _shortcutProfile,
+            shortLabel: 'Profile',
+            longLabel: 'Open Profile',
+            icon: 'assets/shortcuts/profile.png',
+          ),
+          ShortcutItem(
+            id: 'classes',
+            action: _shortcutClasses,
+            shortLabel: 'Classes',
+            longLabel: 'Open Classes',
+            icon: 'assets/shortcuts/classes.png',
+          ),
+          ShortcutItem(
+            id: 'alarms',
+            action: _shortcutAlarms,
+            shortLabel: 'Alarms',
+            longLabel: 'Open Alarms',
+            icon: 'assets/shortcuts/alarms.png',
+          ),
+          ShortcutItem(
+            id: 'exams',
+            action: _shortcutExams,
+            shortLabel: 'Exams',
+            longLabel: 'Open Exams',
+            icon: 'assets/shortcuts/exams.png',
+          ),
+          ShortcutItem(
+            id: 'friends',
+            action: _shortcutFriends,
+            shortLabel: 'Friends',
+            longLabel: 'Open Friends',
+            icon: 'assets/shortcuts/friends.png',
+          ),
+          ShortcutItem(
+            id: 'devs',
+            action: _shortcutDevs,
+            shortLabel: 'Devs',
+            longLabel: 'Open Devs',
+            icon: 'assets/shortcuts/devs.png',
+          ),
+        ],
+      );
+      await FlutterShortcut.listenAction((action) {
+        _handleShortcutAction(action);
+      });
+      if (Platform.isIOS) {
+        final prefs = await SharedPreferences.getInstance();
+        final pendingAction = prefs.getString(_pendingShortcutPrefsKey);
+        if (pendingAction != null && pendingAction.isNotEmpty) {
+          await prefs.remove(_pendingShortcutPrefsKey);
+          _handleShortcutAction(pendingAction);
+        }
+      }
+    } catch (_) {}
+  }
+
+  void _handleShortcutAction(String action) {
+    final tab = _tabFromShortcutAction(action);
+    if (tab == null) return;
+    if (!_initialLoggedIn && !_canOpenOffline) return;
+    HomePage.requestShortcutTab(tab);
+    final navigator = _navigatorKey.currentState;
+    if (navigator != null) {
+      navigator.pushNamedAndRemoveUntil('/home', (route) => false);
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+        '/home',
+        (route) => false,
+      );
+    });
+  }
+
+  HomeTab? _tabFromShortcutAction(String action) {
+    switch (action) {
+      case _shortcutProfile:
+      case 'profile':
+        return HomeTab.profile;
+      case _shortcutClasses:
+      case 'classes':
+        return HomeTab.studentSchedule;
+      case _shortcutAlarms:
+      case 'alarms':
+        return HomeTab.alarms;
+      case _shortcutExams:
+      case 'exams':
+        return HomeTab.examSchedule;
+      case _shortcutFriends:
+      case 'friends':
+        return HomeTab.friendSchedule;
+      case _shortcutDevs:
+      case 'devs':
+        return HomeTab.devs;
+      default:
+        return null;
+    }
   }
 
   Future<void> _runStartupChecks() async {
