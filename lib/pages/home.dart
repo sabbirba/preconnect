@@ -623,19 +623,22 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                               ),
                               const SizedBox(height: 12),
                               if (isTodayHoliday || visibleEntries.isEmpty)
-                                InkWell(
-                                  onTap: () => widget.onNavigate(
-                                    HomeTab.studentSchedule,
-                                  ),
-                                  child: _ScheduleTile(
-                                    title: isTodayHoliday
-                                        ? 'National Holiday'
-                                        : 'No Class Today',
-                                    subtitle: isTodayHoliday
-                                        ? holidayStatus.displayNames
-                                        : 'Enjoy your day off or check your schedule.',
-                                    badge: isTodayHoliday ? 'OFF' : '--',
-                                    color: _primary,
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: InkWell(
+                                    onTap: () => widget.onNavigate(
+                                      HomeTab.studentSchedule,
+                                    ),
+                                    child: _ScheduleTile(
+                                      title: isTodayHoliday
+                                          ? 'National Holiday'
+                                          : 'No Class Today',
+                                      subtitle: isTodayHoliday
+                                          ? holidayStatus.displayNames
+                                          : 'Enjoy your day off or check your schedule.',
+                                      badge: isTodayHoliday ? 'OFF' : '--',
+                                      color: _primary,
+                                    ),
                                   ),
                                 )
                               else
@@ -669,7 +672,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                     ),
                               if (isRamadan)
                                 Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
+                                  padding: const EdgeInsets.only(bottom: 16),
                                   child: BracuCard(
                                     child: Column(
                                       crossAxisAlignment:
