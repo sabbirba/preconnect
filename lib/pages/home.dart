@@ -10,6 +10,7 @@ import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/class_schedule.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
+import 'package:preconnect/pages/program_progress.dart';
 import 'package:preconnect/pages/alarms.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/share_schedule.dart';
@@ -69,6 +70,7 @@ class _HomePageState extends State<HomePage> {
     HomeTab.profile: (_) => const StudentProfile(),
     HomeTab.studentSchedule: (_) => const ClassSchedule(),
     HomeTab.examSchedule: (_) => const ExamSchedule(),
+    HomeTab.programProgress: (_) => const ProgramProgressPage(),
     HomeTab.alarms: (_) => const AlarmPage(),
     HomeTab.shareSchedule: (_) => const ShareSchedulePage(),
     HomeTab.scanSchedule: (_) => const ScanSchedulePage(),
@@ -629,6 +631,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                 onOpenSettings: () =>
                                     widget.onNavigate(HomeTab.settings),
                                 onLogout: widget.onLogout,
+                                showStudentContactCards:
+                                    cardVisibility.showStudentContactCards,
                                 countdown:
                                     !cardVisibility.showExamCountdownCard ||
                                         nextExam == null
@@ -652,15 +656,28 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                         ),
                                       ),
                               ),
-                              const SizedBox(height: 12),
-                              InkWell(
-                                onTap: () =>
-                                    widget.onNavigate(HomeTab.studentSchedule),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        'Today is $today',
+                              if (cardVisibility.showTodaySchedule) ...[
+                                const SizedBox(height: 12),
+                                InkWell(
+                                  onTap: () => widget.onNavigate(
+                                    HomeTab.studentSchedule,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          'Today is $today',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: BracuPalette.textPrimary(
+                                              context,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Text(
+                                        todayDate,
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,
@@ -669,69 +686,59 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                           ),
                                         ),
                                       ),
-                                    ),
-                                    Text(
-                                      todayDate,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: BracuPalette.textPrimary(
-                                          context,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              if (isTodayHoliday || visibleEntries.isEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 10),
-                                  child: InkWell(
-                                    onTap: () => widget.onNavigate(
-                                      HomeTab.studentSchedule,
-                                    ),
-                                    child: _ScheduleTile(
-                                      title: isTodayHoliday
-                                          ? 'National Holiday'
-                                          : 'No Class Today',
-                                      subtitle: isTodayHoliday
-                                          ? holidayStatus.displayNames
-                                          : 'Enjoy your day off or check your schedule.',
-                                      badge: isTodayHoliday ? 'OFF' : '--',
-                                      color: _primary,
-                                    ),
+                                    ],
                                   ),
-                                )
-                              else
-                                ...visibleEntries
-                                    .take(3)
-                                    .map(
-                                      (entry) => Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 10,
-                                        ),
-                                        child: InkWell(
-                                          onTap: () => widget.onNavigate(
-                                            HomeTab.studentSchedule,
+                                ),
+                                const SizedBox(height: 12),
+                                if (isTodayHoliday || visibleEntries.isEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: InkWell(
+                                      onTap: () => widget.onNavigate(
+                                        HomeTab.studentSchedule,
+                                      ),
+                                      child: _ScheduleTile(
+                                        title: isTodayHoliday
+                                            ? 'National Holiday'
+                                            : 'No Class Today',
+                                        subtitle: isTodayHoliday
+                                            ? holidayStatus.displayNames
+                                            : 'Enjoy your day off or check your schedule.',
+                                        badge: isTodayHoliday ? 'OFF' : '--',
+                                        color: _primary,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  ...visibleEntries
+                                      .take(3)
+                                      .map(
+                                        (entry) => Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: 10,
                                           ),
-                                          child: _ScheduleTile(
-                                            title: entry.courseCode,
-                                            subtitle: formatTimeRange(
-                                              entry.startTime,
-                                              entry.endTime,
+                                          child: InkWell(
+                                            onTap: () => widget.onNavigate(
+                                              HomeTab.studentSchedule,
                                             ),
-                                            trailing: entry.roomNumber,
-                                            trailingSub: entry.faculties,
-                                            badge: formatSectionBadge(
-                                              entry.sectionName,
+                                            child: _ScheduleTile(
+                                              title: entry.courseCode,
+                                              subtitle: formatTimeRange(
+                                                entry.startTime,
+                                                entry.endTime,
+                                              ),
+                                              trailing: entry.roomNumber,
+                                              trailingSub: entry.faculties,
+                                              badge: formatSectionBadge(
+                                                entry.sectionName,
+                                              ),
+                                              color: _primary,
+                                              isHighlighted: entry == nextEntry,
                                             ),
-                                            color: _primary,
-                                            isHighlighted: entry == nextEntry,
                                           ),
                                         ),
                                       ),
-                                    ),
+                              ],
                               if (cardVisibility.showRamadanCard && isRamadan)
                                 Padding(
                                   padding: const EdgeInsets.only(bottom: 16),
@@ -982,6 +989,16 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                           color: const Color(0xFF7C56FF),
                                           onTap: () => widget.onNavigate(
                                             HomeTab.examSchedule,
+                                          ),
+                                        ),
+                                        _QuickActionCard(
+                                          width: width,
+                                          icon: Icons.insights_outlined,
+                                          title: 'Progress',
+                                          subtitle: 'Curriculum',
+                                          color: const Color(0xFF2C9DFF),
+                                          onTap: () => widget.onNavigate(
+                                            HomeTab.programProgress,
                                           ),
                                         ),
                                         _QuickActionCard(

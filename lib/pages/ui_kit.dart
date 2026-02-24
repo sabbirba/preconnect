@@ -253,44 +253,47 @@ class BracuPageScaffold extends StatelessWidget {
       ),
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: overlayStyle,
-        child: SafeArea(
-          child: Stack(
-            children: [
-              Positioned(
-                top: -70,
-                right: -60,
-                child: _DecorBlob(
-                  color: BracuPalette.primary.withValues(alpha: 0.12),
-                  size: 200,
-                ),
-              ),
-              Positioned(
-                bottom: -80,
-                left: -70,
-                child: _DecorBlob(
-                  color: BracuPalette.accent.withValues(alpha: 0.10),
-                  size: 220,
-                ),
-              ),
-              Column(
-                children: [
-                  Padding(
-                    padding: showBack
-                        ? const EdgeInsets.fromLTRB(6, 12, 20, 8)
-                        : const EdgeInsets.fromLTRB(20, 12, 20, 8),
-                    child: _PageHeader(
-                      title: title,
-                      subtitle: subtitle,
-                      icon: icon,
-                      actions: actions,
-                      showMenu: showMenu,
-                      showBack: showBack,
-                    ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Positioned(
+                  top: -70,
+                  right: -60,
+                  child: _DecorBlob(
+                    color: BracuPalette.primary.withValues(alpha: 0.12),
+                    size: 200,
                   ),
-                  Expanded(child: body),
-                ],
-              ),
-            ],
+                ),
+                Positioned(
+                  bottom: -80,
+                  left: -70,
+                  child: _DecorBlob(
+                    color: BracuPalette.accent.withValues(alpha: 0.10),
+                    size: 220,
+                  ),
+                ),
+                Column(
+                  children: [
+                    Padding(
+                      padding: showBack
+                          ? const EdgeInsets.fromLTRB(6, 12, 20, 8)
+                          : const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                      child: _PageHeader(
+                        title: title,
+                        subtitle: subtitle,
+                        icon: icon,
+                        actions: actions,
+                        showMenu: showMenu,
+                        showBack: showBack,
+                      ),
+                    ),
+                    Expanded(child: body),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -328,7 +331,8 @@ class _PageHeader extends StatelessWidget {
         if (hasBack)
           Transform.translate(
             offset: const Offset(-2, 0),
-            child: InkResponse(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
               onTap: () {
                 if (canPop && navigator != null) {
                   navigator.maybePop();
@@ -336,10 +340,13 @@ class _PageHeader extends StatelessWidget {
                 }
                 backScope?.onBack();
               },
-              child: Icon(
-                Icons.chevron_left_rounded,
-                size: 28,
-                color: BracuPalette.textPrimary(context),
+              child: Padding(
+                padding: const EdgeInsets.all(2),
+                child: Icon(
+                  Icons.chevron_left_rounded,
+                  size: 28,
+                  color: BracuPalette.textPrimary(context),
+                ),
               ),
             ),
           ),

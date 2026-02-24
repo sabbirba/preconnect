@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/app_lock_service.dart';
 import 'package:preconnect/tools/home_card_preferences.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
@@ -15,6 +16,9 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _showQuickAccessSection = true;
   bool _showRamadanCard = true;
   bool _showExamCountdownCard = true;
+  bool _showTodaySchedule = true;
+  bool _showStudentContactCards = true;
+  bool _appLockEnabled = false;
 
   @override
   void initState() {
@@ -24,11 +28,15 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _load() async {
     final visibility = await HomeCardPreferences.load();
+    final appLockEnabled = await AppLockService().isEnabled();
     if (!mounted) return;
     setState(() {
       _showQuickAccessSection = visibility.showQuickAccessSection;
       _showRamadanCard = visibility.showRamadanCard;
       _showExamCountdownCard = visibility.showExamCountdownCard;
+      _showTodaySchedule = visibility.showTodaySchedule;
+      _showStudentContactCards = visibility.showStudentContactCards;
+      _appLockEnabled = appLockEnabled;
       _isLoading = false;
     });
   }
@@ -57,6 +65,42 @@ class _SettingsPageState extends State<SettingsPage> {
     RefreshBus.instance.notify(reason: 'home_card_settings_changed');
   }
 
+  Future<void> _setShowTodaySchedule(bool value) async {
+    setState(() {
+      _showTodaySchedule = value;
+    });
+    await HomeCardPreferences.setShowTodaySchedule(value);
+    RefreshBus.instance.notify(reason: 'home_card_settings_changed');
+  }
+
+  Future<void> _setShowStudentContactCards(bool value) async {
+    setState(() {
+      _showStudentContactCards = value;
+    });
+    await HomeCardPreferences.setShowStudentContactCards(value);
+    RefreshBus.instance.notify(reason: 'home_card_settings_changed');
+  }
+
+  Future<void> _setAppLockEnabled(bool value) async {
+    if (value) {
+      final confirmed = await AppLockService().authenticate(
+        reason: 'Confirm to enable app lock',
+      );
+      if (!confirmed) {
+        if (!mounted) return;
+        showAppSnackBar(context, 'Verification failed. App lock not enabled');
+        return;
+      }
+    }
+    await AppLockService().setEnabled(value);
+    if (!mounted) return;
+    setState(() {
+      _appLockEnabled = value;
+    });
+    RefreshBus.instance.notify(reason: 'app_lock_settings_changed');
+    showAppSnackBar(context, value ? 'App lock enabled' : 'App lock disabled');
+  }
+
   @override
   Widget build(BuildContext context) {
     return BracuPageScaffold(
@@ -79,7 +123,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   children: [
                     _ToggleRow(
                       title: 'Exam Countdown',
-                      subtitle: 'Show upcoming exam countdown section',
+                      subtitle: 'Show upcoming exam countdown',
                       value: _showExamCountdownCard,
                       onChanged: _setShowExamCountdownCard,
                     ),
@@ -108,12 +152,53 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                     _ToggleRow(
+                      title: 'Today\'s Schedule',
+                      subtitle: 'Show today heading and class list',
+                      value: _showTodaySchedule,
+                      onChanged: _setShowTodaySchedule,
+                    ),
+                    Divider(
+                      height: 12,
+                      thickness: 1,
+                      color: BracuPalette.textSecondary(context).withValues(
+                        alpha: Theme.of(context).brightness == Brightness.dark
+                            ? 0.20
+                            : 0.12,
+                      ),
+                    ),
+                    _ToggleRow(
+                      title: 'Student Info',
+                      subtitle: 'Show student info and phone number',
+                      value: _showStudentContactCards,
+                      onChanged: _setShowStudentContactCards,
+                    ),
+                    Divider(
+                      height: 12,
+                      thickness: 1,
+                      color: BracuPalette.textSecondary(context).withValues(
+                        alpha: Theme.of(context).brightness == Brightness.dark
+                            ? 0.20
+                            : 0.12,
+                      ),
+                    ),
+                    _ToggleRow(
                       title: 'Quick Access',
                       subtitle: 'Show quick shortcuts section',
                       value: _showQuickAccessSection,
                       onChanged: _setShowQuickAccessSection,
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              const BracuSectionTitle(title: 'Security'),
+              const SizedBox(height: 10),
+              BracuCard(
+                child: _ToggleRow(
+                  title: 'App Lock',
+                  subtitle: 'Use system authentication to lock the app',
+                  value: _appLockEnabled,
+                  onChanged: _setAppLockEnabled,
                 ),
               ),
             ],

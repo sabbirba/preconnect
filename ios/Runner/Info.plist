@@ -24,6 +24,8 @@
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>NSAlarmKitUsageDescription</key>
 		<string>PreConnect uses alarms to notify you about classes.</string>
+		<key>NSFaceIDUsageDescription</key>
+		<string>PreConnect uses Face ID to unlock the app.</string>
 		<key>NSSupportsLiveActivities</key>
 		<true/>
 		<key>NSBonjourServices</key>

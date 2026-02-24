@@ -12,6 +12,7 @@ class StudentOverviewCard extends StatelessWidget {
     required this.currentSessionSemesterId,
     required this.onOpenSettings,
     required this.onLogout,
+    this.showStudentContactCards = true,
     this.countdown,
   });
 
@@ -23,6 +24,7 @@ class StudentOverviewCard extends StatelessWidget {
   final String currentSessionSemesterId;
   final VoidCallback onOpenSettings;
   final Future<void> Function() onLogout;
+  final bool showStudentContactCards;
   final Widget? countdown;
 
   @override
@@ -61,37 +63,39 @@ class StudentOverviewCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _OverviewHeader(
-                  isDark: isDark,
-                  studentId: studentId,
-                  shortCode: shortCode,
-                  department: department,
-                  currentSemester: currentSemester,
-                  currentSessionSemesterId: currentSessionSemesterId,
-                ),
-                const SizedBox(height: 12),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final half = (constraints.maxWidth - 12) / 2;
-                    return Row(
-                      children: [
-                        _OverviewTile(
-                          label: 'Student ID',
-                          value: studentId,
-                          width: half,
-                          enableCopy: true,
-                        ),
-                        const SizedBox(width: 12),
-                        _OverviewTile(
-                          label: 'Phone Number',
-                          value: phoneNumber,
-                          width: half,
-                          enableCopy: true,
-                        ),
-                      ],
-                    );
-                  },
-                ),
+                if (showStudentContactCards) ...[
+                  _OverviewHeader(
+                    isDark: isDark,
+                    studentId: studentId,
+                    shortCode: shortCode,
+                    department: department,
+                    currentSemester: currentSemester,
+                    currentSessionSemesterId: currentSessionSemesterId,
+                  ),
+                  const SizedBox(height: 12),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final half = (constraints.maxWidth - 12) / 2;
+                      return Row(
+                        children: [
+                          _OverviewTile(
+                            label: 'Student ID',
+                            value: studentId,
+                            width: half,
+                            enableCopy: true,
+                          ),
+                          const SizedBox(width: 12),
+                          _OverviewTile(
+                            label: 'Phone Number',
+                            value: phoneNumber,
+                            width: half,
+                            enableCopy: true,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
                 if (countdown != null) ...[
                   const SizedBox(height: 10),
                   countdown!,

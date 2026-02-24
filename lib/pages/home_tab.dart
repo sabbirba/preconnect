@@ -4,6 +4,7 @@ enum HomeTab {
   profile,
   studentSchedule,
   examSchedule,
+  programProgress,
   alarms,
   shareSchedule,
   scanSchedule,

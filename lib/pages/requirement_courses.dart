@@ -1,0 +1,212 @@
+import 'package:flutter/material.dart';
+import 'package:preconnect/model/progress_info.dart';
+import 'package:preconnect/pages/shared_widgets/section_badge.dart';
+import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/course_pin_store.dart';
+
+class RequirementCoursesPage extends StatefulWidget {
+  const RequirementCoursesPage({
+    super.key,
+    required this.info,
+    required this.headerTitle,
+  });
+
+  final ProgressInfo info;
+  final String headerTitle;
+
+  @override
+  State<RequirementCoursesPage> createState() => _RequirementCoursesPageState();
+}
+
+class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
+  final Set<String> _pinnedCodes = <String>{};
+
+  String get _pinScope {
+    final normalized = widget.headerTitle
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
+    return normalized.isEmpty ? 'requirement_all' : 'requirement_$normalized';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPins();
+  }
+
+  Future<void> _loadPins() async {
+    final pins = await CoursePinStore.load(_pinScope);
+    if (!mounted) return;
+    setState(() {
+      _pinnedCodes
+        ..clear()
+        ..addAll(pins);
+    });
+  }
+
+  Future<void> _togglePin(String code) async {
+    final key = code.trim().toUpperCase();
+    if (key.isEmpty) return;
+    final willPin = !_pinnedCodes.contains(key);
+    setState(() {
+      if (willPin) {
+        _pinnedCodes.add(key);
+      } else {
+        _pinnedCodes.remove(key);
+      }
+    });
+    await CoursePinStore.save(_pinScope, _pinnedCodes);
+    if (!mounted) return;
+    showAppSnackBar(context, willPin ? '$key pinned to top' : '$key unpinned');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final courses = [...widget.info.coursesForHeader(widget.headerTitle)]
+      ..sort((a, b) {
+        final ap = _pinnedCodes.contains(a.code.toUpperCase()) ? 0 : 1;
+        final bp = _pinnedCodes.contains(b.code.toUpperCase()) ? 0 : 1;
+        if (ap != bp) return ap.compareTo(bp);
+        return compareNaturalText(a.code, b.code);
+      });
+    final completedMap = <String, CompletedCourse>{
+      for (final c in widget.info.completedCourses) c.code.toUpperCase(): c,
+    };
+
+    return BracuPageScaffold(
+      title: widget.headerTitle,
+      subtitle: 'Requirement Courses',
+      icon: Icons.menu_book_outlined,
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        children: [
+          if (courses.isEmpty)
+            const BracuCard(
+              child: BracuEmptyState(
+                message: 'No courses found for this section.',
+              ),
+            )
+          else
+            ...courses.map((course) {
+              final completed = completedMap[course.code.toUpperCase()];
+              final done = completed != null;
+              final grade = completed?.grade.trim() ?? '';
+              final infoLabel = course.isMandatory ? 'Required' : 'Optional';
+              final gradeLabel = grade.isEmpty ? null : grade;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: BracuCard(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (gradeLabel != null) ...[
+                        SectionBadge(
+                          label: gradeLabel,
+                          color: BracuPalette.primary,
+                          size: 40,
+                          fontSize: 13,
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${course.code} - ${_formatCredit(course.credit)} Credits',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: BracuPalette.textPrimary(context),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              course.title.isEmpty ? '--' : course.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: BracuPalette.textSecondary(context),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 96,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            IconButton(
+                              tooltip:
+                                  _pinnedCodes.contains(
+                                    course.code.toUpperCase(),
+                                  )
+                                  ? 'Unpin'
+                                  : 'Pin to top',
+                              onPressed: () => _togglePin(course.code),
+                              visualDensity: VisualDensity.compact,
+                              constraints: const BoxConstraints(
+                                minWidth: 24,
+                                minHeight: 24,
+                              ),
+                              padding: EdgeInsets.zero,
+                              icon: Icon(
+                                _pinnedCodes.contains(course.code.toUpperCase())
+                                    ? Icons.star_rounded
+                                    : Icons.star_outline_rounded,
+                                size: 18,
+                                color:
+                                    _pinnedCodes.contains(
+                                      course.code.toUpperCase(),
+                                    )
+                                    ? BracuPalette.favorite
+                                    : BracuPalette.textSecondary(context),
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              infoLabel,
+                              style: TextStyle(
+                                color: course.isMandatory
+                                    ? BracuPalette.warning
+                                    : BracuPalette.accent,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            if (done && gradeLabel == null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                'Completed',
+                                style: TextStyle(
+                                  color: BracuPalette.accent,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  String _formatCredit(double value) {
+    if (value % 1 == 0) return value.toStringAsFixed(0);
+    return value.toStringAsFixed(1);
+  }
+}

@@ -33,6 +33,15 @@ class ApiConfig {
   static String attendancePath(String portfolioId) =>
       '/exc/v1/student-courses/$portfolioId/current-semester-attendance';
 
+  static String majorMinorsPath(String portfolioId) =>
+      '/reg/v1/student-portfolio/$portfolioId/major-minors';
+
+  static String completedCoursesPath(String portfolioId) =>
+      '/exc/v1/student-completed-courses/$portfolioId';
+
+  static String programCurriculumsPath(String portfolioId) =>
+      '/reg/v1/student-portfolio/$portfolioId/program-curriculums';
+
   static const Map<String, String> apiHeaders = {
     'X-REALM': 'bracu',
     'Accept': 'application/json',

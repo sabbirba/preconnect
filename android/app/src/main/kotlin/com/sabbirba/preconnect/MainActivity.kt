@@ -6,11 +6,11 @@ import android.content.Intent
 import android.os.Bundle
 import com.google.android.play.core.integrity.IntegrityManagerFactory
 import com.google.android.play.core.integrity.StandardIntegrityManager
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     private val shortcutExtraKey = "flutter_shortcut"
     private val shortcutPrefsKey = "flutter.pending_shortcut_action"
     private var standardTokenProvider: StandardIntegrityManager.StandardIntegrityTokenProvider? = null

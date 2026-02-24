@@ -10,8 +10,10 @@ import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/onboarding.dart';
+import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/play_install_referrer.dart';
 import 'package:preconnect/tools/play_integrity.dart';
+import 'package:preconnect/tools/app_lock_service.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
 class AppBootstrapState {
@@ -80,11 +82,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   late final bool _initialLoggedIn = widget.bootstrapState.isLoggedIn;
   late final bool _canOpenOffline = widget.bootstrapState.canOpenOffline;
+  bool _appLockEnabled = false;
+  bool _isUnlocked = true;
+  bool _isUnlocking = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    unawaited(_initializeAppLock());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       PlayIntegrity.prepare().catchError((_) {});
       PlayInstallReferrer.prefetch().catchError((_) {});
@@ -115,6 +121,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(_consumePendingShortcutAction());
+      unawaited(_refreshAndUnlockIfNeeded());
+    }
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      if (_appLockEnabled && _isUnlocked) {
+        setState(() {
+          _isUnlocked = false;
+        });
+      }
     }
   }
 
@@ -163,6 +178,113 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   Future<void> _runStartupChecks() async {
     await _maybeCheckForUpdates();
+  }
+
+  Future<void> _initializeAppLock() async {
+    final enabled = await AppLockService().isEnabled();
+    if (!mounted) return;
+    setState(() {
+      _appLockEnabled = enabled;
+      _isUnlocked = !enabled;
+    });
+    if (enabled) {
+      await _unlockApp();
+    }
+  }
+
+  Future<void> _refreshAndUnlockIfNeeded() async {
+    final enabled = await AppLockService().isEnabled();
+    if (!mounted) return;
+    if (!enabled) {
+      if (_appLockEnabled || !_isUnlocked) {
+        setState(() {
+          _appLockEnabled = false;
+          _isUnlocked = true;
+        });
+      }
+      return;
+    }
+    if (!_appLockEnabled) {
+      setState(() {
+        _appLockEnabled = true;
+      });
+    }
+    if (!_isUnlocked) {
+      await _unlockApp();
+    }
+  }
+
+  Future<void> _unlockApp() async {
+    if (_isUnlocking) return;
+    _isUnlocking = true;
+    final unlocked = await AppLockService().authenticate(
+      reason: 'Unlock PreConnect',
+    );
+    _isUnlocking = false;
+    if (!mounted) return;
+    setState(() {
+      _isUnlocked = unlocked;
+    });
+  }
+
+  Widget _buildLockLayer(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: BracuPageScaffold(
+        title: 'App Locked',
+        subtitle: 'Security',
+        icon: Icons.lock_outline_rounded,
+        showBack: false,
+        body: ListView(
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          children: [
+            const SizedBox(height: 120),
+            BracuCard(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.lock_outline_rounded,
+                    size: 42,
+                    color: BracuPalette.textPrimary(context),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'App Locked',
+                    style: TextStyle(
+                      color: BracuPalette.textPrimary(context),
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Use your system lock to continue',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: BracuPalette.textSecondary(context),
+                      fontSize: 12,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  ElevatedButton.icon(
+                    onPressed: _isUnlocking
+                        ? null
+                        : () {
+                            unawaited(_unlockApp());
+                          },
+                    icon: const Icon(Icons.fingerprint),
+                    label: const Text('Unlock'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _persistTheme(ThemeMode mode) async {
@@ -273,7 +395,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               );
               return AnnotatedRegion<SystemUiOverlayStyle>(
                 value: overlayStyle,
-                child: child ?? const SizedBox.shrink(),
+                child: Stack(
+                  children: [
+                    child ?? const SizedBox.shrink(),
+                    if (_appLockEnabled && !_isUnlocked)
+                      Positioned.fill(child: _buildLockLayer(context)),
+                  ],
+                ),
               );
             },
             navigatorKey: _navigatorKey,
