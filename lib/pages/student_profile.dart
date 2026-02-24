@@ -14,6 +14,7 @@ import 'package:preconnect/pages/student_profile_sections/academic_summary.dart'
 import 'package:preconnect/pages/student_profile_sections/attendance_summary.dart';
 import 'package:preconnect/pages/student_profile_sections/payment_graph.dart';
 import 'package:preconnect/pages/student_profile_sections/payment_list.dart';
+import 'package:preconnect/pages/student_profile_sections/personal_info_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/profile_image_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
@@ -246,6 +247,10 @@ class _StudentProfileState extends State<StudentProfile>
               profile: _profile ?? const {},
               advising: _advising,
             ),
+            const SizedBox(height: 18),
+            const BracuSectionTitle(title: 'Personal Info'),
+            const SizedBox(height: 10),
+            PersonalInfoCard(profile: _profile ?? const {}),
             const SizedBox(height: 18),
             const BracuSectionTitle(title: 'Attendance'),
             const SizedBox(height: 10),

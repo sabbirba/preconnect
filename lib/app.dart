@@ -196,7 +196,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       final installStatus = info.installStatus;
 
       if (installStatus == InstallStatus.downloaded ||
-          availability == UpdateAvailability.developerTriggeredUpdateInProgress) {
+          availability ==
+              UpdateAvailability.developerTriggeredUpdateInProgress) {
         return await _runImmediateUpdate();
       }
       if (availability == UpdateAvailability.updateAvailable) {
