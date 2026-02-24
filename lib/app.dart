@@ -8,7 +8,6 @@ import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/onboarding.dart';
-import 'package:preconnect/tools/in_app_review_prompt.dart';
 import 'package:preconnect/tools/play_install_referrer.dart';
 import 'package:preconnect/tools/play_integrity.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -67,15 +66,12 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  static const String _dismissedUpdateVersionCodeKey =
-      'dismissedUpdateVersionCode';
   late final ValueNotifier<ThemeMode> _themeMode = ValueNotifier<ThemeMode>(
     widget.bootstrapState.themeMode,
   );
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   late final bool _initialLoggedIn = widget.bootstrapState.isLoggedIn;
   late final bool _canOpenOffline = widget.bootstrapState.canOpenOffline;
-  bool _didAttemptReviewThisSession = false;
 
   @override
   void initState() {
@@ -91,10 +87,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _runStartupChecks() async {
-    final didTriggerUpdateFlow = await _maybeCheckForUpdates();
-    if (didTriggerUpdateFlow || _didAttemptReviewThisSession) return;
-    _didAttemptReviewThisSession = true;
-    await InAppReviewPrompt.maybePrompt();
+    await _maybeCheckForUpdates();
   }
 
   Future<void> _persistTheme(ThemeMode mode) async {
@@ -127,110 +120,26 @@ class _MyAppState extends State<MyApp> {
       final availability = info.updateAvailability;
       final installStatus = info.installStatus;
 
-      if (installStatus == InstallStatus.downloaded) {
-        await _completeFlexibleUpdate();
-        return true;
+      if (installStatus == InstallStatus.downloaded ||
+          availability == UpdateAvailability.developerTriggeredUpdateInProgress) {
+        return await _runImmediateUpdate();
       }
-
-      if (availability != UpdateAvailability.updateAvailable) {
-        return false;
+      if (availability == UpdateAvailability.updateAvailable) {
+        return await _runImmediateUpdate();
       }
-
-      final availableVersionCode = info.availableVersionCode;
-      if (availableVersionCode != null) {
-        final dismissedVersionCode = await _readDismissedUpdateVersionCode();
-        if (dismissedVersionCode == availableVersionCode) {
-          return false;
-        }
-      }
-
-      return await _showStartupUpdatePrompt(info);
+      return false;
     } catch (_) {
       return false;
     }
   }
 
-  Future<bool> _showStartupUpdatePrompt(AppUpdateInfo info) async {
-    final context = _navigatorKey.currentContext;
-    if (context == null) return false;
-    final shouldUpdate = await showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (dialogContext) {
-        return AlertDialog(
-          titlePadding: const EdgeInsets.fromLTRB(20, 14, 8, 8),
-          title: Row(
-            children: [
-              const Expanded(child: Text('Update available')),
-              IconButton(
-                tooltip: 'Close',
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                icon: const Icon(Icons.close),
-              ),
-            ],
-          ),
-          content: const Text(
-            'A newer version of PreConnect is available. Update now for fixes and improvements.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Later'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Update'),
-            ),
-          ],
-        );
-      },
-    );
-    if (shouldUpdate != true) {
-      final versionCode = info.availableVersionCode;
-      if (versionCode != null) {
-        await _saveDismissedUpdateVersionCode(versionCode);
-      }
-      return true;
-    }
-    await _clearDismissedUpdateVersionCode();
-    if (info.flexibleUpdateAllowed) {
-      return await _runFlexibleUpdate();
-    }
-    return await _openStoreForUpdate();
-  }
-
-  Future<int?> _readDismissedUpdateVersionCode() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_dismissedUpdateVersionCodeKey);
-  }
-
-  Future<void> _saveDismissedUpdateVersionCode(int versionCode) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_dismissedUpdateVersionCodeKey, versionCode);
-  }
-
-  Future<void> _clearDismissedUpdateVersionCode() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_dismissedUpdateVersionCodeKey);
-  }
-
-  Future<bool> _runFlexibleUpdate() async {
+  Future<bool> _runImmediateUpdate() async {
     try {
-      final result = await InAppUpdate.startFlexibleUpdate();
+      final result = await InAppUpdate.performImmediateUpdate();
       return result == AppUpdateResult.success;
     } catch (_) {
       return false;
     }
-  }
-
-  Future<bool> _openStoreForUpdate() async {
-    return await InAppReviewPrompt.openStoreListing();
-  }
-
-  Future<void> _completeFlexibleUpdate() async {
-    try {
-      await InAppUpdate.completeFlexibleUpdate();
-    } catch (_) {}
   }
 
   @override
