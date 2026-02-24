@@ -10,6 +10,7 @@ class StudentOverviewCard extends StatelessWidget {
     required this.department,
     required this.currentSemester,
     required this.currentSessionSemesterId,
+    required this.onOpenSettings,
     required this.onLogout,
     this.countdown,
   });
@@ -20,6 +21,7 @@ class StudentOverviewCard extends StatelessWidget {
   final String department;
   final String currentSemester;
   final String currentSessionSemesterId;
+  final VoidCallback onOpenSettings;
   final Future<void> Function() onLogout;
   final Widget? countdown;
 
@@ -45,6 +47,11 @@ class StudentOverviewCard extends StatelessWidget {
                       letterSpacing: -0.3,
                     ),
                   ),
+                ),
+                const SizedBox(width: 8),
+                _IconButton(
+                  icon: Icons.settings_outlined,
+                  onTap: onOpenSettings,
                 ),
                 const SizedBox(width: 8),
                 _IconButton(icon: Icons.logout, onTap: onLogout),

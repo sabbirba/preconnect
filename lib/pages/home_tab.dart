@@ -1,4 +1,5 @@
 enum HomeTab {
+  settings,
   dashboard,
   profile,
   studentSchedule,
