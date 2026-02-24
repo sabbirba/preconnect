@@ -17,6 +17,7 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
   String _searchQuery = '';
   String _selectedHeader = 'All';
   bool _mandatoryOnly = false;
+  bool _optionalOnly = false;
   final Set<String> _pinnedCodes = <String>{};
   static const String _pinScope = 'all_courses';
 
@@ -80,7 +81,10 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
       if (_selectedHeader != 'All' && course.headerName != _selectedHeader) {
         return false;
       }
-      if (_mandatoryOnly && !course.isMandatory) {
+      if (_mandatoryOnly && !_optionalOnly && !course.isMandatory) {
+        return false;
+      }
+      if (_optionalOnly && !_mandatoryOnly && course.isMandatory) {
         return false;
       }
       if (_searchQuery.isEmpty) {
@@ -188,31 +192,70 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
           ),
           const SizedBox(height: 8),
           Center(
-            child: FilterChip(
-              label: const Text('Mandatory'),
-              showCheckmark: false,
-              labelStyle: TextStyle(
-                color: _mandatoryOnly
-                    ? BracuPalette.primary
-                    : BracuPalette.textPrimary(context),
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
-              side: BorderSide(
-                color: _mandatoryOnly
-                    ? BracuPalette.primary.withValues(alpha: 0.8)
-                    : BracuPalette.textSecondary(
-                        context,
-                      ).withValues(alpha: 0.24),
-              ),
-              backgroundColor: BracuPalette.card(context),
-              selectedColor: BracuPalette.primary.withValues(alpha: 0.14),
-              selected: _mandatoryOnly,
-              onSelected: (value) {
-                setState(() {
-                  _mandatoryOnly = value;
-                });
-              },
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                FilterChip(
+                  label: const Text('Mandatory'),
+                  showCheckmark: false,
+                  labelStyle: TextStyle(
+                    color: _mandatoryOnly
+                        ? BracuPalette.primary
+                        : BracuPalette.textPrimary(context),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  side: BorderSide(
+                    color: _mandatoryOnly
+                        ? BracuPalette.primary.withValues(alpha: 0.8)
+                        : BracuPalette.textSecondary(
+                            context,
+                          ).withValues(alpha: 0.24),
+                  ),
+                  backgroundColor: BracuPalette.card(context),
+                  selectedColor: BracuPalette.primary.withValues(alpha: 0.14),
+                  selected: _mandatoryOnly,
+                  onSelected: (value) {
+                    setState(() {
+                      _mandatoryOnly = value;
+                      if (value) {
+                        _optionalOnly = false;
+                      }
+                    });
+                  },
+                ),
+                FilterChip(
+                  label: const Text('Optional'),
+                  showCheckmark: false,
+                  labelStyle: TextStyle(
+                    color: _optionalOnly
+                        ? BracuPalette.primary
+                        : BracuPalette.textPrimary(context),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  side: BorderSide(
+                    color: _optionalOnly
+                        ? BracuPalette.primary.withValues(alpha: 0.8)
+                        : BracuPalette.textSecondary(
+                            context,
+                          ).withValues(alpha: 0.24),
+                  ),
+                  backgroundColor: BracuPalette.card(context),
+                  selectedColor: BracuPalette.primary.withValues(alpha: 0.14),
+                  selected: _optionalOnly,
+                  onSelected: (value) {
+                    setState(() {
+                      _optionalOnly = value;
+                      if (value) {
+                        _mandatoryOnly = false;
+                      }
+                    });
+                  },
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 8),
@@ -230,15 +273,68 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              '${course.code} - ${_formatCredit(course.credit)} Credits',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: BracuPalette.textPrimary(context),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Flexible(
+                                  child: Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        TextSpan(text: course.code),
+                                        WidgetSpan(
+                                          alignment:
+                                              PlaceholderAlignment.middle,
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 4,
+                                            ),
+                                            child: Tooltip(
+                                              message:
+                                                  _pinnedCodes.contains(
+                                                    course.code.toUpperCase(),
+                                                  )
+                                                  ? 'Unpin'
+                                                  : 'Pin to top',
+                                              child: InkWell(
+                                                borderRadius:
+                                                    BorderRadius.circular(999),
+                                                onTap: () =>
+                                                    _togglePin(course.code),
+                                                child: Icon(
+                                                  _pinnedCodes.contains(
+                                                        course.code
+                                                            .toUpperCase(),
+                                                      )
+                                                      ? Icons.star_rounded
+                                                      : Icons
+                                                            .star_outline_rounded,
+                                                  size: 16,
+                                                  color:
+                                                      _pinnedCodes.contains(
+                                                        course.code
+                                                            .toUpperCase(),
+                                                      )
+                                                      ? BracuPalette.favorite
+                                                      : BracuPalette.textSecondary(
+                                                          context,
+                                                        ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: BracuPalette.textPrimary(context),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 3),
                             Text(
@@ -259,31 +355,12 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            IconButton(
-                              tooltip:
-                                  _pinnedCodes.contains(
-                                    course.code.toUpperCase(),
-                                  )
-                                  ? 'Unpin'
-                                  : 'Pin to top',
-                              onPressed: () => _togglePin(course.code),
-                              visualDensity: VisualDensity.compact,
-                              constraints: const BoxConstraints(
-                                minWidth: 24,
-                                minHeight: 24,
-                              ),
-                              padding: EdgeInsets.zero,
-                              icon: Icon(
-                                _pinnedCodes.contains(course.code.toUpperCase())
-                                    ? Icons.star_rounded
-                                    : Icons.star_outline_rounded,
-                                size: 18,
-                                color:
-                                    _pinnedCodes.contains(
-                                      course.code.toUpperCase(),
-                                    )
-                                    ? BracuPalette.favorite
-                                    : BracuPalette.textSecondary(context),
+                            Text(
+                              '${_formatCredit(course.credit)} credits',
+                              style: TextStyle(
+                                color: BracuPalette.textPrimary(context),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                             const SizedBox(height: 1),

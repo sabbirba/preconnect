@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/profile_service.dart';
+import 'package:preconnect/api/progress_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/class_schedule.dart';
@@ -288,6 +289,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   void initState() {
     super.initState();
     _future = _loadData();
+    unawaited(_preloadProgramProgress());
     RefreshBus.instance.addListener(_onRefreshSignal);
   }
 
@@ -387,10 +389,20 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     );
   }
 
+  Future<void> _preloadProgramProgress({bool forceRefresh = false}) async {
+    if (forceRefresh) {
+      await ProgressService().fetchProgress();
+      return;
+    }
+    await ProgressService().getProgress();
+    await ProgressService().fetchProgress();
+  }
+
   Future<void> _handleRefresh({bool notify = true}) async {
     if (!await ensureOnline(context, notify: notify)) {
       return;
     }
+    unawaited(_preloadProgramProgress(forceRefresh: true));
     setState(() {
       _future = _loadData(forceRefresh: true);
     });

@@ -114,15 +114,68 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              '${course.code} - ${_formatCredit(course.credit)} Credits',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: BracuPalette.textPrimary(context),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Flexible(
+                                  child: Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        TextSpan(text: course.code),
+                                        WidgetSpan(
+                                          alignment:
+                                              PlaceholderAlignment.middle,
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 4,
+                                            ),
+                                            child: Tooltip(
+                                              message:
+                                                  _pinnedCodes.contains(
+                                                    course.code.toUpperCase(),
+                                                  )
+                                                  ? 'Unpin'
+                                                  : 'Pin to top',
+                                              child: InkWell(
+                                                borderRadius:
+                                                    BorderRadius.circular(999),
+                                                onTap: () =>
+                                                    _togglePin(course.code),
+                                                child: Icon(
+                                                  _pinnedCodes.contains(
+                                                        course.code
+                                                            .toUpperCase(),
+                                                      )
+                                                      ? Icons.star_rounded
+                                                      : Icons
+                                                            .star_outline_rounded,
+                                                  size: 16,
+                                                  color:
+                                                      _pinnedCodes.contains(
+                                                        course.code
+                                                            .toUpperCase(),
+                                                      )
+                                                      ? BracuPalette.favorite
+                                                      : BracuPalette.textSecondary(
+                                                          context,
+                                                        ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: BracuPalette.textPrimary(context),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 3),
                             Text(
@@ -143,31 +196,12 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            IconButton(
-                              tooltip:
-                                  _pinnedCodes.contains(
-                                    course.code.toUpperCase(),
-                                  )
-                                  ? 'Unpin'
-                                  : 'Pin to top',
-                              onPressed: () => _togglePin(course.code),
-                              visualDensity: VisualDensity.compact,
-                              constraints: const BoxConstraints(
-                                minWidth: 24,
-                                minHeight: 24,
-                              ),
-                              padding: EdgeInsets.zero,
-                              icon: Icon(
-                                _pinnedCodes.contains(course.code.toUpperCase())
-                                    ? Icons.star_rounded
-                                    : Icons.star_outline_rounded,
-                                size: 18,
-                                color:
-                                    _pinnedCodes.contains(
-                                      course.code.toUpperCase(),
-                                    )
-                                    ? BracuPalette.favorite
-                                    : BracuPalette.textSecondary(context),
+                            Text(
+                              '${_formatCredit(course.credit)} credits',
+                              style: TextStyle(
+                                color: BracuPalette.textPrimary(context),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                             const SizedBox(height: 1),

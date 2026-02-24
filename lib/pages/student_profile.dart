@@ -7,6 +7,7 @@ import 'package:preconnect/api/advising_service.dart';
 import 'package:preconnect/api/attendance_service.dart';
 import 'package:preconnect/api/payment_service.dart';
 import 'package:preconnect/api/profile_service.dart';
+import 'package:preconnect/api/progress_service.dart';
 import 'package:preconnect/model/payment_info.dart';
 import 'package:preconnect/model/attendance_info.dart';
 import 'package:preconnect/pages/card_section.dart';
@@ -49,6 +50,7 @@ class _StudentProfileState extends State<StudentProfile>
     unawaited(PaymentService().fetchPaymentInfo());
     unawaited(AttendanceService().fetchAttendanceInfo());
     unawaited(AdvisingService().fetchAdvisingInfo());
+    unawaited(_preloadProgramProgress());
     _loadProfile();
     RefreshBus.instance.addListener(_onRefreshSignal);
   }
@@ -164,6 +166,7 @@ class _StudentProfileState extends State<StudentProfile>
       _refreshController.repeat();
     }
     try {
+      unawaited(_preloadProgramProgress(forceRefresh: true));
       final profile = await ProfileService().fetchProfile();
       final photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
       ProfileImageCache.instance.invalidate();
@@ -222,6 +225,15 @@ class _StudentProfileState extends State<StudentProfile>
     if (notify) {
       RefreshBus.instance.notify(reason: 'student_profile');
     }
+  }
+
+  Future<void> _preloadProgramProgress({bool forceRefresh = false}) async {
+    if (forceRefresh) {
+      await ProgressService().fetchProgress();
+      return;
+    }
+    await ProgressService().getProgress();
+    await ProgressService().fetchProgress();
   }
 
   @override

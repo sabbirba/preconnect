@@ -105,7 +105,7 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
   Widget build(BuildContext context) {
     return BracuPageScaffold(
       title: 'Progression',
-      subtitle: 'Curriculum & Courses',
+      subtitle: 'Curriculum Based',
       icon: Icons.insights_outlined,
       body: FutureBuilder<ProgressInfo?>(
         future: _future,
@@ -370,7 +370,7 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       Text(
-                                        _formatCredit(earnedCredit),
+                                        '${_formatCredit(earnedCredit)} credits',
                                         style: TextStyle(
                                           color: BracuPalette.textPrimary(
                                             context,
@@ -515,7 +515,7 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Text(
-                                    _formatCredit(course.credit),
+                                    '${_formatCredit(course.credit)} credits',
                                     style: TextStyle(
                                       color: BracuPalette.textPrimary(context),
                                       fontSize: 14,
