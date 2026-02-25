@@ -84,11 +84,13 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
           return ap.compareTo(bp);
         }
         final aTop =
-            completedMap.containsKey(aCode) || currentSemesterCodes.contains(aCode)
+            completedMap.containsKey(aCode) ||
+                currentSemesterCodes.contains(aCode)
             ? 0
             : 1;
         final bTop =
-            completedMap.containsKey(bCode) || currentSemesterCodes.contains(bCode)
+            completedMap.containsKey(bCode) ||
+                currentSemesterCodes.contains(bCode)
             ? 0
             : 1;
         if (aTop != bTop) {

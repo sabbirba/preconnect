@@ -122,96 +122,96 @@ class _SettingsPageState extends State<SettingsPage> {
       body: BracuRefreshList(
         onRefresh: _load,
         children: [
-            if (_isLoading)
-              const BracuLoading(label: 'Loading settings...')
-            else ...[
-              const BracuSectionTitle(title: 'Visibility'),
-              const SizedBox(height: 10),
-              BracuCard(
-                child: Column(
-                  children: [
-                    _ToggleRow(
-                      title: 'Exam Countdown',
-                      subtitle: 'Show upcoming exam countdown',
-                      value: _showExamCountdownCard,
-                      onChanged: _setShowExamCountdownCard,
+          if (_isLoading)
+            const BracuLoading(label: 'Loading settings...')
+          else ...[
+            const BracuSectionTitle(title: 'Visibility'),
+            const SizedBox(height: 10),
+            BracuCard(
+              child: Column(
+                children: [
+                  _ToggleRow(
+                    title: 'Exam Countdown',
+                    subtitle: 'Show upcoming exam countdown',
+                    value: _showExamCountdownCard,
+                    onChanged: _setShowExamCountdownCard,
+                  ),
+                  Divider(
+                    height: 12,
+                    thickness: 1,
+                    color: BracuPalette.textSecondary(context).withValues(
+                      alpha: Theme.of(context).brightness == Brightness.dark
+                          ? 0.20
+                          : 0.12,
                     ),
-                    Divider(
-                      height: 12,
-                      thickness: 1,
-                      color: BracuPalette.textSecondary(context).withValues(
-                        alpha: Theme.of(context).brightness == Brightness.dark
-                            ? 0.20
-                            : 0.12,
-                      ),
+                  ),
+                  _ToggleRow(
+                    title: 'Ramadan & Prayer Times',
+                    subtitle: 'Show Ramadan and prayer times',
+                    value: _showRamadanCard,
+                    onChanged: _setShowRamadanCard,
+                  ),
+                  Divider(
+                    height: 12,
+                    thickness: 1,
+                    color: BracuPalette.textSecondary(context).withValues(
+                      alpha: Theme.of(context).brightness == Brightness.dark
+                          ? 0.20
+                          : 0.12,
                     ),
-                    _ToggleRow(
-                      title: 'Ramadan & Prayer Times',
-                      subtitle: 'Show Ramadan and prayer times',
-                      value: _showRamadanCard,
-                      onChanged: _setShowRamadanCard,
+                  ),
+                  _ToggleRow(
+                    title: 'Today\'s Schedule',
+                    subtitle: 'Show today heading and class list',
+                    value: _showTodaySchedule,
+                    onChanged: _setShowTodaySchedule,
+                  ),
+                  Divider(
+                    height: 12,
+                    thickness: 1,
+                    color: BracuPalette.textSecondary(context).withValues(
+                      alpha: Theme.of(context).brightness == Brightness.dark
+                          ? 0.20
+                          : 0.12,
                     ),
-                    Divider(
-                      height: 12,
-                      thickness: 1,
-                      color: BracuPalette.textSecondary(context).withValues(
-                        alpha: Theme.of(context).brightness == Brightness.dark
-                            ? 0.20
-                            : 0.12,
-                      ),
+                  ),
+                  _ToggleRow(
+                    title: 'Student Info',
+                    subtitle: 'Show student info and phone number',
+                    value: _showStudentContactCards,
+                    onChanged: _setShowStudentContactCards,
+                  ),
+                  Divider(
+                    height: 12,
+                    thickness: 1,
+                    color: BracuPalette.textSecondary(context).withValues(
+                      alpha: Theme.of(context).brightness == Brightness.dark
+                          ? 0.20
+                          : 0.12,
                     ),
-                    _ToggleRow(
-                      title: 'Today\'s Schedule',
-                      subtitle: 'Show today heading and class list',
-                      value: _showTodaySchedule,
-                      onChanged: _setShowTodaySchedule,
-                    ),
-                    Divider(
-                      height: 12,
-                      thickness: 1,
-                      color: BracuPalette.textSecondary(context).withValues(
-                        alpha: Theme.of(context).brightness == Brightness.dark
-                            ? 0.20
-                            : 0.12,
-                      ),
-                    ),
-                    _ToggleRow(
-                      title: 'Student Info',
-                      subtitle: 'Show student info and phone number',
-                      value: _showStudentContactCards,
-                      onChanged: _setShowStudentContactCards,
-                    ),
-                    Divider(
-                      height: 12,
-                      thickness: 1,
-                      color: BracuPalette.textSecondary(context).withValues(
-                        alpha: Theme.of(context).brightness == Brightness.dark
-                            ? 0.20
-                            : 0.12,
-                      ),
-                    ),
-                    _ToggleRow(
-                      title: 'Quick Access',
-                      subtitle: 'Show quick shortcuts section',
-                      value: _showQuickAccessSection,
-                      onChanged: _setShowQuickAccessSection,
-                    ),
-                  ],
-                ),
+                  ),
+                  _ToggleRow(
+                    title: 'Quick Access',
+                    subtitle: 'Show quick shortcuts section',
+                    value: _showQuickAccessSection,
+                    onChanged: _setShowQuickAccessSection,
+                  ),
+                ],
               ),
-              const SizedBox(height: 14),
-              const BracuSectionTitle(title: 'Security'),
-              const SizedBox(height: 10),
-              BracuCard(
-                child: _ToggleRow(
-                  title: 'App Lock',
-                  subtitle: 'Use system authentication to lock the app',
-                  value: _appLockEnabled,
-                  onChanged: _setAppLockEnabled,
-                ),
+            ),
+            const SizedBox(height: 14),
+            const BracuSectionTitle(title: 'Security'),
+            const SizedBox(height: 10),
+            BracuCard(
+              child: _ToggleRow(
+                title: 'App Lock',
+                subtitle: 'Use system authentication to lock the app',
+                value: _appLockEnabled,
+                onChanged: _setAppLockEnabled,
               ),
-            ],
+            ),
           ],
+        ],
       ),
     );
   }

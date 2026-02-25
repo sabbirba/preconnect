@@ -249,7 +249,10 @@ class BracuRefreshPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     return BracuRefreshList(
       onRefresh: onRefresh,
-      children: [SizedBox(height: topSpacing), child],
+      children: [
+        SizedBox(height: topSpacing),
+        child,
+      ],
     );
   }
 }

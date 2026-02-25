@@ -128,6 +128,9 @@ class _ClassScheduleState extends State<ClassSchedule> {
           "sectionName": section.sectionName,
           "roomNumber": section.roomNumber,
           "faculties": section.faculties,
+          "consumedSeat": section.consumedSeat,
+          "capacity": section.capacity,
+          "courseType": section.courseType,
         });
 
         if (shouldHighlightCurrentSemester) {
@@ -198,7 +201,9 @@ class _ClassScheduleState extends State<ClassSchedule> {
   }) async {
     final service = ScheduleService();
     final cached = await service.getCachedValidSemesterSessionIds();
-    if (mounted && cached.isNotEmpty && !_sameIntList(_semesterSessionOptions, cached)) {
+    if (mounted &&
+        cached.isNotEmpty &&
+        !_sameIntList(_semesterSessionOptions, cached)) {
       setState(() {
         _semesterSessionOptions = cached;
       });
@@ -261,10 +266,7 @@ class _ClassScheduleState extends State<ClassSchedule> {
     final menuWidth = (maxTextWidth + 32).clamp(120.0, 260.0);
     return PopupMenuButton<int>(
       tooltip: 'Select semester',
-      constraints: BoxConstraints(
-        minWidth: menuWidth,
-        maxWidth: menuWidth,
-      ),
+      constraints: BoxConstraints(minWidth: menuWidth, maxWidth: menuWidth),
       onSelected: (value) {
         final sessionId = value == currentMenuValue ? null : value;
         unawaited(_selectSemester(sessionId));
@@ -416,7 +418,9 @@ class _ClassScheduleState extends State<ClassSchedule> {
           if (grouped.isEmpty) {
             return BracuRefreshPlaceholder(
               onRefresh: _handleRefresh,
-              child: const BracuEmptyState(message: 'No schedule data available'),
+              child: const BracuEmptyState(
+                message: 'No schedule data available',
+              ),
             );
           }
 
@@ -451,6 +455,18 @@ class _ClassScheduleState extends State<ClassSchedule> {
                     final sectionName = entry["sectionName"];
                     final room = entry["roomNumber"];
                     final faculties = entry["faculties"] as String?;
+                    final consumedSeat = entry["consumedSeat"] as int?;
+                    final courseType = (entry["courseType"] as String?)?.trim();
+                    final courseTypeLabel =
+                        (courseType != null && courseType.isNotEmpty)
+                        ? courseType[0].toUpperCase() +
+                              courseType.substring(1).toLowerCase()
+                        : '';
+                    final codeLabel = '$code'.trim();
+                    final facultyLabel = (faculties ?? '').trim();
+                    final consumedLabel = consumedSeat == null
+                        ? ''
+                        : '($consumedSeat)';
                     final adjusted = RamadanTiming.adjustRange(
                       s.startTime,
                       s.endTime,
@@ -488,10 +504,27 @@ class _ClassScheduleState extends State<ClassSchedule> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        '$code'.trim(),
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
+                                      Text.rich(
+                                        TextSpan(
+                                          children: [
+                                            TextSpan(
+                                              text: codeLabel,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            if (courseTypeLabel.isNotEmpty)
+                                              TextSpan(
+                                                text: ' $courseTypeLabel',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  color:
+                                                      BracuPalette.textSecondary(
+                                                        context,
+                                                      ),
+                                                ),
+                                              ),
+                                          ],
                                         ),
                                       ),
                                       const SizedBox(height: 4),
@@ -526,18 +559,39 @@ class _ClassScheduleState extends State<ClassSchedule> {
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
-                                      if (faculties != null &&
-                                          faculties.trim().isNotEmpty) ...[
+                                      if (facultyLabel.isNotEmpty ||
+                                          consumedLabel.isNotEmpty) ...[
                                         const SizedBox(height: 2),
-                                        Text(
-                                          faculties,
-                                          textAlign: TextAlign.right,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: BracuPalette.textSecondary(
-                                              context,
-                                            ),
+                                        Text.rich(
+                                          TextSpan(
+                                            children: [
+                                              if (facultyLabel.isNotEmpty)
+                                                TextSpan(
+                                                  text: facultyLabel,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                    color:
+                                                        BracuPalette.textPrimary(
+                                                          context,
+                                                        ),
+                                                  ),
+                                                ),
+                                              if (consumedLabel.isNotEmpty)
+                                                TextSpan(
+                                                  text:
+                                                      '${facultyLabel.isEmpty ? '' : ' '}$consumedLabel',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color:
+                                                        BracuPalette.textSecondary(
+                                                          context,
+                                                        ),
+                                                  ),
+                                                ),
+                                            ],
                                           ),
+                                          textAlign: TextAlign.right,
                                         ),
                                       ],
                                     ],

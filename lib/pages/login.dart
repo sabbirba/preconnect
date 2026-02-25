@@ -255,9 +255,7 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       if (_webViewController != null)
                         Positioned.fill(
-                          child: WebViewWidget(
-                            controller: _webViewController!,
-                          ),
+                          child: WebViewWidget(controller: _webViewController!),
                         ),
                       if (_isLoggingIn)
                         Positioned.fill(
@@ -273,7 +271,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ],
           ),
-            ),
+        ),
       ),
     );
   }

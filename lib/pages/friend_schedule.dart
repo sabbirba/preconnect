@@ -65,7 +65,9 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
     if (reason == 'friend_schedule') {
       return;
     }
-    if (reason == 'share_schedule' || reason == 'scan_schedule' || reason == 'auth') {
+    if (reason == 'share_schedule' ||
+        reason == 'scan_schedule' ||
+        reason == 'auth') {
       unawaited(_loadSchedules());
     }
   }
@@ -588,143 +590,141 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
       body: BracuRefreshList(
         onRefresh: _handleRefresh,
         children: [
-            Text(
-              'Scan & Share',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: textPrimary,
-              ),
+          Text(
+            'Scan & Share',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: textPrimary,
             ),
-            const SizedBox(height: 12),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                const spacing = 12.0;
-                return GridView.count(
-                  crossAxisCount: 3,
-                  mainAxisSpacing: spacing,
-                  crossAxisSpacing: spacing,
-                  childAspectRatio: 0.95,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    FriendActionCard(
-                      icon: Icons.qr_code_scanner,
-                      title: 'Scan',
-                      subtitle: 'Schedule',
-                      color: BracuPalette.info,
-                      onTap: () => widget.onNavigate(HomeTab.scanSchedule),
-                    ),
-                    FriendActionCard(
-                      icon: Icons.photo_library_rounded,
-                      title: 'Gallery',
-                      subtitle: 'Scan QR',
-                      color: BracuPalette.warning,
-                      onTap: _scanFromGallery,
-                    ),
-                    FriendActionCard(
-                      icon: Icons.qr_code_2,
-                      title: 'Share',
-                      subtitle: 'Schedule',
-                      color: BracuPalette.accent,
-                      onTap: () {
-                        widget.onNavigate(HomeTab.shareSchedule);
-                      },
-                    ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 22),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Friends',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: textPrimary,
-                    ),
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const spacing = 12.0;
+              return GridView.count(
+                crossAxisCount: 3,
+                mainAxisSpacing: spacing,
+                crossAxisSpacing: spacing,
+                childAspectRatio: 0.95,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  FriendActionCard(
+                    icon: Icons.qr_code_scanner,
+                    title: 'Scan',
+                    subtitle: 'Schedule',
+                    color: BracuPalette.info,
+                    onTap: () => widget.onNavigate(HomeTab.scanSchedule),
                   ),
-                ),
-                Text(
-                  '$totalFriends $scheduleWord',
+                  FriendActionCard(
+                    icon: Icons.photo_library_rounded,
+                    title: 'Gallery',
+                    subtitle: 'Scan QR',
+                    color: BracuPalette.warning,
+                    onTap: _scanFromGallery,
+                  ),
+                  FriendActionCard(
+                    icon: Icons.qr_code_2,
+                    title: 'Share',
+                    subtitle: 'Schedule',
+                    color: BracuPalette.accent,
+                    onTap: () {
+                      widget.onNavigate(HomeTab.shareSchedule);
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 22),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Friends',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: textSecondary,
+                    color: textPrimary,
                   ),
                 ),
-              ],
+              ),
+              Text(
+                '$totalFriends $scheduleWord',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (decodedSchedules.isNotEmpty) ...[
+            TextField(
+              controller: _searchController,
+              autofocus: false,
+              decoration: InputDecoration(
+                hintText: 'Search',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () => _searchController.clear(),
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+              ),
             ),
             const SizedBox(height: 12),
-            if (decodedSchedules.isNotEmpty) ...[
-              TextField(
-                controller: _searchController,
-                autofocus: false,
-                decoration: InputDecoration(
-                  hintText: 'Search',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () => _searchController.clear(),
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            if (_filteredSchedules.isEmpty && decodedSchedules.isEmpty)
-              const BracuEmptyState(message: "No schedules found")
-            else if (_filteredSchedules.isEmpty && _searchQuery.isNotEmpty)
-              BracuCard(
-                child: Center(
-                  child: Text(
-                    'No friends match "$_searchQuery"',
-                    style: TextStyle(
-                      color: BracuPalette.textSecondary(context),
-                    ),
-                  ),
-                ),
-              )
-            else
-              ..._filteredSchedules.map(
-                (item) => FriendScheduleSection(
-                  item: item,
-                  isRamadan: _isRamadan,
-                  showActions: false,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => FriendDetailPage(
-                          friend: item.friend,
-                          displayName: item.displayName,
-                          isFavorite: item.isFavorite,
-                          isRamadan: _isRamadan,
-                          onToggleFavorite: () async => _toggleFavorite(item),
-                          onEditNickname: () async => _editNickname(item),
-                          onDelete: () async => _deleteFriendSchedule(item),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            if (_filteredSchedules.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              const SizedBox(height: 12),
-            ],
           ],
+          if (_filteredSchedules.isEmpty && decodedSchedules.isEmpty)
+            const BracuEmptyState(message: "No schedules found")
+          else if (_filteredSchedules.isEmpty && _searchQuery.isNotEmpty)
+            BracuCard(
+              child: Center(
+                child: Text(
+                  'No friends match "$_searchQuery"',
+                  style: TextStyle(color: BracuPalette.textSecondary(context)),
+                ),
+              ),
+            )
+          else
+            ..._filteredSchedules.map(
+              (item) => FriendScheduleSection(
+                item: item,
+                isRamadan: _isRamadan,
+                showActions: false,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FriendDetailPage(
+                        friend: item.friend,
+                        displayName: item.displayName,
+                        isFavorite: item.isFavorite,
+                        isRamadan: _isRamadan,
+                        onToggleFavorite: () async => _toggleFavorite(item),
+                        onEditNickname: () async => _editNickname(item),
+                        onDelete: () async => _deleteFriendSchedule(item),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          if (_filteredSchedules.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            const SizedBox(height: 12),
+          ],
+        ],
       ),
     );
   }

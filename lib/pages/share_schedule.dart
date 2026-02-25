@@ -292,133 +292,131 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
       body: BracuRefreshList(
         onRefresh: _handleRefresh,
         children: [
-            if (isLoading)
-              const BracuLoading(label: 'Preparing QR...')
-            else if (errorMessage != null)
-              BracuEmptyState(message: "Error: $errorMessage")
-            else ...[
-              const BracuSectionTitle(title: 'Your QR Code'),
-              const SizedBox(height: 10),
-              BracuCard(
-                child: RepaintBoundary(
-                  key: _qrKey,
-                  child: Container(
-                    decoration: const BoxDecoration(color: Colors.white),
-                    padding: const EdgeInsets.all(12),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final size = constraints.maxWidth;
-                        if (_base64Data == null) {
-                          return SizedBox(
-                            height: size,
-                            child: Center(
-                              child: Text(
-                                'No QR data available',
-                                style: TextStyle(
-                                  color: BracuPalette.textSecondary(context),
-                                ),
-                              ),
-                            ),
-                          );
-                        }
-
+          if (isLoading)
+            const BracuLoading(label: 'Preparing QR...')
+          else if (errorMessage != null)
+            BracuEmptyState(message: "Error: $errorMessage")
+          else ...[
+            const BracuSectionTitle(title: 'Your QR Code'),
+            const SizedBox(height: 10),
+            BracuCard(
+              child: RepaintBoundary(
+                key: _qrKey,
+                child: Container(
+                  decoration: const BoxDecoration(color: Colors.white),
+                  padding: const EdgeInsets.all(12),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final size = constraints.maxWidth;
+                      if (_base64Data == null) {
                         return SizedBox(
-                          width: size,
                           height: size,
-                          child: CustomPaint(
-                            size: Size.square(size),
-                            painter: QrPainter(
-                              _base64Data!,
-                              fgColor: const Color(0xFF000000),
-                              bgColor: const Color(0xFFFFFFFF),
+                          child: Center(
+                            child: Text(
+                              'No QR data available',
+                              style: TextStyle(
+                                color: BracuPalette.textSecondary(context),
+                              ),
                             ),
                           ),
                         );
-                      },
-                    ),
+                      }
+
+                      return SizedBox(
+                        width: size,
+                        height: size,
+                        child: CustomPaint(
+                          size: Size.square(size),
+                          painter: QrPainter(
+                            _base64Data!,
+                            fgColor: const Color(0xFF000000),
+                            bgColor: const Color(0xFFFFFFFF),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: _shareQrCode,
-                      borderRadius: BorderRadius.circular(14),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: _shareQrCode,
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: BracuPalette.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: BracuPalette.primary.withValues(alpha: 0.18),
                         ),
-                        decoration: BoxDecoration(
-                          color: BracuPalette.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: BracuPalette.primary.withValues(alpha: 0.18),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                color: BracuPalette.primary.withValues(
-                                  alpha: 0.12,
-                                ),
-                                borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: BracuPalette.primary.withValues(
+                                alpha: 0.12,
                               ),
-                              alignment: Alignment.center,
-                              child: const Icon(
-                                Icons.qr_code_scanner,
-                                size: 16,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.qr_code_scanner,
+                              size: 16,
+                              color: BracuPalette.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'Share via QR',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
                                 color: BracuPalette.primary,
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            const Expanded(
-                              child: Text(
-                                'Share via QR',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: BracuPalette.primary,
-                                ),
-                              ),
-                            ),
-                            Icon(
-                              Icons.arrow_forward_ios,
-                              size: 14,
-                              color: BracuPalette.primary.withValues(
-                                alpha: 0.7,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            size: 14,
+                            color: BracuPalette.primary.withValues(alpha: 0.7),
+                          ),
+                        ],
                       ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            const BracuSectionTitle(title: 'How to use'),
+            const SizedBox(height: 10),
+            BracuCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Share your schedule by showing the QR code to your friend. They scan it to add you.',
+                    style: TextStyle(
+                      color: BracuPalette.textSecondary(context),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
-              const BracuSectionTitle(title: 'How to use'),
-              const SizedBox(height: 10),
-              BracuCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Share your schedule by showing the QR code to your friend. They scan it to add you.',
-                      style: TextStyle(
-                        color: BracuPalette.textSecondary(context),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 12),
+            ),
           ],
+          const SizedBox(height: 12),
+        ],
       ),
     );
   }

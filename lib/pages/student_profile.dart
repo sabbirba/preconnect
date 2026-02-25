@@ -243,41 +243,41 @@ class _StudentProfileState extends State<StudentProfile>
       body: BracuRefreshList(
         onRefresh: _refreshProfile,
         children: [
-            const SizedBox(height: 6),
-            CardSection(
-              profile: _profile,
-              photoUrl: _photoUrl,
-              cachedImageFile: _cachedImageFile,
-            ),
-            const SizedBox(height: 18),
-            AcademicSummaryCard(
-              profile: _profile ?? const {},
-              advising: _advising,
-            ),
-            const SizedBox(height: 18),
-            const BracuSectionTitle(title: 'Personal Info'),
-            const SizedBox(height: 10),
-            PersonalInfoCard(profile: _profile ?? const {}),
-            const SizedBox(height: 18),
-            const BracuSectionTitle(title: 'Attendance'),
-            const SizedBox(height: 10),
-            if (_attendances.isNotEmpty) ...[
-              AttendanceSummary(attendances: _attendances),
-              const SizedBox(height: 12),
-            ],
-            const SizedBox(height: 18),
-            const BracuSectionTitle(title: 'Payments'),
-            const SizedBox(height: 10),
-            _payments.isEmpty
-                ? const SizedBox.shrink()
-                : PaymentGraph(payments: _payments),
-            if (_payments.isNotEmpty) const SizedBox(height: 12),
-            if (_payments.isEmpty)
-              const BracuEmptyState(message: 'No payments found')
-            else
-              PaymentList(payments: _payments),
+          const SizedBox(height: 6),
+          CardSection(
+            profile: _profile,
+            photoUrl: _photoUrl,
+            cachedImageFile: _cachedImageFile,
+          ),
+          const SizedBox(height: 18),
+          AcademicSummaryCard(
+            profile: _profile ?? const {},
+            advising: _advising,
+          ),
+          const SizedBox(height: 18),
+          const BracuSectionTitle(title: 'Personal Info'),
+          const SizedBox(height: 10),
+          PersonalInfoCard(profile: _profile ?? const {}),
+          const SizedBox(height: 18),
+          const BracuSectionTitle(title: 'Attendance'),
+          const SizedBox(height: 10),
+          if (_attendances.isNotEmpty) ...[
+            AttendanceSummary(attendances: _attendances),
             const SizedBox(height: 12),
           ],
+          const SizedBox(height: 18),
+          const BracuSectionTitle(title: 'Payments'),
+          const SizedBox(height: 10),
+          _payments.isEmpty
+              ? const SizedBox.shrink()
+              : PaymentGraph(payments: _payments),
+          if (_payments.isNotEmpty) const SizedBox(height: 12),
+          if (_payments.isEmpty)
+            const BracuEmptyState(message: 'No payments found')
+          else
+            PaymentList(payments: _payments),
+          const SizedBox(height: 12),
+        ],
       ),
     );
   }

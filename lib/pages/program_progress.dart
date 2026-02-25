@@ -166,7 +166,8 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
         future: _future,
         builder: (context, snapshot) {
           final info = _latestInfo ?? snapshot.data;
-          if (snapshot.connectionState == ConnectionState.waiting && info == null) {
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              info == null) {
             return BracuRefreshPlaceholder(
               onRefresh: _refresh,
               topSpacing: 180,
@@ -264,429 +265,320 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
             onRefresh: _refresh,
             padding: kBracuPageListPadding,
             children: [
-                BracuCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              BracuCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _resolveProgramTitle(info),
+                      style: TextStyle(
+                        color: BracuPalette.textPrimary(context),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _Metric(
+                            title: 'Total',
+                            value: _formatCredit(summaryTotal),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: _Metric(
+                            title: 'Done',
+                            value: _formatCredit(summaryCompleted),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: _Metric(
+                            title: 'Attempted',
+                            value: _formatCredit(attemptedCredit),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: _Metric(title: 'CGPA', value: _cgpa),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: _Metric(
+                            title: 'Remaining',
+                            value: _formatCredit(remainingCredit),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SimpleProgressBar(
+                            value: completion,
+                            color: BracuPalette.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${summaryPercent.toStringAsFixed(1)}%',
+                          style: TextStyle(
+                            color: BracuPalette.textSecondary(context),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              BracuCard(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
                     children: [
-                      Text(
-                        _resolveProgramTitle(info),
-                        style: TextStyle(
-                          color: BracuPalette.textPrimary(context),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'All Courses',
+                              style: TextStyle(
+                                color: BracuPalette.textPrimary(context),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            if (info.academicDegree.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                info.academicDegree,
+                                style: TextStyle(
+                                  color: BracuPalette.textSecondary(context),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _Metric(
-                              title: 'Total',
-                              value: _formatCredit(summaryTotal),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => AllCoursesPage(info: info),
                             ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: BracuPalette.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
                           ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: _Metric(
-                              title: 'Done',
-                              value: _formatCredit(summaryCompleted),
-                            ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: _Metric(
-                              title: 'Attempted',
-                              value: _formatCredit(attemptedCredit),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: _Metric(
-                              title: 'CGPA',
-                              value: _cgpa,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: _Metric(
-                              title: 'Remaining',
-                              value: _formatCredit(remainingCredit),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SimpleProgressBar(
-                              value: completion,
-                              color: BracuPalette.primary,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${summaryPercent.toStringAsFixed(1)}%',
-                            style: TextStyle(
-                              color: BracuPalette.textSecondary(context),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                        ),
+                        icon: const Icon(Icons.tune, size: 16),
+                        label: const Text('Open'),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 14),
-                BracuCard(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'All Courses',
-                                style: TextStyle(
-                                  color: BracuPalette.textPrimary(context),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              if (info.academicDegree.isNotEmpty) ...[
-                                const SizedBox(height: 2),
-                                Text(
-                                  info.academicDegree,
-                                  style: TextStyle(
-                                    color: BracuPalette.textSecondary(context),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => AllCoursesPage(info: info),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: BracuPalette.primary,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+              ),
+              const SizedBox(height: 14),
+              if (info.headerProgress.isNotEmpty) ...[
+                const BracuSectionTitle(title: 'Requirement Progress'),
+                const SizedBox(height: 10),
+                ...info.headerProgress.map((item) {
+                  final requiredCredit = item.requiredCredit;
+                  final earnedCredit = item.earnedCredit;
+                  final remainingForHeader = (requiredCredit - earnedCredit)
+                      .clamp(0, double.infinity)
+                      .toDouble();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => RequirementCoursesPage(
+                              info: info,
+                              headerTitle: item.title,
+                              currentSemesterCodes: _currentSemesterSections
+                                  .map(
+                                    (section) =>
+                                        section.courseCode.trim().toUpperCase(),
+                                  )
+                                  .where((code) => code.isNotEmpty)
+                                  .toSet(),
                             ),
                           ),
-                          icon: const Icon(Icons.tune, size: 16),
-                          label: const Text('Open'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                if (info.headerProgress.isNotEmpty) ...[
-                  const BracuSectionTitle(title: 'Requirement Progress'),
-                  const SizedBox(height: 10),
-                  ...info.headerProgress.map((item) {
-                    final requiredCredit = item.requiredCredit;
-                    final earnedCredit = item.earnedCredit;
-                    final remainingForHeader = (requiredCredit - earnedCredit)
-                        .clamp(0, double.infinity)
-                        .toDouble();
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(18),
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => RequirementCoursesPage(
-                                info: info,
-                                headerTitle: item.title,
-                                currentSemesterCodes: _currentSemesterSections
-                                    .map(
-                                      (section) => section.courseCode
-                                          .trim()
-                                          .toUpperCase(),
-                                    )
-                                    .where((code) => code.isNotEmpty)
-                                    .toSet(),
-                              ),
-                            ),
-                          );
-                        },
-                        child: BracuCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          item.title,
-                                          style: TextStyle(
-                                            color: BracuPalette.textPrimary(
-                                              context,
-                                            ),
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          'Required ${_formatCredit(requiredCredit)} Credits • Remaining ${_formatCredit(remainingForHeader)} Credits',
-                                          style: TextStyle(
-                                            color: BracuPalette.textSecondary(
-                                              context,
-                                            ),
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
+                        );
+                      },
+                      child: BracuCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        '${_formatCredit(earnedCredit)} credits',
+                                        item.title,
                                         style: TextStyle(
                                           color: BracuPalette.textPrimary(
                                             context,
                                           ),
                                           fontSize: 14,
-                                          fontWeight: FontWeight.w700,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Required ${_formatCredit(requiredCredit)} Credits • Remaining ${_formatCredit(remainingForHeader)} Credits',
+                                        style: TextStyle(
+                                          color: BracuPalette.textSecondary(
+                                            context,
+                                          ),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                     ],
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: SimpleProgressBar(
-                                      value: item.percent,
-                                      color: BracuPalette.accent,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '${(item.percent * 100).toStringAsFixed(1)}%',
-                                    style: TextStyle(
-                                      color: BracuPalette.textSecondary(
-                                        context,
-                                      ),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                  const SizedBox(height: 4),
-                ],
-                if (info.majorOptions.isNotEmpty ||
-                    info.minorOptions.isNotEmpty)
-                  BracuCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Major / Minor Options',
-                          style: TextStyle(
-                            color: BracuPalette.textPrimary(context),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        if (info.majorOptions.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          _OptionWrap(
-                            title: 'Majors',
-                            items: info.majorOptions,
-                          ),
-                        ],
-                        if (info.minorOptions.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          _OptionWrap(
-                            title: 'Minors',
-                            items: info.minorOptions,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                if (info.majorOptions.isNotEmpty ||
-                    info.minorOptions.isNotEmpty)
-                  const SizedBox(height: 14),
-                if (currentSectionsForDisplay.isNotEmpty) ...[
-                  const BracuSectionTitle(title: 'Current Semester Courses'),
-                  const SizedBox(height: 10),
-                  ...currentSectionsForDisplay.map((current) {
-                    final isRequired =
-                        mandatoryByCode[current.courseCode.toUpperCase()] ??
-                        _isLikelyRequired(current.courseType);
-                    final rawSubtitle = _resolveCurrentCourseTitle(
-                      current,
-                      courseTitleByCode,
-                    );
-                    final showSubtitle =
-                        rawSubtitle.isNotEmpty &&
-                        rawSubtitle.toUpperCase() !=
-                            current.courseCode.trim().toUpperCase();
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: BracuCard(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SectionBadge(
-                              label: formatSectionBadge(current.sectionName),
-                              color: BracuPalette.primary,
-                              size: 40,
-                              fontSize: 13,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${current.courseCode} • ${formatSemesterFromSessionIdInt(current.semesterSessionId)}',
-                                    style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  if (showSubtitle) ...[
-                                    const SizedBox(height: 3),
+                                ),
+                                const SizedBox(width: 10),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
                                     Text(
-                                      rawSubtitle,
+                                      '${_formatCredit(earnedCredit)} credits',
                                       style: TextStyle(
-                                        color: BracuPalette.textSecondary(
+                                        color: BracuPalette.textPrimary(
                                           context,
                                         ),
-                                        fontSize: 11,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
                                       ),
                                     ),
                                   ],
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 10),
-                            SizedBox(
-                              width: 96,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    '${current.courseCredit} credits',
-                                    style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: SimpleProgressBar(
+                                    value: item.percent,
+                                    color: BracuPalette.accent,
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    isRequired ? 'Required' : 'Elective',
-                                    style: TextStyle(
-                                      color: isRequired
-                                          ? BracuPalette.warning
-                                          : BracuPalette.accent,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${(item.percent * 100).toStringAsFixed(1)}%',
+                                  style: TextStyle(
+                                    color: BracuPalette.textSecondary(context),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ),
-                    );
-                  }),
-                  const SizedBox(height: 4),
-                ],
-                const BracuSectionTitle(title: 'Completed Courses'),
-                const SizedBox(height: 10),
-                if (topCourses.isEmpty)
-                  BracuCard(
-                    child: Text(
-                      'No completed courses found.',
-                      style: TextStyle(
-                        color: BracuPalette.textSecondary(context),
-                      ),
                     ),
-                  )
-                else
-                  ...topCourses.map((course) {
-                    final semester = formatSemesterTitle(
-                      course.semesterSession,
-                    );
-                    final titleLine = semester.isEmpty
-                        ? course.code
-                        : '${course.code} • $semester';
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: BracuCard(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SectionBadge(
-                              label: course.grade.isEmpty ? '--' : course.grade,
-                              color: BracuPalette.primary,
-                              size: 40,
-                              fontSize: 13,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    titleLine,
-                                    style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                  );
+                }),
+                const SizedBox(height: 4),
+              ],
+              if (info.majorOptions.isNotEmpty || info.minorOptions.isNotEmpty)
+                BracuCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Major / Minor Options',
+                        style: TextStyle(
+                          color: BracuPalette.textPrimary(context),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (info.majorOptions.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        _OptionWrap(title: 'Majors', items: info.majorOptions),
+                      ],
+                      if (info.minorOptions.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        _OptionWrap(title: 'Minors', items: info.minorOptions),
+                      ],
+                    ],
+                  ),
+                ),
+              if (info.majorOptions.isNotEmpty || info.minorOptions.isNotEmpty)
+                const SizedBox(height: 14),
+              if (currentSectionsForDisplay.isNotEmpty) ...[
+                const BracuSectionTitle(title: 'Current Semester Courses'),
+                const SizedBox(height: 10),
+                ...currentSectionsForDisplay.map((current) {
+                  final isRequired =
+                      mandatoryByCode[current.courseCode.toUpperCase()] ??
+                      _isLikelyRequired(current.courseType);
+                  final rawSubtitle = _resolveCurrentCourseTitle(
+                    current,
+                    courseTitleByCode,
+                  );
+                  final showSubtitle =
+                      rawSubtitle.isNotEmpty &&
+                      rawSubtitle.toUpperCase() !=
+                          current.courseCode.trim().toUpperCase();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: BracuCard(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SectionBadge(
+                            label: formatSectionBadge(current.sectionName),
+                            color: BracuPalette.primary,
+                            size: 40,
+                            fontSize: 13,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${current.courseCode} • ${formatSemesterFromSessionIdInt(current.semesterSessionId)}',
+                                  style: TextStyle(
+                                    color: BracuPalette.textPrimary(context),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
                                   ),
+                                ),
+                                if (showSubtitle) ...[
                                   const SizedBox(height: 3),
                                   Text(
-                                    course.title.isEmpty
-                                        ? course.code
-                                        : course.title,
+                                    rawSubtitle,
                                     style: TextStyle(
                                       color: BracuPalette.textSecondary(
                                         context,
@@ -695,133 +587,221 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
                                     ),
                                   ),
                                 ],
-                              ),
+                              ],
                             ),
-                            const SizedBox(width: 10),
-                            SizedBox(
-                              width: 96,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    '${_formatCredit(course.credit)} credits',
-                                    style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                          ),
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            width: 96,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '${current.courseCredit} credits',
+                                  style: TextStyle(
+                                    color: BracuPalette.textPrimary(context),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    (mandatoryByCode[course.code
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  isRequired ? 'Required' : 'Elective',
+                                  style: TextStyle(
+                                    color: isRequired
+                                        ? BracuPalette.warning
+                                        : BracuPalette.accent,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+                const SizedBox(height: 4),
+              ],
+              const BracuSectionTitle(title: 'Completed Courses'),
+              const SizedBox(height: 10),
+              if (topCourses.isEmpty)
+                BracuCard(
+                  child: Text(
+                    'No completed courses found.',
+                    style: TextStyle(
+                      color: BracuPalette.textSecondary(context),
+                    ),
+                  ),
+                )
+              else
+                ...topCourses.map((course) {
+                  final semester = formatSemesterTitle(course.semesterSession);
+                  final titleLine = semester.isEmpty
+                      ? course.code
+                      : '${course.code} • $semester';
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: BracuCard(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SectionBadge(
+                            label: course.grade.isEmpty ? '--' : course.grade,
+                            color: BracuPalette.primary,
+                            size: 40,
+                            fontSize: 13,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  titleLine,
+                                  style: TextStyle(
+                                    color: BracuPalette.textPrimary(context),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  course.title.isEmpty
+                                      ? course.code
+                                      : course.title,
+                                  style: TextStyle(
+                                    color: BracuPalette.textSecondary(context),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            width: 96,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '${_formatCredit(course.credit)} credits',
+                                  style: TextStyle(
+                                    color: BracuPalette.textPrimary(context),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  (mandatoryByCode[course.code.toUpperCase()] ??
+                                          false)
+                                      ? 'Required'
+                                      : 'Elective',
+                                  style: TextStyle(
+                                    color:
+                                        (mandatoryByCode[course.code
                                                 .toUpperCase()] ??
                                             false)
-                                        ? 'Required'
-                                        : 'Elective',
-                                    style: TextStyle(
-                                      color:
-                                          (mandatoryByCode[course.code
-                                                  .toUpperCase()] ??
-                                              false)
-                                          ? BracuPalette.warning
-                                          : BracuPalette.accent,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                        ? BracuPalette.warning
+                                        : BracuPalette.accent,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
-                const SizedBox(height: 6),
-                const BracuSectionTitle(title: 'Required Courses'),
-                const SizedBox(height: 10),
-                if (requiredCourses.isEmpty)
-                  BracuCard(
-                    child: Text(
-                      'No required courses remaining.',
-                      style: TextStyle(
-                        color: BracuPalette.textSecondary(context),
+                          ),
+                        ],
                       ),
                     ),
-                  )
-                else
-                  ...requiredCourses.map((course) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: BracuCard(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SectionBadge(
-                              label: '?',
-                              color: BracuPalette.primary,
-                              size: 40,
-                              fontSize: 13,
+                  );
+                }),
+              const SizedBox(height: 6),
+              const BracuSectionTitle(title: 'Required Courses'),
+              const SizedBox(height: 10),
+              if (requiredCourses.isEmpty)
+                BracuCard(
+                  child: Text(
+                    'No required courses remaining.',
+                    style: TextStyle(
+                      color: BracuPalette.textSecondary(context),
+                    ),
+                  ),
+                )
+              else
+                ...requiredCourses.map((course) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: BracuCard(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SectionBadge(
+                            label: '?',
+                            color: BracuPalette.primary,
+                            size: 40,
+                            fontSize: 13,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  course.code,
+                                  style: TextStyle(
+                                    color: BracuPalette.textPrimary(context),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  course.title.isEmpty
+                                      ? course.code
+                                      : course.title,
+                                  style: TextStyle(
+                                    color: BracuPalette.textSecondary(context),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    course.code,
-                                    style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                          ),
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            width: 96,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '${_formatCredit(course.credit)} credits',
+                                  style: TextStyle(
+                                    color: BracuPalette.textPrimary(context),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
                                   ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    course.title.isEmpty
-                                        ? course.code
-                                        : course.title,
-                                    style: TextStyle(
-                                      color: BracuPalette.textSecondary(
-                                        context,
-                                      ),
-                                      fontSize: 11,
-                                    ),
+                                ),
+                                const SizedBox(height: 2),
+                                const Text(
+                                  'Required',
+                                  style: TextStyle(
+                                    color: BracuPalette.warning,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 10),
-                            SizedBox(
-                              width: 96,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    '${_formatCredit(course.credit)} credits',
-                                    style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  const Text(
-                                    'Required',
-                                    style: TextStyle(
-                                      color: BracuPalette.warning,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    );
-                  }),
+                    ),
+                  );
+                }),
             ],
           );
         },

@@ -440,7 +440,9 @@ class _AlarmPageState extends State<AlarmPage> {
                                 ),
                               ),
                               onPressed: () async {
-                                final days = schedules.map((s) => s.day).toList();
+                                final days = schedules
+                                    .map((s) => s.day)
+                                    .toList();
                                 final startTime = schedules.isNotEmpty
                                     ? RamadanTiming.adjustRange(
                                         schedules.first.startTime,

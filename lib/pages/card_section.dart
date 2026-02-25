@@ -396,15 +396,9 @@ class _InfoRow extends StatelessWidget {
           child: enableCopy
               ? GestureDetector(
                   onTap: () => copyToClipboard(context, value),
-                  child: Text(
-                    value,
-                    style: textStyle,
-                  ),
+                  child: Text(value, style: textStyle),
                 )
-              : Text(
-                  value,
-                  style: textStyle,
-                ),
+              : Text(value, style: textStyle),
         ),
       ],
     );

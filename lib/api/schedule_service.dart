@@ -15,9 +15,7 @@ class ScheduleService {
   static const String _cacheKey = 'StudentSchedule';
   static const String _validSemestersCacheKey = 'StudentScheduleValidSemesters';
   String _cacheKeyForSemester(int? semesterSessionId) =>
-      semesterSessionId == null
-      ? _cacheKey
-      : '${_cacheKey}_$semesterSessionId';
+      semesterSessionId == null ? _cacheKey : '${_cacheKey}_$semesterSessionId';
 
   int _guessCurrentSessionId() {
     final now = DateTime.now();
@@ -93,13 +91,14 @@ class ScheduleService {
     try {
       final decoded = jsonDecode(raw);
       if (decoded is! List) return const <int>[];
-      final ids = decoded
-          .map((e) => e is int ? e : int.tryParse('$e'))
-          .whereType<int>()
-          .where((id) => id > 0)
-          .toSet()
-          .toList()
-        ..sort((a, b) => b.compareTo(a));
+      final ids =
+          decoded
+              .map((e) => e is int ? e : int.tryParse('$e'))
+              .whereType<int>()
+              .where((id) => id > 0)
+              .toSet()
+              .toList()
+            ..sort((a, b) => b.compareTo(a));
       return ids;
     } catch (_) {
       return const <int>[];
@@ -144,10 +143,8 @@ class ScheduleService {
       final batch = candidates.sublist(i, end);
       final checks = await Future.wait(
         batch.map(
-          (sessionId) => _ensureSemesterHasData(
-            sessionId,
-            forceRefresh: forceRefresh,
-          ),
+          (sessionId) =>
+              _ensureSemesterHasData(sessionId, forceRefresh: forceRefresh),
         ),
       );
       for (var j = 0; j < batch.length; j++) {
@@ -235,11 +232,10 @@ class ScheduleService {
         final data = jsonDecode(response.body);
         await asyncPrefs.setString(cacheKey, jsonEncode(data));
       },
-      readCache: ({required bool fromFetch}) =>
-          getStudentScheduleForSemester(
-            semesterSessionId: semesterSessionId,
-            fromFetch: fromFetch,
-          ),
+      readCache: ({required bool fromFetch}) => getStudentScheduleForSemester(
+        semesterSessionId: semesterSessionId,
+        fromFetch: fromFetch,
+      ),
     );
   }
 
