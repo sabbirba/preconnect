@@ -27,8 +27,15 @@ class ApiConfig {
   static String advisingPath(String studentId) =>
       '/adv/v1/advising/$studentId/active-advising-sessions';
 
-  static String schedulePath(String portfolioId) =>
-      '/adv/v1/student-courses/schedules?studentPortfolioId=$portfolioId';
+  static String schedulePath(
+    String portfolioId, {
+    int? semesterSessionId,
+  }) {
+    final semesterQuery = semesterSessionId == null
+        ? ''
+        : '&semesterSessionId=$semesterSessionId';
+    return '/adv/v1/student-courses/schedules?studentPortfolioId=$portfolioId$semesterQuery';
+  }
 
   static String attendancePath(String portfolioId) =>
       '/exc/v1/student-courses/$portfolioId/current-semester-attendance';

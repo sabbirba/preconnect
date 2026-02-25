@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/section_info.dart';
@@ -84,18 +83,7 @@ class _ExamScheduleState extends State<ExamSchedule> {
   }
 
   Future<List<Section>> _fetchExamSections({bool forceRefresh = false}) async {
-    if (forceRefresh) {
-      await ScheduleService().fetchStudentSchedule();
-    } else {
-      unawaited(ScheduleService().fetchStudentSchedule());
-    }
-    final jsonString = await ScheduleService().getStudentSchedule();
-    if (jsonString == null || jsonString.trim().isEmpty) {
-      return const [];
-    }
-
-    final decoded = jsonDecode(jsonString) as List<dynamic>;
-    return decoded.map((e) => Section.fromJson(e)).toList();
+    return ScheduleService().getStudentSections(forceRefresh: forceRefresh);
   }
 
   Future<void> _handleRefresh({bool notify = true}) async {

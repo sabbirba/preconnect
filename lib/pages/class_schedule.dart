@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/section_info.dart' as section;
@@ -26,6 +25,8 @@ class ClassSchedule extends StatefulWidget {
 class _ClassScheduleState extends State<ClassSchedule> {
   late Future<_ScheduleData> _future;
   final ScrollController _scrollController = ScrollController();
+  List<int> _semesterSessionOptions = const <int>[];
+  int? _selectedSemesterSessionId;
   GlobalKey? _highlightKey;
   String? _lastHighlightToken;
   bool _didScroll = false;
@@ -34,7 +35,7 @@ class _ClassScheduleState extends State<ClassSchedule> {
   @override
   void initState() {
     super.initState();
-    unawaited(ScheduleService().fetchStudentSchedule());
+    unawaited(_loadSemesterOptions());
     _future = _loadSchedule();
     ClassSchedule.jumpSignal.addListener(_onJumpRequested);
     RefreshBus.instance.addListener(_onRefreshSignal);
@@ -85,14 +86,13 @@ class _ClassScheduleState extends State<ClassSchedule> {
   }
 
   Future<_ScheduleData> _loadSchedule({bool forceRefresh = false}) async {
+    final shouldHighlightCurrentSemester = _selectedSemesterSessionId == null;
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
-    if (forceRefresh) {
-      await ScheduleService().fetchStudentSchedule();
-    } else {
-      unawaited(ScheduleService().fetchStudentSchedule());
-    }
-    final jsonString = await ScheduleService().getStudentSchedule();
-    if (jsonString == null || jsonString.trim().isEmpty) {
+    final sections = await ScheduleService().getStudentSections(
+      semesterSessionId: _selectedSemesterSessionId,
+      forceRefresh: forceRefresh,
+    );
+    if (sections.isEmpty) {
       final isRamadan = await ramadanFuture;
       return _ScheduleData(
         grouped: {},
@@ -102,8 +102,16 @@ class _ClassScheduleState extends State<ClassSchedule> {
     }
 
     final isRamadan = await ramadanFuture;
-    final decoded = jsonDecode(jsonString) as List<dynamic>;
-    final sections = decoded.map((e) => section.Section.fromJson(e)).toList();
+    if (sections.isNotEmpty) {
+      final sessionIds = sections.map((s) => s.semesterSessionId).toList()
+        ..sort((a, b) => b.compareTo(a));
+      final baseSessionId = sessionIds.first;
+      if (!_semesterSessionOptions.contains(baseSessionId) && mounted) {
+        setState(() {
+          _semesterSessionOptions = [baseSessionId, ..._semesterSessionOptions];
+        });
+      }
+    }
 
     final Map<String, List<Map<String, dynamic>>> grouped = {};
     section.ClassSchedule? nextSchedule;
@@ -122,18 +130,20 @@ class _ClassScheduleState extends State<ClassSchedule> {
           "faculties": section.faculties,
         });
 
-        final candidate = _nextOccurrence(
-          day: classSchedule.day,
-          startTime: classSchedule.startTime,
-          endTime: classSchedule.endTime,
-          isRamadan: isRamadan,
-          now: now,
-          nowMinutes: nowMinutes,
-        );
-        if (candidate != null &&
-            (nextDateTime == null || candidate.isBefore(nextDateTime))) {
-          nextDateTime = candidate;
-          nextSchedule = classSchedule;
+        if (shouldHighlightCurrentSemester) {
+          final candidate = _nextOccurrence(
+            day: classSchedule.day,
+            startTime: classSchedule.startTime,
+            endTime: classSchedule.endTime,
+            isRamadan: isRamadan,
+            now: now,
+            nowMinutes: nowMinutes,
+          );
+          if (candidate != null &&
+              (nextDateTime == null || candidate.isBefore(nextDateTime))) {
+            nextDateTime = candidate;
+            nextSchedule = classSchedule;
+          }
         }
       }
     }
@@ -173,10 +183,147 @@ class _ClassScheduleState extends State<ClassSchedule> {
     );
   }
 
+  bool _sameIntList(List<int> a, List<int> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  Future<void> _loadSemesterOptions({
+    int? baseSessionId,
+    bool forceRefresh = false,
+  }) async {
+    final service = ScheduleService();
+    final cached = await service.getCachedValidSemesterSessionIds();
+    if (mounted && cached.isNotEmpty && !_sameIntList(_semesterSessionOptions, cached)) {
+      setState(() {
+        _semesterSessionOptions = cached;
+      });
+    }
+    if (!forceRefresh && cached.isNotEmpty) return;
+    final refreshed = await service.preloadValidSemesterSessionIds(
+      baseSessionId: baseSessionId,
+      forceRefresh: forceRefresh,
+    );
+    unawaited(
+      service.preloadSemesterScheduleCache(
+        semesterSessionIds: refreshed,
+        forceRefresh: forceRefresh,
+      ),
+    );
+    if (!mounted) return;
+    if (_sameIntList(_semesterSessionOptions, refreshed)) return;
+    setState(() {
+      _semesterSessionOptions = refreshed;
+    });
+  }
+
+  String _semesterLabel(int? sessionId) {
+    if (sessionId == null) return 'Current';
+    return formatSemesterFromSessionIdInt(sessionId);
+  }
+
+  Future<void> _selectSemester(int? sessionId) async {
+    if (_selectedSemesterSessionId == sessionId) return;
+    setState(() {
+      _selectedSemesterSessionId = sessionId;
+      _didScroll = false;
+      _scrollRetry = false;
+      _future = _loadSchedule(forceRefresh: true);
+    });
+    await _future;
+  }
+
+  Widget _buildSemesterDropdownAction() {
+    const currentMenuValue = -1;
+    final labels = <String>[
+      'Current',
+      ..._semesterSessionOptions.map(_semesterLabel),
+    ];
+    final textStyle = const TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w400,
+    );
+    var maxTextWidth = 0.0;
+    for (final label in labels) {
+      final painter = TextPainter(
+        text: TextSpan(text: label, style: textStyle),
+        textDirection: Directionality.of(context),
+        maxLines: 1,
+      )..layout();
+      if (painter.width > maxTextWidth) {
+        maxTextWidth = painter.width;
+      }
+    }
+    final menuWidth = (maxTextWidth + 32).clamp(120.0, 260.0);
+    return PopupMenuButton<int>(
+      tooltip: 'Select semester',
+      constraints: BoxConstraints(
+        minWidth: menuWidth,
+        maxWidth: menuWidth,
+      ),
+      onSelected: (value) {
+        final sessionId = value == currentMenuValue ? null : value;
+        unawaited(_selectSemester(sessionId));
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem<int>(
+          value: currentMenuValue,
+          child: Text('Current'),
+        ),
+        ..._semesterSessionOptions.map(
+          (sessionId) => PopupMenuItem<int>(
+            value: sessionId,
+            child: Text(_semesterLabel(sessionId)),
+          ),
+        ),
+      ],
+      child: Container(
+        margin: const EdgeInsets.only(left: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: BracuPalette.card(context).withValues(alpha: 0.94),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: BracuPalette.textSecondary(context).withValues(alpha: 0.32),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _semesterLabel(_selectedSemesterSessionId),
+              style: TextStyle(
+                color: BracuPalette.textPrimary(context),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.expand_more_rounded,
+              size: 16,
+              color: BracuPalette.textSecondary(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _handleRefresh({bool notify = true}) async {
     if (!await ensureOnline(context, notify: notify)) {
       return;
     }
+    unawaited(
+      _loadSemesterOptions(
+        baseSessionId: _selectedSemesterSessionId,
+        forceRefresh: true,
+      ),
+    );
     setState(() {
       _didScroll = false;
       _scrollRetry = false;
@@ -244,6 +391,7 @@ class _ClassScheduleState extends State<ClassSchedule> {
       title: 'Class Schedule',
       subtitle: 'Classes & Timing',
       icon: Icons.schedule_outlined,
+      actions: [_buildSemesterDropdownAction()],
       body: FutureBuilder<_ScheduleData>(
         future: _future,
         builder: (context, snapshot) {
@@ -262,6 +410,8 @@ class _ClassScheduleState extends State<ClassSchedule> {
 
           final grouped = snapshot.data?.grouped ?? {};
           final nextSchedule = snapshot.data?.nextSchedule;
+          final shouldHighlightCurrentSemester =
+              _selectedSemesterSessionId == null;
           final isRamadan = snapshot.data?.isRamadan ?? false;
           if (grouped.isEmpty) {
             return BracuRefreshPlaceholder(
@@ -307,7 +457,8 @@ class _ClassScheduleState extends State<ClassSchedule> {
                       isRamadan: isRamadan,
                     );
 
-                    final isHighlighted = nextSchedule == s;
+                    final isHighlighted =
+                        shouldHighlightCurrentSemester && nextSchedule == s;
                     if (isHighlighted) {
                       highlightToken =
                           '${day}_${s.startTime}_${s.endTime}_$code';

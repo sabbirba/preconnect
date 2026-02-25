@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:android_intent_plus/android_intent.dart';
@@ -49,19 +48,14 @@ class _AlarmPageState extends State<AlarmPage> {
 
   Future<_AlarmData> _fetchSchedule({bool forceRefresh = false}) async {
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
-    if (forceRefresh) {
-      await ScheduleService().fetchStudentSchedule();
-    } else {
-      unawaited(ScheduleService().fetchStudentSchedule());
-    }
-    final jsonString = await ScheduleService().getStudentSchedule();
-    if (jsonString == null || jsonString.trim().isEmpty) {
+    final sections = await ScheduleService().getStudentSections(
+      forceRefresh: forceRefresh,
+    );
+    if (sections.isEmpty) {
       final isRamadan = await ramadanFuture;
       return _AlarmData(sections: const [], isRamadan: isRamadan);
     }
 
-    final decoded = jsonDecode(jsonString) as List<dynamic>;
-    final sections = decoded.map((e) => Section.fromJson(e)).toList();
     final isRamadan = await ramadanFuture;
     return _AlarmData(sections: sections, isRamadan: isRamadan);
   }

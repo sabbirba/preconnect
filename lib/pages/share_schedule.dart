@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
-import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/tools/qrpainter.dart';
 import 'package:archive/archive.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -156,8 +155,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
         return;
       }
 
-      final decoded = jsonDecode(jsonString) as List<dynamic>;
-      final sections = decoded.map((e) => Section.fromJson(e)).toList();
+      final sections = ScheduleService().parseStudentSections(jsonString);
 
       final courses = sections.map((section) {
         final schedules = section.sectionSchedule.classSchedules.map((c) {
