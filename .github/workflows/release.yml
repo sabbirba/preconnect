@@ -14,8 +14,57 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  prepare-version:
+    name: Prepare Version
+    runs-on: ubuntu-latest
+    outputs:
+      version_name: ${{ steps.version.outputs.version_name }}
+      version_code: ${{ steps.version.outputs.version_code }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Auto bump pubspec versionCode
+        shell: bash
+        run: |
+          VERSION_LINE=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
+          VERSION_NAME=${VERSION_LINE%%+*}
+          VERSION_CODE=${VERSION_LINE#*+}
+          if [ "$VERSION_NAME" = "$VERSION_LINE" ] || [ -z "$VERSION_CODE" ] || ! [[ "$VERSION_CODE" =~ ^[0-9]+$ ]]; then
+            echo "Invalid version in pubspec.yaml. Expected format: x.y.z+NNN"
+            exit 1
+          fi
+          LAST_TAG_CODE=$(git tag --list 'v*+*' --sort=-v:refname \
+            | sed -n 's/^v[^+]*+\([0-9]\+\)$/\1/p' \
+            | head -n1)
+          BASE_CODE="$VERSION_CODE"
+          if [ -n "$LAST_TAG_CODE" ] && [ "$LAST_TAG_CODE" -gt "$BASE_CODE" ]; then
+            BASE_CODE="$LAST_TAG_CODE"
+          fi
+          NEW_VERSION_CODE=$((BASE_CODE + 1))
+          NEW_VERSION="$VERSION_NAME+$NEW_VERSION_CODE"
+          perl -i -pe "s/^version:\\s*.*/version: $NEW_VERSION/" pubspec.yaml
+          echo "Updated pubspec version to $NEW_VERSION (base=$BASE_CODE, latest_tag=${LAST_TAG_CODE:-none})"
+
+      - name: Read App Version
+        id: version
+        shell: bash
+        run: |
+          VERSION_LINE=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
+          VERSION_NAME=${VERSION_LINE%%+*}
+          VERSION_CODE=${VERSION_LINE#*+}
+          if [ "$VERSION_NAME" = "$VERSION_LINE" ] || [ -z "$VERSION_CODE" ] || [ "$VERSION_CODE" = "0" ]; then
+            echo "Invalid version in pubspec.yaml. Expected format: x.y.z+NNN"
+            exit 1
+          fi
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+
   build-platforms:
     name: Build (${{ matrix.platform }})
+    needs: prepare-version
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.allow_failure }}
     timeout-minutes: 60
@@ -126,33 +175,6 @@ jobs:
             exit 1
           fi
 
-      - name: Read App Version
-        id: version
-        shell: bash
-        run: |
-          VERSION_LINE=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
-          VERSION_NAME=${VERSION_LINE%%+*}
-          VERSION_CODE=${VERSION_LINE#*+}
-          if [ "$VERSION_NAME" = "$VERSION_LINE" ]; then
-            VERSION_CODE=0
-          fi
-          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
-
-      - name: Compute Android Open testing versionCode
-        if: matrix.platform == 'android'
-        id: android_beta_version
-        shell: bash
-        run: |
-          YM=$(date -u +%Y%m)
-          RUN_NO="${{ github.run_number }}"
-          RUN_ATTEMPT="${{ github.run_attempt }}"
-          BASE_VERSION_CODE="${YM}${RUN_NO}"
-          # Re-runs keep run_number; use run_attempt to guarantee monotonic versionCode.
-          BETA_VERSION_CODE=$((BASE_VERSION_CODE + RUN_ATTEMPT - 1))
-          echo "version_code=$BETA_VERSION_CODE" >> "$GITHUB_OUTPUT"
-          echo "Android Open testing versionCode: $BETA_VERSION_CODE (base=$BASE_VERSION_CODE attempt=$RUN_ATTEMPT)"
-
       - name: Check Android Signing Secrets
         if: matrix.platform == 'android'
         id: android_signing
@@ -184,11 +206,11 @@ jobs:
 
       - name: Build Android APK (Release)
         if: matrix.platform == 'android' && steps.android_signing.outputs.enabled == 'true'
-        run: flutter build apk --release --build-name ${{ steps.version.outputs.version_name }} --build-number ${{ steps.android_beta_version.outputs.version_code }}
+        run: flutter build apk --release --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
 
       - name: Build Android AAB (Release)
         if: matrix.platform == 'android' && steps.android_signing.outputs.enabled == 'true'
-        run: flutter build appbundle --release --build-name ${{ steps.version.outputs.version_name }} --build-number ${{ steps.android_beta_version.outputs.version_code }}
+        run: flutter build appbundle --release --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
 
       - name: Build iOS App (Release, No Codesign)
         if: matrix.platform == 'ios'
@@ -234,9 +256,9 @@ jobs:
         run: |
           mkdir -p artifacts
           cp build/app/outputs/flutter-apk/app-release.apk \
-            artifacts/PreConnect-android-release-${{ steps.version.outputs.version_name }}+${{ steps.android_beta_version.outputs.version_code }}.apk
+            artifacts/PreConnect-android-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.apk
           cp build/app/outputs/bundle/release/app-release.aab \
-            artifacts/PreConnect-android-release-${{ steps.version.outputs.version_name }}+${{ steps.android_beta_version.outputs.version_code }}.aab
+            artifacts/PreConnect-android-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.aab
 
       - name: Package iOS Release
         if: matrix.platform == 'ios'
@@ -245,7 +267,7 @@ jobs:
           if ls build/ios/ipa/*.ipa >/dev/null 2>&1; then
             IPA_PATH=$(ls build/ios/ipa/*.ipa | head -n1)
             cp "$IPA_PATH" \
-              "artifacts/PreConnect-ios-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.ipa"
+              "artifacts/PreConnect-ios-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.ipa"
             exit 0
           fi
           if [ ! -d build/ios/iphoneos ]; then
@@ -257,7 +279,7 @@ jobs:
             echo "No iOS .ipa or .app found"
             exit 0
           fi
-          IPA_NAME="PreConnect-ios-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}-unsigned.ipa"
+          IPA_NAME="PreConnect-ios-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}-unsigned.ipa"
           rm -rf Payload
           mkdir -p Payload
           ditto "$APP_PATH" "Payload/$(basename "$APP_PATH")"
@@ -272,7 +294,7 @@ jobs:
             echo "No macOS .app found"
             exit 0
           fi
-          DMG_NAME="PreConnect-macos-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.dmg"
+          DMG_NAME="PreConnect-macos-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.dmg"
           hdiutil create -volname "PreConnect" -srcfolder "$APP_PATH" -ov -format UDZO "$GITHUB_WORKSPACE/artifacts/$DMG_NAME"
 
       - name: Upload Artifacts
@@ -285,7 +307,7 @@ jobs:
   publish-release:
     name: Publish Release
     runs-on: ubuntu-latest
-    needs: build-platforms
+    needs: [prepare-version, build-platforms]
     timeout-minutes: 15
     permissions:
       contents: write
@@ -296,19 +318,6 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-
-      - name: Read App Version
-        id: version
-        shell: bash
-        run: |
-          VERSION_LINE=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
-          VERSION_NAME=${VERSION_LINE%%+*}
-          VERSION_CODE=${VERSION_LINE#*+}
-          if [ "$VERSION_NAME" = "$VERSION_LINE" ]; then
-            VERSION_CODE=0
-          fi
-          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
 
       - name: Download Artifacts
         uses: actions/download-artifact@v7
@@ -346,7 +355,7 @@ jobs:
             echo "# PreConnect Release Notes"
             echo
             echo "## Version"
-            echo "- Version: ${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}"
+            echo "- Version: ${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}"
             echo "- Commit: ${{ github.sha }}"
             echo
             echo "## Changes"
@@ -364,9 +373,9 @@ jobs:
         if: steps.assets.outputs.has_assets == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}-r${{ github.run_number }}
+          tag_name: v${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}
           target_commitish: ${{ github.sha }}
-          name: PreConnect v${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}
+          name: PreConnect v${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}
           body_path: ${{ steps.notes.outputs.file }}
           files: |
             artifacts/**
@@ -374,7 +383,7 @@ jobs:
   publish-google-play:
     name: Publish Google Play Open Testing (Android)
     runs-on: ubuntu-latest
-    needs: build-platforms
+    needs: [prepare-version, build-platforms]
     timeout-minutes: 20
     permissions:
       contents: read
@@ -386,20 +395,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Read Android package and version
+      - name: Read Android package
         id: android_meta
         shell: bash
         run: |
           PACKAGE_NAME=$(grep -E 'applicationId\s*=' android/app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
-          VERSION_LINE=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
-          VERSION_NAME=${VERSION_LINE%%+*}
-          RUN_NO="${{ github.run_number }}"
-          RUN_ATTEMPT="${{ github.run_attempt }}"
-          BASE_VERSION_CODE="$(date -u +%Y%m)${RUN_NO}"
-          VERSION_CODE=$((BASE_VERSION_CODE + RUN_ATTEMPT - 1))
           echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
-          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
-          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
       - name: Download Android artifacts
         uses: actions/download-artifact@v7
@@ -455,7 +456,7 @@ jobs:
           rm -rf "$NOTES_DIR"
           mkdir -p "$NOTES_DIR"
 
-          NOTES="Automated publishing for version ${{ steps.android_meta.outputs.version_name }}+${{ steps.android_meta.outputs.version_code }}."
+          NOTES="Automated publishing for version ${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}."
 
           NOTES=$(printf '%s\n' "$NOTES" | awk -v max=480 '
             BEGIN { len = 0 }
@@ -487,6 +488,6 @@ jobs:
           releaseFiles: ${{ steps.aab.outputs.file }}
           track: beta
           status: completed
-          releaseName: PreConnect v${{ steps.android_meta.outputs.version_name }}+${{ steps.android_meta.outputs.version_code }}
+          releaseName: PreConnect v${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}
           changesNotSentForReview: false
           whatsNewDirectory: ${{ steps.play_notes.outputs.dir }}
