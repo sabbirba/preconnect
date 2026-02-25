@@ -139,6 +139,20 @@ jobs:
           echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
 
+      - name: Compute Android Open testing versionCode
+        if: matrix.platform == 'android'
+        id: android_beta_version
+        shell: bash
+        run: |
+          YM=$(date -u +%Y%m)
+          RUN_NO="${{ github.run_number }}"
+          RUN_ATTEMPT="${{ github.run_attempt }}"
+          BASE_VERSION_CODE="${YM}${RUN_NO}"
+          # Re-runs keep run_number; use run_attempt to guarantee monotonic versionCode.
+          BETA_VERSION_CODE=$((BASE_VERSION_CODE + RUN_ATTEMPT - 1))
+          echo "version_code=$BETA_VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "Android Open testing versionCode: $BETA_VERSION_CODE (base=$BASE_VERSION_CODE attempt=$RUN_ATTEMPT)"
+
       - name: Check Android Signing Secrets
         if: matrix.platform == 'android'
         id: android_signing
@@ -170,11 +184,11 @@ jobs:
 
       - name: Build Android APK (Release)
         if: matrix.platform == 'android' && steps.android_signing.outputs.enabled == 'true'
-        run: flutter build apk --release --build-name ${{ steps.version.outputs.version_name }} --build-number ${{ steps.version.outputs.version_code }}
+        run: flutter build apk --release --build-name ${{ steps.version.outputs.version_name }} --build-number ${{ steps.android_beta_version.outputs.version_code }}
 
       - name: Build Android AAB (Release)
         if: matrix.platform == 'android' && steps.android_signing.outputs.enabled == 'true'
-        run: flutter build appbundle --release --build-name ${{ steps.version.outputs.version_name }} --build-number ${{ steps.version.outputs.version_code }}
+        run: flutter build appbundle --release --build-name ${{ steps.version.outputs.version_name }} --build-number ${{ steps.android_beta_version.outputs.version_code }}
 
       - name: Build iOS App (Release, No Codesign)
         if: matrix.platform == 'ios'
@@ -220,9 +234,9 @@ jobs:
         run: |
           mkdir -p artifacts
           cp build/app/outputs/flutter-apk/app-release.apk \
-            artifacts/PreConnect-android-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.apk
+            artifacts/PreConnect-android-release-${{ steps.version.outputs.version_name }}+${{ steps.android_beta_version.outputs.version_code }}.apk
           cp build/app/outputs/bundle/release/app-release.aab \
-            artifacts/PreConnect-android-release-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}.aab
+            artifacts/PreConnect-android-release-${{ steps.version.outputs.version_name }}+${{ steps.android_beta_version.outputs.version_code }}.aab
 
       - name: Package iOS Release
         if: matrix.platform == 'ios'
@@ -358,7 +372,7 @@ jobs:
             artifacts/**
 
   publish-google-play:
-    name: Publish Google Play (Android)
+    name: Publish Google Play Open Testing (Android)
     runs-on: ubuntu-latest
     needs: build-platforms
     timeout-minutes: 20
@@ -379,79 +393,15 @@ jobs:
           PACKAGE_NAME=$(grep -E 'applicationId\s*=' android/app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
           VERSION_LINE=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
           VERSION_NAME=${VERSION_LINE%%+*}
-          VERSION_CODE=${VERSION_LINE#*+}
-          if [ "$VERSION_NAME" = "$VERSION_LINE" ]; then
-            VERSION_CODE=0
-          fi
+          RUN_NO="${{ github.run_number }}"
+          RUN_ATTEMPT="${{ github.run_attempt }}"
+          BASE_VERSION_CODE="$(date -u +%Y%m)${RUN_NO}"
+          VERSION_CODE=$((BASE_VERSION_CODE + RUN_ATTEMPT - 1))
           echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
           echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
-      - name: Check if app version changed
-        id: version_changed
-        shell: bash
-        run: |
-          CURRENT_VERSION=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
-          BEFORE_SHA="${{ github.event.before }}"
-          AFTER_SHA="${{ github.sha }}"
-
-          if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ] && git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
-            if git diff --name-only "$BEFORE_SHA" "$AFTER_SHA" | grep -qx 'pubspec.yaml'; then
-              OLD_VERSION=$(git show "$BEFORE_SHA:pubspec.yaml" 2>/dev/null | grep '^version:' | head -n1 | awk '{print $2}' || true)
-              NEW_VERSION=$(git show "$AFTER_SHA:pubspec.yaml" 2>/dev/null | grep '^version:' | head -n1 | awk '{print $2}' || true)
-              if [ -n "$OLD_VERSION" ] && [ -n "$NEW_VERSION" ] && [ "$OLD_VERSION" != "$NEW_VERSION" ]; then
-                echo "changed=true" >> "$GITHUB_OUTPUT"
-                echo "Version changed in push range: '$OLD_VERSION' -> '$NEW_VERSION'"
-                exit 0
-              fi
-            fi
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "Version unchanged in push range; skipping Google Play production publish."
-            exit 0
-          fi
-
-          PREVIOUS_VERSION=$(git show HEAD^:pubspec.yaml 2>/dev/null | grep '^version:' | head -n1 | awk '{print $2}' || true)
-          if [ -z "$PREVIOUS_VERSION" ] || [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "Version changed: '$PREVIOUS_VERSION' -> '$CURRENT_VERSION'"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "Version unchanged ('$CURRENT_VERSION'); skipping Google Play production publish."
-          fi
-
-      - name: Validate Android versionCode increases
-        if: steps.version_changed.outputs.changed == 'true'
-        shell: bash
-        run: |
-          BEFORE_SHA="${{ github.event.before }}"
-          PREVIOUS_VERSION=$(git show HEAD^:pubspec.yaml 2>/dev/null | grep '^version:' | head -n1 | awk '{print $2}' || true)
-
-          if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ] && git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
-            PREVIOUS_VERSION=$(git show "$BEFORE_SHA:pubspec.yaml" 2>/dev/null | grep '^version:' | head -n1 | awk '{print $2}' || true)
-          fi
-
-          PREVIOUS_CODE="${PREVIOUS_VERSION#*+}"
-          CURRENT_CODE="${{ steps.android_meta.outputs.version_code }}"
-
-          if [ -z "$PREVIOUS_VERSION" ] || [ -z "$PREVIOUS_CODE" ]; then
-            echo "Could not determine previous version; skipping monotonic check."
-            exit 0
-          fi
-
-          if ! [[ "$PREVIOUS_CODE" =~ ^[0-9]+$ && "$CURRENT_CODE" =~ ^[0-9]+$ ]]; then
-            echo "::error::Invalid versionCode format. Previous='$PREVIOUS_CODE' Current='$CURRENT_CODE'"
-            exit 1
-          fi
-
-          if [ "$CURRENT_CODE" -le "$PREVIOUS_CODE" ]; then
-            echo "::error::Android versionCode must increase. Previous=$PREVIOUS_CODE, current=$CURRENT_CODE"
-            exit 1
-          fi
-
-          echo "Android versionCode monotonic check passed: $PREVIOUS_CODE -> $CURRENT_CODE"
-
       - name: Download Android artifacts
-        if: steps.version_changed.outputs.changed == 'true'
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
@@ -459,7 +409,6 @@ jobs:
           path: artifacts/android
 
       - name: Resolve AAB file
-        if: steps.version_changed.outputs.changed == 'true'
         id: aab
         shell: bash
         run: |
@@ -474,7 +423,6 @@ jobs:
           echo "Using AAB: $AAB_FILE"
 
       - name: Check Google Play credentials
-        if: steps.version_changed.outputs.changed == 'true'
         id: play_auth
         shell: bash
         env:
@@ -488,7 +436,6 @@ jobs:
           fi
 
       - name: Validate Google Play publish prerequisites
-        if: steps.version_changed.outputs.changed == 'true'
         shell: bash
         run: |
           if [ "${{ steps.aab.outputs.found }}" != "true" ]; then
@@ -501,7 +448,6 @@ jobs:
           fi
 
       - name: Generate Play release notes from commits
-        if: steps.version_changed.outputs.changed == 'true'
         id: play_notes
         shell: bash
         run: |
@@ -532,14 +478,14 @@ jobs:
 
           echo "dir=$NOTES_DIR" >> "$GITHUB_OUTPUT"
 
-      - name: Upload AAB to Google Play (Production)
-        if: steps.version_changed.outputs.changed == 'true' && steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
+      - name: Upload AAB to Google Play (Open testing)
+        if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
         uses: r0adkll/upload-google-play@v1.1.3
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: ${{ steps.android_meta.outputs.package_name }}
           releaseFiles: ${{ steps.aab.outputs.file }}
-          track: production
+          track: beta
           status: completed
           releaseName: PreConnect v${{ steps.android_meta.outputs.version_name }}+${{ steps.android_meta.outputs.version_code }}
           changesNotSentForReview: false
