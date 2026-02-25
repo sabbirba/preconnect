@@ -2,7 +2,7 @@ name: preconnect
 description: "Your personalised student portal for BRAC University"
 publish_to: 'none'
 
-version: 1.4.7+202602469
+version: 1.4.7+202602470
 
 environment:
   sdk: ^3.8.1

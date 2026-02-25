@@ -325,8 +325,6 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
                                         ),
                                       ],
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       color: BracuPalette.textPrimary(context),
                                       fontSize: 13,
@@ -339,8 +337,6 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
                             const SizedBox(height: 3),
                             Text(
                               course.title.isEmpty ? '--' : course.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: BracuPalette.textSecondary(context),
                                 fontSize: 11,

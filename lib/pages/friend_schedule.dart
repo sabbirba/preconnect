@@ -35,6 +35,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
   bool _isPicking = false;
   String _searchQuery = '';
   bool _isRamadan = false;
+  bool _isLoadingSchedules = false;
 
   @override
   void initState() {
@@ -42,8 +43,10 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
     _loadSchedules();
     RefreshBus.instance.addListener(_onRefreshSignal);
     _searchController.addListener(() {
+      final next = _searchController.text.toLowerCase();
+      if (next == _searchQuery) return;
       setState(() {
-        _searchQuery = _searchController.text.toLowerCase();
+        _searchQuery = next;
       });
     });
   }
@@ -58,10 +61,13 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
 
   void _onRefreshSignal() {
     if (!mounted) return;
-    if (RefreshBus.instance.reason == 'friend_schedule') {
+    final reason = RefreshBus.instance.reason;
+    if (reason == 'friend_schedule') {
       return;
     }
-    unawaited(_loadSchedules());
+    if (reason == 'share_schedule' || reason == 'scan_schedule' || reason == 'auth') {
+      unawaited(_loadSchedules());
+    }
   }
 
   void _sortSchedules(List<FriendScheduleItem> items) {
@@ -73,69 +79,76 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
   }
 
   Future<void> _loadSchedules() async {
-    final ramadanFuture = RamadanTiming.isRamadan();
-    final prefs = await SharedPreferences.getInstance();
-    final List<String>? encodedList = prefs.getStringList("friendSchedules");
+    if (_isLoadingSchedules) return;
+    _isLoadingSchedules = true;
+    try {
+      final ramadanFuture = RamadanTiming.isRamadan();
+      final prefs = await SharedPreferences.getInstance();
+      final List<String>? encodedList = prefs.getStringList("friendSchedules");
 
-    final metadataJson = prefs.getString('friendMetadata');
-    if (metadataJson != null) {
-      try {
-        final Map<String, dynamic> decoded = jsonDecode(metadataJson);
-        _metadata = decoded.map(
-          (key, value) => MapEntry(
-            key,
-            FriendMetadata.fromJson(value as Map<String, dynamic>),
-          ),
-        );
-      } catch (_) {
-        _metadata = {};
+      final metadataJson = prefs.getString('friendMetadata');
+      if (metadataJson != null) {
+        try {
+          final Map<String, dynamic> decoded = jsonDecode(metadataJson);
+          _metadata = decoded.map(
+            (key, value) => MapEntry(
+              key,
+              FriendMetadata.fromJson(value as Map<String, dynamic>),
+            ),
+          );
+        } catch (_) {
+          _metadata = {};
+        }
       }
-    }
 
-    final isRamadan = await ramadanFuture;
-    if (encodedList == null) {
+      final isRamadan = await ramadanFuture;
+      if (encodedList == null) {
+        if (!mounted) return;
+        setState(() {
+          _isRamadan = isRamadan;
+        });
+        return;
+      }
+
+      final allSchedules = <FriendScheduleItem>[];
+      final validEntries = <String>[];
+
+      for (final base64Json in encodedList) {
+        try {
+          final Uint8List decodeBase64Json = base64.decode(base64Json);
+          final List<int> decodeGzipJson = GZipDecoder().decodeBytes(
+            decodeBase64Json,
+          );
+          final String originalJson = utf8.decode(decodeGzipJson);
+
+          final parsed = jsonDecode(originalJson);
+          final friendSchedule = FriendSchedule.fromJson(parsed);
+          final metadata = _metadata[friendSchedule.id];
+
+          allSchedules.add(
+            FriendScheduleItem(
+              encoded: base64Json,
+              friend: friendSchedule,
+              metadata: metadata,
+            ),
+          );
+          validEntries.add(base64Json);
+        } catch (_) {}
+      }
+
+      await prefs.setStringList("friendSchedules", validEntries);
+      await prefs.setStringList("friendSchedules_seen", validEntries);
+
+      _sortSchedules(allSchedules);
+
       if (!mounted) return;
       setState(() {
+        decodedSchedules = allSchedules;
         _isRamadan = isRamadan;
       });
-      return;
+    } finally {
+      _isLoadingSchedules = false;
     }
-
-    List<FriendScheduleItem> allSchedules = [];
-    List<String> validEntries = [];
-
-    for (final base64Json in encodedList) {
-      try {
-        final Uint8List decodeBase64Json = base64.decode(base64Json);
-        final List<int> decodeGzipJson = GZipDecoder().decodeBytes(
-          decodeBase64Json,
-        );
-        final String originalJson = utf8.decode(decodeGzipJson);
-
-        final parsed = jsonDecode(originalJson);
-        final friendSchedule = FriendSchedule.fromJson(parsed);
-        final metadata = _metadata[friendSchedule.id];
-
-        allSchedules.add(
-          FriendScheduleItem(
-            encoded: base64Json,
-            friend: friendSchedule,
-            metadata: metadata,
-          ),
-        );
-        validEntries.add(base64Json);
-      } catch (_) {}
-    }
-
-    await prefs.setStringList("friendSchedules", validEntries);
-    await prefs.setStringList("friendSchedules_seen", validEntries);
-
-    _sortSchedules(allSchedules);
-
-    setState(() {
-      decodedSchedules = allSchedules;
-      _isRamadan = isRamadan;
-    });
   }
 
   Future<void> _handleRefresh() async {
@@ -572,12 +585,9 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
       title: 'Friend Schedule',
       subtitle: 'Shared Schedules',
       icon: Icons.people_outline,
-      body: RefreshIndicator(
+      body: BracuRefreshList(
         onRefresh: _handleRefresh,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
+        children: [
             Text(
               'Scan & Share',
               style: TextStyle(
@@ -715,7 +725,6 @@ class _FriendSchedulePageState extends State<FriendSchedulePage> {
               const SizedBox(height: 12),
             ],
           ],
-        ),
       ),
     );
   }

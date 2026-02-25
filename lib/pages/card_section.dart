@@ -169,7 +169,7 @@ class CardSectionState extends State<CardSection> {
                                             displayName,
                                             style: TextStyle(
                                               color: Colors.black,
-                                              fontSize: 14,
+                                              fontSize: 13,
                                               fontFamily: 'Poppins',
                                               fontWeight: FontWeight.w700,
                                             ),
@@ -399,15 +399,11 @@ class _InfoRow extends StatelessWidget {
                   child: Text(
                     value,
                     style: textStyle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 )
               : Text(
                   value,
                   style: textStyle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
         ),
       ],

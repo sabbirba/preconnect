@@ -697,8 +697,6 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
               children: [
                 Text(
                   label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,

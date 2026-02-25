@@ -46,12 +46,8 @@ class _StudentProfileState extends State<StudentProfile>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
-    unawaited(ProfileService().fetchProfile());
-    unawaited(PaymentService().fetchPaymentInfo());
-    unawaited(AttendanceService().fetchAttendanceInfo());
-    unawaited(AdvisingService().fetchAdvisingInfo());
     unawaited(_preloadProgramProgress());
-    _loadProfile();
+    unawaited(_loadProfile());
     RefreshBus.instance.addListener(_onRefreshSignal);
   }
 
@@ -64,10 +60,13 @@ class _StudentProfileState extends State<StudentProfile>
 
   void _onRefreshSignal() {
     if (!mounted) return;
-    if (RefreshBus.instance.reason == 'student_profile') {
+    final reason = RefreshBus.instance.reason;
+    if (reason == 'student_profile') {
       return;
     }
-    unawaited(_refreshProfile(notify: false));
+    if (reason == 'auth') {
+      unawaited(_refreshProfile(notify: false));
+    }
   }
 
   List<dynamic> _decodeList(String? raw) {
@@ -156,15 +155,14 @@ class _StudentProfileState extends State<StudentProfile>
   }
 
   Future<void> _refreshProfile({bool notify = true}) async {
+    if (_isRefreshing) return;
     if (!await ensureOnline(context, notify: notify)) {
       return;
     }
-    if (!_isRefreshing) {
-      setState(() {
-        _isRefreshing = true;
-      });
-      _refreshController.repeat();
-    }
+    setState(() {
+      _isRefreshing = true;
+    });
+    _refreshController.repeat();
     try {
       unawaited(_preloadProgramProgress(forceRefresh: true));
       final profile = await ProfileService().fetchProfile();
@@ -242,12 +240,9 @@ class _StudentProfileState extends State<StudentProfile>
       title: 'Student Profile',
       subtitle: 'Academic & Finance',
       icon: Icons.person_outline,
-      body: RefreshIndicator(
+      body: BracuRefreshList(
         onRefresh: _refreshProfile,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
+        children: [
             const SizedBox(height: 6),
             CardSection(
               profile: _profile,
@@ -283,7 +278,6 @@ class _StudentProfileState extends State<StudentProfile>
               PaymentList(payments: _payments),
             const SizedBox(height: 12),
           ],
-        ),
       ),
     );
   }

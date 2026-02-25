@@ -93,7 +93,6 @@ class PaymentList extends StatelessWidget {
                                           fontSize: 15,
                                           letterSpacing: 0.2,
                                         ),
-                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                     const SizedBox(width: 4),

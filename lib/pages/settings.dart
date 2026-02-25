@@ -42,42 +42,54 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _setShowRamadanCard(bool value) async {
-    setState(() {
-      _showRamadanCard = value;
-    });
-    await HomeCardPreferences.setShowRamadanCard(value);
-    RefreshBus.instance.notify(reason: 'home_card_settings_changed');
+    await _setVisibility(
+      value: value,
+      applyLocal: () => _showRamadanCard = value,
+      persist: HomeCardPreferences.setShowRamadanCard,
+    );
   }
 
   Future<void> _setShowExamCountdownCard(bool value) async {
-    setState(() {
-      _showExamCountdownCard = value;
-    });
-    await HomeCardPreferences.setShowExamCountdownCard(value);
-    RefreshBus.instance.notify(reason: 'home_card_settings_changed');
+    await _setVisibility(
+      value: value,
+      applyLocal: () => _showExamCountdownCard = value,
+      persist: HomeCardPreferences.setShowExamCountdownCard,
+    );
   }
 
   Future<void> _setShowQuickAccessSection(bool value) async {
-    setState(() {
-      _showQuickAccessSection = value;
-    });
-    await HomeCardPreferences.setShowQuickAccessSection(value);
-    RefreshBus.instance.notify(reason: 'home_card_settings_changed');
+    await _setVisibility(
+      value: value,
+      applyLocal: () => _showQuickAccessSection = value,
+      persist: HomeCardPreferences.setShowQuickAccessSection,
+    );
   }
 
   Future<void> _setShowTodaySchedule(bool value) async {
-    setState(() {
-      _showTodaySchedule = value;
-    });
-    await HomeCardPreferences.setShowTodaySchedule(value);
-    RefreshBus.instance.notify(reason: 'home_card_settings_changed');
+    await _setVisibility(
+      value: value,
+      applyLocal: () => _showTodaySchedule = value,
+      persist: HomeCardPreferences.setShowTodaySchedule,
+    );
   }
 
   Future<void> _setShowStudentContactCards(bool value) async {
+    await _setVisibility(
+      value: value,
+      applyLocal: () => _showStudentContactCards = value,
+      persist: HomeCardPreferences.setShowStudentContactCards,
+    );
+  }
+
+  Future<void> _setVisibility({
+    required bool value,
+    required void Function() applyLocal,
+    required Future<void> Function(bool) persist,
+  }) async {
     setState(() {
-      _showStudentContactCards = value;
+      applyLocal();
     });
-    await HomeCardPreferences.setShowStudentContactCards(value);
+    await persist(value);
     RefreshBus.instance.notify(reason: 'home_card_settings_changed');
   }
 
@@ -107,12 +119,9 @@ class _SettingsPageState extends State<SettingsPage> {
       title: 'Settings',
       subtitle: 'Customize',
       icon: Icons.settings_outlined,
-      body: RefreshIndicator(
+      body: BracuRefreshList(
         onRefresh: _load,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
+        children: [
             if (_isLoading)
               const BracuLoading(label: 'Loading settings...')
             else ...[
@@ -203,7 +212,6 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ],
           ],
-        ),
       ),
     );
   }

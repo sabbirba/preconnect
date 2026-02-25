@@ -162,14 +162,121 @@ String formatTimeHour(String? input) {
 }
 
 String formatSectionBadge(String? sectionName) {
-  if (sectionName == null) return '--';
+  if (sectionName == null) return '?';
   final trimmed = sectionName.trim();
-  if (trimmed.isEmpty) return '--';
+  if (trimmed.isEmpty) return '?';
   final match = RegExp(r'\d+').firstMatch(trimmed);
-  if (match == null) return '--';
+  if (match == null) return '?';
   final number = int.tryParse(match.group(0)!);
   if (number == null) return match.group(0)!.padLeft(2, '0');
   return number.toString().padLeft(2, '0');
+}
+
+const EdgeInsets kBracuPageListPadding = EdgeInsets.fromLTRB(20, 8, 20, 28);
+
+class BracuRefreshList extends StatelessWidget {
+  const BracuRefreshList({
+    super.key,
+    required this.onRefresh,
+    required this.children,
+    this.controller,
+    this.padding = kBracuPageListPadding,
+  });
+
+  final RefreshCallback onRefresh;
+  final List<Widget> children;
+  final ScrollController? controller;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView(
+        controller: controller,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: padding,
+        children: children,
+      ),
+    );
+  }
+}
+
+class BracuRefreshListBuilder extends StatelessWidget {
+  const BracuRefreshListBuilder({
+    super.key,
+    required this.onRefresh,
+    required this.itemCount,
+    required this.itemBuilder,
+    this.controller,
+    this.padding = kBracuPageListPadding,
+  });
+
+  final RefreshCallback onRefresh;
+  final int itemCount;
+  final IndexedWidgetBuilder itemBuilder;
+  final ScrollController? controller;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView.builder(
+        controller: controller,
+        padding: padding,
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: itemCount,
+        itemBuilder: itemBuilder,
+      ),
+    );
+  }
+}
+
+class BracuRefreshPlaceholder extends StatelessWidget {
+  const BracuRefreshPlaceholder({
+    super.key,
+    required this.onRefresh,
+    required this.child,
+    this.topSpacing = 160,
+  });
+
+  final RefreshCallback onRefresh;
+  final Widget child;
+  final double topSpacing;
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuRefreshList(
+      onRefresh: onRefresh,
+      children: [SizedBox(height: topSpacing), child],
+    );
+  }
+}
+
+class BracuRefreshScroll extends StatelessWidget {
+  const BracuRefreshScroll({
+    super.key,
+    required this.onRefresh,
+    required this.child,
+    this.padding = kBracuPageListPadding,
+  });
+
+  final RefreshCallback onRefresh;
+  final Widget child;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: SingleChildScrollView(
+        padding: padding,
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: child,
+      ),
+    );
+  }
 }
 
 class BracuPalette {

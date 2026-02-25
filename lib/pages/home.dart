@@ -284,11 +284,16 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   static const _accent = Color(0xFF22B573);
 
   late Future<_HomeData> _future;
+  _HomeData? _latestData;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
     super.initState();
-    _future = _loadData();
+    _future = _loadData().then((data) {
+      _latestData = data;
+      return data;
+    });
     unawaited(_preloadProgramProgress());
     RefreshBus.instance.addListener(_onRefreshSignal);
   }
@@ -301,16 +306,21 @@ class _HomeDashboardState extends State<_HomeDashboard> {
 
   void _onRefreshSignal() {
     if (!mounted) return;
-    if (RefreshBus.instance.reason == 'home_dashboard') {
+    if (RefreshBus.instance.isReason('home_dashboard')) {
       return;
     }
-    if (RefreshBus.instance.reason == 'home_card_settings_changed') {
+    if (RefreshBus.instance.isReason('home_card_settings_changed')) {
       setState(() {
-        _future = _loadData();
+        _future = _loadData().then((data) {
+          _latestData = data;
+          return data;
+        });
       });
       return;
     }
-    unawaited(_handleRefresh(notify: false));
+    if (RefreshBus.instance.isReason('auth')) {
+      unawaited(_handleRefresh(notify: false));
+    }
   }
 
   Future<_HomeData> _loadData({bool forceRefresh = false}) async {
@@ -399,16 +409,23 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   }
 
   Future<void> _handleRefresh({bool notify = true}) async {
+    if (_isRefreshing) return;
     if (!await ensureOnline(context, notify: notify)) {
       return;
     }
+    _isRefreshing = true;
     unawaited(_preloadProgramProgress(forceRefresh: true));
-    setState(() {
-      _future = _loadData(forceRefresh: true);
-    });
-    await _future;
-    if (notify) {
-      RefreshBus.instance.notify(reason: 'home_dashboard');
+    try {
+      final fresh = await _loadData(forceRefresh: true);
+      if (!mounted) return;
+      setState(() {
+        _latestData = fresh;
+      });
+      if (notify) {
+        RefreshBus.instance.notify(reason: 'home_dashboard');
+      }
+    } finally {
+      _isRefreshing = false;
     }
   }
 
@@ -552,10 +569,11 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                   child: FutureBuilder<_HomeData>(
                     future: _future,
                     builder: (context, snapshot) {
-                      final profile = snapshot.data?.profile ?? {};
-                      final photoUrl = snapshot.data?.photoUrl;
+                      final data = _latestData ?? snapshot.data;
+                      final profile = data?.profile ?? {};
+                      final photoUrl = data?.photoUrl;
                       final ramadan =
-                          snapshot.data?.ramadan ??
+                          data?.ramadan ??
                           const RamadanStatus(isRamadan: false);
                       final isRamadan = ramadan.isRamadan;
                       final nextCountdownTarget = _nextRamadanTarget(
@@ -580,10 +598,9 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                         if (entry.value.trim().isEmpty) continue;
                         prayerEntries.add((entry.key, entry.value));
                       }
-                      final holidayStatus =
-                          snapshot.data?.holiday ?? HolidayStatus.empty;
+                      final holidayStatus = data?.holiday ?? HolidayStatus.empty;
                       final cardVisibility =
-                          snapshot.data?.cardVisibility ??
+                          data?.cardVisibility ??
                           HomeCardPreferences.defaults;
                       final isTodayHoliday = holidayStatus.isTodayHoliday;
                       final today = _todayName();
@@ -591,7 +608,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                         'd MMMM, y',
                       ).format(DateTime.now());
                       final todayEntries =
-                          (snapshot.data?.entries ?? [])
+                          (data?.entries ?? [])
                               .where(
                                 (e) =>
                                     normalizeWeekday(e.day) ==
@@ -614,14 +631,12 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                         nextEntry = _pickNextEntry(visibleEntries, nowMinutes);
                       }
                       final nextExam = _nextExamCountdown(
-                        snapshot.data?.sections ?? const <section.Section>[],
+                        data?.sections ?? const <section.Section>[],
                       );
-                      return RefreshIndicator(
+                      return BracuRefreshScroll(
                         onRefresh: _handleRefresh,
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          child: Column(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+                        child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _TopBar(
@@ -1047,7 +1062,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                               const SizedBox(height: 12),
                             ],
                           ),
-                        ),
                       );
                     },
                   ),

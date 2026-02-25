@@ -248,29 +248,15 @@ class _ClassScheduleState extends State<ClassSchedule> {
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return RefreshIndicator(
+            return BracuRefreshPlaceholder(
               onRefresh: _handleRefresh,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 160),
-                  BracuLoading(label: 'Loading schedule...'),
-                ],
-              ),
+              child: const BracuLoading(label: 'Loading schedule...'),
             );
           }
           if (snapshot.hasError) {
-            return RefreshIndicator(
+            return BracuRefreshPlaceholder(
               onRefresh: _handleRefresh,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  const SizedBox(height: 160),
-                  BracuEmptyState(message: 'Error: ${snapshot.error}'),
-                ],
-              ),
+              child: BracuEmptyState(message: 'Error: ${snapshot.error}'),
             );
           }
 
@@ -278,16 +264,9 @@ class _ClassScheduleState extends State<ClassSchedule> {
           final nextSchedule = snapshot.data?.nextSchedule;
           final isRamadan = snapshot.data?.isRamadan ?? false;
           if (grouped.isEmpty) {
-            return RefreshIndicator(
+            return BracuRefreshPlaceholder(
               onRefresh: _handleRefresh,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 160),
-                  BracuEmptyState(message: 'No schedule data available'),
-                ],
-              ),
+              child: const BracuEmptyState(message: 'No schedule data available'),
             );
           }
 
@@ -436,13 +415,10 @@ class _ClassScheduleState extends State<ClassSchedule> {
             _attemptScrollToHighlight();
           }
 
-          return RefreshIndicator(
+          return BracuRefreshList(
             onRefresh: _handleRefresh,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-              controller: _scrollController,
-              children: children,
-            ),
+            controller: _scrollController,
+            children: children,
           );
         },
       ),

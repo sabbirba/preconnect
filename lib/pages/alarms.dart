@@ -234,277 +234,248 @@ class _AlarmPageState extends State<AlarmPage> {
         future: _futureData,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return RefreshIndicator(
+            return BracuRefreshPlaceholder(
               onRefresh: _handleRefresh,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 160),
-                  BracuLoading(label: 'Loading classes...'),
-                ],
-              ),
+              child: const BracuLoading(label: 'Loading classes...'),
             );
           }
           if (snapshot.hasError) {
-            return RefreshIndicator(
+            return BracuRefreshPlaceholder(
               onRefresh: _handleRefresh,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  const SizedBox(height: 160),
-                  BracuEmptyState(message: 'Error: ${snapshot.error}'),
-                ],
-              ),
+              child: BracuEmptyState(message: 'Error: ${snapshot.error}'),
             );
           }
 
           final sections = snapshot.data?.sections ?? const <Section>[];
           final isRamadan = snapshot.data?.isRamadan ?? false;
           if (sections.isEmpty) {
-            return RefreshIndicator(
+            return BracuRefreshPlaceholder(
               onRefresh: _handleRefresh,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 160),
-                  BracuEmptyState(message: 'No class found'),
-                ],
-              ),
+              child: const BracuEmptyState(message: 'No class found'),
             );
           }
 
-          return RefreshIndicator(
+          return BracuRefreshListBuilder(
             onRefresh: _handleRefresh,
-            child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: sections.length + 1,
-              itemBuilder: (context, index) {
-                if (index == sections.length) {
-                  return const Padding(padding: EdgeInsets.only(top: 12));
-                }
-                final section = sections[index];
-                final schedules = section.sectionSchedule.classSchedules;
-                if (schedules.isEmpty) return const SizedBox.shrink();
+            itemCount: sections.length + 1,
+            itemBuilder: (context, index) {
+              if (index == sections.length) {
+                return const Padding(padding: EdgeInsets.only(top: 12));
+              }
+              final section = sections[index];
+              final schedules = section.sectionSchedule.classSchedules;
+              if (schedules.isEmpty) return const SizedBox.shrink();
 
-                final courseCode = section.courseCode;
-                _minutesBefore.putIfAbsent(courseCode, () => 5);
+              final courseCode = section.courseCode;
+              _minutesBefore.putIfAbsent(courseCode, () => 5);
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: BracuCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: BracuPalette.primary.withValues(
-                                  alpha: 0.12,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                formatSectionBadge(section.sectionName),
-                                style: const TextStyle(
-                                  color: BracuPalette.primary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    courseCode,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: textPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Class alarms',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: schedules.map((s) {
-                            final adjusted = RamadanTiming.adjustRange(
-                              s.startTime,
-                              s.endTime,
-                              isRamadan: isRamadan,
-                            );
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: chipBg,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                '${s.day} • ${formatTimeRange(adjusted.startTime, adjusted.endTime)}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 14),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: controlBg,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: BracuCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
                               color: BracuPalette.primary.withValues(
-                                alpha: 0.2,
+                                alpha: 0.12,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              formatSectionBadge(section.sectionName),
+                              style: const TextStyle(
+                                color: BracuPalette.primary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    if (_minutesBefore[courseCode]! > 5) {
-                                      _minutesBefore[courseCode] =
-                                          _minutesBefore[courseCode]! - 5;
-                                    }
-                                  });
-                                },
-                                borderRadius: BorderRadius.circular(10),
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: BracuPalette.primary.withValues(
-                                      alpha: 0.12,
-                                    ),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Icon(
-                                    Icons.remove,
-                                    size: 18,
-                                    color: BracuPalette.primary,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  courseCode,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: textPrimary,
                                   ),
                                 ),
-                              ),
-                              Expanded(
-                                child: Center(
-                                  child: Text(
-                                    '${_minutesBefore[courseCode]} min before',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      color: textPrimary,
-                                    ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Class alarms',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: textSecondary,
                                   ),
                                 ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: schedules.map((s) {
+                          final adjusted = RamadanTiming.adjustRange(
+                            s.startTime,
+                            s.endTime,
+                            isRamadan: isRamadan,
+                          );
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: chipBg,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${s.day} • ${formatTimeRange(adjusted.startTime, adjusted.endTime)}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: textPrimary,
+                                fontWeight: FontWeight.w600,
                               ),
-                              InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    _minutesBefore[courseCode] =
-                                        _minutesBefore[courseCode]! + 5;
-                                  });
-                                },
-                                borderRadius: BorderRadius.circular(10),
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: BracuPalette.primary.withValues(
-                                      alpha: 0.12,
-                                    ),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Icon(
-                                    Icons.add,
-                                    size: 18,
-                                    color: BracuPalette.primary,
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: controlBg,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: BracuPalette.primary.withValues(alpha: 0.2),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        Row(
+                        child: Row(
                           children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: BracuPalette.primary,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                            InkWell(
+                              onTap: () {
+                                setState(() {
+                                  if (_minutesBefore[courseCode]! > 5) {
+                                    _minutesBefore[courseCode] =
+                                        _minutesBefore[courseCode]! - 5;
+                                  }
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: BracuPalette.primary.withValues(
+                                    alpha: 0.12,
                                   ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.remove,
+                                  size: 18,
+                                  color: BracuPalette.primary,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Center(
+                                child: Text(
+                                  '${_minutesBefore[courseCode]} min before',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: textPrimary,
                                   ),
                                 ),
-                                onPressed: () async {
-                                  final days = schedules
-                                      .map((s) => s.day)
-                                      .toList();
-                                  final startTime = schedules.isNotEmpty
-                                      ? RamadanTiming.adjustRange(
-                                          schedules.first.startTime,
-                                          schedules.first.endTime,
-                                          isRamadan: isRamadan,
-                                        ).startTime
-                                      : '';
-
-                                  if (startTime.isNotEmpty && days.isNotEmpty) {
-                                    await _setAlarm(
-                                      context,
-                                      days,
-                                      startTime,
-                                      courseCode,
-                                      _minutesBefore[courseCode]!,
-                                    );
-                                  }
-                                },
-                                icon: const Icon(Icons.notifications_active),
-                                label: const Text('Set Alarm'),
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _minutesBefore[courseCode] =
+                                      _minutesBefore[courseCode]! + 5;
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: BracuPalette.primary.withValues(
+                                    alpha: 0.12,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.add,
+                                  size: 18,
+                                  color: BracuPalette.primary,
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: BracuPalette.primary,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                              ),
+                              onPressed: () async {
+                                final days = schedules.map((s) => s.day).toList();
+                                final startTime = schedules.isNotEmpty
+                                    ? RamadanTiming.adjustRange(
+                                        schedules.first.startTime,
+                                        schedules.first.endTime,
+                                        isRamadan: isRamadan,
+                                      ).startTime
+                                    : '';
+
+                                if (startTime.isNotEmpty && days.isNotEmpty) {
+                                  await _setAlarm(
+                                    context,
+                                    days,
+                                    startTime,
+                                    courseCode,
+                                    _minutesBefore[courseCode]!,
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.notifications_active),
+                              label: const Text('Set Alarm'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           );
         },
       ),

@@ -136,12 +136,10 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
         title: 'Scan Schedule',
         subtitle: 'Import From QR',
         icon: Icons.qr_code_scanner,
-        body: RefreshIndicator(
+        body: BracuRefreshList(
           onRefresh: _handleRefresh,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-            physics: const AlwaysScrollableScrollPhysics(),
-            children: [
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          children: [
               if (scannedValue == null)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -402,7 +400,6 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                 ),
               const SizedBox(height: 12),
             ],
-          ),
         ),
       ),
     );

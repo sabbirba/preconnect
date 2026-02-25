@@ -22,6 +22,14 @@ class SectionBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final normalized = label.trim();
+    final displayLabel =
+        normalized.isEmpty ||
+            normalized == '--' ||
+            normalized == '-' ||
+            normalized.toUpperCase() == 'N/A'
+        ? '?'
+        : normalized;
     return Container(
       width: size,
       height: size,
@@ -31,7 +39,7 @@ class SectionBadge extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: Text(
-        label,
+        displayLabel,
         style: TextStyle(
           color: color,
           fontSize: fontSize,

@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/progress_service.dart';
+import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/progress_info.dart';
+import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/all_courses.dart';
 import 'package:preconnect/pages/requirement_courses.dart';
 import 'package:preconnect/pages/shared_widgets/progress_bar.dart';
@@ -21,17 +24,27 @@ class ProgramProgressPage extends StatefulWidget {
 
 class _ProgramProgressPageState extends State<ProgramProgressPage> {
   late Future<ProgressInfo?> _future;
+  ProgressInfo? _latestInfo;
+  bool _isRefreshing = false;
   String _cgpa = '--';
   String _fullProgramName = '';
   ProgressSummary? _summary;
+  List<section.Section> _currentSemesterSections = const [];
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _future = _load().then((info) {
+      _latestInfo = info;
+      // If cached data exists, refresh silently in the background.
+      if (info != null) {
+        unawaited(_refreshFromNetworkSilent());
+      }
+      return info;
+    });
     unawaited(_loadCgpa());
     unawaited(_loadSummary());
-    unawaited(_refreshFromNetworkSilent());
+    unawaited(_loadCurrentSemesterCourses());
     RefreshBus.instance.addListener(_onRefreshSignal);
   }
 
@@ -43,7 +56,13 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
 
   void _onRefreshSignal() {
     if (!mounted) return;
-    if (RefreshBus.instance.reason == 'program_progress') return;
+    final reason = RefreshBus.instance.reason;
+    if (reason == 'program_progress') return;
+    if (reason != 'home_dashboard' &&
+        reason != 'student_profile' &&
+        reason != 'auth') {
+      return;
+    }
     unawaited(_refresh(notify: false));
   }
 
@@ -60,44 +79,80 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
     final resolvedProgram = profileProgram.isNotEmpty
         ? profileProgram
         : profileProgramAlt;
+    final nextCgpa = value.isEmpty ? '--' : value;
+    if (_cgpa == nextCgpa && _fullProgramName == resolvedProgram) return;
     setState(() {
-      _cgpa = value.isEmpty ? '--' : value;
+      _cgpa = nextCgpa;
       _fullProgramName = resolvedProgram;
     });
   }
 
   Future<void> _loadSummary() async {
     final summary = await ProgressService().getProgressSummary();
-    if (!mounted || summary == null) return;
+    if (!mounted || summary == null || _sameSummary(_summary, summary)) return;
     setState(() {
       _summary = summary;
     });
   }
 
   Future<void> _refreshFromNetworkSilent() async {
-    await ProgressService().fetchProgress();
+    final freshInfo = await ProgressService().fetchProgress();
     if (!mounted) return;
     final freshSummary = await ProgressService().getProgressSummary(
       fromFetch: true,
     );
+    final shouldUpdateInfo = freshInfo != null;
+    final shouldUpdateSummary =
+        freshSummary != null && !_sameSummary(_summary, freshSummary);
+    if (!shouldUpdateInfo && !shouldUpdateSummary) return;
     setState(() {
-      _future = ProgressService().getProgress(fromFetch: true);
-      if (freshSummary != null) {
+      if (shouldUpdateInfo) {
+        _latestInfo = freshInfo;
+      }
+      if (shouldUpdateSummary) {
         _summary = freshSummary;
       }
     });
   }
 
   Future<void> _refresh({bool notify = true}) async {
+    if (_isRefreshing) return;
     if (!await ensureOnline(context, notify: notify)) return;
-    setState(() {
-      _future = ProgressService().fetchProgress();
-    });
-    unawaited(_loadCgpa());
-    unawaited(_loadSummary());
-    await _future;
-    if (notify) {
-      RefreshBus.instance.notify(reason: 'program_progress');
+    _isRefreshing = true;
+    try {
+      final freshInfo = await ProgressService().fetchProgress();
+      final freshSummary = await ProgressService().getProgressSummary(
+        fromFetch: true,
+      );
+      final freshScheduleJson = await ScheduleService().fetchStudentSchedule();
+      final freshSections = _parseCurrentSemesterSections(freshScheduleJson);
+      unawaited(_loadCgpa());
+      if (!mounted) return;
+      final shouldUpdateInfo = freshInfo != null;
+      final shouldUpdateSummary =
+          freshSummary != null && !_sameSummary(_summary, freshSummary);
+      final shouldUpdateSections = !_sameSections(
+        _currentSemesterSections,
+        freshSections,
+      );
+      if (shouldUpdateInfo || shouldUpdateSummary || shouldUpdateSections) {
+        setState(() {
+          if (shouldUpdateInfo) {
+            _latestInfo = freshInfo;
+          }
+          if (shouldUpdateSummary) {
+            _summary = freshSummary;
+          }
+          if (shouldUpdateSections) {
+            _currentSemesterSections = freshSections;
+          }
+        });
+      }
+      if (notify) {
+        RefreshBus.instance.notify(reason: 'program_progress');
+      }
+    } finally {
+      _isRefreshing = false;
     }
   }
 
@@ -110,42 +165,29 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
       body: FutureBuilder<ProgressInfo?>(
         future: _future,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return RefreshIndicator(
+          final info = _latestInfo ?? snapshot.data;
+          if (snapshot.connectionState == ConnectionState.waiting && info == null) {
+            return BracuRefreshPlaceholder(
               onRefresh: _refresh,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-                children: const [SizedBox(height: 180), BracuLoading()],
-              ),
+              topSpacing: 180,
+              child: const BracuLoading(),
             );
           }
 
-          final info = snapshot.data;
-          if (snapshot.hasError) {
-            return RefreshIndicator(
+          if (snapshot.hasError && info == null) {
+            return BracuRefreshPlaceholder(
               onRefresh: _refresh,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-                children: [
-                  const SizedBox(height: 180),
-                  BracuEmptyState(message: 'Error: ${snapshot.error}'),
-                ],
-              ),
+              topSpacing: 180,
+              child: BracuEmptyState(message: 'Error: ${snapshot.error}'),
             );
           }
 
           if (info == null) {
-            return RefreshIndicator(
+            return BracuRefreshPlaceholder(
               onRefresh: _refresh,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-                children: const [
-                  SizedBox(height: 180),
-                  BracuEmptyState(message: 'No progress data available.'),
-                ],
+              topSpacing: 180,
+              child: const BracuEmptyState(
+                message: 'No progress data available.',
               ),
             );
           }
@@ -164,18 +206,64 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
               .clamp(0, double.infinity)
               .toDouble();
           final mandatoryByCode = <String, bool>{};
+          final courseTitleByCode = <String, String>{};
           for (final c in info.curriculumCourses) {
-            mandatoryByCode[c.code.toUpperCase()] = c.isMandatory;
+            final code = c.code.toUpperCase();
+            mandatoryByCode[code] = c.isMandatory;
+            final title = c.title.trim();
+            if (title.isNotEmpty) {
+              courseTitleByCode[code] = title;
+            }
           }
+          for (final c in info.completedCourses) {
+            final code = c.code.toUpperCase();
+            if (courseTitleByCode.containsKey(code)) continue;
+            final title = c.title.trim();
+            if (title.isNotEmpty) {
+              courseTitleByCode[code] = title;
+            }
+          }
+          final currentSectionsForDisplay = _currentSemesterSections.where((
+            current,
+          ) {
+            final resolvedTitle = _resolveCurrentCourseTitle(
+              current,
+              courseTitleByCode,
+            ).trim();
+            final hasNoRealName =
+                resolvedTitle.isEmpty ||
+                resolvedTitle.toUpperCase() ==
+                    current.courseCode.trim().toUpperCase();
+            return !(current.courseCredit <= 0 && hasNoRealName);
+          }).toList();
+          final attemptedCredit = currentSectionsForDisplay.fold<double>(
+            0,
+            (sum, section) => sum + section.courseCredit,
+          );
           final topCourses = [...info.completedCourses]
             ..sort((a, b) => compareNaturalText(a.code, b.code));
+          final completedCodes = info.completedCourses
+              .map((c) => c.code.trim().toUpperCase())
+              .toSet();
+          final currentSemesterCodes = _currentSemesterSections
+              .map((s) => s.courseCode.trim().toUpperCase())
+              .where((code) => code.isNotEmpty)
+              .toSet();
+          final requiredByCode = <String, CurriculumCourse>{};
+          for (final course in info.curriculumCourses) {
+            final code = course.code.trim().toUpperCase();
+            if (!course.isMandatory) continue;
+            if (completedCodes.contains(code)) continue;
+            if (currentSemesterCodes.contains(code)) continue;
+            requiredByCode.putIfAbsent(code, () => course);
+          }
+          final requiredCourses = requiredByCode.values.toList()
+            ..sort((a, b) => compareNaturalText(a.code, b.code));
 
-          return RefreshIndicator(
+          return BracuRefreshList(
             onRefresh: _refresh,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-              children: [
+            padding: kBracuPageListPadding,
+            children: [
                 BracuCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -184,43 +272,48 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
                         _resolveProgramTitle(info),
                         style: TextStyle(
                           color: BracuPalette.textPrimary(context),
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 12),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          const spacing = 6.0;
-                          final itemWidth =
-                              (constraints.maxWidth - (spacing * 3)) / 4;
-                          return Wrap(
-                            spacing: spacing,
-                            runSpacing: spacing,
-                            children: [
-                              _Metric(
-                                title: 'Total',
-                                value: _formatCredit(summaryTotal),
-                                width: itemWidth,
-                              ),
-                              _Metric(
-                                title: 'Done',
-                                value: _formatCredit(summaryCompleted),
-                                width: itemWidth,
-                              ),
-                              _Metric(
-                                title: 'CGPA',
-                                value: _cgpa,
-                                width: itemWidth,
-                              ),
-                              _Metric(
-                                title: 'Remaining',
-                                value: _formatCredit(remainingCredit),
-                                width: itemWidth,
-                              ),
-                            ],
-                          );
-                        },
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _Metric(
+                              title: 'Total',
+                              value: _formatCredit(summaryTotal),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: _Metric(
+                              title: 'Done',
+                              value: _formatCredit(summaryCompleted),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: _Metric(
+                              title: 'Attempted',
+                              value: _formatCredit(attemptedCredit),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: _Metric(
+                              title: 'CGPA',
+                              value: _cgpa,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: _Metric(
+                              title: 'Remaining',
+                              value: _formatCredit(remainingCredit),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 10),
                       Row(
@@ -325,6 +418,14 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
                               builder: (_) => RequirementCoursesPage(
                                 info: info,
                                 headerTitle: item.title,
+                                currentSemesterCodes: _currentSemesterSections
+                                    .map(
+                                      (section) => section.courseCode
+                                          .trim()
+                                          .toUpperCase(),
+                                    )
+                                    .where((code) => code.isNotEmpty)
+                                    .toSet(),
                               ),
                             ),
                           );
@@ -447,6 +548,96 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
                 if (info.majorOptions.isNotEmpty ||
                     info.minorOptions.isNotEmpty)
                   const SizedBox(height: 14),
+                if (currentSectionsForDisplay.isNotEmpty) ...[
+                  const BracuSectionTitle(title: 'Current Semester Courses'),
+                  const SizedBox(height: 10),
+                  ...currentSectionsForDisplay.map((current) {
+                    final isRequired =
+                        mandatoryByCode[current.courseCode.toUpperCase()] ??
+                        _isLikelyRequired(current.courseType);
+                    final rawSubtitle = _resolveCurrentCourseTitle(
+                      current,
+                      courseTitleByCode,
+                    );
+                    final showSubtitle =
+                        rawSubtitle.isNotEmpty &&
+                        rawSubtitle.toUpperCase() !=
+                            current.courseCode.trim().toUpperCase();
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: BracuCard(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SectionBadge(
+                              label: formatSectionBadge(current.sectionName),
+                              color: BracuPalette.primary,
+                              size: 40,
+                              fontSize: 13,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${current.courseCode} • ${formatSemesterFromSessionIdInt(current.semesterSessionId)}',
+                                    style: TextStyle(
+                                      color: BracuPalette.textPrimary(context),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (showSubtitle) ...[
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      rawSubtitle,
+                                      style: TextStyle(
+                                        color: BracuPalette.textSecondary(
+                                          context,
+                                        ),
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            SizedBox(
+                              width: 96,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '${current.courseCredit} credits',
+                                    style: TextStyle(
+                                      color: BracuPalette.textPrimary(context),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    isRequired ? 'Required' : 'Elective',
+                                    style: TextStyle(
+                                      color: isRequired
+                                          ? BracuPalette.warning
+                                          : BracuPalette.accent,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 4),
+                ],
                 const BracuSectionTitle(title: 'Completed Courses'),
                 const SizedBox(height: 10),
                 if (topCourses.isEmpty)
@@ -485,8 +676,6 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
                                 children: [
                                   Text(
                                     titleLine,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       color: BracuPalette.textPrimary(context),
                                       fontSize: 13,
@@ -548,12 +737,178 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
                       ),
                     );
                   }),
-              ],
-            ),
+                const SizedBox(height: 6),
+                const BracuSectionTitle(title: 'Required Courses'),
+                const SizedBox(height: 10),
+                if (requiredCourses.isEmpty)
+                  BracuCard(
+                    child: Text(
+                      'No required courses remaining.',
+                      style: TextStyle(
+                        color: BracuPalette.textSecondary(context),
+                      ),
+                    ),
+                  )
+                else
+                  ...requiredCourses.map((course) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: BracuCard(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SectionBadge(
+                              label: '?',
+                              color: BracuPalette.primary,
+                              size: 40,
+                              fontSize: 13,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    course.code,
+                                    style: TextStyle(
+                                      color: BracuPalette.textPrimary(context),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    course.title.isEmpty
+                                        ? course.code
+                                        : course.title,
+                                    style: TextStyle(
+                                      color: BracuPalette.textSecondary(
+                                        context,
+                                      ),
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            SizedBox(
+                              width: 96,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '${_formatCredit(course.credit)} credits',
+                                    style: TextStyle(
+                                      color: BracuPalette.textPrimary(context),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  const Text(
+                                    'Required',
+                                    style: TextStyle(
+                                      color: BracuPalette.warning,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+            ],
           );
         },
       ),
     );
+  }
+
+  Future<void> _loadCurrentSemesterCourses() async {
+    final scheduleJson = await ScheduleService().getStudentSchedule();
+    if (!mounted) return;
+    final sections = _parseCurrentSemesterSections(scheduleJson);
+    if (_sameSections(_currentSemesterSections, sections)) return;
+    setState(() {
+      _currentSemesterSections = sections;
+    });
+  }
+
+  List<section.Section> _parseCurrentSemesterSections(String? scheduleJson) {
+    if (scheduleJson == null || scheduleJson.trim().isEmpty) {
+      return const <section.Section>[];
+    }
+    try {
+      final decoded = jsonDecode(scheduleJson);
+      if (decoded is! List<dynamic>) return const <section.Section>[];
+      final sections = <section.Section>[];
+      final seen = <String>{};
+      for (final raw in decoded.whereType<Map<String, dynamic>>()) {
+        final item = section.Section.fromJson(raw);
+        // Deduplicate true repeats while keeping distinct lecture/lab sections.
+        final key =
+            '${item.sectionId}|${item.courseCode}|${item.sectionName}|${item.roomNumber}';
+        if (!seen.add(key)) continue;
+        sections.add(item);
+      }
+      sections.sort((a, b) {
+        final codeCmp = compareNaturalText(a.courseCode, b.courseCode);
+        if (codeCmp != 0) return codeCmp;
+        return compareNaturalText(a.sectionName, b.sectionName);
+      });
+      return sections;
+    } catch (_) {
+      return const <section.Section>[];
+    }
+  }
+
+  bool _sameSections(List<section.Section> a, List<section.Section> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      final left = a[i];
+      final right = b[i];
+      if (left.sectionId != right.sectionId) return false;
+      if (left.courseCode != right.courseCode) return false;
+      if (left.sectionName != right.sectionName) return false;
+      if (left.courseCredit != right.courseCredit) return false;
+      if (left.roomNumber != right.roomNumber) return false;
+      if (left.semesterSessionId != right.semesterSessionId) return false;
+    }
+    return true;
+  }
+
+  bool _isLikelyRequired(String? courseType) {
+    final type = (courseType ?? '').trim().toUpperCase();
+    if (type.isEmpty) return false;
+    if (type.contains('ELECTIVE')) return false;
+    if (type.contains('OPTIONAL')) return false;
+    return true;
+  }
+
+  String _resolveCurrentCourseTitle(
+    section.Section current,
+    Map<String, String> titleByCode,
+  ) {
+    final code = current.courseCode.trim().toUpperCase();
+    final fromProgress = (titleByCode[code] ?? '').trim();
+    if (fromProgress.isNotEmpty) return fromProgress;
+    final fromSchedule = (current.name ?? '').trim();
+    return fromSchedule;
+  }
+
+  bool _sameSummary(ProgressSummary? a, ProgressSummary? b) {
+    if (a == null || b == null) return false;
+    return a.programName == b.programName &&
+        a.totalCredit == b.totalCredit &&
+        a.completedCredit == b.completedCredit &&
+        a.completionPercent == b.completionPercent &&
+        a.remainingCourses == b.remainingCourses;
   }
 
   String _formatCredit(double value) {
@@ -574,37 +929,37 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
 }
 
 class _Metric extends StatelessWidget {
-  const _Metric({required this.title, required this.value, this.width});
+  const _Metric({required this.title, required this.value});
 
   final String title;
   final String value;
-  final double? width;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: width,
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
       decoration: BoxDecoration(
         color: BracuPalette.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             title,
+            textAlign: TextAlign.center,
             style: TextStyle(
               color: BracuPalette.textSecondary(context),
-              fontSize: 10,
+              fontSize: 8,
             ),
           ),
           const SizedBox(height: 3),
           Text(
             value,
+            textAlign: TextAlign.center,
             style: TextStyle(
               color: BracuPalette.textPrimary(context),
-              fontSize: 13,
+              fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
           ),

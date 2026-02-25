@@ -190,7 +190,6 @@ class _OverviewHeader extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   department.isEmpty ? '' : department,
-                  maxLines: 2,
                   overflow: TextOverflow.fade,
                   softWrap: true,
                   style: TextStyle(
@@ -266,8 +265,6 @@ class _OverviewTile extends StatelessWidget {
                   onTap: () => copyToClipboard(context, value),
                   child: Text(
                     value.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: BracuPalette.textPrimary(context),
                       fontSize: 13,
@@ -278,8 +275,6 @@ class _OverviewTile extends StatelessWidget {
                 )
               : Text(
                   value.toUpperCase(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: BracuPalette.textPrimary(context),
                     fontSize: 13,

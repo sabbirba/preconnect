@@ -30,6 +30,12 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
   bool isLoading = false;
   String? errorMessage;
   final GlobalKey _qrKey = GlobalKey();
+  bool _isRefreshing = false;
+
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    setState(fn);
+  }
 
   @override
   void initState() {
@@ -48,10 +54,13 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
 
   void _onRefreshSignal() {
     if (!mounted) return;
-    if (RefreshBus.instance.reason == 'share_schedule') {
+    final reason = RefreshBus.instance.reason;
+    if (reason == 'share_schedule') {
       return;
     }
-    unawaited(_refreshIfOnline());
+    if (reason == 'auth' || reason == 'friend_schedule') {
+      unawaited(_refreshIfOnline());
+    }
   }
 
   Future<void> _refreshIfOnline({bool notify = false}) async {
@@ -62,7 +71,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
   }
 
   Future<void> _loadCachedAndRefresh() async {
-    setState(() {
+    _safeSetState(() {
       isLoading = true;
       errorMessage = null;
     });
@@ -75,10 +84,12 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
     if (cachedBase64 != null &&
         cachedBase64.isNotEmpty &&
         cachedVersion == _qrPayloadVersion) {
-      setState(() {
+      _safeSetState(() {
         _base64Data = cachedBase64;
         isLoading = false;
       });
+      // Keep cached UI stable and refresh silently in background.
+      unawaited(_refreshIfOnline(notify: false));
       return;
     }
 
@@ -95,8 +106,10 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
     int? cachedVersion,
     bool forceRefresh = false,
   }) async {
+    if (_isRefreshing) return;
+    _isRefreshing = true;
     if (_base64Data == null) {
-      setState(() {
+      _safeSetState(() {
         isLoading = true;
         errorMessage = null;
       });
@@ -123,7 +136,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
           : (cachedSchedule ?? await ScheduleService().fetchStudentSchedule());
       if (jsonString == null || jsonString.trim().isEmpty) {
         if (_base64Data == null) {
-          setState(() {
+          _safeSetState(() {
             errorMessage = 'No schedule data available offline.';
           });
         }
@@ -137,7 +150,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
           cachedBase64 != null &&
           cachedHash == fingerprint &&
           cachedVersion == _qrPayloadVersion) {
-        setState(() {
+        _safeSetState(() {
           isLoading = false;
         });
         return;
@@ -178,17 +191,18 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
       await prefs.setString('qr_hash', fingerprint);
       await prefs.setInt('qr_payload_version', _qrPayloadVersion);
 
-      setState(() {
+      _safeSetState(() {
         _base64Data = base64Str;
       });
     } catch (e) {
       if (_base64Data == null) {
-        setState(() {
+        _safeSetState(() {
           errorMessage = e.toString();
         });
       }
     } finally {
-      setState(() {
+      _isRefreshing = false;
+      _safeSetState(() {
         isLoading = false;
       });
     }
@@ -277,12 +291,9 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
       title: 'Share Schedule',
       subtitle: 'Generate QR for Friends',
       icon: Icons.qr_code_2,
-      body: RefreshIndicator(
+      body: BracuRefreshList(
         onRefresh: _handleRefresh,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
+        children: [
             if (isLoading)
               const BracuLoading(label: 'Preparing QR...')
             else if (errorMessage != null)
@@ -410,7 +421,6 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
             ],
             const SizedBox(height: 12),
           ],
-        ),
       ),
     );
   }

@@ -15,6 +15,7 @@ import 'home.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/user_agent.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/pages/ui_kit.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -230,51 +231,49 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _handlePullToRefresh,
-          child: LayoutBuilder(
-            builder: (context, constraints) => ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: [
-                SizedBox(
-                  height: constraints.maxHeight,
-                  child: PopScope(
-                    canPop: false,
-                    onPopInvokedWithResult: (didPop, result) async {
-                      final controller = _webViewController;
-                      if (controller == null) return;
-                      if (!mounted) return;
-                      final navigator = Navigator.of(context);
-                      if (await controller.canGoBack()) {
-                        await controller.goBack();
-                      } else {
-                        navigator.maybePop();
-                      }
-                    },
-                    child: Stack(
-                      children: [
-                        if (_webViewController != null)
-                          Positioned.fill(
-                            child: WebViewWidget(
-                              controller: _webViewController!,
-                            ),
+        child: LayoutBuilder(
+          builder: (context, constraints) => BracuRefreshList(
+            onRefresh: _handlePullToRefresh,
+            padding: EdgeInsets.zero,
+            children: [
+              SizedBox(
+                height: constraints.maxHeight,
+                child: PopScope(
+                  canPop: false,
+                  onPopInvokedWithResult: (didPop, result) async {
+                    final controller = _webViewController;
+                    if (controller == null) return;
+                    if (!mounted) return;
+                    final navigator = Navigator.of(context);
+                    if (await controller.canGoBack()) {
+                      await controller.goBack();
+                    } else {
+                      navigator.maybePop();
+                    }
+                  },
+                  child: Stack(
+                    children: [
+                      if (_webViewController != null)
+                        Positioned.fill(
+                          child: WebViewWidget(
+                            controller: _webViewController!,
                           ),
-                        if (_isLoggingIn)
-                          Positioned.fill(
-                            child: Container(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              alignment: Alignment.center,
-                              child: const SizedBox.shrink(),
-                            ),
+                        ),
+                      if (_isLoggingIn)
+                        Positioned.fill(
+                          child: Container(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            alignment: Alignment.center,
+                            child: const SizedBox.shrink(),
                           ),
-                      ],
-                    ),
+                        ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ),
+            ),
       ),
     );
   }

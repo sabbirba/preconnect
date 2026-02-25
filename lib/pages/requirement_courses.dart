@@ -9,10 +9,12 @@ class RequirementCoursesPage extends StatefulWidget {
     super.key,
     required this.info,
     required this.headerTitle,
+    this.currentSemesterCodes = const <String>{},
   });
 
   final ProgressInfo info;
   final String headerTitle;
+  final Set<String> currentSemesterCodes;
 
   @override
   State<RequirementCoursesPage> createState() => _RequirementCoursesPageState();
@@ -64,16 +66,37 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final courses = [...widget.info.coursesForHeader(widget.headerTitle)]
-      ..sort((a, b) {
-        final ap = _pinnedCodes.contains(a.code.toUpperCase()) ? 0 : 1;
-        final bp = _pinnedCodes.contains(b.code.toUpperCase()) ? 0 : 1;
-        if (ap != bp) return ap.compareTo(bp);
-        return compareNaturalText(a.code, b.code);
-      });
     final completedMap = <String, CompletedCourse>{
       for (final c in widget.info.completedCourses) c.code.toUpperCase(): c,
     };
+    final currentSemesterCodes = widget.currentSemesterCodes
+        .map((code) => code.trim().toUpperCase())
+        .where((code) => code.isNotEmpty)
+        .toSet();
+    final courses = [...widget.info.coursesForHeader(widget.headerTitle)]
+      ..sort((a, b) {
+        final aCode = a.code.trim().toUpperCase();
+        final bCode = b.code.trim().toUpperCase();
+        final ap = _pinnedCodes.contains(aCode) ? 0 : 1;
+        final bp = _pinnedCodes.contains(bCode) ? 0 : 1;
+        if (ap != bp) {
+          // Starred stays highest priority.
+          return ap.compareTo(bp);
+        }
+        final aTop =
+            completedMap.containsKey(aCode) || currentSemesterCodes.contains(aCode)
+            ? 0
+            : 1;
+        final bTop =
+            completedMap.containsKey(bCode) || currentSemesterCodes.contains(bCode)
+            ? 0
+            : 1;
+        if (aTop != bTop) {
+          // Then keep completed/taken-this-semester items at top.
+          return aTop.compareTo(bTop);
+        }
+        return compareNaturalText(a.code, b.code);
+      });
 
     return BracuPageScaffold(
       title: widget.headerTitle,
@@ -90,7 +113,9 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
             )
           else
             ...courses.map((course) {
-              final completed = completedMap[course.code.toUpperCase()];
+              final courseCode = course.code.trim().toUpperCase();
+              final completed = completedMap[courseCode];
+              final takingNow = currentSemesterCodes.contains(courseCode);
               final done = completed != null;
               final grade = completed?.grade.trim() ?? '';
               final infoLabel = course.isMandatory ? 'Required' : 'Optional';
@@ -166,8 +191,6 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
                                         ),
                                       ],
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       color: BracuPalette.textPrimary(context),
                                       fontSize: 13,
@@ -180,8 +203,6 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
                             const SizedBox(height: 3),
                             Text(
                               course.title.isEmpty ? '--' : course.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: BracuPalette.textSecondary(context),
                                 fontSize: 11,
@@ -221,6 +242,16 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
                                 'Completed',
                                 style: TextStyle(
                                   color: BracuPalette.accent,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ] else if (takingNow) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                'This semester',
+                                style: TextStyle(
+                                  color: BracuPalette.primary,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                 ),

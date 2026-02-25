@@ -123,40 +123,19 @@ class _ExamScheduleState extends State<ExamSchedule> {
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return RefreshIndicator(
+            return BracuRefreshPlaceholder(
               onRefresh: _handleRefresh,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 160),
-                  BracuLoading(label: 'Loading exams...'),
-                ],
-              ),
+              child: const BracuLoading(label: 'Loading exams...'),
             );
           } else if (snapshot.hasError) {
-            return RefreshIndicator(
+            return BracuRefreshPlaceholder(
               onRefresh: _handleRefresh,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  const SizedBox(height: 160),
-                  BracuEmptyState(message: 'Error: ${snapshot.error}'),
-                ],
-              ),
+              child: BracuEmptyState(message: 'Error: ${snapshot.error}'),
             );
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return RefreshIndicator(
+            return BracuRefreshPlaceholder(
               onRefresh: _handleRefresh,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 160),
-                  BracuEmptyState(message: 'No exam data available'),
-                ],
-              ),
+              child: const BracuEmptyState(message: 'No exam data available'),
             );
           }
 
@@ -207,16 +186,9 @@ class _ExamScheduleState extends State<ExamSchedule> {
           });
 
           if (midExams.isEmpty && finalExams.isEmpty) {
-            return RefreshIndicator(
+            return BracuRefreshPlaceholder(
               onRefresh: _handleRefresh,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 160),
-                  BracuEmptyState(message: 'No exams scheduled'),
-                ],
-              ),
+              child: const BracuEmptyState(message: 'No exams scheduled'),
             );
           }
 
@@ -509,13 +481,10 @@ class _ExamScheduleState extends State<ExamSchedule> {
             _attemptScrollToHighlight();
           }
 
-          return RefreshIndicator(
+          return BracuRefreshList(
             onRefresh: _handleRefresh,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-              controller: _scrollController,
-              children: children,
-            ),
+            controller: _scrollController,
+            children: children,
           );
         },
       ),
