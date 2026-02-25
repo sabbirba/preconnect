@@ -296,7 +296,7 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: _Metric(
-                            title: 'Attempted',
+                            title: 'Attempt',
                             value: _formatCredit(attemptedCredit),
                           ),
                         ),
@@ -307,7 +307,7 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: _Metric(
-                            title: 'Remaining',
+                            title: 'Left',
                             value: _formatCredit(remainingCredit),
                           ),
                         ),
