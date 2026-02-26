@@ -37,6 +37,11 @@ class ApiConfig {
   static String attendancePath(String portfolioId) =>
       '/exc/v1/student-courses/$portfolioId/current-semester-attendance';
 
+  static const String seatStatusPath = '/adv/v1/advising/sections/seat-status';
+
+  static String sectionDetailsPath(int sectionId) =>
+      '/adv/v1/advising/sections/$sectionId/details';
+
   static String majorMinorsPath(String portfolioId) =>
       '/reg/v1/student-portfolio/$portfolioId/major-minors';
 
@@ -87,6 +92,11 @@ class ApiConfig {
     final phasesQuery = advisingPhases.map((p) => 'advisingPhase=$p').join('&');
     return '$connectApiBase${advisingPath(studentId)}?$phasesQuery';
   }
+
+  static String get seatStatusUrl => '$connectApiBase$seatStatusPath';
+
+  static String sectionDetailsUrl(int sectionId) =>
+      '$connectApiBase${sectionDetailsPath(sectionId)}';
 
   static const String authUrl =
       '$authEndpoint'

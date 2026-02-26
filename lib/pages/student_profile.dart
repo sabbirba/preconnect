@@ -46,7 +46,7 @@ class _StudentProfileState extends State<StudentProfile>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
-    unawaited(_preloadProgramProgress());
+    unawaited(_preloadDegreeProgress());
     unawaited(_loadProfile());
     RefreshBus.instance.addListener(_onRefreshSignal);
   }
@@ -164,7 +164,7 @@ class _StudentProfileState extends State<StudentProfile>
     });
     _refreshController.repeat();
     try {
-      unawaited(_preloadProgramProgress(forceRefresh: true));
+      unawaited(_preloadDegreeProgress(forceRefresh: true));
       final profile = await ProfileService().fetchProfile();
       final photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
       ProfileImageCache.instance.invalidate();
@@ -225,7 +225,7 @@ class _StudentProfileState extends State<StudentProfile>
     }
   }
 
-  Future<void> _preloadProgramProgress({bool forceRefresh = false}) async {
+  Future<void> _preloadDegreeProgress({bool forceRefresh = false}) async {
     if (forceRefresh) {
       await ProgressService().fetchProgress();
       return;

@@ -16,6 +16,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _showQuickAccessSection = true;
   bool _showRamadanCard = true;
   bool _showExamCountdownCard = true;
+  bool _showExamCountdownDaysOnly = false;
   bool _showTodaySchedule = true;
   bool _showStudentContactCards = true;
   bool _appLockEnabled = false;
@@ -34,6 +35,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _showQuickAccessSection = visibility.showQuickAccessSection;
       _showRamadanCard = visibility.showRamadanCard;
       _showExamCountdownCard = visibility.showExamCountdownCard;
+      _showExamCountdownDaysOnly = visibility.showExamCountdownDaysOnly;
       _showTodaySchedule = visibility.showTodaySchedule;
       _showStudentContactCards = visibility.showStudentContactCards;
       _appLockEnabled = appLockEnabled;
@@ -62,6 +64,14 @@ class _SettingsPageState extends State<SettingsPage> {
       value: value,
       applyLocal: () => _showQuickAccessSection = value,
       persist: HomeCardPreferences.setShowQuickAccessSection,
+    );
+  }
+
+  Future<void> _setShowExamCountdownDaysOnly(bool value) async {
+    await _setVisibility(
+      value: value,
+      applyLocal: () => _showExamCountdownDaysOnly = value,
+      persist: HomeCardPreferences.setShowExamCountdownDaysOnly,
     );
   }
 
@@ -135,6 +145,23 @@ class _SettingsPageState extends State<SettingsPage> {
                     subtitle: 'Show upcoming exam countdown',
                     value: _showExamCountdownCard,
                     onChanged: _setShowExamCountdownCard,
+                  ),
+                  Divider(
+                    height: 12,
+                    thickness: 1,
+                    color: BracuPalette.textSecondary(context).withValues(
+                      alpha: Theme.of(context).brightness == Brightness.dark
+                          ? 0.20
+                          : 0.12,
+                    ),
+                  ),
+                  _ToggleRow(
+                    title: 'Exam Countdown Days Only',
+                    subtitle: 'Show only days in countdown',
+                    value: _showExamCountdownDaysOnly,
+                    onChanged: _showExamCountdownCard
+                        ? _setShowExamCountdownDaysOnly
+                        : null,
                   ),
                   Divider(
                     height: 12,
@@ -228,7 +255,7 @@ class _ToggleRow extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool value;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
 
   @override
   Widget build(BuildContext context) {

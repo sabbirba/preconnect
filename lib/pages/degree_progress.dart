@@ -15,14 +15,14 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/refresh_guard.dart';
 
-class ProgramProgressPage extends StatefulWidget {
-  const ProgramProgressPage({super.key});
+class DegreeProgressPage extends StatefulWidget {
+  const DegreeProgressPage({super.key});
 
   @override
-  State<ProgramProgressPage> createState() => _ProgramProgressPageState();
+  State<DegreeProgressPage> createState() => _DegreeProgressPageState();
 }
 
-class _ProgramProgressPageState extends State<ProgramProgressPage> {
+class _DegreeProgressPageState extends State<DegreeProgressPage> {
   late Future<ProgressInfo?> _future;
   ProgressInfo? _latestInfo;
   bool _isRefreshing = false;
@@ -57,7 +57,7 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
   void _onRefreshSignal() {
     if (!mounted) return;
     final reason = RefreshBus.instance.reason;
-    if (reason == 'program_progress') return;
+    if (reason == 'degree_progress') return;
     if (reason != 'home_dashboard' &&
         reason != 'student_profile' &&
         reason != 'auth') {
@@ -149,7 +149,7 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
         });
       }
       if (notify) {
-        RefreshBus.instance.notify(reason: 'program_progress');
+        RefreshBus.instance.notify(reason: 'degree_progress');
       }
     } finally {
       _isRefreshing = false;
@@ -159,9 +159,9 @@ class _ProgramProgressPageState extends State<ProgramProgressPage> {
   @override
   Widget build(BuildContext context) {
     return BracuPageScaffold(
-      title: 'Progression',
+      title: 'Degree Progress',
       subtitle: 'Curriculum Based',
-      icon: Icons.insights_outlined,
+      icon: Icons.school_outlined,
       body: FutureBuilder<ProgressInfo?>(
         future: _future,
         builder: (context, snapshot) {
@@ -939,7 +939,7 @@ class _Metric extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: BracuPalette.textPrimary(context),
-              fontSize: 18,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
           ),

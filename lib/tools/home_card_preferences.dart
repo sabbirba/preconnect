@@ -8,6 +8,8 @@ class HomeCardPreferences {
   static const String _showRamadanCardKey = 'home_show_ramadan_card';
   static const String _showExamCountdownCardKey =
       'home_show_exam_countdown_card';
+  static const String _showExamCountdownDaysOnlyKey =
+      'home_show_exam_countdown_days_only';
   static const String _showTodayScheduleKey = 'home_show_today_schedule';
   static const String _showStudentContactCardsKey =
       'home_show_student_contact_cards';
@@ -16,6 +18,7 @@ class HomeCardPreferences {
     showQuickAccessSection: true,
     showRamadanCard: true,
     showExamCountdownCard: true,
+    showExamCountdownDaysOnly: false,
     showTodaySchedule: true,
     showStudentContactCards: true,
   );
@@ -28,6 +31,8 @@ class HomeCardPreferences {
             prefs.getBool(_showQuickAccessSectionKey) ?? true,
         showRamadanCard: prefs.getBool(_showRamadanCardKey) ?? true,
         showExamCountdownCard: prefs.getBool(_showExamCountdownCardKey) ?? true,
+        showExamCountdownDaysOnly:
+            prefs.getBool(_showExamCountdownDaysOnlyKey) ?? false,
         showTodaySchedule: prefs.getBool(_showTodayScheduleKey) ?? true,
         showStudentContactCards:
             prefs.getBool(_showStudentContactCardsKey) ?? true,
@@ -48,6 +53,13 @@ class HomeCardPreferences {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_showExamCountdownCardKey, value);
+    } catch (_) {}
+  }
+
+  static Future<void> setShowExamCountdownDaysOnly(bool value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_showExamCountdownDaysOnlyKey, value);
     } catch (_) {}
   }
 
@@ -78,6 +90,7 @@ class HomeCardVisibility {
     required this.showQuickAccessSection,
     required this.showRamadanCard,
     required this.showExamCountdownCard,
+    required this.showExamCountdownDaysOnly,
     required this.showTodaySchedule,
     required this.showStudentContactCards,
   });
@@ -85,6 +98,7 @@ class HomeCardVisibility {
   final bool showQuickAccessSection;
   final bool showRamadanCard;
   final bool showExamCountdownCard;
+  final bool showExamCountdownDaysOnly;
   final bool showTodaySchedule;
   final bool showStudentContactCards;
 }

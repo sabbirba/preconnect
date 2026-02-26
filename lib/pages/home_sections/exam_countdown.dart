@@ -7,10 +7,12 @@ class ExamCountdownCard extends StatelessWidget {
     super.key,
     required this.title,
     required this.targetDateTime,
+    this.daysOnly = false,
   });
 
   final String title;
   final DateTime targetDateTime;
+  final bool daysOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +49,7 @@ class ExamCountdownCard extends StatelessWidget {
                   ],
                 ),
               ),
-              _ExamCountdownDigital(remaining: remaining),
+              _ExamCountdownDigital(remaining: remaining, daysOnly: daysOnly),
             ],
           ),
         );
@@ -63,9 +65,13 @@ class ExamCountdownCard extends StatelessWidget {
 }
 
 class _ExamCountdownDigital extends StatelessWidget {
-  const _ExamCountdownDigital({required this.remaining});
+  const _ExamCountdownDigital({
+    required this.remaining,
+    required this.daysOnly,
+  });
 
   final Duration remaining;
+  final bool daysOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -102,16 +108,32 @@ class _ExamCountdownDigital extends StatelessWidget {
       );
     }
 
+    if (daysOnly) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [cell(days.toString(), 'Days')],
+      );
+    }
+
+    final units = <({String value, String label})>[];
+    if (days > 0) {
+      units.add((value: days.toString(), label: 'Days'));
+    }
+    if (hours > 0) {
+      units.add((value: hours.toString().padLeft(2, '0'), label: 'Hours'));
+    }
+    if (minutes > 0) {
+      units.add((value: minutes.toString().padLeft(2, '0'), label: 'Minutes'));
+    }
+    units.add((value: seconds.toString().padLeft(2, '0'), label: 'Seconds'));
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        cell(days.toString(), 'Days'),
-        const SizedBox(width: 8),
-        cell(hours.toString().padLeft(2, '0'), 'Hours'),
-        const SizedBox(width: 8),
-        cell(minutes.toString().padLeft(2, '0'), 'Minutes'),
-        const SizedBox(width: 8),
-        cell(seconds.toString().padLeft(2, '0'), 'Seconds'),
+        for (var i = 0; i < units.length; i++) ...[
+          cell(units[i].value, units[i].label),
+          if (i != units.length - 1) const SizedBox(width: 8),
+        ],
       ],
     );
   }

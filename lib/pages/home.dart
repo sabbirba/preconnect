@@ -11,7 +11,8 @@ import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/class_schedule.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
-import 'package:preconnect/pages/program_progress.dart';
+import 'package:preconnect/pages/seat_status.dart';
+import 'package:preconnect/pages/degree_progress.dart';
 import 'package:preconnect/pages/alarms.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/share_schedule.dart';
@@ -71,7 +72,8 @@ class _HomePageState extends State<HomePage> {
     HomeTab.profile: (_) => const StudentProfile(),
     HomeTab.studentSchedule: (_) => const ClassSchedule(),
     HomeTab.examSchedule: (_) => const ExamSchedule(),
-    HomeTab.programProgress: (_) => const ProgramProgressPage(),
+    HomeTab.seatStatus: (_) => const SeatStatusPage(),
+    HomeTab.degreeProgress: (_) => const DegreeProgressPage(),
     HomeTab.alarms: (_) => const AlarmPage(),
     HomeTab.shareSchedule: (_) => const ShareSchedulePage(),
     HomeTab.scanSchedule: (_) => const ScanSchedulePage(),
@@ -89,6 +91,7 @@ class _HomePageState extends State<HomePage> {
       selectedTab = pendingShortcutTab;
       _builtTabs.add(pendingShortcutTab);
     }
+    HomeTabRegistry.setActive(selectedTab);
     _shortcutTabSubscription = HomePage._shortcutTabController.stream.listen((
       tab,
     ) {
@@ -113,6 +116,7 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       selectedTab = tab;
     });
+    HomeTabRegistry.setActive(tab);
     if (shouldJumpClass || shouldJumpExam) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || selectedTab != tab) return;
@@ -294,7 +298,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       _latestData = data;
       return data;
     });
-    unawaited(_preloadProgramProgress());
+    unawaited(_preloadDegreeProgress());
     RefreshBus.instance.addListener(_onRefreshSignal);
   }
 
@@ -399,7 +403,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     );
   }
 
-  Future<void> _preloadProgramProgress({bool forceRefresh = false}) async {
+  Future<void> _preloadDegreeProgress({bool forceRefresh = false}) async {
     if (forceRefresh) {
       await ProgressService().fetchProgress();
       return;
@@ -414,7 +418,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       return;
     }
     _isRefreshing = true;
-    unawaited(_preloadProgramProgress(forceRefresh: true));
+    unawaited(_preloadDegreeProgress(forceRefresh: true));
     try {
       final fresh = await _loadData(forceRefresh: true);
       if (!mounted) return;
@@ -677,6 +681,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                             ? '${nextExam.courseCode} ${nextExam.type} Exam'
                                             : '${nextExam.type} Exam',
                                         targetDateTime: nextExam.time,
+                                        daysOnly: cardVisibility
+                                            .showExamCountdownDaysOnly,
                                       ),
                                     ),
                             ),
@@ -1010,12 +1016,12 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                       ),
                                       _QuickActionCard(
                                         width: width,
-                                        icon: Icons.insights_outlined,
-                                        title: 'Progress',
-                                        subtitle: 'Curriculum',
+                                        icon: Icons.school_outlined,
+                                        title: 'Degree',
+                                        subtitle: 'Progress',
                                         color: const Color(0xFF2C9DFF),
                                         onTap: () => widget.onNavigate(
-                                          HomeTab.programProgress,
+                                          HomeTab.degreeProgress,
                                         ),
                                       ),
                                       _QuickActionCard(
@@ -1026,6 +1032,16 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                         color: const Color(0xFF5B8DEF),
                                         onTap: () => widget.onNavigate(
                                           HomeTab.friendSchedule,
+                                        ),
+                                      ),
+                                      _QuickActionCard(
+                                        width: width,
+                                        icon: Icons.insights_outlined,
+                                        title: 'Seats',
+                                        subtitle: 'Live Seats',
+                                        color: const Color(0xFF00A8E8),
+                                        onTap: () => widget.onNavigate(
+                                          HomeTab.seatStatus,
                                         ),
                                       ),
                                       _QuickActionCard(
@@ -1649,14 +1665,22 @@ class _RamadanCountdownDigital extends StatelessWidget {
       );
     }
 
+    final units = <({String value, String label})>[];
+    if (hours > 0) {
+      units.add((value: hours.toString().padLeft(2, '0'), label: 'Hours'));
+    }
+    if (minutes > 0) {
+      units.add((value: minutes.toString().padLeft(2, '0'), label: 'Minutes'));
+    }
+    units.add((value: seconds.toString().padLeft(2, '0'), label: 'Seconds'));
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        cell(hours.toString().padLeft(2, '0'), 'Hours'),
-        const SizedBox(width: 8),
-        cell(minutes.toString().padLeft(2, '0'), 'Minutes'),
-        const SizedBox(width: 8),
-        cell(seconds.toString().padLeft(2, '0'), 'Seconds'),
+        for (var i = 0; i < units.length; i++) ...[
+          cell(units[i].value, units[i].label),
+          if (i != units.length - 1) const SizedBox(width: 8),
+        ],
       ],
     );
   }
