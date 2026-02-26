@@ -17,6 +17,10 @@ class SeatStatusService {
   final ApiClient _client = ApiClient();
   Database? _db;
   Map<int, int>? _seatMapSnapshot;
+  Future<void>? _fullPreloadFuture;
+  DateTime? _lastFullPreloadAt;
+  final Map<int, Future<SeatStatusDetailsResponse?>> _detailsInFlight =
+      <int, Future<SeatStatusDetailsResponse?>>{};
 
   static const String _dbName = 'seat_status_cache.db';
   static const String _detailsTsKey = 'details_ts';
@@ -41,6 +45,31 @@ class SeatStatusService {
     'seat_status_details',
   );
 
+  Future<void> preloadAllForHome({
+    bool force = false,
+    int concurrency = 12,
+    Duration minInterval = const Duration(minutes: 30),
+  }) async {
+    final inFlight = _fullPreloadFuture;
+    if (inFlight != null) {
+      await inFlight;
+      return;
+    }
+    final last = _lastFullPreloadAt;
+    if (!force &&
+        last != null &&
+        DateTime.now().difference(last) < minInterval) {
+      return;
+    }
+    _fullPreloadFuture = _doPreloadAll(concurrency: concurrency);
+    try {
+      await _fullPreloadFuture;
+      _lastFullPreloadAt = DateTime.now();
+    } finally {
+      _fullPreloadFuture = null;
+    }
+  }
+
   Future<Map<int, int>> fetchSeatStatusMap() async {
     final db = await _openDb();
     final etag = await _metaStore.record(_seatMapEtagKey).get(db) as String?;
@@ -58,6 +87,33 @@ class SeatStatusService {
       await _metaStore.record(_seatMapEtagKey).put(db, nextEtag);
     }
     return compute(_parseSeatMapFromBody, response.body);
+  }
+
+  Future<void> _doPreloadAll({required int concurrency}) async {
+    Map<int, int> seatMap = const <int, int>{};
+    try {
+      seatMap = await fetchSeatStatusMap();
+    } catch (_) {}
+    if (seatMap.isEmpty) return;
+    await saveSeatMapCacheIfChanged(seatMap);
+
+    final ids = seatMap.keys.toList()..sort();
+    final batchSize = concurrency < 1 ? 1 : concurrency;
+    var cursor = 0;
+    while (cursor < ids.length) {
+      final end = (cursor + batchSize) > ids.length
+          ? ids.length
+          : (cursor + batchSize);
+      final batch = ids.sublist(cursor, end);
+      await Future.wait(
+        batch.map((sectionId) async {
+          try {
+            await fetchSectionDetails(sectionId);
+          } catch (_) {}
+        }),
+      );
+      cursor = end;
+    }
   }
 
   Future<Map<int, int>> loadCachedSeatMap({
@@ -92,6 +148,20 @@ class SeatStatusService {
   }
 
   Future<SeatStatusDetailsResponse?> fetchSectionDetails(int sectionId) async {
+    final inFlight = _detailsInFlight[sectionId];
+    if (inFlight != null) return inFlight;
+    final request = _fetchSectionDetailsInternal(sectionId);
+    _detailsInFlight[sectionId] = request;
+    try {
+      return await request;
+    } finally {
+      _detailsInFlight.remove(sectionId);
+    }
+  }
+
+  Future<SeatStatusDetailsResponse?> _fetchSectionDetailsInternal(
+    int sectionId,
+  ) async {
     final db = await _openDb();
     final etagKey = _detailsEtagKey(sectionId);
     final etag = await _metaStore.record(etagKey).get(db) as String?;

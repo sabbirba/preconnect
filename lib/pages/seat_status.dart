@@ -393,7 +393,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
                     style: TextStyle(color: BracuPalette.textPrimary(context)),
                     textInputAction: TextInputAction.search,
                     decoration: InputDecoration(
-                      hintText: 'Search by code, faculty, etc.',
+                      hintText: 'Search by couse, faculty, etc.',
                       hintStyle: TextStyle(
                         color: BracuPalette.textSecondary(context),
                       ),

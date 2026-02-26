@@ -10,6 +10,8 @@ class ProfileService {
   ProfileService._internal();
 
   final ApiClient _client = ApiClient();
+  final Map<String, Future<Map<String, String?>?>> _profileFetchInFlight =
+      <String, Future<Map<String, String?>?>>{};
   static const Map<String, String> _bloodTypeIdToLabel = {
     '7157': 'A+',
     '7158': 'B+',
@@ -128,6 +130,23 @@ class ProfileService {
   }
 
   Future<Map<String, String?>?> fetchProfile({bool fromGet = false}) async {
+    final inFlightKey = 'profile|$fromGet';
+    final inFlight = _profileFetchInFlight[inFlightKey];
+    if (inFlight != null) {
+      return await inFlight;
+    }
+    final request = _fetchProfileInternal(fromGet: fromGet);
+    _profileFetchInFlight[inFlightKey] = request;
+    try {
+      return await request;
+    } finally {
+      _profileFetchInFlight.remove(inFlightKey);
+    }
+  }
+
+  Future<Map<String, String?>?> _fetchProfileInternal({
+    required bool fromGet,
+  }) async {
     final url = '${ApiConfig.connectApiBase}${ApiConfig.profilePath}';
 
     return _client.fetchWithFallback<Map<String, String?>>(

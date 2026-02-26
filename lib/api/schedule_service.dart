@@ -11,6 +11,8 @@ class ScheduleService {
   ScheduleService._internal();
 
   final ApiClient _client = ApiClient();
+  final Map<String, Future<String?>> _scheduleFetchInFlight =
+      <String, Future<String?>>{};
 
   static const String _cacheKey = 'StudentSchedule';
   static const String _validSemestersCacheKey = 'StudentScheduleValidSemesters';
@@ -205,6 +207,27 @@ class ScheduleService {
   Future<String?> fetchStudentScheduleForSemester({
     required int? semesterSessionId,
     bool fromGet = false,
+  }) async {
+    final inFlightKey = '${semesterSessionId ?? -1}|$fromGet';
+    final inFlight = _scheduleFetchInFlight[inFlightKey];
+    if (inFlight != null) {
+      return await inFlight;
+    }
+    final request = _fetchStudentScheduleForSemesterInternal(
+      semesterSessionId: semesterSessionId,
+      fromGet: fromGet,
+    );
+    _scheduleFetchInFlight[inFlightKey] = request;
+    try {
+      return await request;
+    } finally {
+      _scheduleFetchInFlight.remove(inFlightKey);
+    }
+  }
+
+  Future<String?> _fetchStudentScheduleForSemesterInternal({
+    required int? semesterSessionId,
+    required bool fromGet,
   }) async {
     final asyncPrefs = SharedPreferencesAsync();
     final cacheKey = _cacheKeyForSemester(semesterSessionId);
