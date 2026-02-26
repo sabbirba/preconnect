@@ -1046,7 +1046,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                         width: width,
                                         icon: Icons.insights_outlined,
                                         title: 'Seats',
-                                        subtitle: 'Live Sections',
+                                        subtitle: 'Status',
                                         color: const Color(0xFF00A8E8),
                                         onTap: () => widget.onNavigate(
                                           HomeTab.seatStatus,

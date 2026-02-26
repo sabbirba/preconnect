@@ -1,0 +1,25 @@
+name = "seatstatus"
+main = "src/index.ts"
+compatibility_date = "2026-02-26"
+
+[triggers]
+crons = ["*/1 * * * *"]
+
+[[durable_objects.bindings]]
+name = "SEAT_STATUS_DO"
+class_name = "SeatStatusDO"
+
+[[kv_namespaces]]
+binding = "SEAT_STATUS"
+id = "a63fcc3c4acb4675b19039a5edd90623"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SeatStatusDO"]
+
+[vars]
+SEAT_MAP_MODE = "snapshot"
+DETAIL_FETCH_CONCURRENCY = "10"
+DETAIL_FETCH_LIMIT = "250"
+ACTIVE_POLL_SECONDS = "5"
+IDLE_POLL_SECONDS = "3600"

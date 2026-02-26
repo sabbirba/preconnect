@@ -240,7 +240,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           children: [
             const SizedBox(height: 120),
-            BracuCard(
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: BracuPalette.card(context),
+                borderRadius: BorderRadius.circular(18),
+              ),
               child: Column(
                 children: [
                   Icon(
