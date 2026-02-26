@@ -256,65 +256,57 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   }) async {
     if (sectionIds.isEmpty) return;
     final token = ++_hydrateToken;
-    final detailsPatch = <int, SeatStatusDetailsResponse>{};
     var cursor = 0;
     var chunkSize = math.max(8, concurrency);
-    try {
-      while (cursor < sectionIds.length) {
-        final end = math.min(cursor + chunkSize, sectionIds.length);
-        final batch = sectionIds.sublist(cursor, end);
-        final batchDetails = await Future.wait(
-          batch.map((sectionId) async {
-            try {
-              final details = await _service.fetchSectionDetails(sectionId);
-              if (details == null) return null;
-              return MapEntry(sectionId, details);
-            } catch (_) {
-              return null;
-            }
-          }),
-        );
-        if (!mounted || token != _hydrateToken) return;
+    while (cursor < sectionIds.length) {
+      final end = math.min(cursor + chunkSize, sectionIds.length);
+      final batch = sectionIds.sublist(cursor, end);
+      final batchDetails = await Future.wait(
+        batch.map((sectionId) async {
+          try {
+            final details = await _service.fetchSectionDetails(sectionId);
+            if (details == null) return null;
+            return MapEntry(sectionId, details);
+          } catch (_) {
+            return null;
+          }
+        }),
+      );
+      if (!mounted || token != _hydrateToken) return;
 
-        var changed = false;
-        var failedCount = 0;
-        final nextCards = List<_SeatStatusCardData>.from(_cards);
-        for (final detail in batchDetails) {
-          if (detail == null) {
-            failedCount++;
-            continue;
-          }
-          _detailsCache[detail.key] = detail.value;
-          detailsPatch[detail.key] = detail.value;
-          final index = nextCards.indexWhere((c) => c.sectionId == detail.key);
-          if (index == -1) continue;
-          final next = _buildCardFromDetails(
-            sectionId: detail.key,
-            details: detail.value,
-            remaining: seatMap[detail.key] ?? nextCards[index].remaining,
-          );
-          if (!_isSameCard(nextCards[index], next)) {
-            nextCards[index] = next;
-            changed = true;
-          }
+      var changed = false;
+      var failedCount = 0;
+      final nextCards = List<_SeatStatusCardData>.from(_cards);
+      for (final detail in batchDetails) {
+        if (detail == null) {
+          failedCount++;
+          continue;
         }
-        if (changed) {
-          _sortCardsByCourseAndSection(nextCards);
-          if (_areCardListsDifferent(_cards, nextCards)) {
-            _applyCardsSnapshot(nextCards);
-          }
+        _detailsCache[detail.key] = detail.value;
+        final index = nextCards.indexWhere((c) => c.sectionId == detail.key);
+        if (index == -1) continue;
+        final next = _buildCardFromDetails(
+          sectionId: detail.key,
+          details: detail.value,
+          remaining: seatMap[detail.key] ?? nextCards[index].remaining,
+        );
+        if (!_isSameCard(nextCards[index], next)) {
+          nextCards[index] = next;
+          changed = true;
         }
-        if (failedCount >= (batch.length / 2).ceil() && chunkSize > 4) {
-          chunkSize = math.max(4, chunkSize ~/ 2);
-        } else if (failedCount == 0 && chunkSize < 16) {
-          chunkSize = math.min(16, chunkSize + 2);
-        }
-        cursor = end;
       }
-    } finally {
-      if (detailsPatch.isNotEmpty) {
-        unawaited(_service.saveDetailsPatch(detailsPatch));
+      if (changed) {
+        _sortCardsByCourseAndSection(nextCards);
+        if (_areCardListsDifferent(_cards, nextCards)) {
+          _applyCardsSnapshot(nextCards);
+        }
       }
+      if (failedCount >= (batch.length / 2).ceil() && chunkSize > 4) {
+        chunkSize = math.max(4, chunkSize ~/ 2);
+      } else if (failedCount == 0 && chunkSize < 16) {
+        chunkSize = math.min(16, chunkSize + 2);
+      }
+      cursor = end;
     }
   }
 

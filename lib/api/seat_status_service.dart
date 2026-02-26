@@ -21,6 +21,8 @@ class SeatStatusService {
   static const String _dbName = 'seat_status_cache.db';
   static const String _detailsTsKey = 'details_ts';
   static const String _seatMapTsKey = 'seat_map_ts';
+  static const String _seatMapEtagKey = 'seat_map_etag';
+  static const String _detailsEtagPrefix = 'details_etag_';
   static const String _legacyCleanupDoneKey = 'seat_status_sp_cleanup_done_v1';
   static const List<String> _legacySharedPrefsKeys = <String>[
     'seat_status_details_cache_v1',
@@ -40,7 +42,21 @@ class SeatStatusService {
   );
 
   Future<Map<int, int>> fetchSeatStatusMap() async {
-    final response = await _client.authenticatedGet(ApiConfig.seatStatusUrl);
+    final db = await _openDb();
+    final etag = await _metaStore.record(_seatMapEtagKey).get(db) as String?;
+    final response = await _client.authenticatedGet(
+      ApiConfig.seatStatusUrl,
+      additionalHeaders: _ifNoneMatchHeader(etag),
+      acceptedStatusCodes: const <int>{200, 304},
+    );
+    if (response.statusCode == 304) {
+      final cached = await _getSeatMapSnapshot(db);
+      return Map<int, int>.from(cached);
+    }
+    final nextEtag = _extractEtag(response.headers);
+    if (nextEtag != null && nextEtag.isNotEmpty) {
+      await _metaStore.record(_seatMapEtagKey).put(db, nextEtag);
+    }
     return compute(_parseSeatMapFromBody, response.body);
   }
 
@@ -76,10 +92,28 @@ class SeatStatusService {
   }
 
   Future<SeatStatusDetailsResponse?> fetchSectionDetails(int sectionId) async {
+    final db = await _openDb();
+    final etagKey = _detailsEtagKey(sectionId);
+    final etag = await _metaStore.record(etagKey).get(db) as String?;
     final response = await _client.authenticatedGet(
       ApiConfig.sectionDetailsUrl(sectionId),
+      additionalHeaders: _ifNoneMatchHeader(etag),
+      acceptedStatusCodes: const <int>{200, 304},
     );
-    return compute(_parseDetailsFromBody, response.body);
+    if (response.statusCode == 304) {
+      return _loadCachedDetailById(db, sectionId);
+    }
+
+    final parsed = await compute(_parseDetailsFromBody, response.body);
+    if (parsed == null) return null;
+
+    final nextEtag = _extractEtag(response.headers);
+    await _detailsStore.record(sectionId).put(db, parsed.toJson());
+    await _metaStore.record(_detailsTsKey).put(db, _nowMs());
+    if (nextEtag != null && nextEtag.isNotEmpty) {
+      await _metaStore.record(etagKey).put(db, nextEtag);
+    }
+    return parsed;
   }
 
   Future<Map<int, SeatStatusDetailsResponse>> loadCachedDetails({
@@ -108,30 +142,6 @@ class SeatStatusService {
     } catch (_) {
       return const <int, SeatStatusDetailsResponse>{};
     }
-  }
-
-  Future<void> saveDetailsPatch(
-    Map<int, SeatStatusDetailsResponse> patch,
-  ) async {
-    if (patch.isEmpty) return;
-    try {
-      final db = await _openDb();
-      var changed = false;
-      await db.transaction((txn) async {
-        for (final entry in patch.entries) {
-          final nextValue = entry.value.toJson();
-          final prevValue = await _detailsStore.record(entry.key).get(txn);
-          if (_isSameJsonObject(prevValue, nextValue)) {
-            continue;
-          }
-          changed = true;
-          await _detailsStore.record(entry.key).put(txn, nextValue);
-        }
-        if (changed) {
-          await _metaStore.record(_detailsTsKey).put(txn, _nowMs());
-        }
-      });
-    } catch (_) {}
   }
 
   Future<void> saveSeatMapCacheIfChanged(Map<int, int> seatMap) async {
@@ -209,14 +219,38 @@ class SeatStatusService {
     return existing;
   }
 
-  bool _isSameJsonObject(Object? a, Map<String, dynamic> b) {
-    if (a is Map<String, dynamic>) {
-      return jsonEncode(a) == jsonEncode(b);
+  Future<SeatStatusDetailsResponse?> _loadCachedDetailById(
+    Database db,
+    int sectionId,
+  ) async {
+    try {
+      final raw = await _detailsStore.record(sectionId).get(db);
+      if (raw is Map<String, dynamic>) {
+        return SeatStatusDetailsResponse.fromJson(raw);
+      }
+      if (raw is Map) {
+        return SeatStatusDetailsResponse.fromJson(raw.cast<String, dynamic>());
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  String _detailsEtagKey(int sectionId) => '$_detailsEtagPrefix$sectionId';
+
+  Map<String, String> _ifNoneMatchHeader(String? etag) {
+    final value = (etag ?? '').trim();
+    if (value.isEmpty) return const <String, String>{};
+    return <String, String>{'If-None-Match': value};
+  }
+
+  String? _extractEtag(Map<String, String> headers) {
+    for (final entry in headers.entries) {
+      if (entry.key.toLowerCase() == 'etag') {
+        final value = entry.value.trim();
+        if (value.isNotEmpty) return value;
+      }
     }
-    if (a is Map) {
-      return jsonEncode(a.cast<String, dynamic>()) == jsonEncode(b);
-    }
-    return false;
+    return null;
   }
 }
 

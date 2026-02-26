@@ -43,20 +43,26 @@ class ApiClient {
     return _storage.read(key: 'access_token');
   }
 
-  Future<http.Response> authenticatedGet(String url) async {
+  Future<http.Response> authenticatedGet(
+    String url, {
+    Map<String, String> additionalHeaders = const <String, String>{},
+    Set<int> acceptedStatusCodes = const <int>{200},
+  }) async {
     final token = await getAccessToken();
     if (token == null || token.isEmpty) {
       throw const UnauthenticatedException();
     }
 
+    final headers = await _authHeaders(token, method: 'GET', url: url);
+    if (additionalHeaders.isNotEmpty) {
+      headers.addAll(additionalHeaders);
+    }
+
     final response = await http
-        .get(
-          Uri.parse(url),
-          headers: await _authHeaders(token, method: 'GET', url: url),
-        )
+        .get(Uri.parse(url), headers: headers)
         .timeout(_requestTimeout);
 
-    if (response.statusCode == 200) return response;
+    if (acceptedStatusCodes.contains(response.statusCode)) return response;
 
     if (response.statusCode == 401) {
       final refreshStatus = await AuthService().refreshTokenStatus();
@@ -76,14 +82,22 @@ class ApiClient {
         throw const SessionExpiredException();
       }
 
+      final retryHeaders = await _authHeaders(
+        newToken,
+        method: 'GET',
+        url: url,
+      );
+      if (additionalHeaders.isNotEmpty) {
+        retryHeaders.addAll(additionalHeaders);
+      }
+
       final retryResponse = await http
-          .get(
-            Uri.parse(url),
-            headers: await _authHeaders(newToken, method: 'GET', url: url),
-          )
+          .get(Uri.parse(url), headers: retryHeaders)
           .timeout(_requestTimeout);
 
-      if (retryResponse.statusCode == 200) return retryResponse;
+      if (acceptedStatusCodes.contains(retryResponse.statusCode)) {
+        return retryResponse;
+      }
       if (retryResponse.statusCode == 401) {
         await AuthService().logout();
         throw const SessionExpiredException();
