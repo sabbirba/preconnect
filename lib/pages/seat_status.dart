@@ -22,6 +22,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     with WidgetsBindingObserver {
   final SeatStatusService _service = SeatStatusService();
   final List<_SeatStatusCardData> _cards = <_SeatStatusCardData>[];
+  final List<_SeatStatusCardData> _visibleCards = <_SeatStatusCardData>[];
   final Map<int, SeatStatusDetailsResponse> _detailsCache =
       <int, SeatStatusDetailsResponse>{};
   final TextEditingController _searchController = TextEditingController();
@@ -44,10 +45,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       _searchDebounce = Timer(const Duration(milliseconds: 150), () {
         if (!mounted) return;
         final next = _searchController.text.trim().toLowerCase();
-        if (next == _searchQuery) return;
-        setState(() {
-          _searchQuery = next;
-        });
+        _updateSearchQuery(next);
       });
     });
     unawaited(_reloadAll());
@@ -101,7 +99,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     if (!await ensureOnline(context, notify: notify)) {
       return;
     }
-    await _reloadAll(forceRefreshDetails: true);
+    await _refreshRealtime(hydrateAll: true, hydrateInBackground: true);
     if (notify) {
       RefreshBus.instance.notify(reason: 'seat_status');
     }
@@ -128,15 +126,10 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       _cacheLoaded = true;
     }
 
-    // Instant paint from SharedPreferences cache.
+    // Instant paint from local cache.
     if (cachedSeatMap.isNotEmpty && mounted) {
       final cachedCards = _buildCardsFromSeatMap(cachedSeatMap);
-      setState(() {
-        _cards
-          ..clear()
-          ..addAll(cachedCards);
-        _isInitialLoading = false;
-      });
+      _applyCardsSnapshot(cachedCards, isInitialLoading: false);
     }
 
     Map<int, int> seatMap = const <int, int>{};
@@ -147,22 +140,17 @@ class _SeatStatusPageState extends State<SeatStatusPage>
 
     if (seatMap.isEmpty) {
       if (cachedSeatMap.isNotEmpty) return;
-      setState(() {
-        _cards.clear();
-        _isInitialLoading = false;
-      });
+      _applyCardsSnapshot(
+        const <_SeatStatusCardData>[],
+        isInitialLoading: false,
+      );
       return;
     }
 
     unawaited(_service.saveSeatMapCacheIfChanged(seatMap));
     final nextCards = _buildCardsFromSeatMap(seatMap);
     if (_areCardListsDifferent(_cards, nextCards) || _isInitialLoading) {
-      setState(() {
-        _cards
-          ..clear()
-          ..addAll(nextCards);
-        _isInitialLoading = false;
-      });
+      _applyCardsSnapshot(nextCards, isInitialLoading: false);
     } else if (_isInitialLoading) {
       setState(() {
         _isInitialLoading = false;
@@ -199,7 +187,10 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     }).toList();
   }
 
-  Future<void> _refreshRealtime() async {
+  Future<void> _refreshRealtime({
+    bool hydrateAll = false,
+    bool hydrateInBackground = true,
+  }) async {
     Map<int, int> seatMap = const <int, int>{};
     try {
       seatMap = await _service.fetchSeatStatusMap();
@@ -242,18 +233,17 @@ class _SeatStatusPageState extends State<SeatStatusPage>
 
     _sortCardsByCourseAndSection(updated);
     if (_areCardListsDifferent(_cards, updated)) {
-      setState(() {
-        _cards
-          ..clear()
-          ..addAll(updated);
-      });
+      _applyCardsSnapshot(updated);
     }
 
-    if (addedIds.isNotEmpty) {
-      final toFetch = addedIds
-          .where((id) => !_detailsCache.containsKey(id))
-          .toList();
-      if (toFetch.isNotEmpty) {
+    final toFetch = hydrateAll
+        ? (seatMap.keys.toList()
+            ..sort((a, b) => _compareSectionIdsByNaming(a, b)))
+        : addedIds.where((id) => !_detailsCache.containsKey(id)).toList();
+    if (toFetch.isNotEmpty) {
+      if (hydrateInBackground) {
+        unawaited(_hydrateDetailsParallel(toFetch, seatMap: seatMap));
+      } else {
         await _hydrateDetailsParallel(toFetch, seatMap: seatMap);
       }
     }
@@ -266,7 +256,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   }) async {
     if (sectionIds.isEmpty) return;
     final token = ++_hydrateToken;
-    var cacheChanged = false;
+    final detailsPatch = <int, SeatStatusDetailsResponse>{};
     var cursor = 0;
     var chunkSize = math.max(8, concurrency);
     try {
@@ -295,7 +285,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
             continue;
           }
           _detailsCache[detail.key] = detail.value;
-          cacheChanged = true;
+          detailsPatch[detail.key] = detail.value;
           final index = nextCards.indexWhere((c) => c.sectionId == detail.key);
           if (index == -1) continue;
           final next = _buildCardFromDetails(
@@ -311,11 +301,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
         if (changed) {
           _sortCardsByCourseAndSection(nextCards);
           if (_areCardListsDifferent(_cards, nextCards)) {
-            setState(() {
-              _cards
-                ..clear()
-                ..addAll(nextCards);
-            });
+            _applyCardsSnapshot(nextCards);
           }
         }
         if (failedCount >= (batch.length / 2).ceil() && chunkSize > 4) {
@@ -326,8 +312,8 @@ class _SeatStatusPageState extends State<SeatStatusPage>
         cursor = end;
       }
     } finally {
-      if (cacheChanged) {
-        unawaited(_service.saveDetailsCache(_detailsCache));
+      if (detailsPatch.isNotEmpty) {
+        unawaited(_service.saveDetailsPatch(detailsPatch));
       }
     }
   }
@@ -389,10 +375,9 @@ class _SeatStatusPageState extends State<SeatStatusPage>
 
   @override
   Widget build(BuildContext context) {
-    final visibleCards = _filterCards(_cards, _searchQuery);
     return BracuPageScaffold(
       title: 'Seat Status',
-      subtitle: 'Live Seats',
+      subtitle: 'Live Sections',
       icon: Icons.insights_outlined,
       body: _isInitialLoading
           ? BracuRefreshPlaceholder(
@@ -406,64 +391,70 @@ class _SeatStatusPageState extends State<SeatStatusPage>
                 message: 'No section data available',
               ),
             )
-          : BracuRefreshList(
+          : BracuRefreshListBuilder(
               onRefresh: _handleRefresh,
-              children: [
-                TextField(
-                  controller: _searchController,
-                  style: TextStyle(color: BracuPalette.textPrimary(context)),
-                  textInputAction: TextInputAction.search,
-                  decoration: InputDecoration(
-                    hintText: 'Search by course code or title',
-                    hintStyle: TextStyle(
-                      color: BracuPalette.textSecondary(context),
-                    ),
-                    prefixIcon: Icon(
-                      Icons.search,
-                      color: BracuPalette.textSecondary(context),
-                    ),
-                    suffixIcon: _searchQuery.trim().isEmpty
-                        ? null
-                        : IconButton(
-                            onPressed: () => _searchController.clear(),
-                            icon: Icon(
-                              Icons.close,
-                              color: BracuPalette.textSecondary(context),
+              itemCount: _visibleCards.isEmpty ? 3 : _visibleCards.length + 2,
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return TextField(
+                    controller: _searchController,
+                    style: TextStyle(color: BracuPalette.textPrimary(context)),
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: 'Search by code, faculty, etc.',
+                      hintStyle: TextStyle(
+                        color: BracuPalette.textSecondary(context),
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: BracuPalette.textSecondary(context),
+                      ),
+                      suffixIcon: _searchQuery.trim().isEmpty
+                          ? null
+                          : IconButton(
+                              onPressed: () => _searchController.clear(),
+                              icon: Icon(
+                                Icons.close,
+                                color: BracuPalette.textSecondary(context),
+                              ),
                             ),
-                          ),
-                    isDense: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: BracuPalette.textSecondary(
-                          context,
-                        ).withValues(alpha: 0.24),
+                      isDense: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: BracuPalette.textSecondary(
+                            context,
+                          ).withValues(alpha: 0.24),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: BracuPalette.primary,
+                        ),
                       ),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: BracuPalette.primary),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (visibleCards.isEmpty)
-                  const BracuCard(
+                  );
+                }
+                if (index == 1) {
+                  return const SizedBox(height: 12);
+                }
+                if (_visibleCards.isEmpty) {
+                  return const BracuCard(
                     child: BracuEmptyState(
                       message: 'No matching section found',
                     ),
-                  )
-                else
-                  ...visibleCards.map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _SeatStatusCard(item: item),
-                    ),
-                  ),
-              ],
+                  );
+                }
+                final item = _visibleCards[index - 2];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _SeatStatusCard(item: item),
+                );
+              },
             ),
     );
   }
@@ -475,6 +466,36 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return source;
     return source.where((card) => card.searchToken.contains(q)).toList();
+  }
+
+  void _updateSearchQuery(String nextQuery) {
+    if (nextQuery == _searchQuery) return;
+    final nextVisible = _filterCards(_cards, nextQuery);
+    setState(() {
+      _searchQuery = nextQuery;
+      _visibleCards
+        ..clear()
+        ..addAll(nextVisible);
+    });
+  }
+
+  void _applyCardsSnapshot(
+    List<_SeatStatusCardData> nextCards, {
+    bool? isInitialLoading,
+  }) {
+    final nextVisible = _filterCards(nextCards, _searchQuery);
+    if (!mounted) return;
+    setState(() {
+      _cards
+        ..clear()
+        ..addAll(nextCards);
+      _visibleCards
+        ..clear()
+        ..addAll(nextVisible);
+      if (isInitialLoading != null) {
+        _isInitialLoading = isInitialLoading;
+      }
+    });
   }
 
   void _sortCardsByCourseAndSection(List<_SeatStatusCardData> cards) {
@@ -595,7 +616,7 @@ class _SeatStatusCard extends StatelessWidget {
                     Text(
                       '${item.courseCode} - ${item.sectionName}',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 17,
                         fontWeight: FontWeight.w700,
                         color: textPrimary,
                       ),
@@ -604,18 +625,30 @@ class _SeatStatusCard extends StatelessWidget {
                     Text(
                       item.courseName,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 10,
                         fontWeight: FontWeight.w600,
                         color: textSecondary,
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      '${item.faculty.isEmpty ? 'TBA' : item.faculty}  •  ${item.credits} credits',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: textSecondary,
+                    RichText(
+                      text: TextSpan(
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: textSecondary,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: item.faculty.isEmpty ? 'TBA' : item.faculty,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: textSecondary,
+                            ),
+                          ),
+                          TextSpan(text: '  •  ${item.credits} credits'),
+                        ],
                       ),
                     ),
                   ],
@@ -624,18 +657,27 @@ class _SeatStatusCard extends StatelessWidget {
               const SizedBox(width: 10),
               Row(
                 children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: const BoxDecoration(
-                      color: BracuPalette.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.notifications_none_rounded,
-                      color: Colors.white,
-                      size: 20,
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () {
+                        showAppSnackBar(context, 'Seat alerts coming soon.');
+                      },
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: const BoxDecoration(
+                          color: BracuPalette.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.notifications_none_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -648,9 +690,20 @@ class _SeatStatusCard extends StatelessWidget {
             lines: _scheduleLines(item.classSchedule),
           ),
           const SizedBox(height: 10),
-          Text(
-            'Room: ${item.room.isEmpty ? '--' : item.room}',
-            style: TextStyle(color: textSecondary, fontSize: 12),
+          RichText(
+            text: TextSpan(
+              style: TextStyle(color: textSecondary, fontSize: 11),
+              children: [
+                const TextSpan(text: 'Room: '),
+                TextSpan(
+                  text: item.room.isEmpty ? '--' : item.room,
+                  style: TextStyle(
+                    color: textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           _SeatScheduleBlock(
@@ -658,7 +711,22 @@ class _SeatStatusCard extends StatelessWidget {
             lines: _scheduleLines(
               item.labSchedule,
               fallback: const <String>['-'],
-              room: item.labRoom,
+            ),
+          ),
+          const SizedBox(height: 10),
+          RichText(
+            text: TextSpan(
+              style: TextStyle(color: textSecondary, fontSize: 11),
+              children: [
+                const TextSpan(text: 'Room: '),
+                TextSpan(
+                  text: item.labRoom.isEmpty ? '--' : item.labRoom,
+                  style: TextStyle(
+                    color: textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 12),
@@ -721,14 +789,12 @@ class _SeatStatusCard extends StatelessWidget {
   List<String> _scheduleLines(
     List<SeatStatusClassSchedule> schedules, {
     List<String> fallback = const <String>['-'],
-    String room = '',
   }) {
     if (schedules.isEmpty) return fallback;
     final lines = schedules.map((entry) {
       final day = formatWeekdayTitle(entry.day);
       final time = formatTimeRange(entry.startTime, entry.endTime);
-      final roomSuffix = room.isEmpty ? '' : ' • $room';
-      return '$day $time$roomSuffix';
+      return '$day $time';
     }).toList();
     return lines;
   }
@@ -749,7 +815,7 @@ class _SeatScheduleBlock extends StatelessWidget {
           '$title:',
           style: TextStyle(
             color: BracuPalette.textSecondary(context),
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -759,7 +825,7 @@ class _SeatScheduleBlock extends StatelessWidget {
             line,
             style: TextStyle(
               color: BracuPalette.textPrimary(context),
-              fontSize: 15,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -793,7 +859,7 @@ class _ExamInfo extends StatelessWidget {
           '$label:',
           style: TextStyle(
             color: BracuPalette.textSecondary(context),
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -802,7 +868,7 @@ class _ExamInfo extends StatelessWidget {
           dateValue,
           style: TextStyle(
             color: BracuPalette.textPrimary(context),
-            fontSize: 13,
+            fontSize: 12.5,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -811,7 +877,7 @@ class _ExamInfo extends StatelessWidget {
           timeValue,
           style: TextStyle(
             color: BracuPalette.textSecondary(context),
-            fontSize: 12,
+            fontSize: 11.5,
           ),
         ),
       ],
@@ -849,8 +915,9 @@ class _SeatMetric extends StatelessWidget {
       children: [
         Text(
           '$value',
+          textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 24,
+            fontSize: 22,
             fontWeight: FontWeight.w700,
             color: color,
           ),
@@ -858,9 +925,10 @@ class _SeatMetric extends StatelessWidget {
         const SizedBox(height: 3),
         Text(
           label,
+          textAlign: TextAlign.center,
           style: TextStyle(
             color: BracuPalette.textSecondary(context),
-            fontSize: 12,
+            fontSize: 11.5,
             fontWeight: FontWeight.w700,
           ),
         ),

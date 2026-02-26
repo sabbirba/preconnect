@@ -135,7 +135,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             icon: Icons.privacy_tip_outlined,
                             title: 'Privacy First',
                             body:
-                                'PreConnect is not an official BRAC University app. It is an initiative run by BRAC University students. Your data stays on your device via SharedPreferences cache with sign-in tokens in secure storage.',
+                                'PreConnect is not an official BRAC University app. It is an initiative run by BRAC University students. Your data stays on your device via local cache with sign-in tokens in secure storage.',
                             color: BracuPalette.accent,
                           ),
                           const SizedBox(height: 10),

@@ -115,9 +115,6 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
     }
 
     try {
-      if (!forceRefresh) {
-        unawaited(ProfileService().fetchProfile());
-      }
       final cachedProfile = await ProfileService().getProfile();
       final profile = forceRefresh
           ? await ProfileService().fetchProfile()
@@ -126,9 +123,6 @@ class _ShareSchedulePageState extends State<ShareSchedulePage> {
       final studentId = profile?['studentId'] ?? '';
       final photoFilePath = profile?['photoFilePath'] ?? '';
 
-      if (!forceRefresh) {
-        unawaited(ScheduleService().fetchStudentSchedule());
-      }
       final cachedSchedule = await ScheduleService().getStudentSchedule();
       final jsonString = forceRefresh
           ? await ScheduleService().fetchStudentSchedule()

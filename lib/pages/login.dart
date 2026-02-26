@@ -184,8 +184,6 @@ class _LoginPageState extends State<LoginPage> {
       await _secureStorage.write(key: 'access_token', value: accessToken);
       await _secureStorage.write(key: 'refresh_token', value: refreshToken);
 
-      unawaited(ProfileService().getProfile());
-      unawaited(ScheduleService().getStudentSchedule());
       unawaited(ProfileService().fetchProfile());
       unawaited(ScheduleService().fetchStudentSchedule());
       unawaited(PaymentService().fetchPaymentInfo());

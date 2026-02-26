@@ -14,13 +14,28 @@ class ApiClient {
 
   final TokenStorage _storage = TokenStorage.instance;
   static const Duration _requestTimeout = Duration(seconds: 12);
+  static const Duration _connectivityCacheTtl = Duration(seconds: 10);
+  DateTime? _lastConnectivityCheckedAt;
+  bool? _lastConnectivityResult;
 
-  Future<bool> hasConnection() async {
+  Future<bool> hasConnection({bool forceRefresh = false}) async {
+    final now = DateTime.now();
+    if (!forceRefresh &&
+        _lastConnectivityCheckedAt != null &&
+        _lastConnectivityResult != null &&
+        now.difference(_lastConnectivityCheckedAt!) <= _connectivityCacheTtl) {
+      return _lastConnectivityResult!;
+    }
     try {
       final result = await Connectivity().checkConnectivity();
-      return !result.contains(ConnectivityResult.none);
+      final online = !result.contains(ConnectivityResult.none);
+      _lastConnectivityCheckedAt = now;
+      _lastConnectivityResult = online;
+      return online;
     } catch (_) {
-      return false;
+      _lastConnectivityCheckedAt = now;
+      _lastConnectivityResult = false;
+      return _lastConnectivityResult!;
     }
   }
 

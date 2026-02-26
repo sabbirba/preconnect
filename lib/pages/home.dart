@@ -409,7 +409,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       return;
     }
     await ProgressService().getProgress();
-    await ProgressService().fetchProgress();
   }
 
   Future<void> _handleRefresh({bool notify = true}) async {
@@ -1038,7 +1037,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                                         width: width,
                                         icon: Icons.insights_outlined,
                                         title: 'Seats',
-                                        subtitle: 'Live Seats',
+                                        subtitle: 'Live Sections',
                                         color: const Color(0xFF00A8E8),
                                         onTap: () => widget.onNavigate(
                                           HomeTab.seatStatus,

@@ -1,9 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/model/seat_status_info.dart';
+import 'package:sembast/sembast_io.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SeatStatusService {
@@ -13,10 +15,29 @@ class SeatStatusService {
   factory SeatStatusService() => _instance;
 
   final ApiClient _client = ApiClient();
-  static const String _detailsCacheKey = 'seat_status_details_cache_v1';
-  static const String _detailsCacheTsKey = 'seat_status_details_cache_ts_v1';
-  static const String _seatMapCacheKey = 'seat_status_map_cache_v1';
-  static const String _seatMapCacheTsKey = 'seat_status_map_cache_ts_v1';
+  Database? _db;
+  Map<int, int>? _seatMapSnapshot;
+
+  static const String _dbName = 'seat_status_cache.db';
+  static const String _detailsTsKey = 'details_ts';
+  static const String _seatMapTsKey = 'seat_map_ts';
+  static const String _legacyCleanupDoneKey = 'seat_status_sp_cleanup_done_v1';
+  static const List<String> _legacySharedPrefsKeys = <String>[
+    'seat_status_details_cache_v1',
+    'seat_status_details_cache_ts_v1',
+    'seat_status_map_cache_v1',
+    'seat_status_map_cache_ts_v1',
+  ];
+
+  final StoreRef<String, Object?> _metaStore = StoreRef<String, Object?>(
+    'seat_status_meta',
+  );
+  final StoreRef<int, Object?> _seatMapStore = intMapStoreFactory.store(
+    'seat_status_map',
+  );
+  final StoreRef<int, Object?> _detailsStore = intMapStoreFactory.store(
+    'seat_status_details',
+  );
 
   Future<Map<int, int>> fetchSeatStatusMap() async {
     final response = await _client.authenticatedGet(ApiConfig.seatStatusUrl);
@@ -27,16 +48,28 @@ class SeatStatusService {
     Duration maxAge = const Duration(hours: 1),
   }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final ts = prefs.getInt(_seatMapCacheTsKey);
+      final db = await _openDb();
+      final ts = await _metaStore.record(_seatMapTsKey).get(db) as int?;
       if (ts == null) return const <int, int>{};
       final age = DateTime.now().difference(
         DateTime.fromMillisecondsSinceEpoch(ts),
       );
       if (age > maxAge) return const <int, int>{};
-      final raw = prefs.getString(_seatMapCacheKey);
-      if (raw == null || raw.trim().isEmpty) return const <int, int>{};
-      return compute(_parseSeatMapFromBody, raw);
+      final snapshots = await _seatMapStore.find(db);
+      if (snapshots.isEmpty) return const <int, int>{};
+      final result = <int, int>{};
+      for (final snap in snapshots) {
+        final value = snap.value;
+        if (value is int) {
+          result[snap.key] = value;
+        } else {
+          final parsed = int.tryParse('$value');
+          if (parsed != null) {
+            result[snap.key] = parsed;
+          }
+        }
+      }
+      return result;
     } catch (_) {
       return const <int, int>{};
     }
@@ -53,57 +86,137 @@ class SeatStatusService {
     Duration maxAge = const Duration(hours: 1),
   }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final ts = prefs.getInt(_detailsCacheTsKey);
+      final db = await _openDb();
+      final ts = await _metaStore.record(_detailsTsKey).get(db) as int?;
       if (ts == null) return const <int, SeatStatusDetailsResponse>{};
       final age = DateTime.now().difference(
         DateTime.fromMillisecondsSinceEpoch(ts),
       );
       if (age > maxAge) return const <int, SeatStatusDetailsResponse>{};
-      final raw = prefs.getString(_detailsCacheKey);
-      if (raw == null || raw.trim().isEmpty) {
-        return const <int, SeatStatusDetailsResponse>{};
+      final snapshots = await _detailsStore.find(db);
+      if (snapshots.isEmpty) return const <int, SeatStatusDetailsResponse>{};
+      final raw = <String, dynamic>{};
+      for (final snap in snapshots) {
+        if (snap.value is Map<String, dynamic>) {
+          raw[snap.key.toString()] = snap.value;
+        } else if (snap.value is Map) {
+          raw[snap.key.toString()] = (snap.value as Map)
+              .cast<String, dynamic>();
+        }
       }
-      return compute(_parseCachedDetailsFromRaw, raw);
+      return _parseCachedDetailsFromMap(raw);
     } catch (_) {
       return const <int, SeatStatusDetailsResponse>{};
     }
   }
 
-  Future<void> saveDetailsCache(
-    Map<int, SeatStatusDetailsResponse> cache,
+  Future<void> saveDetailsPatch(
+    Map<int, SeatStatusDetailsResponse> patch,
   ) async {
-    if (cache.isEmpty) return;
+    if (patch.isEmpty) return;
     try {
-      final encoded = jsonEncode(
-        cache.map((k, v) => MapEntry(k.toString(), v.toJson())),
-      );
-      final prefs = await SharedPreferences.getInstance();
-      final existing = prefs.getString(_detailsCacheKey);
-      if (existing == encoded) return;
-      await prefs.setString(_detailsCacheKey, encoded);
-      await prefs.setInt(
-        _detailsCacheTsKey,
-        DateTime.now().millisecondsSinceEpoch,
-      );
+      final db = await _openDb();
+      var changed = false;
+      await db.transaction((txn) async {
+        for (final entry in patch.entries) {
+          final nextValue = entry.value.toJson();
+          final prevValue = await _detailsStore.record(entry.key).get(txn);
+          if (_isSameJsonObject(prevValue, nextValue)) {
+            continue;
+          }
+          changed = true;
+          await _detailsStore.record(entry.key).put(txn, nextValue);
+        }
+        if (changed) {
+          await _metaStore.record(_detailsTsKey).put(txn, _nowMs());
+        }
+      });
     } catch (_) {}
   }
 
   Future<void> saveSeatMapCacheIfChanged(Map<int, int> seatMap) async {
     if (seatMap.isEmpty) return;
     try {
-      final encoded = jsonEncode(
-        seatMap.map((k, v) => MapEntry(k.toString(), v)),
-      );
-      final prefs = await SharedPreferences.getInstance();
-      final existing = prefs.getString(_seatMapCacheKey);
-      if (existing == encoded) return;
-      await prefs.setString(_seatMapCacheKey, encoded);
-      await prefs.setInt(
-        _seatMapCacheTsKey,
-        DateTime.now().millisecondsSinceEpoch,
-      );
+      final db = await _openDb();
+      final existing = await _getSeatMapSnapshot(db);
+
+      final changed = <MapEntry<int, int>>[];
+      for (final entry in seatMap.entries) {
+        if (existing[entry.key] != entry.value) {
+          changed.add(entry);
+        }
+      }
+      final removed = existing.keys
+          .where((key) => !seatMap.containsKey(key))
+          .toList();
+      if (changed.isEmpty && removed.isEmpty) return;
+
+      await db.transaction((txn) async {
+        for (final entry in changed) {
+          await _seatMapStore.record(entry.key).put(txn, entry.value);
+        }
+        for (final key in removed) {
+          await _seatMapStore.record(key).delete(txn);
+        }
+        await _metaStore.record(_seatMapTsKey).put(txn, _nowMs());
+      });
+      _seatMapSnapshot = Map<int, int>.from(seatMap);
     } catch (_) {}
+  }
+
+  Future<Database> _openDb() async {
+    final existing = _db;
+    if (existing != null) return existing;
+    final dir = await getApplicationDocumentsDirectory();
+    final dbPath = '${dir.path}/$_dbName';
+    final db = await databaseFactoryIo.openDatabase(dbPath);
+    await _cleanupLegacySharedPrefsCacheOnce();
+    _db = db;
+    return db;
+  }
+
+  int _nowMs() => DateTime.now().millisecondsSinceEpoch;
+
+  Future<void> _cleanupLegacySharedPrefsCacheOnce() async {
+    try {
+      final prefs = SharedPreferencesAsync();
+      final done = await prefs.getBool(_legacyCleanupDoneKey);
+      if (done == true) return;
+      for (final key in _legacySharedPrefsKeys) {
+        await prefs.remove(key);
+      }
+      await prefs.setBool(_legacyCleanupDoneKey, true);
+    } catch (_) {}
+  }
+
+  Future<Map<int, int>> _getSeatMapSnapshot(Database db) async {
+    final cached = _seatMapSnapshot;
+    if (cached != null) return cached;
+    final snapshots = await _seatMapStore.find(db);
+    final existing = <int, int>{};
+    for (final snap in snapshots) {
+      final value = snap.value;
+      if (value is int) {
+        existing[snap.key] = value;
+      } else {
+        final parsed = int.tryParse('$value');
+        if (parsed != null) {
+          existing[snap.key] = parsed;
+        }
+      }
+    }
+    _seatMapSnapshot = existing;
+    return existing;
+  }
+
+  bool _isSameJsonObject(Object? a, Map<String, dynamic> b) {
+    if (a is Map<String, dynamic>) {
+      return jsonEncode(a) == jsonEncode(b);
+    }
+    if (a is Map) {
+      return jsonEncode(a.cast<String, dynamic>()) == jsonEncode(b);
+    }
+    return false;
   }
 }
 
@@ -112,7 +225,7 @@ Map<int, int> _parseSeatMapFromBody(String body) {
   if (decoded is! Map) return const <int, int>{};
   final result = <int, int>{};
   for (final entry in decoded.entries) {
-    final key = int.tryParse('${entry.key}');
+    final key = int.tryParse(entry.key);
     final value = int.tryParse('${entry.value}');
     if (key != null && value != null) {
       result[key] = value;
@@ -127,12 +240,12 @@ SeatStatusDetailsResponse? _parseDetailsFromBody(String body) {
   return SeatStatusDetailsResponse.fromJson(decoded);
 }
 
-Map<int, SeatStatusDetailsResponse> _parseCachedDetailsFromRaw(String raw) {
-  final decoded = jsonDecode(raw);
-  if (decoded is! Map) return const <int, SeatStatusDetailsResponse>{};
+Map<int, SeatStatusDetailsResponse> _parseCachedDetailsFromMap(
+  Map<String, dynamic> decoded,
+) {
   final result = <int, SeatStatusDetailsResponse>{};
   for (final entry in decoded.entries) {
-    final key = int.tryParse('${entry.key}');
+    final key = int.tryParse(entry.key);
     if (key == null) continue;
     if (entry.value is! Map) continue;
     try {

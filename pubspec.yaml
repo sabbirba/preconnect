@@ -37,6 +37,7 @@ dependencies:
   in_app_review: ^2.0.11
   package_info_plus: ^9.0.0
   local_auth: ^2.3.0
+  sembast: ^3.8.6
   
 
 

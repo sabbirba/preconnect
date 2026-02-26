@@ -156,7 +156,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                   _ToggleRow(
-                    title: 'Exam Countdown Days Only',
+                    title: 'Exam Days Only',
                     subtitle: 'Show only days in countdown',
                     value: _showExamCountdownDaysOnly,
                     onChanged: _showExamCountdownCard

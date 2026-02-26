@@ -231,7 +231,6 @@ class _StudentProfileState extends State<StudentProfile>
       return;
     }
     await ProgressService().getProgress();
-    await ProgressService().fetchProgress();
   }
 
   @override
