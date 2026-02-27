@@ -11,6 +11,7 @@ import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSuggestion
 import android.os.Build
 import android.os.Bundle
+import android.os.Looper
 import android.provider.Settings
 import com.android.installreferrer.api.InstallReferrerClient
 import com.android.installreferrer.api.InstallReferrerStateListener
@@ -174,7 +175,9 @@ class MainActivity : FlutterFragmentActivity() {
         fun complete(payload: Map<String, Any>) {
             if (completed) return
             completed = true
-            result.success(payload)
+            deliverOnMainThread {
+                result.success(payload)
+            }
         }
 
         client.startConnection(
@@ -456,12 +459,21 @@ class MainActivity : FlutterFragmentActivity() {
         network: Network? = null,
         capabilities: NetworkCapabilities? = null,
     ) {
-        networkEventSink?.success(
-            currentNetworkStatus(
-                networkOverride = network,
-                capabilitiesOverride = capabilities,
-            ),
+        val payload = currentNetworkStatus(
+            networkOverride = network,
+            capabilitiesOverride = capabilities,
         )
+        deliverOnMainThread {
+            networkEventSink?.success(payload)
+        }
+    }
+
+    private fun deliverOnMainThread(action: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            action()
+        } else {
+            runOnUiThread(action)
+        }
     }
 
     private fun currentNetworkStatus(
