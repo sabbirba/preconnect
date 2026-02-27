@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:preconnect/pages/campus_wifi_login.dart';
+import 'package:preconnect/pages/captive_portal.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_lock_service.dart';
 import 'package:preconnect/tools/home_card_preferences.dart';
@@ -145,6 +145,35 @@ class _SettingsPageState extends State<SettingsPage> {
           if (_isLoading)
             const BracuLoading(label: 'Loading settings...')
           else ...[
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const CaptivePortalPage(),
+                    ),
+                  );
+                },
+                child: Ink(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: BracuPalette.textSecondary(
+                        context,
+                      ).withValues(alpha: 0.18),
+                    ),
+                  ),
+                  child: const ListTile(
+                    leading: Icon(Icons.wifi_rounded, size: 20),
+                    title: Text('Captive Portal'),
+                    trailing: Icon(Icons.chevron_right_rounded, size: 20),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
             const BracuSectionTitle(title: 'Visibility'),
             const SizedBox(height: 10),
             BracuCard(
@@ -242,52 +271,9 @@ class _SettingsPageState extends State<SettingsPage> {
             BracuCard(
               child: _ToggleRow(
                 title: 'App Lock',
-                subtitle: 'Use system authentication to lock the app',
+                subtitle: 'Use system lock for the app',
                 value: _appLockEnabled,
                 onChanged: _setAppLockEnabled,
-              ),
-            ),
-            const SizedBox(height: 10),
-            const BracuSectionTitle(title: 'Campus Wi-Fi'),
-            const SizedBox(height: 6),
-            BracuCard(
-              child: ListTile(
-                dense: true,
-                minVerticalPadding: 0,
-                horizontalTitleGap: 10,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 2,
-                  vertical: 0,
-                ),
-                visualDensity: const VisualDensity(
-                  vertical: -3,
-                  horizontal: -2,
-                ),
-                leading: const Icon(Icons.wifi_rounded, size: 20),
-                title: Text(
-                  'Wi-Fi Login Assistant',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: BracuPalette.textPrimary(context),
-                  ),
-                ),
-                subtitle: Text(
-                  'Credentials for one-tap captive login',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: BracuPalette.textSecondary(context),
-                  ),
-                ),
-                trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-                onTap: () {
-                  showAppSnackBar(context, 'Opening Wi-Fi Login Assistant');
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const CampusWifiLoginPage(),
-                    ),
-                  );
-                },
               ),
             ),
           ],

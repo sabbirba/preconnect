@@ -106,10 +106,8 @@ flutter build appbundle --release --dart-define-from-file=.env
 ```
 
 ### Seat Status Live Endpoints
-- WebSocket (SeatMap): [wss://seatstatus.preconnect.app/ws](wss://seatstatus.preconnect.app/ws)
-- Get section ID (SeatMap): [https://seatstatus.preconnect.app/api](https://seatstatus.preconnect.app/api)
-- Details API (Section based): [https://seatstatus.preconnect.app/api/sections/{sectionId}/details](https://seatstatus.preconnect.app/api/sections/{sectionId}/details)
-- Details API Example (Section id `184259`): [https://seatstatus.preconnect.app/api/sections/184259/details](https://seatstatus.preconnect.app/api/sections/184259/details)
+- WebSocket: `wss://seatstatus.preconnect.app`
+- WebSocket Worker via Cloudflare Cache API.
 
 ### Quality Checks
 ```bash

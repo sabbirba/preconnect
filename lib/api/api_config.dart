@@ -4,8 +4,7 @@ class ApiConfig {
   ApiConfig._();
   static const String playIntegrityCloudProjectNumberEnv =
       String.fromEnvironment('PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER');
-  static const String _seatWorkerBaseUrl = 'https://seatstatus.preconnect.app';
-  static const String _seatWorkerWsUrl = 'wss://seatstatus.preconnect.app/ws';
+  static const String _seatWorkerWsUrl = 'wss://seatstatus.preconnect.app';
 
   static const String ssoBase =
       'https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect';
@@ -39,11 +38,6 @@ class ApiConfig {
   static String attendancePath(String portfolioId) =>
       '/exc/v1/student-courses/$portfolioId/current-semester-attendance';
 
-  static const String seatStatusPath = '/adv/v1/advising/sections/seat-status';
-
-  static String sectionDetailsPath(int sectionId) =>
-      '/adv/v1/advising/sections/$sectionId/details';
-
   static String majorMinorsPath(String portfolioId) =>
       '/reg/v1/student-portfolio/$portfolioId/major-minors';
 
@@ -64,29 +58,10 @@ class ApiConfig {
     return int.tryParse(value);
   }
 
-  static String? get seatWorkerBaseUrl {
-    final value = _seatWorkerBaseUrl.trim();
+  static String? get seatWorkerWsUrl {
+    final value = _seatWorkerWsUrl.trim();
     if (value.isEmpty) return null;
     return value.endsWith('/') ? value.substring(0, value.length - 1) : value;
-  }
-
-  static String? get seatWorkerWsUrl {
-    final explicit = _seatWorkerWsUrl.trim();
-    if (explicit.isNotEmpty) {
-      return explicit.endsWith('/')
-          ? explicit.substring(0, explicit.length - 1)
-          : explicit;
-    }
-
-    final base = seatWorkerBaseUrl;
-    if (base == null || base.isEmpty) return null;
-    if (base.startsWith('https://')) {
-      return 'wss://${base.substring('https://'.length)}/ws';
-    }
-    if (base.startsWith('http://')) {
-      return 'ws://${base.substring('http://'.length)}/ws';
-    }
-    return null;
   }
 
   static const List<String> paymentTypes = [
@@ -118,18 +93,6 @@ class ApiConfig {
   static String advisingUrl(String studentId) {
     final phasesQuery = advisingPhases.map((p) => 'advisingPhase=$p').join('&');
     return '$connectApiBase${advisingPath(studentId)}?$phasesQuery';
-  }
-
-  static String get seatStatusUrl {
-    final base = seatWorkerBaseUrl;
-    if (base != null) return '$base/api';
-    return '$connectApiBase$seatStatusPath';
-  }
-
-  static String sectionDetailsUrl(int sectionId) {
-    final base = seatWorkerBaseUrl;
-    if (base != null) return '$base/api/sections/$sectionId/details';
-    return '$connectApiBase${sectionDetailsPath(sectionId)}';
   }
 
   static const String authUrl =

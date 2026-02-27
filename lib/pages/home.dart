@@ -8,14 +8,13 @@ import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/progress_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
-import 'package:preconnect/api/seat_status_service.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/class_schedule.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
 import 'package:preconnect/pages/seat_status.dart';
 import 'package:preconnect/pages/degree_progress.dart';
 import 'package:preconnect/pages/alarms.dart';
-import 'package:preconnect/pages/campus_wifi_login.dart';
+import 'package:preconnect/pages/captive_portal.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/share_schedule.dart';
 import 'package:preconnect/pages/scan_schedule.dart';
@@ -315,7 +314,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     }
     unawaited(_refreshCaptiveStatus());
     unawaited(_preloadDegreeProgress());
-    unawaited(_preloadSeatStatus());
     RefreshBus.instance.addListener(_onRefreshSignal);
   }
 
@@ -430,12 +428,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     await ProgressService().getProgress();
   }
 
-  Future<void> _preloadSeatStatus({bool forceRefresh = false}) async {
-    try {
-      await SeatStatusService().preloadAllForHome(force: forceRefresh);
-    } catch (_) {}
-  }
-
   Future<void> _handleRefresh({bool notify = true}) async {
     if (_isRefreshing) return;
     if (!await ensureOnline(context, notify: notify)) {
@@ -443,7 +435,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     }
     _isRefreshing = true;
     unawaited(_preloadDegreeProgress(forceRefresh: true));
-    unawaited(_preloadSeatStatus(forceRefresh: true));
     try {
       final fresh = await _loadData(forceRefresh: true);
       if (!mounted) return;
@@ -540,7 +531,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   void _openWifiLoginAssistant() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => const CampusWifiLoginPage(autoOpenPortalOnStart: true),
+        builder: (_) => const CaptivePortalPage(autoOpenPortalOnStart: true),
       ),
     );
   }
@@ -1229,7 +1220,7 @@ class _CaptivePortalBanner extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Wi-Fi login required',
+                  'Captive portal login required',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -1255,7 +1246,7 @@ class _CaptivePortalBanner extends StatelessWidget {
             child: ElevatedButton.icon(
               onPressed: onOpenLogin,
               icon: const Icon(Icons.login_rounded, size: 16),
-              label: const Text('One-Tap Wi-Fi Login'),
+              label: const Text('One-Tap Captive Portal'),
             ),
           ),
         ],

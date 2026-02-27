@@ -8,16 +8,5 @@ account_id = "af4e734b34a7218b04e72b7d65a377e1"
 pattern = "seatstatus.preconnect.app/*"
 zone_name = "preconnect.app"
 
-[[migrations]]
-tag = "v1"
-new_sqlite_classes = ["SeatHub"]
-
-[[migrations]]
-tag = "v2"
-deleted_classes = ["SeatHub"]
-
-[vars]
-REFRESH_TOKEN = ""
-
 [triggers]
 crons = ["*/1 * * * *"]
