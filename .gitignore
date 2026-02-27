@@ -32,6 +32,7 @@ android/key.properties
 /build/
 android/.kotlin/*
 public/*
+.wrangler/
 
 # Web related
 
