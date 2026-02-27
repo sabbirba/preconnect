@@ -50,6 +50,7 @@ coverage/
 **/android/.gradle
 **/android/captures/
 **/android/GeneratedPluginRegistrant.java
+android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
 **/android/local.properties
 
 # iOS/Xcode related

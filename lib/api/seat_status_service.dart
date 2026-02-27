@@ -1,10 +1,4 @@
-import 'dart:convert';
-
-import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import 'package:preconnect/api/api_client.dart';
-import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/model/seat_status_info.dart';
 import 'package:sembast/sembast_io.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,19 +9,12 @@ class SeatStatusService {
   static final SeatStatusService _instance = SeatStatusService._internal();
   factory SeatStatusService() => _instance;
 
-  final ApiClient _client = ApiClient();
   Database? _db;
   Map<int, int>? _seatMapSnapshot;
-  Future<void>? _fullPreloadFuture;
-  DateTime? _lastFullPreloadAt;
-  final Map<int, Future<SeatStatusDetailsResponse?>> _detailsInFlight =
-      <int, Future<SeatStatusDetailsResponse?>>{};
 
   static const String _dbName = 'seat_status_cache.db';
   static const String _detailsTsKey = 'details_ts';
   static const String _seatMapTsKey = 'seat_map_ts';
-  static const String _seatMapEtagKey = 'seat_map_etag';
-  static const String _detailsEtagPrefix = 'details_etag_';
   static const String _legacyCleanupDoneKey = 'seat_status_sp_cleanup_done_v1';
   static const List<String> _legacySharedPrefsKeys = <String>[
     'seat_status_details_cache_v1',
@@ -45,73 +32,6 @@ class SeatStatusService {
   final StoreRef<int, Object?> _detailsStore = intMapStoreFactory.store(
     'seat_status_details',
   );
-
-  Future<void> preloadAllForHome({
-    bool force = false,
-    int concurrency = 12,
-    Duration minInterval = const Duration(minutes: 30),
-  }) async {
-    final inFlight = _fullPreloadFuture;
-    if (inFlight != null) {
-      await inFlight;
-      return;
-    }
-    final last = _lastFullPreloadAt;
-    if (!force &&
-        last != null &&
-        DateTime.now().difference(last) < minInterval) {
-      return;
-    }
-    _fullPreloadFuture = _doPreloadAll(concurrency: concurrency);
-    try {
-      await _fullPreloadFuture;
-      _lastFullPreloadAt = DateTime.now();
-    } finally {
-      _fullPreloadFuture = null;
-    }
-  }
-
-  Future<Map<int, int>> fetchSeatStatusMap() async {
-    final db = await _openDb();
-    final etag = await _metaStore.record(_seatMapEtagKey).get(db) as String?;
-    final response = await _getSeatMapResponse(etag);
-    if (response.statusCode == 304) {
-      final cached = await _getSeatMapSnapshot(db);
-      return Map<int, int>.from(cached);
-    }
-    final nextEtag = _extractEtag(response.headers);
-    if (nextEtag != null && nextEtag.isNotEmpty) {
-      await _metaStore.record(_seatMapEtagKey).put(db, nextEtag);
-    }
-    return compute(_parseSeatMapFromBody, response.body);
-  }
-
-  Future<void> _doPreloadAll({required int concurrency}) async {
-    Map<int, int> seatMap = const <int, int>{};
-    try {
-      seatMap = await fetchSeatStatusMap();
-    } catch (_) {}
-    if (seatMap.isEmpty) return;
-    await saveSeatMapCacheIfChanged(seatMap);
-
-    final ids = seatMap.keys.toList()..sort();
-    final batchSize = concurrency < 1 ? 1 : concurrency;
-    var cursor = 0;
-    while (cursor < ids.length) {
-      final end = (cursor + batchSize) > ids.length
-          ? ids.length
-          : (cursor + batchSize);
-      final batch = ids.sublist(cursor, end);
-      await Future.wait(
-        batch.map((sectionId) async {
-          try {
-            await fetchSectionDetails(sectionId);
-          } catch (_) {}
-        }),
-      );
-      cursor = end;
-    }
-  }
 
   Future<Map<int, int>> loadCachedSeatMap({
     Duration maxAge = const Duration(hours: 1),
@@ -142,41 +62,6 @@ class SeatStatusService {
     } catch (_) {
       return const <int, int>{};
     }
-  }
-
-  Future<SeatStatusDetailsResponse?> fetchSectionDetails(int sectionId) async {
-    final inFlight = _detailsInFlight[sectionId];
-    if (inFlight != null) return inFlight;
-    final request = _fetchSectionDetailsInternal(sectionId);
-    _detailsInFlight[sectionId] = request;
-    try {
-      return await request;
-    } finally {
-      _detailsInFlight.remove(sectionId);
-    }
-  }
-
-  Future<SeatStatusDetailsResponse?> _fetchSectionDetailsInternal(
-    int sectionId,
-  ) async {
-    final db = await _openDb();
-    final etagKey = _detailsEtagKey(sectionId);
-    final etag = await _metaStore.record(etagKey).get(db) as String?;
-    final response = await _getSectionDetailsResponse(sectionId, etag);
-    if (response.statusCode == 304) {
-      return _loadCachedDetailById(db, sectionId);
-    }
-
-    final parsed = await compute(_parseDetailsFromBody, response.body);
-    if (parsed == null) return null;
-
-    final nextEtag = _extractEtag(response.headers);
-    await _detailsStore.record(sectionId).put(db, parsed.toJson());
-    await _metaStore.record(_detailsTsKey).put(db, _nowMs());
-    if (nextEtag != null && nextEtag.isNotEmpty) {
-      await _metaStore.record(etagKey).put(db, nextEtag);
-    }
-    return parsed;
   }
 
   Future<Map<int, SeatStatusDetailsResponse>> loadCachedDetails({
@@ -237,6 +122,21 @@ class SeatStatusService {
     } catch (_) {}
   }
 
+  Future<void> saveDetailsCache(
+    Map<int, SeatStatusDetailsResponse> detailsBySection,
+  ) async {
+    if (detailsBySection.isEmpty) return;
+    try {
+      final db = await _openDb();
+      await db.transaction((txn) async {
+        for (final entry in detailsBySection.entries) {
+          await _detailsStore.record(entry.key).put(txn, entry.value.toJson());
+        }
+        await _metaStore.record(_detailsTsKey).put(txn, _nowMs());
+      });
+    } catch (_) {}
+  }
+
   Future<Database> _openDb() async {
     final existing = _db;
     if (existing != null) return existing;
@@ -281,79 +181,6 @@ class SeatStatusService {
     _seatMapSnapshot = existing;
     return existing;
   }
-
-  Future<SeatStatusDetailsResponse?> _loadCachedDetailById(
-    Database db,
-    int sectionId,
-  ) async {
-    try {
-      final raw = await _detailsStore.record(sectionId).get(db);
-      if (raw is Map<String, dynamic>) {
-        return SeatStatusDetailsResponse.fromJson(raw);
-      }
-      if (raw is Map) {
-        return SeatStatusDetailsResponse.fromJson(raw.cast<String, dynamic>());
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  String _detailsEtagKey(int sectionId) => '$_detailsEtagPrefix$sectionId';
-
-  Map<String, String> _ifNoneMatchHeader(String? etag) {
-    final value = (etag ?? '').trim();
-    if (value.isEmpty) return const <String, String>{};
-    return <String, String>{'If-None-Match': value};
-  }
-
-  String? _extractEtag(Map<String, String> headers) {
-    for (final entry in headers.entries) {
-      if (entry.key.toLowerCase() == 'etag') {
-        final value = entry.value.trim();
-        if (value.isNotEmpty) return value;
-      }
-    }
-    return null;
-  }
-
-  Future<http.Response> _getSeatMapResponse(String? etag) async {
-    return _client.authenticatedGet(
-      ApiConfig.seatStatusUrl,
-      additionalHeaders: _ifNoneMatchHeader(etag),
-      acceptedStatusCodes: const <int>{200, 304},
-    );
-  }
-
-  Future<http.Response> _getSectionDetailsResponse(
-    int sectionId,
-    String? etag,
-  ) async {
-    return _client.authenticatedGet(
-      ApiConfig.sectionDetailsUrl(sectionId),
-      additionalHeaders: _ifNoneMatchHeader(etag),
-      acceptedStatusCodes: const <int>{200, 304},
-    );
-  }
-}
-
-Map<int, int> _parseSeatMapFromBody(String body) {
-  final decoded = jsonDecode(body);
-  if (decoded is! Map) return const <int, int>{};
-  final result = <int, int>{};
-  for (final entry in decoded.entries) {
-    final key = int.tryParse(entry.key);
-    final value = int.tryParse('${entry.value}');
-    if (key != null && value != null) {
-      result[key] = value;
-    }
-  }
-  return result;
-}
-
-SeatStatusDetailsResponse? _parseDetailsFromBody(String body) {
-  final decoded = jsonDecode(body);
-  if (decoded is! Map<String, dynamic>) return null;
-  return SeatStatusDetailsResponse.fromJson(decoded);
 }
 
 Map<int, SeatStatusDetailsResponse> _parseCachedDetailsFromMap(

@@ -377,19 +377,22 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun openCaptivePortal(): Boolean {
-        return openInternetPanel()
-    }
-
-    private fun openInternetPanel(): Boolean {
         return try {
-            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY)
-            } else {
-                Intent(Settings.ACTION_WIFI_SETTINGS)
+            val network = connectivityManager.activeNetwork ?: return false
+            val method = ConnectivityManager::class.java.methods.firstOrNull { candidate ->
+                candidate.name == "startCaptivePortalApp" &&
+                    candidate.parameterTypes.size == 1 &&
+                    candidate.parameterTypes[0] == Network::class.java
             }
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(intent)
-            true
+            if (method != null) {
+                method.invoke(connectivityManager, network)
+                true
+            } else {
+                // Fallback for SDKs where startCaptivePortalApp is unavailable at compile/runtime.
+                val intent = Intent(Settings.ACTION_WIFI_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+                true
+            }
         } catch (_: Exception) {
             false
         }

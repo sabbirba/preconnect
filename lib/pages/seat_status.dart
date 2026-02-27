@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -30,19 +31,15 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       <int, SeatStatusDetailsResponse>{};
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounce;
-  Timer? _realtimeTimer;
   Timer? _wsReconnectTimer;
   WebSocketChannel? _seatMapChannel;
   StreamSubscription<dynamic>? _seatMapSubscription;
   bool _isInitialLoading = true;
   String _searchQuery = '';
-  int _hydrateToken = 0;
   bool _cacheLoaded = false;
   bool _isAppForeground = true;
   int _wsReconnectAttempt = 0;
-
-  static const Duration _activePollInterval = Duration(seconds: 5);
-  static const Duration _idlePollInterval = Duration(hours: 1);
+  Map<int, int> _latestSeatMap = <int, int>{};
 
   @override
   void initState() {
@@ -67,7 +64,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     WidgetsBinding.instance.removeObserver(this);
     HomeTabRegistry.activeTab.removeListener(_onActiveTabChanged);
     _searchDebounce?.cancel();
-    _realtimeTimer?.cancel();
     _wsReconnectTimer?.cancel();
     _closeSeatMapSocket();
     _searchController.dispose();
@@ -80,7 +76,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     if (state == AppLifecycleState.resumed) {
       _isAppForeground = true;
       _updatePollingStrategy();
-      unawaited(_refreshRealtime());
       return;
     }
     if (state == AppLifecycleState.inactive ||
@@ -108,13 +103,14 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     if (!await ensureOnline(context, notify: notify)) {
       return;
     }
-    await _refreshRealtime(hydrateAll: true, hydrateInBackground: true);
+    _closeSeatMapSocket();
+    _updatePollingStrategy();
     if (notify) {
       RefreshBus.instance.notify(reason: 'seat_status');
     }
   }
 
-  Future<void> _reloadAll({bool forceRefreshDetails = false}) async {
+  Future<void> _reloadAll() async {
     if (mounted) {
       setState(() {
         _isInitialLoading = true;
@@ -123,7 +119,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     final cachedSeatMap = await _service.loadCachedSeatMap(
       maxAge: const Duration(hours: 1),
     );
-    if (!_cacheLoaded || forceRefreshDetails) {
+    if (!_cacheLoaded) {
       final cached = await _service.loadCachedDetails(
         maxAge: const Duration(hours: 1),
       );
@@ -140,84 +136,27 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       final cachedCards = _buildCardsFromSeatMap(cachedSeatMap);
       _applyCardsSnapshot(cachedCards, isInitialLoading: false);
     }
-
-    Map<int, int> seatMap = const <int, int>{};
-    try {
-      seatMap = await _service.fetchSeatStatusMap();
-    } catch (_) {}
-    if (!mounted) return;
-
-    if (seatMap.isEmpty) {
-      if (cachedSeatMap.isNotEmpty) return;
-      _applyCardsSnapshot(
-        const <_SeatStatusCardData>[],
-        isInitialLoading: false,
-      );
-      return;
-    }
-
-    unawaited(_service.saveSeatMapCacheIfChanged(seatMap));
-    final nextCards = _buildCardsFromSeatMap(seatMap);
-    if (_areCardListsDifferent(_cards, nextCards) || _isInitialLoading) {
-      _applyCardsSnapshot(nextCards, isInitialLoading: false);
-    } else if (_isInitialLoading) {
-      setState(() {
-        _isInitialLoading = false;
-      });
-    }
-
-    final sectionIds = seatMap.keys.toList()
-      ..sort((a, b) => _compareSectionIdsByNaming(a, b));
-
-    final idsToFetch = forceRefreshDetails
-        ? sectionIds
-        : sectionIds.where((id) => !_detailsCache.containsKey(id)).toList();
-    if (idsToFetch.isNotEmpty) {
-      await _hydrateDetailsParallel(idsToFetch, seatMap: seatMap);
-    }
   }
 
   List<_SeatStatusCardData> _buildCardsFromSeatMap(Map<int, int> seatMap) {
     final sectionIds = seatMap.keys.toList()
       ..sort((a, b) => _compareSectionIdsByNaming(a, b));
-    return sectionIds.map((sectionId) {
-      final cached = _detailsCache[sectionId];
-      if (cached != null) {
-        return _buildCardFromDetails(
-          sectionId: sectionId,
-          details: cached,
-          remaining: seatMap[sectionId],
-        );
-      }
-      return _SeatStatusCardData.placeholder(
-        sectionId: sectionId,
-        remaining: seatMap[sectionId] ?? 0,
-      );
-    }).toList();
+    return sectionIds
+        .where((sectionId) => _detailsCache.containsKey(sectionId))
+        .map((sectionId) {
+          final cached = _detailsCache[sectionId];
+          return _buildCardFromDetails(
+            sectionId: sectionId,
+            details: cached!,
+            remaining: seatMap[sectionId],
+          );
+        })
+        .toList();
   }
 
-  Future<void> _refreshRealtime({
-    bool hydrateAll = false,
-    bool hydrateInBackground = true,
-  }) async {
-    Map<int, int> seatMap = const <int, int>{};
-    try {
-      seatMap = await _service.fetchSeatStatusMap();
-    } catch (_) {}
+  Future<void> _applySeatMapUpdate(Map<int, int> seatMap) async {
     if (!mounted || seatMap.isEmpty) return;
-    await _applySeatMapUpdate(
-      seatMap,
-      hydrateAll: hydrateAll,
-      hydrateInBackground: hydrateInBackground,
-    );
-  }
-
-  Future<void> _applySeatMapUpdate(
-    Map<int, int> seatMap, {
-    bool hydrateAll = false,
-    bool hydrateInBackground = true,
-  }) async {
-    if (!mounted || seatMap.isEmpty) return;
+    _latestSeatMap = Map<int, int>.from(seatMap);
     unawaited(_service.saveSeatMapCacheIfChanged(seatMap));
 
     final nextIds = seatMap.keys.toSet();
@@ -235,100 +174,23 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       ..sort((a, b) => _compareSectionIdsByNaming(a, b));
     for (final sectionId in addedIds) {
       final cached = _detailsCache[sectionId];
-      if (cached != null) {
-        updated.add(
-          _buildCardFromDetails(
-            sectionId: sectionId,
-            details: cached,
-            remaining: seatMap[sectionId],
-          ),
-        );
-      } else {
-        updated.add(
-          _SeatStatusCardData.placeholder(
-            sectionId: sectionId,
-            remaining: seatMap[sectionId] ?? 0,
-          ),
-        );
-      }
+      if (cached == null) continue;
+      updated.add(
+        _buildCardFromDetails(
+          sectionId: sectionId,
+          details: cached,
+          remaining: seatMap[sectionId],
+        ),
+      );
     }
 
     _sortCardsByCourseAndSection(updated);
     if (_areCardListsDifferent(_cards, updated)) {
-      _applyCardsSnapshot(updated);
-    }
-
-    final toFetch = hydrateAll
-        ? (seatMap.keys.toList()
-            ..sort((a, b) => _compareSectionIdsByNaming(a, b)))
-        : addedIds.where((id) => !_detailsCache.containsKey(id)).toList();
-    if (toFetch.isNotEmpty) {
-      if (hydrateInBackground) {
-        unawaited(_hydrateDetailsParallel(toFetch, seatMap: seatMap));
-      } else {
-        await _hydrateDetailsParallel(toFetch, seatMap: seatMap);
-      }
-    }
-  }
-
-  Future<void> _hydrateDetailsParallel(
-    List<int> sectionIds, {
-    required Map<int, int> seatMap,
-    int concurrency = 12,
-  }) async {
-    if (sectionIds.isEmpty) return;
-    final token = ++_hydrateToken;
-    var cursor = 0;
-    var chunkSize = math.max(8, concurrency);
-    while (cursor < sectionIds.length) {
-      final end = math.min(cursor + chunkSize, sectionIds.length);
-      final batch = sectionIds.sublist(cursor, end);
-      final batchDetails = await Future.wait(
-        batch.map((sectionId) async {
-          try {
-            final details = await _service.fetchSectionDetails(sectionId);
-            if (details == null) return null;
-            return MapEntry(sectionId, details);
-          } catch (_) {
-            return null;
-          }
-        }),
-      );
-      if (!mounted || token != _hydrateToken) return;
-
-      var changed = false;
-      var failedCount = 0;
-      final nextCards = List<_SeatStatusCardData>.from(_cards);
-      for (final detail in batchDetails) {
-        if (detail == null) {
-          failedCount++;
-          continue;
-        }
-        _detailsCache[detail.key] = detail.value;
-        final index = nextCards.indexWhere((c) => c.sectionId == detail.key);
-        if (index == -1) continue;
-        final next = _buildCardFromDetails(
-          sectionId: detail.key,
-          details: detail.value,
-          remaining: seatMap[detail.key] ?? nextCards[index].remaining,
-        );
-        if (!_isSameCard(nextCards[index], next)) {
-          nextCards[index] = next;
-          changed = true;
-        }
-      }
-      if (changed) {
-        _sortCardsByCourseAndSection(nextCards);
-        if (_areCardListsDifferent(_cards, nextCards)) {
-          _applyCardsSnapshot(nextCards);
-        }
-      }
-      if (failedCount >= (batch.length / 2).ceil() && chunkSize > 4) {
-        chunkSize = math.max(4, chunkSize ~/ 2);
-      } else if (failedCount == 0 && chunkSize < 16) {
-        chunkSize = math.min(16, chunkSize + 2);
-      }
-      cursor = end;
+      _applyCardsSnapshot(updated, isInitialLoading: false);
+    } else if (_isInitialLoading) {
+      setState(() {
+        _isInitialLoading = false;
+      });
     }
   }
 
@@ -415,7 +277,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
                     style: TextStyle(color: BracuPalette.textPrimary(context)),
                     textInputAction: TextInputAction.search,
                     decoration: InputDecoration(
-                      hintText: 'Search by couse, faculty, etc.',
+                      hintText: 'Search by course, faculty, etc.',
                       hintStyle: TextStyle(
                         color: BracuPalette.textSecondary(context),
                       ),
@@ -590,25 +452,14 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     return true;
   }
 
-  void _restartRealtimeTimer(Duration interval) {
-    _realtimeTimer?.cancel();
-    _realtimeTimer = Timer.periodic(interval, (_) {
-      unawaited(_refreshRealtime());
-    });
-  }
-
   void _updatePollingStrategy() {
-    final isSeatsTab = HomeTabRegistry.activeTab.value == HomeTab.seatStatus;
-    final active = _isAppForeground && isSeatsTab;
+    final active = _isAppForeground;
     final wsUrl = ApiConfig.seatWorkerWsUrl;
-    if (active && wsUrl != null) {
-      _realtimeTimer?.cancel();
+    if (active && wsUrl != null && wsUrl.isNotEmpty) {
       _startSeatMapSocket(wsUrl);
       return;
     }
     _closeSeatMapSocket();
-    final interval = active ? _activePollInterval : _idlePollInterval;
-    _restartRealtimeTimer(interval);
   }
 
   void _startSeatMapSocket(String wsUrl) {
@@ -622,7 +473,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
         onError: (_) => _scheduleSocketReconnect(),
       );
       _wsReconnectAttempt = 0;
-      unawaited(_refreshRealtime(hydrateInBackground: true));
     } catch (_) {
       _scheduleSocketReconnect();
     }
@@ -644,8 +494,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     _seatMapChannel?.sink.close();
     _seatMapChannel = null;
 
-    final isSeatsTab = HomeTabRegistry.activeTab.value == HomeTab.seatStatus;
-    if (!_isAppForeground || !isSeatsTab) return;
+    if (!_isAppForeground) return;
     final wsUrl = ApiConfig.seatWorkerWsUrl;
     if (wsUrl == null || wsUrl.isEmpty) return;
 
@@ -660,19 +509,70 @@ class _SeatStatusPageState extends State<SeatStatusPage>
 
   Future<void> _onSeatMapSocketPayload(dynamic payload) async {
     if (!mounted) return;
-    final text = payload is String ? payload : '$payload';
+    final text = _decodeSocketPayload(payload);
+    if (text == null || text.isEmpty) return;
     Map<String, dynamic> decoded;
     try {
       final raw = jsonDecode(text);
-      if (raw is! Map<String, dynamic>) return;
-      decoded = raw;
+      if (raw is! Map) return;
+      decoded = raw.cast<String, dynamic>();
     } catch (_) {
       return;
     }
 
-    if (decoded['type'] != 'seat_map') return;
-    final rawMap = decoded['seatMap'];
-    if (rawMap is! Map) return;
+    final detailsPatch = _parseDetailsPatch(decoded);
+    if (detailsPatch.isNotEmpty) {
+      _detailsCache.addAll(detailsPatch);
+      unawaited(_service.saveDetailsCache(detailsPatch));
+      if (_latestSeatMap.isNotEmpty) {
+        await _applySeatMapUpdate(_latestSeatMap);
+      }
+      return;
+    }
+
+    final seatMap = _parseSeatMap(decoded);
+    if (seatMap.isEmpty) return;
+    _latestSeatMap = Map<int, int>.from(seatMap);
+    await _applySeatMapUpdate(seatMap);
+  }
+
+  Map<int, SeatStatusDetailsResponse> _parseDetailsPatch(dynamic rawMap) {
+    if (rawMap is! Map) return const <int, SeatStatusDetailsResponse>{};
+    final changed = <int, SeatStatusDetailsResponse>{};
+    for (final entry in rawMap.entries) {
+      final sectionId = int.tryParse('${entry.key}');
+      final value = entry.value;
+      if (sectionId == null || value is! Map) continue;
+      try {
+        changed[sectionId] = SeatStatusDetailsResponse.fromJson(
+          value.cast<String, dynamic>(),
+        );
+      } catch (_) {}
+    }
+    return changed;
+  }
+
+  String? _decodeSocketPayload(dynamic payload) {
+    if (payload is String) return payload;
+    if (payload is Uint8List) {
+      try {
+        return utf8.decode(payload);
+      } catch (_) {
+        return null;
+      }
+    }
+    if (payload is List<int>) {
+      try {
+        return utf8.decode(payload);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  Map<int, int> _parseSeatMap(dynamic rawMap) {
+    if (rawMap is! Map) return const <int, int>{};
     final seatMap = <int, int>{};
     for (final entry in rawMap.entries) {
       final sectionId = int.tryParse('${entry.key}');
@@ -681,8 +581,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
         seatMap[sectionId] = remaining;
       }
     }
-    if (seatMap.isEmpty) return;
-    await _applySeatMapUpdate(seatMap, hydrateInBackground: true);
+    return seatMap;
   }
 }
 
@@ -1054,34 +953,6 @@ class _SeatStatusCardData {
     required this.total,
     required this.searchToken,
   });
-
-  factory _SeatStatusCardData.placeholder({
-    required int sectionId,
-    required int remaining,
-  }) {
-    return _SeatStatusCardData(
-      sectionId: sectionId,
-      courseCode: 'SEC$sectionId',
-      sectionName: '--',
-      courseName: 'Section $sectionId',
-      credits: 0,
-      faculty: '',
-      room: '',
-      classSchedule: const <SeatStatusClassSchedule>[],
-      labSchedule: const <SeatStatusClassSchedule>[],
-      labRoom: '',
-      midExamDate: null,
-      midExamStartTime: null,
-      midExamEndTime: null,
-      finalExamDate: null,
-      finalExamStartTime: null,
-      finalExamEndTime: null,
-      remaining: remaining,
-      consumed: 0,
-      total: 0,
-      searchToken: 'sec$sectionId -- section $sectionId $sectionId',
-    );
-  }
 
   final int sectionId;
   final String courseCode;
