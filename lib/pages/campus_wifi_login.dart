@@ -31,7 +31,6 @@ class _CampusWifiLoginPageState extends State<CampusWifiLoginPage> {
   WebViewController? _controller;
   bool _loading = true;
   bool _saving = false;
-  bool _autoSubmit = true;
   bool _showPortal = false;
   bool _obscurePassword = true;
 
@@ -314,7 +313,7 @@ class _CampusWifiLoginPageState extends State<CampusWifiLoginPage> {
   pass.value = password;
   pass.dispatchEvent(new Event('input', { bubbles: true }));
   pass.dispatchEvent(new Event('change', { bubbles: true }));
-  if (${_autoSubmit ? 'true' : 'false'}) {
+  if (true) {
     const submit = pass.form?.querySelector('button[type="submit"],input[type="submit"]')
       || document.querySelector('button[type="submit"],input[type="submit"]');
     if (submit) {
@@ -417,34 +416,6 @@ class _CampusWifiLoginPageState extends State<CampusWifiLoginPage> {
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          unawaited(_registerWifiSuggestion());
-                        },
-                        icon: const Icon(Icons.wifi_tethering_rounded),
-                        label: const Text('Register Android Wi-Fi Suggestion'),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                SwitchListTile(
-                  value: _autoSubmit,
-                  onChanged: (value) {
-                    setState(() {
-                      _autoSubmit = value;
-                    });
-                  },
-                  title: const Text('Auto-submit form'),
-                  subtitle: const Text(
-                    'Turn off if portal changes unexpectedly',
-                  ),
-                  contentPadding: EdgeInsets.zero,
                 ),
                 const SizedBox(height: 8),
                 Row(
