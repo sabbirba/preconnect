@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:preconnect/pages/campus_wifi_login.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_lock_service.dart';
 import 'package:preconnect/tools/home_card_preferences.dart';
@@ -45,6 +46,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _setShowRamadanCard(bool value) async {
     await _setVisibility(
+      label: 'Ramadan & Prayer Times',
       value: value,
       applyLocal: () => _showRamadanCard = value,
       persist: HomeCardPreferences.setShowRamadanCard,
@@ -53,6 +55,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _setShowExamCountdownCard(bool value) async {
     await _setVisibility(
+      label: 'Exam Countdown',
       value: value,
       applyLocal: () => _showExamCountdownCard = value,
       persist: HomeCardPreferences.setShowExamCountdownCard,
@@ -61,6 +64,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _setShowQuickAccessSection(bool value) async {
     await _setVisibility(
+      label: 'Quick Access',
       value: value,
       applyLocal: () => _showQuickAccessSection = value,
       persist: HomeCardPreferences.setShowQuickAccessSection,
@@ -69,6 +73,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _setShowExamCountdownDaysOnly(bool value) async {
     await _setVisibility(
+      label: 'Exam Days Only',
       value: value,
       applyLocal: () => _showExamCountdownDaysOnly = value,
       persist: HomeCardPreferences.setShowExamCountdownDaysOnly,
@@ -77,6 +82,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _setShowTodaySchedule(bool value) async {
     await _setVisibility(
+      label: 'Today\'s Schedule',
       value: value,
       applyLocal: () => _showTodaySchedule = value,
       persist: HomeCardPreferences.setShowTodaySchedule,
@@ -85,6 +91,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _setShowStudentContactCards(bool value) async {
     await _setVisibility(
+      label: 'Student Info',
       value: value,
       applyLocal: () => _showStudentContactCards = value,
       persist: HomeCardPreferences.setShowStudentContactCards,
@@ -92,6 +99,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _setVisibility({
+    required String label,
     required bool value,
     required void Function() applyLocal,
     required Future<void> Function(bool) persist,
@@ -101,6 +109,8 @@ class _SettingsPageState extends State<SettingsPage> {
     });
     await persist(value);
     RefreshBus.instance.notify(reason: 'home_card_settings_changed');
+    if (!mounted) return;
+    showAppSnackBar(context, '$label ${value ? 'enabled' : 'disabled'}');
   }
 
   Future<void> _setAppLockEnabled(bool value) async {
@@ -235,6 +245,49 @@ class _SettingsPageState extends State<SettingsPage> {
                 subtitle: 'Use system authentication to lock the app',
                 value: _appLockEnabled,
                 onChanged: _setAppLockEnabled,
+              ),
+            ),
+            const SizedBox(height: 10),
+            const BracuSectionTitle(title: 'Campus Wi-Fi'),
+            const SizedBox(height: 6),
+            BracuCard(
+              child: ListTile(
+                dense: true,
+                minVerticalPadding: 0,
+                horizontalTitleGap: 10,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 2,
+                  vertical: 0,
+                ),
+                visualDensity: const VisualDensity(
+                  vertical: -3,
+                  horizontal: -2,
+                ),
+                leading: const Icon(Icons.wifi_rounded, size: 20),
+                title: Text(
+                  'Wi-Fi Login Assistant',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: BracuPalette.textPrimary(context),
+                  ),
+                ),
+                subtitle: Text(
+                  'Credentials for one-tap captive login',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: BracuPalette.textSecondary(context),
+                  ),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                onTap: () {
+                  showAppSnackBar(context, 'Opening Wi-Fi Login Assistant');
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const CampusWifiLoginPage(),
+                    ),
+                  );
+                },
               ),
             ),
           ],

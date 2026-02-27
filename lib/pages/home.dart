@@ -15,6 +15,7 @@ import 'package:preconnect/pages/exam_schedule.dart';
 import 'package:preconnect/pages/seat_status.dart';
 import 'package:preconnect/pages/degree_progress.dart';
 import 'package:preconnect/pages/alarms.dart';
+import 'package:preconnect/pages/campus_wifi_login.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/share_schedule.dart';
 import 'package:preconnect/pages/scan_schedule.dart';
@@ -27,7 +28,10 @@ import 'package:preconnect/pages/home_sections/student_overview.dart';
 import 'package:preconnect/pages/shared_widgets/section_badge.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/android_network_assist.dart';
 import 'package:preconnect/tools/cached_image.dart';
+import 'package:preconnect/tools/captive_login_store.dart';
+import 'package:preconnect/tools/captive_portal_detector.dart';
 import 'package:preconnect/tools/home_card_preferences.dart';
 import 'package:preconnect/tools/holiday_status.dart';
 import 'package:preconnect/tools/in_app_review_prompt.dart';
@@ -291,6 +295,10 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   late Future<_HomeData> _future;
   _HomeData? _latestData;
   bool _isRefreshing = false;
+  CaptivePortalStatus? _captiveStatus;
+  bool _isCheckingCaptive = false;
+  StreamSubscription<AndroidNetworkStatus>? _networkStatusSubscription;
+  bool _autoOpenedWifiAssistant = false;
 
   @override
   void initState() {
@@ -299,6 +307,13 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       _latestData = data;
       return data;
     });
+    if (AndroidNetworkAssist.isSupported) {
+      _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen(
+        _applyAndroidNetworkStatus,
+      );
+      unawaited(_consumePostConnectionEvent());
+    }
+    unawaited(_refreshCaptiveStatus());
     unawaited(_preloadDegreeProgress());
     unawaited(_preloadSeatStatus());
     RefreshBus.instance.addListener(_onRefreshSignal);
@@ -307,6 +322,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   @override
   void dispose() {
     RefreshBus.instance.removeListener(_onRefreshSignal);
+    _networkStatusSubscription?.cancel();
     super.dispose();
   }
 
@@ -322,6 +338,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
           return data;
         });
       });
+      unawaited(_refreshCaptiveStatus());
       return;
     }
     if (RefreshBus.instance.isReason('auth')) {
@@ -433,12 +450,99 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       setState(() {
         _latestData = fresh;
       });
+      unawaited(_refreshCaptiveStatus());
       if (notify) {
         RefreshBus.instance.notify(reason: 'home_dashboard');
       }
     } finally {
       _isRefreshing = false;
     }
+  }
+
+  Future<void> _refreshCaptiveStatus() async {
+    if (_isCheckingCaptive) return;
+    _isCheckingCaptive = true;
+    try {
+      if (AndroidNetworkAssist.isSupported) {
+        await _consumePostConnectionEvent();
+        final status = await AndroidNetworkAssist.getNetworkStatus();
+        if (status != null) {
+          _applyAndroidNetworkStatus(status);
+          return;
+        }
+      }
+      final fallback = await CaptivePortalDetector.detect();
+      if (!mounted) return;
+      setState(() {
+        _captiveStatus = fallback;
+      });
+    } finally {
+      _isCheckingCaptive = false;
+    }
+  }
+
+  void _applyAndroidNetworkStatus(AndroidNetworkStatus status) {
+    if (!mounted) return;
+    final mapped = CaptivePortalStatus(
+      state: status.captive
+          ? CaptivePortalState.captive
+          : status.validated
+          ? CaptivePortalState.validated
+          : status.connected
+          ? CaptivePortalState.unknown
+          : CaptivePortalState.offline,
+      httpStatusCode: null,
+    );
+    setState(() {
+      _captiveStatus = mapped;
+    });
+    if (status.captive) {
+      unawaited(_maybeAutoOpenWifiAssistant(status));
+    }
+  }
+
+  Future<void> _maybeAutoOpenWifiAssistant(AndroidNetworkStatus status) async {
+    if (_autoOpenedWifiAssistant || !mounted) return;
+    if (status.transport != 'wifi') return;
+    final creds = await CaptiveLoginStore.instance.read();
+    if (!mounted || creds == null) return;
+    final currentSsid = (status.ssid ?? '').trim();
+    if (currentSsid.isEmpty) return;
+    if (currentSsid.toLowerCase() != creds.ssid.toLowerCase()) {
+      return;
+    }
+    _autoOpenedWifiAssistant = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _openWifiLoginAssistant();
+    });
+  }
+
+  Future<void> _consumePostConnectionEvent() async {
+    if (!AndroidNetworkAssist.isSupported || !mounted) return;
+    final event = await AndroidNetworkAssist.getAndClearPostConnectionEvent();
+    final pending = event['pending'] == true;
+    if (!pending) return;
+    final creds = await CaptiveLoginStore.instance.read();
+    if (!mounted || creds == null) return;
+    final eventSsid = (event['ssid'] as String? ?? '').trim();
+    if (eventSsid.isNotEmpty &&
+        eventSsid.toLowerCase() != creds.ssid.toLowerCase()) {
+      return;
+    }
+    _autoOpenedWifiAssistant = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _openWifiLoginAssistant();
+    });
+  }
+
+  void _openWifiLoginAssistant() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const CampusWifiLoginPage(autoOpenPortalOnStart: true),
+      ),
+    );
   }
 
   String _todayName() {
@@ -657,6 +761,14 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                               onProfileTap: () =>
                                   widget.onNavigate(HomeTab.profile),
                             ),
+                            if (_captiveStatus?.state ==
+                                CaptivePortalState.captive) ...[
+                              const SizedBox(height: 12),
+                              _CaptivePortalBanner(
+                                statusCode: _captiveStatus?.httpStatusCode,
+                                onOpenLogin: _openWifiLoginAssistant,
+                              ),
+                            ],
                             const SizedBox(height: 18),
                             StudentOverviewCard(
                               studentId: profile['studentId'] ?? '',
@@ -1084,6 +1196,69 @@ class _HomeDashboardState extends State<_HomeDashboard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CaptivePortalBanner extends StatelessWidget {
+  const _CaptivePortalBanner({required this.onOpenLogin, this.statusCode});
+
+  final VoidCallback onOpenLogin;
+  final int? statusCode;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: BracuPalette.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: BracuPalette.primary.withValues(alpha: 0.20),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.wifi_lock_rounded, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Wi-Fi login required',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: BracuPalette.textPrimary(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            statusCode == null
+                ? 'Connected to Wi-Fi but internet is behind captive portal.'
+                : 'Connected to Wi-Fi but internet is behind captive portal (probe: HTTP $statusCode).',
+            style: TextStyle(
+              fontSize: 12,
+              color: BracuPalette.textSecondary(context),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 34,
+            child: ElevatedButton.icon(
+              onPressed: onOpenLogin,
+              icon: const Icon(Icons.login_rounded, size: 16),
+              label: const Text('One-Tap Wi-Fi Login'),
+            ),
+          ),
+        ],
       ),
     );
   }
