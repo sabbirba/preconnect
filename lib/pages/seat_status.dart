@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/seat_status_service.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/model/seat_status_info.dart';
@@ -10,6 +12,7 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/refresh_guard.dart';
 import 'package:preconnect/tools/time_utils.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 class SeatStatusPage extends StatefulWidget {
   const SeatStatusPage({super.key});
@@ -28,11 +31,15 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounce;
   Timer? _realtimeTimer;
+  Timer? _wsReconnectTimer;
+  WebSocketChannel? _seatMapChannel;
+  StreamSubscription<dynamic>? _seatMapSubscription;
   bool _isInitialLoading = true;
   String _searchQuery = '';
   int _hydrateToken = 0;
   bool _cacheLoaded = false;
   bool _isAppForeground = true;
+  int _wsReconnectAttempt = 0;
 
   static const Duration _activePollInterval = Duration(seconds: 5);
   static const Duration _idlePollInterval = Duration(hours: 1);
@@ -61,6 +68,8 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     HomeTabRegistry.activeTab.removeListener(_onActiveTabChanged);
     _searchDebounce?.cancel();
     _realtimeTimer?.cancel();
+    _wsReconnectTimer?.cancel();
+    _closeSeatMapSocket();
     _searchController.dispose();
     RefreshBus.instance.removeListener(_onRefreshSignal);
     super.dispose();
@@ -195,6 +204,19 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     try {
       seatMap = await _service.fetchSeatStatusMap();
     } catch (_) {}
+    if (!mounted || seatMap.isEmpty) return;
+    await _applySeatMapUpdate(
+      seatMap,
+      hydrateAll: hydrateAll,
+      hydrateInBackground: hydrateInBackground,
+    );
+  }
+
+  Future<void> _applySeatMapUpdate(
+    Map<int, int> seatMap, {
+    bool hydrateAll = false,
+    bool hydrateInBackground = true,
+  }) async {
     if (!mounted || seatMap.isEmpty) return;
     unawaited(_service.saveSeatMapCacheIfChanged(seatMap));
 
@@ -577,10 +599,90 @@ class _SeatStatusPageState extends State<SeatStatusPage>
 
   void _updatePollingStrategy() {
     final isSeatsTab = HomeTabRegistry.activeTab.value == HomeTab.seatStatus;
-    final interval = (_isAppForeground && isSeatsTab)
-        ? _activePollInterval
-        : _idlePollInterval;
+    final active = _isAppForeground && isSeatsTab;
+    final wsUrl = ApiConfig.seatWorkerWsUrl;
+    if (active && wsUrl != null) {
+      _realtimeTimer?.cancel();
+      _startSeatMapSocket(wsUrl);
+      return;
+    }
+    _closeSeatMapSocket();
+    final interval = active ? _activePollInterval : _idlePollInterval;
     _restartRealtimeTimer(interval);
+  }
+
+  void _startSeatMapSocket(String wsUrl) {
+    if (_seatMapSubscription != null) return;
+    try {
+      final channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+      _seatMapChannel = channel;
+      _seatMapSubscription = channel.stream.listen(
+        (payload) => unawaited(_onSeatMapSocketPayload(payload)),
+        onDone: _scheduleSocketReconnect,
+        onError: (_) => _scheduleSocketReconnect(),
+      );
+      _wsReconnectAttempt = 0;
+      unawaited(_refreshRealtime(hydrateInBackground: true));
+    } catch (_) {
+      _scheduleSocketReconnect();
+    }
+  }
+
+  void _closeSeatMapSocket() {
+    _wsReconnectTimer?.cancel();
+    _wsReconnectTimer = null;
+    _seatMapSubscription?.cancel();
+    _seatMapSubscription = null;
+    _seatMapChannel?.sink.close();
+    _seatMapChannel = null;
+    _wsReconnectAttempt = 0;
+  }
+
+  void _scheduleSocketReconnect() {
+    _seatMapSubscription?.cancel();
+    _seatMapSubscription = null;
+    _seatMapChannel?.sink.close();
+    _seatMapChannel = null;
+
+    final isSeatsTab = HomeTabRegistry.activeTab.value == HomeTab.seatStatus;
+    if (!_isAppForeground || !isSeatsTab) return;
+    final wsUrl = ApiConfig.seatWorkerWsUrl;
+    if (wsUrl == null || wsUrl.isEmpty) return;
+
+    _wsReconnectTimer?.cancel();
+    final backoffSeconds = math.min(30, math.max(1, 1 << _wsReconnectAttempt));
+    _wsReconnectAttempt = math.min(6, _wsReconnectAttempt + 1);
+    _wsReconnectTimer = Timer(Duration(seconds: backoffSeconds), () {
+      if (!mounted) return;
+      _startSeatMapSocket(wsUrl);
+    });
+  }
+
+  Future<void> _onSeatMapSocketPayload(dynamic payload) async {
+    if (!mounted) return;
+    final text = payload is String ? payload : '$payload';
+    Map<String, dynamic> decoded;
+    try {
+      final raw = jsonDecode(text);
+      if (raw is! Map<String, dynamic>) return;
+      decoded = raw;
+    } catch (_) {
+      return;
+    }
+
+    if (decoded['type'] != 'seat_map') return;
+    final rawMap = decoded['seatMap'];
+    if (rawMap is! Map) return;
+    final seatMap = <int, int>{};
+    for (final entry in rawMap.entries) {
+      final sectionId = int.tryParse('${entry.key}');
+      final remaining = int.tryParse('${entry.value}');
+      if (sectionId != null && remaining != null) {
+        seatMap[sectionId] = remaining;
+      }
+    }
+    if (seatMap.isEmpty) return;
+    await _applySeatMapUpdate(seatMap, hydrateInBackground: true);
   }
 }
 

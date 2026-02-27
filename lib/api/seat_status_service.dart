@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
@@ -73,11 +74,7 @@ class SeatStatusService {
   Future<Map<int, int>> fetchSeatStatusMap() async {
     final db = await _openDb();
     final etag = await _metaStore.record(_seatMapEtagKey).get(db) as String?;
-    final response = await _client.authenticatedGet(
-      ApiConfig.seatStatusUrl,
-      additionalHeaders: _ifNoneMatchHeader(etag),
-      acceptedStatusCodes: const <int>{200, 304},
-    );
+    final response = await _getSeatMapResponse(etag);
     if (response.statusCode == 304) {
       final cached = await _getSeatMapSnapshot(db);
       return Map<int, int>.from(cached);
@@ -165,11 +162,7 @@ class SeatStatusService {
     final db = await _openDb();
     final etagKey = _detailsEtagKey(sectionId);
     final etag = await _metaStore.record(etagKey).get(db) as String?;
-    final response = await _client.authenticatedGet(
-      ApiConfig.sectionDetailsUrl(sectionId),
-      additionalHeaders: _ifNoneMatchHeader(etag),
-      acceptedStatusCodes: const <int>{200, 304},
-    );
+    final response = await _getSectionDetailsResponse(sectionId, etag);
     if (response.statusCode == 304) {
       return _loadCachedDetailById(db, sectionId);
     }
@@ -321,6 +314,39 @@ class SeatStatusService {
       }
     }
     return null;
+  }
+
+  Future<http.Response> _getSeatMapResponse(String? etag) async {
+    if (ApiConfig.seatWorkerBaseUrl != null) {
+      return _client.authenticatedGet(
+        ApiConfig.seatStatusUrl,
+        additionalHeaders: _ifNoneMatchHeader(etag),
+        acceptedStatusCodes: const <int>{200, 304},
+      );
+    }
+    return _client.authenticatedGet(
+      ApiConfig.seatStatusUrl,
+      additionalHeaders: _ifNoneMatchHeader(etag),
+      acceptedStatusCodes: const <int>{200, 304},
+    );
+  }
+
+  Future<http.Response> _getSectionDetailsResponse(
+    int sectionId,
+    String? etag,
+  ) async {
+    if (ApiConfig.seatWorkerBaseUrl != null) {
+      return _client.authenticatedGet(
+        ApiConfig.sectionDetailsUrl(sectionId),
+        additionalHeaders: _ifNoneMatchHeader(etag),
+        acceptedStatusCodes: const <int>{200, 304},
+      );
+    }
+    return _client.authenticatedGet(
+      ApiConfig.sectionDetailsUrl(sectionId),
+      additionalHeaders: _ifNoneMatchHeader(etag),
+      acceptedStatusCodes: const <int>{200, 304},
+    );
   }
 }
 

@@ -1,0 +1,29 @@
+name = "preconnect-seatstatus"
+main = "src/index.ts"
+compatibility_date = "2026-02-27"
+workers_dev = false
+account_id = "af4e734b34a7218b04e72b7d65a377e1"
+
+[[routes]]
+pattern = "seatstatus.preconnect.app/*"
+zone_name = "preconnect.app"
+
+[durable_objects]
+bindings = [
+  { name = "SEAT_HUB", class_name = "SeatHub" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SeatHub"]
+
+[triggers]
+crons = ["*/1 * * * *"]
+
+[vars]
+UPSTREAM_SEAT_MAP_URL = "https://connect.bracu.ac.bd/api/adv/v1/advising/sections/seat-status"
+UPSTREAM_SECTION_DETAILS_TEMPLATE = "https://connect.bracu.ac.bd/api/adv/v1/advising/sections/{id}/details"
+UPSTREAM_REALM = "bracu"
+MAP_SYNC_INTERVAL_MS = "5000"
+DETAILS_SYNC_INTERVAL_MS = "600000"
+DETAILS_BATCH_SIZE = "12"
