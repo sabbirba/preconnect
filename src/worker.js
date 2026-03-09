@@ -1,5 +1,6 @@
 const DEFAULT_BROKER_BASE = "https://api.preconnect.app";
 const DEFAULT_SESSION_EMAIL = "web@preconnect.app";
+const DEFAULT_VM_BASE = "https://vm.preconnect.app";
 
 function json(data, init = {}) {
   return new Response(JSON.stringify(data), {
@@ -28,6 +29,11 @@ function normalizeEmail(input) {
 
 async function proxyToBroker(path, init = {}, env) {
   const base = `${env.BROKER_BASE || DEFAULT_BROKER_BASE}`.replace(/\/+$/, "");
+  return fetch(`${base}${path}`, init);
+}
+
+async function proxyToVm(path, init = {}, env) {
+  const base = `${env.VM_BASE || DEFAULT_VM_BASE}`.replace(/\/+$/, "");
   return fetch(`${base}${path}`, init);
 }
 
@@ -81,6 +87,24 @@ async function handleWebLoginProxy(request, url, env) {
     init.body = await request.text();
   }
   const upstream = await proxyToBroker(brokerPath, init, env);
+  return passthroughNoStore(upstream);
+}
+
+async function handleVmProxy(request, url, env) {
+  const path = `${url.pathname || ""}`;
+  if (!path.startsWith("/vm/")) return null;
+
+  const vmPath = path + (url.search || "");
+  const headers = new Headers(request.headers);
+  headers.delete("host");
+  const init = {
+    method: request.method,
+    headers,
+  };
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    init.body = await request.text();
+  }
+  const upstream = await proxyToVm(vmPath, init, env);
   return passthroughNoStore(upstream);
 }
 
@@ -154,6 +178,11 @@ export default {
 
     if (url.pathname.startsWith("/api/web-login/")) {
       const res = await handleWebLoginProxy(request, url, env);
+      if (res) return res;
+    }
+
+    if (url.pathname.startsWith("/vm/")) {
+      const res = await handleVmProxy(request, url, env);
       if (res) return res;
     }
 

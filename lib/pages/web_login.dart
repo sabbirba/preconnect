@@ -26,6 +26,7 @@ class _WebLoginPageState extends State<WebLoginPage> {
   bool _initializing = true;
   bool _signingIn = false;
   WebLoginRequestPayload? _request;
+  String? _vmAttemptId;
   String? _requestQrData;
   String? _statusMessage;
   Timer? _pollTimer;
@@ -35,9 +36,9 @@ class _WebLoginPageState extends State<WebLoginPage> {
   bool _consumeInFlight = false;
 
   bool get _hasActiveQr =>
-      _request != null &&
-      _secondsLeft > 0 &&
-      !(_request?.isExpired ?? true);
+      _request != null && _secondsLeft > 0 && !(_request?.isExpired ?? true);
+  bool get _hasActiveVmAttempt => _vmAttemptId != null && _secondsLeft > 0;
+  bool get _hasActiveLoginAttempt => _hasActiveQr || _hasActiveVmAttempt;
 
   @override
   void initState() {
@@ -60,6 +61,7 @@ class _WebLoginPageState extends State<WebLoginPage> {
     if (!mounted) return;
     setState(() {
       _request = null;
+      _vmAttemptId = null;
       _requestQrData = null;
       _secondsLeft = 0;
       _pollInFlight = false;
@@ -87,6 +89,7 @@ class _WebLoginPageState extends State<WebLoginPage> {
       if (!mounted) return;
       setState(() {
         _request = request;
+        _vmAttemptId = null;
         _requestQrData = qrData;
         _statusMessage = null;
       });
@@ -146,6 +149,7 @@ class _WebLoginPageState extends State<WebLoginPage> {
           studentEmail: payload.studentEmail,
           webSessionId: payload.webSessionId,
           webSessionToken: payload.webSessionToken,
+          vmLogin: false,
         );
         RefreshBus.instance.notify(reason: 'auth');
         if (!mounted) return;
@@ -164,12 +168,124 @@ class _WebLoginPageState extends State<WebLoginPage> {
     });
   }
 
+  Future<void> _startVmLogin() async {
+    if (_signingIn) return;
+    setState(() {
+      _signingIn = true;
+      _statusMessage = null;
+    });
+    try {
+      final attempt = await _broker.createVmAttempt();
+      _startVmPolling(
+        attemptId: attempt.attemptId,
+        expiresAtMillis: attempt.expiresAtMillis,
+      );
+      if (!mounted) return;
+      setState(() {
+        _request = null;
+        _requestQrData = null;
+        _vmAttemptId = attempt.attemptId;
+      });
+      final vmUrl =
+          '${Uri.base.origin}/vm/start?attemptId=${Uri.encodeComponent(attempt.attemptId)}';
+      openExternalUrl(
+        context,
+        vmUrl,
+        failureMessage: 'Unable to open VM login page.',
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _statusMessage = 'Unable to start VM login. Please try again.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _signingIn = false;
+        });
+      }
+    }
+  }
+
+  void _startVmPolling({
+    required String attemptId,
+    required int expiresAtMillis,
+  }) {
+    _pollTimer?.cancel();
+    _countdownTimer?.cancel();
+
+    void updateCountdown() {
+      final left =
+          ((expiresAtMillis - DateTime.now().millisecondsSinceEpoch) / 1000)
+              .ceil();
+      if (left <= 0) {
+        _resetToInitial();
+        if (!mounted) return;
+        setState(() {
+          _statusMessage = 'VM login attempt expired. Start a new one.';
+        });
+        return;
+      }
+      if (!mounted) return;
+      setState(() => _secondsLeft = left);
+    }
+
+    updateCountdown();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      updateCountdown();
+    });
+
+    _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
+      if (_vmAttemptId == null) return;
+      if (_pollInFlight) return;
+      _pollInFlight = true;
+      try {
+        final status = await _broker.getVmAttemptStatus(attemptId);
+        if (status.expiresAtMillis > 0 &&
+            status.expiresAtMillis <= DateTime.now().millisecondsSinceEpoch) {
+          _resetToInitial();
+          if (!mounted) return;
+          setState(() {
+            _statusMessage = 'VM login attempt expired. Start a new one.';
+          });
+          return;
+        }
+        if (!status.ready) return;
+        if (_consumeInFlight) return;
+        _consumeInFlight = true;
+        _pollTimer?.cancel();
+        _countdownTimer?.cancel();
+
+        final payload = await _broker.consumeVmAttempt(attemptId);
+        await WebLoginSessionStore.save(
+          accessToken: payload.accessToken,
+          refreshToken: payload.refreshToken,
+          studentEmail: payload.studentEmail,
+          webSessionId: payload.webSessionId,
+          webSessionToken: payload.webSessionToken,
+          vmLogin: (payload.webSessionId ?? '').isEmpty,
+        );
+        RefreshBus.instance.notify(reason: 'auth');
+        if (!mounted) return;
+        Navigator.of(
+          context,
+        ).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
+      } catch (_) {
+        _resetToInitial();
+        if (!mounted) return;
+        setState(() {
+          _statusMessage = 'Unable to complete VM login. Try again.';
+        });
+      } finally {
+        _pollInFlight = false;
+      }
+    });
+  }
+
   Future<void> _sharePlayStoreLink() async {
     try {
       await SharePlus.instance.share(
-        ShareParams(
-          text: 'Install PreConnect App: $_playStoreUrl',
-        ),
+        ShareParams(text: 'Install PreConnect App: $_playStoreUrl'),
       );
     } catch (_) {
       if (!mounted) return;
@@ -251,16 +367,33 @@ class _WebLoginPageState extends State<WebLoginPage> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: _initializing || _signingIn || _hasActiveQr
+                    onPressed:
+                        _initializing || _signingIn || _hasActiveLoginAttempt
                         ? null
                         : _startLogin,
                     icon: const Icon(Icons.login_rounded),
                     label: Text(
                       _signingIn
                           ? 'Generating...'
-                          : (_hasActiveQr
-                                ? 'QR Active'
-                                : 'Generate QR Code'),
+                          : (_hasActiveQr ? 'QR Active' : 'Generate QR Code'),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed:
+                        _initializing || _signingIn || _hasActiveLoginAttempt
+                        ? null
+                        : _startVmLogin,
+                    icon: const Icon(Icons.computer_rounded),
+                    label: Text(
+                      _signingIn
+                          ? 'Starting...'
+                          : (_hasActiveVmAttempt
+                                ? 'VM Login Active'
+                                : 'Start VM Login'),
                     ),
                   ),
                 ),
@@ -292,7 +425,52 @@ class _WebLoginPageState extends State<WebLoginPage> {
                   const SizedBox(height: 12),
                   Text(
                     'Waiting for phone approval. QR expires in ${_secondsLeft}s',
-                    style: TextStyle(color: BracuPalette.textSecondary(context)),
+                    style: TextStyle(
+                      color: BracuPalette.textSecondary(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (_vmAttemptId != null) ...[
+            const SizedBox(height: 12),
+            BracuCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'VM login attempt is active.',
+                    style: TextStyle(
+                      color: BracuPalette.textSecondary(context),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Attempt ID: $_vmAttemptId',
+                    style: TextStyle(
+                      color: BracuPalette.textSecondary(context),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Expires in ${_secondsLeft}s',
+                    style: TextStyle(
+                      color: BracuPalette.textSecondary(context),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => openExternalUrl(
+                        context,
+                        '${Uri.base.origin}/vm/start?attemptId=${Uri.encodeComponent(_vmAttemptId!)}',
+                        failureMessage: 'Unable to open VM login page.',
+                      ),
+                      icon: const Icon(Icons.open_in_new_rounded),
+                      label: const Text('Open VM Login Page'),
+                    ),
                   ),
                 ],
               ),
@@ -313,7 +491,10 @@ class _WebLoginPageState extends State<WebLoginPage> {
                 borderRadius: BorderRadius.circular(18),
               ),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.transparent,
                   borderRadius: BorderRadius.circular(16),

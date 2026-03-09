@@ -26,6 +26,38 @@ class WebLoginBrokerStatus {
   final bool expired;
 }
 
+class VmLoginAttempt {
+  const VmLoginAttempt({
+    required this.attemptId,
+    required this.statusPath,
+    required this.submitPath,
+    required this.expiresAtMillis,
+    required this.expiresInSeconds,
+  });
+
+  final String attemptId;
+  final String statusPath;
+  final String submitPath;
+  final int expiresAtMillis;
+  final int expiresInSeconds;
+}
+
+class VmLoginAttemptStatus {
+  const VmLoginAttemptStatus({
+    required this.attemptId,
+    required this.state,
+    required this.expiresAtMillis,
+    required this.hasPayload,
+  });
+
+  final String attemptId;
+  final String state;
+  final int expiresAtMillis;
+  final bool hasPayload;
+
+  bool get ready => state == 'ready' && hasPayload;
+}
+
 class WebLoginBrokerService {
   static const Duration _timeout = Duration(seconds: 12);
   final http.Client _client;
@@ -35,6 +67,7 @@ class WebLoginBrokerService {
 
   String get _origin => kIsWeb ? Uri.base.origin : ApiConfig.webLoginBrokerBase;
   String get _base => kIsWeb ? '$_origin/api' : ApiConfig.webLoginBrokerBase;
+  String get _vmBase => kIsWeb ? _origin : ApiConfig.webLoginBrokerBase;
 
   Future<WebLoginBrokerSession> createSession() async {
     final response = await _client
@@ -196,7 +229,9 @@ class WebLoginBrokerService {
         )
         .timeout(_timeout);
     if (response.statusCode == 404) {
-      throw Exception('Session logout is not available on current server build');
+      throw Exception(
+        'Session logout is not available on current server build',
+      );
     }
     if (response.statusCode != 200) {
       throw Exception('Unable to revoke web session');
@@ -215,10 +250,92 @@ class WebLoginBrokerService {
         )
         .timeout(_timeout);
     if (response.statusCode == 404) {
-      throw Exception('Session logout is not available on current server build');
+      throw Exception(
+        'Session logout is not available on current server build',
+      );
     }
     if (response.statusCode != 200) {
       throw Exception('Unable to revoke all web sessions');
     }
+  }
+
+  Future<VmLoginAttempt> createVmAttempt({String? studentEmail}) async {
+    final response = await _client
+        .post(
+          Uri.parse('$_vmBase/vm/attempt'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store',
+          },
+          body: jsonEncode({
+            if ((studentEmail ?? '').trim().isNotEmpty)
+              'studentEmail': studentEmail!.trim().toLowerCase(),
+          }),
+        )
+        .timeout(_timeout);
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception('Unable to start VM login');
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return VmLoginAttempt(
+      attemptId: '${json['attemptId'] ?? ''}',
+      statusPath: '${json['statusPath'] ?? ''}',
+      submitPath: '${json['submitPath'] ?? ''}',
+      expiresAtMillis: (json['expiresAt'] as num?)?.toInt() ?? 0,
+      expiresInSeconds: (json['expiresInSeconds'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  Future<VmLoginAttemptStatus> getVmAttemptStatus(String attemptId) async {
+    final response = await _client
+        .get(
+          Uri.parse(
+            '$_vmBase/vm/attempt/$attemptId'
+            '?_ts=${DateTime.now().millisecondsSinceEpoch}',
+          ),
+          headers: {'Cache-Control': 'no-store'},
+        )
+        .timeout(_timeout);
+    if (response.statusCode != 200) {
+      throw Exception('Unable to check VM login status');
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return VmLoginAttemptStatus(
+      attemptId: '${json['attemptId'] ?? attemptId}',
+      state: '${json['state'] ?? ''}',
+      expiresAtMillis: (json['expiresAt'] as num?)?.toInt() ?? 0,
+      hasPayload: json['hasPayload'] == true,
+    );
+  }
+
+  Future<WebLoginApprovePayload> consumeVmAttempt(String attemptId) async {
+    final response = await _client
+        .post(
+          Uri.parse('$_vmBase/vm/attempt/$attemptId/consume'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store',
+          },
+        )
+        .timeout(_timeout);
+    if (response.statusCode != 200) {
+      throw Exception('Unable to complete VM login');
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return WebLoginApprovePayload(
+      studentEmail: '${json['studentEmail'] ?? ''}',
+      studentId: '${json['studentId'] ?? ''}',
+      accessToken: '${json['accessToken'] ?? ''}',
+      refreshToken: '${json['refreshToken'] ?? ''}',
+      sessionExpiresAtMillis:
+          (json['sessionExpiresAt'] as num?)?.toInt() ??
+          DateTime.utc(2100, 1, 1).millisecondsSinceEpoch,
+      webSessionId: '${json['webSessionId'] ?? ''}'.trim().isEmpty
+          ? null
+          : '${json['webSessionId']}',
+      webSessionToken: '${json['webSessionToken'] ?? ''}'.trim().isEmpty
+          ? null
+          : '${json['webSessionToken']}',
+    );
   }
 }

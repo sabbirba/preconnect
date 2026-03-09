@@ -123,6 +123,8 @@ class ApiClient {
 
   Future<bool> _ensureWebSessionActive() async {
     if (!kIsWeb) return true;
+    final loginMode = await WebLoginSessionStore.getLoginMode();
+    if (loginMode == 'vm') return true;
     final now = DateTime.now();
     if (_lastWebSessionCheckedAt != null &&
         now.difference(_lastWebSessionCheckedAt!) <= _webSessionCheckTtl) {
