@@ -219,7 +219,20 @@ def _is_real_content_url(url: str, *, kind: str) -> bool:
     if kind == 'news':
         return '/news/' in path and '/news-archive' not in path
     if kind == 'announcement':
-        return ('/news/' in path or '/announcement' in path) and '/news-archive' not in path
+        if '/news-archive' in path:
+            return False
+        if path in {'', '/'}:
+            return False
+        blocked = (
+            '/announcements',
+            '/apply-now',
+            '/admissions',
+            '/academic-dates',
+            '/students-transport-service',
+            '/contact',
+            '/career',
+        )
+        return not any(block in path for block in blocked)
     return True
 
 
@@ -234,6 +247,25 @@ def _is_real_page_text(text: str) -> bool:
         'news archive | page',
     )
     return not any(marker in lower for marker in bad_markers)
+
+
+def _archive_entry_from_anchor(anchor, base_url: str):
+    href = anchor.get('href', '').strip()
+    title = ' '.join(anchor.get_text(' ', strip=True).split())
+    if not href or not title:
+        return None
+    url = urljoin(base_url, href)
+    parent = anchor
+    for _ in range(3):
+        if parent.parent is None:
+            break
+        parent = parent.parent
+    message = ' '.join(parent.get_text(' ', strip=True).split()) if parent else title
+    published_date = None
+    match = re.search(r'([A-Z][a-z]+ \d{1,2}(?:st|nd|rd|th)?(?:, \d{4})?)', message)
+    if match:
+        published_date = parse_date_to_iso(match.group(1), ('%B %d, %Y', '%B %d %Y'), strip_ordinal=True)
+    return {'title': title, 'url': url, 'message': message, 'published_date': published_date}
 
 
 def fetch_rendered_page(url: str, *, timeout: int = 10, wait_for_selector: Optional[str] = None) -> str:
@@ -302,50 +334,27 @@ def fetch_cloudflare_page(url: str, *, timeout: int = 30) -> FetchResult:
 def scrape_announcements():
     existing = _load_json('announcements.json', [])
     seen = {item.get('url') for item in existing}
-    discovered = []
-    for page in range(0, 12):
-        fetched = fetch_cloudflare_page(f'{BASE_URL}/news-archive/announcements?page={page}', timeout=30)
+    for page in range(1, 12):
+        fetched = fetch_cloudflare_page(f'{BASE_URL}/announcements?page={page}', timeout=30)
         content = fetched.content
         if not content:
             break
         soup = BeautifulSoup(content, 'html.parser')
-        page_links = set()
-        for anchor in soup.select('article a[href], .views-row a[href], .view-content a[href], h2 a[href], h3 a[href], h4 a[href], h5 a[href]'):
-            href = anchor.get('href', '').strip()
-            text = anchor.get_text(' ', strip=True)
-            if not text:
-                continue
-            if 'please wait while your request is being verified' in text.lower():
-                continue
-            if href.startswith('/'):
-                full = urljoin(BASE_URL, href)
-                if _is_real_content_url(full, kind='announcement'):
-                    page_links.add(full)
-        if not page_links:
+        page_items = []
+        for anchor in soup.select('.view-content a[href], .views-row a[href], article a[href], h2 a[href], h3 a[href], h4 a[href], h5 a[href]'):
+            item = _archive_entry_from_anchor(anchor, BASE_URL)
+            if item and _is_real_content_url(item['url'], kind='announcement'):
+                page_items.append(item)
+        if not page_items:
             break
-        discovered.extend(page_links)
+        for item in page_items:
+            if item['url'] in seen:
+                continue
+            existing.append(item)
+            seen.add(item['url'])
+            _save_json('announcements.json', existing)
         if not soup.find('a', string=re.compile(r'next', re.I)):
             break
-    discovered = sorted(set(discovered))
-    for full_url in discovered:
-        if full_url in seen:
-            continue
-        fetched = fetch_cloudflare_page(full_url, timeout=30)
-        linked_content = fetched.content
-        if not linked_content or not _is_real_page_text(linked_content):
-            continue
-        linked_soup = BeautifulSoup(linked_content, 'html.parser')
-        title_tag = linked_soup.select_one('h1.page-h1')
-        title = title_tag.get_text(strip=True) if title_tag else full_url.rsplit('/', 1)[-1].replace('-', ' ').strip() or 'No title'
-        message = content_to_text(linked_content)
-        if not message or not _is_real_page_text(message):
-            continue
-        images = [link for link in extract_links_from_content(linked_content, BASE_URL) if link != full_url]
-        if images:
-            message += '\nEmbedded Page Links :\n' + '\n'.join(images)
-        existing.append({'title': title, 'url': full_url, 'message': message, 'published_date': _parse_announcements_date(linked_soup)})
-        seen.add(full_url)
-        _save_json('announcements.json', existing)
 
 
 def _parse_announcements_date(soup):
@@ -362,59 +371,33 @@ def _parse_announcements_date(soup):
 def scrape_news():
     existing = _load_json('news.json', [])
     seen = {item.get('url') for item in existing if item.get('url')}
-    discovered = []
-    for page in range(0, 12):
+    for page in range(1, 12):
         archive_fetch = fetch_cloudflare_page(f'{BASE_URL}/news-archive?page={page}', timeout=30)
         archive_content = archive_fetch.content
         if not archive_content:
             break
         soup = BeautifulSoup(archive_content, 'html.parser')
-        page_links = set()
-        for anchor in soup.select('article a[href], .views-row a[href], .view-content a[href], h2 a[href], h3 a[href], h4 a[href], h5 a[href]'):
-            href = anchor.get('href', '').strip()
-            text = anchor.get_text(' ', strip=True)
-            if not text:
-                continue
-            if 'please wait while your request is being verified' in text.lower():
-                continue
-            if href.startswith('/') or href.startswith('http'):
-                full = urljoin(BASE_URL, href)
-                if _is_real_content_url(full, kind='news'):
-                    page_links.add(full)
-        if not page_links:
+        page_items = []
+        for anchor in soup.select('.view-content a[href], .views-row a[href], article a[href], h2 a[href], h3 a[href], h4 a[href], h5 a[href]'):
+            item = _archive_entry_from_anchor(anchor, BASE_URL)
+            if item and _is_real_content_url(item['url'], kind='news'):
+                page_items.append(item)
+        if not page_items:
             break
-        discovered.extend(page_links)
+        for item in page_items:
+            if item['url'] in seen:
+                continue
+            existing.append({
+                'title': item['title'],
+                'url': item['url'],
+                'message': item['message'],
+                'image_url': [],
+                'published_date': item['published_date'],
+            })
+            seen.add(item['url'])
+            _save_json('news.json', existing)
         if not soup.find('a', string=re.compile(r'next', re.I)):
             break
-    discovered = sorted(set(discovered))
-    if not discovered:
-        text = content_to_text(fetch_cloudflare_page(f'{BASE_URL}/news-archive?page=0', timeout=30).content)
-        for line in text.splitlines():
-            line = line.strip()
-            if '】' in line and not line.lower().startswith('publish date:'):
-                title = line.split('】', 1)[-1].strip()
-                slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
-                if slug:
-                    discovered.append(f'{BASE_URL}/news/{slug}')
-    for url in discovered:
-        if url in seen:
-            continue
-        fetched = fetch_cloudflare_page(url, timeout=30)
-        page_content = fetched.content
-        if not page_content or not _is_real_page_text(page_content):
-            continue
-        soup = BeautifulSoup(page_content, 'html.parser')
-        h1 = soup.select_one('h1.page-h1') or soup.select_one('h1')
-        title = h1.get_text(strip=True) if h1 else (soup.title.get_text(strip=True) if soup.title else url.rsplit('/', 1)[-1])
-        meta_pub = soup.find('meta', attrs={'property': 'article:published_time'})
-        published_date = parse_published_iso_date(meta_pub.get('content').strip()) if meta_pub and meta_pub.get('content') else None
-        text = content_to_text(page_content)
-        if not text or not _is_real_page_text(text):
-            continue
-        images = [link for link in extract_links_from_content(page_content, BASE_URL) if re.search(r'\.(jpg|jpeg|png|gif|webp|svg)$', link, re.I)]
-        existing.append({'title': title, 'url': url, 'message': text, 'image_url': images, 'published_date': published_date})
-        seen.add(url)
-        _save_json('news.json', existing)
 
 
 def scrape_academics():
@@ -480,13 +463,6 @@ def scrape_transport():
                 schedule_url = urljoin(BASE_URL, schedule_url)
     if not schedule_url:
         return
-    pdf_target = PDF_DIR / 'transport.pdf'
-    try:
-        request = Request(schedule_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urlopen(request, timeout=45) as response:
-            pdf_target.write_bytes(response.read())
-    except Exception:
-        pass
     _save_json('transport.json', [
         {
             'route_name': 'Transport Service',
@@ -497,48 +473,33 @@ def scrape_transport():
 
 
 def scrape_exam_pdf():
-    existing_pdf = next((path for path in sorted(PDF_DIR.glob('*.pdf')) if path.is_file()), None)
-    if existing_pdf:
-        return 0
-
-    candidate_pages = [
-        BASE_URL,
-        f'{BASE_URL}/academic-dates',
-        f'{BASE_URL}/news-archive?page=0',
-        f'{BASE_URL}/news-archive/announcements?page=0',
-    ]
+    PDF_DIR.mkdir(parents=True, exist_ok=True)
+    target = PDF_DIR / 'exam.pdf'
     pdf_url = None
-    for page_url in candidate_pages:
-        fetched = fetch_cloudflare_page(page_url, timeout=45)
-        content = fetched.content
-        if not content:
-            continue
+
+    fetched = fetch_cloudflare_page(BASE_URL, timeout=45)
+    content = fetched.content
+    if content:
         for link in extract_links_from_content(content, BASE_URL):
             lower = link.lower()
             if 'exam' in lower and lower.endswith('.pdf'):
                 pdf_url = link
                 break
-            if 'exam-schedule' in lower and '.pdf' in lower:
-                pdf_url = link
-                break
-        if pdf_url:
-            break
-        soup = BeautifulSoup(content, 'html.parser')
-        for anchor in soup.find_all('a', href=True):
-            href = anchor.get('href', '').strip()
-            text = anchor.get_text(' ', strip=True).lower()
-            if 'exam' in href.lower() and href.lower().endswith('.pdf'):
-                pdf_url = urljoin(BASE_URL, href)
-                break
-            if 'exam' in text and href.lower().endswith('.pdf'):
-                pdf_url = urljoin(BASE_URL, href)
-                break
-        if pdf_url:
-            break
+        if not pdf_url:
+            soup = BeautifulSoup(content, 'html.parser')
+            for anchor in soup.find_all('a', href=True):
+                href = anchor.get('href', '').strip()
+                text = anchor.get_text(' ', strip=True).lower()
+                if 'exam' in href.lower() and href.lower().endswith('.pdf'):
+                    pdf_url = urljoin(BASE_URL, href)
+                    break
+                if 'exam' in text and href.lower().endswith('.pdf'):
+                    pdf_url = urljoin(BASE_URL, href)
+                    break
+
     if not pdf_url:
         return 0
 
-    target = PDF_DIR / 'exam.pdf'
     try:
         request = Request(pdf_url, headers={'User-Agent': 'Mozilla/5.0'})
         with urlopen(request, timeout=60) as response:
@@ -638,7 +599,7 @@ def get_transport(route_id: Optional[int] = None):
 def main() -> int:
     if not _cloudflare_configured():
         print('Cloudflare credentials not found. Check web/scraper/.env or your shell environment.', flush=True)
-    scrape_only = '--scrape-only' in sys.argv or '--no-api' in sys.argv
+    serve_api = '--serve' in sys.argv or '--api' in sys.argv
     steps = [
         ('init', lambda: (_init_data() or 0)),
         ('announcements', scrape_announcements),
@@ -654,7 +615,7 @@ def main() -> int:
         if code != 0:
             print(f'Step failed with exit code {code}: {label}', flush=True)
             return code
-    if scrape_only:
+    if not serve_api:
         return 0
     print(f'[{len(steps) + 1}/{len(steps) + 1}] Running api...', flush=True)
     code = subprocess.run(
