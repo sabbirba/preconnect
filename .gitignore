@@ -38,8 +38,6 @@ public/*
 
 # Web related
 /web/server/
-/web/scapper/data/
-/web/scapper/exam schedule pdfs/
 
 # Symbolication related
 app.*.symbols
@@ -89,9 +87,7 @@ chruby-0.3.9
 **/macos/**/Flutter/GeneratedPluginRegistrant.swift
 **/macos/**/Flutter/ephemeral/
 **/macos/**/Pods/
+web/scraper/data
 
 # Crashlytics
 crashlytics-build.properties
-
-# Others
-/web/scapper/

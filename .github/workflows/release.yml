@@ -176,6 +176,52 @@ jobs:
           accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
 
+  scrape-release:
+    name: Scraper Release
+    needs: [prepare-version, create-release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      CF_BROWSER_RENDERING_TOKEN: ${{ secrets.CF_BROWSER_RENDERING_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install scraper deps
+        working-directory: web/scraper
+        run: |
+          python -m pip install --upgrade pip
+          pip install fastapi uvicorn beautifulsoup4 lxml
+
+      - name: Run scraper
+        working-directory: web/scraper
+        run: python3 run.py --scrape-only
+
+      - name: Upload Scraper Release Asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION_TAG="${{ needs.create-release.outputs.release_tag }}"
+          mkdir -p artifacts
+          for file in web/scraper/data/*.json; do
+            base="$(basename "$file")"
+            cp "$file" "artifacts/preconnect-${VERSION_TAG}-${base}"
+          done
+          if [ -d web/scraper/pdf ] && [ -n "$(find web/scraper/pdf -name '*.pdf' -print -quit)" ]; then
+            (cd web/scraper/pdf && zip -r "$GITHUB_WORKSPACE/artifacts/preconnect-${VERSION_TAG}-pdf.zip" .)
+          fi
+          gh release upload "${{ needs.create-release.outputs.release_tag }}" artifacts/*.json --clobber
+          if [ -f artifacts/preconnect-${VERSION_TAG}-pdf.zip ]; then
+            gh release upload "${{ needs.create-release.outputs.release_tag }}" artifacts/preconnect-${VERSION_TAG}-pdf.zip --clobber
+          fi
+
   build-platforms:
     name: Build (${{ matrix.platform }})
     needs: [prepare-version, create-release]
