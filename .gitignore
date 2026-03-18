@@ -38,6 +38,8 @@ public/*
 
 # Web related
 /web/server/
+/web/scapper/data/
+/web/scapper/exam schedule pdfs/
 
 # Symbolication related
 app.*.symbols
@@ -90,3 +92,6 @@ chruby-0.3.9
 
 # Crashlytics
 crashlytics-build.properties
+
+# Others
+/Users/sabbirba10/Documents/Code/preconnect/web/scapper/data
