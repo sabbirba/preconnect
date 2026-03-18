@@ -227,7 +227,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
 
     return BracuPageScaffold(
       title: 'Set Alarms',
-      subtitle: 'Class Reminders',
+      subtitle: 'Class Reminder',
       icon: Icons.alarm_outlined,
       body: FutureBuilder<_AlarmData>(
         future: _futureData,
