@@ -2,4 +2,4 @@ cloudscraper==1.2.71
 beautifulsoup4==4.14.3
 lxml==6.0.2
 pdfplumber==0.11.8
-requests==2.32.3
+requests==2.33.0
