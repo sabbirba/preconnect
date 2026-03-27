@@ -1,0 +1,5 @@
+http://localhost:8000/announcements
+http://localhost:8000/academic-dates
+http://localhost:8000/news
+http://localhost:8000/transport
+http://localhost:8000/people

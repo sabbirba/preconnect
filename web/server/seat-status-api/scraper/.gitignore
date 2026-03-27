@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.Python
+.venv/
+venv/
+env/
+
+# Local app data
+data/**
+pdf/**
+
+# Editor / OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100/
+.Trashes/
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/

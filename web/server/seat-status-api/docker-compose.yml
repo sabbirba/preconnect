@@ -1,0 +1,44 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      PORT: ${PORT:-8080}
+      DATA_DIR: /app/data
+      SCRAPER_DATA_DIR: /app/scraper/data
+      ACCESS_TOKEN: ${ACCESS_TOKEN:-}
+      REFRESH_TOKEN: ${REFRESH_TOKEN:-}
+      FCM_PROJECT_ID: ${FCM_PROJECT_ID:-preconnect-bracu}
+      FCM_SERVICE_ACCOUNT_JSON: ${FCM_SERVICE_ACCOUNT_JSON:-}
+      FCM_SERVICE_ACCOUNT_FILE: ${FCM_SERVICE_ACCOUNT_FILE:-}
+      PUSH_ALERTS_ENABLED: ${PUSH_ALERTS_ENABLED:-true}
+    ports:
+      - "${PORT:-8080}:8080"
+    volumes:
+      - seat_status_data:/app/data
+      - scraper_data:/app/scraper/data
+      - scraper_pdf:/app/scraper/pdf
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  scraper:
+    build:
+      context: .
+      dockerfile: scraper/Dockerfile
+    environment:
+      SCRAPER_INTERVAL_SECONDS: ${SCRAPER_INTERVAL_SECONDS:-21600}
+    volumes:
+      - scraper_data:/app/scraper/data
+      - scraper_pdf:/app/scraper/pdf
+    restart: unless-stopped
+
+volumes:
+  seat_status_data:
+  scraper_data:
+  scraper_pdf:

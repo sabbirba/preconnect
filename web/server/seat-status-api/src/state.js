@@ -1,0 +1,51 @@
+export function createServerState({ config, etagFor }) {
+  return {
+    authState: {
+      accessToken: config.initialAccessToken.trim(),
+      refreshToken: config.initialRefreshToken.trim(),
+      accessTokenExpiresAtMs: 0,
+      refreshInFlight: null,
+    },
+    seatMapCache: {
+      value: null,
+      serialized: 'null',
+      etag: etagFor(null),
+      expiresAt: 0,
+      refreshPromise: null,
+      lastFetchedAt: 0,
+    },
+    sectionDetailsCache: new Map(),
+    staffByInitialCache: new Map(),
+    coursePrerequisitesCache: new Map(),
+    calendarCache: new Map(),
+    ramadanCache: {
+      value: null,
+      serialized: 'null',
+      etag: etagFor(null),
+      expiresAt: 0,
+      refreshPromise: null,
+    },
+    allSectionsCache: {
+      value: null,
+      serialized: 'null',
+      etag: etagFor(null),
+      seatMapHash: '',
+      seatMapSnapshot: {},
+      builtAtMs: 0,
+      refreshPromise: null,
+    },
+    webLoginSessions: new Map(),
+    webActiveSessions: new Map(),
+    pushState: {
+      devices: new Map(),
+      subscriptions: new Map(),
+      persistPromise: null,
+      loaded: false,
+      auth: null,
+    },
+    seatAlertLastMap: {},
+    seatStatusSubscribers: new Set(),
+    seatStreamLastHash: '',
+    seatStreamTimer: null,
+  };
+}

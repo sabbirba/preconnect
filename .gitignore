@@ -37,7 +37,22 @@ public/*
 .wrangler/
 
 # Web related
-/web/server/
+/web/server/*
+!/web/server/seat-status-api/
+/web/server/seat-status-api/*
+!/web/server/seat-status-api/.github/
+!/web/server/seat-status-api/.github/**
+!/web/server/seat-status-api/src/
+!/web/server/seat-status-api/src/**
+!/web/server/seat-status-api/scraper/
+!/web/server/seat-status-api/scraper/**
+!/web/server/seat-status-api/Dockerfile
+!/web/server/seat-status-api/docker-compose.yml
+!/web/server/seat-status-api/package.json
+!/web/server/seat-status-api/package-lock.json
+!/web/server/seat-status-api/requirements.txt
+!/web/server/seat-status-api/COOLIFY.md
+!/web/server/seat-status-api/.env.example
 
 # Symbolication related
 app.*.symbols

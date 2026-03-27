@@ -1,0 +1,6 @@
+fastapi==0.128.8
+uvicorn==0.39.0
+cloudscraper==1.2.71
+beautifulsoup4==4.14.3
+lxml==6.0.2
+pdfplumber==0.11.8
