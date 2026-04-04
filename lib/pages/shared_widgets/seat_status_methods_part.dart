@@ -271,9 +271,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
             Positioned.fill(
               child: ColoredBox(
                 color: Colors.black.withValues(alpha: 0.14),
-                child: const Center(
-                  child: BracuLoading(label: 'Saving seat cache...'),
-                ),
+                child: const Center(child: BracuLoading(label: 'Loading...')),
               ),
             ),
         ],

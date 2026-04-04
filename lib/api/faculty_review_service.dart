@@ -40,6 +40,9 @@ class FacultySummary {
     this.reviewSummary = '',
     this.reviewInsights = const <String>[],
     this.sourceLabel = '',
+    this.voteScore = 0,
+    this.upvotes = 0,
+    this.downvotes = 0,
   });
 
   final int facultyId;
@@ -51,6 +54,9 @@ class FacultySummary {
   final String reviewSummary;
   final List<String> reviewInsights;
   final String sourceLabel;
+  final int voteScore;
+  final int upvotes;
+  final int downvotes;
 
   factory FacultySummary.fromJson(Map<String, dynamic> json) {
     return FacultySummary(
@@ -76,6 +82,18 @@ class FacultySummary {
               .toList() ??
           const <String>[],
       sourceLabel: '${json['sourceLabel'] ?? ''}'.trim(),
+      voteScore:
+          (json['voteScore'] as num?)?.toInt() ??
+          (json['vote_score'] as num?)?.toInt() ??
+          0,
+      upvotes:
+          (json['upvotes'] as num?)?.toInt() ??
+          (json['upVotes'] as num?)?.toInt() ??
+          0,
+      downvotes:
+          (json['downvotes'] as num?)?.toInt() ??
+          (json['downVotes'] as num?)?.toInt() ??
+          0,
     );
   }
 }
@@ -263,6 +281,9 @@ class FacultyReviewService {
           reviewSummary: '',
           reviewInsights: const <String>[],
           sourceLabel: '',
+          voteScore: 0,
+          upvotes: 0,
+          downvotes: 0,
         );
     final dbReviews = dbFeed?.reviews ?? const <FacultyReviewItem>[];
     final apiReviews = apiBundle?.reviews ?? const <FacultyReviewItem>[];
@@ -372,6 +393,21 @@ class FacultyReviewService {
             .toList() ??
         const <String>[];
     final reviewsTotal = (scoped['reviews_total'] as num?)?.toInt() ?? 0;
+    final voteScore = (scoped['vote_score'] as num?)?.toInt() ?? 0;
+    final explicitUpvotes =
+        (scoped['upvotes'] as num?)?.toInt() ??
+        (scoped['upVotes'] as num?)?.toInt() ??
+        0;
+    final explicitDownvotes =
+        (scoped['downvotes'] as num?)?.toInt() ??
+        (scoped['downVotes'] as num?)?.toInt() ??
+        0;
+    final derivedUpvotes = explicitUpvotes > 0
+        ? explicitUpvotes
+        : (voteScore > 0 ? voteScore : 0);
+    final derivedDownvotes = explicitDownvotes > 0
+        ? explicitDownvotes
+        : (voteScore < 0 ? voteScore.abs() : 0);
     final teaching = (score['teaching'] as num?)?.toDouble() ?? 0;
     final marking = (score['marking'] as num?)?.toDouble() ?? 0;
     final behavior = (score['behavior'] as num?)?.toDouble() ?? 0;
@@ -406,6 +442,9 @@ class FacultyReviewService {
       reviewSummary: reviewSummary,
       reviewInsights: reviewInsights,
       sourceLabel: reviewsTotal == 0 ? 'Facebook posts/comments' : '',
+      voteScore: voteScore,
+      upvotes: derivedUpvotes,
+      downvotes: derivedDownvotes,
     );
   }
 

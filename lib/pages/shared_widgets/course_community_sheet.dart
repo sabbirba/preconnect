@@ -1162,104 +1162,147 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
 
   String _formatScore(num value) {
     final asDouble = value.toDouble();
-    if (asDouble <= 0) return '0.0';
+    if (asDouble <= 0) return '0';
     final rounded = asDouble.roundToDouble();
     if ((asDouble - rounded).abs() < 0.05) {
-      return '${rounded.toInt()}.0';
+      return '${rounded.toInt()}';
     }
     return asDouble.toStringAsFixed(1);
   }
 
-  Widget _buildScoreBadge(
-    BuildContext context, {
-    required String label,
-    required num value,
-    bool emphasize = false,
-  }) {
-    final bg = emphasize
-        ? BracuPalette.primary.withValues(alpha: 0.16)
-        : BracuPalette.primary.withValues(alpha: 0.10);
-    final fg = emphasize
-        ? BracuPalette.primary
-        : BracuPalette.textSecondary(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: BracuPalette.primary.withValues(alpha: 0.20)),
-      ),
-      child: Text(
-        '$label ${_formatScore(value)}',
-        style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w700),
-      ),
-    );
-  }
-
-  Widget _buildScoreBadgeWrap(
-    BuildContext context, {
-    required num overall,
+  String _compactMetricLine({
     required num teaching,
     required num fairness,
     required num behavior,
-    bool includeOverall = true,
   }) {
-    final hasAnyScore =
-        _hasPositiveScore(overall) ||
-        _hasPositiveScore(teaching) ||
-        _hasPositiveScore(fairness) ||
-        _hasPositiveScore(behavior);
-    if (!hasAnyScore) return const SizedBox.shrink();
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    final parts = <String>[];
+    if (_hasPositiveScore(teaching)) {
+      parts.add('Teaching ${_formatScore(teaching)}');
+    }
+    if (_hasPositiveScore(fairness)) {
+      parts.add('Fairness ${_formatScore(fairness)}');
+    }
+    if (_hasPositiveScore(behavior)) {
+      parts.add('Behavior ${_formatScore(behavior)}');
+    }
+    return parts.join(' • ');
+  }
+
+  Widget _buildReviewSectionHeader({
+    required BuildContext context,
+    required String title,
+    required String overallText,
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) {
+    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = BracuPalette.textSecondary(context);
+    return Row(
       children: [
-        if (includeOverall && _hasPositiveScore(overall))
-          _buildScoreBadge(
-            context,
-            label: 'Overall',
-            value: overall,
-            emphasize: true,
+        Expanded(
+          child: RichText(
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            text: TextSpan(
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+              children: [
+                TextSpan(text: title),
+                if (overallText.trim().isNotEmpty) ...[
+                  TextSpan(
+                    text: ' • ',
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  TextSpan(
+                    text: overallText.trim(),
+                    style: const TextStyle(
+                      color: BracuPalette.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
-        if (_hasPositiveScore(teaching))
-          _buildScoreBadge(context, label: 'Teaching', value: teaching),
-        if (_hasPositiveScore(fairness))
-          _buildScoreBadge(context, label: 'Fairness', value: fairness),
-        if (_hasPositiveScore(behavior))
-          _buildScoreBadge(context, label: 'Behavior', value: behavior),
+        ),
+        if (actionLabel != null && onAction != null)
+          TextButton(onPressed: onAction, child: Text(actionLabel)),
       ],
     );
   }
 
-  Widget _buildCommunityReviewCard(FacultyReviewItem review) {
+  TextStyle _reviewBodyStyle(BuildContext context) {
+    return TextStyle(
+      color: BracuPalette.textPrimary(context),
+      fontSize: 13,
+      fontWeight: FontWeight.w500,
+    );
+  }
+
+  TextStyle _reviewMetaStyle(BuildContext context) {
+    return TextStyle(
+      color: BracuPalette.textSecondary(context),
+      fontSize: 12,
+      fontWeight: FontWeight.w500,
+    );
+  }
+
+  Widget _buildQuoteReviewCard({
+    required String comment,
+    required String metricLine,
+    required bool isApproved,
+  }) {
     final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
     return BracuCard(
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!review.isApproved)
-            Text(
-              'Pending approval',
-              style: TextStyle(color: textSecondary, fontSize: 11),
+          Icon(
+            Icons.format_quote_rounded,
+            size: 18,
+            color: BracuPalette.primary.withValues(alpha: 0.8),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  comment.trim(),
+                  style: _reviewBodyStyle(context).copyWith(color: textPrimary),
+                ),
+                if (metricLine.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(metricLine, style: _reviewMetaStyle(context)),
+                ],
+                if (!isApproved) ...[
+                  const SizedBox(height: 4),
+                  Text('Pending approval', style: _reviewMetaStyle(context)),
+                ],
+              ],
             ),
-          if (review.comment.trim().isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              review.comment.trim(),
-              style: TextStyle(color: textPrimary, fontSize: 13),
-            ),
-          ],
-          const SizedBox(height: 8),
-          _buildScoreBadgeWrap(
-            context,
-            overall: review.overall,
-            teaching: review.teaching,
-            fairness: review.fairness,
-            behavior: review.behavior,
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCommunityReviewCard(FacultyReviewItem review) {
+    final metricLine = _compactMetricLine(
+      teaching: review.teaching,
+      fairness: review.fairness,
+      behavior: review.behavior,
+    );
+    return _buildQuoteReviewCard(
+      comment: review.comment,
+      metricLine: metricLine,
+      isApproved: review.isApproved,
     );
   }
 
@@ -1282,10 +1325,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
       return reviewSeenKeys.add(key);
     }).toList();
     final nonEmptyReviews = allReviews
-        .where(
-          (review) =>
-              review.comment.trim().isNotEmpty,
-        )
+        .where((review) => review.comment.trim().isNotEmpty)
         .toList();
     final displayReviews = _showAllReviews
         ? nonEmptyReviews
@@ -1299,6 +1339,12 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
         : allMaterials.take(3).toList();
     final totalReviews = _reviewFeed?.faculty.stats.reviewsTotal ?? 0;
     final stats = _reviewFeed?.faculty.stats;
+    final overallScore = stats?.overall ?? 0;
+    final metricLine = _compactMetricLine(
+      teaching: stats?.teaching ?? 0,
+      fairness: stats?.fairness ?? 0,
+      behavior: stats?.behavior ?? 0,
+    );
     final hasSummaryScores =
         (stats?.overall ?? 0) > 0 ||
         (stats?.teaching ?? 0) > 0 ||
@@ -1308,6 +1354,10 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
         .trim();
     final facultySourceLabel = ((_reviewFeed?.faculty.sourceLabel ?? '')
         .trim());
+    final voteScore = _reviewFeed?.faculty.voteScore ?? 0;
+    final upvotes = _reviewFeed?.faculty.upvotes ?? 0;
+    final downvotes = _reviewFeed?.faculty.downvotes ?? 0;
+    final hasVoteData = voteScore != 0 || upvotes > 0 || downvotes > 0;
     final showSourceLine = totalReviews == 0 && facultySourceLabel.isNotEmpty;
     final hasSummaryCardContent =
         hasSummaryScores || showSourceLine || facultySummaryText.isNotEmpty;
@@ -1315,25 +1365,58 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
         hasSummaryCardContent || facultySummaryText.isNotEmpty;
     final hasReviews = totalReviews > 0 || nonEmptyReviews.isNotEmpty;
     final localDraft = _localDraft;
+    final facultyFullName = (_reviewFeed?.faculty.name ?? '').trim();
+    final reviewHeaderTitle = facultyFullName.isNotEmpty
+        ? facultyFullName
+        : (_facultyInitial.isNotEmpty ? _facultyInitial : 'Faculty Reviews');
+    final overallHeaderText = _hasPositiveScore(overallScore)
+        ? '${_formatScore(overallScore)}/5'
+        : '';
+    final yourOverallHeaderText = localDraft != null && localDraft.overall > 0
+        ? '${_formatScore(localDraft.overall)}/5'
+        : '';
     return ListView(
       controller: sheetScroll,
       children: [
         _buildSummaryCard(),
+        if (localDraft != null) ...[
+          const SizedBox(height: 12),
+          _buildReviewSectionHeader(
+            context: context,
+            title: 'Your Review',
+            overallText: yourOverallHeaderText,
+            actionLabel: widget.showActions ? 'Edit' : null,
+            onAction: widget.showActions && !_busyWriteAction
+                ? _writeReview
+                : null,
+          ),
+          const SizedBox(height: 8),
+          _buildQuoteReviewCard(
+            comment: localDraft.comment,
+            metricLine: _compactMetricLine(
+              teaching: localDraft.teaching,
+              fairness: localDraft.fairness,
+              behavior: localDraft.behavior,
+            ),
+            isApproved: true,
+          ),
+        ],
         const SizedBox(height: 12),
-        Row(
-          children: [
-            const Expanded(child: BracuSectionTitle(title: 'Faculty Reviews')),
-            if (widget.showActions)
-              TextButton(
-                onPressed: _busyWriteAction ? null : _writeReview,
-                child: Text(_localDraft == null ? 'Write' : 'Edit'),
-              ),
-          ],
+        _buildReviewSectionHeader(
+          context: context,
+          title: reviewHeaderTitle,
+          overallText: overallHeaderText,
+          actionLabel: widget.showActions
+              ? (_localDraft == null ? 'Write' : 'Edit')
+              : null,
+          onAction: widget.showActions && !_busyWriteAction
+              ? _writeReview
+              : null,
         ),
         if (_reviewsLoading)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 14),
-            child: BracuLoading(label: 'Loading reviews...'),
+            child: BracuLoading(label: 'Loading...'),
           )
         else if (_reviewsError != null)
           BracuCard(
@@ -1349,29 +1432,30 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildScoreBadgeWrap(
-                      context,
-                      overall: _reviewFeed?.faculty.stats.overall ?? 0,
-                      teaching: _reviewFeed?.faculty.stats.teaching ?? 0,
-                      fairness: _reviewFeed?.faculty.stats.fairness ?? 0,
-                      behavior: _reviewFeed?.faculty.stats.behavior ?? 0,
-                    ),
+                    if (metricLine.isNotEmpty) ...[
+                      Text(metricLine, style: _reviewMetaStyle(context)),
+                    ],
+                    if (hasVoteData) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Votes $voteScore • Upvote $upvotes • Downvote $downvotes',
+                        style: _reviewMetaStyle(context),
+                      ),
+                    ],
                     if (showSourceLine) ...[
                       const SizedBox(height: 8),
                       Text(
                         'Source: $facultySourceLabel',
-                        style: TextStyle(
-                          color: textSecondary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: _reviewMetaStyle(context),
                       ),
                     ],
                     if (facultySummaryText.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Text(
                         facultySummaryText,
-                        style: TextStyle(color: textSecondary, fontSize: 12),
+                        style: _reviewBodyStyle(
+                          context,
+                        ).copyWith(color: textSecondary),
                       ),
                     ],
                   ],
@@ -1400,7 +1484,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
             BracuCard(
               child: Text(
                 'No reviews yet for this faculty.',
-                style: TextStyle(color: textSecondary, fontSize: 12),
+                style: _reviewMetaStyle(context),
               ),
             ),
         ],
@@ -1418,7 +1502,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
         if (_materialsLoading)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 14),
-            child: BracuLoading(label: 'Loading materials...'),
+            child: BracuLoading(label: 'Loading...'),
           )
         else if (_materialsError != null)
           BracuCard(

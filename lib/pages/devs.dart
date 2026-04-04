@@ -197,8 +197,6 @@ class _DevsPageState extends State<DevsPage> {
                     avatarUrl: 'https://github.com/sabbirba.png',
                     primaryLabel: 'GitHub',
                     primaryUrl: 'https://github.com/sabbirba',
-                    secondaryLabel: 'Facebook',
-                    secondaryUrl: 'https://facebook.com/Sabbirba10',
                   ),
                 ],
               ),
@@ -353,8 +351,6 @@ class _DevGridTile extends StatelessWidget {
     required this.avatarUrl,
     required this.primaryLabel,
     required this.primaryUrl,
-    this.secondaryLabel = '',
-    this.secondaryUrl = '',
     this.keepVisibleInCollapsed = false,
   });
 
@@ -363,8 +359,6 @@ class _DevGridTile extends StatelessWidget {
   final String avatarUrl;
   final String primaryLabel;
   final String primaryUrl;
-  final String secondaryLabel;
-  final String secondaryUrl;
   final bool keepVisibleInCollapsed;
 
   Future<void> _openUrl(BuildContext context, String rawUrl) async {
@@ -428,11 +422,6 @@ class _DevGridTile extends StatelessWidget {
                 label: primaryLabel,
                 onTap: () => _openUrl(context, primaryUrl),
               ),
-              if (secondaryUrl.isNotEmpty)
-                _LinkChip(
-                  label: secondaryLabel,
-                  onTap: () => _openUrl(context, secondaryUrl),
-                ),
             ],
           ),
         ],
