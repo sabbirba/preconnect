@@ -304,7 +304,7 @@ Bug reports, feature requests, and ideas are welcome. Please create issues in ou
 
 ### Is this an official BRAC University app?
 
-PreConnect is an initiative run and funded by BRAC University students. It is community-driven and focused on improving daily academic workflows.
+No, PreConnect is an initiative run by BRAC University students. It is community-driven and focused on improving daily academic workflows.
 
 ### Does PreConnect store sensitive login data insecurely?
 
