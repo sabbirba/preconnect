@@ -36,19 +36,32 @@ class WebLoginBrokerService {
   String get _origin => kIsWeb ? Uri.base.origin : ApiConfig.webLoginBrokerBase;
   String get _base => kIsWeb ? '$_origin/api' : ApiConfig.webLoginBrokerBase;
 
+  Future<http.Response> _postJson({
+    required Uri uri,
+    required String body,
+  }) async {
+    final request = http.Request('POST', uri)
+      ..headers.addAll({
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+      })
+      ..body = body;
+    final streamed = await _client.send(request).timeout(_timeout);
+    return http.Response.fromStream(streamed);
+  }
+
   Future<WebLoginBrokerSession> createSession() async {
-    final response = await _client
-        .post(
-          Uri.parse('$_base/web-login/session'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-store',
-          },
-          body: jsonEncode(const <String, dynamic>{}),
-        )
-        .timeout(_timeout);
+    final response = await _postJson(
+      uri: Uri.parse('$_base/web-login/session'),
+      body: '{}',
+    );
     if (response.statusCode != 200) {
-      throw Exception('Unable to create login session');
+      final message = response.body.trim();
+      throw Exception(
+        message.isEmpty
+            ? 'Unable to create login session (${response.statusCode})'
+            : 'Unable to create login session (${response.statusCode}): $message',
+      );
     }
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     return WebLoginBrokerSession(
