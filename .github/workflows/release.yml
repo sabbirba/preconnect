@@ -171,6 +171,11 @@ jobs:
         shell: bash
         run: |
           echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/preconnect-web" >> "$GITHUB_ENV"
+          SAFE_RELEASE_TAG="${{ needs.create-release.outputs.release_tag }}"
+          SAFE_RELEASE_TAG="${SAFE_RELEASE_TAG//+/-}"
+          SAFE_RELEASE_TAG="${SAFE_RELEASE_TAG//\//-}"
+          SAFE_RELEASE_TAG="${SAFE_RELEASE_TAG// /-}"
+          echo "SAFE_RELEASE_TAG=$SAFE_RELEASE_TAG" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -190,7 +195,7 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ needs.create-release.outputs.release_tag }}
+            ${{ env.IMAGE_NAME }}:${{ env.SAFE_RELEASE_TAG }}
 
   build-platforms:
     name: Build (${{ matrix.platform }})
