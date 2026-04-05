@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:preconnect/api/api_config.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -100,10 +101,11 @@ class _CachedImageState extends State<CachedImage> {
         url.startsWith('http://') || url.startsWith('https://');
 
     if (kIsWeb && isRemoteHttp) {
+      final proxiedUrl = _buildWebProxyUrl(url);
       if (!mounted) return;
       setState(() {
         _useDirectNetwork = true;
-        _networkUrl = url;
+        _networkUrl = proxiedUrl;
         _loading = false;
       });
       return;
@@ -204,5 +206,10 @@ class _CachedImageState extends State<CachedImage> {
       return widget.error ?? const SizedBox.shrink();
     }
     return widget.placeholder ?? const SizedBox.shrink();
+  }
+
+  String _buildWebProxyUrl(String url) {
+    final encoded = Uri.encodeComponent(url);
+    return '${ApiConfig.seatStatusProxyBase}/img?u=$encoded';
   }
 }
