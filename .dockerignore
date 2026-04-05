@@ -1,9 +1,0 @@
-.git
-.github
-.dart_tool
-.idea
-.vscode
-build
-node_modules
-web/server
-*.log

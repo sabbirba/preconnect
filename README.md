@@ -181,21 +181,6 @@ Main flow on push to `main`:
 4. Uploads web release artifact for deployment
 5. Publishes Android AAB to Google Play Open Beta Testing when required secrets are available
 
-## Web Deploy
-
-This repo includes production-ready web hosting config for VPS web service:
-
-- `Dockerfile` builds Flutter web and serves with a Node.js server (`server.js`)
-- `server.js` provides SPA fallback and `/api` reverse proxy to `https://api.preconnect.app`
-
-Recommended web service setup:
-
-1. Create a **Web Service** from this repo
-2. Use the repo `Dockerfile` (Docker build pack)
-3. Set public domain (example: `web.preconnect.app`)
-4. Expose container port `80`
-5. Redeploy on each push to `main`
-
 ## Architecture
 
 High-level request/data flow:

@@ -127,6 +127,51 @@ jobs:
             --title "PreConnect ${{ steps.meta.outputs.release_tag }}" \
             --notes-file release-notes.md
 
+  build-web:
+    name: Build Web
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true }}
+    needs: [prepare-version, create-release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Flutter Pub Get
+        run: flutter pub get
+
+      - name: Build Web
+        run: flutter build web --release --pwa-strategy=none
+
+      - name: Remove Embedded Server Files From Web Build
+        run: rm -rf build/web/server
+
+      - name: Package Web Release
+        run: |
+          mkdir -p artifacts
+          cd build/web
+          zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-web-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
+
+      - name: Upload Web Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: web-artifacts
+          path: artifacts/*
+          if-no-files-found: error
+
+      - name: Upload Web Release Asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ needs.create-release.outputs.release_tag }}" artifacts/* --clobber
+
   build-platforms:
     name: Build (${{ matrix.platform }})
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true }}
