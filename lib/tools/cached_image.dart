@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:preconnect/api/api_config.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -210,6 +209,6 @@ class _CachedImageState extends State<CachedImage> {
 
   String _buildWebProxyUrl(String url) {
     final encoded = Uri.encodeComponent(url);
-    return '${ApiConfig.seatStatusProxyBase}/img?u=$encoded';
+    return '${Uri.base.origin}/img?u=$encoded';
   }
 }
