@@ -185,8 +185,8 @@ Main flow on push to `main`:
 
 This repo includes production-ready web hosting config for VPS web service:
 
-- `Dockerfile` builds Flutter web and serves with Nginx
-- `deploy/nginx/default.conf` includes SPA fallback and `/api` reverse proxy to `https://api.preconnect.app`
+- `Dockerfile` builds Flutter web and serves with a Node.js server (`server.js`)
+- `server.js` provides SPA fallback and `/api` reverse proxy to `https://api.preconnect.app`
 
 Recommended web service setup:
 

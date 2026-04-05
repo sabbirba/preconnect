@@ -8,11 +8,15 @@ RUN flutter pub get
 COPY . .
 RUN flutter build web --release --pwa-strategy=none
 
-FROM nginx:1.27-alpine
+FROM node:20-alpine
 
-COPY deploy/nginx/default.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/build/web /usr/share/nginx/html
+WORKDIR /app
+
+COPY server.js /app/server.js
+COPY --from=build /app/build/web /app/web
+
+ENV PORT=80
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["node", "/app/server.js"]
