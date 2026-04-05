@@ -489,7 +489,7 @@ class _MyAppState extends State<MyApp>
                 value: overlayStyle,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    if (constraints.maxWidth < 900) {
+                    if (kIsWeb || constraints.maxWidth < 900) {
                       return content;
                     }
                     const shellWidth = 420.0;
