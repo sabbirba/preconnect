@@ -13,6 +13,9 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   prepare-version:
     name: Prepare Version
@@ -141,9 +144,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Web
-        run: >
-          flutter build web
-          --pwa-strategy=none
+        run: flutter build web
 
       - name: Remove Embedded Server Files From Web Build
         run: rm -rf build/web/server

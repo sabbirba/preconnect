@@ -6,7 +6,7 @@ COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
 
 COPY . .
-RUN flutter build web --release --pwa-strategy=none
+RUN flutter build web --release
 
 FROM nginx:1.27-alpine
 

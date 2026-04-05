@@ -44,6 +44,7 @@ class WebLoginBrokerService {
             'Content-Type': 'application/json',
             'Cache-Control': 'no-store',
           },
+          body: jsonEncode(const <String, dynamic>{}),
         )
         .timeout(_timeout);
     if (response.statusCode != 200) {

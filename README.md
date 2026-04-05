@@ -252,7 +252,7 @@ Optional local release smoke checks:
 
 ```bash
 flutter build apk --release --dart-define-from-file=.env
-flutter build web --pwa-strategy=none
+flutter build web
 ```
 
 ## Seat Status Proxy
