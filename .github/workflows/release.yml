@@ -1,7 +1,9 @@
 name: Release
 
 on:
-  push:
+  pull_request:
+    types:
+      - closed
     branches:
       - main
   workflow_dispatch:
@@ -19,6 +21,7 @@ env:
 jobs:
   prepare-version:
     name: Prepare Version
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
     outputs:
       version_name: ${{ steps.version.outputs.version_name }}
@@ -67,6 +70,7 @@ jobs:
 
   create-release:
     name: Create Release
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
     needs: prepare-version
     permissions:
@@ -125,6 +129,7 @@ jobs:
 
   deploy-web:
     name: Build Web
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true }}
     needs: [prepare-version, create-release]
     runs-on: ubuntu-latest
     permissions:
@@ -198,8 +203,74 @@ jobs:
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ env.SAFE_RELEASE_TAG }}
 
+  deploy-web-vps:
+    name: Deploy Web To VPS
+    if: ${{ (github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true) && secrets.VPS_HOST != '' && secrets.VPS_USER != '' && secrets.VPS_SSH_PRIVATE_KEY != '' }}
+    needs: [prepare-version, deploy-web]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download Web Artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: web-artifacts
+          path: artifacts
+
+      - name: Extract Web Artifact
+        shell: bash
+        run: |
+          mkdir -p web-build
+          ZIP_FILE="$(find artifacts -type f -name '*.zip' | head -n1)"
+          if [ -z "$ZIP_FILE" ]; then
+            echo "Web artifact zip not found."
+            exit 1
+          fi
+          unzip -o "$ZIP_FILE" -d web-build
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+
+      - name: Add VPS host key
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          PORT="${{ secrets.VPS_PORT }}"
+          if [ -z "$PORT" ]; then PORT=22; fi
+          ssh-keyscan -p "$PORT" -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Ensure release directories exist
+        shell: bash
+        run: |
+          PORT="${{ secrets.VPS_PORT }}"
+          if [ -z "$PORT" ]; then PORT=22; fi
+          ssh -p "$PORT" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            "mkdir -p /var/www/preconnect-web/releases /var/www/preconnect-web/shared"
+
+      - name: Upload web build with rsync
+        shell: bash
+        run: |
+          PORT="${{ secrets.VPS_PORT }}"
+          if [ -z "$PORT" ]; then PORT=22; fi
+          RELEASE_DIR="/var/www/preconnect-web/releases/${GITHUB_SHA}"
+          ssh -p "$PORT" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "mkdir -p ${RELEASE_DIR}"
+          rsync -az --delete -e "ssh -p $PORT" \
+            web-build/ "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${RELEASE_DIR}/"
+
+      - name: Switch symlink and reload Nginx
+        shell: bash
+        run: |
+          PORT="${{ secrets.VPS_PORT }}"
+          if [ -z "$PORT" ]; then PORT=22; fi
+          RELEASE_DIR="/var/www/preconnect-web/releases/${GITHUB_SHA}"
+          ssh -p "$PORT" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            "ln -sfn ${RELEASE_DIR} /var/www/preconnect-web/current && sudo nginx -t && sudo systemctl reload nginx"
+
   build-platforms:
     name: Build (${{ matrix.platform }})
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true }}
     needs: [prepare-version, create-release]
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.allow_failure }}
@@ -458,12 +529,12 @@ jobs:
 
   publish-google-play:
     name: Publish Google Play Open Testing (Android)
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
     needs: [prepare-version, build-platforms]
     timeout-minutes: 20
     permissions:
       contents: read
-    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout
