@@ -203,7 +203,7 @@ High-level request/data flow:
 ```mermaid
 flowchart LR
   A[PreConnect Client\nAndroid/iOS/macOS/Web] --> B[PreConnect Hosted API\napi.preconnect.app]
-  B --> C[BRAC Connect APIs]
+  B --> C[BRACU Connect APIs]
   B --> D[Seat Status Cache + Stream]
   B --> E[Firebase Cloud Messaging]
   E --> A
@@ -211,7 +211,7 @@ flowchart LR
 
 Why this architecture:
 
-- Reduces direct upstream pressure on BRAC Connect APIs
+- Reduces direct upstream pressure on BRACU Connect APIs
 - Centralizes seat-status caching and real-time triggers
 - Supports push-based alerts for important seat changes
 - Improves reliability and consistency across client platforms
