@@ -34,7 +34,6 @@ android/key.properties
 .firebase/
 android/.kotlin/*
 public/*
-.wrangler/
 
 # Web related
 /web/server/

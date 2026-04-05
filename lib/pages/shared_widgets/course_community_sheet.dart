@@ -10,7 +10,6 @@ import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/shared_widgets/schedule_entry_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class CourseCommunitySheet extends StatefulWidget {
   const CourseCommunitySheet.forClass({
@@ -83,7 +82,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
   String? _reviewsError;
   String? _materialsError;
   String _currentUserName = '';
-  _LocalFacultyReviewDraft? _localDraft;
 
   String get _facultyInitial {
     final raw = (widget.faculties ?? '').trim().toUpperCase();
@@ -109,54 +107,8 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
     await Future.wait<void>(<Future<void>>[
       _loadReviews(),
       _loadMaterials(),
-      _loadLocalDraft(),
       _loadCurrentUserName(),
     ]);
-  }
-
-  String get _draftKey => 'faculty_review_draft_v1_$_facultyInitial';
-
-  Future<void> _loadLocalDraft() async {
-    final initial = _facultyInitial;
-    if (initial.isEmpty) {
-      if (!mounted) return;
-      setState(() {
-        _localDraft = null;
-      });
-      return;
-    }
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_draftKey);
-      if (!mounted) return;
-      if (raw == null || raw.trim().isEmpty) {
-        setState(() {
-          _localDraft = null;
-        });
-        return;
-      }
-      final decoded = jsonDecode(raw);
-      if (decoded is Map<String, dynamic>) {
-        setState(() {
-          _localDraft = _LocalFacultyReviewDraft.fromJson(decoded);
-        });
-      } else if (decoded is Map) {
-        setState(() {
-          _localDraft = _LocalFacultyReviewDraft.fromJson(
-            decoded.cast<String, dynamic>(),
-          );
-        });
-      } else {
-        setState(() {
-          _localDraft = null;
-        });
-      }
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _localDraft = null;
-      });
-    }
   }
 
   Future<void> _loadCurrentUserName() async {
@@ -168,17 +120,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
         _currentUserName = fullName;
       });
     } catch (_) {}
-  }
-
-  Future<void> _saveLocalDraft(_LocalFacultyReviewDraft draft) async {
-    final initial = _facultyInitial;
-    if (initial.isEmpty) return;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_draftKey, jsonEncode(draft.toJson()));
-    if (!mounted) return;
-    setState(() {
-      _localDraft = draft;
-    });
   }
 
   Future<void> _loadReviews() async {
@@ -313,22 +254,29 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
       return;
     }
 
-    final existingDraft = _localDraft;
-    _reviewCommentController.text = existingDraft?.comment ?? '';
+    final allReviews = _reviewFeed?.reviews ?? const <FacultyReviewItem>[];
+    FacultyReviewItem? myOwnedReview;
+    for (final review in allReviews) {
+      if (review.reviewId > 0 && review.canDelete == true) {
+        myOwnedReview = review;
+        break;
+      }
+    }
+    _reviewCommentController.text = myOwnedReview?.comment ?? '';
     int? overall;
     int? teaching;
     int? fairness;
     int? behavior;
-    if (existingDraft != null) {
-      overall = existingDraft.overall;
-      teaching = existingDraft.teaching;
-      fairness = existingDraft.fairness;
-      behavior = existingDraft.behavior;
+    if (myOwnedReview != null) {
+      overall = myOwnedReview.overall > 0 ? myOwnedReview.overall : null;
+      teaching = myOwnedReview.teaching > 0 ? myOwnedReview.teaching : null;
+      fairness = myOwnedReview.fairness > 0 ? myOwnedReview.fairness : null;
+      behavior = myOwnedReview.behavior > 0 ? myOwnedReview.behavior : null;
     }
 
     final result = await showBracuBottomSheet<bool>(
       context,
-      title: existingDraft == null ? 'Write' : 'Edit',
+      title: myOwnedReview == null ? 'Write' : 'Edit',
       builder: (sheetContext, textPrimary, textSecondary) {
         final sheetScroll = bracuBottomSheetScrollController(sheetContext);
         return StatefulBuilder(
@@ -410,7 +358,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                               ? () => Navigator.of(sheetContext).pop(true)
                               : null,
                           child: Text(
-                            existingDraft == null ? 'Submit' : 'Save',
+                            myOwnedReview == null ? 'Submit' : 'Save',
                           ),
                         ),
                       ),
@@ -453,19 +401,10 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
           comment: comment,
         ),
       );
-      await _saveLocalDraft(
-        _LocalFacultyReviewDraft(
-          overall: overall!,
-          teaching: teaching!,
-          fairness: fairness!,
-          behavior: behavior!,
-          comment: comment,
-        ),
-      );
       if (!mounted) return;
       showAppSnackBar(
         context,
-        existingDraft == null ? 'Review submitted' : 'Review saved',
+        myOwnedReview == null ? 'Review submitted' : 'Review saved',
       );
       await _loadReviews();
     } catch (_) {
@@ -480,58 +419,34 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
     }
   }
 
-  Future<String?> _askReason(String title) async {
-    final controller = TextEditingController();
-    final ok = await showBracuBottomSheet<bool>(
+  Future<void> _deleteReview(int reviewId) async {
+    final ok = await showBracuConfirmationDialog(
       context,
-      title: title,
-      initialChildSize: 0.56,
-      builder: (sheetContext, textPrimary, textSecondary) {
-        final sheetScroll = bracuBottomSheetScrollController(sheetContext);
-        return SingleChildScrollView(
-          controller: sheetScroll,
-          child: Column(
-            children: [
-              TextField(
-                controller: controller,
-                maxLines: 3,
-                maxLength: 300,
-                decoration: const InputDecoration(
-                  labelText: 'Reason',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(sheetContext).pop(false),
-                      child: const Text('Cancel'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () => Navigator.of(sheetContext).pop(true),
-                      child: const Text('Submit'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
+      icon: Icons.delete_outline_rounded,
+      title: 'Delete Review?',
+      message: 'You can only delete your own review.',
+      confirmLabel: 'Delete',
+      confirmColor: BracuPalette.danger,
     );
-    if (ok != true) {
-      controller.dispose();
-      return null;
+    if (!ok) return;
+    setState(() {
+      _busyWriteAction = true;
+    });
+    try {
+      await _facultyService.deleteReview(reviewId);
+      if (!mounted) return;
+      showAppSnackBar(context, 'Review deleted');
+      await _loadReviews();
+    } catch (_) {
+      if (!mounted) return;
+      showAppSnackBar(context, 'Delete not available now');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busyWriteAction = false;
+        });
+      }
     }
-    final reason = controller.text.trim();
-    controller.dispose();
-    if (reason.isEmpty) return null;
-    return reason;
   }
 
   Future<void> _openMaterial(CourseMaterialItem item) async {
@@ -566,36 +481,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
     } catch (_) {
       if (!mounted) return;
       showAppSnackBar(context, 'Open not available now');
-    }
-  }
-
-  Future<void> _reportMaterial(CourseMaterialItem item) async {
-    final reason = await _askReason('Report Material');
-    if (reason == null || reason.isEmpty) return;
-    setState(() {
-      _busyWriteAction = true;
-    });
-    try {
-      final reported = await _materialService.report(
-        semester: item.semester,
-        courseCode: item.courseCode,
-        fileName: item.fileName,
-        reason: reason,
-      );
-      if (!mounted) return;
-      showAppSnackBar(
-        context,
-        reported ? 'Material reported' : 'Already reported by you',
-      );
-    } catch (_) {
-      if (!mounted) return;
-      showAppSnackBar(context, 'Report not available now');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _busyWriteAction = false;
-        });
-      }
     }
   }
 
@@ -736,6 +621,16 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                           style: TextStyle(color: textSecondary, fontSize: 12),
                         ),
                         const SizedBox(height: 10),
+                        TextField(
+                          controller: titleController,
+                          textInputAction: TextInputAction.done,
+                          decoration: const InputDecoration(
+                            labelText: 'Title',
+                            hintText: 'Lecture 03 Notes',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton.icon(
@@ -820,7 +715,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                           controller: titleController,
                           textInputAction: TextInputAction.done,
                           decoration: const InputDecoration(
-                            labelText: 'Title (optional)',
+                            labelText: 'Title',
                             hintText: 'Lecture 03 Recording',
                             border: OutlineInputBorder(),
                           ),
@@ -863,6 +758,15 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                                     );
                                     return;
                                   }
+                                  final customTitle = titleController.text
+                                      .trim();
+                                  if (customTitle.isEmpty) {
+                                    showAppSnackBar(
+                                      context,
+                                      'Title is required',
+                                    );
+                                    return;
+                                  }
                                   setSheetState(() {
                                     submitting = true;
                                   });
@@ -872,9 +776,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                                   await _uploadMaterialBytes(
                                     fileName: selectedFileName.trim(),
                                     bytes: selectedFileBytes!,
-                                    titleHint: selectedFileName
-                                        .replaceAll(RegExp(r'\.[^.]+$'), '')
-                                        .trim(),
+                                    titleHint: customTitle,
                                     descriptionHint:
                                         'Uploaded from class/exam schedule',
                                     linkUrl: '',
@@ -884,6 +786,10 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
 
                                 final url = linkController.text.trim();
                                 final customTitle = titleController.text.trim();
+                                if (customTitle.isEmpty) {
+                                  showAppSnackBar(context, 'Title is required');
+                                  return;
+                                }
                                 if (!_isValidHttpUrl(url)) {
                                   showAppSnackBar(
                                     context,
@@ -896,9 +802,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                                 final bytes = Uint8List.fromList(
                                   utf8.encode('$url\n'),
                                 );
-                                final title = customTitle.isNotEmpty
-                                    ? customTitle
-                                    : _defaultMaterialLinkTitle(uri);
                                 setSheetState(() {
                                   submitting = true;
                                 });
@@ -908,7 +811,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                                 await _uploadMaterialBytes(
                                   fileName: fileName,
                                   bytes: bytes,
-                                  titleHint: title,
+                                  titleHint: customTitle,
                                   descriptionHint:
                                       'Link shared from class/exam schedule',
                                   linkUrl: url,
@@ -971,14 +874,18 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
         bytes: bytes,
       );
       final title = titleHint.trim();
-      final finalTitle = title.isEmpty ? 'Course material' : title;
+      if (title.isEmpty) {
+        if (!mounted) return;
+        showAppSnackBar(context, 'Title is required');
+        return;
+      }
       await _materialService.finalize(
         CourseMaterialFinalizeInput(
           key: uploadMeta.key,
           courseCode: widget.courseCode,
           courseTitle: widget.courseCode,
           semester: widget.semesterLabel,
-          title: finalTitle,
+          title: title,
           description: _materialDescription(
             base: descriptionHint,
             uploaderName: _currentUserName,
@@ -1027,26 +934,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
     final ts = DateTime.now().millisecondsSinceEpoch;
     final safeHost = host.isEmpty ? 'link' : host.toLowerCase();
     return '$safeHost-$ts.url';
-  }
-
-  String _defaultMaterialLinkTitle(Uri uri) {
-    final host = uri.host.trim().toLowerCase();
-    if (host.contains('youtube.com') || host.contains('youtu.be')) {
-      if ((uri.queryParameters['list'] ?? '').trim().isNotEmpty) {
-        return 'YouTube playlist';
-      }
-      return 'YouTube video';
-    }
-    if (host.contains('github.com')) {
-      final parts = uri.pathSegments
-          .where((segment) => segment.trim().isNotEmpty)
-          .toList();
-      if (parts.length >= 2) {
-        return 'GitHub ${parts[0]}/${parts[1]}';
-      }
-      return 'GitHub resource';
-    }
-    return host.isEmpty ? 'Shared link' : host;
   }
 
   String _materialDescription({
@@ -1177,13 +1064,13 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
   }) {
     final parts = <String>[];
     if (_hasPositiveScore(teaching)) {
-      parts.add('Teaching ${_formatScore(teaching)}');
+      parts.add('Teaching ${_formatScore(teaching)}/5');
     }
     if (_hasPositiveScore(fairness)) {
-      parts.add('Fairness ${_formatScore(fairness)}');
+      parts.add('Fairness ${_formatScore(fairness)}/5');
     }
     if (_hasPositiveScore(behavior)) {
-      parts.add('Behavior ${_formatScore(behavior)}');
+      parts.add('Behavior ${_formatScore(behavior)}/5');
     }
     return parts.join(' • ');
   }
@@ -1191,46 +1078,34 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
   Widget _buildReviewSectionHeader({
     required BuildContext context,
     required String title,
-    required String overallText,
     String? actionLabel,
     VoidCallback? onAction,
+    String? secondaryActionLabel,
+    VoidCallback? onSecondaryAction,
   }) {
     final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
     return Row(
       children: [
         Expanded(
-          child: RichText(
+          child: Text(
+            title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            text: TextSpan(
-              style: TextStyle(
-                color: textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-              children: [
-                TextSpan(text: title),
-                if (overallText.trim().isNotEmpty) ...[
-                  TextSpan(
-                    text: ' • ',
-                    style: TextStyle(
-                      color: textSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  TextSpan(
-                    text: overallText.trim(),
-                    style: const TextStyle(
-                      color: BracuPalette.primary,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ],
+            style: TextStyle(
+              color: textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
+        if (secondaryActionLabel != null && onSecondaryAction != null)
+          TextButton(
+            onPressed: onSecondaryAction,
+            child: Text(
+              secondaryActionLabel,
+              style: const TextStyle(color: BracuPalette.danger),
+            ),
+          ),
         if (actionLabel != null && onAction != null)
           TextButton(onPressed: onAction, child: Text(actionLabel)),
       ],
@@ -1257,6 +1132,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
     required String comment,
     required String metricLine,
     required bool isApproved,
+    VoidCallback? onDelete,
   }) {
     final textPrimary = BracuPalette.textPrimary(context);
     return BracuCard(
@@ -1288,6 +1164,20 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
               ],
             ),
           ),
+          if (onDelete != null) ...[
+            const SizedBox(width: 4),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Delete',
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -1303,6 +1193,10 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
       comment: review.comment,
       metricLine: metricLine,
       isApproved: review.isApproved,
+      onDelete:
+          _busyWriteAction || review.canDelete == false || review.reviewId <= 0
+          ? null
+          : () => _deleteReview(review.reviewId),
     );
   }
 
@@ -1327,9 +1221,24 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
     final nonEmptyReviews = allReviews
         .where((review) => review.comment.trim().isNotEmpty)
         .toList();
+    FacultyReviewItem? myOwnedReview;
+    for (final review in allReviews) {
+      if (review.reviewId > 0 && review.canDelete == true) {
+        myOwnedReview = review;
+        break;
+      }
+    }
+    final orderedReviews = <FacultyReviewItem>[
+      if (myOwnedReview != null && myOwnedReview.comment.trim().isNotEmpty)
+        myOwnedReview,
+      ...nonEmptyReviews.where(
+        (review) =>
+            myOwnedReview == null || review.reviewId != myOwnedReview.reviewId,
+      ),
+    ];
     final displayReviews = _showAllReviews
-        ? nonEmptyReviews
-        : nonEmptyReviews.take(4).toList();
+        ? orderedReviews
+        : orderedReviews.take(4).toList();
     final allMaterials = _materials.where((item) {
       final key = '${item.semester}|${item.courseCode}|${item.fileName}';
       return materialSeenKeys.add(key);
@@ -1339,7 +1248,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
         : allMaterials.take(3).toList();
     final totalReviews = _reviewFeed?.faculty.stats.reviewsTotal ?? 0;
     final stats = _reviewFeed?.faculty.stats;
-    final overallScore = stats?.overall ?? 0;
     final metricLine = _compactMetricLine(
       teaching: stats?.teaching ?? 0,
       fairness: stats?.fairness ?? 0,
@@ -1352,62 +1260,30 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
         (stats?.behavior ?? 0) > 0;
     final facultySummaryText = (_reviewFeed?.faculty.reviewSummary ?? '')
         .trim();
-    final facultySourceLabel = ((_reviewFeed?.faculty.sourceLabel ?? '')
-        .trim());
     final voteScore = _reviewFeed?.faculty.voteScore ?? 0;
     final upvotes = _reviewFeed?.faculty.upvotes ?? 0;
     final downvotes = _reviewFeed?.faculty.downvotes ?? 0;
     final hasVoteData = voteScore != 0 || upvotes > 0 || downvotes > 0;
-    final showSourceLine = totalReviews == 0 && facultySourceLabel.isNotEmpty;
     final hasSummaryCardContent =
-        hasSummaryScores || showSourceLine || facultySummaryText.isNotEmpty;
+        hasSummaryScores || facultySummaryText.isNotEmpty;
     final hasFacultyMeta =
         hasSummaryCardContent || facultySummaryText.isNotEmpty;
-    final hasReviews = totalReviews > 0 || nonEmptyReviews.isNotEmpty;
-    final localDraft = _localDraft;
+    final hasReviews = totalReviews > 0 || orderedReviews.isNotEmpty;
+    final hasMyReview = myOwnedReview != null;
     final facultyFullName = (_reviewFeed?.faculty.name ?? '').trim();
     final reviewHeaderTitle = facultyFullName.isNotEmpty
         ? facultyFullName
-        : (_facultyInitial.isNotEmpty ? _facultyInitial : 'Faculty Reviews');
-    final overallHeaderText = _hasPositiveScore(overallScore)
-        ? '${_formatScore(overallScore)}/5'
-        : '';
-    final yourOverallHeaderText = localDraft != null && localDraft.overall > 0
-        ? '${_formatScore(localDraft.overall)}/5'
-        : '';
+        : _facultyInitial;
     return ListView(
       controller: sheetScroll,
       children: [
         _buildSummaryCard(),
-        if (localDraft != null) ...[
-          const SizedBox(height: 12),
-          _buildReviewSectionHeader(
-            context: context,
-            title: 'Your Review',
-            overallText: yourOverallHeaderText,
-            actionLabel: widget.showActions ? 'Edit' : null,
-            onAction: widget.showActions && !_busyWriteAction
-                ? _writeReview
-                : null,
-          ),
-          const SizedBox(height: 8),
-          _buildQuoteReviewCard(
-            comment: localDraft.comment,
-            metricLine: _compactMetricLine(
-              teaching: localDraft.teaching,
-              fairness: localDraft.fairness,
-              behavior: localDraft.behavior,
-            ),
-            isApproved: true,
-          ),
-        ],
         const SizedBox(height: 12),
         _buildReviewSectionHeader(
           context: context,
           title: reviewHeaderTitle,
-          overallText: overallHeaderText,
           actionLabel: widget.showActions
-              ? (_localDraft == null ? 'Write' : 'Edit')
+              ? (hasMyReview ? 'Edit' : 'Write')
               : null,
           onAction: widget.showActions && !_busyWriteAction
               ? _writeReview
@@ -1442,13 +1318,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                         style: _reviewMetaStyle(context),
                       ),
                     ],
-                    if (showSourceLine) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'Source: $facultySourceLabel',
-                        style: _reviewMetaStyle(context),
-                      ),
-                    ],
                     if (facultySummaryText.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Text(
@@ -1462,14 +1331,14 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                 ),
               ),
             if (hasSummaryCardContent) const SizedBox(height: 8),
-            if (nonEmptyReviews.isNotEmpty) ...[
+            if (orderedReviews.isNotEmpty) ...[
               ...displayReviews.map((review) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: _buildCommunityReviewCard(review),
                 );
               }),
-              if (nonEmptyReviews.length > 4)
+              if (orderedReviews.length > 4)
                 buildCenteredOutlinedActionButton(
                   label: _showAllReviews ? 'Show Less' : 'Show More',
                   onPressed: () {
@@ -1480,7 +1349,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                   padding: const EdgeInsets.only(top: 2, bottom: 8),
                 ),
             ],
-          ] else if (localDraft == null)
+          ] else
             BracuCard(
               child: Text(
                 'No reviews yet for this faculty.',
@@ -1519,7 +1388,10 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
             ),
           )
         else ...[
-          ...displayMaterials.map((item) {
+          ...displayMaterials.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value;
+            final displayTitle = item.title.trim();
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: BracuCard(
@@ -1535,7 +1407,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                item.title.isEmpty ? item.fileName : item.title,
+                                '${index + 1}. $displayTitle',
                                 style: TextStyle(
                                   color: textPrimary,
                                   fontSize: 13,
@@ -1554,14 +1426,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                           ),
                         ),
                       ),
-                    ),
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      tooltip: 'Report',
-                      onPressed: _busyWriteAction
-                          ? null
-                          : () => _reportMaterial(item),
-                      icon: const Icon(Icons.flag_outlined, size: 18),
                     ),
                     if (item.canDelete != false)
                       IconButton(
@@ -1683,42 +1547,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
       return '${(bytes / 1024).toStringAsFixed(1)} KB';
     }
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
-}
-
-class _LocalFacultyReviewDraft {
-  const _LocalFacultyReviewDraft({
-    required this.overall,
-    required this.teaching,
-    required this.fairness,
-    required this.behavior,
-    required this.comment,
-  });
-
-  final int overall;
-  final int teaching;
-  final int fairness;
-  final int behavior;
-  final String comment;
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'overall': overall,
-      'teaching': teaching,
-      'fairness': fairness,
-      'behavior': behavior,
-      'comment': comment,
-    };
-  }
-
-  factory _LocalFacultyReviewDraft.fromJson(Map<String, dynamic> json) {
-    return _LocalFacultyReviewDraft(
-      overall: (json['overall'] as num?)?.toInt() ?? 0,
-      teaching: (json['teaching'] as num?)?.toInt() ?? 0,
-      fairness: (json['fairness'] as num?)?.toInt() ?? 0,
-      behavior: (json['behavior'] as num?)?.toInt() ?? 0,
-      comment: '${json['comment'] ?? ''}'.trim(),
-    );
   }
 }
 

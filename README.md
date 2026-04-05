@@ -165,7 +165,7 @@ build/app/outputs/bundle/release/app-release.aab
 | Platform | Status | Notes |
 | --- | --- | --- |
 | Android | Stable | Signed APK/AAB are generated in release workflow when signing secrets are configured. |
-| Web | Stable | Built and deployed by CI to Cloudflare Workers. |
+| Web | Stable | Built by CI and deployed via containerized web service on VPS. |
 | iOS | Beta | CI builds are enabled, but signing/export depends on Apple certificates/profiles. |
 | macOS | Beta | CI builds and packages a DMG artifact from release workflow. |
 
@@ -178,8 +178,23 @@ Main flow on push to `main`:
 1. Auto-bumps `pubspec.yaml` build number (`x.y.z+NNN`)
 2. Creates/updates a GitHub release tag like `v1.2.3+456`
 3. Builds and uploads platform artifacts (Android, iOS, macOS, Web)
-4. Deploys web build to Cloudflare Workers
+4. Uploads web release artifact for deployment
 5. Publishes Android AAB to Google Play Open Beta Testing when required secrets are available
+
+## Web Deploy
+
+This repo includes production-ready web hosting config for VPS web service:
+
+- `Dockerfile` builds Flutter web and serves with Nginx
+- `deploy/nginx/default.conf` includes SPA fallback and `/api` reverse proxy to `https://api.preconnect.app`
+
+Recommended web service setup:
+
+1. Create a **Web Service** from this repo
+2. Use the repo `Dockerfile` (Docker build pack)
+3. Set public domain (example: `web.preconnect.app`)
+4. Expose container port `80`
+5. Redeploy on each push to `main`
 
 ## Architecture
 
@@ -323,7 +338,7 @@ The app uses a hosted proxy (`api.preconnect.app`) that handles caching and stre
 - BRAC University student community for continuous feedback and testing
 - Flutter and Dart ecosystems
 - Open-source package maintainers on [pub.dev](https://pub.dev)
-- Infrastructure providers: Firebase Cloud Messaging and Cloudflare Worker
+- Infrastructure providers: Firebase Cloud Messaging and VPS-hosted services
 
 ## Developer Credit
 - NaiveInvestigator — GitHub: [@NaiveInvestigator](https://github.com/NaiveInvestigator)

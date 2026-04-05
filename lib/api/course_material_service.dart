@@ -380,10 +380,17 @@ class CourseMaterialService {
 
   List<String> _storageKeySegmentsFromSignedUrl(Uri uri) {
     final host = uri.host.toLowerCase();
-    final fromR2 = host.contains('r2.cloudflarestorage.com');
-    if (!fromR2) return const <String>[];
-    return uri.pathSegments
+    final filesHost = _filesBaseUri.host.toLowerCase();
+    final fromFilesHost = host == filesHost || host.endsWith('.$filesHost');
+    if (!fromFilesHost) return const <String>[];
+    final segments = uri.pathSegments
         .where((segment) => segment.trim().isNotEmpty)
         .toList();
+    if (segments.length >= 2 &&
+        segments[0].toLowerCase() == 'v1' &&
+        segments[1].toLowerCase() == 'course-materials') {
+      return const <String>[];
+    }
+    return segments;
   }
 }

@@ -100,11 +100,10 @@ class _CachedImageState extends State<CachedImage> {
         url.startsWith('http://') || url.startsWith('https://');
 
     if (kIsWeb && isRemoteHttp) {
-      final proxiedUrl = _buildWebProxyUrl(url);
       if (!mounted) return;
       setState(() {
         _useDirectNetwork = true;
-        _networkUrl = proxiedUrl;
+        _networkUrl = url;
         _loading = false;
       });
       return;
@@ -205,10 +204,5 @@ class _CachedImageState extends State<CachedImage> {
       return widget.error ?? const SizedBox.shrink();
     }
     return widget.placeholder ?? const SizedBox.shrink();
-  }
-
-  String _buildWebProxyUrl(String url) {
-    final encoded = Uri.encodeComponent(url);
-    return '${Uri.base.origin}/img?u=$encoded';
   }
 }
