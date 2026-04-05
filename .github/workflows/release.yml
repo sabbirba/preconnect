@@ -205,19 +205,36 @@ jobs:
 
   deploy-web-vps:
     name: Deploy Web To VPS
-    if: ${{ (github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true) && secrets.VPS_HOST != '' && secrets.VPS_USER != '' && secrets.VPS_SSH_PRIVATE_KEY != '' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true }}
     needs: [prepare-version, deploy-web]
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
+      - name: Check VPS deploy secrets
+        id: vps
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+        run: |
+          if [ -n "$VPS_HOST" ] && [ -n "$VPS_USER" ] && [ -n "$VPS_SSH_PRIVATE_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "VPS secrets are missing; skipping VPS deploy."
+          fi
+
       - name: Download Web Artifact
+        if: steps.vps.outputs.enabled == 'true'
         uses: actions/download-artifact@v8
         with:
           name: web-artifacts
           path: artifacts
 
       - name: Extract Web Artifact
+        if: steps.vps.outputs.enabled == 'true'
         shell: bash
         run: |
           mkdir -p web-build
@@ -229,11 +246,13 @@ jobs:
           unzip -o "$ZIP_FILE" -d web-build
 
       - name: Start SSH agent
+        if: steps.vps.outputs.enabled == 'true'
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
 
       - name: Add VPS host key
+        if: steps.vps.outputs.enabled == 'true'
         shell: bash
         run: |
           mkdir -p ~/.ssh
@@ -242,6 +261,7 @@ jobs:
           ssh-keyscan -p "$PORT" -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Ensure release directories exist
+        if: steps.vps.outputs.enabled == 'true'
         shell: bash
         run: |
           PORT="${{ secrets.VPS_PORT }}"
@@ -250,6 +270,7 @@ jobs:
             "mkdir -p /var/www/preconnect-web/releases /var/www/preconnect-web/shared"
 
       - name: Upload web build with rsync
+        if: steps.vps.outputs.enabled == 'true'
         shell: bash
         run: |
           PORT="${{ secrets.VPS_PORT }}"
@@ -260,6 +281,7 @@ jobs:
             web-build/ "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${RELEASE_DIR}/"
 
       - name: Switch symlink and reload Nginx
+        if: steps.vps.outputs.enabled == 'true'
         shell: bash
         run: |
           PORT="${{ secrets.VPS_PORT }}"
