@@ -1,10 +1,10 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+  schedule:
+    # 11:59 PM (Bangladesh time, Asia/Dhaka) = 17:59 UTC
+    - cron: '59 17 * * *'
 
 permissions:
   contents: write
@@ -17,8 +17,47 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  detect-pending:
+    name: Detect Pending Changes
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check for unreleased commits
+        id: check
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          LAST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n1 || true)
+          if [ -z "$LAST_TAG" ]; then
+            echo "No release tag found yet; scheduled run should proceed."
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          LAST_TAG_SHA=$(git rev-list -n 1 "$LAST_TAG")
+          HEAD_SHA=$(git rev-parse HEAD)
+          if [ "$HEAD_SHA" = "$LAST_TAG_SHA" ]; then
+            echo "No new commits since $LAST_TAG; skipping scheduled release."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "New commits found since $LAST_TAG; scheduled release should proceed."
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          fi
+
   prepare-version:
     name: Prepare Version
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
+    needs: detect-pending
     runs-on: ubuntu-latest
     outputs:
       version_name: ${{ steps.version.outputs.version_name }}
@@ -67,8 +106,9 @@ jobs:
 
   create-release:
     name: Create Release
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
     runs-on: ubuntu-latest
-    needs: prepare-version
+    needs: [detect-pending, prepare-version]
     permissions:
       contents: write
     outputs:
@@ -125,7 +165,8 @@ jobs:
 
   build-web:
     name: Build Web
-    needs: [prepare-version, create-release]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
+    needs: [detect-pending, prepare-version, create-release]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -169,7 +210,8 @@ jobs:
 
   build-platforms:
     name: Build (${{ matrix.platform }})
-    needs: [prepare-version, create-release]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
+    needs: [detect-pending, prepare-version, create-release]
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.allow_failure }}
     timeout-minutes: 60
@@ -427,8 +469,9 @@ jobs:
 
   publish-google-play:
     name: Publish Google Play Open Testing (Android)
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
     runs-on: ubuntu-latest
-    needs: [prepare-version, build-platforms]
+    needs: [detect-pending, prepare-version, build-platforms]
     timeout-minutes: 20
     permissions:
       contents: read
