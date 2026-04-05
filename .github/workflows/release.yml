@@ -148,7 +148,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Web
-        run: flutter build web --release --pwa-strategy=none
+        run: flutter build web --release
 
       - name: Remove Embedded Server Files From Web Build
         run: rm -rf build/web/server
