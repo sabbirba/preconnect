@@ -16,7 +16,7 @@ class DevsPage extends StatefulWidget {
 
 class _DevsPageState extends State<DevsPage> {
   late Future<String> _subtitleFuture;
-  late Future<List<_GitHubContributor>> _contributorsFuture;
+  late Future<List<_ContributorProfile>> _contributorsFuture;
   int _secretTapCount = 0;
   bool _showAllContributors = false;
 
@@ -40,31 +40,46 @@ class _DevsPageState extends State<DevsPage> {
     }
   }
 
-  Future<List<_GitHubContributor>> _loadContributors() async {
-    final uri = Uri.parse(
-      'https://api.github.com/repos/sabbirba/preconnect/contributors?per_page=100',
-    );
-    final response = await http.get(
-      uri,
-      headers: const <String, String>{'Accept': 'application/vnd.github+json'},
-    );
+  Future<List<_ContributorProfile>> _loadContributors() async {
+    final uri = Uri.parse('$_contributorsApiUrl/contributors');
+    final response = await http.get(uri, headers: _githubHeaders);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('Unable to load contributors');
     }
     final decoded = jsonDecode(response.body);
-    if (decoded is! List) return const <_GitHubContributor>[];
+    if (decoded is! List) return const <_ContributorProfile>[];
     final contributors = decoded
         .whereType<Map>()
-        .map((raw) => _GitHubContributor.fromJson(raw.cast<String, dynamic>()))
-        .where((item) => item.login.isNotEmpty && item.avatarUrl.isNotEmpty)
-        .where((item) => !item.login.toLowerCase().endsWith('[bot]'))
-        .where(
-          (item) =>
-              item.login.toLowerCase() != 'naiveinvestigator' &&
-              item.login.toLowerCase() != 'sabbirba',
-        )
+        .map((raw) => _ContributorProfile.fromGitHubContributor(raw.cast()))
+        .where((item) => item.name.isNotEmpty && item.avatarUrl.isNotEmpty)
+        .where((item) => !item.key.endsWith('[bot]'))
         .toList();
-    return contributors;
+    final withPinned = _dedupeContributors([
+      ...contributors,
+      ..._pinnedGitHubContributors,
+    ]);
+    return Future.wait(withPinned.map(_loadGitHubProfile));
+  }
+
+  Future<_ContributorProfile> _loadGitHubProfile(
+    _ContributorProfile contributor,
+  ) async {
+    final login = contributor.githubLogin;
+    if (login.isEmpty) return contributor;
+    try {
+      final response = await http.get(
+        Uri.parse('https://api.github.com/users/$login'),
+        headers: _githubHeaders,
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return contributor;
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map) return contributor;
+      return contributor.withGitHubProfile(decoded.cast());
+    } catch (_) {
+      return contributor;
+    }
   }
 
   Future<void> _onHeaderSecretTap() async {
@@ -79,7 +94,6 @@ class _DevsPageState extends State<DevsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
     return FutureBuilder<String>(
       future: _subtitleFuture,
       builder: (context, snapshot) {
@@ -92,118 +106,11 @@ class _DevsPageState extends State<DevsPage> {
           body: ListView(
             padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
             children: [
-              BracuCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'PreConnect App Runs by Students',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Community driven and free for every student.',
-                      style: TextStyle(color: textSecondary),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Bug reports, feature requests, and ideas are welcome. '
-                      'Please create issues in our GitHub repo.',
-                      style: TextStyle(color: textSecondary),
-                    ),
-                    const SizedBox(height: 12),
-                    InkWell(
-                      onTap: () => _openRepo(context),
-                      borderRadius: BorderRadius.circular(14),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: BracuPalette.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: BracuPalette.primary.withValues(alpha: 0.18),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                color: BracuPalette.primary.withValues(
-                                  alpha: 0.12,
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              alignment: Alignment.center,
-                              child: const Icon(
-                                Icons.open_in_new,
-                                size: 16,
-                                color: BracuPalette.primary,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            const Expanded(
-                              child: Text(
-                                'View Repository',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: BracuPalette.primary,
-                                ),
-                              ),
-                            ),
-                            Icon(
-                              Icons.arrow_forward_ios,
-                              size: 14,
-                              color: BracuPalette.primary.withValues(
-                                alpha: 0.7,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              const BracuSectionTitle(title: 'Core Team'),
-              const SizedBox(height: 10),
-              GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.85,
-                children: const [
-                  _DevGridTile(
-                    name: 'NaiveInvestigator',
-                    role: 'Lead Developer',
-                    avatarUrl: 'https://github.com/NaiveInvestigator.png',
-                    primaryLabel: 'GitHub',
-                    primaryUrl: 'https://github.com/NaiveInvestigator',
-                  ),
-                  _DevGridTile(
-                    name: 'Sabbir Bin Abbas',
-                    role: 'Developer & UI/UX',
-                    avatarUrl: 'https://github.com/sabbirba.png',
-                    primaryLabel: 'GitHub',
-                    primaryUrl: 'https://github.com/sabbirba',
-                  ),
-                ],
-              ),
+              const _IntroCard(),
               const SizedBox(height: 14),
               const BracuSectionTitle(title: 'Contributors'),
               const SizedBox(height: 10),
-              FutureBuilder<List<_GitHubContributor>>(
+              FutureBuilder<List<_ContributorProfile>>(
                 future: _contributorsFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -213,96 +120,20 @@ class _DevsPageState extends State<DevsPage> {
                     );
                   }
                   final contributors =
-                      snapshot.data ?? const <_GitHubContributor>[];
-                  final manualTiles = const <_DevGridTile>[
-                    _DevGridTile(
-                      name: 'Mueen Ahmmed',
-                      role: 'Faculty Reviews',
-                      avatarUrl:
-                          'https://media.licdn.com/dms/image/v2/D5603AQHtYo7APsdwwQ/profile-displayphoto-shrink_800_800/B56ZcH6GpoH4Ag-/0/1748184362516?e=1776902400&v=beta&t=lAxMqND2jjkT4ybK2z9zvePqMtMkCr3zEcZ4w_vfxDw',
-                      primaryLabel: 'LinkedIn',
-                      primaryUrl:
-                          'https://www.linkedin.com/in/mueen-ahmmed-b337b8231/',
-                      keepVisibleInCollapsed: true,
-                    ),
-                  ];
-                  final autoTiles = contributors
-                      .map(
-                        (item) => _DevGridTile(
-                          name: item.login,
-                          role: 'Contributor',
-                          avatarUrl: item.avatarUrl,
-                          primaryLabel: 'GitHub',
-                          primaryUrl: item.htmlUrl,
-                        ),
-                      )
-                      .toList();
-                  final allTiles = _dedupeContributorTiles(<_DevGridTile>[
-                    ...autoTiles,
-                    ...manualTiles,
-                  ]);
-                  if (allTiles.isEmpty) {
-                    return BracuCard(
-                      child: Text(
-                        'Contributor list not available right now.',
-                        style: TextStyle(color: textSecondary),
-                      ),
-                    );
-                  }
-                  final visibleTiles = _visibleContributorTiles(
-                    allTiles,
+                      snapshot.data ?? const <_ContributorProfile>[];
+                  return _ContributorsGrid(
+                    contributors: contributors,
                     showAll: _showAllContributors,
-                    collapsedCount: 4,
-                  );
-                  return Column(
-                    children: [
-                      GridView.count(
-                        crossAxisCount: 2,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        childAspectRatio: 0.85,
-                        children: visibleTiles,
-                      ),
-                      if (allTiles.length > 4)
-                        buildCenteredOutlinedActionButton(
-                          label: _showAllContributors
-                              ? 'Show Less'
-                              : 'Show More',
-                          onPressed: () {
-                            setState(() {
-                              _showAllContributors = !_showAllContributors;
-                            });
-                          },
-                          padding: const EdgeInsets.only(top: 6),
-                        ),
-                    ],
+                    onToggle: () => setState(
+                      () => _showAllContributors = !_showAllContributors,
+                    ),
                   );
                 },
               ),
               const SizedBox(height: 14),
               const BracuSectionTitle(title: 'Funding & Support'),
               const SizedBox(height: 10),
-              BracuCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'iOS Funding',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'App Store publishing needs the \$99/year Apple Developer '
-                      'membership. Any contribution towards this funding will be highly appreciated.',
-                      style: TextStyle(color: textSecondary),
-                    ),
-                    const SizedBox(height: 12),
-                    const BracuFundingSupportContent(),
-                  ],
-                ),
-              ),
+              const _FundingCard(),
             ],
           ),
         );
@@ -311,63 +142,240 @@ class _DevsPageState extends State<DevsPage> {
   }
 }
 
-List<_DevGridTile> _dedupeContributorTiles(List<_DevGridTile> tiles) {
+const _repoUrl = 'https://github.com/sabbirba/preconnect';
+const _contributorsApiUrl = 'https://api.github.com/repos/sabbirba/preconnect';
+const _collapsedContributorCount = 6;
+const _githubHeaders = <String, String>{
+  'Accept': 'application/vnd.github+json',
+};
+
+const _pinnedGitHubContributors = <_ContributorProfile>[
+  _ContributorProfile.github(
+    handle: 'NaiveInvestigator',
+    role: 'Lead Developer',
+  ),
+  _ContributorProfile.github(handle: 'sabbirba', role: 'Developer & UI/UX'),
+];
+
+const _manualContributors = <_ContributorProfile>[
+  _ContributorProfile(
+    name: 'Mueen Ahmmed',
+    handle: 'mueen-ahmmed',
+    role: 'Faculty Reviews',
+    avatarUrl:
+        'https://media.licdn.com/dms/image/v2/D5603AQHtYo7APsdwwQ/profile-displayphoto-shrink_800_800/B56ZcH6GpoH4Ag-/0/1748184362516?e=1776902400&v=beta&t=lAxMqND2jjkT4ybK2z9zvePqMtMkCr3zEcZ4w_vfxDw',
+    linkLabel: 'LinkedIn',
+    url: 'https://www.linkedin.com/in/mueen-ahmmed-b337b8231/',
+  ),
+];
+
+class _IntroCard extends StatelessWidget {
+  const _IntroCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final textSecondary = BracuPalette.textSecondary(context);
+    return BracuCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'PreConnect App Runs by Students',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Community driven and free for every student.',
+            style: TextStyle(color: textSecondary),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Bug reports, feature requests, and ideas are welcome. '
+            'Please create issues in our GitHub repo.',
+            style: TextStyle(color: textSecondary),
+          ),
+          const SizedBox(height: 12),
+          const _RepoButton(),
+        ],
+      ),
+    );
+  }
+}
+
+class _RepoButton extends StatelessWidget {
+  const _RepoButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => openExternalUrl(context, _repoUrl),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: BracuPalette.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: BracuPalette.primary.withValues(alpha: 0.18),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: BracuPalette.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.open_in_new,
+                size: 16,
+                color: BracuPalette.primary,
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'View Repository',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: BracuPalette.primary,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 14,
+              color: BracuPalette.primary.withValues(alpha: 0.7),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ContributorsGrid extends StatelessWidget {
+  const _ContributorsGrid({
+    required this.contributors,
+    required this.showAll,
+    required this.onToggle,
+  });
+
+  final List<_ContributorProfile> contributors;
+  final bool showAll;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final all = _orderContributors(
+      _dedupeContributors([...contributors, ..._manualContributors]),
+    );
+    final visible = showAll ? all : all.take(_collapsedContributorCount);
+    return Column(
+      children: [
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 4,
+          crossAxisSpacing: 4,
+          childAspectRatio: 1.0,
+          children: [
+            for (final contributor in visible)
+              _DevGridTile(contributor: contributor),
+          ],
+        ),
+        if (all.length > _collapsedContributorCount)
+          buildCenteredOutlinedActionButton(
+            label: showAll ? 'Show Less' : 'Show More',
+            onPressed: onToggle,
+            padding: const EdgeInsets.only(top: 6),
+          ),
+      ],
+    );
+  }
+}
+
+class _FundingCard extends StatelessWidget {
+  const _FundingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'iOS Funding',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'App Store publishing needs the \$99/year Apple Developer '
+            'membership. Any contribution towards this funding will be highly appreciated.',
+            style: TextStyle(color: BracuPalette.textSecondary(context)),
+          ),
+          const SizedBox(height: 12),
+          const BracuFundingSupportContent(),
+        ],
+      ),
+    );
+  }
+}
+
+List<_ContributorProfile> _dedupeContributors(List<_ContributorProfile> items) {
   final seen = <String>{};
-  final output = <_DevGridTile>[];
-  for (final tile in tiles) {
-    final key =
-        '${tile.name.trim().toLowerCase()}|'
-        '${tile.primaryUrl.trim().toLowerCase()}';
-    if (seen.add(key)) {
-      output.add(tile);
-    }
+  final output = <_ContributorProfile>[];
+  for (final item in items) {
+    if (seen.add(item.identity)) output.add(item);
   }
   return output;
 }
 
-List<_DevGridTile> _visibleContributorTiles(
-  List<_DevGridTile> all, {
-  required bool showAll,
-  int collapsedCount = 4,
-}) {
-  if (showAll || all.length <= collapsedCount) return all;
-  final pinned = all
-      .where((tile) => tile.keepVisibleInCollapsed)
-      .take(collapsedCount)
-      .toList();
-  final visible = <_DevGridTile>[...pinned];
-  for (final tile in all) {
-    if (visible.length >= collapsedCount) break;
-    if (visible.contains(tile)) continue;
-    visible.add(tile);
+List<_ContributorProfile> _orderContributors(List<_ContributorProfile> items) {
+  final naive = _findByHandle(items, 'naiveinvestigator', 'naivelnvestigator');
+  final sabbir = _findByHandle(items, 'sabbirba');
+  final mueen = _findByHandle(items, 'mueen-ahmmed');
+  final reserved = <_ContributorProfile>{?naive, ?sabbir, ?mueen};
+  final others = items.where((item) => !reserved.contains(item)).toList();
+  final ordered = <_ContributorProfile>[?naive, ?sabbir];
+
+  for (final item in others) {
+    if (ordered.length >= 4) break;
+    ordered.add(item);
   }
-  return visible;
+  if (mueen != null) ordered.add(mueen);
+  for (final item in others) {
+    if (!ordered.contains(item)) ordered.add(item);
+  }
+  return ordered;
+}
+
+_ContributorProfile? _findByHandle(
+  List<_ContributorProfile> items,
+  String primary, [
+  String? alternate,
+]) {
+  for (final item in items) {
+    if (item.matchesHandle(primary) ||
+        (alternate != null && item.matchesHandle(alternate))) {
+      return item;
+    }
+  }
+  return null;
 }
 
 class _DevGridTile extends StatelessWidget {
-  const _DevGridTile({
-    required this.name,
-    required this.role,
-    required this.avatarUrl,
-    required this.primaryLabel,
-    required this.primaryUrl,
-    this.keepVisibleInCollapsed = false,
-  });
+  const _DevGridTile({required this.contributor});
 
-  final String name;
-  final String role;
-  final String avatarUrl;
-  final String primaryLabel;
-  final String primaryUrl;
-  final bool keepVisibleInCollapsed;
-
-  Future<void> _openUrl(BuildContext context, String rawUrl) async {
-    await openExternalUrl(context, rawUrl);
-  }
+  final _ContributorProfile contributor;
 
   Widget _avatarPlaceholder(BuildContext context) {
-    final initial = name.trim().isNotEmpty
-        ? name.trim().substring(0, 1).toUpperCase()
+    final initial = contributor.name.trim().isNotEmpty
+        ? contributor.name.trim().substring(0, 1).toUpperCase()
         : '?';
     return Container(
       color: BracuPalette.primary.withValues(alpha: 0.12),
@@ -379,52 +387,62 @@ class _DevGridTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textSecondary = BracuPalette.textSecondary(context);
-    return BracuCard(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          InkWell(
-            onTap: () => _openUrl(context, primaryUrl),
-            borderRadius: BorderRadius.circular(24),
-            child: SizedBox(
-              width: 44,
-              height: 44,
+    return InkWell(
+      onTap: () => openExternalUrl(context, contributor.url),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 40,
+              height: 40,
               child: ClipOval(
                 child: CachedImage(
-                  url: avatarUrl,
+                  url: contributor.avatarUrl,
                   fit: BoxFit.cover,
                   placeholder: _avatarPlaceholder(context),
                   error: _avatarPlaceholder(context),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            name,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            role,
-            style: TextStyle(color: textSecondary, fontSize: 12),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 4,
-            runSpacing: 4,
-            children: [
-              _LinkChip(
-                label: primaryLabel,
-                onTap: () => _openUrl(context, primaryUrl),
+            const SizedBox(height: 4),
+            SizedBox(
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  contributor.name,
+                  maxLines: 1,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  textAlign: TextAlign.center,
+                ),
               ),
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(height: 1),
+            SizedBox(
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  contributor.role,
+                  maxLines: 1,
+                  style: TextStyle(color: textSecondary, fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Center(
+              child: _LinkChip(
+                label: contributor.linkLabel,
+                onTap: () => openExternalUrl(context, contributor.url),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -442,7 +460,7 @@ class _LinkChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
         decoration: BoxDecoration(
           color: BracuPalette.primary.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10),
@@ -460,26 +478,84 @@ class _LinkChip extends StatelessWidget {
   }
 }
 
-Future<void> _openRepo(BuildContext context) async {
-  await openExternalUrl(context, 'https://github.com/sabbirba/preconnect');
-}
-
-class _GitHubContributor {
-  const _GitHubContributor({
-    required this.login,
+class _ContributorProfile {
+  const _ContributorProfile({
+    required this.handle,
+    required this.name,
+    required this.role,
     required this.avatarUrl,
-    required this.htmlUrl,
+    required this.linkLabel,
+    required this.url,
   });
 
-  final String login;
-  final String avatarUrl;
-  final String htmlUrl;
+  const _ContributorProfile.github({
+    required this.handle,
+    required this.role,
+    String? name,
+    String? avatarUrl,
+    String? url,
+  }) : name = name ?? handle,
+       avatarUrl = avatarUrl ?? 'https://github.com/$handle.png',
+       linkLabel = 'GitHub',
+       url = url ?? 'https://github.com/$handle';
 
-  factory _GitHubContributor.fromJson(Map<String, dynamic> json) {
-    return _GitHubContributor(
-      login: '${json['login'] ?? ''}'.trim(),
-      avatarUrl: '${json['avatar_url'] ?? ''}'.trim(),
-      htmlUrl: '${json['html_url'] ?? ''}'.trim(),
+  final String handle;
+  final String name;
+  final String role;
+  final String avatarUrl;
+  final String linkLabel;
+  final String url;
+
+  String get key => handle.trim().toLowerCase();
+
+  String get githubLogin {
+    if (key.isNotEmpty) return handle.trim();
+    final uri = Uri.tryParse(url);
+    final isGitHub = uri?.host.toLowerCase().contains('github.com') ?? false;
+    if (!isGitHub || uri!.pathSegments.isEmpty) return '';
+    return uri.pathSegments.first;
+  }
+
+  String get identity {
+    final normalizedUrl = url.trim().toLowerCase().replaceFirst(
+      RegExp(r'/$'),
+      '',
+    );
+    return normalizedUrl.isEmpty ? key : normalizedUrl;
+  }
+
+  bool matchesHandle(String value) => key == value.trim().toLowerCase();
+
+  _ContributorProfile withGitHubProfile(Map<String, dynamic> json) {
+    final displayName = '${json['name'] ?? ''}'.trim();
+    final profileAvatarUrl = '${json['avatar_url'] ?? ''}'.trim();
+    final profileUrl = '${json['html_url'] ?? ''}'.trim();
+    return _ContributorProfile(
+      handle: handle,
+      name: displayName.isEmpty ? name : displayName,
+      role: role,
+      avatarUrl: profileAvatarUrl.isEmpty ? avatarUrl : profileAvatarUrl,
+      linkLabel: linkLabel,
+      url: profileUrl.isEmpty ? url : profileUrl,
     );
   }
+
+  factory _ContributorProfile.fromGitHubContributor(Map<String, dynamic> json) {
+    final login = '${json['login'] ?? ''}'.trim();
+    return _ContributorProfile.github(
+      handle: login,
+      name: login,
+      role: _githubRole(login),
+      avatarUrl: '${json['avatar_url'] ?? ''}'.trim(),
+      url: '${json['html_url'] ?? ''}'.trim(),
+    );
+  }
+}
+
+String _githubRole(String login) {
+  return switch (login.trim().toLowerCase()) {
+    'naiveinvestigator' || 'naivelnvestigator' => 'Lead Developer',
+    'sabbirba' => 'Developer & UI/UX',
+    _ => 'Contributor',
+  };
 }

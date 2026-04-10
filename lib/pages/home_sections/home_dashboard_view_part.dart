@@ -234,7 +234,7 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                                           ? examWeekStatus.subtitle
                                           : isTodayHoliday
                                           ? holidayStatus.displayNames
-                                          : 'Enjoy your day off or check your schedule.',
+                                          : 'Enjoy your day off.',
                                       badge: isExamWeekActive
                                           ? '--'
                                           : isTodayHoliday
@@ -446,7 +446,7 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                               const SizedBox(height: 12),
                               LayoutBuilder(
                                 builder: (context, constraints) {
-                                  const spacing = 12.0;
+                                  const spacing = 4.0;
                                   final width =
                                       (constraints.maxWidth - spacing * 3) / 4;
                                   return _buildQuickAccessGrid(width: width);
@@ -486,11 +486,12 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
   }
 
   Widget _buildQuickAccessGrid({required double width}) {
-    const spacing = 12.0;
-    return Center(
+    const spacing = 4.0;
+    return Align(
+      alignment: Alignment.centerLeft,
       child: Wrap(
-        alignment: WrapAlignment.center,
-        runAlignment: WrapAlignment.center,
+        alignment: WrapAlignment.start,
+        runAlignment: WrapAlignment.start,
         spacing: spacing,
         runSpacing: spacing,
         children: _quickAccessItems.map((item) {

@@ -22,7 +22,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const int _printerPort = 515;
   static const String _printerQueue = 'lp';
   static const String _historyKey = 'campus_printer_history';
-  static const int _historyLimit = 20;
 
   Uint8List? _pdfBytes;
   String _pdfName = '';
@@ -110,7 +109,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       if (!mounted) return;
       if (printers.isEmpty) {
         setState(() {
-          _printerStatus = 'No campus printer found';
+          _printerStatus = 'No printer found';
         });
         return;
       }
@@ -145,7 +144,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
           .whereType<Map<String, dynamic>>()
           .map(_PrintHistoryEntry.fromJson)
           .where((entry) => entry.fileName.isNotEmpty)
-          .take(_historyLimit)
           .toList();
       if (!mounted) return;
       setState(() {
@@ -155,17 +153,25 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   }
 
   Future<void> _addHistory(_PrintHistoryEntry entry) async {
-    final next = <_PrintHistoryEntry>[
-      entry,
-      ..._history,
-    ].take(_historyLimit).toList();
+    final next = <_PrintHistoryEntry>[entry, ..._history];
+    await _saveHistory(next);
+  }
+
+  Future<void> _deleteHistory(_PrintHistoryEntry entry) async {
+    final next = _history
+        .where((item) => !_sameHistoryEntry(item, entry))
+        .toList();
+    await _saveHistory(next);
+  }
+
+  Future<void> _saveHistory(List<_PrintHistoryEntry> history) async {
     setState(() {
-      _history = next;
+      _history = history;
     });
     final prefs = SharedPreferencesAsync();
     await prefs.setString(
       _historyKey,
-      jsonEncode(next.map((item) => item.toJson()).toList()),
+      jsonEncode(history.map((item) => item.toJson()).toList()),
     );
   }
 
@@ -213,7 +219,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     final bytes = _pdfBytes;
 
     if (host.isEmpty) {
-      showAppSnackBar(context, 'No campus printer found');
+      showAppSnackBar(context, 'No printer found');
       return;
     }
     if (bytes == null || bytes.isEmpty) {
@@ -251,7 +257,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
           printerHost: host,
           studentId: user,
           status: 'Accepted',
-          message: 'Accepted by campus printer queue',
+          message: 'Accepted by campus printer',
           createdAt: DateTime.now(),
         ),
       );
@@ -383,7 +389,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                       child: OutlinedButton.icon(
                         onPressed: _busy ? null : _pickPdf,
                         icon: const Icon(Icons.picture_as_pdf_outlined),
-                        label: const Text('Choose PDF'),
+                        label: const Text('Choose'),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -412,17 +418,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
             _LivePrintStatusCard(events: _liveEvents),
             const SizedBox(height: 12),
           ],
-          _PrintHistoryCard(history: _history),
-          const SizedBox(height: 12),
-          BracuCard(
-            child: Text(
-              'Connect to the campus printer network. The printer must support LPR/LPD and direct printing.',
-              style: TextStyle(
-                color: BracuPalette.textSecondary(context),
-                fontSize: 12,
-              ),
-            ),
-          ),
+          _PrintHistoryCard(history: _history, onDelete: _deleteHistory),
         ],
       ),
     );
@@ -507,9 +503,10 @@ class _StudentDetailLine extends StatelessWidget {
 }
 
 class _PrintHistoryCard extends StatelessWidget {
-  const _PrintHistoryCard({required this.history});
+  const _PrintHistoryCard({required this.history, required this.onDelete});
 
   final List<_PrintHistoryEntry> history;
+  final ValueChanged<_PrintHistoryEntry> onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -537,9 +534,13 @@ class _PrintHistoryCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          for (final entry in history.take(8)) ...[
-            _PrintHistoryRow(entry: entry),
-            if (entry != history.take(8).last)
+          for (var index = 0; index < history.length; index++) ...[
+            _PrintHistoryRow(
+              number: index + 1,
+              entry: history[index],
+              onDelete: onDelete,
+            ),
+            if (index != history.length - 1)
               Divider(
                 height: 16,
                 color: BracuPalette.textSecondary(
@@ -625,9 +626,15 @@ class _LivePrintStatusRow extends StatelessWidget {
 }
 
 class _PrintHistoryRow extends StatelessWidget {
-  const _PrintHistoryRow({required this.entry});
+  const _PrintHistoryRow({
+    required this.number,
+    required this.entry,
+    required this.onDelete,
+  });
 
+  final int number;
   final _PrintHistoryEntry entry;
+  final ValueChanged<_PrintHistoryEntry> onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -647,7 +654,7 @@ class _PrintHistoryRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                entry.fileName,
+                '$number. ${entry.fileName}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -673,6 +680,15 @@ class _PrintHistoryRow extends StatelessWidget {
               ),
             ],
           ),
+        ),
+        IconButton(
+          onPressed: () => onDelete(entry),
+          icon: const Icon(Icons.delete_outline_rounded),
+          color: BracuPalette.textSecondary(context),
+          iconSize: 18,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+          tooltip: 'Delete',
         ),
       ],
     );
@@ -824,7 +840,7 @@ class _LprPrintClient {
         socket,
         ackReader,
         Uint8List.fromList([0x02, ..._ascii(printerQueue), 0x0A]),
-        'Queue selected',
+        'Printer selected',
         onProgress,
       );
       await _writeAndAck(
@@ -835,14 +851,14 @@ class _LprPrintClient {
           ..._ascii('${control.length} $controlFileName'),
           0x0A,
         ]),
-        'Control header accepted',
+        'Preparing print job',
         onProgress,
       );
       await _writeAndAck(
         socket,
         ackReader,
         Uint8List.fromList([...control, 0x00]),
-        'Control file accepted',
+        'Print job prepared',
         onProgress,
       );
       await _writeAndAck(
@@ -853,14 +869,14 @@ class _LprPrintClient {
           ..._ascii('${bytes.length} $dataFileName'),
           0x0A,
         ]),
-        'PDF header accepted',
+        'Sending PDF',
         onProgress,
       );
       await _writeAndAck(
         socket,
         ackReader,
         Uint8List.fromList([...bytes, 0x00]),
-        'PDF accepted by queue',
+        'PDF accepted by printer',
         onProgress,
       );
     } on TimeoutException {
@@ -888,13 +904,12 @@ class _LprPrintClient {
     final hasAck = await ackReader.moveNext().timeout(_timeout);
     if (!hasAck) {
       onProgress(_PrintProgressEvent.failed('$stage failed'));
-      throw _LprPrintException('Printer closed connection during $stage');
+      throw _LprPrintException('$stage failed');
     }
     final ack = ackReader.current;
     if (ack.isEmpty || ack.first != 0) {
-      final code = ack.isEmpty ? 'empty' : '0x${ack.first.toRadixString(16)}';
-      onProgress(_PrintProgressEvent.failed('$stage rejected ($code)'));
-      throw _LprPrintException('Printer rejected $stage ($code)');
+      onProgress(_PrintProgressEvent.failed('$stage failed'));
+      throw _LprPrintException('$stage failed');
     }
     onProgress(_PrintProgressEvent.accepted(stage));
   }
@@ -1016,6 +1031,15 @@ bool _looksLikePdf(Uint8List bytes) {
       bytes[2] == 0x44 &&
       bytes[3] == 0x46 &&
       bytes[4] == 0x2D;
+}
+
+bool _sameHistoryEntry(_PrintHistoryEntry a, _PrintHistoryEntry b) {
+  return a.fileName == b.fileName &&
+      a.printerHost == b.printerHost &&
+      a.studentId == b.studentId &&
+      a.status == b.status &&
+      a.message == b.message &&
+      a.createdAt.isAtSameMomentAs(b.createdAt);
 }
 
 List<int> _ascii(String value) {

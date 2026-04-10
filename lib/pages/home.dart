@@ -830,23 +830,16 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
         children: [
           LayoutBuilder(
             builder: (context, constraints) {
-              const spacing = 12.0;
+              const spacing = 4.0;
               final width = (constraints.maxWidth - spacing * 3) / 4;
-              return Center(
+              return Align(
+                alignment: Alignment.centerLeft,
                 child: Wrap(
-                  alignment: WrapAlignment.center,
-                  runAlignment: WrapAlignment.center,
+                  alignment: WrapAlignment.start,
+                  runAlignment: WrapAlignment.start,
                   spacing: spacing,
                   runSpacing: spacing,
                   children: [
-                    QuickAccessCard(
-                      width: width,
-                      icon: Icons.settings_outlined,
-                      title: 'Settings',
-                      subtitle: 'Controls',
-                      color: const Color(0xFF7C56FF),
-                      onTap: () => widget.onNavigate(HomeTab.settings),
-                    ),
                     QuickAccessCard(
                       width: width,
                       icon: Icons.calendar_today_outlined,

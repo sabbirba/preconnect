@@ -1526,7 +1526,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
       parts.add('by Unknown');
     }
     if (parsed.linkUrl.isNotEmpty) {
-      parts.add('Link: ${_materialLinkLabel(parsed.linkUrl)}');
+      parts.add(_materialLinkLabel(parsed.linkUrl));
     }
     final semester = item.semester.trim();
     if (semester.isNotEmpty) {
@@ -1543,11 +1543,94 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
 
   String _materialLinkLabel(String raw) {
     final uri = Uri.tryParse(raw.trim());
-    final host = uri?.host.trim();
-    if (host != null && host.isNotEmpty) {
-      return host.startsWith('www.') ? host.substring(4) : host;
+    final host = (uri?.host.trim() ?? '').toLowerCase();
+    if (host.isEmpty) return 'Web';
+    final cleanHost = host.startsWith('www.') ? host.substring(4) : host;
+    final knownSource = _knownMaterialSource(cleanHost);
+    if (knownSource != null) return knownSource;
+
+    final parts = cleanHost
+        .split('.')
+        .where((part) => part.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return 'Web';
+
+    final source = parts.length >= 2 ? parts[parts.length - 2] : parts.first;
+    return switch (source) {
+      'fb' || 'facebook' => 'Facebook',
+      'instagram' => 'Instagram',
+      'youtube' || 'youtu' => 'YouTube',
+      'google' => 'Google',
+      'drive' => 'Google Drive',
+      'github' => 'GitHub',
+      'gitlab' => 'GitLab',
+      'bitbucket' => 'Bitbucket',
+      'linkedin' => 'LinkedIn',
+      'preconnect' => 'PreConnect',
+      _ => _titleCaseSource(source),
+    };
+  }
+
+  String? _knownMaterialSource(String host) {
+    if (host == 'drive.google.com') return 'Google Drive';
+    if (host == 'docs.google.com') return 'Google Docs';
+    if (host == 'forms.gle') return 'Google Forms';
+    if (host == 'classroom.google.com') return 'Google Classroom';
+    if (host == 'maps.google.com' || host == 'goo.gl') return 'Google';
+    if (host == 'youtu.be' || host.endsWith('.youtube.com')) return 'YouTube';
+    if (host == 'fb.watch' || host == 'm.me') return 'Facebook';
+    if (host == 'x.com' || host == 'twitter.com') return 'X';
+    if (host.endsWith('.sharepoint.com')) return 'SharePoint';
+    if (host.endsWith('.notion.site') || host == 'notion.so') return 'Notion';
+    if (host.endsWith('.canva.com') || host == 'canva.com') return 'Canva';
+    if (host.endsWith('.dropbox.com') || host == 'dropbox.com') {
+      return 'Dropbox';
     }
-    return 'Open';
+    if (host.endsWith('.box.com') || host == 'box.com') return 'Box';
+    if (host == 'onedrive.live.com' || host == '1drv.ms') return 'OneDrive';
+    if (host == 'mega.nz') return 'MEGA';
+    if (host == 'mediafire.com' || host.endsWith('.mediafire.com')) {
+      return 'MediaFire';
+    }
+    if (host == 't.me' || host == 'telegram.me') return 'Telegram';
+    if (host == 'wa.me' || host == 'whatsapp.com') return 'WhatsApp';
+    if (host == 'discord.gg' || host == 'discord.com') return 'Discord';
+    if (host == 'stackoverflow.com') return 'Stack Overflow';
+    if (host == 'medium.com') return 'Medium';
+    if (host == 'reddit.com' || host.endsWith('.reddit.com')) return 'Reddit';
+    if (host == 'bracu.ac.bd') return 'BRACU';
+    if (host == 'bu.ac.bd') return 'BRACU';
+    if (host == 'piazza.com') return 'Piazza';
+    if (host == 'overleaf.com') return 'Overleaf';
+    if (host == 'geeksforgeeks.org') return 'GeeksforGeeks';
+    if (host == 'w3schools.com') return 'W3Schools';
+    if (host == 'kaggle.com') return 'Kaggle';
+    if (host == 'coursera.org') return 'Coursera';
+    if (host == 'edx.org') return 'edX';
+    if (host == 'khanacademy.org') return 'Khan Academy';
+    if (host == 'archive.org') return 'Internet Archive';
+    if (host == 'researchgate.net') return 'ResearchGate';
+    if (host == 'academia.edu') return 'Academia';
+    if (host == 'springer.com' || host.endsWith('.springer.com')) {
+      return 'Springer';
+    }
+    if (host == 'ieee.org' || host.endsWith('.ieee.org')) return 'IEEE';
+    if (host == 'acm.org' || host.endsWith('.acm.org')) return 'ACM';
+    return null;
+  }
+
+  String _titleCaseSource(String value) {
+    final cleaned = value
+        .replaceAll(RegExp(r'[^a-z0-9]+', caseSensitive: false), ' ')
+        .trim();
+    if (cleaned.isEmpty) return 'Web';
+    return cleaned
+        .split(RegExp(r'\s+'))
+        .map((part) {
+          if (part.isEmpty) return part;
+          return part[0].toUpperCase() + part.substring(1);
+        })
+        .join(' ');
   }
 
   _MaterialMeta _parseMaterialMeta(CourseMaterialItem item) {
