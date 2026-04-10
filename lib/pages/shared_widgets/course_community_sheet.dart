@@ -71,6 +71,9 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
   final ProfileService _profileService = ProfileService();
   final TextEditingController _reviewCommentController =
       TextEditingController();
+  final TextEditingController _materialLinkController = TextEditingController();
+  final TextEditingController _materialTitleController =
+      TextEditingController();
 
   FacultyReviewFeed? _reviewFeed;
   List<CourseMaterialItem> _materials = const <CourseMaterialItem>[];
@@ -100,6 +103,8 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
   @override
   void dispose() {
     _reviewCommentController.dispose();
+    _materialLinkController.dispose();
+    _materialTitleController.dispose();
     super.dispose();
   }
 
@@ -541,8 +546,8 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
 
   Future<void> _openAddMaterialSheet() async {
     if (_busyWriteAction) return;
-    final linkController = TextEditingController();
-    final titleController = TextEditingController();
+    _materialLinkController.clear();
+    _materialTitleController.clear();
     Uint8List? selectedFileBytes;
     String selectedFileName = '';
     bool pickingFile = false;
@@ -622,7 +627,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                         ),
                         const SizedBox(height: 10),
                         TextField(
-                          controller: titleController,
+                          controller: _materialTitleController,
                           textInputAction: TextInputAction.done,
                           decoration: const InputDecoration(
                             labelText: 'Title',
@@ -701,7 +706,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                         ),
                         const SizedBox(height: 10),
                         TextField(
-                          controller: linkController,
+                          controller: _materialLinkController,
                           keyboardType: TextInputType.url,
                           textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
@@ -712,7 +717,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                         ),
                         const SizedBox(height: 10),
                         TextField(
-                          controller: titleController,
+                          controller: _materialTitleController,
                           textInputAction: TextInputAction.done,
                           decoration: const InputDecoration(
                             labelText: 'Title',
@@ -758,7 +763,8 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                                     );
                                     return;
                                   }
-                                  final customTitle = titleController.text
+                                  final customTitle = _materialTitleController
+                                      .text
                                       .trim();
                                   if (customTitle.isEmpty) {
                                     showAppSnackBar(
@@ -784,8 +790,10 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                                   return;
                                 }
 
-                                final url = linkController.text.trim();
-                                final customTitle = titleController.text.trim();
+                                final url = _materialLinkController.text.trim();
+                                final customTitle = _materialTitleController
+                                    .text
+                                    .trim();
                                 if (customTitle.isEmpty) {
                                   showAppSnackBar(context, 'Title is required');
                                   return;
@@ -841,8 +849,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
         );
       },
     );
-    linkController.dispose();
-    titleController.dispose();
   }
 
   Future<void> _uploadMaterialBytes({
@@ -894,6 +900,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
           fileName: normalizedName,
           contentType: contentType,
           fileSize: bytes.length,
+          externalUrl: linkUrl,
         ),
       );
       if (!mounted) return;
@@ -1470,7 +1477,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
       parts.add('by Unknown');
     }
     if (parsed.linkUrl.isNotEmpty) {
-      parts.add('Link');
+      parts.add('Link: ${_materialLinkLabel(parsed.linkUrl)}');
     }
     final semester = item.semester.trim();
     if (semester.isNotEmpty) {
@@ -1483,6 +1490,15 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
       parts.add(size);
     }
     return parts.isEmpty ? 'Course material' : parts.join(' • ');
+  }
+
+  String _materialLinkLabel(String raw) {
+    final uri = Uri.tryParse(raw.trim());
+    final host = uri?.host.trim();
+    if (host != null && host.isNotEmpty) {
+      return host.startsWith('www.') ? host.substring(4) : host;
+    }
+    return 'Open';
   }
 
   _MaterialMeta _parseMaterialMeta(CourseMaterialItem item) {

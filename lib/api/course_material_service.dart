@@ -73,9 +73,12 @@ class CourseMaterialItem {
       ]),
       externalUrl: _firstNonEmpty(<dynamic>[
         json['externalUrl'],
+        json['external_url'],
         json['linkUrl'],
+        json['link_url'],
         json['url'],
         json['materialUrl'],
+        json['material_url'],
       ]),
       createdAt: DateTime.tryParse('${json['createdAt'] ?? ''}'),
       updatedAt: DateTime.tryParse('${json['updatedAt'] ?? ''}'),
@@ -103,8 +106,12 @@ class CourseMaterialDetail {
   final int downloadUrlExpiresIn;
 
   factory CourseMaterialDetail.fromJson(Map<String, dynamic> json) {
+    final itemJson =
+        (json['item'] as Map?)?.cast<String, dynamic>() ??
+        (json['material'] as Map?)?.cast<String, dynamic>() ??
+        json;
     return CourseMaterialDetail(
-      item: CourseMaterialItem.fromJson(json),
+      item: CourseMaterialItem.fromJson(itemJson),
       downloadUrl: '${json['downloadUrl'] ?? ''}'.trim(),
       downloadUrlExpiresIn:
           (json['downloadUrlExpiresIn'] as num?)?.toInt() ?? 0,
@@ -166,6 +173,7 @@ class CourseMaterialFinalizeInput {
     required this.fileName,
     required this.contentType,
     required this.fileSize,
+    this.externalUrl = '',
   });
 
   final String key;
@@ -177,8 +185,10 @@ class CourseMaterialFinalizeInput {
   final String fileName;
   final String contentType;
   final int fileSize;
+  final String externalUrl;
 
   Map<String, dynamic> toJson() {
+    final normalizedExternalUrl = externalUrl.trim();
     return <String, dynamic>{
       'key': key,
       'courseCode': courseCode,
@@ -189,6 +199,10 @@ class CourseMaterialFinalizeInput {
       'fileName': fileName,
       'contentType': contentType,
       'fileSize': fileSize,
+      if (normalizedExternalUrl.isNotEmpty) ...<String, dynamic>{
+        'externalUrl': normalizedExternalUrl,
+        'linkUrl': normalizedExternalUrl,
+      },
     };
   }
 }
@@ -365,31 +379,45 @@ class CourseMaterialService {
   List<String> _storageKeySegmentsFromRaw(String rawPath) {
     final normalized = rawPath.trim().replaceAll('\\', '/');
     if (normalized.isEmpty) return const <String>[];
+    final uri = Uri.tryParse(normalized);
+    if (uri != null && uri.hasScheme && uri.pathSegments.isNotEmpty) {
+      return _storageKeySegmentsFromUri(uri);
+    }
     final segments = normalized
         .split('/')
         .where((segment) => segment.trim().isNotEmpty)
         .toList();
-    if (segments.isEmpty) return const <String>[];
-    if (segments.length >= 2 &&
-        segments[0].toLowerCase() == 'v1' &&
-        segments[1].toLowerCase() == 'course-materials') {
-      return const <String>[];
-    }
-    return segments;
+    return _cleanStorageKeySegments(segments);
   }
 
   List<String> _storageKeySegmentsFromSignedUrl(Uri uri) {
     final host = uri.host.toLowerCase();
     final filesHost = _filesBaseUri.host.toLowerCase();
     final fromFilesHost = host == filesHost || host.endsWith('.$filesHost');
-    if (!fromFilesHost) return const <String>[];
+    final fromR2Host =
+        host.endsWith('.r2.cloudflarestorage.com') ||
+        host.endsWith('.r2.dev') ||
+        host.contains('.r2.');
+    if (!fromFilesHost && !fromR2Host) return const <String>[];
+    return _storageKeySegmentsFromUri(uri);
+  }
+
+  List<String> _storageKeySegmentsFromUri(Uri uri) {
     final segments = uri.pathSegments
         .where((segment) => segment.trim().isNotEmpty)
         .toList();
+    return _cleanStorageKeySegments(segments);
+  }
+
+  List<String> _cleanStorageKeySegments(List<String> segments) {
+    if (segments.isEmpty) return const <String>[];
     if (segments.length >= 2 &&
         segments[0].toLowerCase() == 'v1' &&
         segments[1].toLowerCase() == 'course-materials') {
       return const <String>[];
+    }
+    if (segments.length >= 2 && segments[0].toLowerCase() == 'preconnect') {
+      return segments.sublist(1);
     }
     return segments;
   }
