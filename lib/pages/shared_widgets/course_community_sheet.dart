@@ -807,18 +807,14 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                                 }
                                 final uri = Uri.parse(url);
                                 final fileName = _materialLinkFileName(uri);
-                                final bytes = Uint8List.fromList(
-                                  utf8.encode('$url\n'),
-                                );
                                 setSheetState(() {
                                   submitting = true;
                                 });
                                 if (sheetContext.mounted) {
                                   Navigator.of(sheetContext).pop();
                                 }
-                                await _uploadMaterialBytes(
+                                await _saveMaterialLink(
                                   fileName: fileName,
-                                  bytes: bytes,
                                   titleHint: customTitle,
                                   descriptionHint:
                                       'Link shared from class/exam schedule',
@@ -849,6 +845,59 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
         );
       },
     );
+  }
+
+  Future<void> _saveMaterialLink({
+    required String fileName,
+    required String titleHint,
+    required String descriptionHint,
+    required String linkUrl,
+  }) async {
+    if (_busyWriteAction) return;
+    final normalizedName = fileName.trim();
+    final normalizedLink = linkUrl.trim();
+    if (normalizedName.isEmpty || !_isValidHttpUrl(normalizedLink)) return;
+    setState(() {
+      _busyWriteAction = true;
+    });
+    try {
+      final title = titleHint.trim();
+      if (title.isEmpty) {
+        if (!mounted) return;
+        showAppSnackBar(context, 'Title is required');
+        return;
+      }
+      await _materialService.finalize(
+        CourseMaterialFinalizeInput(
+          key: '',
+          courseCode: widget.courseCode,
+          courseTitle: widget.courseCode,
+          semester: widget.semesterLabel,
+          title: title,
+          description: _materialDescription(
+            base: descriptionHint,
+            uploaderName: _currentUserName,
+            linkUrl: normalizedLink,
+          ),
+          fileName: normalizedName,
+          contentType: 'text/uri-list',
+          fileSize: 0,
+          externalUrl: normalizedLink,
+        ),
+      );
+      if (!mounted) return;
+      showAppSnackBar(context, 'Link added');
+      await _loadMaterials();
+    } catch (_) {
+      if (!mounted) return;
+      showAppSnackBar(context, 'Link add not available now');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busyWriteAction = false;
+        });
+      }
+    }
   }
 
   Future<void> _uploadMaterialBytes({
