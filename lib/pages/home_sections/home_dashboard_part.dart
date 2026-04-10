@@ -433,16 +433,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     return DateTime(value.year, value.month, value.day);
   }
 
-  DateTime _startOfAcademicWeek(DateTime value) {
-    final day = _dateOnly(value);
-    final offset = day.weekday % 7;
-    return day.subtract(Duration(days: offset));
-  }
-
-  DateTime _endOfAcademicWeek(DateTime value) {
-    return _startOfAcademicWeek(value).add(const Duration(days: 6));
-  }
-
   _ExamWeekStatus _todayExamWeekStatus(
     List<section.Section> sections,
     Map<String, ExamScheduleOverride> overrides,
@@ -488,30 +478,16 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     }
 
     final today = _dateOnly(DateTime.now());
-    final isMidDateWindow =
+    final isMidWeek =
         firstMidDate != null &&
         lastMidDate != null &&
         !today.isBefore(firstMidDate!) &&
         !today.isAfter(lastMidDate!);
-    final isFinalDateWindow =
+    final isFinalWeek =
         firstFinalDate != null &&
         lastFinalDate != null &&
         !today.isBefore(firstFinalDate!) &&
         !today.isAfter(lastFinalDate!);
-
-    final isMidAcademicWeekWindow =
-        firstMidDate != null &&
-        lastMidDate != null &&
-        !today.isBefore(_startOfAcademicWeek(firstMidDate!)) &&
-        !today.isAfter(_endOfAcademicWeek(lastMidDate!));
-    final isFinalAcademicWeekWindow =
-        firstFinalDate != null &&
-        lastFinalDate != null &&
-        !today.isBefore(_startOfAcademicWeek(firstFinalDate!)) &&
-        !today.isAfter(_endOfAcademicWeek(lastFinalDate!));
-
-    final isMidWeek = isMidDateWindow || isMidAcademicWeekWindow;
-    final isFinalWeek = isFinalDateWindow || isFinalAcademicWeekWindow;
 
     if (isMidWeek && isFinalWeek) {
       return const _ExamWeekStatus(
