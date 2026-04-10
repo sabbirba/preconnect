@@ -1112,8 +1112,8 @@ Widget buildRefreshLoadingState({
 }) {
   return BracuRefreshPlaceholder(
     onRefresh: onRefresh,
-    topSpacing: topSpacing,
-    child: BracuLoading(label: label),
+    topSpacing: math.min(topSpacing, 24),
+    child: const BracuLoading(),
   );
 }
 
@@ -1555,44 +1555,215 @@ class BracuSectionTitle extends StatelessWidget {
 }
 
 class BracuLoading extends StatelessWidget {
-  const BracuLoading({super.key, this.label = 'Loading...'});
+  const BracuLoading({
+    super.key,
+    this.label = 'Loading...',
+    this.itemCount = 3,
+    this.compact,
+  });
 
   final String label;
+  final int itemCount;
+  final bool? compact;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxHeight < 72;
+        final isCompact = compact ?? constraints.maxHeight < 120;
+        final count = isCompact ? 1 : itemCount.clamp(1, 6);
         return Center(
           child: Padding(
-            padding: EdgeInsets.symmetric(vertical: compact ? 6 : 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+            padding: EdgeInsets.symmetric(vertical: isCompact ? 6 : 20),
+            child: BracuSkeletonList(
+              itemCount: count,
+              compact: isCompact,
+              showLabel: !isCompact && label.trim().isNotEmpty,
+              label: label,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class BracuSkeletonList extends StatelessWidget {
+  const BracuSkeletonList({
+    super.key,
+    this.itemCount = 3,
+    this.compact = false,
+    this.showLabel = false,
+    this.label = 'Loading...',
+  });
+
+  final int itemCount;
+  final bool compact;
+  final bool showLabel;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = itemCount.clamp(1, 8);
+    return BracuShimmer(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var index = 0; index < count; index++) ...[
+            _BracuSkeletonCard(compact: compact, index: index),
+            if (index != count - 1) SizedBox(height: compact ? 8 : 10),
+          ],
+          if (showLabel) ...[
+            const SizedBox(height: 12),
+            FractionallySizedBox(
+              widthFactor: 0.38,
+              child: BracuSkeletonBox(height: 12, radius: 6),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class BracuShimmer extends StatelessWidget {
+  const BracuShimmer({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Shimmer.fromColors(
+      baseColor: isDark ? const Color(0xFF1C1C1C) : const Color(0xFFE7EDF5),
+      highlightColor: isDark
+          ? const Color(0xFF343434)
+          : const Color(0xFFF8FBFF),
+      period: const Duration(milliseconds: 1300),
+      child: child,
+    );
+  }
+}
+
+class BracuSkeletonGrid extends StatelessWidget {
+  const BracuSkeletonGrid({
+    super.key,
+    this.itemCount = 6,
+    this.crossAxisCount = 3,
+    this.spacing = 10,
+    this.itemHeight = 72,
+  });
+
+  final int itemCount;
+  final int crossAxisCount;
+  final double spacing;
+  final double itemHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = itemCount.clamp(1, 12);
+    return BracuShimmer(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final columns = crossAxisCount.clamp(1, 6);
+          final itemWidth =
+              (constraints.maxWidth - (spacing * (columns - 1))) / columns;
+          return Wrap(
+            spacing: spacing,
+            runSpacing: spacing,
+            children: [
+              for (var index = 0; index < count; index++)
                 SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.4,
-                    color: BracuPalette.primary,
+                  width: itemWidth.isFinite ? itemWidth : 96,
+                  height: itemHeight,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      BracuSkeletonBox(width: 40, height: 40, radius: 20),
+                      SizedBox(height: 8),
+                      BracuSkeletonBox(width: 54, height: 9, radius: 5),
+                    ],
                   ),
                 ),
-                if (!compact && label.trim().isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: BracuPalette.textSecondary(context),
-                    ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class BracuSkeletonBox extends StatelessWidget {
+  const BracuSkeletonBox({
+    super.key,
+    this.width,
+    required this.height,
+    this.radius = 8,
+  });
+
+  final double? width;
+  final double height;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+    );
+  }
+}
+
+class _BracuSkeletonCard extends StatelessWidget {
+  const _BracuSkeletonCard({required this.compact, required this.index});
+
+  final bool compact;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    final widths = compact
+        ? const <double>[0.70, 0.48]
+        : const <double>[0.82, 0.58, 0.68];
+    return BracuCard(
+      backgroundColor: BracuPalette.card(context),
+      child: Row(
+        children: [
+          BracuSkeletonBox(
+            width: compact ? 32 : 42,
+            height: compact ? 32 : 42,
+            radius: compact ? 8 : 12,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FractionallySizedBox(
+                  widthFactor: widths[index % widths.length],
+                  child: BracuSkeletonBox(height: compact ? 10 : 12, radius: 6),
+                ),
+                SizedBox(height: compact ? 7 : 9),
+                FractionallySizedBox(
+                  widthFactor: compact ? 0.44 : 0.54,
+                  child: BracuSkeletonBox(height: compact ? 9 : 10, radius: 5),
+                ),
+                if (!compact) ...[
+                  const SizedBox(height: 9),
+                  FractionallySizedBox(
+                    widthFactor: 0.32,
+                    child: BracuSkeletonBox(height: 9, radius: 5),
                   ),
                 ],
               ],
             ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }
@@ -1798,12 +1969,11 @@ class QuickAccessCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: isLoading
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        valueColor: AlwaysStoppedAnimation<Color>(color),
+                  ? const BracuShimmer(
+                      child: BracuSkeletonBox(
+                        width: 20,
+                        height: 20,
+                        radius: 10,
                       ),
                     )
                   : Icon(icon, color: color, size: 20),

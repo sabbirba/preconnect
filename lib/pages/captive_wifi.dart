@@ -427,10 +427,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
               ),
               const Spacer(),
               if (_isCheckingSession)
-                const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                const BracuShimmer(
+                  child: BracuSkeletonBox(width: 14, height: 14, radius: 7),
                 ),
             ],
           ),

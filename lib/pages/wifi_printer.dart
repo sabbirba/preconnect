@@ -351,10 +351,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                           ? null
                           : () => _discoverPrinter(),
                       icon: _discovering
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                          ? const BracuShimmer(
+                              child: BracuSkeletonBox(
+                                width: 14,
+                                height: 14,
+                                radius: 7,
+                              ),
                             )
                           : const Icon(Icons.wifi_find_outlined),
                       label: Text(_discovering ? 'Scanning' : 'Scan'),
@@ -397,11 +399,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                       child: FilledButton.icon(
                         onPressed: canPrint ? _sendToPrinter : null,
                         icon: _busy
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                            ? const BracuShimmer(
+                                child: BracuSkeletonBox(
+                                  width: 16,
+                                  height: 16,
+                                  radius: 8,
                                 ),
                               )
                             : const Icon(Icons.print_rounded),

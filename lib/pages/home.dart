@@ -344,14 +344,11 @@ class _TopBar extends StatelessWidget {
                             width: 42,
                             height: 42,
                             filterQuality: FilterQuality.low,
-                            placeholder: Center(
-                              child: Text(
-                                initial.toUpperCase(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            placeholder: const BracuShimmer(
+                              child: BracuSkeletonBox(
+                                width: 42,
+                                height: 42,
+                                radius: 14,
                               ),
                             ),
                             error: Center(

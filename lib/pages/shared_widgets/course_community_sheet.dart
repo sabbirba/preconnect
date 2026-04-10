@@ -677,11 +677,11 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                                     });
                                   },
                             icon: pickingFile
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
+                                ? const BracuShimmer(
+                                    child: BracuSkeletonBox(
+                                      width: 16,
+                                      height: 16,
+                                      radius: 8,
                                     ),
                                   )
                                 : const Icon(Icons.upload_file_rounded),
@@ -822,11 +822,11 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                                 );
                               },
                         icon: submitting
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                            ? const BracuShimmer(
+                                child: BracuSkeletonBox(
+                                  width: 16,
+                                  height: 16,
+                                  radius: 8,
                                 ),
                               )
                             : Icon(
@@ -1348,7 +1348,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
         if (_reviewsLoading)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 14),
-            child: BracuLoading(label: 'Loading...'),
+            child: BracuLoading(itemCount: 2, compact: true),
           )
         else if (_reviewsError != null)
           BracuCard(
@@ -1427,7 +1427,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
         if (_materialsLoading)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 14),
-            child: BracuLoading(label: 'Loading...'),
+            child: BracuLoading(itemCount: 3, compact: true),
           )
         else if (_materialsError != null)
           BracuCard(

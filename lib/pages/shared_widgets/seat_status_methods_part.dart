@@ -240,7 +240,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
               if (showLoadingState) {
                 return const Padding(
                   padding: EdgeInsets.only(top: 28),
-                  child: Center(child: BracuLoading(label: 'Loading...')),
+                  child: BracuLoading(itemCount: 4),
                 );
               }
               if (!hasCards) {
@@ -271,7 +271,12 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
             Positioned.fill(
               child: ColoredBox(
                 color: Colors.black.withValues(alpha: 0.14),
-                child: const Center(child: BracuLoading(label: 'Loading...')),
+                child: const Center(
+                  child: SizedBox(
+                    width: 220,
+                    child: BracuLoading(compact: true),
+                  ),
+                ),
               ),
             ),
         ],

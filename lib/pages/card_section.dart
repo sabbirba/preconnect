@@ -225,7 +225,13 @@ class _CardFront extends StatelessWidget {
                                           url: photoUrl!,
                                           fit: BoxFit.cover,
                                           alignment: Alignment.center,
-                                          placeholder: const SizedBox.expand(),
+                                          placeholder: const BracuShimmer(
+                                            child: BracuSkeletonBox(
+                                              width: 90,
+                                              height: 106,
+                                              radius: 4,
+                                            ),
+                                          ),
                                           error: const SizedBox.expand(),
                                         ),
                                 ),
@@ -417,7 +423,9 @@ class _BracuLogo extends StatelessWidget {
       height: height,
       fit: BoxFit.contain,
       error: Icon(Icons.school_rounded, size: width, color: Colors.black),
-      placeholder: SizedBox(width: width, height: height),
+      placeholder: BracuShimmer(
+        child: BracuSkeletonBox(width: width, height: height, radius: 6),
+      ),
     );
   }
 }

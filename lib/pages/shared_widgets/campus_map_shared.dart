@@ -265,7 +265,10 @@ Future<void> showCampusMapBottomSheet(
         ]),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: BracuLoading());
+            return const Padding(
+              padding: EdgeInsets.all(18),
+              child: BracuLoading(itemCount: 3),
+            );
           }
           final values = snapshot.data;
           final mapData = values != null && values.isNotEmpty

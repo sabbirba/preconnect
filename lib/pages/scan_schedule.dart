@@ -202,7 +202,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                               )
                             : (_cameraGranted == null
                                   ? const Center(
-                                      child: CircularProgressIndicator(),
+                                      child: BracuLoading(compact: true),
                                     )
                                   : Center(
                                       child: TextButton(

@@ -295,7 +295,12 @@ class _WebLoginSetupPageState extends State<WebLoginSetupPage>
                   ],
                 ),
                 if (_loadingSessions)
-                  const LinearProgressIndicator(minHeight: 2),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 8),
+                    child: BracuShimmer(
+                      child: BracuSkeletonBox(height: 3, radius: 2),
+                    ),
+                  ),
                 if (!_loadingSessions && _activeSessions.isEmpty) ...[
                   const SizedBox(height: 8),
                   Text(

@@ -183,10 +183,12 @@ class _ApiTestPageState extends State<ApiTestPage> {
                   child: ElevatedButton.icon(
                     onPressed: _isLoading ? null : _sendRequest,
                     icon: _isLoading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                        ? const BracuShimmer(
+                            child: BracuSkeletonBox(
+                              width: 16,
+                              height: 16,
+                              radius: 8,
+                            ),
                           )
                         : const Icon(Icons.play_arrow_rounded),
                     label: Text(_isLoading ? 'Sending...' : 'Send'),

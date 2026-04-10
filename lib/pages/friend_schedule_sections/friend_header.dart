@@ -183,14 +183,11 @@ class FriendAvatar extends StatelessWidget {
               child: CachedImage(
                 url: resolvedPhotoUrl,
                 fit: BoxFit.cover,
-                placeholder: Center(
-                  child: Text(
-                    _initials(),
-                    style: TextStyle(
-                      color: BracuPalette.primary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: fontSize,
-                    ),
+                placeholder: BracuShimmer(
+                  child: BracuSkeletonBox(
+                    width: size,
+                    height: size,
+                    radius: radius,
                   ),
                 ),
                 error: Center(

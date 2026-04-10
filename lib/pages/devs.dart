@@ -116,7 +116,11 @@ class _DevsPageState extends State<DevsPage> {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Padding(
                       padding: EdgeInsets.symmetric(vertical: 10),
-                      child: BracuLoading(label: 'Loading...'),
+                      child: BracuSkeletonGrid(
+                        itemCount: 6,
+                        crossAxisCount: 3,
+                        itemHeight: 72,
+                      ),
                     );
                   }
                   final contributors =
@@ -403,7 +407,9 @@ class _DevGridTile extends StatelessWidget {
                 child: CachedImage(
                   url: contributor.avatarUrl,
                   fit: BoxFit.cover,
-                  placeholder: _avatarPlaceholder(context),
+                  placeholder: const BracuShimmer(
+                    child: BracuSkeletonBox(width: 40, height: 40, radius: 20),
+                  ),
                   error: _avatarPlaceholder(context),
                 ),
               ),

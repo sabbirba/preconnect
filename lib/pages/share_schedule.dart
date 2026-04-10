@@ -286,7 +286,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
         onRefresh: _handleRefresh,
         children: [
           if (isLoading)
-            const BracuLoading(label: 'Loading...')
+            const BracuLoading(itemCount: 4)
           else if (errorMessage != null)
             BracuEmptyState(message: "Error: $errorMessage")
           else ...[

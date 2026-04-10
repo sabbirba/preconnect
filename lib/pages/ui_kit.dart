@@ -17,6 +17,7 @@ import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/web_pdf_opener.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 part 'shared_widgets/ui_kit_components_part.dart';
@@ -270,8 +271,8 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
                 url: widget.imageUrls.first,
                 fit: widget.imageFit,
                 maxBytesInPrefs: widget.maxBytesInPrefs,
-                placeholder: Container(
-                  color: BracuPalette.primary.withValues(alpha: 0.08),
+                placeholder: const BracuShimmer(
+                  child: BracuSkeletonBox(height: 220, radius: 8),
                 ),
                 error: Container(
                   color: BracuPalette.primary.withValues(alpha: 0.08),
@@ -292,8 +293,8 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
                     url: widget.imageUrls[idx],
                     fit: widget.imageFit,
                     maxBytesInPrefs: widget.maxBytesInPrefs,
-                    placeholder: Container(
-                      color: BracuPalette.primary.withValues(alpha: 0.08),
+                    placeholder: const BracuShimmer(
+                      child: BracuSkeletonBox(height: 220, radius: 8),
                     ),
                     error: Container(
                       color: BracuPalette.primary.withValues(alpha: 0.08),
@@ -655,12 +656,8 @@ class BracuFundingSupportContent extends StatelessWidget {
                     width: size,
                     height: size,
                     fit: BoxFit.contain,
-                    placeholder: const Center(
-                      child: SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
+                    placeholder: const BracuShimmer(
+                      child: BracuSkeletonBox(height: 220, radius: 12),
                     ),
                     error: const Icon(Icons.qr_code_2_rounded),
                   );

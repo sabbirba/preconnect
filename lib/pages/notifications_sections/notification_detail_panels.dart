@@ -190,7 +190,10 @@ class _ConnectNotificationDetailPanelState
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: BracuLoading());
+            return const Padding(
+              padding: EdgeInsets.all(18),
+              child: BracuLoading(itemCount: 4),
+            );
           }
 
           if (snapshot.hasError || !snapshot.hasData) {

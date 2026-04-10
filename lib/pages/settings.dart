@@ -145,7 +145,7 @@ class _SettingsPageState extends State<SettingsPage> {
         showScrollTopButton: false,
         children: [
           if (_isLoading)
-            const BracuLoading(label: 'Loading...')
+            const BracuLoading(itemCount: 5)
           else ...[
             Material(
               color: Colors.transparent,

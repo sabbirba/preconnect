@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shimmer/shimmer.dart';
 
 class CachedImage extends StatefulWidget {
   const CachedImage({
@@ -186,7 +187,8 @@ class _CachedImageState extends State<CachedImage> {
         filterQuality: widget.filterQuality,
         loadingBuilder: (context, child, progress) {
           if (progress == null) return child;
-          return widget.placeholder ?? const SizedBox.shrink();
+          return widget.placeholder ??
+              _CachedImageShimmer(width: widget.width, height: widget.height);
         },
         errorBuilder: (_, _, _) => widget.error ?? const SizedBox.shrink(),
       );
@@ -204,11 +206,39 @@ class _CachedImageState extends State<CachedImage> {
     if (_error != null) {
       return widget.error ?? const SizedBox.shrink();
     }
-    return widget.placeholder ?? const SizedBox.shrink();
+    return widget.placeholder ??
+        _CachedImageShimmer(width: widget.width, height: widget.height);
   }
 
   String _buildWebProxyUrl(String url) {
     final encoded = Uri.encodeComponent(url);
     return '${Uri.base.origin}/img?u=$encoded';
+  }
+}
+
+class _CachedImageShimmer extends StatelessWidget {
+  const _CachedImageShimmer({this.width, this.height});
+
+  final double? width;
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Shimmer.fromColors(
+      baseColor: isDark ? const Color(0xFF1C1C1C) : const Color(0xFFE7EDF5),
+      highlightColor: isDark
+          ? const Color(0xFF343434)
+          : const Color(0xFFF8FBFF),
+      period: const Duration(milliseconds: 1300),
+      child: Container(
+        width: width ?? double.infinity,
+        height: height ?? 120,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
   }
 }

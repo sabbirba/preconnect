@@ -84,13 +84,8 @@ class _GradeSheetCardState extends State<GradeSheetCard> {
                 ),
               ),
               icon: _isOpening
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
+                  ? const BracuShimmer(
+                      child: BracuSkeletonBox(width: 16, height: 16, radius: 8),
                     )
                   : const Icon(Icons.picture_as_pdf_outlined, size: 16),
               label: Text(_isOpening ? 'Opening' : 'Open'),
