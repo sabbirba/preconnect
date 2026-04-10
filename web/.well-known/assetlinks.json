@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.sabbirba.preconnect",
+      "sha256_cert_fingerprints": [
+        "D5:05:7C:5F:7F:71:EE:DB:4F:A6:0B:CA:C6:DF:BA:C5:D5:7E:E3:86:F3:9A:72:A2:40:9B:35:08:2C:18:4D:22"
+      ]
+    }
+  }
+]

@@ -543,7 +543,10 @@ jobs:
           rm -rf "$NOTES_DIR"
           mkdir -p "$NOTES_DIR"
 
-          NOTES="Automated publishing for version ${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}."
+          NOTES="$(git log -1 --pretty=%B)"
+          if [ -z "$(printf '%s' "$NOTES" | tr -d '[:space:]')" ]; then
+            NOTES="PreConnect ${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}"
+          fi
 
           NOTES=$(printf '%s\n' "$NOTES" | awk -v max=480 '
             BEGIN { len = 0 }

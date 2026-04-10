@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -100,7 +101,9 @@ class _MyAppState extends State<MyApp>
   static const String _shortcutFriends = 'quick.friends';
 
   late final ValueNotifier<ThemeMode> _themeMode;
+  late final AppLinks _appLinks;
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  StreamSubscription<Uri>? _appLinkSubscription;
   late bool _initialLoggedIn;
   late bool _canOpenOffline;
   AppBootstrapState? _resolvedBootstrapState;
@@ -117,10 +120,15 @@ class _MyAppState extends State<MyApp>
     _themeMode = ValueNotifier<ThemeMode>(
       widget.bootstrapState?.themeMode ?? ThemeMode.system,
     );
+    _appLinks = AppLinks();
     WidgetsBinding.instance.addObserver(this);
     if (_resolvedBootstrapState == null) {
       unawaited(_bootstrapInBackground());
     }
+    _appLinkSubscription = _appLinks.uriLinkStream.listen(
+      _handleAppLink,
+      onError: (_) {},
+    );
     unawaited(_initializeAppLock());
     bindRefreshBus(_onRefreshSignal);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -200,6 +208,7 @@ class _MyAppState extends State<MyApp>
 
   @override
   void dispose() {
+    _appLinkSubscription?.cancel();
     unbindRefreshBus(_onRefreshSignal);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -215,6 +224,16 @@ class _MyAppState extends State<MyApp>
   void _handleShortcutAction(String action) {
     final tab = _tabFromShortcutAction(action);
     if (tab == null) return;
+    _openHomeTab(tab);
+  }
+
+  void _handleAppLink(Uri uri) {
+    final tab = _tabFromAppLink(uri);
+    if (tab == null) return;
+    _openHomeTab(tab);
+  }
+
+  void _openHomeTab(HomeTab tab) {
     if (!_initialLoggedIn && !_canOpenOffline) return;
     HomePage.requestShortcutTab(tab);
     final navigator = _navigatorKey.currentState;
@@ -244,6 +263,64 @@ class _MyAppState extends State<MyApp>
       case _shortcutFriends:
       case 'friends':
         return HomeTab.friendSchedule;
+      default:
+        return null;
+    }
+  }
+
+  HomeTab? _tabFromAppLink(Uri uri) {
+    final isCustomScheme = uri.scheme == 'preconnect';
+    final isTrustedWebLink =
+        (uri.scheme == 'https' || uri.scheme == 'http') &&
+        (uri.host == 'preconnect.app' || uri.host == 'web.preconnect.app');
+    if (!isCustomScheme && !isTrustedWebLink) return null;
+
+    final segments = <String>[
+      if (isCustomScheme && uri.host.isNotEmpty) uri.host,
+      ...uri.pathSegments,
+    ].map((segment) => segment.toLowerCase()).toList();
+    final target = segments.isEmpty ? 'home' : segments.first;
+
+    switch (target) {
+      case '':
+      case 'home':
+      case 'dashboard':
+        return HomeTab.dashboard;
+      case 'settings':
+        return HomeTab.settings;
+      case 'notifications':
+        return HomeTab.notifications;
+      case 'profile':
+        return HomeTab.profile;
+      case 'classes':
+      case 'class-schedule':
+      case 'schedule':
+        return HomeTab.studentSchedule;
+      case 'exams':
+      case 'exam-schedule':
+        return HomeTab.examSchedule;
+      case 'seats':
+      case 'seat-status':
+        return HomeTab.seatStatus;
+      case 'degree':
+      case 'degree-progress':
+        return HomeTab.degreeProgress;
+      case 'alarms':
+        return HomeTab.alarms;
+      case 'friends':
+      case 'friend-schedule':
+        return HomeTab.friendSchedule;
+      case 'calendar':
+        return HomeTab.calendar;
+      case 'labs':
+      case 'free-labs':
+        return HomeTab.freeLabs;
+      case 'printer':
+      case 'campus-printer':
+        return HomeTab.campusPrinter;
+      case 'devs':
+      case 'developers':
+        return HomeTab.devs;
       default:
         return null;
     }
