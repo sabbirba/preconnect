@@ -1525,9 +1525,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
     } else {
       parts.add('by Unknown');
     }
-    if (parsed.linkUrl.isNotEmpty) {
-      parts.add(_materialLinkLabel(parsed.linkUrl));
-    }
     final semester = item.semester.trim();
     if (semester.isNotEmpty) {
       parts.add(semester);
@@ -1537,6 +1534,9 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
         : _formatFileSize(item.fileSize);
     if (size.isNotEmpty) {
       parts.add(size);
+    }
+    if (parsed.linkUrl.isNotEmpty) {
+      parts.add(_materialLinkLabel(parsed.linkUrl));
     }
     return parts.isEmpty ? 'Course material' : parts.join(' • ');
   }
