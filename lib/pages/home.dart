@@ -23,6 +23,7 @@ import 'package:preconnect/pages/calendar.dart';
 import 'package:preconnect/pages/free_labs.dart';
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/settings.dart';
+import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/home_sections/exam_countdown.dart';
 import 'package:preconnect/pages/home_sections/student_overview.dart';
@@ -98,6 +99,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
     HomeTab.shareSchedule: (_) => const ShareSchedulePage(),
     HomeTab.scanSchedule: (_) => const ScanSchedulePage(),
     HomeTab.friendSchedule: (_) => FriendSchedulePage(onNavigate: _setTab),
+    HomeTab.campusPrinter: (_) => const CampusPrinterPage(),
     HomeTab.devs: (_) => const DevsPage(),
   };
   late final List<HomeTab> _tabOrder = HomeTab.values;
@@ -868,6 +870,14 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
                       subtitle: 'Status',
                       color: const Color(0xFF00A8E8),
                       onTap: () => widget.onNavigate(HomeTab.seatStatus),
+                    ),
+                    QuickAccessCard(
+                      width: width,
+                      icon: Icons.local_printshop_outlined,
+                      title: 'Campus',
+                      subtitle: 'Printer',
+                      color: const Color(0xFF22B573),
+                      onTap: () => widget.onNavigate(HomeTab.campusPrinter),
                     ),
                   ],
                 ),

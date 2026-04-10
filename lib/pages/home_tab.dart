@@ -16,6 +16,7 @@ enum HomeTab {
   shareSchedule,
   scanSchedule,
   friendSchedule,
+  campusPrinter,
   devs,
 }
 

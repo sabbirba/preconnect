@@ -34,7 +34,7 @@
 			<string>_alarmkit._tcp</string>
 		</array>
 		<key>NSLocalNetworkUsageDescription</key>
-		<string>PreConnect needs access to the local network for AlarmKit.</string>
+		<string>PreConnect needs access to the local network for AlarmKit and campus printing.</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>
