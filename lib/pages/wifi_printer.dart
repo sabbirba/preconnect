@@ -255,8 +255,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         _PrintHistoryEntry(
           fileName: _pdfName,
           printerHost: host,
-          status: 'Accepted',
-          message: 'Accepted by campus printer',
+          status: 'Sent',
+          message: 'Sent to campus printer',
           createdAt: DateTime.now(),
         ),
       );
@@ -619,8 +619,8 @@ class _PrintHistoryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accepted = entry.status.toLowerCase() == 'accepted';
-    final statusColor = accepted ? Colors.greenAccent : Colors.redAccent;
+    final failed = entry.status.toLowerCase() == 'failed';
+    final statusColor = failed ? Colors.redAccent : Colors.greenAccent;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -628,7 +628,7 @@ class _PrintHistoryRow extends StatelessWidget {
           width: 22,
           height: 22,
           child: Icon(
-            accepted ? Icons.check_circle_outline : Icons.error_outline,
+            failed ? Icons.error_outline : Icons.check_circle_outline,
             color: statusColor,
             size: 18,
           ),
@@ -640,8 +640,7 @@ class _PrintHistoryRow extends StatelessWidget {
             children: [
               Text(
                 entry.fileName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                softWrap: true,
                 style: TextStyle(
                   color: BracuPalette.textPrimary(context),
                   fontWeight: FontWeight.w700,
@@ -650,15 +649,7 @@ class _PrintHistoryRow extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                '${entry.status} • ${entry.message}',
-                style: TextStyle(
-                  color: BracuPalette.textSecondary(context),
-                  fontSize: 11,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '${_formatHistoryTime(entry.createdAt)} • ${entry.printerHost}',
+                _formatHistoryTime(entry.createdAt),
                 style: TextStyle(
                   color: BracuPalette.textSecondary(context),
                   fontSize: 10,
