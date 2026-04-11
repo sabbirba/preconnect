@@ -803,7 +803,7 @@ class _LprPrintClient {
     try {
       onProgress(
         _PrintProgressEvent.running(
-          isPdf ? 'Converting PDF to PostScript' : 'Preparing PostScript',
+          isPdf ? 'Preparing file' : 'Preparing file',
         ),
       );
       final sendBytes = isPdf
@@ -891,11 +891,7 @@ class _LprPrintClient {
 
       for (var index = 0; index < pageCount; index++) {
         final pageNumber = index + 1;
-        onProgress(
-          _PrintProgressEvent.running(
-            'Rendering page $pageNumber of $pageCount',
-          ),
-        );
+        onProgress(_PrintProgressEvent.running('Preparing page $pageNumber'));
         final page = document.pages[index];
         final widthPoints = page.width;
         final heightPoints = page.height;
