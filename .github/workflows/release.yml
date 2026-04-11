@@ -170,6 +170,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      FACULTY_REVIEWS_BEARER: ${{ secrets.FACULTY_REVIEWS_BEARER }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -219,6 +221,14 @@ jobs:
       contents: write
     env:
       DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
+      REWARDED_AD_UNIT_ID: ${{ secrets.REWARDED_AD_UNIT_ID }}
+      ADS_APP_ID_IOS: ${{ secrets.ADS_APP_ID_IOS }}
+      FACULTY_REVIEWS_BEARER: ${{ secrets.FACULTY_REVIEWS_BEARER }}
+      PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: ${{ secrets.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER }}
+      storeFile: preconnect-release-key.jks
+      storePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      keyAlias: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+      keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
     strategy:
       fail-fast: false
       matrix:
@@ -328,23 +338,22 @@ jobs:
 
       - name: Check Android Signing Secrets
         if: matrix.platform == 'android'
-        id: android_signing
         shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEYSTORE_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          REWARDED_AD_UNIT_ID: ${{ secrets.REWARDED_AD_UNIT_ID }}
         run: |
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ANDROID_KEYSTORE_PASSWORD" ] && [ -n "$ANDROID_KEYSTORE_ALIAS" ] && [ -n "$ANDROID_KEY_PASSWORD" ]; then
-            echo "enabled=true" >> $GITHUB_OUTPUT
-          else
-            echo "Android signing secrets missing; skipping Android release builds."
-            echo "enabled=false" >> $GITHUB_OUTPUT
-          fi
+          [ -n "$ANDROID_KEYSTORE_BASE64" ] || { echo "Missing required Android release secret: ANDROID_KEYSTORE_BASE64"; exit 1; }
+          [ -n "$ANDROID_KEYSTORE_PASSWORD" ] || { echo "Missing required Android release secret: ANDROID_KEYSTORE_PASSWORD"; exit 1; }
+          [ -n "$ANDROID_KEYSTORE_ALIAS" ] || { echo "Missing required Android release secret: ANDROID_KEYSTORE_ALIAS"; exit 1; }
+          [ -n "$ANDROID_KEY_PASSWORD" ] || { echo "Missing required Android release secret: ANDROID_KEY_PASSWORD"; exit 1; }
+          [ -n "$REWARDED_AD_UNIT_ID" ] || { echo "Missing required Android release secret: REWARDED_AD_UNIT_ID"; exit 1; }
 
       - name: Restore Android Keystore
-        if: matrix.platform == 'android' && steps.android_signing.outputs.enabled == 'true'
+        if: matrix.platform == 'android'
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/preconnect-release-key.jks
           chmod 600 android/preconnect-release-key.jks
@@ -356,11 +365,11 @@ jobs:
           EOF
 
       - name: Build Android APK (Release)
-        if: matrix.platform == 'android' && steps.android_signing.outputs.enabled == 'true'
+        if: matrix.platform == 'android'
         run: flutter build apk --release --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
 
       - name: Build Android AAB (Release)
-        if: matrix.platform == 'android' && steps.android_signing.outputs.enabled == 'true'
+        if: matrix.platform == 'android'
         run: flutter build appbundle --release --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
 
       - name: Build iOS App (Release, No Codesign)
@@ -403,7 +412,7 @@ jobs:
 
 
       - name: Package Android Release
-        if: matrix.platform == 'android' && steps.android_signing.outputs.enabled == 'true'
+        if: matrix.platform == 'android'
         run: |
           mkdir -p artifacts
           cp build/app/outputs/flutter-apk/app-release.apk \
