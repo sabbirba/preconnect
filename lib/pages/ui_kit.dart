@@ -674,11 +674,11 @@ class BracuActionBannerCard extends StatelessWidget {
 class BracuRewardVideoSection extends StatefulWidget {
   const BracuRewardVideoSection({
     super.key,
-    this.activeTitle = 'Video Ad Support',
-    this.activeSubtitle = 'Rewards added by you.',
+    this.activeTitle = 'Reward Video Support',
+    this.activeSubtitle = 'Watch short video to support the app',
     this.inactiveTitle = 'Support PreConnect',
-    this.inactiveSubtitle = 'Watch a short video to support the app.',
-    this.buttonLabel = 'Watch Video',
+    this.inactiveSubtitle = 'Watch short video to support the app',
+    this.buttonLabel = 'Watch',
     this.padding = const EdgeInsets.symmetric(vertical: 2),
   });
 

@@ -183,10 +183,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     });
   }
 
-  Future<void> _pickPdf() async {
+  Future<void> _pickPrintFile() async {
     final picked = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const <String>['pdf'],
+      allowedExtensions: const <String>['pdf', 'ps'],
       allowMultiple: false,
       withData: true,
     );
@@ -198,12 +198,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       bytes = await File(path).readAsBytes();
     }
     if (bytes == null || bytes.isEmpty) {
-      if (mounted) showAppSnackBar(context, 'Unable to read selected PDF');
+      if (mounted) showAppSnackBar(context, 'Unable to read selected file');
       return;
     }
-    if (!_looksLikePdf(bytes)) {
+    if (!_looksLikeSupportedPrintFile(bytes, file.name)) {
       if (mounted) {
-        showAppSnackBar(context, 'Only valid PDF files are supported');
+        showAppSnackBar(context, 'Only PDF or PostScript files are supported');
       }
       return;
     }
@@ -224,7 +224,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       return;
     }
     if (bytes == null || bytes.isEmpty) {
-      showAppSnackBar(context, 'Choose a PDF first');
+      showAppSnackBar(context, 'Choose a file first');
       return;
     }
     if (_studentId.trim().isEmpty) {
@@ -235,7 +235,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     setState(() {
       _busy = true;
       _liveEvents = <_PrintProgressEvent>[
-        _PrintProgressEvent.running('Preparing PDF'),
+        _PrintProgressEvent.running('Preparing file'),
       ];
     });
     try {
@@ -244,7 +244,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         port: _printerPort,
         queue: _printerQueue,
       );
-      await client.sendPdf(
+      await client.sendFile(
         bytes: bytes,
         fileName: _pdfName,
         user: user,
@@ -262,7 +262,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         ),
       );
       if (!mounted) return;
-      showAppSnackBar(context, 'PDF sent to campus printer');
+      showAppSnackBar(context, 'File sent to campus printer');
     } on _LprPrintException catch (error) {
       if (!mounted) return;
       await _addHistory(
@@ -283,12 +283,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
           fileName: _pdfName,
           printerHost: host,
           status: 'Failed',
-          message: 'Unable to send PDF to campus printer',
+          message: 'Unable to send file to campus printer',
           createdAt: DateTime.now(),
         ),
       );
       if (!mounted) return;
-      showAppSnackBar(context, 'Unable to send PDF to campus printer');
+      showAppSnackBar(context, 'Unable to send file to campus printer');
     } finally {
       if (mounted) {
         setState(() {
@@ -298,18 +298,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     }
   }
 
-  bool _looksLikePdf(Uint8List bytes) {
-    if (bytes.length < 5) return false;
-    return bytes[0] == 0x25 &&
-        bytes[1] == 0x50 &&
-        bytes[2] == 0x44 &&
-        bytes[3] == 0x46 &&
-        bytes[4] == 0x2D;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final selected = _pdfName.isEmpty ? 'No PDF selected' : _pdfName;
+    final selected = _pdfName.isEmpty ? 'No file selected' : _pdfName;
     final canPrint =
         !_busy &&
         !_discovering &&
@@ -317,7 +308,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         _studentId.isNotEmpty;
     return BracuPageScaffold(
       title: 'Printer',
-      subtitle: 'Print PDF',
+      subtitle: 'Print File',
       icon: Icons.local_printshop_outlined,
       body: BracuRefreshList(
         onRefresh: _refreshPrinterInfo,
@@ -390,7 +381,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: _busy ? null : _pickPdf,
+                        onPressed: _busy ? null : _pickPrintFile,
                         icon: const Icon(Icons.picture_as_pdf_outlined),
                         label: const Text('Choose'),
                       ),
@@ -793,15 +784,19 @@ class _LprPrintClient {
   final String queue;
   static const Duration _timeout = Duration(seconds: 15);
 
-  Future<void> sendPdf({
+  Future<void> sendFile({
     required Uint8List bytes,
     required String fileName,
     required String user,
     required String sourceHost,
     required ValueChanged<_PrintProgressEvent> onProgress,
   }) async {
-    if (!_looksLikePdf(bytes)) {
-      throw const _LprPrintException('Only valid PDF files are supported');
+    final isPdf = _looksLikePdf(bytes, fileName);
+    final isPostScript = _looksLikePostScript(bytes, fileName);
+    if (!isPdf && !isPostScript) {
+      throw const _LprPrintException(
+        'Only valid PDF or PostScript files are supported',
+      );
     }
     final printerHost = host.trim();
     if (printerHost.isEmpty) {
@@ -821,11 +816,14 @@ class _LprPrintClient {
     Socket? socket;
     _LprAckReader? ackReader;
     try {
-      onProgress(_PrintProgressEvent.running('Converting PDF to PostScript'));
-      final postScriptBytes = await _pdfToPostScript(
-        bytes,
-        onProgress: onProgress,
+      onProgress(
+        _PrintProgressEvent.running(
+          isPdf ? 'Converting PDF to PostScript' : 'Preparing PostScript',
+        ),
       );
+      final sendBytes = isPdf
+          ? await _pdfToPostScript(bytes, onProgress: onProgress)
+          : bytes;
       final control = _ascii(
         [
           'H$origin',
@@ -871,7 +869,7 @@ class _LprPrintClient {
         ackReader,
         Uint8List.fromList([
           0x03,
-          ..._ascii('${postScriptBytes.length} $dataFileName'),
+          ..._ascii('${sendBytes.length} $dataFileName'),
           0x0A,
         ]),
         'Sending PostScript',
@@ -880,8 +878,8 @@ class _LprPrintClient {
       await _writeAndAck(
         socket,
         ackReader,
-        Uint8List.fromList([...postScriptBytes, 0x00]),
-        'PostScript accepted by printer',
+        Uint8List.fromList([...sendBytes, 0x00]),
+        'File accepted by printer',
         onProgress,
       );
     } on _LprPrintException catch (error) {
@@ -1123,13 +1121,62 @@ class _Ipv4Subnet {
   final String interfaceName;
 }
 
-bool _looksLikePdf(Uint8List bytes) {
-  if (bytes.length < 5) return false;
-  return bytes[0] == 0x25 &&
+bool _looksLikeSupportedPrintFile(Uint8List bytes, String fileName) {
+  return _looksLikePdf(bytes, fileName) || _looksLikePostScript(bytes, fileName);
+}
+
+bool _looksLikePdf(Uint8List bytes, String fileName) {
+  final lowerName = fileName.trim().toLowerCase();
+  if (!lowerName.endsWith('.pdf')) return false;
+  return bytes.length >= 5 &&
+      bytes[0] == 0x25 &&
       bytes[1] == 0x50 &&
       bytes[2] == 0x44 &&
       bytes[3] == 0x46 &&
       bytes[4] == 0x2D;
+}
+
+bool _looksLikePostScript(Uint8List bytes, String fileName) {
+  final lowerName = fileName.trim().toLowerCase();
+  if (!lowerName.endsWith('.ps')) return false;
+  return bytes.length >= 4 &&
+      bytes[0] == 0x25 &&
+      bytes[1] == 0x21 &&
+      bytes[2] == 0x50 &&
+      bytes[3] == 0x53;
+}
+
+Uint8List _bgraToRgb(Uint8List pixels) {
+  if (pixels.isEmpty) return Uint8List(0);
+  final rgb = Uint8List((pixels.length ~/ 4) * 3);
+  var src = 0;
+  var dst = 0;
+  while (src + 3 < pixels.length) {
+    rgb[dst++] = pixels[src + 2];
+    rgb[dst++] = pixels[src + 1];
+    rgb[dst++] = pixels[src];
+    src += 4;
+  }
+  return rgb;
+}
+
+String _hexLines(Uint8List bytes, {int wrap = 64}) {
+  const hex = '0123456789ABCDEF';
+  final buffer = StringBuffer();
+  var column = 0;
+  for (final byte in bytes) {
+    buffer.write(hex[(byte >> 4) & 0xF]);
+    buffer.write(hex[byte & 0xF]);
+    column += 2;
+    if (column >= wrap) {
+      buffer.write('\n');
+      column = 0;
+    }
+  }
+  if (column != 0) {
+    buffer.write('\n');
+  }
+  return buffer.toString();
 }
 
 bool _sameHistoryEntry(_PrintHistoryEntry a, _PrintHistoryEntry b) {
@@ -1181,39 +1228,6 @@ String _safeFileName(String value, {String fallbackExtension = '.pdf'}) {
     return normalized.substring(0, normalized.length - 4) + fallbackExtension;
   }
   return '$normalized$fallbackExtension';
-}
-
-Uint8List _bgraToRgb(Uint8List pixels) {
-  if (pixels.isEmpty) return Uint8List(0);
-  final rgb = Uint8List((pixels.length ~/ 4) * 3);
-  var src = 0;
-  var dst = 0;
-  while (src + 3 < pixels.length) {
-    rgb[dst++] = pixels[src + 2];
-    rgb[dst++] = pixels[src + 1];
-    rgb[dst++] = pixels[src];
-    src += 4;
-  }
-  return rgb;
-}
-
-String _hexLines(Uint8List bytes, {int wrap = 64}) {
-  const hex = '0123456789ABCDEF';
-  final buffer = StringBuffer();
-  var column = 0;
-  for (final byte in bytes) {
-    buffer.write(hex[(byte >> 4) & 0xF]);
-    buffer.write(hex[byte & 0xF]);
-    column += 2;
-    if (column >= wrap) {
-      buffer.write('\n');
-      column = 0;
-    }
-  }
-  if (column != 0) {
-    buffer.write('\n');
-  }
-  return buffer.toString();
 }
 
 String _formatHistoryTime(DateTime value) {
