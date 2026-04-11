@@ -102,8 +102,10 @@ Update [`.env.example`](.env.example) values in your local [`.env`](.env):
 - `keyAlias`
 - `keyPassword`
 - `DEVELOPMENT_TEAM`
+- `REWARDED_AD_UNIT_ID`
+- `ADS_APP_ID_IOS`
 
-### Android signing setup
+### Android Signing Setup
 
 Release builds require `android/key.properties`.
 

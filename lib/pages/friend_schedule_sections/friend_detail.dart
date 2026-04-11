@@ -91,8 +91,8 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
 
   String? _pickHighlightedEntryKey(List<Map<String, dynamic>> flatEntries) {
     final now = DateTime.now();
-    DateTime? currentEnd;
-    String? currentKey;
+    DateTime? nextStart;
+    String? nextKey;
 
     for (final entry in flatEntries) {
       final day = entry['day']?.toString() ?? '';
@@ -104,56 +104,35 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
         continue;
       }
 
-      var daysAhead = (weekday - now.weekday + 7) % 7;
-      var date = now.add(Duration(days: daysAhead));
-      var startTime = DateTime(
-        date.year,
-        date.month,
-        date.day,
+      if (weekday != now.weekday) {
+        continue;
+      }
+      final startTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
         start ~/ 60,
         start % 60,
       );
-      var endTime = DateTime(
-        date.year,
-        date.month,
-        date.day,
+      final endTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
         end ~/ 60,
         end % 60,
       );
-
-      if (daysAhead == 0 && !now.isBefore(endTime)) {
-        daysAhead = 7;
-        date = now.add(Duration(days: daysAhead));
-        startTime = DateTime(
-          date.year,
-          date.month,
-          date.day,
-          start ~/ 60,
-          start % 60,
-        );
-        endTime = DateTime(
-          date.year,
-          date.month,
-          date.day,
-          end ~/ 60,
-          end % 60,
-        );
-      }
-
-      if (daysAhead != 0) {
+      if (!now.isBefore(endTime)) {
         continue;
       }
 
-      final isCurrent = !now.isBefore(startTime) && now.isBefore(endTime);
-      if (isCurrent) {
-        if (currentEnd == null || endTime.isBefore(currentEnd)) {
-          currentEnd = endTime;
-          currentKey = key;
-        }
+      final effectiveStart = now.isBefore(startTime) ? startTime : now;
+      if (nextStart == null || effectiveStart.isBefore(nextStart)) {
+        nextStart = effectiveStart;
+        nextKey = key;
       }
     }
 
-    return currentKey;
+    return nextKey;
   }
 
   @override
@@ -363,7 +342,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                   key: entry['entryKey'] == highlightedEntryKey
                       ? (_highlightKey ??= GlobalKey())
                       : null,
-                  isHighlighted: false,
+                  isHighlighted: entry['entryKey'] == highlightedEntryKey,
                   highlightColor: BracuPalette.primary,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -458,6 +437,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
         onScrolled: () {
           _didScroll = true;
         },
+        alignment: 0.18,
       );
     }
     return widgets;

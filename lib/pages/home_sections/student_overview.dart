@@ -9,6 +9,7 @@ class StudentOverviewCard extends StatelessWidget {
     required this.department,
     required this.currentSemester,
     required this.currentSessionSemesterId,
+    required this.onOpenReward,
     required this.onOpenSettings,
     required this.onLogout,
     this.countdown,
@@ -19,6 +20,7 @@ class StudentOverviewCard extends StatelessWidget {
   final String department;
   final String currentSemester;
   final String currentSessionSemesterId;
+  final Future<void> Function() onOpenReward;
   final VoidCallback onOpenSettings;
   final Future<void> Function() onLogout;
   final Widget? countdown;
@@ -45,6 +47,11 @@ class StudentOverviewCard extends StatelessWidget {
                       letterSpacing: -0.3,
                     ),
                   ),
+                ),
+                const SizedBox(width: 8),
+                _RewardIconButton(
+                  icon: Icons.card_giftcard_outlined,
+                  onTap: onOpenReward,
                 ),
                 const SizedBox(width: 8),
                 _IconButton(
@@ -99,6 +106,80 @@ class _IconButton extends StatelessWidget {
         ),
         child: Icon(icon, size: 18, color: BracuPalette.primary),
       ),
+    );
+  }
+}
+
+class _RewardIconButton extends StatefulWidget {
+  const _RewardIconButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final Future<void> Function() onTap;
+
+  @override
+  State<_RewardIconButton> createState() => _RewardIconButtonState();
+}
+
+class _RewardIconButtonState extends State<_RewardIconButton> {
+  bool _isLoading = false;
+
+  Future<void> _handleTap() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await widget.onTap();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: _isLoading ? null : _handleTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 180),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        child: _isLoading ? _buildLoadingTile() : _buildButtonTile(),
+      ),
+    );
+  }
+
+  Widget _buildButtonTile() {
+    return _buildTile(
+      child: Icon(widget.icon, size: 18, color: BracuPalette.primary),
+    );
+  }
+
+  Widget _buildLoadingTile() {
+    return BracuShimmer(
+      child: _buildTile(
+        child: const BracuSkeletonBox(width: 18, height: 18, radius: 9),
+      ),
+    );
+  }
+
+  Widget _buildTile({required Widget child}) {
+    return Container(
+      width: 30,
+      height: 30,
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: BracuPalette.primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      alignment: Alignment.center,
+      child: child,
     );
   }
 }

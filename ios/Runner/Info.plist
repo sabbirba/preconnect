@@ -143,6 +143,8 @@
 		<array>
 			<string>remote-notification</string>
 		</array>
+		<key>GADApplicationIdentifier</key>
+		<string>$(ADS_APP_ID_IOS)</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>

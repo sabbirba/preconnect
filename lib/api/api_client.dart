@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
@@ -21,6 +20,7 @@ class ApiClient {
   final WebLoginBrokerService _webLoginBroker = WebLoginBrokerService();
   static const Duration _requestTimeout = Duration(seconds: 12);
   static const Duration _connectivityCacheTtl = Duration(seconds: 10);
+  static const Duration _connectivityProbeTimeout = Duration(seconds: 3);
   static const Duration _webSessionCheckTtl = Duration(seconds: 12);
   DateTime? _lastConnectivityCheckedAt;
   bool? _lastConnectivityResult;
@@ -36,8 +36,10 @@ class ApiClient {
       return _lastConnectivityResult!;
     }
     try {
-      final result = await Connectivity().checkConnectivity();
-      final online = !result.contains(ConnectivityResult.none);
+      final response = await http
+          .get(Uri.parse(ApiConfig.connectApiBase))
+          .timeout(_connectivityProbeTimeout);
+      final online = response.statusCode < 500;
       _lastConnectivityCheckedAt = now;
       _lastConnectivityResult = online;
       return online;

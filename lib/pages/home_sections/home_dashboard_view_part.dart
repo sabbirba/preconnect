@@ -56,7 +56,7 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                       final isTodayHoliday = holidayStatus.isTodayHoliday;
                       final today = _todayName();
                       final todayDate = DateFormat(
-                        'd MMMM, y',
+                        'd MMMM',
                       ).format(DateTime.now());
                       final todayEntries =
                           (data?.entries ?? [])
@@ -78,8 +78,6 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                       );
                       final isExamWeekActive = examWeekStatus.isActive;
                       final visibleEntries = isTodayHoliday
-                          ? <_ScheduleEntry>[]
-                          : isExamWeekActive
                           ? <_ScheduleEntry>[]
                           : todayEntries;
                       final nextExam = _nextExamCountdown(
@@ -123,6 +121,9 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                               currentSemester: profile['currentSemester'] ?? '',
                               currentSessionSemesterId:
                                   profile['currentSessionSemesterId'] ?? '',
+                              onOpenReward: () => showRewardSupportFlow(
+                                context,
+                              ),
                               onOpenSettings: () =>
                                   widget.onNavigate(HomeTab.settings),
                               onLogout: widget.onLogout,
@@ -212,10 +213,12 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                                           ),
                                         ),
                                       ),
-                                    )
-                              else if (isTodayHoliday ||
-                                  isExamWeekActive ||
-                                  visibleEntries.isEmpty)
+                                    ),
+                              if (todayExams.isNotEmpty &&
+                                  visibleEntries.isNotEmpty)
+                                const SizedBox(height: 10),
+                              if (todayExams.isEmpty &&
+                                  (isTodayHoliday || visibleEntries.isEmpty))
                                 Padding(
                                   padding: const EdgeInsets.only(bottom: 10),
                                   child: InkWell(
@@ -244,7 +247,7 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                                     ),
                                   ),
                                 )
-                              else
+                              else if (visibleEntries.isNotEmpty)
                                 ...visibleEntries
                                     .take(3)
                                     .map(
@@ -446,10 +449,9 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                               const SizedBox(height: 12),
                               LayoutBuilder(
                                 builder: (context, constraints) {
-                                  const spacing = 4.0;
-                                  final width =
-                                      (constraints.maxWidth - spacing * 3) / 4;
-                                  return _buildQuickAccessGrid(width: width);
+                                  return _buildQuickAccessGrid(
+                                    maxWidth: constraints.maxWidth,
+                                  );
                                 },
                               ),
                             ],
@@ -465,7 +467,7 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                             BracuActionBannerCard(
                               icon: Icons.favorite_outline_rounded,
                               title: 'Support PreConnect',
-                              subtitle: 'Open QR and funding instructions',
+                              subtitle: 'Watch video or open funding options',
                               iconColor: const Color(0xFF00A8E8),
                               onTap: () =>
                                   showBracuFundingSupportSheet(context),
@@ -485,18 +487,17 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
     );
   }
 
-  Widget _buildQuickAccessGrid({required double width}) {
-    const spacing = 4.0;
-    return Align(
-      alignment: Alignment.centerLeft,
+  Widget _buildQuickAccessGrid({required double maxWidth}) {
+    final layout = quickAccessGridLayout(maxWidth);
+    return Center(
       child: Wrap(
-        alignment: WrapAlignment.start,
-        runAlignment: WrapAlignment.start,
-        spacing: spacing,
-        runSpacing: spacing,
+        alignment: WrapAlignment.center,
+        runAlignment: WrapAlignment.center,
+        spacing: layout.spacing,
+        runSpacing: layout.spacing,
         children: _quickAccessItems.map((item) {
           return QuickAccessCard(
-            width: width,
+            width: layout.itemWidth,
             icon: item.icon,
             title: item.title,
             subtitle: item.subtitle,

@@ -90,6 +90,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       onScrolled: () {
         _didScroll = true;
       },
+      alignment: 0.18,
     );
   }
 
@@ -407,18 +408,13 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     final endMinute = endParsed?.$2 ?? 0;
     final endMinutes = endHour * 60 + endMinute;
 
-    int daysAhead = (targetWeekday - now.weekday + 7) % 7;
-    if (daysAhead == 0) {
-      if (nowMinutes < endMinutes) {
-        if (nowMinutes <= startMinutes) {
-          return DateTime(now.year, now.month, now.day, startHour, startMinute);
-        }
-        return now;
-      }
-      daysAhead = 7;
+    if (targetWeekday != now.weekday || nowMinutes >= endMinutes) {
+      return null;
     }
-    final date = now.add(Duration(days: daysAhead));
-    return DateTime(date.year, date.month, date.day, startHour, startMinute);
+    if (nowMinutes <= startMinutes) {
+      return DateTime(now.year, now.month, now.day, startHour, startMinute);
+    }
+    return now;
   }
 
   List<_RenderedScheduleSection> _buildRenderedSections(
@@ -562,7 +558,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
                         faculties: faculties,
                         consumedSeat: consumedSeat,
                         courseType: courseType,
-                        highlighted: false,
+                        highlighted: isScrollTarget,
                         onTap: () {
                           final semesterLabel = semesterSessionId == null
                               ? _semesterLabel(_selectedSemesterSessionId)

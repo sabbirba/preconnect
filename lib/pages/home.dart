@@ -827,18 +827,16 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
         children: [
           LayoutBuilder(
             builder: (context, constraints) {
-              const spacing = 4.0;
-              final width = (constraints.maxWidth - spacing * 3) / 4;
-              return Align(
-                alignment: Alignment.centerLeft,
+              final layout = quickAccessGridLayout(constraints.maxWidth);
+              return Center(
                 child: Wrap(
-                  alignment: WrapAlignment.start,
-                  runAlignment: WrapAlignment.start,
-                  spacing: spacing,
-                  runSpacing: spacing,
+                  alignment: WrapAlignment.center,
+                  runAlignment: WrapAlignment.center,
+                  spacing: layout.spacing,
+                  runSpacing: layout.spacing,
                   children: [
                     QuickAccessCard(
-                      width: width,
+                      width: layout.itemWidth,
                       icon: Icons.calendar_today_outlined,
                       title: 'Events',
                       subtitle: 'Calendar',
@@ -846,7 +844,7 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
                       onTap: () => widget.onNavigate(HomeTab.calendar),
                     ),
                     QuickAccessCard(
-                      width: width,
+                      width: layout.itemWidth,
                       icon: Icons.computer_outlined,
                       title: 'Free',
                       subtitle: 'Labs',
@@ -854,7 +852,7 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
                       onTap: () => widget.onNavigate(HomeTab.freeLabs),
                     ),
                     QuickAccessCard(
-                      width: width,
+                      width: layout.itemWidth,
                       icon: Icons.insights_outlined,
                       title: 'Seat',
                       subtitle: 'Status',
@@ -862,7 +860,7 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
                       onTap: () => widget.onNavigate(HomeTab.seatStatus),
                     ),
                     QuickAccessCard(
-                      width: width,
+                      width: layout.itemWidth,
                       icon: Icons.local_printshop_outlined,
                       title: 'Campus',
                       subtitle: 'Printer',

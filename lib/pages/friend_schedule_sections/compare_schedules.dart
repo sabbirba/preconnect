@@ -282,8 +282,8 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
 
   String? _pickHighlightedEntryKey(List<_DayCompareEntry> entries) {
     final now = DateTime.now();
-    DateTime? currentEnd;
-    String? currentKey;
+    DateTime? nextStart;
+    String? nextKey;
 
     for (final entry in entries) {
       final startMinutes = entry.startMinutes;
@@ -293,56 +293,35 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
         continue;
       }
 
-      var daysAhead = (weekday - now.weekday + 7) % 7;
-      var date = now.add(Duration(days: daysAhead));
-      var start = DateTime(
-        date.year,
-        date.month,
-        date.day,
+      if (weekday != now.weekday) {
+        continue;
+      }
+      final start = DateTime(
+        now.year,
+        now.month,
+        now.day,
         startMinutes ~/ 60,
         startMinutes % 60,
       );
-      var end = DateTime(
-        date.year,
-        date.month,
-        date.day,
+      final end = DateTime(
+        now.year,
+        now.month,
+        now.day,
         endMinutes ~/ 60,
         endMinutes % 60,
       );
-
-      if (daysAhead == 0 && !now.isBefore(end)) {
-        daysAhead = 7;
-        date = now.add(Duration(days: daysAhead));
-        start = DateTime(
-          date.year,
-          date.month,
-          date.day,
-          startMinutes ~/ 60,
-          startMinutes % 60,
-        );
-        end = DateTime(
-          date.year,
-          date.month,
-          date.day,
-          endMinutes ~/ 60,
-          endMinutes % 60,
-        );
-      }
-
-      if (daysAhead != 0) {
+      if (!now.isBefore(end)) {
         continue;
       }
 
-      final isCurrent = !now.isBefore(start) && now.isBefore(end);
-      if (isCurrent) {
-        if (currentEnd == null || end.isBefore(currentEnd)) {
-          currentEnd = end;
-          currentKey = entry.key;
-        }
+      final effectiveStart = now.isBefore(start) ? start : now;
+      if (nextStart == null || effectiveStart.isBefore(nextStart)) {
+        nextStart = effectiveStart;
+        nextKey = entry.key;
       }
     }
 
-    return currentKey;
+    return nextKey;
   }
 
   List<_DayCompareEntry> _buildEntries(
@@ -547,6 +526,37 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
     final highlightedEntryKey = _pickHighlightedEntryKey(entries);
     _highlightKey = null;
 
+    final scheduleWidgets = <Widget>[
+      _buildPeopleCard(context),
+      const SizedBox(height: 12),
+      if (entries.isEmpty)
+        const BracuCard(
+          child: Text('No overlap found in available schedule data.'),
+        )
+      else
+        ...grouped.entries.expand((entry) sync* {
+          yield Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: BracuSectionTitle(title: entry.key),
+          );
+          for (final item in entry.value) {
+            final pinned = _pinnedEntries.contains(item.key);
+            final isHighlighted = item.key == highlightedEntryKey;
+            if (isHighlighted) {
+              _highlightKey ??= GlobalKey();
+            }
+            yield _buildEntryCard(
+              context,
+              item,
+              pinned,
+              isHighlighted: isHighlighted,
+              highlightKey: isHighlighted ? _highlightKey : null,
+            );
+          }
+          yield const SizedBox(height: 8);
+        }),
+    ];
+
     if (highlightedEntryKey != null &&
         highlightedEntryKey != _lastHighlightKey) {
       _lastHighlightKey = highlightedEntryKey;
@@ -566,6 +576,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
         onScrolled: () {
           _didScroll = true;
         },
+        alignment: 0.18,
       );
     }
 
@@ -577,36 +588,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
         body: ListView(
           controller: _scrollController,
           padding: const EdgeInsets.all(20),
-          children: [
-            _buildPeopleCard(context),
-            const SizedBox(height: 12),
-            if (entries.isEmpty)
-              const BracuCard(
-                child: Text('No overlap found in available schedule data.'),
-              )
-            else
-              ...grouped.entries.expand((entry) sync* {
-                yield Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: BracuSectionTitle(title: entry.key),
-                );
-                for (final item in entry.value) {
-                  final pinned = _pinnedEntries.contains(item.key);
-                  final isHighlighted = item.key == highlightedEntryKey;
-                  if (isHighlighted) {
-                    _highlightKey ??= GlobalKey();
-                  }
-                  yield _buildEntryCard(
-                    context,
-                    item,
-                    pinned,
-                    isHighlighted: isHighlighted,
-                    highlightKey: isHighlighted ? _highlightKey : null,
-                  );
-                }
-                yield const SizedBox(height: 8);
-              }),
-          ],
+          children: scheduleWidgets,
         ),
       ),
     );
@@ -700,7 +682,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
       padding: const EdgeInsets.only(bottom: 10),
       child: BracuCard(
         key: highlightKey,
-        isHighlighted: false,
+        isHighlighted: isHighlighted,
         highlightColor: BracuPalette.primary,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

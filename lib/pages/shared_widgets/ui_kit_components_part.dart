@@ -894,6 +894,29 @@ String formatSectionBadge(String? sectionName) {
 
 const EdgeInsets kBracuPageListPadding = EdgeInsets.fromLTRB(20, 8, 20, 28);
 
+({double itemWidth, double spacing}) quickAccessGridLayout(
+  double maxWidth, {
+  int targetColumns = 4,
+  double minItemWidth = 72.0,
+}) {
+  const maxSpacing = 12.0;
+  const minSpacing = 4.0;
+
+  for (var spacing = maxSpacing; spacing >= minSpacing; spacing -= 1) {
+    final width = (maxWidth - spacing * (targetColumns - 1)) / targetColumns;
+    if (width >= minItemWidth) {
+      return (itemWidth: width, spacing: spacing);
+    }
+  }
+
+  final fallbackWidth =
+      (maxWidth - minSpacing * (targetColumns - 1)) / targetColumns;
+  return (
+    itemWidth: fallbackWidth.clamp(60.0, double.infinity),
+    spacing: minSpacing,
+  );
+}
+
 class BracuRefreshList extends StatefulWidget {
   const BracuRefreshList({
     super.key,
@@ -1494,12 +1517,14 @@ class BracuCard extends StatelessWidget {
     this.isHighlighted = false,
     this.highlightColor,
     this.backgroundColor,
+    this.padding = const EdgeInsets.all(14),
   });
 
   final Widget child;
   final bool isHighlighted;
   final Color? highlightColor;
   final Color? backgroundColor;
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
@@ -1509,7 +1534,7 @@ class BracuCard extends StatelessWidget {
       context,
     ).withValues(alpha: isDark ? 0.22 : 0.16);
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: padding,
       decoration: BoxDecoration(
         color: backgroundColor ?? BracuPalette.card(context),
         borderRadius: BorderRadius.circular(18),
@@ -1641,6 +1666,50 @@ class BracuShimmer extends StatelessWidget {
           : const Color(0xFFF8FBFF),
       period: const Duration(milliseconds: 1300),
       child: child,
+    );
+  }
+}
+
+class BracuShimmerLabel extends StatelessWidget {
+  const BracuShimmerLabel({
+    super.key,
+    required this.label,
+    this.color,
+    this.dotSize = 14,
+    this.gap = 10,
+    this.fontSize = 14,
+  });
+
+  final String label;
+  final Color? color;
+  final double dotSize;
+  final double gap;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor = color ?? BracuPalette.primary;
+    return BracuShimmer(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          BracuSkeletonBox(
+            width: dotSize,
+            height: dotSize,
+            radius: dotSize / 2,
+          ),
+          SizedBox(width: gap),
+          Text(
+            label,
+            style: TextStyle(
+              color: textColor,
+              fontSize: fontSize,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1958,12 +2027,12 @@ class QuickAccessCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         width: width,
-        padding: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.all(9),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(5),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
@@ -1976,9 +2045,9 @@ class QuickAccessCard extends StatelessWidget {
                         radius: 10,
                       ),
                     )
-                  : Icon(icon, color: color, size: 20),
+                  : Icon(icon, color: color, size: 22),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: FittedBox(
@@ -1987,6 +2056,7 @@ class QuickAccessCard extends StatelessWidget {
                   title,
                   textAlign: TextAlign.center,
                   maxLines: 1,
+                  softWrap: false,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -1995,6 +2065,7 @@ class QuickAccessCard extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 2),
             SizedBox(
               width: double.infinity,
               child: FittedBox(
@@ -2003,6 +2074,7 @@ class QuickAccessCard extends StatelessWidget {
                   subtitle,
                   textAlign: TextAlign.center,
                   maxLines: 1,
+                  softWrap: false,
                   style: TextStyle(fontSize: 11, color: textSecondary),
                 ),
               ),
@@ -2034,56 +2106,56 @@ class FriendActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final textSecondary = BracuPalette.textSecondary(context);
     final textPrimary = BracuPalette.textPrimary(context);
-    final borderColor = BracuPalette.textSecondary(
-      context,
-    ).withValues(alpha: isDark ? 0.35 : 0.18);
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         width: width,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: BracuPalette.card(context),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: borderColor),
-          boxShadow: isDark
-              ? const []
-              : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-        ),
+        padding: const EdgeInsets.all(8),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: color, size: 22),
+              child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(height: 8),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: textPrimary,
+            SizedBox(
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textPrimary,
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 1),
-            Text(
-              subtitle,
-              style: TextStyle(fontSize: 11, color: textSecondary),
+            const SizedBox(height: 2),
+            SizedBox(
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  subtitle,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TextStyle(fontSize: 10.5, color: textSecondary),
+                ),
+              ),
             ),
           ],
         ),

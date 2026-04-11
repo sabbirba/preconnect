@@ -512,7 +512,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                           },
                           child: BracuCard(
                             key: isHighlighted ? _highlightKey : null,
-                            isHighlighted: false,
+                            isHighlighted: isHighlighted,
                             highlightColor: BracuPalette.primary,
                             child: Row(
                               children: [
@@ -695,7 +695,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                           },
                           child: BracuCard(
                             key: isHighlighted ? _highlightKey : null,
-                            isHighlighted: false,
+                            isHighlighted: isHighlighted,
                             highlightColor: BracuPalette.primary,
                             child: Row(
                               children: [
@@ -827,6 +827,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
               onScrolled: () {
                 _didScroll = true;
               },
+              alignment: 0.18,
             );
           }
 

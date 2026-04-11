@@ -12,7 +12,43 @@ plugins {
 
 
 fun envOrProp(name: String): String? =
-    (findProperty(name) as String?) ?: System.getenv(name)
+    envFromDotEnv(name)
+        ?: (findProperty(name) as String?)
+        ?: (rootProject.findProperty(name) as String?)
+        ?: System.getenv(name)
+
+fun envFromDotEnv(name: String): String? {
+    val envFile = rootProject.file("../.env")
+    if (!envFile.exists()) return null
+    for (line in envFile.readLines()) {
+        val trimmed = line.trim()
+        if (trimmed.isEmpty() || trimmed.startsWith("#") || !trimmed.contains("=")) continue
+        val idx = trimmed.indexOf('=')
+        val key = trimmed.substring(0, idx).trim()
+        if (key == name) {
+            return trimmed.substring(idx + 1).trim()
+        }
+    }
+    return null
+}
+
+fun loadAndroidAdAppId(): String {
+    val googleServicesFile = rootProject.file("app/google-services.json")
+    if (googleServicesFile.exists()) {
+        val match = Regex("\"admob_app_id\"\\s*:\\s*\"([^\"]+)\"")
+            .find(googleServicesFile.readText())
+        if (match != null) {
+            return match.groupValues[1]
+        }
+        throw GradleException("Missing app id in android/app/google-services.json.")
+    }
+
+    throw GradleException("Missing android/app/google-services.json")
+}
+
+val androidAdAppId = loadAndroidAdAppId()
+val rewardedAdUnitId = envOrProp("REWARDED_AD_UNIT_ID")
+    ?: throw GradleException("Missing REWARDED_AD_UNIT_ID")
 
 android {
     val keystoreProperties = Properties()
@@ -36,6 +72,10 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
@@ -51,6 +91,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["adAppId"] = androidAdAppId
+        buildConfigField("String", "REWARDED_AD_UNIT_ID", "\"$rewardedAdUnitId\"")
 
     }
 
@@ -96,4 +138,5 @@ dependencies {
     implementation("com.google.android.play:integrity:1.4.0")
     implementation("com.android.installreferrer:installreferrer:2.2")
     implementation("com.google.android.play:core-common:2.0.4")
+    implementation("com.google.android.gms:play-services-ads:25.1.0")
 }

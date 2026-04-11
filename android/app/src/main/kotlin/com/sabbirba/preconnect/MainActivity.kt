@@ -2,6 +2,7 @@ package com.sabbirba.preconnect
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -40,6 +41,7 @@ class MainActivity : FlutterFragmentActivity() {
     private val networkPrefs by lazy {
         getSharedPreferences("preconnect.network_assist", Context.MODE_PRIVATE)
     }
+    private lateinit var adsBridge: AdsBridge
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,9 +76,46 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        adsBridge = AdsBridge(this)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AdsBridge.channelName)
+            .setMethodCallHandler { call, result ->
+                adsBridge.handle(call, result)
+            }
         configureIntegrityChannel(flutterEngine)
         configureInstallReferrerChannel(flutterEngine)
+        configureBuildInfoChannel(flutterEngine)
         configureNetworkAssistChannels(flutterEngine)
+    }
+
+    private fun configureBuildInfoChannel(flutterEngine: FlutterEngine) {
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "preconnect/build_info")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "getBuildInfo" -> result.success(currentBuildInfo())
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun currentBuildInfo(): Map<String, String> {
+        val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getPackageInfo(
+                packageName,
+                PackageManager.PackageInfoFlags.of(0),
+            )
+        } else {
+            packageManager.getPackageInfo(packageName, 0)
+        }
+        val buildNumber = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            packageInfo.longVersionCode.toString()
+        } else {
+            packageInfo.versionCode.toString()
+        }
+        return mapOf(
+            "version" to (packageInfo.versionName ?: ""),
+            "buildNumber" to buildNumber,
+        )
     }
 
     private fun configureIntegrityChannel(flutterEngine: FlutterEngine) {

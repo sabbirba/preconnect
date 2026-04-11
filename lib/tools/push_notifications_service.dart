@@ -4,11 +4,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/api/seat_alert_push_service.dart';
 import 'package:preconnect/api/seat_status_service.dart';
 import 'package:preconnect/firebase_options.dart';
+import 'package:preconnect/tools/build_info.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -143,7 +143,7 @@ class PushNotificationsService {
     if (normalized.isEmpty) return;
     final locale = WidgetsBinding.instance.platformDispatcher.locale
         .toLanguageTag();
-    final packageInfo = await PackageInfo.fromPlatform();
+    final appVersion = await BuildInfo.fullVersion();
     await SeatAlertPushService().configureDeviceToken(normalized);
     try {
       await SeatAlertPushService().registerDevice(
@@ -151,7 +151,7 @@ class PushNotificationsService {
             ? 'ios'
             : 'android',
         locale: locale,
-        appVersion: '${packageInfo.version}+${packageInfo.buildNumber}',
+        appVersion: appVersion,
       );
       final configs = await SeatStatusService().loadSeatAlertConfigs();
       await SeatAlertPushService().syncAllSeatAlertConfigs(configs);

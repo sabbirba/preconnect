@@ -2,9 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:preconnect/pages/api_test.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/tools/cached_image.dart';
 
 class DevsPage extends StatefulWidget {
@@ -28,16 +28,7 @@ class _DevsPageState extends State<DevsPage> {
   }
 
   Future<String> _buildVersionSubtitle() async {
-    try {
-      final info = await PackageInfo.fromPlatform();
-      final version = info.version.trim();
-      final build = info.buildNumber.trim();
-      if (version.isEmpty && build.isEmpty) return 'App Version';
-      if (build.isEmpty) return 'v$version';
-      return 'v$version ($build)';
-    } catch (_) {
-      return 'App Version';
-    }
+    return BuildInfo.displayVersion();
   }
 
   Future<List<_ContributorProfile>> _loadContributors() async {
@@ -116,11 +107,7 @@ class _DevsPageState extends State<DevsPage> {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Padding(
                       padding: EdgeInsets.symmetric(vertical: 10),
-                      child: BracuSkeletonGrid(
-                        itemCount: 6,
-                        crossAxisCount: 3,
-                        itemHeight: 72,
-                      ),
+                      child: _ContributorLoadingList(),
                     );
                   }
                   final contributors =
@@ -281,12 +268,12 @@ class _ContributorsGrid extends StatelessWidget {
     return Column(
       children: [
         GridView.count(
-          crossAxisCount: 2,
+          crossAxisCount: 1,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 4,
-          crossAxisSpacing: 4,
-          childAspectRatio: 1.0,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 0,
+          childAspectRatio: 5.2,
           children: [
             for (final contributor in visible)
               _DevGridTile(contributor: contributor),
@@ -330,6 +317,41 @@ class _FundingCard extends StatelessWidget {
   }
 }
 
+class _ContributorLoadingList extends StatelessWidget {
+  const _ContributorLoadingList();
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuShimmer(
+      child: Column(
+        children: [
+          for (var index = 0; index < 5; index++) ...[
+            if (index != 0) const SizedBox(height: 12),
+            Row(
+              children: [
+                const BracuSkeletonBox(width: 62, height: 62, radius: 31),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      BracuSkeletonBox(width: 170, height: 15, radius: 7),
+                      SizedBox(height: 8),
+                      BracuSkeletonBox(width: 120, height: 11, radius: 6),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+                const BracuSkeletonBox(width: 60, height: 30, radius: 10),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 List<_ContributorProfile> _dedupeContributors(List<_ContributorProfile> items) {
   final seen = <String>{};
   final output = <_ContributorProfile>[];
@@ -345,13 +367,12 @@ List<_ContributorProfile> _orderContributors(List<_ContributorProfile> items) {
   final mueen = _findByHandle(items, 'mueen-ahmmed');
   final reserved = <_ContributorProfile>{?naive, ?sabbir, ?mueen};
   final others = items.where((item) => !reserved.contains(item)).toList();
-  final ordered = <_ContributorProfile>[?naive, ?sabbir];
+  final ordered = <_ContributorProfile>[?naive, ?sabbir, ?mueen];
 
   for (final item in others) {
-    if (ordered.length >= 4) break;
+    if (ordered.length >= _collapsedContributorCount) break;
     ordered.add(item);
   }
-  if (mueen != null) ordered.add(mueen);
   for (final item in others) {
     if (!ordered.contains(item)) ordered.add(item);
   }
@@ -391,65 +412,81 @@ class _DevGridTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textSecondary = BracuPalette.textSecondary(context);
-    return InkWell(
-      onTap: () => openExternalUrl(context, contributor.url),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 40,
-              height: 40,
-              child: ClipOval(
-                child: CachedImage(
-                  url: contributor.avatarUrl,
-                  fit: BoxFit.cover,
-                  placeholder: const BracuShimmer(
-                    child: BracuSkeletonBox(width: 40, height: 40, radius: 20),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 150;
+        final avatarSize = compact ? 46.0 : 58.0;
+        final nameSize = compact ? 15.5 : 18.0;
+        final roleSize = compact ? 11.5 : 13.0;
+        return InkWell(
+          onTap: () => openExternalUrl(context, contributor.url),
+          borderRadius: BorderRadius.circular(10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: avatarSize,
+                height: avatarSize,
+                child: ClipOval(
+                  child: CachedImage(
+                    url: contributor.avatarUrl,
+                    fit: BoxFit.cover,
+                    placeholder: BracuShimmer(
+                      child: BracuSkeletonBox(
+                        width: avatarSize,
+                        height: avatarSize,
+                        radius: avatarSize / 2,
+                      ),
+                    ),
+                    error: _avatarPlaceholder(context),
                   ),
-                  error: _avatarPlaceholder(context),
                 ),
               ),
-            ),
-            const SizedBox(height: 4),
-            SizedBox(
-              width: double.infinity,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  contributor.name,
-                  maxLines: 1,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                  textAlign: TextAlign.center,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        contributor.name,
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: nameSize,
+                          fontWeight: FontWeight.w600,
+                          height: 1.05,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        contributor.role,
+                        maxLines: 1,
+                        style: TextStyle(
+                          color: textSecondary,
+                          fontSize: roleSize,
+                          height: 1.05,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 1),
-            SizedBox(
-              width: double.infinity,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  contributor.role,
-                  maxLines: 1,
-                  style: TextStyle(color: textSecondary, fontSize: 12),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Center(
-              child: _LinkChip(
+              const SizedBox(width: 10),
+              _LinkChip(
                 label: contributor.linkLabel,
                 onTap: () => openExternalUrl(context, contributor.url),
               ),
-            ),
-          ],
-        ),
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -466,7 +503,7 @@ class _LinkChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: BracuPalette.primary.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10),
@@ -474,7 +511,7 @@ class _LinkChip extends StatelessWidget {
         child: Text(
           label,
           style: const TextStyle(
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
             color: BracuPalette.primary,
           ),

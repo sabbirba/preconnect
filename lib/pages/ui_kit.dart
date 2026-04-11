@@ -13,7 +13,9 @@ import 'package:preconnect/api/grade_sheet_service.dart';
 import 'package:preconnect/model/progress_info.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/cgpa_calculator.dart';
+import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/cached_image.dart';
+import 'package:preconnect/tools/reward_support_controller.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/web_pdf_opener.dart';
@@ -82,8 +84,47 @@ String formatRelativeDayLabel(
   return DateFormat('EEEE').format(date);
 }
 
-String formatDateTimeLabel(DateTime dateTime, {String separator = ' • '}) {
-  return '${formatLongDate(dateTime)}$separator${BracuTime.formatDateTime(dateTime)}';
+String formatDateTimeLabel(
+  DateTime dateTime, {
+  String separator = ' • ',
+  bool includeYear = true,
+}) {
+  final date = includeYear
+      ? formatLongDate(dateTime)
+      : DateFormat('d MMMM').format(dateTime);
+  return '$date$separator${BracuTime.formatDateTime(dateTime)}';
+}
+
+Future<bool> showRewardSupportFlow(BuildContext context) async {
+  if (!AdsBridge.isSupportedPlatform) {
+    showAppSnackBar(context, 'Support videos are available on mobile only');
+    return false;
+  }
+
+  try {
+    final result = await AdsBridge.showRewarded();
+    if (!context.mounted) return false;
+    if (!result.rewardEarned) {
+      showAppSnackBar(
+        context,
+        result.shown
+            ? 'Watch the full video to support PreConnect'
+            : 'Support video is not ready yet',
+      );
+      return false;
+    }
+
+    final count = await RewardSupportController.instance.recordReward();
+    if (!context.mounted) return false;
+    HapticFeedback.lightImpact();
+    showAppSnackBar(context, 'Thanks! Support #$count added.');
+    return true;
+  } catch (_) {
+    if (context.mounted) {
+      showAppSnackBar(context, 'Support video could not be shown');
+    }
+    return false;
+  }
 }
 
 void copyToClipboard(BuildContext context, String text) {
@@ -525,20 +566,22 @@ Future<void> showBracuFundingSupportSheet(BuildContext context) async {
   await showBracuBottomSheet<void>(
     context,
     title: 'Support PreConnect',
-    subtitle: 'Help fund the iOS release and future app costs',
+    subtitle: 'Choose how you want to help',
     builder: (sheetContext, textPrimary, textSecondary) {
       final sheetScroll = bracuBottomSheetScrollController(sheetContext);
       return ListView(
         controller: sheetScroll,
         children: [
           Text(
-            'PreConnect is student-built and stays free for everyone. Contributions help cover the Apple Developer membership and future publishing costs.',
+            'PreConnect is made for students and stays free to use. Your support helps keep it running.',
             style: TextStyle(
               color: textSecondary,
               fontSize: 13,
               fontWeight: FontWeight.w500,
             ),
           ),
+          const SizedBox(height: 14),
+          const BracuRewardVideoSection(),
           const SizedBox(height: 14),
           const BracuFundingSupportContent(),
         ],
@@ -625,6 +668,145 @@ class BracuActionBannerCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class BracuRewardVideoSection extends StatefulWidget {
+  const BracuRewardVideoSection({
+    super.key,
+    this.activeTitle = 'Video Ad Support',
+    this.activeSubtitle = 'Rewards added by you.',
+    this.inactiveTitle = 'Support PreConnect',
+    this.inactiveSubtitle = 'Watch a short video to support the app.',
+    this.buttonLabel = 'Watch Video',
+    this.padding = const EdgeInsets.symmetric(vertical: 2),
+  });
+
+  final String activeTitle;
+  final String activeSubtitle;
+  final String inactiveTitle;
+  final String inactiveSubtitle;
+  final String buttonLabel;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  State<BracuRewardVideoSection> createState() =>
+      _BracuRewardVideoSectionState();
+}
+
+class _BracuRewardVideoSectionState extends State<BracuRewardVideoSection> {
+  bool _isLoading = false;
+
+  Future<void> _watchRewardAd() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      if (!mounted) return;
+      final earned = await showRewardSupportFlow(context);
+      if (earned && mounted) {
+        setState(() {});
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = BracuPalette.textSecondary(context);
+
+    return ValueListenableBuilder<int>(
+      valueListenable: RewardSupportController.instance.supportCount,
+      builder: (context, supportCount, _) {
+        return Padding(
+          padding: widget.padding,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      supportCount > 0
+                          ? widget.activeTitle
+                          : widget.inactiveTitle,
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      supportCount > 0
+                          ? widget.activeSubtitle
+                          : widget.inactiveSubtitle,
+                      style: TextStyle(
+                        color: textSecondary,
+                        fontSize: 12,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 118),
+                child: OutlinedButton(
+                  onPressed: _isLoading ? null : _watchRewardAd,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: BracuPalette.primary,
+                    side: BorderSide(
+                      color: BracuPalette.primary.withValues(alpha: 0.26),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                  ),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    child: _isLoading
+                        ? const BracuShimmerLabel(label: 'Loading')
+                        : Text(
+                            supportCount > 0
+                                ? '${widget.buttonLabel} #$supportCount'
+                                : widget.buttonLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class BracuAdRewardSupportContent extends StatelessWidget {
+  const BracuAdRewardSupportContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const BracuRewardVideoSection();
   }
 }
 
@@ -841,6 +1023,74 @@ class BracuSupportNumberRow extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class BracuCountdownDigital extends StatelessWidget {
+  const BracuCountdownDigital({super.key, required this.remaining});
+
+  final Duration remaining;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalMinutes = remaining.inMinutes;
+    final safeMinutes = totalMinutes < 0 ? 0 : totalMinutes;
+    final days = safeMinutes ~/ 1440;
+    final hours = (safeMinutes ~/ 60) % 24;
+    final minutes = safeMinutes % 60;
+
+    final units = <({String value, String label})>[
+      if (days > 0) (value: days.toString(), label: 'Days'),
+      if (hours > 0) (value: hours.toString().padLeft(2, '0'), label: 'Hours'),
+      (value: minutes.toString().padLeft(2, '0'), label: 'Minutes'),
+    ];
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < units.length; i++) ...[
+          _BracuCountdownCell(value: units[i].value, label: units[i].label),
+          if (i != units.length - 1) const SizedBox(width: 8),
+        ],
+      ],
+    );
+  }
+}
+
+class _BracuCountdownCell extends StatelessWidget {
+  const _BracuCountdownCell({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 48,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: BracuPalette.textPrimary(context),
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              color: BracuPalette.textSecondary(context),
+              fontWeight: FontWeight.w600,
+              fontSize: 10,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

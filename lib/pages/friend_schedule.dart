@@ -554,50 +554,47 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       body: BracuRefreshList(
         onRefresh: _handleRefresh,
         children: [
-          Text(
-            'Scan & Share',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: textPrimary,
-            ),
-          ),
-          const SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {
-              const spacing = 12.0;
-              return GridView.count(
-                crossAxisCount: 3,
-                mainAxisSpacing: spacing,
-                crossAxisSpacing: spacing,
-                childAspectRatio: 0.95,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  FriendActionCard(
-                    icon: Icons.qr_code_scanner,
-                    title: 'Scan',
-                    subtitle: 'Schedule',
-                    color: BracuPalette.info,
-                    onTap: () => widget.onNavigate(HomeTab.scanSchedule),
-                  ),
-                  FriendActionCard(
-                    icon: Icons.photo_library_rounded,
-                    title: 'Gallery',
-                    subtitle: 'Scan QR',
-                    color: BracuPalette.warning,
-                    onTap: _scanFromGallery,
-                  ),
-                  FriendActionCard(
-                    icon: Icons.qr_code_2,
-                    title: 'Share',
-                    subtitle: 'Schedule',
-                    color: BracuPalette.accent,
-                    onTap: () {
-                      widget.onNavigate(HomeTab.shareSchedule);
-                    },
-                  ),
-                ],
+              final layout = quickAccessGridLayout(
+                constraints.maxWidth,
+                targetColumns: 3,
+              );
+              return Center(
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  runAlignment: WrapAlignment.center,
+                  spacing: layout.spacing,
+                  runSpacing: layout.spacing,
+                  children: [
+                    FriendActionCard(
+                      width: layout.itemWidth,
+                      icon: Icons.qr_code_scanner,
+                      title: 'Scan',
+                      subtitle: 'Schedule',
+                      color: BracuPalette.info,
+                      onTap: () => widget.onNavigate(HomeTab.scanSchedule),
+                    ),
+                    FriendActionCard(
+                      width: layout.itemWidth,
+                      icon: Icons.photo_library_rounded,
+                      title: 'Gallery',
+                      subtitle: 'Scan QR',
+                      color: BracuPalette.warning,
+                      onTap: _scanFromGallery,
+                    ),
+                    FriendActionCard(
+                      width: layout.itemWidth,
+                      icon: Icons.qr_code_2,
+                      title: 'Share',
+                      subtitle: 'Schedule',
+                      color: BracuPalette.accent,
+                      onTap: () {
+                        widget.onNavigate(HomeTab.shareSchedule);
+                      },
+                    ),
+                  ],
+                ),
               );
             },
           ),

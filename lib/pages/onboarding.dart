@@ -238,16 +238,19 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   const SizedBox(height: 8),
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      const spacing = 8.0;
-                      final width = (constraints.maxWidth - spacing * 3) / 4;
+                      final layout = quickAccessGridLayout(
+                        constraints.maxWidth,
+                        targetColumns: 4,
+                        minItemWidth: 62,
+                      );
                       return Center(
                         child: Wrap(
                           alignment: WrapAlignment.center,
-                          spacing: spacing,
-                          runSpacing: spacing,
+                          spacing: layout.spacing,
+                          runSpacing: layout.spacing,
                           children: [
                             _CompactQuickAccessCard(
-                              width: width,
+                              width: layout.itemWidth,
                               icon: Icons.event_seat_outlined,
                               title: 'Seat',
                               subtitle: 'Status',
@@ -257,7 +260,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               ),
                             ),
                             _CompactQuickAccessCard(
-                              width: width,
+                              width: layout.itemWidth,
                               icon: Icons.science_outlined,
                               title: 'Free',
                               subtitle: 'Labs',
@@ -267,7 +270,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               ),
                             ),
                             _CompactQuickAccessCard(
-                              width: width,
+                              width: layout.itemWidth,
                               icon: Icons.people_outline_rounded,
                               title: 'Friends',
                               subtitle: 'Schedules',
@@ -277,7 +280,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               ),
                             ),
                             _CompactQuickAccessCard(
-                              width: width,
+                              width: layout.itemWidth,
                               icon: Icons.developer_mode_outlined,
                               title: 'Devs',
                               subtitle: 'About',
@@ -467,54 +470,55 @@ class _CompactQuickAccessCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = BracuPalette.textPrimary(context);
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         width: width,
-        padding: const EdgeInsets.fromLTRB(6, 6, 6, 5),
-        decoration: BoxDecoration(
-          color: BracuPalette.card(context),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: isDark
-              ? const []
-              : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-        ),
+        padding: const EdgeInsets.all(9),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: color, size: 18),
+              child: Icon(icon, color: color, size: 22),
             ),
-            const SizedBox(height: 6),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-                color: BracuPalette.textPrimary(context),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: textPrimary,
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 1),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 10.5,
-                height: 1.15,
-                color: BracuPalette.textSecondary(context),
+            const SizedBox(height: 2),
+            SizedBox(
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  subtitle,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TextStyle(fontSize: 11, color: textSecondary),
+                ),
               ),
             ),
           ],
