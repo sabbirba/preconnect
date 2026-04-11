@@ -296,17 +296,6 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(context, false),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: BracuPalette.primary,
-                            side: BorderSide(
-                              color: BracuPalette.primary.withValues(
-                                alpha: 0.6,
-                              ),
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
                           child: const Text('Cancel'),
                         ),
                       ),
@@ -314,14 +303,6 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () => Navigator.pop(context, true),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: BracuPalette.primary,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
                           child: const Text('Remove'),
                         ),
                       ),
@@ -436,15 +417,6 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                       ),
                       TextButton(
                         onPressed: () => Navigator.pop(context, ''),
-                        style: TextButton.styleFrom(
-                          foregroundColor: BracuPalette.textSecondary(context),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 0,
-                          ),
-                          minimumSize: const Size(0, 0),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
                         child: const Text('Reset'),
                       ),
                     ],
@@ -472,17 +444,6 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(context),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: BracuPalette.primary,
-                            side: BorderSide(
-                              color: BracuPalette.primary.withValues(
-                                alpha: 0.6,
-                              ),
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
                           child: const Text('Cancel'),
                         ),
                       ),
@@ -491,14 +452,6 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                         child: ElevatedButton(
                           onPressed: () =>
                               Navigator.pop(context, controller.text.trim()),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: BracuPalette.primary,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
                           child: const Text('Save'),
                         ),
                       ),

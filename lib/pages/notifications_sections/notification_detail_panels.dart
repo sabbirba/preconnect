@@ -117,15 +117,6 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
                       onPressed: () async {
                         await openExternalUrl(context, link);
                       },
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 0,
-                          vertical: 2,
-                        ),
-                        minimumSize: const Size(0, 32),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        alignment: Alignment.centerLeft,
-                      ),
                       child: Text(
                         displayLinkLabel(link),
                         maxLines: 2,
@@ -310,15 +301,6 @@ class _ConnectNotificationDetailPanelState
                           onPressed: () async {
                             await openExternalUrl(context, link);
                           },
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 0,
-                              vertical: 2,
-                            ),
-                            minimumSize: const Size(0, 32),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            alignment: Alignment.centerLeft,
-                          ),
                           child: Text(
                             displayLinkLabel(link),
                             maxLines: 2,

@@ -332,20 +332,6 @@ Future<void> showCampusMapBottomSheet(
               onPressed: onPressed,
               icon: Icon(icon, size: 18),
               label: Text(label),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: BracuPalette.primary,
-                side: BorderSide(
-                  color: BracuPalette.primary.withValues(alpha: 0.52),
-                  width: 1.1,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
             );
           }
 

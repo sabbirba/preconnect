@@ -2,16 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/sembast_cache.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CampusPrinterPage extends StatefulWidget {
@@ -36,7 +34,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
   List<_PrintProgressEvent> _liveEvents = const <_PrintProgressEvent>[];
   bool _busy = false;
-  bool _printingOnDevice = false;
   bool _discovering = false;
 
   @override
@@ -301,64 +298,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     }
   }
 
-  Future<void> _printOnDevice() async {
-    if (_printingOnDevice) return;
-    final bytes = _pdfBytes;
-    if (bytes == null || bytes.isEmpty) {
-      showAppSnackBar(context, 'Choose a file first');
-      return;
-    }
-    if (!_looksLikePdf(bytes, _pdfName)) {
-      showAppSnackBar(context, 'Device print supports PDF only');
-      return;
-    }
-
-    setState(() {
-      _printingOnDevice = true;
-      _liveEvents = <_PrintProgressEvent>[
-        _PrintProgressEvent.running('Opening system print dialog'),
-      ];
-    });
-    try {
-      final didOpen = await NativePrintBridge.instance.printPdf(
-        bytes: bytes,
-        fileName: _pdfName.isEmpty ? 'document.pdf' : _pdfName,
-      );
-      if (!mounted) return;
-      if (!didOpen) {
-        showAppSnackBar(context, 'System print dialog was not opened');
-      } else {
-        showAppSnackBar(context, 'System print dialog opened');
-      }
-    } catch (error) {
-      if (!mounted) return;
-      showAppSnackBar(
-        context,
-        error.toString().replaceFirst('Exception: ', ''),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _printingOnDevice = false;
-          _liveEvents = const <_PrintProgressEvent>[];
-        });
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final selected = _pdfName.isEmpty ? 'No file selected' : _pdfName;
-    final canDevicePrint =
-        !_busy &&
-        !_printingOnDevice &&
-        _pdfBytes != null &&
-        _looksLikePdf(_pdfBytes!, _pdfName) &&
-        _pdfName.isNotEmpty &&
-        NativePrintBridge.isSupported;
     final canPrint =
         !_busy &&
-        !_printingOnDevice &&
         !_discovering &&
         _printerHost.isNotEmpty &&
         _studentId.isNotEmpty;
@@ -396,12 +340,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                       onPressed: _busy || _discovering
                           ? null
                           : () => _discoverPrinter(),
-                      style: const ButtonStyle(
-                        splashFactory: NoSplash.splashFactory,
-                        overlayColor:
-                            WidgetStatePropertyAll(Colors.transparent),
-                        enableFeedback: false,
-                      ),
+                      style: bracuNoSplashTextButtonStyle(),
                       icon: _discovering
                           ? const SizedBox.shrink()
                           : const Icon(Icons.wifi_find_outlined),
@@ -440,21 +379,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                         onPressed: _busy ? null : _pickPrintFile,
                         icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
                         label: const Text('Choose'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: BracuPalette.textPrimary(context),
-                          side: BorderSide(
-                            color: BracuPalette.primary.withValues(alpha: 0.18),
-                          ),
-                          minimumSize: const Size.fromHeight(44),
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          textStyle: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -471,61 +395,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                               )
                             : const Icon(Icons.print_rounded, size: 18),
                         label: Text(_busy ? 'Sending...' : 'Campus Print'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: BracuPalette.primary,
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size.fromHeight(44),
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          textStyle: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: canDevicePrint ? _printOnDevice : null,
-                    icon: _printingOnDevice
-                        ? const SizedBox.shrink()
-                        : const Icon(Icons.print_outlined, size: 18),
-                    label: _printingOnDevice
-                        ? const Text('Opening...')
-                        : const Text('Print on Device'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: BracuPalette.textPrimary(context),
-                      side: BorderSide(
-                        color: BracuPalette.primary.withValues(alpha: 0.18),
-                      ),
-                      minimumSize: const Size.fromHeight(44),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      textStyle: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                  ),
-                ),
-                if (_pdfBytes != null && !_looksLikePdf(_pdfBytes!, _pdfName)) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'Device print supports PDF only. PostScript is for the campus printer.',
-                    style: TextStyle(
-                      color: BracuPalette.textSecondary(context),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -1364,37 +1237,4 @@ String _formatClock(DateTime value) {
   final minute = local.minute.toString().padLeft(2, '0');
   final suffix = local.hour >= 12 ? 'PM' : 'AM';
   return '$hour:$minute $suffix';
-}
-
-class NativePrintBridge {
-  NativePrintBridge._();
-  static final instance = NativePrintBridge._();
-  static const _channel = MethodChannel('preconnect/native_print');
-  static bool get isSupported =>
-      !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.android ||
-          defaultTargetPlatform == TargetPlatform.iOS);
-
-  Future<bool> printPdf({required Uint8List bytes, required String fileName}) async {
-    final safe = fileName
-        .trim()
-        .replaceAll(RegExp(r'[\\/]+'), '-')
-        .replaceAll(RegExp(r'[^a-zA-Z0-9._-]+'), '-')
-        .replaceAll(RegExp(r'-+'), '-')
-        .replaceAll(RegExp(r'^-|-$'), '');
-    final name = safe.isEmpty ? 'document.pdf' : safe;
-    final file = File(
-      '${(await getTemporaryDirectory()).path}/preconnect_native_print_${DateTime.now().microsecondsSinceEpoch}_$name',
-    );
-    await file.writeAsBytes(bytes, flush: true);
-    try {
-      return await _channel.invokeMethod<bool>('printPdf', {
-            'filePath': file.path,
-            'jobName': name,
-          }) ??
-          false;
-    } on MissingPluginException {
-      return false;
-    }
-  }
 }

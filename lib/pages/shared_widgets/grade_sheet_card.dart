@@ -69,24 +69,12 @@ class _GradeSheetCardState extends State<GradeSheetCard> {
               ),
             ),
             const SizedBox(width: 12),
-            ElevatedButton.icon(
-              onPressed: _isOpening ? null : _openGradeSheet,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: BracuPalette.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              icon: _isOpening
-                  ? const BracuShimmer(
-                      child: BracuSkeletonBox(width: 16, height: 16, radius: 8),
-                    )
+          ElevatedButton.icon(
+            onPressed: _isOpening ? null : _openGradeSheet,
+            icon: _isOpening
+                ? const BracuShimmer(
+                    child: BracuSkeletonBox(width: 16, height: 16, radius: 8),
+                  )
                   : const Icon(Icons.picture_as_pdf_outlined, size: 16),
               label: Text(_isOpening ? 'Opening' : 'Open'),
             ),

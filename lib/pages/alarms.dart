@@ -714,17 +714,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: BracuPalette.primary,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
-                                  ),
-                                ),
+                                style: bracuCompactPrimaryButtonStyle(),
                                 onPressed: () async {
                                   await _setExamAlarm(
                                     context,

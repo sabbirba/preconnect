@@ -14,6 +14,32 @@ class BracuSelectOption<T> {
   final String? subtitle;
 }
 
+ButtonStyle bracuNoSplashTextButtonStyle() {
+  return const ButtonStyle(
+    splashFactory: NoSplash.splashFactory,
+    overlayColor: WidgetStatePropertyAll(Colors.transparent),
+    enableFeedback: false,
+  );
+}
+
+ButtonStyle bracuCompactPrimaryButtonStyle({
+  EdgeInsetsGeometry padding =
+      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+  double borderRadius = 12,
+}) {
+  return ElevatedButton.styleFrom(
+    backgroundColor: BracuPalette.primary,
+    foregroundColor: Colors.white,
+    splashFactory: NoSplash.splashFactory,
+    overlayColor: Colors.transparent,
+    enableFeedback: false,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(borderRadius),
+    ),
+    padding: padding,
+  );
+}
+
 Future<T?> showBracuBottomSheet<T>(
   BuildContext context, {
   required String title,
@@ -45,7 +71,7 @@ Future<T?> showBracuBottomSheet<T>(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: MainAxisSize.max,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
@@ -85,8 +111,7 @@ Future<T?> showBracuBottomSheet<T>(
                 ],
               ),
               const SizedBox(height: 10),
-              Flexible(
-                fit: FlexFit.loose,
+              Expanded(
                 child: builder(sheetContext, textPrimary, textSecondary),
               ),
             ],
@@ -1981,14 +2006,6 @@ class ShowMoreButton extends StatelessWidget {
     return Center(
       child: OutlinedButton(
         onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: BracuPalette.primary,
-          side: const BorderSide(color: BracuPalette.primary, width: 1.2),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(999),
-          ),
-        ),
         child: const Text(
           'Show More',
           style: TextStyle(fontWeight: FontWeight.w700),

@@ -300,17 +300,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       onPressed: _openCampusMapBottomSheet,
                       icon: const Icon(Icons.map_rounded),
                       label: const Text('Campus Map'),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(44),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        textStyle: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -320,18 +309,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       onPressed: () => _completeOnboarding(context),
                       icon: const Icon(Icons.arrow_forward_rounded),
                       label: const Text('Continue'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: BracuPalette.primary,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(54),
-                        textStyle: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                      ),
                     ),
                   ),
                 ],

@@ -742,20 +742,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                 onPressed: _showNextDayLabs,
                 icon: const Icon(Icons.arrow_forward_rounded, size: 16),
                 label: const Text('Show Next Day Labs'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: BracuPalette.primary,
-                  side: BorderSide(
-                    color: BracuPalette.primary.withValues(alpha: 0.35),
-                  ),
-                  backgroundColor: Colors.transparent,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
               ),
             ],
           ),

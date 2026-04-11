@@ -397,18 +397,6 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                             ),
                           );
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: BracuPalette.primary,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
                         icon: const Icon(Icons.tune, size: 16),
                         label: const Text('Open'),
                       ),
@@ -459,18 +447,6 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                             ),
                           );
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: BracuPalette.primary,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
                         icon: const Icon(Icons.calculate_outlined, size: 16),
                         label: const Text('Open'),
                       ),
