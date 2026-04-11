@@ -315,9 +315,7 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
                 placeholder: const BracuShimmer(
                   child: BracuSkeletonBox(height: 220, radius: 8),
                 ),
-                error: Container(
-                  color: BracuPalette.primary.withValues(alpha: 0.08),
-                ),
+                error: const _BracuImageErrorFallback(),
               )
             else
               PageView.builder(
@@ -337,9 +335,7 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
                     placeholder: const BracuShimmer(
                       child: BracuSkeletonBox(height: 220, radius: 8),
                     ),
-                    error: Container(
-                      color: BracuPalette.primary.withValues(alpha: 0.08),
-                    ),
+                    error: const _BracuImageErrorFallback(),
                   );
                 },
               ),
@@ -383,6 +379,39 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _BracuImageErrorFallback extends StatelessWidget {
+  const _BracuImageErrorFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      color: isDark
+          ? const Color(0xFF1B2430)
+          : const Color(0xFFF2F6FC),
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.broken_image_outlined,
+            color: isDark ? Colors.white70 : const Color(0xFF60738A),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Image unavailable',
+            style: TextStyle(
+              color: isDark ? Colors.white70 : const Color(0xFF60738A),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

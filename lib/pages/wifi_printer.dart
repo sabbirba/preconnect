@@ -233,9 +233,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
     setState(() {
       _busy = true;
-      _liveEvents = <_PrintProgressEvent>[
-        _PrintProgressEvent.running('Preparing file'),
-      ];
+      _liveEvents = const <_PrintProgressEvent>[];
     });
     try {
       final client = _LprPrintClient(
@@ -402,10 +400,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
             ),
           ),
           const SizedBox(height: 12),
-          if (_liveEvents.isNotEmpty) ...[
-            _LivePrintStatusCard(events: _liveEvents),
-            const SizedBox(height: 12),
-          ],
           _PrintHistoryCard(history: _history, onDelete: _deleteHistory),
         ],
       ),
@@ -536,77 +530,6 @@ class _PrintHistoryCard extends StatelessWidget {
           ],
         ],
       ),
-    );
-  }
-}
-
-class _LivePrintStatusCard extends StatelessWidget {
-  const _LivePrintStatusCard({required this.events});
-
-  final List<_PrintProgressEvent> events;
-
-  @override
-  Widget build(BuildContext context) {
-    return BracuCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Live Status',
-            style: TextStyle(
-              color: BracuPalette.textPrimary(context),
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 10),
-          for (final event in events.take(12)) ...[
-            _LivePrintStatusRow(event: event),
-            if (event != events.take(12).last) const SizedBox(height: 8),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _LivePrintStatusRow extends StatelessWidget {
-  const _LivePrintStatusRow({required this.event});
-
-  final _PrintProgressEvent event;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = switch (event.state) {
-      _PrintProgressState.running => BracuPalette.primary,
-      _PrintProgressState.accepted => Colors.greenAccent,
-      _PrintProgressState.failed => Colors.redAccent,
-    };
-    final icon = switch (event.state) {
-      _PrintProgressState.running => Icons.sync_rounded,
-      _PrintProgressState.accepted => Icons.check_circle_outline,
-      _PrintProgressState.failed => Icons.error_outline,
-    };
-    return Row(
-      children: [
-        Icon(icon, color: color, size: 17),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            event.message,
-            style: TextStyle(
-              color: BracuPalette.textPrimary(context),
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        Text(
-          _formatClock(event.time),
-          style: TextStyle(
-            color: BracuPalette.textSecondary(context),
-            fontSize: 11,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -776,9 +699,7 @@ class _LprPrintClient {
     required String sourceHost,
     required ValueChanged<_PrintProgressEvent> onProgress,
   }) async {
-    final isPdf = _looksLikePdf(bytes, fileName);
-    final isPostScript = _looksLikePostScript(bytes, fileName);
-    if (!isPdf && !isPostScript) {
+    if (!_looksLikeSupportedPrintFile(bytes, fileName)) {
       throw const _LprPrintException(
         'Only valid PDF or PostScript files are supported',
       );
@@ -791,24 +712,20 @@ class _LprPrintClient {
     final printerQueue = _safeToken(queue, fallback: 'lp');
     final owner = _lprText(user, fallback: 'student');
     final origin = _lprToken(sourceHost, fallback: 'preconnect');
-    final safeFileName = _safeFileName(fileName, fallbackExtension: '.ps');
-    final jobId = (math.Random.secure().nextInt(999) + 1).toString().padLeft(
-      3,
-      '0',
+    final safeFileName = _safeFileName(
+      fileName.split(Platform.pathSeparator).last,
+      fallbackExtension: '.ps',
     );
-    final jobToken = 'dfA$jobId$origin';
+    final jobToken = 'dfA${_randomJobId()}$origin';
 
     Socket? socket;
     _LprAckReader? ackReader;
     try {
-      onProgress(
-        _PrintProgressEvent.running(
-          isPdf ? 'Preparing file' : 'Preparing file',
-        ),
+      final sendBytes = await _preparePrintPayload(
+        bytes,
+        fileName: fileName,
+        onProgress: onProgress,
       );
-      final sendBytes = isPdf
-          ? await _pdfToPostScript(bytes, onProgress: onProgress)
-          : bytes;
       final control = _ascii(
         [
           'H$origin',
@@ -820,43 +737,49 @@ class _LprPrintClient {
         ].join('\n'),
       );
 
-      onProgress(_PrintProgressEvent.running('Connecting to $printerHost'));
       socket = await Socket.connect(printerHost, port, timeout: _timeout);
-      onProgress(_PrintProgressEvent.accepted('Connected to $printerHost'));
       ackReader = _LprAckReader(socket);
       await _writeAndAck(
         socket,
         ackReader,
         Uint8List.fromList([0x02, ..._ascii(printerQueue), 0x0A]),
-        'Printer selected',
+        '',
         onProgress,
       );
       await _writeAndAck(
         socket,
         ackReader,
-        Uint8List.fromList([0x02, ..._ascii('${control.length} $jobToken'), 0x0A]),
-        'Preparing print job',
+        Uint8List.fromList([
+          0x02,
+          ..._ascii('${control.length} $jobToken'),
+          0x0A,
+        ]),
+        '',
         onProgress,
       );
       await _writeAndAck(
         socket,
         ackReader,
         Uint8List.fromList([...control, 0x00]),
-        'Print job prepared',
+        '',
         onProgress,
       );
       await _writeAndAck(
         socket,
         ackReader,
-        Uint8List.fromList([0x03, ..._ascii('${sendBytes.length} $jobToken'), 0x0A]),
-        'Sending PostScript',
+        Uint8List.fromList([
+          0x03,
+          ..._ascii('${sendBytes.length} $jobToken'),
+          0x0A,
+        ]),
+        '',
         onProgress,
       );
       await _writeAndAck(
         socket,
         ackReader,
         Uint8List.fromList([...sendBytes, 0x00]),
-        'File accepted by printer',
+        '',
         onProgress,
       );
     } on _LprPrintException catch (error) {
@@ -890,8 +813,6 @@ class _LprPrintClient {
       ];
 
       for (var index = 0; index < pageCount; index++) {
-        final pageNumber = index + 1;
-        onProgress(_PrintProgressEvent.running('Preparing page $pageNumber'));
         final page = document.pages[index];
         final widthPoints = page.width;
         final heightPoints = page.height;
@@ -907,7 +828,7 @@ class _LprPrintClient {
         try {
           final rgb = _bgraToRgb(pageImage.pixels);
           pageOutputs.addAll([
-            '%%Page: $pageNumber $pageNumber',
+            '%%Page: ${index + 1} ${index + 1}',
             '<< /PageSize [$widthPoints $heightPoints] >> setpagedevice',
             'gsave',
             '/picstr ${renderWidth * 3} string def',
@@ -929,6 +850,17 @@ class _LprPrintClient {
     } finally {
       await document.dispose();
     }
+  }
+
+  Future<Uint8List> _preparePrintPayload(
+    Uint8List bytes, {
+    required String fileName,
+    required ValueChanged<_PrintProgressEvent> onProgress,
+  }) async {
+    if (_looksLikePdf(bytes, fileName)) {
+      return _pdfToPostScript(bytes, onProgress: onProgress);
+    }
+    return bytes;
   }
 
   Future<void> _writeAndAck(
@@ -1201,6 +1133,10 @@ String _safeFileName(String value, {String fallbackExtension = '.pdf'}) {
     return normalized.substring(0, normalized.length - 4) + fallbackExtension;
   }
   return '$normalized$fallbackExtension';
+}
+
+String _randomJobId() {
+  return (math.Random.secure().nextInt(999) + 1).toString().padLeft(3, '0');
 }
 
 String _formatHistoryTime(DateTime value) {

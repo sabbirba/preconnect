@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -50,8 +51,7 @@ class _CachedImageState extends State<CachedImage> {
   Uint8List? _bytes;
   Object? _error;
   bool _loading = false;
-  bool _useDirectNetwork = false;
-  String? _networkUrl;
+  String? _errorLabel;
 
   @override
   void initState() {
@@ -65,8 +65,8 @@ class _CachedImageState extends State<CachedImage> {
     if (oldWidget.url != widget.url) {
       _bytes = null;
       _error = null;
+      _errorLabel = null;
       _loading = false;
-      _networkUrl = null;
       _load();
     }
   }
@@ -101,11 +101,16 @@ class _CachedImageState extends State<CachedImage> {
         url.startsWith('http://') || url.startsWith('https://');
 
     if (kIsWeb && isRemoteHttp) {
-      final proxiedUrl = _buildWebProxyUrl(url);
       if (!mounted) return;
       setState(() {
-        _useDirectNetwork = true;
-        _networkUrl = proxiedUrl;
+        _loading = false;
+      });
+      return;
+    }
+
+    if (isRemoteHttp) {
+      if (!mounted) return;
+      setState(() {
         _loading = false;
       });
       return;
@@ -146,7 +151,15 @@ class _CachedImageState extends State<CachedImage> {
         return;
       }
 
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(
+        Uri.parse(url),
+        headers: const {
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+              '(KHTML, like Gecko) Chrome/125.0 Safari/537.36',
+          'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+        },
+      );
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final bytes = response.bodyBytes;
         _memoryCache[url] = bytes;
@@ -164,33 +177,49 @@ class _CachedImageState extends State<CachedImage> {
       if (!mounted) return;
       setState(() {
         _error = response.statusCode;
+        _errorLabel = 'Image unavailable';
         _loading = false;
       });
+      developer.log(
+        'CachedImage failed with status ${response.statusCode}',
+        name: 'CachedImage',
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _error = e;
+        _errorLabel = 'Image unavailable';
         _loading = false;
       });
+      developer.log('CachedImage fetch failed for $url', name: 'CachedImage', error: e);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_useDirectNetwork) {
+    final url = widget.url.trim();
+    final isRemoteHttp =
+        url.startsWith('http://') || url.startsWith('https://');
+    if (isRemoteHttp) {
       return Image.network(
-        _networkUrl ?? widget.url,
+        url,
         fit: widget.fit,
         alignment: widget.alignment,
         width: widget.width,
         height: widget.height,
         filterQuality: widget.filterQuality,
+        headers: const {
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+              '(KHTML, like Gecko) Chrome/125.0 Safari/537.36',
+          'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+        },
         loadingBuilder: (context, child, progress) {
           if (progress == null) return child;
           return widget.placeholder ??
               _CachedImageShimmer(width: widget.width, height: widget.height);
         },
-        errorBuilder: (_, _, _) => widget.error ?? const SizedBox.shrink(),
+        errorBuilder: (_, _, _) => widget.error ?? _defaultErrorWidget(),
       );
     }
     if (_bytes != null) {
@@ -204,15 +233,43 @@ class _CachedImageState extends State<CachedImage> {
       );
     }
     if (_error != null) {
-      return widget.error ?? const SizedBox.shrink();
+      return widget.error ?? _defaultErrorWidget();
     }
     return widget.placeholder ??
         _CachedImageShimmer(width: widget.width, height: widget.height);
   }
 
-  String _buildWebProxyUrl(String url) {
-    final encoded = Uri.encodeComponent(url);
-    return '${Uri.base.origin}/img?u=$encoded';
+  Widget _defaultErrorWidget() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: widget.width,
+      height: widget.height,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF20242D)
+            : const Color(0xFFF1F5FB),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.broken_image_outlined,
+            color: isDark ? Colors.white70 : const Color(0xFF5E6D82),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _errorLabel ?? 'Image unavailable',
+            style: TextStyle(
+              color: isDark ? Colors.white70 : const Color(0xFF5E6D82),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
