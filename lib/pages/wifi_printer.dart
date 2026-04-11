@@ -23,8 +23,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const String _printerQueue = 'lp';
   static const String _historyKey = 'campus_printer_history';
 
-  Uint8List? _pdfBytes;
-  String _pdfName = '';
+  Uint8List? _fileBytes;
+  String _fileName = '';
   String _studentId = '';
   String _studentName = '';
   String _studentShortCode = '';
@@ -175,8 +175,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   Future<void> _pickPrintFile() async {
     final picked = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const <String>['pdf', 'ps'],
+      type: FileType.any,
       allowMultiple: false,
       withData: true,
     );
@@ -191,15 +190,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       if (mounted) showAppSnackBar(context, 'Unable to read selected file');
       return;
     }
-    if (!_looksLikeSupportedPrintFile(bytes, file.name)) {
-      if (mounted) {
-        showAppSnackBar(context, 'Only PDF or PostScript files are supported');
-      }
-      return;
-    }
     setState(() {
-      _pdfBytes = bytes;
-      _pdfName = file.name.trim().isEmpty ? 'document.pdf' : file.name.trim();
+      _fileBytes = bytes;
+      _fileName = file.name.trim().isEmpty ? 'document' : file.name.trim();
     });
   }
 
@@ -207,7 +200,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     if (_busy) return;
     final host = _printerHost.trim();
     final user = _studentId.trim().isEmpty ? 'student' : _studentId.trim();
-    final bytes = _pdfBytes;
+    final bytes = _fileBytes;
 
     if (host.isEmpty) {
       showAppSnackBar(context, 'No printer found');
@@ -233,14 +226,14 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       );
       await client.sendFile(
         bytes: bytes,
-        fileName: _pdfName,
+        fileName: _fileName,
         user: user,
         sourceHost: Platform.localHostname,
       );
       if (!mounted) return;
       await _addHistory(
         _PrintHistoryEntry(
-          fileName: _pdfName,
+          fileName: _fileName,
           printerHost: host,
           status: 'Sent',
           message: 'Sent to campus printer',
@@ -253,7 +246,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       if (!mounted) return;
       await _addHistory(
         _PrintHistoryEntry(
-          fileName: _pdfName,
+          fileName: _fileName,
           printerHost: host,
           status: 'Failed',
           message: error.message,
@@ -266,7 +259,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       if (!mounted) return;
       await _addHistory(
         _PrintHistoryEntry(
-          fileName: _pdfName,
+          fileName: _fileName,
           printerHost: host,
           status: 'Failed',
           message: 'Unable to send file to campus printer',
@@ -286,7 +279,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   @override
   Widget build(BuildContext context) {
-    final selected = _pdfName.isEmpty ? 'No file selected' : _pdfName;
+    final selected = _fileName.isEmpty ? 'No file selected' : _fileName;
     final canPrint =
         !_busy &&
         !_discovering &&
@@ -649,11 +642,6 @@ class _LprPrintClient {
     required String user,
     required String sourceHost,
   }) async {
-    if (!_looksLikeSupportedPrintFile(bytes, fileName)) {
-      throw const _LprPrintException(
-        'Only valid PDF or PostScript files are supported',
-      );
-    }
     final printerHost = host.trim();
     if (printerHost.isEmpty) {
       throw const _LprPrintException('Printer host is required');
@@ -883,20 +871,6 @@ class _Ipv4Subnet {
   final String prefix;
   final int hostOctet;
   final String interfaceName;
-}
-
-bool _looksLikeSupportedPrintFile(Uint8List bytes, String fileName) {
-  final lowerName = fileName.trim().toLowerCase();
-  if (lowerName.endsWith('.pdf') || lowerName.endsWith('.ps')) {
-    return true;
-  }
-  if (bytes.length < 4) return false;
-  final isPdf = bytes[0] == 0x25 &&
-      bytes[1] == 0x50 &&
-      bytes[2] == 0x44 &&
-      bytes[3] == 0x46;
-  final isPs = bytes[0] == 0x25 && bytes[1] == 0x21;
-  return isPdf || isPs;
 }
 
 bool _sameHistoryEntry(_PrintHistoryEntry a, _PrintHistoryEntry b) {
