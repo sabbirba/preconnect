@@ -117,8 +117,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       final printer = printers.first;
       setState(() {
         _printerHost = printer.address;
-        _printerStatus =
-            'Detected ${printer.address} on ${printer.interfaceName}';
+        _printerStatus = 'Campus Printer found';
       });
     } catch (_) {
       if (!mounted) return;
@@ -806,7 +805,7 @@ class _LprPrintClient {
       3,
       '0',
     );
-    final dataFileName = 'dfA$jobId$origin';
+    final jobToken = 'dfA$jobId$origin';
 
     Socket? socket;
     _LprAckReader? ackReader;
@@ -823,8 +822,8 @@ class _LprPrintClient {
         [
           'H$origin',
           'P$owner',
-          'l$dataFileName',
-          'U$dataFileName',
+          'l$jobToken',
+          'U$jobToken',
           'N$safeFileName',
           '',
         ].join('\n'),
@@ -844,11 +843,7 @@ class _LprPrintClient {
       await _writeAndAck(
         socket,
         ackReader,
-        Uint8List.fromList([
-          0x02,
-          ..._ascii('${control.length} $dataFileName'),
-          0x0A,
-        ]),
+        Uint8List.fromList([0x02, ..._ascii('${control.length} $jobToken'), 0x0A]),
         'Preparing print job',
         onProgress,
       );
@@ -862,11 +857,7 @@ class _LprPrintClient {
       await _writeAndAck(
         socket,
         ackReader,
-        Uint8List.fromList([
-          0x03,
-          ..._ascii('${sendBytes.length} $dataFileName'),
-          0x0A,
-        ]),
+        Uint8List.fromList([0x03, ..._ascii('${sendBytes.length} $jobToken'), 0x0A]),
         'Sending PostScript',
         onProgress,
       );
