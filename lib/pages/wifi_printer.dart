@@ -659,13 +659,10 @@ class _LprPrintClient {
       throw const _LprPrintException('Printer host is required');
     }
 
-    final printerQueue = _safeToken(queue, fallback: 'lp');
-    final owner = _lprText(user, fallback: 'student');
-    final origin = _lprToken(sourceHost, fallback: 'preconnect');
-    final safeFileName = _safeFileName(
-      fileName.split(Platform.pathSeparator).last,
-      fallbackExtension: '.ps',
-    );
+    final printerQueue = queue;
+    final owner = user;
+    final origin = sourceHost;
+    final safeFileName = fileName.split(Platform.pathSeparator).last;
     final jobToken = 'dfA${_randomJobId()}$origin';
 
     Socket? socket;
@@ -912,45 +909,6 @@ bool _sameHistoryEntry(_PrintHistoryEntry a, _PrintHistoryEntry b) {
 
 List<int> _ascii(String value) {
   return value.codeUnits.map((unit) => unit <= 0x7F ? unit : 0x3F).toList();
-}
-
-String _safeToken(String value, {required String fallback}) {
-  final normalized = value
-      .trim()
-      .replaceAll(RegExp(r'[^a-zA-Z0-9._-]+'), '-')
-      .replaceAll(RegExp(r'-+'), '-')
-      .replaceAll(RegExp(r'^-|-$'), '');
-  return normalized.isEmpty ? fallback : normalized;
-}
-
-String _lprText(String value, {required String fallback}) {
-  final normalized = value.trim().replaceAll(RegExp(r'[\r\n\t]+'), ' ');
-  return normalized.isEmpty ? fallback : normalized;
-}
-
-String _lprToken(String value, {required String fallback}) {
-  final normalized = _lprText(value, fallback: fallback)
-      .replaceAll(RegExp(r'\s+'), '-')
-      .replaceAll(RegExp(r'[^a-zA-Z0-9._-]+'), '-')
-      .replaceAll(RegExp(r'-+'), '-')
-      .replaceAll(RegExp(r'^-|-$'), '');
-  return normalized.isEmpty ? fallback : normalized;
-}
-
-String _safeFileName(String value, {String fallbackExtension = '.pdf'}) {
-  final normalized = value
-      .trim()
-      .replaceAll(RegExp(r'[\\/]+'), '-')
-      .replaceAll(RegExp(r'[^a-zA-Z0-9._ -]+'), '')
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
-  if (normalized.isEmpty) return 'document$fallbackExtension';
-  final lower = normalized.toLowerCase();
-  if (lower.endsWith(fallbackExtension)) return normalized;
-  if (fallbackExtension != '.pdf' && lower.endsWith('.pdf')) {
-    return normalized.substring(0, normalized.length - 4) + fallbackExtension;
-  }
-  return '$normalized$fallbackExtension';
 }
 
 String _randomJobId() {
