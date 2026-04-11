@@ -704,9 +704,9 @@ class BracuRewardVideoSection extends StatefulWidget {
   const BracuRewardVideoSection({
     super.key,
     this.activeTitle = 'Reward Video Support',
-    this.activeSubtitle = 'Watch short video to support the app',
+    this.activeSubtitle = 'Watch short video to support',
     this.inactiveTitle = 'Support PreConnect',
-    this.inactiveSubtitle = 'Watch short video to support the app',
+    this.inactiveSubtitle = 'Watch short video to support',
     this.buttonLabel = 'Watch',
     this.padding = const EdgeInsets.symmetric(vertical: 2),
   });
