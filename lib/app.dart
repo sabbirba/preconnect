@@ -501,29 +501,72 @@ class _MyAppState extends State<MyApp>
     }
   }
 
+  ThemeData _buildTheme({
+    required Brightness brightness,
+    required Color scaffoldBackgroundColor,
+    required Color primary,
+    required Color secondary,
+    required Color foreground,
+    Color? surface,
+    Color? onSurface,
+    DialogThemeData? dialogTheme,
+  }) {
+    final colorScheme = brightness == Brightness.dark
+        ? ColorScheme.dark(
+            primary: primary,
+            secondary: secondary,
+            surface: surface ?? Colors.black,
+            onSurface: onSurface ?? Colors.white,
+          )
+        : ColorScheme.light(primary: primary, secondary: secondary);
+    return ThemeData(
+      brightness: brightness,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: scaffoldBackgroundColor,
+      dialogTheme: dialogTheme,
+      useMaterial3: true,
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: foreground,
+          side: BorderSide(color: primary.withValues(alpha: 0.18)),
+          minimumSize: const Size.fromHeight(44),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: primary,
+          foregroundColor: Colors.white,
+          minimumSize: const Size.fromHeight(44),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final ThemeData lightTheme = ThemeData(
+    final lightTheme = _buildTheme(
       brightness: Brightness.light,
-      colorScheme: const ColorScheme.light(
-        primary: Color(0xFF1E6BE3),
-        secondary: Color(0xFF22B573),
-      ),
       scaffoldBackgroundColor: Colors.white,
-      useMaterial3: true,
+      primary: const Color(0xFF1E6BE3),
+      secondary: const Color(0xFF22B573),
+      foreground: Colors.black87,
     );
 
-    final ThemeData darkTheme = ThemeData(
+    final darkTheme = _buildTheme(
       brightness: Brightness.dark,
-      colorScheme: const ColorScheme.dark(
-        primary: Color(0xFF1E6BE3),
-        secondary: Color(0xFF22B573),
-        surface: Colors.black,
-        onSurface: Colors.white,
-      ),
       scaffoldBackgroundColor: Colors.black,
+      primary: const Color(0xFF1E6BE3),
+      secondary: const Color(0xFF22B573),
+      foreground: Colors.white,
+      surface: Colors.black,
+      onSurface: Colors.white,
       dialogTheme: const DialogThemeData(backgroundColor: Colors.black),
-      useMaterial3: true,
     );
 
     return ValueListenableBuilder<ThemeMode>(

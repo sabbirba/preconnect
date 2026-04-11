@@ -3,6 +3,8 @@ package com.sabbirba.preconnect
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.pdf.PdfRenderer
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -12,6 +14,8 @@ import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSuggestion
 import android.os.Build
 import android.os.Bundle
+import android.os.CancellationSignal
+import android.os.ParcelFileDescriptor
 import android.os.Looper
 import com.android.installreferrer.api.InstallReferrerClient
 import com.android.installreferrer.api.InstallReferrerStateListener
@@ -22,6 +26,14 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import android.print.PageRange
+import android.print.PrintAttributes
+import android.print.PrintDocumentAdapter
+import android.print.PrintDocumentInfo
+import android.print.PrintManager
+import android.graphics.pdf.PdfDocument
+import java.io.File
+import java.io.FileOutputStream
 
 class MainActivity : FlutterFragmentActivity() {
     private val shortcutExtraKey = "flutter_shortcut"
@@ -85,6 +97,7 @@ class MainActivity : FlutterFragmentActivity() {
         configureInstallReferrerChannel(flutterEngine)
         configureBuildInfoChannel(flutterEngine)
         configureNetworkAssistChannels(flutterEngine)
+        configureNativePrintChannel(flutterEngine)
     }
 
     private fun configureBuildInfoChannel(flutterEngine: FlutterEngine) {
@@ -281,6 +294,47 @@ class MainActivity : FlutterFragmentActivity() {
                     }
                 },
             )
+    }
+
+    private fun configureNativePrintChannel(flutterEngine: FlutterEngine) {
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "preconnect/native_print")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "printPdf" -> printPdf(call, result)
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    private fun printPdf(call: MethodCall, result: MethodChannel.Result) {
+        val filePath = call.argument<String>("filePath")?.trim().orEmpty()
+        val jobName = call.argument<String>("jobName")?.trim().orEmpty().ifBlank {
+            "PreConnect PDF"
+        }
+        if (filePath.isBlank()) {
+            result.error("INVALID_PATH", "Missing file path", null)
+            return
+        }
+
+        val source = File(filePath)
+        if (!source.exists() || !source.isFile) {
+            result.error("FILE_NOT_FOUND", "Selected PDF file was not found", null)
+            return
+        }
+
+        val printManager = getSystemService(Context.PRINT_SERVICE) as? PrintManager
+        if (printManager == null) {
+            result.error("PRINT_UNAVAILABLE", "Print service unavailable", null)
+            return
+        }
+
+        try {
+            val adapter = PdfPrintDocumentAdapter(this, source, jobName)
+            printManager.print(jobName, adapter, null)
+            result.success(true)
+        } catch (e: Exception) {
+            result.error("PRINT_ERROR", e.message ?: "Failed to open print dialog", null)
+        }
     }
 
     private fun addWifiSuggestion(call: MethodCall, result: MethodChannel.Result) {
@@ -605,5 +659,160 @@ class MainActivity : FlutterFragmentActivity() {
         } else {
             raw
         }.trim().ifEmpty { null }
+    }
+}
+
+private class PdfPrintDocumentAdapter(
+    private val context: Context,
+    private val sourceFile: File,
+    private val jobName: String,
+) : PrintDocumentAdapter() {
+    private var parcelFileDescriptor: ParcelFileDescriptor? = null
+    private var renderer: PdfRenderer? = null
+    private var attributes: PrintAttributes? = null
+
+    override fun onLayout(
+        oldAttributes: PrintAttributes?,
+        newAttributes: PrintAttributes?,
+        cancellationSignal: CancellationSignal,
+        callback: LayoutResultCallback,
+        extras: Bundle?,
+    ) {
+        if (cancellationSignal.isCanceled) {
+            callback.onLayoutCancelled()
+            return
+        }
+
+        try {
+            closeRenderer()
+            attributes = newAttributes
+            parcelFileDescriptor = ParcelFileDescriptor.open(
+                sourceFile,
+                ParcelFileDescriptor.MODE_READ_ONLY,
+            )
+            renderer = PdfRenderer(parcelFileDescriptor!!)
+            if (cancellationSignal.isCanceled) {
+                callback.onLayoutCancelled()
+                return
+            }
+            val pageCount = renderer?.pageCount ?: 0
+            val info = PrintDocumentInfo.Builder(jobName)
+                .setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT)
+                .setPageCount(pageCount)
+                .build()
+            callback.onLayoutFinished(info, true)
+        } catch (e: Exception) {
+            callback.onLayoutFailed(e.message)
+        }
+    }
+
+    override fun onWrite(
+        pages: Array<out PageRange>,
+        destination: ParcelFileDescriptor,
+        cancellationSignal: CancellationSignal,
+        callback: WriteResultCallback,
+    ) {
+        val renderer = renderer
+        if (renderer == null) {
+            callback.onWriteFailed("PDF renderer unavailable")
+            return
+        }
+
+        val selectedPages = expandPageRanges(pages, renderer.pageCount)
+        val pdfDocument = PdfDocument()
+        val mediaSize = attributes?.mediaSize
+        val pageWidth = mediaSize?.let {
+            (it.widthMils / 1000f * 72f).toInt().coerceAtLeast(1)
+        } ?: 612
+        val pageHeight = mediaSize?.let {
+            (it.heightMils / 1000f * 72f).toInt().coerceAtLeast(1)
+        } ?: 792
+
+        try {
+            for ((index, pageIndex) in selectedPages.withIndex()) {
+                if (cancellationSignal.isCanceled) {
+                    callback.onWriteCancelled()
+                    pdfDocument.close()
+                    return
+                }
+
+                val sourcePage = renderer.openPage(pageIndex)
+                try {
+                    val bitmap = Bitmap.createBitmap(
+                        sourcePage.width,
+                        sourcePage.height,
+                        Bitmap.Config.ARGB_8888,
+                    )
+                    try {
+                        sourcePage.render(
+                            bitmap,
+                            null,
+                            null,
+                            PdfRenderer.Page.RENDER_MODE_FOR_PRINT,
+                        )
+
+                        val pageInfo = PdfDocument.PageInfo.Builder(
+                            pageWidth,
+                            pageHeight,
+                            index + 1,
+                        ).create()
+                        val pdfPage = pdfDocument.startPage(pageInfo)
+                        try {
+                            pdfPage.canvas.drawBitmap(
+                                bitmap,
+                                null,
+                                pageInfo.contentRect,
+                                null,
+                            )
+                        } finally {
+                            pdfDocument.finishPage(pdfPage)
+                        }
+                    } finally {
+                        bitmap.recycle()
+                    }
+                } finally {
+                    sourcePage.close()
+                }
+            }
+
+            FileOutputStream(destination.fileDescriptor).use { output ->
+                pdfDocument.writeTo(output)
+            }
+            callback.onWriteFinished(arrayOf(PageRange.ALL_PAGES))
+        } catch (e: Exception) {
+            callback.onWriteFailed(e.message)
+        } finally {
+            pdfDocument.close()
+        }
+    }
+
+    override fun onFinish() {
+        closeRenderer()
+        super.onFinish()
+    }
+
+    private fun closeRenderer() {
+        renderer?.close()
+        renderer = null
+        parcelFileDescriptor?.close()
+        parcelFileDescriptor = null
+    }
+
+    private fun expandPageRanges(
+        ranges: Array<out PageRange>,
+        pageCount: Int,
+    ): List<Int> {
+        if (pageCount <= 0) return emptyList()
+        if (ranges.isEmpty()) return (0 until pageCount).toList()
+        val pages = linkedSetOf<Int>()
+        for (range in ranges) {
+            val start = range.start.coerceAtLeast(0)
+            val end = range.end.coerceAtMost(pageCount - 1)
+            if (end < start) continue
+            for (page in start..end) {
+                pages.add(page)
+            }
+        }
+        return if (pages.isEmpty()) (0 until pageCount).toList() else pages.toList()
     }
 }

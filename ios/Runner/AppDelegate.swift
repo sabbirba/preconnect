@@ -20,6 +20,7 @@ import UIKit
     }
     if let controller = window?.rootViewController as? FlutterViewController {
       registerBuildInfoChannel(binaryMessenger: controller.binaryMessenger)
+      registerNativePrintChannel(binaryMessenger: controller.binaryMessenger)
     }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
@@ -40,6 +41,9 @@ import UIKit
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreconnectBuildInfo") {
       registerBuildInfoChannel(binaryMessenger: registrar.messenger())
     }
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreconnectNativePrint") {
+      registerNativePrintChannel(binaryMessenger: registrar.messenger())
+    }
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
   }
 
@@ -59,6 +63,95 @@ import UIKit
         ])
       default:
         result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+
+  private func registerNativePrintChannel(binaryMessenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(
+      name: "preconnect/native_print",
+      binaryMessenger: binaryMessenger
+    )
+    channel.setMethodCallHandler { [weak self] call, result in
+      guard let self else {
+        result(
+          FlutterError(
+            code: "NATIVE_PRINT_CONTEXT",
+            message: "App context unavailable",
+            details: nil
+          )
+        )
+        return
+      }
+      switch call.method {
+      case "printPdf":
+        self.printPdf(call: call, result: result)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+
+  private func printPdf(call: FlutterMethodCall, result: @escaping FlutterResult) {
+    let args = call.arguments as? [String: Any] ?? [:]
+    let rawPath = (args["filePath"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let rawJobName = (args["jobName"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let jobName = rawJobName.isEmpty ? "PreConnect PDF" : rawJobName
+    guard !rawPath.isEmpty else {
+      result(
+        FlutterError(
+          code: "INVALID_PATH",
+          message: "Missing file path",
+          details: nil
+        )
+      )
+      return
+    }
+
+    let fileURL = URL(fileURLWithPath: rawPath)
+    guard FileManager.default.fileExists(atPath: fileURL.path) else {
+      result(
+        FlutterError(
+          code: "FILE_NOT_FOUND",
+          message: "Selected PDF file was not found",
+          details: nil
+        )
+      )
+      return
+    }
+    guard UIPrintInteractionController.isPrintingAvailable else {
+      result(
+        FlutterError(
+          code: "PRINT_UNAVAILABLE",
+          message: "Print service unavailable",
+          details: nil
+        )
+      )
+      return
+    }
+
+    DispatchQueue.main.async {
+      let controller = UIPrintInteractionController.shared
+      let printInfo = UIPrintInfo.printInfo()
+      printInfo.jobName = jobName
+      printInfo.outputType = .general
+      controller.printInfo = printInfo
+      controller.printingItem = fileURL
+      controller.showsNumberOfCopies = true
+      controller.showsPageRange = true
+
+      controller.present(animated: true) { _, completed, error in
+        if let error {
+          result(
+            FlutterError(
+              code: "PRINT_ERROR",
+              message: error.localizedDescription,
+              details: nil
+            )
+          )
+          return
+        }
+        result(completed)
       }
     }
   }
