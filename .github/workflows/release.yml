@@ -170,8 +170,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    env:
-      FACULTY_REVIEWS_BEARER: ${{ secrets.FACULTY_REVIEWS_BEARER }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -185,11 +183,28 @@ jobs:
       - name: Flutter Pub Get
         run: flutter pub get
 
+      - name: Create Web Build Env
+        shell: bash
+        run: |
+          cat > .env <<'EOF'
+          FACULTY_REVIEWS_BEARER=${{ secrets.FACULTY_REVIEWS_BEARER }}
+          EOF
+
       - name: Build Web
-        run: flutter build web --release
+        run: flutter build web --release --dart-define-from-file=.env
 
       - name: Remove Embedded Server Files From Web Build
         run: rm -rf build/web/server
+
+      - name: Install Wrangler
+        run: npm install -g wrangler
+
+      - name: Deploy Web Worker
+        working-directory: web-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: wrangler deploy
 
       - name: Package Web Release
         run: |
