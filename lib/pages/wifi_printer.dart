@@ -349,6 +349,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                       onPressed: _busy || _discovering
                           ? null
                           : () => _discoverPrinter(),
+                      style: const ButtonStyle(
+                        splashFactory: NoSplash.splashFactory,
+                        overlayColor:
+                            WidgetStatePropertyAll(Colors.transparent),
+                        enableFeedback: false,
+                      ),
                       icon: _discovering
                           ? const SizedBox.shrink()
                           : const Icon(Icons.wifi_find_outlined),

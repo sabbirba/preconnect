@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:preconnect/api/sembast_cache.dart';
 import 'package:preconnect/pages/api_test.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/build_info.dart';
@@ -16,7 +17,9 @@ class DevsPage extends StatefulWidget {
 
 class _DevsPageState extends State<DevsPage> {
   late Future<String> _subtitleFuture;
-  late Future<List<_ContributorProfile>> _contributorsFuture;
+  List<_ContributorProfile> _contributors = const <_ContributorProfile>[];
+  bool _contributorsLoaded = false;
+  bool _contributorsLoading = false;
   int _secretTapCount = 0;
   bool _showAllContributors = false;
 
@@ -24,14 +27,50 @@ class _DevsPageState extends State<DevsPage> {
   void initState() {
     super.initState();
     _subtitleFuture = _buildVersionSubtitle();
-    _contributorsFuture = _loadContributors();
+    _loadContributors();
   }
 
   Future<String> _buildVersionSubtitle() async {
     return BuildInfo.displayVersion();
   }
 
-  Future<List<_ContributorProfile>> _loadContributors() async {
+  Future<void> _loadContributors() async {
+    if (_contributorsLoading) return;
+    _contributorsLoading = true;
+    final cache = SembastCache();
+    final cached = await _readCachedContributors(cache);
+    if (cached.isNotEmpty && mounted) {
+      setState(() {
+        _contributors = cached;
+        _contributorsLoaded = true;
+      });
+    }
+
+    try {
+      final fresh = await _fetchContributors();
+      if (!mounted) return;
+      setState(() {
+        _contributors = fresh;
+        _contributorsLoaded = true;
+      });
+      await cache.setJson(
+        _contributorsCacheKey,
+        fresh.map((item) => item.toJson()).toList(),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      if (cached.isEmpty) {
+        setState(() {
+          _contributors = const <_ContributorProfile>[];
+          _contributorsLoaded = true;
+        });
+      }
+    } finally {
+      _contributorsLoading = false;
+    }
+  }
+
+  Future<List<_ContributorProfile>> _fetchContributors() async {
     final uri = Uri.parse('$_contributorsApiUrl/contributors');
     final response = await http.get(uri, headers: _githubHeaders);
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -50,6 +89,18 @@ class _DevsPageState extends State<DevsPage> {
       ..._pinnedGitHubContributors,
     ]);
     return Future.wait(withPinned.map(_loadGitHubProfile));
+  }
+
+  Future<List<_ContributorProfile>> _readCachedContributors(
+    SembastCache cache,
+  ) async {
+    final raw = await cache.getJsonList(_contributorsCacheKey);
+    if (raw == null || raw.isEmpty) return const <_ContributorProfile>[];
+    return raw
+        .whereType<Map>()
+        .map((entry) => _ContributorProfile.fromJson(entry.cast()))
+        .where((item) => item.name.isNotEmpty && item.avatarUrl.isNotEmpty)
+        .toList();
   }
 
   Future<_ContributorProfile> _loadGitHubProfile(
@@ -101,26 +152,19 @@ class _DevsPageState extends State<DevsPage> {
               const SizedBox(height: 14),
               const BracuSectionTitle(title: 'Contributors'),
               const SizedBox(height: 10),
-              FutureBuilder<List<_ContributorProfile>>(
-                future: _contributorsFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 10),
-                      child: _ContributorLoadingList(),
-                    );
-                  }
-                  final contributors =
-                      snapshot.data ?? const <_ContributorProfile>[];
-                  return _ContributorsGrid(
-                    contributors: contributors,
-                    showAll: _showAllContributors,
-                    onToggle: () => setState(
-                      () => _showAllContributors = !_showAllContributors,
-                    ),
-                  );
-                },
-              ),
+              if (!_contributorsLoaded)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: _ContributorLoadingList(),
+                )
+              else
+                _ContributorsGrid(
+                  contributors: _contributors,
+                  showAll: _showAllContributors,
+                  onToggle: () => setState(
+                    () => _showAllContributors = !_showAllContributors,
+                  ),
+                ),
               const SizedBox(height: 14),
               const BracuSectionTitle(title: 'Funding & Support'),
               const SizedBox(height: 10),
@@ -135,6 +179,7 @@ class _DevsPageState extends State<DevsPage> {
 
 const _repoUrl = 'https://github.com/sabbirba/preconnect';
 const _contributorsApiUrl = 'https://api.github.com/repos/sabbirba/preconnect';
+const _contributorsCacheKey = 'devs_contributors_v1';
 const _collapsedContributorCount = 6;
 const _githubHeaders = <String, String>{
   'Accept': 'application/vnd.github+json',
@@ -416,8 +461,8 @@ class _DevGridTile extends StatelessWidget {
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 150;
         final avatarSize = compact ? 46.0 : 58.0;
-        final nameSize = compact ? 15.5 : 18.0;
-        final roleSize = compact ? 11.5 : 13.0;
+        final nameSize = compact ? 17.0 : 19.5;
+        final roleSize = compact ? 12.0 : 14.0;
         return InkWell(
           onTap: () => openExternalUrl(context, contributor.url),
           borderRadius: BorderRadius.circular(10),
@@ -461,7 +506,7 @@ class _DevGridTile extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8),
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
@@ -550,6 +595,27 @@ class _ContributorProfile {
   final String url;
 
   String get key => handle.trim().toLowerCase();
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'handle': handle,
+    'name': name,
+    'role': role,
+    'avatarUrl': avatarUrl,
+    'linkLabel': linkLabel,
+    'url': url,
+  };
+
+  factory _ContributorProfile.fromJson(Map<String, dynamic> json) {
+    final linkLabel = '${json['linkLabel'] ?? ''}'.trim();
+    return _ContributorProfile(
+      handle: '${json['handle'] ?? ''}'.trim(),
+      name: '${json['name'] ?? ''}'.trim(),
+      role: '${json['role'] ?? ''}'.trim(),
+      avatarUrl: '${json['avatarUrl'] ?? ''}'.trim(),
+      linkLabel: linkLabel.isEmpty ? 'GitHub' : linkLabel,
+      url: '${json['url'] ?? ''}'.trim(),
+    );
+  }
 
   String get githubLogin {
     if (key.isNotEmpty) return handle.trim();

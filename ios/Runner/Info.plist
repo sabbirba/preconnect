@@ -145,6 +145,8 @@
 		</array>
 		<key>GADApplicationIdentifier</key>
 		<string>$(ADS_APP_ID_IOS)</string>
+		<key>REWARDED_AD_UNIT_ID</key>
+		<string>$(REWARDED_AD_UNIT_ID)</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>

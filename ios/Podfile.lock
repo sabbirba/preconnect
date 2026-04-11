@@ -120,6 +120,9 @@ PODS:
   - nanopb/encode (3.30910.0)
   - native_file_preview (0.0.1):
     - Flutter
+  - pdfium_flutter (0.1.5):
+    - Flutter
+    - FlutterMacOS
   - permission_handler_apple (9.3.0):
     - Flutter
   - PromisesObjC (2.4.0)
@@ -152,6 +155,7 @@ DEPENDENCIES:
   - local_auth_darwin (from `.symlinks/plugins/local_auth_darwin/darwin`)
   - mobile_scanner (from `.symlinks/plugins/mobile_scanner/darwin`)
   - native_file_preview (from `.symlinks/plugins/native_file_preview/ios`)
+  - pdfium_flutter (from `.symlinks/plugins/pdfium_flutter/darwin`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
   - share_plus (from `.symlinks/plugins/share_plus/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
@@ -201,6 +205,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/mobile_scanner/darwin"
   native_file_preview:
     :path: ".symlinks/plugins/native_file_preview/ios"
+  pdfium_flutter:
+    :path: ".symlinks/plugins/pdfium_flutter/darwin"
   permission_handler_apple:
     :path: ".symlinks/plugins/permission_handler_apple/ios"
   share_plus:
@@ -237,6 +243,7 @@ SPEC CHECKSUMS:
   mobile_scanner: 9157936403f5a0644ca3779a38ff8404c5434a93
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   native_file_preview: 44fd5f484236cbc9e40a2e83f346727a9c6017a6
+  pdfium_flutter: 512bc19dbbd80b4287d04869aa19ad729289079d
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf

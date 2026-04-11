@@ -91,9 +91,9 @@ private final class PreconnectAdsBridge: NSObject {
 
   private func initialize(args: [String: Any], result: @escaping FlutterResult) {
     if let testDeviceIds = args["testDeviceIds"] as? [String], !testDeviceIds.isEmpty {
-      GADMobileAds.sharedInstance().requestConfiguration.testDeviceIdentifiers = testDeviceIds
+      MobileAds.shared.requestConfiguration.testDeviceIdentifiers = testDeviceIds
     }
-    GADMobileAds.sharedInstance().start(completionHandler: nil)
+    MobileAds.shared.start { _ in }
     result(nil)
   }
 
@@ -113,6 +113,16 @@ private final class PreconnectAdsBridge: NSObject {
     let adUnitId = (rawAdUnitId?.isEmpty == false)
       ? rawAdUnitId!
       : Self.envAdUnitId(forKey: "REWARDED_AD_UNIT_ID")
+    guard let adUnitId else {
+      result(
+        FlutterError(
+          code: "ADS_REWARDED_CONFIG",
+          message: "Missing REWARDED_AD_UNIT_ID",
+          details: nil
+        )
+      )
+      return
+    }
     let nonPersonalizedAds = args["nonPersonalizedAds"] as? Bool ?? true
 
     let coordinator = RewardedCoordinator(
@@ -131,15 +141,36 @@ private final class PreconnectAdsBridge: NSObject {
     rewardedCoordinator = coordinator
     coordinator.loadAndShow()
   }
+
+  private static func envAdUnitId(forKey key: String) -> String? {
+    let plistValue = (Bundle.main.object(forInfoDictionaryKey: key) as? String)?
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    if let plistValue,
+      !plistValue.isEmpty,
+      !(plistValue.hasPrefix("$(") && plistValue.hasSuffix(")"))
+    {
+      return plistValue
+    }
+
+    let envValue = ProcessInfo.processInfo.environment[key]?
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    if let envValue,
+      !envValue.isEmpty,
+      !(envValue.hasPrefix("$(") && envValue.hasSuffix(")"))
+    {
+      return envValue
+    }
+    return nil
+  }
 }
 
-private final class RewardedCoordinator: NSObject, GADFullScreenContentDelegate {
+private final class RewardedCoordinator: NSObject, FullScreenContentDelegate {
   private let adUnitId: String
   private let nonPersonalizedAds: Bool
   private weak var presenter: UIViewController?
   private let onSuccess: ([String: Any]) -> Void
   private let onError: (String, String) -> Void
-  private var ad: GADRewardedAd?
+  private var ad: RewardedAd?
   private var rewardAmount = 0
   private var rewardType = ""
 
@@ -158,8 +189,8 @@ private final class RewardedCoordinator: NSObject, GADFullScreenContentDelegate 
   }
 
   func loadAndShow() {
-    GADRewardedAd.load(
-      withAdUnitID: adUnitId,
+    RewardedAd.load(
+      with: adUnitId,
       request: Self.adRequest(nonPersonalizedAds: nonPersonalizedAds)
     ) { [weak self] ad, error in
       guard let self else { return }
@@ -173,7 +204,7 @@ private final class RewardedCoordinator: NSObject, GADFullScreenContentDelegate 
       }
       self.ad = ad
       ad.fullScreenContentDelegate = self
-      ad.present(fromRootViewController: presenter) {
+      ad.present(from: presenter) {
         let reward = ad.adReward
         self.rewardAmount = reward.amount.intValue
         self.rewardType = reward.type
@@ -181,17 +212,17 @@ private final class RewardedCoordinator: NSObject, GADFullScreenContentDelegate 
     }
   }
 
-  private static func adRequest(nonPersonalizedAds: Bool) -> GADRequest {
-    let request = GADRequest()
+  private static func adRequest(nonPersonalizedAds: Bool) -> Request {
+    let request = Request()
     if nonPersonalizedAds {
-      let extras = GADExtras()
+      let extras = Extras()
       extras.additionalParameters = ["npa": "1"]
       request.register(extras)
     }
     return request
   }
 
-  func adDidDismissFullScreenContent(_ ad: GADFullScreenPresentingAd) {
+  func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
     onSuccess([
       "shown": true,
       "rewardEarned": rewardAmount > 0 || !rewardType.isEmpty,
@@ -201,7 +232,7 @@ private final class RewardedCoordinator: NSObject, GADFullScreenContentDelegate 
   }
 
   func ad(
-    _ ad: GADFullScreenPresentingAd,
+    _ ad: FullScreenPresentingAd,
     didFailToPresentFullScreenContentWithError error: Error
   ) {
     onError("ADS_REWARDED_SHOW", error.localizedDescription)
