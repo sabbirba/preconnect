@@ -29,7 +29,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _studentName = '';
   String _studentShortCode = '';
   String _printerHost = '';
-  String _printerStatus = 'Detecting campus printer...';
+  String _printerStatus = 'Detecting Campus Printer...';
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
   bool _busy = false;
   bool _discovering = false;
@@ -236,12 +236,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
           fileName: _fileName,
           printerHost: host,
           status: 'Sent',
-          message: 'Sent to campus printer',
+          message: 'Sent to Campus Printer',
           createdAt: DateTime.now(),
         ),
       );
       if (!mounted) return;
-      showAppSnackBar(context, 'File sent to campus printer');
+      showAppSnackBar(context, 'File sent to Campus Printer');
     } on _LprPrintException catch (error) {
       if (!mounted) return;
       await _addHistory(
@@ -262,12 +262,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
           fileName: _fileName,
           printerHost: host,
           status: 'Failed',
-          message: 'Unable to send file to campus printer',
+          message: 'Unable to send file to Campus Printer',
           createdAt: DateTime.now(),
         ),
       );
       if (!mounted) return;
-      showAppSnackBar(context, 'Unable to send file to campus printer');
+      showAppSnackBar(context, 'Unable to send file to Campus Printer');
     } finally {
       if (mounted) {
         setState(() {
