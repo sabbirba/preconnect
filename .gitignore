@@ -89,3 +89,9 @@ chruby-0.3.9
 
 # Crashlytics
 crashlytics-build.properties
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
