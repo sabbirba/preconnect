@@ -35,8 +35,6 @@ dependencies:
   in_app_review: ^2.0.11
   local_auth: ^3.0.1
   sembast: ^3.8.6
-  firebase_core: ^4.1.1
-  firebase_messaging: ^16.0.3
   app_links: ^7.0.0
   shimmer: ^3.0.0
 

@@ -10,21 +10,16 @@ class ApiConfig {
   static const String logoutEndpoint = '$ssoBase/logout';
   static const String authEndpoint = '$ssoBase/auth';
 
+  static const String seatStatusProxyBase = 'https://api.preconnect.app';
   static String get connectApiBase => kIsWeb
       ? '$seatStatusProxyBase/connect'
       : 'https://connect.bracu.ac.bd/api';
   static const String cdnBase = 'https://connect.bracu.ac.bd/cdn';
-  static const String seatStatusProxyBase = String.fromEnvironment(
-    'SEAT_STATUS_PROXY_BASE',
-    defaultValue: 'https://api.preconnect.app',
-  );
   static const String filesBase = 'https://files.preconnect.app';
-  static const String facultyReviewsBearer = String.fromEnvironment(
-    'FACULTY_REVIEWS_BEARER',
-    defaultValue: '123580',
-  );
+  static const String facultyReviewsBearer =
+      String.fromEnvironment('FACULTY_REVIEWS_BEARER');
   static const String webLoginBrokerBase = seatStatusProxyBase;
-  static const String pushAlertsBase = seatStatusProxyBase;
+  static const String pushAlertsBase = 'https://api.preconnect.app';
 
   static const String clientId = 'slm';
   static const String redirectUri = 'https://connect.bracu.ac.bd/';

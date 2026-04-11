@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:preconnect/api/seat_alert_push_service.dart';
 import 'package:preconnect/api/seat_status_service.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/model/section_info.dart' as section;
@@ -16,12 +14,10 @@ import 'package:preconnect/tools/push_notifications_service.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/time_utils.dart';
-
 part 'shared_widgets/seat_status_methods_part.dart';
 
 class SeatStatusPage extends StatefulWidget {
   const SeatStatusPage({super.key});
-
   @override
   State<SeatStatusPage> createState() => _SeatStatusPageState();
 }
@@ -39,7 +35,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   ];
 
   final SeatStatusService _service = SeatStatusService();
-  final SeatAlertPushService _pushService = SeatAlertPushService();
+  final SeatAlertSyncService _pushService = SeatAlertSyncService();
   final List<_SeatStatusCardData> _cards = <_SeatStatusCardData>[];
   final List<_SeatStatusCardData> _visibleCards = <_SeatStatusCardData>[];
   final Map<int, SeatStatusDetailsResponse> _detailsCache =
@@ -65,7 +61,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   StreamSubscription<String>? _streamSubscription;
   Timer? _streamReconnectTimer;
   Timer? _streamRefreshDebounce;
-
   @override
   void initState() {
     super.initState();
@@ -86,7 +81,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     _updatePollingStrategy();
     bindRefreshBus(_onRefreshSignal);
   }
-
   @override
   void dispose() {
     _stopSeatStatusStream();
@@ -98,7 +92,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     unbindRefreshBus(_onRefreshSignal);
     super.dispose();
   }
-
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -113,7 +106,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       _updatePollingStrategy();
     }
   }
-
   void _onActiveTabChanged() {
     if (!mounted) return;
     _updatePollingStrategy();
@@ -126,7 +118,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     }
     unawaited(_handleRefresh(notify: false));
   }
-
   void _onCacheSaveStateChanged() {
     if (!mounted) return;
     final next = _service.isSavingDetailsCache.value;
@@ -135,7 +126,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       _isSavingCache = next;
     });
   }
-
   Future<void> _handleRefresh({bool notify = true}) async {
     if (!await ensureOnline(context, notify: notify)) {
       return;
@@ -145,7 +135,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       RefreshBus.instance.notify(reason: 'seat_status');
     }
   }
-
   Future<void> _reloadAll() async {
     if (mounted) {
       setState(() {
@@ -177,7 +166,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       });
     }
   }
-
   Future<void> _loadSeatAlerts() async {
     final loaded = await _service.loadSeatAlertConfigs();
     try {
@@ -189,7 +177,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       ..addAll(loaded);
     _refreshVisibleCards();
   }
-
   List<_SeatStatusCardData> _buildCardsFromDetailsMap(
     Map<int, SeatStatusDetailsResponse> detailsMap,
   ) {
@@ -203,7 +190,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       return _buildCardFromDetails(sectionId: sectionId, details: cached);
     }).toList();
   }
-
   Future<void> _applyDetailsUpdate(
     Map<int, SeatStatusDetailsResponse> detailsMap,
   ) async {
@@ -225,7 +211,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     unawaited(_loadCachedStaffInfoForDetails(detailsMap.values));
     _queueStaffInfoResolve(detailsMap.values);
   }
-
   Future<void> _processSeatAlerts(
     List<_SeatStatusCardData> previous,
     List<_SeatStatusCardData> next,
@@ -434,13 +419,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       showAppSnackBar(context, 'Seat alert removed');
       return;
     }
-    final permissionGranted = await PushNotificationsService()
-        .ensureNotificationPermission();
-    if (!permissionGranted) {
-      if (!mounted) return;
-      _showSeatAlertPermissionSnackBar();
-      return;
-    }
+    await PushNotificationsService().ensureNotificationPermission();
     await _service.saveSeatAlertConfig(normalizedUpdated);
     try {
       await _pushService.syncSeatAlertConfig(normalizedUpdated);
@@ -494,10 +473,10 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   void _showSeatAlertPermissionSnackBar() {
     showAppSnackBar(
       context,
-      'Allow notifications to enable seat alerts.',
-      actionLabel: 'Settings',
+      'Seat alerts sync through the VPS backend.',
+      actionLabel: 'Refresh',
       onAction: () {
-        unawaited(PushNotificationsService().openSystemNotificationSettings());
+        unawaited(PushNotificationsService().pollPendingAlerts());
       },
     );
   }
@@ -507,7 +486,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     return _buildPageContent(context);
   }
 }
-
 class _SeatStatusCard extends StatelessWidget {
   const _SeatStatusCard({
     required this.item,

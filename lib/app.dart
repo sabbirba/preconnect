@@ -7,7 +7,6 @@ import 'package:in_app_update/in_app_update.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/api_client.dart';
-import 'package:preconnect/api/seat_alert_push_service.dart';
 import 'package:preconnect/api/sembast_cache.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/home_tab.dart';
@@ -133,7 +132,7 @@ class _MyAppState extends State<MyApp>
     bindRefreshBus(_onRefreshSignal);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       PushNotificationsService().initialize().catchError((_) {});
-      SeatAlertPushService().initialize().catchError((_) {});
+      SeatAlertSyncService().initialize().catchError((_) {});
       PlayIntegrity.prepare().catchError((_) {});
       PlayInstallReferrer.prefetch().catchError((_) {});
       unawaited(_setupQuickAccessShortcuts());
@@ -171,7 +170,7 @@ class _MyAppState extends State<MyApp>
   }
 
   Future<void> _consumePendingSeatAlertLaunch() async {
-    final pendingSectionId = await SeatAlertPushService()
+    final pendingSectionId = await SeatAlertSyncService()
         .consumePendingSectionId();
     if (pendingSectionId == null) return;
     if (!_initialLoggedIn && !_canOpenOffline) return;

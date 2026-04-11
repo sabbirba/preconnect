@@ -4,7 +4,6 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    id("com.google.gms.google-services")
     id("kotlin-android")
 
     id("dev.flutter.flutter-gradle-plugin")
@@ -31,22 +30,7 @@ fun envFromDotEnv(name: String): String? {
     }
     return null
 }
-
-fun loadAndroidAdAppId(): String {
-    val googleServicesFile = rootProject.file("app/google-services.json")
-    if (googleServicesFile.exists()) {
-        val match = Regex("\"admob_app_id\"\\s*:\\s*\"([^\"]+)\"")
-            .find(googleServicesFile.readText())
-        if (match != null) {
-            return match.groupValues[1]
-        }
-        throw GradleException("Missing app id in android/app/google-services.json.")
-    }
-
-    throw GradleException("Missing android/app/google-services.json")
-}
-
-val androidAdAppId = loadAndroidAdAppId()
+val androidAdAppId = "ca-app-pub-3940256099942544~1458002511"
 val rewardedAdUnitId = envOrProp("REWARDED_AD_UNIT_ID")
     ?: throw GradleException("Missing REWARDED_AD_UNIT_ID")
 

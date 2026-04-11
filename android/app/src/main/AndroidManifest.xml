@@ -71,10 +71,6 @@
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="${adAppId}" />
 
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="seat_alerts" />
-
         <receiver
             android:name=".WifiSuggestionPostConnectionReceiver"
             android:exported="false">

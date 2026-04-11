@@ -7,11 +7,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/friend_schedule_store.dart';
-import 'package:preconnect/api/seat_alert_push_service.dart';
 import 'package:preconnect/api/sembast_cache.dart';
 import 'package:preconnect/api/seat_status_service.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/tools/cached_image.dart';
+import 'package:preconnect/tools/push_notifications_service.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
 enum TokenRefreshStatus { refreshed, invalidSession, retryableFailure }
@@ -68,7 +68,7 @@ class AuthService {
 
   Future<void> _clearLocalCaches() async {
     try {
-      await SeatAlertPushService().clearAll();
+      await SeatAlertSyncService().clearAll();
     } catch (_) {}
     final asyncPrefs = SharedPreferencesAsync();
     await asyncPrefs.clear();

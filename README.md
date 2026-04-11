@@ -192,7 +192,7 @@ flowchart LR
   A[PreConnect Client\nAndroid/iOS/macOS/Web] --> B[PreConnect Hosted API\napi.preconnect.app]
   B --> C[BRACU Connect APIs]
   B --> D[Seat Status Cache + Stream]
-  B --> E[Firebase Cloud Messaging]
+  B --> E[VPS Alert Queue]
   E --> A
 ```
 
@@ -213,7 +213,7 @@ Key packages related to user data safety/privacy are listed below.
 | `shared_preferences` | Stores non-sensitive app settings and flags (for example onboarding and UI preferences). Not used for secret credentials. |
 | `sembast` | Provides structured local database caching so app data can stay on-device and support offline usage with controlled reads/writes. |
 | `local_auth` | Enables optional biometric/PIN app lock so only the device owner can open protected screens. |
-| `firebase_core` + `firebase_messaging` | Powers push notifications (for example seat alerts). Device messaging tokens are used for delivery and can be registered/unregistered from the server even app is closed. |
+| `push_notifications_service` | Polls the VPS backend for queued seat alerts using a local installation ID, without Firebase. |
 | `permission_handler` | Ensures runtime permissions (camera/notifications) are requested explicitly and can be denied by the user. |
 | `crypto` | Used for cryptographic hashing in integrity/security flows to strengthen request validation. |
 
@@ -222,7 +222,7 @@ Privacy notes:
 - Sensitive tokens are kept in secure storage, not plain preferences.
 - Users can control OS-level permissions (camera/notifications) at any time.
 - Local caches are used to improve offline and performance behavior.
-- Notification delivery depends on Firebase Cloud Messaging.
+- Notification delivery depends on the VPS queue and client polling.
 
 ## Testing & Quality
 
@@ -269,7 +269,7 @@ Why this reduces Connect API calls:
 - Shared upstream fetches across all users
 - CDN/cache-friendly response headers
 - No repeated per-device direct Connect seat-status polling
-- Seat alerts are wired through Firebase Cloud Messaging and the hosted seat-status server API.
+- Seat alerts are wired through the hosted seat-status server API and the push provider configured there.
 
 ## Documentation & Policies
 
@@ -325,7 +325,7 @@ The app uses a hosted proxy (`api.preconnect.app`) that handles caching and stre
 - BRAC University student community for continuous feedback and testing
 - Flutter and Dart ecosystems
 - Open-source package maintainers on [pub.dev](https://pub.dev)
-- Infrastructure providers: Firebase Cloud Messaging and VPS-hosted services
+- Infrastructure providers: VPS-hosted services and the configured push provider
 
 ## Developer Credit
 - NaiveInvestigator — GitHub: [@NaiveInvestigator](https://github.com/NaiveInvestigator)
