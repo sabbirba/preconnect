@@ -1,9 +1,0 @@
-name = "preconnect-web"
-main = "web-worker/src/worker.js"
-compatibility_date = "2026-04-11"
-workers_dev = true
-
-[assets]
-directory = "build/web"
-binding = "ASSETS"
-

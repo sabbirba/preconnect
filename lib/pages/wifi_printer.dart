@@ -173,7 +173,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   }
 
   Future<void> _pickPrintFile() async {
-    final picked = await FilePicker.platform.pickFiles(
+    final picked = await FilePicker.pickFiles(
       type: FileType.any,
       allowMultiple: false,
       withData: true,
@@ -372,7 +372,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                                 ),
                               )
                             : const Icon(Icons.print_rounded, size: 18),
-                        label: Text(_busy ? 'Sending...' : 'Campus Print'),
+                        label: Text(_busy ? 'Sending...' : 'Print'),
                       ),
                     ),
                   ],

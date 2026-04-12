@@ -9,7 +9,7 @@ class StudentOverviewCard extends StatelessWidget {
     required this.department,
     required this.currentSemester,
     required this.currentSessionSemesterId,
-    required this.onOpenReward,
+    required this.onOpenSupport,
     required this.onOpenSettings,
     required this.onLogout,
     this.countdown,
@@ -20,7 +20,7 @@ class StudentOverviewCard extends StatelessWidget {
   final String department;
   final String currentSemester;
   final String currentSessionSemesterId;
-  final Future<void> Function() onOpenReward;
+  final Future<void> Function() onOpenSupport;
   final VoidCallback onOpenSettings;
   final Future<void> Function() onLogout;
   final Widget? countdown;
@@ -49,9 +49,8 @@ class StudentOverviewCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                _RewardIconButton(
-                  icon: Icons.card_giftcard_outlined,
-                  onTap: onOpenReward,
+                _SupportButton(
+                  onTap: onOpenSupport,
                 ),
                 const SizedBox(width: 8),
                 _IconButton(
@@ -110,17 +109,16 @@ class _IconButton extends StatelessWidget {
   }
 }
 
-class _RewardIconButton extends StatefulWidget {
-  const _RewardIconButton({required this.icon, required this.onTap});
+class _SupportButton extends StatefulWidget {
+  const _SupportButton({required this.onTap});
 
-  final IconData icon;
   final Future<void> Function() onTap;
 
   @override
-  State<_RewardIconButton> createState() => _RewardIconButtonState();
+  State<_SupportButton> createState() => _SupportButtonState();
 }
 
-class _RewardIconButtonState extends State<_RewardIconButton> {
+class _SupportButtonState extends State<_SupportButton> {
   bool _isLoading = false;
 
   Future<void> _handleTap() async {
@@ -145,7 +143,7 @@ class _RewardIconButtonState extends State<_RewardIconButton> {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: _isLoading ? null : _handleTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 180),
         switchInCurve: Curves.easeOut,
@@ -157,26 +155,43 @@ class _RewardIconButtonState extends State<_RewardIconButton> {
 
   Widget _buildButtonTile() {
     return _buildTile(
-      child: Icon(widget.icon, size: 18, color: BracuPalette.primary),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.favorite_border_rounded,
+            size: 16,
+            color: BracuPalette.primary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'Support',
+            style: TextStyle(
+              color: BracuPalette.primary,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.1,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildLoadingTile() {
     return BracuShimmer(
       child: _buildTile(
-        child: const BracuSkeletonBox(width: 18, height: 18, radius: 9),
+        child: const BracuSkeletonBox(width: 56, height: 16, radius: 8),
       ),
     );
   }
 
   Widget _buildTile({required Widget child}) {
     return Container(
-      width: 30,
-      height: 30,
-      padding: const EdgeInsets.all(6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
         color: BracuPalette.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
       ),
       alignment: Alignment.center,
       child: child,

@@ -237,11 +237,6 @@ class _WebLoginSetupPageState extends State<WebLoginSetupPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Open PreConnect Web, then scan the browser QR here.',
-                  style: TextStyle(color: BracuPalette.textSecondary(context)),
-                ),
-                const SizedBox(height: 12),
                 AspectRatio(
                   aspectRatio: 1,
                   child: ClipRRect(

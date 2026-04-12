@@ -703,7 +703,7 @@ class BracuActionBannerCard extends StatelessWidget {
 class BracuRewardVideoSection extends StatefulWidget {
   const BracuRewardVideoSection({
     super.key,
-    this.activeTitle = 'Reward Video Support',
+    this.activeTitle = 'Support PreConnect',
     this.activeSubtitle = 'Watch short video to support',
     this.inactiveTitle = 'Support PreConnect',
     this.inactiveSubtitle = 'Watch short video to support',

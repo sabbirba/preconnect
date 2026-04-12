@@ -196,15 +196,6 @@ jobs:
       - name: Remove Embedded Server Files From Web Build
         run: rm -rf build/web/server
 
-      - name: Install Wrangler
-        run: npm install -g wrangler
-
-      - name: Deploy Web Worker
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: wrangler deploy
-
       - name: Package Web Release
         run: |
           mkdir -p artifacts
@@ -358,13 +349,37 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEYSTORE_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          REWARDED_AD_UNIT_ID: ${{ secrets.REWARDED_AD_UNIT_ID }}
         run: |
           [ -n "$ANDROID_KEYSTORE_BASE64" ] || { echo "Missing required Android release secret: ANDROID_KEYSTORE_BASE64"; exit 1; }
           [ -n "$ANDROID_KEYSTORE_PASSWORD" ] || { echo "Missing required Android release secret: ANDROID_KEYSTORE_PASSWORD"; exit 1; }
           [ -n "$ANDROID_KEYSTORE_ALIAS" ] || { echo "Missing required Android release secret: ANDROID_KEYSTORE_ALIAS"; exit 1; }
           [ -n "$ANDROID_KEY_PASSWORD" ] || { echo "Missing required Android release secret: ANDROID_KEY_PASSWORD"; exit 1; }
-          [ -n "$REWARDED_AD_UNIT_ID" ] || { echo "Missing required Android release secret: REWARDED_AD_UNIT_ID"; exit 1; }
+
+      - name: Check Shared Release Secrets
+        shell: bash
+        env:
+          FACULTY_REVIEWS_BEARER: ${{ secrets.FACULTY_REVIEWS_BEARER }}
+          REWARDED_AD_UNIT_ID: ${{ secrets.REWARDED_AD_UNIT_ID }}
+          ADS_APP_ID_IOS: ${{ secrets.ADS_APP_ID_IOS }}
+          DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
+          PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: ${{ secrets.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER }}
+        run: |
+          [ -n "$FACULTY_REVIEWS_BEARER" ] || { echo "Missing required release secret: FACULTY_REVIEWS_BEARER"; exit 1; }
+          [ -n "$REWARDED_AD_UNIT_ID" ] || { echo "Missing required release secret: REWARDED_AD_UNIT_ID"; exit 1; }
+          [ -n "$ADS_APP_ID_IOS" ] || { echo "Missing required release secret: ADS_APP_ID_IOS"; exit 1; }
+          [ -n "$DEVELOPMENT_TEAM" ] || { echo "Missing required release secret: DEVELOPMENT_TEAM"; exit 1; }
+          [ -n "$PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER" ] || { echo "Missing required release secret: PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER"; exit 1; }
+
+      - name: Create Release Env
+        shell: bash
+        run: |
+          cat > .env <<'EOF'
+          FACULTY_REVIEWS_BEARER=${{ secrets.FACULTY_REVIEWS_BEARER }}
+          REWARDED_AD_UNIT_ID=${{ secrets.REWARDED_AD_UNIT_ID }}
+          ADS_APP_ID_IOS=${{ secrets.ADS_APP_ID_IOS }}
+          DEVELOPMENT_TEAM=${{ secrets.DEVELOPMENT_TEAM }}
+          PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=${{ secrets.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER }}
+          EOF
 
       - name: Restore Android Keystore
         if: matrix.platform == 'android'
@@ -380,16 +395,16 @@ jobs:
 
       - name: Build Android APK (Release)
         if: matrix.platform == 'android'
-        run: flutter build apk --release --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
+        run: flutter build apk --release --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
 
       - name: Build Android AAB (Release)
         if: matrix.platform == 'android'
-        run: flutter build appbundle --release --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
+        run: flutter build appbundle --release --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
 
       - name: Build iOS App (Release, No Codesign)
         if: matrix.platform == 'ios'
         run: |
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign --dart-define-from-file=.env
 
       - name: Detect iOS Signing Availability
         id: ios_signing
@@ -435,7 +450,7 @@ jobs:
           security list-keychains -s "$KEYCHAIN_PATH"
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           echo "${{ secrets.IOS_PROFILE_BASE64 }}" | base64 -d > "$HOME/Library/MobileDevice/Provisioning Profiles/profile.mobileprovision"
-          flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+          flutter build ipa --release --dart-define-from-file=.env --export-options-plist=ios/ExportOptions.plist
 
       - name: Build macOS App
         if: matrix.platform == 'macos'

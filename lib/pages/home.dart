@@ -872,17 +872,6 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
               );
             },
           ),
-          const SizedBox(height: 12),
-          BracuActionBannerCard(
-            icon: Icons.open_in_new,
-            title: 'Open PreConnect Web',
-            subtitle: 'PreConnect • Prepare. Connect. Succeed.',
-            onTap: () => openExternalUrl(
-              context,
-              'https://preconnect.app',
-              failureMessage: 'Unable to open browser.',
-            ),
-          ),
         ],
       ),
     );

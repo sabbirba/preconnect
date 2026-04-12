@@ -1,8 +1,10 @@
 package com.sabbirba.preconnect
 
 import android.content.Context
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
+import java.util.ArrayList
 import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
 import android.net.ConnectivityManager
@@ -96,6 +98,7 @@ class MainActivity : FlutterFragmentActivity() {
         configureIntegrityChannel(flutterEngine)
         configureInstallReferrerChannel(flutterEngine)
         configureBuildInfoChannel(flutterEngine)
+        configureAndroidAlarmChannel(flutterEngine)
         configureNetworkAssistChannels(flutterEngine)
         configureNativePrintChannel(flutterEngine)
     }
@@ -105,6 +108,52 @@ class MainActivity : FlutterFragmentActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "getBuildInfo" -> result.success(currentBuildInfo())
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    private fun configureAndroidAlarmChannel(flutterEngine: FlutterEngine) {
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "preconnect/android_alarm")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "setAlarm" -> {
+                        val hour = (call.argument<Number>("hour")?.toInt()) ?: run {
+                            result.success(false)
+                            return@setMethodCallHandler
+                        }
+                        val minute = (call.argument<Number>("minute")?.toInt()) ?: run {
+                            result.success(false)
+                            return@setMethodCallHandler
+                        }
+                        val message = call.argument<String>("message") ?: ""
+                        val days = call.argument<List<Int>>("days") ?: emptyList()
+                        val alarmIntent = Intent("android.intent.action.SET_ALARM").apply {
+                            putExtra("android.intent.extra.alarm.HOUR", hour)
+                            putExtra("android.intent.extra.alarm.MINUTES", minute)
+                            putExtra("android.intent.extra.alarm.MESSAGE", message)
+                            putExtra("android.intent.extra.alarm.SKIP_UI", false)
+                            if (days.isNotEmpty()) {
+                                putIntegerArrayListExtra(
+                                    "android.intent.extra.alarm.DAYS",
+                                    ArrayList(days),
+                                )
+                            }
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        try {
+                            if (alarmIntent.resolveActivity(packageManager) == null) {
+                                result.success(false)
+                            } else {
+                                startActivity(alarmIntent)
+                                result.success(true)
+                            }
+                        } catch (_: ActivityNotFoundException) {
+                            result.success(false)
+                        } catch (_: Exception) {
+                            result.success(false)
+                        }
+                    }
                     else -> result.notImplemented()
                 }
             }

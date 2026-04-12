@@ -121,9 +121,8 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                               currentSemester: profile['currentSemester'] ?? '',
                               currentSessionSemesterId:
                                   profile['currentSessionSemesterId'] ?? '',
-                              onOpenReward: () => showRewardSupportFlow(
-                                context,
-                              ),
+                              onOpenSupport: () =>
+                                  showBracuFundingSupportSheet(context),
                               onOpenSettings: () =>
                                   widget.onNavigate(HomeTab.settings),
                               onLogout: widget.onLogout,
@@ -459,18 +458,9 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                             BracuActionBannerCard(
                               icon: Icons.map_outlined,
                               title: 'Campus Map & Contacts',
-                              subtitle: 'Locations and contact details',
+                              subtitle: 'Location and emergency contacts',
                               iconColor: const Color(0xFF22B573),
                               onTap: _openCampusMapSheet,
-                            ),
-                            const SizedBox(height: 12),
-                            BracuActionBannerCard(
-                              icon: Icons.favorite_outline_rounded,
-                              title: 'Support PreConnect',
-                              subtitle: 'Watch video or open funding options',
-                              iconColor: const Color(0xFF00A8E8),
-                              onTap: () =>
-                                  showBracuFundingSupportSheet(context),
                             ),
                             const SizedBox(height: 12),
                           ],

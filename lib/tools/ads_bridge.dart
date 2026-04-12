@@ -12,7 +12,7 @@ class AdsBridge {
 
   static Future<void> initialize({
     List<String> testDeviceIds = const [],
-    bool nonPersonalizedAds = true,
+    bool nonPersonalizedAds = false,
   }) {
     if (!isSupportedPlatform) {
       return SynchronousFuture<void>(null);
@@ -25,7 +25,7 @@ class AdsBridge {
 
   static Future<AdsRewardResult> showRewarded({
     String? adUnitId,
-    bool nonPersonalizedAds = true,
+    bool nonPersonalizedAds = false,
   }) async {
     if (!isSupportedPlatform) {
       return const AdsRewardResult(

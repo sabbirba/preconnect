@@ -46,7 +46,7 @@ class AdsBridge(
         val adUnitId = call.argument<String>("adUnitId")
             ?.takeIf { it.isNotBlank() }
             ?: BuildConfig.REWARDED_AD_UNIT_ID
-        val nonPersonalizedAds = call.argument<Boolean>("nonPersonalizedAds") ?: true
+        val nonPersonalizedAds = call.argument<Boolean>("nonPersonalizedAds") ?: false
 
         RewardedAd.load(
             activity,
@@ -83,7 +83,9 @@ class AdsBridge(
         )
     }
 
-    internal fun buildAdRequest(nonPersonalizedAds: Boolean): AdRequest {
+    internal fun buildAdRequest(
+        nonPersonalizedAds: Boolean,
+    ): AdRequest {
         val builder = AdRequest.Builder()
         if (nonPersonalizedAds) {
             val extras = Bundle()

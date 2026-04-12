@@ -2,9 +2,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:android_intent_plus/android_intent.dart';
-import 'package:android_intent_plus/flag.dart';
 import 'package:flutter_alarmkit/flutter_alarmkit.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/exam_map_service.dart';
@@ -25,6 +24,9 @@ class AlarmPage extends StatefulWidget {
 }
 
 class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
+  static const MethodChannel _androidAlarmChannel = MethodChannel(
+    'preconnect/android_alarm',
+  );
   late Future<_AlarmData> _futureData;
   final Map<String, int> _minutesBefore = {};
 
@@ -233,21 +235,19 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         .whereType<int>()
         .toList();
 
-    final intent = AndroidIntent(
-      action: 'android.intent.action.SET_ALARM',
-      arguments: {
-        'android.intent.extra.alarm.HOUR': hour,
-        'android.intent.extra.alarm.MINUTES': minute,
-        'android.intent.extra.alarm.MESSAGE':
-            '$courseCode Class Reminder ($minutesBefore min before)',
-        'android.intent.extra.alarm.DAYS': alarmDays,
-        'android.intent.extra.alarm.SKIP_UI': false,
-      },
-      flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
-    );
-
     try {
-      await intent.launch();
+      final opened = await _androidAlarmChannel.invokeMethod<bool>(
+        'setAlarm',
+        {
+          'hour': hour,
+          'minute': minute,
+          'message': '$courseCode Class Reminder ($minutesBefore min before)',
+          'days': alarmDays,
+        },
+      );
+      if (opened != true) {
+        throw Exception('Unable to open alarm on Android.');
+      }
       if (!context.mounted) return;
       showAppSnackBar(context, 'Alarm opened in Clock app.');
       RefreshBus.instance.notify(reason: 'alarms');
@@ -352,20 +352,19 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       return;
     }
 
-    final intent = AndroidIntent(
-      action: 'android.intent.action.SET_ALARM',
-      arguments: {
-        'android.intent.extra.alarm.HOUR': fireAt.hour,
-        'android.intent.extra.alarm.MINUTES': fireAt.minute,
-        'android.intent.extra.alarm.MESSAGE':
-            '${entry.courseCode} ${entry.type} Reminder ($minutesBefore min before)',
-        'android.intent.extra.alarm.SKIP_UI': false,
-      },
-      flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
-    );
-
     try {
-      await intent.launch();
+      final opened = await _androidAlarmChannel.invokeMethod<bool>(
+        'setAlarm',
+        {
+          'hour': fireAt.hour,
+          'minute': fireAt.minute,
+          'message':
+              '${entry.courseCode} ${entry.type} Reminder ($minutesBefore min before)',
+        },
+      );
+      if (opened != true) {
+        throw Exception('Unable to open alarm on Android.');
+      }
       if (!context.mounted) return;
       showAppSnackBar(
         context,

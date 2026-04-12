@@ -645,7 +645,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                                     setSheetState(() {
                                       pickingFile = true;
                                     });
-                                    final picked = await FilePicker.platform
+                                    final picked = await FilePicker
                                         .pickFiles(
                                           type: FileType.any,
                                           allowMultiple: false,
@@ -1250,7 +1250,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
       metricLine: metricLine,
       isApproved: review.isApproved,
       onDelete:
-          _busyWriteAction || review.canDelete == false || review.reviewId <= 0
+          _busyWriteAction || review.canDelete != true || review.reviewId <= 0
           ? null
           : () => _deleteReview(review.reviewId),
     );
@@ -1483,7 +1483,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                         ),
                       ),
                     ),
-                    if (item.canDelete != false)
+                    if (item.canDelete == true)
                       IconButton(
                         visualDensity: VisualDensity.compact,
                         tooltip: 'Delete',

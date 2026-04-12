@@ -2,7 +2,7 @@ name: preconnect
 description: "Your personalised student portal for BRAC University"
 publish_to: 'none'
 
-version: 1.5.4+202604045
+version: 1.5.5+202604050
 
 environment:
   sdk: ^3.8.1
@@ -14,12 +14,11 @@ dependencies:
   flutter_secure_storage: ^10.0.0
   crypto: ^3.0.7
   permission_handler: ^12.0.1
-  shared_preferences: ^2.5.4
+  shared_preferences: ^2.5.5
   http: ^1.6.0
-  webview_flutter_android: 4.10.11
+  webview_flutter_android: ^4.11.0
   webview_flutter: ^4.13.1
   intl: ^0.20.2
-  android_intent_plus: ^6.0.0
   mobile_scanner: ^7.2.0
   archive: ^4.0.9
   flutter_alarmkit: ^0.0.10
@@ -28,14 +27,13 @@ dependencies:
   flutter_flip_card: ^0.0.6
   url_launcher: ^6.3.2
   image_picker: ^1.2.1
-  file_picker: ^10.3.2
-  share_plus: ^12.0.1
+  file_picker: ^11.0.2
+  share_plus: ^12.0.2
   path_provider: ^2.1.5
   in_app_update: ^4.2.5
   in_app_review: ^2.0.11
   local_auth: ^3.0.1
   sembast: ^3.8.6
-  app_links: ^7.0.0
   shimmer: ^3.0.0
 
 dev_dependencies:

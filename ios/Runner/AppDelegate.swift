@@ -216,7 +216,7 @@ private final class PreconnectAdsBridge: NSObject {
       )
       return
     }
-    let nonPersonalizedAds = args["nonPersonalizedAds"] as? Bool ?? true
+    let nonPersonalizedAds = args["nonPersonalizedAds"] as? Bool ?? false
 
     let coordinator = RewardedCoordinator(
       adUnitId: adUnitId,
