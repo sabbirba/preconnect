@@ -185,8 +185,8 @@ private final class BannerAdPlatformView: NSObject, FlutterPlatformView {
     let bannerWidth = Self.resolveBannerWidth(arguments: arguments, fallback: frame.width)
     guard !adUnitId.isEmpty else { return }
 
-    let bannerSize = GADCurrentOrientationAnchoredAdaptiveBannerAdSizeWithWidth(bannerWidth)
-    let bannerView = GADBannerView(adSize: bannerSize)
+    let bannerSize = currentOrientationAnchoredAdaptiveBanner(width: bannerWidth)
+    let bannerView = BannerView(adSize: bannerSize)
     bannerView.translatesAutoresizingMaskIntoConstraints = false
     bannerView.adUnitID = adUnitId
     bannerView.rootViewController = UIApplication.preconnectTopViewController()
@@ -197,7 +197,7 @@ private final class BannerAdPlatformView: NSObject, FlutterPlatformView {
       bannerView.widthAnchor.constraint(equalToConstant: bannerSize.size.width),
       bannerView.heightAnchor.constraint(equalToConstant: bannerSize.size.height),
     ])
-    bannerView.load(GADRequest())
+    bannerView.load(Request())
   }
 
   func view() -> UIView {
