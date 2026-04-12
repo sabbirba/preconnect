@@ -4,7 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:preconnect/api/friend_schedule_store.dart';
 import 'package:preconnect/model/friend_schedule.dart';
@@ -13,7 +13,6 @@ import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/friend_schedule_sections/schedule_list.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_detail.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/web_qr_image_picker_stub.dart'
@@ -186,17 +185,19 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
     }
     setState(() => _isPicking = true);
     try {
-      final granted = await _ensureGalleryPermission();
-      if (!granted) {
+      final picked = await FilePicker.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+        withData: true,
+      );
+      if (picked == null || picked.files.isEmpty) return;
+
+      final imagePath = await _ensureReadableImagePath(picked.files.first);
+      if (imagePath.isEmpty) {
         if (!mounted) return;
-        showAppSnackBar(context, 'Gallery permission denied');
+        showAppSnackBar(context, 'Unable to read selected image');
         return;
       }
-      final picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-      if (image == null) return;
-
-      final imagePath = await _ensureReadableImagePath(image);
       final BarcodeCapture? capture = await _galleryScanner.analyzeImage(
         imagePath,
       );
@@ -222,18 +223,15 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
     }
   }
 
-  Future<bool> _ensureGalleryPermission() async {
-    return PlatformPermissions.requestGalleryImagePermission();
-  }
-
-  Future<String> _ensureReadableImagePath(XFile image) async {
-    if (!Platform.isIOS && !Platform.isMacOS) {
-      return image.path;
+  Future<String> _ensureReadableImagePath(PlatformFile file) async {
+    final path = file.path?.trim() ?? '';
+    if (path.isNotEmpty && (!Platform.isIOS && !Platform.isMacOS)) {
+      return path;
     }
     try {
-      final bytes = await image.readAsBytes();
-      if (bytes.isEmpty) return image.path;
-      final ext = image.path.split('.').last;
+      final bytes = file.bytes;
+      if (bytes == null || bytes.isEmpty) return path;
+      final ext = file.extension?.trim() ?? '';
       final safeExt = ext.isEmpty ? 'png' : ext;
       final tempFile = File(
         '${Directory.systemTemp.path}/preconnect_scan_${DateTime.now().millisecondsSinceEpoch}.$safeExt',
@@ -241,7 +239,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       await tempFile.writeAsBytes(bytes, flush: true);
       return tempFile.path;
     } catch (_) {
-      return image.path;
+      return path;
     }
   }
 
