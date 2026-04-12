@@ -342,6 +342,27 @@ jobs:
             exit 1
           fi
 
+      - name: Refresh CocoaPods Dependencies
+        if: matrix.platform == 'ios' || matrix.platform == 'macos'
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform }}" = "ios" ]; then
+            cd ios
+          else
+            cd macos
+          fi
+          attempt=1
+          until [ $attempt -gt 3 ]; do
+            pod install --repo-update && break
+            echo "pod install --repo-update failed (attempt $attempt)."
+            attempt=$((attempt+1))
+            sleep $((10 * attempt))
+          done
+          if [ $attempt -gt 3 ]; then
+            echo "pod install --repo-update failed after 3 attempts."
+            exit 1
+          fi
+
       - name: Check Android Signing Secrets
         if: matrix.platform == 'android'
         shell: bash
