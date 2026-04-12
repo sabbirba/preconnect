@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth_service.dart';
@@ -30,6 +32,7 @@ import 'package:preconnect/pages/home_sections/student_overview.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/android_network_assist.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/token_storage.dart';

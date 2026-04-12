@@ -7,6 +7,7 @@ import 'package:preconnect/pages/api_test.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/tools/cached_image.dart';
+import 'package:preconnect/tools/token_storage.dart';
 
 class DevsPage extends StatefulWidget {
   const DevsPage({super.key});
@@ -165,6 +166,21 @@ class _DevsPageState extends State<DevsPage> {
                     () => _showAllContributors = !_showAllContributors,
                   ),
                 ),
+              ValueListenableBuilder<bool>(
+                valueListenable: AdsPreferences.instance.adsVisible,
+                builder: (context, adsVisible, _) {
+                  if (!adsVisible) return const SizedBox.shrink();
+                  return const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(height: 14),
+                      BracuSectionTitle(title: 'Sponsored'),
+                      SizedBox(height: 10),
+                      _SponsoredStrip(),
+                    ],
+                  );
+                },
+              ),
               const SizedBox(height: 14),
               const BracuSectionTitle(title: 'Funding & Support'),
               const SizedBox(height: 10),
@@ -358,6 +374,142 @@ class _FundingCard extends StatelessWidget {
           const BracuFundingSupportContent(),
         ],
       ),
+    );
+  }
+}
+
+class _SponsoredStrip extends StatelessWidget {
+  const _SponsoredStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 62,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: EdgeInsets.zero,
+        children: const [
+          _SponsoredTile(
+            title: 'Google AdSense',
+            subtitle: 'Rewarded Ads Provider',
+            iconColor: BracuPalette.primary,
+            leading: _AdSenseLogoImage(),
+            url: 'https://adsense.google.com/',
+          ),
+          SizedBox(width: 25),
+          _SponsoredTile(
+            width: 220,
+            title: 'Become a Sponsor',
+            subtitle: 'Tap to chat on WhatsApp',
+            icon: Icons.add,
+            iconColor: Color(0xFF25D366),
+            url:
+                'https://api.whatsapp.com/send?phone=8801865493144&text=Hi%20PreConnect%2C%20I%20want%20to%20become%20a%20sponsor%20for%20the%20app.',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SponsoredTile extends StatelessWidget {
+  const _SponsoredTile({
+    this.width,
+    required this.title,
+    required this.subtitle,
+    this.icon,
+    required this.iconColor,
+    this.leading,
+    this.url,
+  });
+
+  final double? width;
+  final String title;
+  final String subtitle;
+  final IconData? icon;
+  final Color iconColor;
+  final Widget? leading;
+  final String? url;
+
+  @override
+  Widget build(BuildContext context) {
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        leading ??
+            (icon != null
+                ? Icon(icon, color: iconColor, size: 22)
+                : const SizedBox.shrink()),
+        const SizedBox(width: 10),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: BracuPalette.textPrimary(context),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11.5,
+                color: BracuPalette.textSecondary(context),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 0),
+      child: row,
+    );
+
+    if (width != null) {
+      return SizedBox(
+        width: width,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: url == null ? null : () => openExternalUrl(context, url!),
+          child: content,
+        ),
+      );
+    }
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: url == null ? null : () => openExternalUrl(context, url!),
+      child: content,
+    );
+  }
+}
+
+class _AdSenseLogoImage extends StatelessWidget {
+  const _AdSenseLogoImage();
+
+  static const String _logoUrl =
+      'https://preconnect.app/google-adsense.png';
+
+  @override
+  Widget build(BuildContext context) {
+    return CachedImage(
+      url: _logoUrl,
+      width: 24,
+      height: 24,
+      fit: BoxFit.contain,
+      placeholder: const SizedBox.shrink(),
+      error: const SizedBox.shrink(),
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:preconnect/tools/token_storage.dart';
 
 class AdsBridge {
   AdsBridge._();
@@ -13,11 +14,11 @@ class AdsBridge {
   static Future<void> initialize({
     List<String> testDeviceIds = const [],
     bool nonPersonalizedAds = false,
-  }) {
+  }) async {
     if (!isSupportedPlatform) {
-      return SynchronousFuture<void>(null);
+      return;
     }
-    return _channel.invokeMethod<void>('initialize', <String, dynamic>{
+    await _channel.invokeMethod<void>('initialize', <String, dynamic>{
       'testDeviceIds': testDeviceIds,
       'nonPersonalizedAds': nonPersonalizedAds,
     });
@@ -27,7 +28,7 @@ class AdsBridge {
     String? adUnitId,
     bool nonPersonalizedAds = false,
   }) async {
-    if (!isSupportedPlatform) {
+    if (!isSupportedPlatform || !AdsPreferences.instance.isVisible) {
       return const AdsRewardResult(
         shown: false,
         rewardEarned: false,

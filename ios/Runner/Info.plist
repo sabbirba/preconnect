@@ -136,6 +136,8 @@
 		<string>$(ADS_APP_ID_IOS)</string>
 		<key>REWARDED_AD_UNIT_ID</key>
 		<string>$(REWARDED_AD_UNIT_ID)</string>
+		<key>BANNER_AD_UNIT_ID</key>
+		<string>$(BANNER_AD_UNIT_ID)</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>

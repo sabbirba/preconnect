@@ -1,8 +1,14 @@
 package com.sabbirba.preconnect
 
 import android.app.Activity
+import android.content.Context
 import android.os.Bundle
+import android.view.Gravity
+import android.view.View
+import android.widget.FrameLayout
 import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdSize
+import com.google.android.gms.ads.AdView
 import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.MobileAds
@@ -12,6 +18,9 @@ import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.StandardMessageCodec
+import io.flutter.plugin.platform.PlatformView
+import io.flutter.plugin.platform.PlatformViewFactory
 
 class AdsBridge(
     private val activity: Activity,
@@ -93,5 +102,57 @@ class AdsBridge(
             builder.addNetworkExtrasBundle(com.google.ads.mediation.admob.AdMobAdapter::class.java, extras)
         }
         return builder.build()
+    }
+}
+
+class BannerAdViewFactory(
+    private val context: Context,
+) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
+    override fun create(context: Context, viewId: Int, args: Any?): PlatformView {
+        return BannerAdPlatformView(this.context, args)
+    }
+}
+
+private class BannerAdPlatformView(
+    context: Context,
+    args: Any?,
+) : PlatformView {
+    private val container = FrameLayout(context)
+    private val adView = AdView(context)
+
+    init {
+        val bannerWidthDp = resolveBannerWidthDp(context, args)
+        adView.adUnitId = BuildConfig.BANNER_AD_UNIT_ID
+        adView.setAdSize(
+            AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, bannerWidthDp),
+        )
+        container.addView(
+            adView,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER_HORIZONTAL,
+            ),
+        )
+        adView.loadAd(AdRequest.Builder().build())
+    }
+
+    override fun getView(): View = container
+
+    override fun dispose() {
+        adView.destroy()
+    }
+
+    private fun resolveBannerWidthDp(context: Context, args: Any?): Int {
+        val displayMetrics = context.resources.displayMetrics
+        val requestedWidthDp = (args as? Map<*, *>)?.get("width")
+            ?.toString()
+            ?.toFloatOrNull()
+        val screenWidthDp = (displayMetrics.widthPixels / displayMetrics.density)
+        return (requestedWidthDp ?: screenWidthDp)
+            .takeIf { it > 0f }
+            ?.toInt()
+            ?.coerceAtLeast(320)
+            ?: 320
     }
 }

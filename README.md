@@ -103,6 +103,7 @@ Update [`.env.example`](.env.example) values in your local [`.env`](.env):
 - `keyPassword`
 - `DEVELOPMENT_TEAM`
 - `REWARDED_AD_UNIT_ID`
+- `BANNER_AD_UNIT_ID`
 - `ADS_APP_ID_IOS`
 
 ### Android Signing Setup
@@ -125,7 +126,11 @@ Update the values to match your keystore. The Android release build will fail if
 ### Run the app
 
 ```bash
-flutter run
+flutter run --dart-define-from-file=.env
+```
+
+```bash
+cp .env.example .env
 ```
 
 ### Build Android APK

@@ -33,6 +33,8 @@ fun envFromDotEnv(name: String): String? {
 val androidAdAppId = "ca-app-pub-3940256099942544~1458002511"
 val rewardedAdUnitId = envOrProp("REWARDED_AD_UNIT_ID")
     ?: throw GradleException("Missing REWARDED_AD_UNIT_ID")
+val bannerAdUnitId = envOrProp("BANNER_AD_UNIT_ID")
+    ?: throw GradleException("Missing BANNER_AD_UNIT_ID")
 
 android {
     val keystoreProperties = Properties()
@@ -77,6 +79,7 @@ android {
         versionName = flutter.versionName
         manifestPlaceholders["adAppId"] = androidAdAppId
         buildConfigField("String", "REWARDED_AD_UNIT_ID", "\"$rewardedAdUnitId\"")
+        buildConfigField("String", "BANNER_AD_UNIT_ID", "\"$bannerAdUnitId\"")
 
     }
 

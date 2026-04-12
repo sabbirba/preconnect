@@ -20,6 +20,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _showExamCountdownCard = true;
   bool _showTodaySchedule = true;
   bool _appLockEnabled = false;
+  bool _hideAds = false;
 
   @override
   void initState() {
@@ -29,6 +30,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _load() async {
     final visibility = await HomeCardPreferences.load();
+    await AdsPreferences.instance.load();
     final appLockEnabled = await AppLockService().isEnabled();
     if (!mounted) return;
     setState(() {
@@ -37,6 +39,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _showExamCountdownCard = visibility.showExamCountdownCard;
       _showTodaySchedule = visibility.showTodaySchedule;
       _appLockEnabled = appLockEnabled;
+      _hideAds = AdsPreferences.instance.isHidden;
       _isLoading = false;
     });
   }
@@ -75,6 +78,16 @@ class _SettingsPageState extends State<SettingsPage> {
       applyLocal: () => _showTodaySchedule = value,
       persist: HomeCardPreferences.setShowTodaySchedule,
     );
+  }
+
+  Future<void> _setHideAds(bool value) async {
+    setState(() {
+      _hideAds = value;
+    });
+    await AdsPreferences.instance.setHidden(value);
+    RefreshBus.instance.notify(reason: 'ads_settings_changed');
+    if (!mounted) return;
+    showAppSnackBar(context, value ? 'Ads hidden' : 'Ads shown');
   }
 
   Future<void> _setVisibility({
@@ -203,12 +216,12 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
             const SizedBox(height: 14),
-            const BracuSectionTitle(title: 'Support'),
-            const SizedBox(height: 10),
-            const BracuCard(
-              child: BracuRewardVideoSection(padding: EdgeInsets.zero),
-            ),
-            const SizedBox(height: 14),
+            if (!_hideAds) ...[
+              const BracuSectionTitle(title: 'Support'),
+              const SizedBox(height: 10),
+              const BracuRewardVideoSection(padding: EdgeInsets.zero),
+              const SizedBox(height: 14),
+            ],
             const BracuSectionTitle(title: 'Visibility'),
             const SizedBox(height: 10),
             BracuCard(
@@ -264,6 +277,21 @@ class _SettingsPageState extends State<SettingsPage> {
                     subtitle: 'Show quick shortcuts on home',
                     value: _showQuickAccessSection,
                     onChanged: _setShowQuickAccessSection,
+                  ),
+                  Divider(
+                    height: 12,
+                    thickness: 1,
+                    color: BracuPalette.textSecondary(context).withValues(
+                      alpha: Theme.of(context).brightness == Brightness.dark
+                          ? 0.20
+                          : 0.12,
+                    ),
+                  ),
+                  _ToggleRow(
+                    title: 'Hide Ads',
+                    subtitle: 'Hide sponsored, and reward videos',
+                    value: _hideAds,
+                    onChanged: _setHideAds,
                   ),
                 ],
               ),

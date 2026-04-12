@@ -108,14 +108,6 @@ class _CachedImageState extends State<CachedImage> {
       return;
     }
 
-    if (isRemoteHttp) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-      });
-      return;
-    }
-
     final inlineBytes = _tryDecodeInline(url);
     if (inlineBytes != null && inlineBytes.isNotEmpty) {
       setState(() {
@@ -200,7 +192,7 @@ class _CachedImageState extends State<CachedImage> {
     final url = widget.url.trim();
     final isRemoteHttp =
         url.startsWith('http://') || url.startsWith('https://');
-    if (isRemoteHttp) {
+    if (isRemoteHttp && kIsWeb) {
       return Image.network(
         url,
         fit: widget.fit,

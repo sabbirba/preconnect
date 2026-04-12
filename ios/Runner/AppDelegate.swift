@@ -38,6 +38,9 @@ import UIKit
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreconnectAdsBridge") {
       adsBridge.register(with: registrar)
     }
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreconnectBannerAd") {
+      registrar.register(BannerAdViewFactory(), withId: "preconnect/banner_ad_ios")
+    }
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreconnectBuildInfo") {
       registerBuildInfoChannel(binaryMessenger: registrar.messenger())
     }
@@ -157,6 +160,71 @@ import UIKit
   }
 }
 
+private final class BannerAdViewFactory: NSObject, FlutterPlatformViewFactory {
+  func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
+    FlutterStandardMessageCodec.sharedInstance()
+  }
+
+  func create(
+    withFrame frame: CGRect,
+    viewIdentifier viewId: Int64,
+    arguments args: Any?
+  ) -> any FlutterPlatformView {
+    BannerAdPlatformView(frame: frame, arguments: args)
+  }
+}
+
+private final class BannerAdPlatformView: NSObject, FlutterPlatformView {
+  private let containerView = UIView()
+
+  init(frame: CGRect, arguments: Any?) {
+    super.init()
+    containerView.frame = frame
+    containerView.backgroundColor = .clear
+    let adUnitId = Self.resolveAdUnitId(arguments: arguments)
+    let bannerWidth = Self.resolveBannerWidth(arguments: arguments, fallback: frame.width)
+    guard !adUnitId.isEmpty else { return }
+
+    let bannerSize = GADCurrentOrientationAnchoredAdaptiveBannerAdSizeWithWidth(bannerWidth)
+    let bannerView = GADBannerView(adSize: bannerSize)
+    bannerView.translatesAutoresizingMaskIntoConstraints = false
+    bannerView.adUnitID = adUnitId
+    bannerView.rootViewController = UIApplication.preconnectTopViewController()
+    containerView.addSubview(bannerView)
+    NSLayoutConstraint.activate([
+      bannerView.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+      bannerView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+      bannerView.widthAnchor.constraint(equalToConstant: bannerSize.size.width),
+      bannerView.heightAnchor.constraint(equalToConstant: bannerSize.size.height),
+    ])
+    bannerView.load(GADRequest())
+  }
+
+  func view() -> UIView {
+    containerView
+  }
+
+  private static func resolveAdUnitId(arguments: Any?) -> String {
+    let rawUnitId = (arguments as? [String: Any])?["adUnitId"] as? String
+    let trimmed = rawUnitId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    if !trimmed.isEmpty {
+      return trimmed
+    }
+    return resolvedEnvValue(forKey: "BANNER_AD_UNIT_ID") ?? ""
+  }
+
+  private static func resolveBannerWidth(arguments: Any?, fallback: CGFloat) -> CGFloat {
+    let rawWidth = (arguments as? [String: Any])?["width"]
+    if let number = rawWidth as? NSNumber {
+      return max(CGFloat(truncating: number), 1)
+    }
+    if let string = rawWidth as? String, let value = Double(string) {
+      return max(CGFloat(value), 1)
+    }
+    return max(fallback, 1)
+  }
+}
+
 private final class PreconnectAdsBridge: NSObject {
   private var rewardedCoordinator: RewardedCoordinator?
 
@@ -205,7 +273,7 @@ private final class PreconnectAdsBridge: NSObject {
       .trimmingCharacters(in: .whitespacesAndNewlines)
     let adUnitId = (rawAdUnitId?.isEmpty == false)
       ? rawAdUnitId!
-      : Self.envAdUnitId(forKey: "REWARDED_AD_UNIT_ID")
+      : resolvedEnvValue(forKey: "REWARDED_AD_UNIT_ID")
     guard let adUnitId else {
       result(
         FlutterError(
@@ -235,26 +303,27 @@ private final class PreconnectAdsBridge: NSObject {
     coordinator.loadAndShow()
   }
 
-  private static func envAdUnitId(forKey key: String) -> String? {
-    let plistValue = (Bundle.main.object(forInfoDictionaryKey: key) as? String)?
-      .trimmingCharacters(in: .whitespacesAndNewlines)
-    if let plistValue,
-      !plistValue.isEmpty,
-      !(plistValue.hasPrefix("$(") && plistValue.hasSuffix(")"))
-    {
-      return plistValue
-    }
+}
 
-    let envValue = ProcessInfo.processInfo.environment[key]?
-      .trimmingCharacters(in: .whitespacesAndNewlines)
-    if let envValue,
-      !envValue.isEmpty,
-      !(envValue.hasPrefix("$(") && envValue.hasSuffix(")"))
-    {
-      return envValue
-    }
-    return nil
+private func resolvedEnvValue(forKey key: String) -> String? {
+  let plistValue = (Bundle.main.object(forInfoDictionaryKey: key) as? String)?
+    .trimmingCharacters(in: .whitespacesAndNewlines)
+  if let plistValue,
+    !plistValue.isEmpty,
+    !(plistValue.hasPrefix("$(") && plistValue.hasSuffix(")"))
+  {
+    return plistValue
   }
+
+  let envValue = ProcessInfo.processInfo.environment[key]?
+    .trimmingCharacters(in: .whitespacesAndNewlines)
+  if let envValue,
+    !envValue.isEmpty,
+    !(envValue.hasPrefix("$(") && envValue.hasSuffix(")"))
+  {
+    return envValue
+  }
+  return nil
 }
 
 private final class RewardedCoordinator: NSObject, FullScreenContentDelegate {

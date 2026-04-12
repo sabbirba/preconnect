@@ -95,6 +95,13 @@ class MainActivity : FlutterFragmentActivity() {
             .setMethodCallHandler { call, result ->
                 adsBridge.handle(call, result)
             }
+        flutterEngine
+            .platformViewsController
+            .registry
+            .registerViewFactory(
+                "preconnect/banner_ad_android",
+                BannerAdViewFactory(this),
+            )
         configureIntegrityChannel(flutterEngine)
         configureInstallReferrerChannel(flutterEngine)
         configureBuildInfoChannel(flutterEngine)

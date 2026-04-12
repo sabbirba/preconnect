@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
+import 'package:flutter/foundation.dart'
+    show ValueNotifier, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart' show TargetPlatform;
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -275,6 +276,41 @@ class HomeCardPreferences {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_showTodayScheduleKey, value);
+    } catch (_) {}
+  }
+}
+
+class AdsPreferences {
+  AdsPreferences._();
+
+  static final AdsPreferences instance = AdsPreferences._();
+
+  static const String _hideAdsKey = 'hide_ads';
+
+  final ValueNotifier<bool> adsVisible = ValueNotifier<bool>(true);
+  bool _loaded = false;
+
+  Future<void> load() async {
+    if (_loaded) return;
+    _loaded = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      adsVisible.value = !(prefs.getBool(_hideAdsKey) ?? false);
+    } catch (_) {
+      adsVisible.value = true;
+    }
+  }
+
+  bool get isVisible => adsVisible.value;
+
+  bool get isHidden => !adsVisible.value;
+
+  Future<void> setHidden(bool hidden) async {
+    try {
+      await load();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_hideAdsKey, hidden);
+      adsVisible.value = !hidden;
     } catch (_) {}
   }
 }

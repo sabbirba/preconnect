@@ -188,6 +188,7 @@ jobs:
         run: |
           cat > .env <<'EOF'
           FACULTY_REVIEWS_BEARER=${{ secrets.FACULTY_REVIEWS_BEARER }}
+          BANNER_AD_UNIT_ID=${{ secrets.BANNER_AD_UNIT_ID }}
           EOF
 
       - name: Build Web
@@ -361,12 +362,14 @@ jobs:
           FACULTY_REVIEWS_BEARER: ${{ secrets.FACULTY_REVIEWS_BEARER }}
           REWARDED_AD_UNIT_ID: ${{ secrets.REWARDED_AD_UNIT_ID }}
           ADS_APP_ID_IOS: ${{ secrets.ADS_APP_ID_IOS }}
+          BANNER_AD_UNIT_ID: ${{ secrets.BANNER_AD_UNIT_ID }}
           DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
           PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: ${{ secrets.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER }}
         run: |
           [ -n "$FACULTY_REVIEWS_BEARER" ] || { echo "Missing required release secret: FACULTY_REVIEWS_BEARER"; exit 1; }
           [ -n "$REWARDED_AD_UNIT_ID" ] || { echo "Missing required release secret: REWARDED_AD_UNIT_ID"; exit 1; }
           [ -n "$ADS_APP_ID_IOS" ] || { echo "Missing required release secret: ADS_APP_ID_IOS"; exit 1; }
+          [ -n "$BANNER_AD_UNIT_ID" ] || { echo "Missing required release secret: BANNER_AD_UNIT_ID"; exit 1; }
           [ -n "$DEVELOPMENT_TEAM" ] || { echo "Missing required release secret: DEVELOPMENT_TEAM"; exit 1; }
           [ -n "$PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER" ] || { echo "Missing required release secret: PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER"; exit 1; }
 
@@ -377,6 +380,7 @@ jobs:
           FACULTY_REVIEWS_BEARER=${{ secrets.FACULTY_REVIEWS_BEARER }}
           REWARDED_AD_UNIT_ID=${{ secrets.REWARDED_AD_UNIT_ID }}
           ADS_APP_ID_IOS=${{ secrets.ADS_APP_ID_IOS }}
+          BANNER_AD_UNIT_ID=${{ secrets.BANNER_AD_UNIT_ID }}
           DEVELOPMENT_TEAM=${{ secrets.DEVELOPMENT_TEAM }}
           PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=${{ secrets.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER }}
           EOF

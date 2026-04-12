@@ -16,6 +16,7 @@ import 'package:preconnect/pages/cgpa_calculator.dart';
 import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/reward_support_controller.dart';
+import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/web_pdf_opener.dart';
@@ -96,6 +97,10 @@ String formatDateTimeLabel(
 }
 
 Future<bool> showRewardSupportFlow(BuildContext context) async {
+  if (!AdsPreferences.instance.isVisible) {
+    showAppSnackBar(context, 'Ads are hidden in settings');
+    return false;
+  }
   if (!AdsBridge.isSupportedPlatform) {
     showAppSnackBar(context, 'Support videos are available on mobile only');
     return false;
@@ -753,77 +758,83 @@ class _BracuRewardVideoSectionState extends State<BracuRewardVideoSection> {
     final textPrimary = BracuPalette.textPrimary(context);
     final textSecondary = BracuPalette.textSecondary(context);
 
-    return ValueListenableBuilder<int>(
-      valueListenable: RewardSupportController.instance.supportCount,
-      builder: (context, supportCount, _) {
-        return Padding(
-          padding: widget.padding,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      supportCount > 0
-                          ? widget.activeTitle
-                          : widget.inactiveTitle,
-                      style: TextStyle(
-                        color: textPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      supportCount > 0
-                          ? widget.activeSubtitle
-                          : widget.inactiveSubtitle,
-                      style: TextStyle(
-                        color: textSecondary,
-                        fontSize: 12,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 118),
-                child: OutlinedButton(
-                  onPressed: _isLoading ? null : _watchRewardAd,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: BracuPalette.primary,
-                    side: BorderSide(
-                      color: BracuPalette.primary.withValues(alpha: 0.26),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                  ),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 180),
-                    child: _isLoading
-                        ? const BracuShimmerLabel(label: 'Loading')
-                        : Text(
-                            supportCount > 0
-                                ? '${widget.buttonLabel} #$supportCount'
-                                : widget.buttonLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+    return ValueListenableBuilder<bool>(
+      valueListenable: AdsPreferences.instance.adsVisible,
+      builder: (context, adsVisible, _) {
+        if (!adsVisible) return const SizedBox.shrink();
+        return ValueListenableBuilder<int>(
+          valueListenable: RewardSupportController.instance.supportCount,
+          builder: (context, supportCount, _) {
+            return Padding(
+              padding: widget.padding,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          supportCount > 0
+                              ? widget.activeTitle
+                              : widget.inactiveTitle,
+                          style: TextStyle(
+                            color: textPrimary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
                           ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          supportCount > 0
+                              ? widget.activeSubtitle
+                              : widget.inactiveSubtitle,
+                          style: TextStyle(
+                            color: textSecondary,
+                            fontSize: 12,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(minWidth: 118),
+                    child: OutlinedButton(
+                      onPressed: _isLoading ? null : _watchRewardAd,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: BracuPalette.primary,
+                        side: BorderSide(
+                          color: BracuPalette.primary.withValues(alpha: 0.26),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                      ),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 180),
+                        child: _isLoading
+                            ? const BracuShimmerLabel(label: 'Loading')
+                            : Text(
+                                supportCount > 0
+                                    ? '${widget.buttonLabel} #$supportCount'
+                                    : widget.buttonLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );

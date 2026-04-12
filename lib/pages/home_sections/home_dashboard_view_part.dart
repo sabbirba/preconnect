@@ -463,6 +463,8 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                               onTap: _openCampusMapSheet,
                             ),
                             const SizedBox(height: 12),
+                            const _InlineBannerAd(),
+                            const SizedBox(height: 12),
                           ],
                         ),
                       );
@@ -574,4 +576,87 @@ class _DashboardQuickAccessItem {
   final String title;
   final String subtitle;
   final Color color;
+}
+
+class _InlineBannerAd extends StatefulWidget {
+  const _InlineBannerAd();
+
+  @override
+  State<_InlineBannerAd> createState() => _InlineBannerAdState();
+}
+
+class _InlineBannerAdState extends State<_InlineBannerAd> {
+  static const double _minBannerHeight = 50;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: AdsPreferences.instance.adsVisible,
+      builder: (context, adsVisible, _) {
+        if (!adsVisible || !AdsBridge.isSupportedPlatform) {
+          return const SizedBox.shrink();
+        }
+
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final width =
+                constraints.maxWidth.isFinite && constraints.maxWidth > 0
+                ? constraints.maxWidth
+                : MediaQuery.sizeOf(context).width;
+            final bannerHeight = _bannerHeightForWidth(width);
+            final viewType = defaultTargetPlatform == TargetPlatform.iOS
+                ? 'preconnect/banner_ad_ios'
+                : 'preconnect/banner_ad_android';
+
+            return SizedBox(
+              width: width,
+              height: bannerHeight,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.42),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: BracuPalette.primary.withValues(alpha: 0.10),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(2),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: defaultTargetPlatform == TargetPlatform.iOS
+                        ? UiKitView(
+                            viewType: viewType,
+                            creationParams: <String, dynamic>{
+                              'width': width,
+                            },
+                            creationParamsCodec: const StandardMessageCodec(),
+                            layoutDirection: Directionality.of(context),
+                          )
+                        : AndroidView(
+                            viewType: viewType,
+                            creationParams: <String, dynamic>{
+                              'width': width,
+                            },
+                            creationParamsCodec: const StandardMessageCodec(),
+                            layoutDirection: Directionality.of(context),
+                          ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  double _bannerHeightForWidth(double width) {
+    if (width >= 728) {
+      return 90;
+    }
+    if (width >= 468) {
+      return 60;
+    }
+    return _minBannerHeight;
+  }
 }
