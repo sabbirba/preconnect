@@ -1,5 +1,5 @@
 PODS:
-    - FlutterMacOS
+  - FlutterMacOS
   - file_picker (0.0.1):
     - FlutterMacOS
   - file_selector_macos (0.0.1):
