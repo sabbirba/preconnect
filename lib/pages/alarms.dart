@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter_alarmkit/flutter_alarmkit.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/services.dart' show PlatformException;
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/exam_map_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
@@ -102,7 +101,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
             type: 'Midterm',
             courseCode: section.courseCode,
             sectionName: section.sectionName,
-            roomNumber: resolved.midRoomNumber,
+            roomNumber: resolved.midRoomNumber ?? '',
             faculties: section.faculties,
             consumedSeat: section.consumedSeat,
             startTime: resolved.midStartTime,
@@ -122,7 +121,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
             type: 'Final',
             courseCode: section.courseCode,
             sectionName: section.sectionName,
-            roomNumber: resolved.finalRoomNumber,
+            roomNumber: resolved.finalRoomNumber ?? '',
             faculties: section.faculties,
             consumedSeat: section.consumedSeat,
             startTime: resolved.finalStartTime,
@@ -428,7 +427,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
               }
               if (index == sections.length && exams.isNotEmpty) {
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 12, top: 2),
+                  padding: const EdgeInsets.only(bottom: 12, top: 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -455,14 +454,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (showTypeHeader && exam.type == 'Final')
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Divider(
-                            height: 1,
-                            thickness: 1,
-                            color: BracuPalette.accent.withValues(alpha: 0.45),
-                          ),
-                        ),
+                        const SizedBox(height: 8),
                       BracuCard(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,

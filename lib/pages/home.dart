@@ -806,7 +806,7 @@ class _TodayExamEntry {
   final String faculties;
   final String? startTime;
   final String? endTime;
-  final String room;
+  final String? room;
 }
 
 class MoreQuickAccessPage extends StatefulWidget {

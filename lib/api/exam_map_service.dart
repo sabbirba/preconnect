@@ -279,11 +279,11 @@ class ExamSectionResolved {
   final String? midDate;
   final String? midStartTime;
   final String? midEndTime;
-  final String midRoomNumber;
+  final String? midRoomNumber;
   final String? finalDate;
   final String? finalStartTime;
   final String? finalEndTime;
-  final String finalRoomNumber;
+  final String? finalRoomNumber;
 }
 
 class ExamScheduleService {
@@ -334,12 +334,8 @@ class ExamScheduleService {
     required Map<String, ExamScheduleOverride> overrides,
   }) {
     final override = overrides[ExamMapService.sectionKeyForSection(section)];
-    final fallbackRoom = section.roomNumber.trim();
-    final midRoom = _pickRoom(override?.midRoomNumber, fallbackRoom);
-    final finalRoom = _pickRoom(
-      override?.finalRoomNumber,
-      midRoom.isNotEmpty ? midRoom : fallbackRoom,
-    );
+    final midRoom = _pickRoom(override?.midRoomNumber);
+    final finalRoom = _pickRoom(override?.finalRoomNumber) ?? midRoom;
     return ExamSectionResolved(
       midDate: override?.midDate ?? section.sectionSchedule.midExamDate,
       midStartTime:
@@ -357,9 +353,9 @@ class ExamScheduleService {
     );
   }
 
-  String _pickRoom(String? preferred, String fallback) {
+  String? _pickRoom(String? preferred) {
     final selected = (preferred ?? '').trim();
     if (selected.isNotEmpty) return selected;
-    return fallback.trim();
+    return null;
   }
 }

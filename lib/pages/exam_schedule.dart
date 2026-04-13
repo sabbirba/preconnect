@@ -331,12 +331,12 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           String? midDate(Section section) => resolved(section).midDate;
           String? midStart(Section section) => resolved(section).midStartTime;
           String? midEnd(Section section) => resolved(section).midEndTime;
-          String midRoom(Section section) => resolved(section).midRoomNumber;
+          String? midRoom(Section section) => resolved(section).midRoomNumber;
           String? finalDate(Section section) => resolved(section).finalDate;
           String? finalStart(Section section) =>
               resolved(section).finalStartTime;
           String? finalEnd(Section section) => resolved(section).finalEndTime;
-          String finalRoom(Section section) =>
+          String? finalRoom(Section section) =>
               resolved(section).finalRoomNumber;
 
           final midExams = sections

@@ -470,17 +470,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     );
   }
 
-  void _showSeatAlertPermissionSnackBar() {
-    showAppSnackBar(
-      context,
-      'Seat alerts sync through the VPS backend.',
-      actionLabel: 'Refresh',
-      onAction: () {
-        unawaited(PushNotificationsService().pollPendingAlerts());
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return _buildPageContent(context);
