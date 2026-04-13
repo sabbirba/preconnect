@@ -355,22 +355,25 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      - name: Create Android Local Properties
+        if: matrix.platform == 'android'
+        shell: bash
+        run: |
+          {
+            printf 'flutter.sdk=%s\n' "$FLUTTER_ROOT"
+            if [ -n "${ANDROID_SDK_ROOT:-}" ]; then
+              printf 'sdk.dir=%s\n' "$ANDROID_SDK_ROOT"
+            elif [ -n "${ANDROID_HOME:-}" ]; then
+              printf 'sdk.dir=%s\n' "$ANDROID_HOME"
+            fi
+          } > android/local.properties
+
       - name: Refresh Gradle Dependencies
         if: matrix.platform == 'android'
         shell: bash
         run: |
           cd android
-          attempt=1
-          until [ $attempt -gt 3 ]; do
-            ./gradlew --no-daemon help --refresh-dependencies && break
-            echo "Gradle dependency refresh failed (attempt $attempt)."
-            attempt=$((attempt+1))
-            sleep $((10 * attempt))
-          done
-          if [ $attempt -gt 3 ]; then
-            echo "Gradle dependency refresh failed after 3 attempts."
-            exit 1
-          fi
+          ./gradlew --no-daemon help --refresh-dependencies
 
       - name: Cache Flutter Build
         uses: actions/cache@v5.0.3
@@ -455,33 +458,13 @@ jobs:
         if: matrix.platform == 'android'
         shell: bash
         run: |
-          attempt=1
-          until [ $attempt -gt 3 ]; do
-            flutter build apk --release --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }} && break
-            echo "Android APK build failed (attempt $attempt)."
-            attempt=$((attempt+1))
-            sleep $((10 * attempt))
-          done
-          if [ $attempt -gt 3 ]; then
-            echo "Android APK build failed after 3 attempts."
-            exit 1
-          fi
+          flutter build apk --release --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
 
       - name: Build Android AAB (Release)
         if: matrix.platform == 'android'
         shell: bash
         run: |
-          attempt=1
-          until [ $attempt -gt 3 ]; do
-            flutter build appbundle --release --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }} && break
-            echo "Android AAB build failed (attempt $attempt)."
-            attempt=$((attempt+1))
-            sleep $((10 * attempt))
-          done
-          if [ $attempt -gt 3 ]; then
-            echo "Android AAB build failed after 3 attempts."
-            exit 1
-          fi
+          flutter build appbundle --release --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
 
       - name: Build iOS App (Release, No Codesign)
         if: matrix.platform == 'ios'
