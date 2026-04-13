@@ -217,8 +217,6 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             const SizedBox(height: 14),
             if (!_hideAds) ...[
-              const BracuSectionTitle(title: 'Support'),
-              const SizedBox(height: 10),
               const BracuRewardVideoSection(padding: EdgeInsets.zero),
               const SizedBox(height: 14),
             ],
@@ -297,8 +295,6 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
             const SizedBox(height: 14),
-            const BracuSectionTitle(title: 'Security'),
-            const SizedBox(height: 10),
             BracuCard(
               child: _ToggleRow(
                 title: 'App Lock',
