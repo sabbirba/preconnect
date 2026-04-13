@@ -216,11 +216,6 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
             const SizedBox(height: 14),
-            if (!_hideAds) ...[
-              const BracuRewardVideoSection(padding: EdgeInsets.zero),
-              const SizedBox(height: 14),
-            ],
-            const BracuSectionTitle(title: 'Visibility'),
             const SizedBox(height: 10),
             BracuCard(
               child: Column(
@@ -287,7 +282,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   _ToggleRow(
                     title: 'Hide Ads',
-                    subtitle: 'Hide sponsored content and reward videos',
+                    subtitle: 'Hide sponsored content and ads',
                     value: _hideAds,
                     onChanged: _setHideAds,
                   ),

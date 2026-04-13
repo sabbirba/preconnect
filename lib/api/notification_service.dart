@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/sembast_cache.dart';
+import 'package:preconnect/tools/image_url_utils.dart';
 
 class RecentConnectNotification {
   const RecentConnectNotification({
@@ -382,6 +383,7 @@ class NotificationService {
           final url = '${row['url'] ?? ''}'.trim();
           final imageUrls = _normalizeScraperImageUrls(
             '${row['image_url'] ?? ''}',
+            baseUrl: url,
           );
           final publishedRaw = '${row['published_date'] ?? ''}'.trim();
           if (title.isEmpty && message.isEmpty) return null;
@@ -418,6 +420,7 @@ class NotificationService {
             (item['imageUrls'] is List
                 ? jsonEncode(item['imageUrls'])
                 : (item['imageUrl'] ?? '').toString()),
+            baseUrl: (item['url'] ?? '').toString(),
           );
           return ScraperContentItem(
             id: (item['id'] ?? '').toString().trim().isEmpty
@@ -499,7 +502,10 @@ class NotificationService {
     return DateTime.tryParse(normalized);
   }
 
-  List<String> _normalizeScraperImageUrls(String raw) {
+  List<String> _normalizeScraperImageUrls(
+    String raw, {
+    String? baseUrl,
+  }) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return const <String>[];
 
@@ -521,18 +527,12 @@ class NotificationService {
 
     final output = <String>{};
     for (var resolved in candidates) {
-      if (resolved.startsWith('//')) {
-        resolved = 'https:$resolved';
-      } else if (!resolved.startsWith('http://') &&
-          !resolved.startsWith('https://')) {
-        continue;
-      }
-
-      try {
-        final uri = Uri.parse(resolved);
-        output.add(uri.toString());
-      } catch (_) {
-        output.add(Uri.encodeFull(resolved));
+      final normalized = normalizeImageUrl(
+        resolved,
+        baseUrl: baseUrl,
+      );
+      if (normalized != null) {
+        output.add(normalized);
       }
     }
     return output.toList(growable: false);

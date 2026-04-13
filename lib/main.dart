@@ -7,6 +7,8 @@ import 'tools/reward_support_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  PaintingBinding.instance.imageCache.maximumSize = 1 << 30;
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 1 << 62;
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   await AdsPreferences.instance.load();
   await AdsBridge.initialize();

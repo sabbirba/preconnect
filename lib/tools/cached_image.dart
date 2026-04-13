@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:preconnect/tools/image_url_utils.dart';
 
 class CachedImage extends StatefulWidget {
   const CachedImage({
@@ -51,7 +52,6 @@ class _CachedImageState extends State<CachedImage> {
   Uint8List? _bytes;
   Object? _error;
   bool _loading = false;
-  String? _errorLabel;
 
   @override
   void initState() {
@@ -65,7 +65,6 @@ class _CachedImageState extends State<CachedImage> {
     if (oldWidget.url != widget.url) {
       _bytes = null;
       _error = null;
-      _errorLabel = null;
       _loading = false;
       _load();
     }
@@ -74,6 +73,45 @@ class _CachedImageState extends State<CachedImage> {
   String _prefKey(String url) {
     final encoded = base64Url.encode(utf8.encode(url));
     return 'img_cache_$encoded';
+  }
+
+  Future<Uint8List> _fetchWithRetry(
+    Uri uri, {
+    int maxAttempts = 3,
+  }) async {
+    Object? lastError;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        final response = await http.get(
+          uri,
+          headers: const {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                '(KHTML, like Gecko) Chrome/125.0 Safari/537.36',
+            'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+          },
+        );
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return response.bodyBytes;
+        }
+        if (response.statusCode < 500 && response.statusCode != 429) {
+          throw http.ClientException(
+            'Unexpected status ${response.statusCode}',
+            uri,
+          );
+        }
+        lastError = response.statusCode;
+      } catch (e) {
+        lastError = e;
+      }
+      if (attempt < maxAttempts) {
+        await Future<void>.delayed(Duration(milliseconds: 350 * attempt));
+      }
+    }
+    if (lastError != null) {
+      throw lastError;
+    }
+    throw StateError('Image fetch failed without an error');
   }
 
   Uint8List? _tryDecodeInline(String value) {
@@ -97,8 +135,8 @@ class _CachedImageState extends State<CachedImage> {
     if (_loading) return;
     final url = widget.url.trim();
     if (url.isEmpty) return;
-    final isRemoteHttp =
-        url.startsWith('http://') || url.startsWith('https://');
+    final normalizedRemoteUrl = normalizeImageUrl(url);
+    final isRemoteHttp = normalizedRemoteUrl != null;
 
     if (kIsWeb && isRemoteHttp) {
       if (!mounted) return;
@@ -117,7 +155,8 @@ class _CachedImageState extends State<CachedImage> {
       return;
     }
 
-    final memoryHit = _memoryCache[url];
+    final cacheKey = normalizedRemoteUrl ?? url;
+    final memoryHit = _memoryCache[cacheKey];
     if (memoryHit != null) {
       setState(() {
         _bytes = memoryHit;
@@ -131,10 +170,12 @@ class _CachedImageState extends State<CachedImage> {
 
     try {
       final prefs = await _prefs;
-      final cached = prefs.getString(_prefKey(url));
+      final prefKey = _prefKey(cacheKey);
+
+      final cached = prefs.getString(prefKey);
       if (cached != null && cached.isNotEmpty) {
         final decoded = base64Decode(cached);
-        _memoryCache[url] = decoded;
+        _memoryCache[cacheKey] = decoded;
         if (!mounted) return;
         setState(() {
           _bytes = decoded;
@@ -143,58 +184,41 @@ class _CachedImageState extends State<CachedImage> {
         return;
       }
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: const {
-          'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-              '(KHTML, like Gecko) Chrome/125.0 Safari/537.36',
-          'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-        },
-      );
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final bytes = response.bodyBytes;
-        _memoryCache[url] = bytes;
-        if (bytes.length <= widget.maxBytesInPrefs) {
-          await prefs.setString(_prefKey(url), base64Encode(bytes));
-        }
-        if (!mounted) return;
-        setState(() {
-          _bytes = bytes;
-          _loading = false;
-        });
-        return;
+      final bytes = await _fetchWithRetry(Uri.parse(normalizedRemoteUrl ?? url));
+      _memoryCache[cacheKey] = bytes;
+      if (bytes.length <= widget.maxBytesInPrefs) {
+        await prefs.setString(prefKey, base64Encode(bytes));
       }
-
       if (!mounted) return;
       setState(() {
-        _error = response.statusCode;
-        _errorLabel = 'Image unavailable';
+        _bytes = bytes;
         _loading = false;
       });
-      developer.log(
-        'CachedImage failed with status ${response.statusCode}',
-        name: 'CachedImage',
-      );
+      return;
+
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _error = e;
-        _errorLabel = 'Image unavailable';
         _loading = false;
       });
-      developer.log('CachedImage fetch failed for $url', name: 'CachedImage', error: e);
+      developer.log(
+        'CachedImage fetch failed for $url after retries',
+        name: 'CachedImage',
+        error: e,
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final url = widget.url.trim();
-    final isRemoteHttp =
-        url.startsWith('http://') || url.startsWith('https://');
-    if (isRemoteHttp && kIsWeb) {
+    final normalizedRemoteUrl = normalizeImageUrl(url);
+    final remoteUrl = normalizedRemoteUrl;
+    final isRemoteHttp = remoteUrl != null;
+    if (remoteUrl != null && kIsWeb) {
       return Image.network(
-        url,
+        remoteUrl,
         fit: widget.fit,
         alignment: widget.alignment,
         width: widget.width,
@@ -225,6 +249,28 @@ class _CachedImageState extends State<CachedImage> {
       );
     }
     if (_error != null) {
+      if (isRemoteHttp) {
+        return Image.network(
+          remoteUrl,
+          fit: widget.fit,
+          alignment: widget.alignment,
+          width: widget.width,
+          height: widget.height,
+          filterQuality: widget.filterQuality,
+          headers: const {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                '(KHTML, like Gecko) Chrome/125.0 Safari/537.36',
+            'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+          },
+          loadingBuilder: (context, child, progress) {
+            if (progress == null) return child;
+            return widget.placeholder ??
+                _CachedImageShimmer(width: widget.width, height: widget.height);
+          },
+          errorBuilder: (_, _, _) => widget.error ?? _defaultErrorWidget(),
+        );
+      }
       return widget.error ?? _defaultErrorWidget();
     }
     return widget.placeholder ??
@@ -249,15 +295,6 @@ class _CachedImageState extends State<CachedImage> {
           Icon(
             Icons.broken_image_outlined,
             color: isDark ? Colors.white70 : const Color(0xFF5E6D82),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _errorLabel ?? 'Image unavailable',
-            style: TextStyle(
-              color: isDark ? Colors.white70 : const Color(0xFF5E6D82),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
           ),
         ],
       ),

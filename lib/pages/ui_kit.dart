@@ -407,15 +407,6 @@ class _BracuImageErrorFallback extends StatelessWidget {
             Icons.broken_image_outlined,
             color: isDark ? Colors.white70 : const Color(0xFF60738A),
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Image unavailable',
-            style: TextStyle(
-              color: isDark ? Colors.white70 : const Color(0xFF60738A),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
         ],
       ),
     );

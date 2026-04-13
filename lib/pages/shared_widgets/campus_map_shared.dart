@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/notification_service.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/image_url_utils.dart';
 
 String normalizeCampusPhoneValue(String raw) {
   var value = raw.trim();
@@ -53,6 +54,7 @@ class CampusMapData {
   final List<CampusEmergencyContact> emergencyContacts;
 
   factory CampusMapData.fromJson(Map<String, dynamic> json) {
+    final sourceUrl = '${json['source_url'] ?? ''}'.trim();
     final contact = json['contact'];
     final contactMap = contact is Map ? contact.cast<String, dynamic>() : null;
     final officeRows = json['general_contacts'];
@@ -84,22 +86,22 @@ class CampusMapData {
               .map((item) {
                 if (item is Map) {
                   final map = item.cast<dynamic, dynamic>();
-                  return '${map['url'] ?? map['image_url'] ?? map['src'] ?? ''}'
-                      .trim();
+                  return normalizeImageUrl(
+                    '${map['url'] ?? map['image_url'] ?? map['src'] ?? ''}',
+                    baseUrl: sourceUrl,
+                  );
                 }
-                return '$item'.trim();
+                return normalizeImageUrl('$item', baseUrl: sourceUrl);
               })
-              .where(
-                (item) =>
-                    item.isNotEmpty &&
-                    (item.startsWith('http://') || item.startsWith('https://')),
-              )
+              .whereType<String>()
               .toList(growable: false)
         : const <String>[];
     if (images.isEmpty) {
-      final mapImageUrl = '${json['map_image_url'] ?? ''}'.trim();
-      if (mapImageUrl.startsWith('http://') ||
-          mapImageUrl.startsWith('https://')) {
+      final mapImageUrl = normalizeImageUrl(
+        '${json['map_image_url'] ?? ''}',
+        baseUrl: sourceUrl,
+      );
+      if (mapImageUrl != null) {
         images = <String>[mapImageUrl];
       }
     }
@@ -143,7 +145,11 @@ class CampusMapData {
     return CampusMapData(
       campusName: '${json['campus_name'] ?? ''}'.trim(),
       address: '${json['address'] ?? ''}'.trim(),
-      mapImageUrl: '${json['map_image_url'] ?? ''}'.trim(),
+      mapImageUrl: normalizeImageUrl(
+            '${json['map_image_url'] ?? ''}',
+            baseUrl: sourceUrl,
+          ) ??
+          '',
       googleMapsUrl: '${json['google_maps_url'] ?? ''}'.trim(),
       sourceUrl: '${json['source_url'] ?? ''}'.trim(),
       transportScheduleUrl: '${json['schedule_url'] ?? ''}'.trim().isNotEmpty

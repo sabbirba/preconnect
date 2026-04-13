@@ -19,6 +19,8 @@
 **/Flutter/Flutter.podspec
 **/Flutter/GeneratedPluginRegistrant.*
 **/Flutter/Generated.xcconfig
+**/Podfile.lock
+**/RunnerTests/
 
 # Archives
 **/*.dSYM
