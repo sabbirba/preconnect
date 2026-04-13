@@ -232,41 +232,97 @@ class _WebLoginSetupPageState extends State<WebLoginSetupPage>
       icon: Icons.qr_code_scanner_rounded,
       body: BracuRefreshList(
         onRefresh: _refreshAll,
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
+          const BracuSectionTitle(title: 'Scan Browser QR'),
+          const SizedBox(height: 10),
           BracuCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AspectRatio(
-                  aspectRatio: 1,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: _cameraGranted == true
-                        ? MobileScanner(
-                            controller: _controller,
-                            onDetect: (capture) {
-                              if (capture.barcodes.isEmpty) return;
-                              final raw =
-                                  capture.barcodes.first.rawValue?.trim() ?? '';
-                              if (raw.isNotEmpty) {
-                                _approve(raw);
-                              }
-                            },
-                          )
-                        : Center(
-                            child: Text(
-                              _cameraGranted == false
-                                  ? 'Camera permission is required.'
-                                  : 'Preparing camera...',
-                              textAlign: TextAlign.center,
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: _cameraGranted == true
+                    ? MobileScanner(
+                        controller: _controller,
+                        errorBuilder: (context, error) {
+                          final isPermissionError =
+                              error.errorCode ==
+                              MobileScannerErrorCode.permissionDenied;
+                          final message =
+                              (error.errorDetails?.message?.trim().isNotEmpty ??
+                                  false)
+                              ? error.errorDetails!.message!
+                              : error.errorCode.message;
+                          return Container(
+                            color: Colors.black,
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.error_outline,
+                                  color: Colors.white,
+                                  size: 34,
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  message,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                TextButton(
+                                  onPressed: () {
+                                    if (isPermissionError) {
+                                      _ensurePermission();
+                                      return;
+                                    }
+                                    _ensurePermission();
+                                  },
+                                  child: const Text(
+                                    'Retry Camera',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                  ),
-                ),
-              ],
+                          );
+                        },
+                        onDetect: (capture) {
+                          if (capture.barcodes.isEmpty) return;
+                          final raw =
+                              capture.barcodes.first.rawValue?.trim() ?? '';
+                          if (raw.isNotEmpty) {
+                            _approve(raw);
+                          }
+                        },
+                      )
+                    : (_cameraGranted == null
+                          ? const Center(child: BracuLoading(compact: true))
+                          : Center(
+                              child: TextButton(
+                                onPressed: _ensurePermission,
+                                child: Text(
+                                  'Tap to enable camera',
+                                  style: TextStyle(
+                                    color: BracuPalette.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            )),
+              ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           BracuCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

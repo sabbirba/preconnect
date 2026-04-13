@@ -14,6 +14,8 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  static const double _sectionGap = 14;
+
   bool _isLoading = true;
   bool _showQuickAccessSection = true;
   bool _showRamadanCard = true;
@@ -186,7 +188,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: _sectionGap),
             Material(
               color: Colors.transparent,
               child: InkWell(
@@ -215,8 +217,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 14),
-            const SizedBox(height: 10),
+            const SizedBox(height: _sectionGap),
             BracuCard(
               child: Column(
                 children: [
@@ -289,7 +290,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: _sectionGap),
             BracuCard(
               child: _ToggleRow(
                 title: 'App Lock',
