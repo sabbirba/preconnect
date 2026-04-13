@@ -6,8 +6,8 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    # 11:30 PM (Bangladesh time, Asia/Dhaka) = 17:30 UTC
-    - cron: '30 17 * * *'
+    # Weekly Friday Promotion to Production at 11:00 PM (Bangladesh Time)
+    - cron: '00 17 * * 4'
 
 permissions:
   contents: write
@@ -184,7 +184,19 @@ jobs:
           cache: true
 
       - name: Flutter Pub Get
-        run: flutter pub get
+        shell: bash
+        run: |
+          attempt=1
+          until [ $attempt -gt 3 ]; do
+            flutter pub get && break
+            echo "flutter pub get failed (attempt $attempt)."
+            attempt=$((attempt+1))
+            sleep $((5 * attempt))
+          done
+          if [ $attempt -gt 3 ]; then
+            echo "flutter pub get failed after 3 attempts."
+            exit 1
+          fi
 
       - name: Create Web Build Env
         shell: bash
@@ -195,7 +207,19 @@ jobs:
           EOF
 
       - name: Build Web
-        run: flutter build web --release --dart-define-from-file=.env
+        shell: bash
+        run: |
+          attempt=1
+          until [ $attempt -gt 3 ]; do
+            flutter build web --release --dart-define-from-file=.env && break
+            echo "flutter build web failed (attempt $attempt)."
+            attempt=$((attempt+1))
+            sleep $((10 * attempt))
+          done
+          if [ $attempt -gt 3 ]; then
+            echo "flutter build web failed after 3 attempts."
+            exit 1
+          fi
 
       - name: Remove Embedded Server Files From Web Build
         run: rm -rf build/web/server
@@ -216,8 +240,19 @@ jobs:
       - name: Upload Web Release Asset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
-          gh release upload "${{ needs.create-release.outputs.release_tag }}" artifacts/* --clobber
+          attempt=1
+          until [ $attempt -gt 3 ]; do
+            gh release upload "${{ needs.create-release.outputs.release_tag }}" artifacts/* --clobber && break
+            echo "GitHub release upload failed (attempt $attempt)."
+            attempt=$((attempt+1))
+            sleep $((8 * attempt))
+          done
+          if [ $attempt -gt 3 ]; then
+            echo "GitHub release upload failed after 3 attempts."
+            exit 1
+          fi
 
   build-platforms:
     name: Build (${{ matrix.platform }})
@@ -320,6 +355,23 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      - name: Refresh Gradle Dependencies
+        if: matrix.platform == 'android'
+        shell: bash
+        run: |
+          cd android
+          attempt=1
+          until [ $attempt -gt 3 ]; do
+            ./gradlew --no-daemon help --refresh-dependencies && break
+            echo "Gradle dependency refresh failed (attempt $attempt)."
+            attempt=$((attempt+1))
+            sleep $((10 * attempt))
+          done
+          if [ $attempt -gt 3 ]; then
+            echo "Gradle dependency refresh failed after 3 attempts."
+            exit 1
+          fi
+
       - name: Cache Flutter Build
         uses: actions/cache@v5.0.3
         with:
@@ -401,16 +453,51 @@ jobs:
 
       - name: Build Android APK (Release)
         if: matrix.platform == 'android'
-        run: flutter build apk --release --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
+        shell: bash
+        run: |
+          attempt=1
+          until [ $attempt -gt 3 ]; do
+            flutter build apk --release --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }} && break
+            echo "Android APK build failed (attempt $attempt)."
+            attempt=$((attempt+1))
+            sleep $((10 * attempt))
+          done
+          if [ $attempt -gt 3 ]; then
+            echo "Android APK build failed after 3 attempts."
+            exit 1
+          fi
 
       - name: Build Android AAB (Release)
         if: matrix.platform == 'android'
-        run: flutter build appbundle --release --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
+        shell: bash
+        run: |
+          attempt=1
+          until [ $attempt -gt 3 ]; do
+            flutter build appbundle --release --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }} && break
+            echo "Android AAB build failed (attempt $attempt)."
+            attempt=$((attempt+1))
+            sleep $((10 * attempt))
+          done
+          if [ $attempt -gt 3 ]; then
+            echo "Android AAB build failed after 3 attempts."
+            exit 1
+          fi
 
       - name: Build iOS App (Release, No Codesign)
         if: matrix.platform == 'ios'
+        shell: bash
         run: |
-          flutter build ios --release --no-codesign --dart-define-from-file=.env
+          attempt=1
+          until [ $attempt -gt 3 ]; do
+            flutter build ios --release --no-codesign --dart-define-from-file=.env && break
+            echo "iOS no-codesign build failed (attempt $attempt)."
+            attempt=$((attempt+1))
+            sleep $((10 * attempt))
+          done
+          if [ $attempt -gt 3 ]; then
+            echo "iOS no-codesign build failed after 3 attempts."
+            exit 1
+          fi
 
       - name: Detect iOS Signing Availability
         id: ios_signing
@@ -440,6 +527,7 @@ jobs:
           IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
           IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
           KEYCHAIN_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+        shell: bash
         run: |
           set -euo pipefail
           if [ -z "$IOS_P12_BASE64" ] || [ -z "$IOS_P12_PASSWORD" ] || [ -z "$IOS_PROFILE_BASE64" ]; then
@@ -456,13 +544,33 @@ jobs:
           security list-keychains -s "$KEYCHAIN_PATH"
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           echo "${{ secrets.IOS_PROFILE_BASE64 }}" | base64 -d > "$HOME/Library/MobileDevice/Provisioning Profiles/profile.mobileprovision"
-          flutter build ipa --release --dart-define-from-file=.env --export-options-plist=ios/ExportOptions.plist
+          attempt=1
+          until [ $attempt -gt 3 ]; do
+            flutter build ipa --release --dart-define-from-file=.env --export-options-plist=ios/ExportOptions.plist && break
+            echo "iOS signed IPA build failed (attempt $attempt)."
+            attempt=$((attempt+1))
+            sleep $((10 * attempt))
+          done
+          if [ $attempt -gt 3 ]; then
+            echo "iOS signed IPA build failed after 3 attempts."
+            exit 1
+          fi
 
       - name: Build macOS App
         if: matrix.platform == 'macos'
+        shell: bash
         run: |
-          flutter build macos --release
-
+          attempt=1
+          until [ $attempt -gt 3 ]; do
+            flutter build macos --release && break
+            echo "macOS build failed (attempt $attempt)."
+            attempt=$((attempt+1))
+            sleep $((10 * attempt))
+          done
+          if [ $attempt -gt 3 ]; then
+            echo "macOS build failed after 3 attempts."
+            exit 1
+          fi
 
       - name: Package Android Release
         if: matrix.platform == 'android'
@@ -524,7 +632,17 @@ jobs:
         shell: bash
         run: |
           if [ -d artifacts ] && find artifacts -type f -print -quit | grep -q .; then
-            gh release upload "${{ needs.create-release.outputs.release_tag }}" artifacts/* --clobber
+            attempt=1
+            until [ $attempt -gt 3 ]; do
+              gh release upload "${{ needs.create-release.outputs.release_tag }}" artifacts/* --clobber && break
+              echo "GitHub release asset upload failed for ${{ matrix.platform }} (attempt $attempt)."
+              attempt=$((attempt+1))
+              sleep $((8 * attempt))
+            done
+            if [ $attempt -gt 3 ]; then
+              echo "GitHub release asset upload failed for ${{ matrix.platform }} after 3 attempts."
+              exit 1
+            fi
           else
             echo "No packaged artifacts for ${{ matrix.platform }}."
           fi
@@ -673,6 +791,70 @@ jobs:
             --json_key_data "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" \
             --track "internal" \
             --track_promote_to "beta" \
+            --track_promote_release_status "completed" \
+            --skip_upload_apk true \
+            --skip_upload_aab true \
+            --skip_upload_metadata true \
+            --skip_upload_changelogs true \
+            --skip_upload_images true \
+            --skip_upload_screenshots true
+
+  promote-google-play-production:
+    name: Promote Google Play Production (Weekly)
+    if: ${{ github.event_name == 'schedule' && github.event.schedule == '30 17 * * 4' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Read Android package
+        id: android_meta
+        shell: bash
+        run: |
+          PACKAGE_NAME=$(grep -E 'applicationId\s*=' android/app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Check Google Play Credentials
+        id: play_auth
+        shell: bash
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -n "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not provided."
+          fi
+
+      - name: Set up Ruby for Fastlane
+        if: steps.play_auth.outputs.enabled == 'true'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+
+      - name: Install Fastlane
+        if: steps.play_auth.outputs.enabled == 'true'
+        shell: bash
+        run: gem install fastlane --no-document
+
+      - name: Promote Beta to Production
+        if: steps.play_auth.outputs.enabled == 'true'
+        shell: bash
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          fastlane supply \
+            --package_name "${{ steps.android_meta.outputs.package_name }}" \
+            --json_key_data "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" \
+            --track "beta" \
+            --track_promote_to "production" \
             --track_promote_release_status "completed" \
             --skip_upload_apk true \
             --skip_upload_aab true \
