@@ -21,7 +21,7 @@ env:
 
 jobs:
   detect-pending:
-    name: Detect Pending Changes
+    name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
@@ -643,7 +643,7 @@ jobs:
         shell: bash
         run: gem install fastlane --no-document
 
-      - name: Upload AAB to Google Play (Internal Testing)
+      - name: Upload to Internal
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
         shell: bash
         env:
@@ -662,21 +662,21 @@ jobs:
             --skip_upload_images true \
             --skip_upload_screenshots true
 
-      - name: Upload AAB to Google Play (Beta Testing)
+      - name: Promote to Beta
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
         shell: bash
         env:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
           fastlane supply \
-            --aab "${{ steps.aab.outputs.file }}" \
             --package_name "${{ steps.android_meta.outputs.package_name }}" \
             --json_key_data "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" \
-            --track "beta" \
-            --release_status "completed" \
-            --version_name "PreConnect v${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}" \
-            --metadata_path "${{ steps.play_notes.outputs.dir }}" \
+            --track "internal" \
+            --track_promote_to "beta" \
+            --track_promote_release_status "completed" \
+            --skip_upload_apk true \
+            --skip_upload_aab true \
             --skip_upload_metadata true \
-            --skip_upload_changelogs false \
+            --skip_upload_changelogs true \
             --skip_upload_images true \
             --skip_upload_screenshots true
