@@ -464,7 +464,6 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                             ),
                             const SizedBox(height: 12),
                             const _InlineBannerAd(),
-                            const SizedBox(height: 12),
                           ],
                         ),
                       );
@@ -586,7 +585,24 @@ class _InlineBannerAd extends StatefulWidget {
 }
 
 class _InlineBannerAdState extends State<_InlineBannerAd> {
-  static const double _minBannerHeight = 50;
+  static const double _placeholderHeight = 50;
+  static const MethodChannel _bannerEventsChannel = MethodChannel(
+    'preconnect/banner_ad_events',
+  );
+
+  double _bannerHeight = _placeholderHeight;
+
+  @override
+  void initState() {
+    super.initState();
+    _bannerEventsChannel.setMethodCallHandler(_handleBannerEvent);
+  }
+
+  @override
+  void dispose() {
+    _bannerEventsChannel.setMethodCallHandler(null);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -603,46 +619,26 @@ class _InlineBannerAdState extends State<_InlineBannerAd> {
                 constraints.maxWidth.isFinite && constraints.maxWidth > 0
                 ? constraints.maxWidth
                 : MediaQuery.sizeOf(context).width;
-            final bannerHeight = _bannerHeightForWidth(width);
             final viewType = defaultTargetPlatform == TargetPlatform.iOS
                 ? 'preconnect/banner_ad_ios'
                 : 'preconnect/banner_ad_android';
 
             return SizedBox(
               width: width,
-              height: bannerHeight,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.42),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: BracuPalette.primary.withValues(alpha: 0.10),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(2),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: defaultTargetPlatform == TargetPlatform.iOS
-                        ? UiKitView(
-                            viewType: viewType,
-                            creationParams: <String, dynamic>{
-                              'width': width,
-                            },
-                            creationParamsCodec: const StandardMessageCodec(),
-                            layoutDirection: Directionality.of(context),
-                          )
-                        : AndroidView(
-                            viewType: viewType,
-                            creationParams: <String, dynamic>{
-                              'width': width,
-                            },
-                            creationParamsCodec: const StandardMessageCodec(),
-                            layoutDirection: Directionality.of(context),
-                          ),
-                  ),
-                ),
-              ),
+              height: _bannerHeight,
+              child: defaultTargetPlatform == TargetPlatform.iOS
+                  ? UiKitView(
+                      viewType: viewType,
+                      creationParams: <String, dynamic>{'width': width},
+                      creationParamsCodec: const StandardMessageCodec(),
+                      layoutDirection: Directionality.of(context),
+                    )
+                  : AndroidView(
+                      viewType: viewType,
+                      creationParams: <String, dynamic>{'width': width},
+                      creationParamsCodec: const StandardMessageCodec(),
+                      layoutDirection: Directionality.of(context),
+                    ),
             );
           },
         );
@@ -650,13 +646,20 @@ class _InlineBannerAdState extends State<_InlineBannerAd> {
     );
   }
 
-  double _bannerHeightForWidth(double width) {
-    if (width >= 728) {
-      return 90;
+  Future<dynamic> _handleBannerEvent(MethodCall call) async {
+    switch (call.method) {
+      case 'bannerSizeChanged':
+        final args = call.arguments as Map?;
+        final height = (args?['height'] as num?)?.toDouble();
+        if (!mounted || height == null || height <= 0) {
+          return null;
+        }
+        setState(() {
+          _bannerHeight = height;
+        });
+        return null;
+      default:
+        return null;
     }
-    if (width >= 468) {
-      return 60;
-    }
-    return _minBannerHeight;
   }
 }

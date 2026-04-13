@@ -289,7 +289,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   _ToggleRow(
                     title: 'Hide Ads',
-                    subtitle: 'Hide sponsored, and reward videos',
+                    subtitle: 'Hide sponsored content and reward videos',
                     value: _hideAds,
                     onChanged: _setHideAds,
                   ),

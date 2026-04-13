@@ -186,7 +186,7 @@ Main flow on push to `main`:
 2. Creates/updates a GitHub release tag like `v1.2.3+456`
 3. Builds and uploads platform artifacts (Android, iOS, macOS, Web)
 4. Uploads web release artifact for deployment
-5. Publishes Android AAB to Google Play Open Beta Testing when required secrets are available
+5. Publishes Android AAB to Google Play Internal and Beta testing tracks when required secrets are available
 
 ## Architecture
 

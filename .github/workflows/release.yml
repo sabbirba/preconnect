@@ -1,10 +1,13 @@
 name: Release
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
   schedule:
-    # 11:59 PM (Bangladesh time, Asia/Dhaka) = 17:59 UTC
-    - cron: '59 17 * * *'
+    # 11:30 PM (Bangladesh time, Asia/Dhaka) = 17:30 UTC
+    - cron: '30 17 * * *'
 
 permissions:
   contents: write
@@ -363,37 +366,6 @@ jobs:
             exit 1
           fi
 
-      - name: Check Android Signing Secrets
-        if: matrix.platform == 'android'
-        shell: bash
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEYSTORE_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          [ -n "$ANDROID_KEYSTORE_BASE64" ] || { echo "Missing required Android release secret: ANDROID_KEYSTORE_BASE64"; exit 1; }
-          [ -n "$ANDROID_KEYSTORE_PASSWORD" ] || { echo "Missing required Android release secret: ANDROID_KEYSTORE_PASSWORD"; exit 1; }
-          [ -n "$ANDROID_KEYSTORE_ALIAS" ] || { echo "Missing required Android release secret: ANDROID_KEYSTORE_ALIAS"; exit 1; }
-          [ -n "$ANDROID_KEY_PASSWORD" ] || { echo "Missing required Android release secret: ANDROID_KEY_PASSWORD"; exit 1; }
-
-      - name: Check Shared Release Secrets
-        shell: bash
-        env:
-          FACULTY_REVIEWS_BEARER: ${{ secrets.FACULTY_REVIEWS_BEARER }}
-          REWARDED_AD_UNIT_ID: ${{ secrets.REWARDED_AD_UNIT_ID }}
-          ADS_APP_ID_IOS: ${{ secrets.ADS_APP_ID_IOS }}
-          BANNER_AD_UNIT_ID: ${{ secrets.BANNER_AD_UNIT_ID }}
-          DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
-          PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: ${{ secrets.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER }}
-        run: |
-          [ -n "$FACULTY_REVIEWS_BEARER" ] || { echo "Missing required release secret: FACULTY_REVIEWS_BEARER"; exit 1; }
-          [ -n "$REWARDED_AD_UNIT_ID" ] || { echo "Missing required release secret: REWARDED_AD_UNIT_ID"; exit 1; }
-          [ -n "$ADS_APP_ID_IOS" ] || { echo "Missing required release secret: ADS_APP_ID_IOS"; exit 1; }
-          [ -n "$BANNER_AD_UNIT_ID" ] || { echo "Missing required release secret: BANNER_AD_UNIT_ID"; exit 1; }
-          [ -n "$DEVELOPMENT_TEAM" ] || { echo "Missing required release secret: DEVELOPMENT_TEAM"; exit 1; }
-          [ -n "$PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER" ] || { echo "Missing required release secret: PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER"; exit 1; }
-
       - name: Create Release Env
         shell: bash
         run: |
@@ -407,7 +379,7 @@ jobs:
           EOF
 
       - name: Restore Android Keystore
-        if: matrix.platform == 'android'
+        if: matrix.platform == 'android' && secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEYSTORE_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != ''
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/preconnect-release-key.jks
           chmod 600 android/preconnect-release-key.jks
@@ -549,7 +521,7 @@ jobs:
           fi
 
   publish-google-play:
-    name: Publish Google Play Open Testing (Android)
+    name: Publish Google Play Testing Tracks (Android)
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
     runs-on: ubuntu-latest
     needs: [detect-pending, prepare-version, build-platforms]
@@ -601,7 +573,7 @@ jobs:
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is missing."
+            echo "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not provided."
           fi
 
       - name: Validate Google Play publish prerequisites
@@ -612,8 +584,7 @@ jobs:
             exit 1
           fi
           if [ "${{ steps.play_auth.outputs.enabled }}" != "true" ]; then
-            echo "Missing required secret: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON"
-            exit 1
+            echo "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not provided; skipping Google Play upload."
           fi
 
       - name: Generate Play release notes from commits
@@ -663,7 +634,26 @@ jobs:
         shell: bash
         run: gem install fastlane --no-document
 
-      - name: Upload AAB to Google Play (Open testing)
+      - name: Upload AAB to Google Play (Internal Testing)
+        if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
+        shell: bash
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          fastlane supply \
+            --aab "${{ steps.aab.outputs.file }}" \
+            --package_name "${{ steps.android_meta.outputs.package_name }}" \
+            --json_key_data "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" \
+            --track "internal" \
+            --release_status "completed" \
+            --version_name "PreConnect v${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}" \
+            --metadata_path "${{ steps.play_notes.outputs.dir }}" \
+            --skip_upload_metadata true \
+            --skip_upload_changelogs false \
+            --skip_upload_images true \
+            --skip_upload_screenshots true
+
+      - name: Upload AAB to Google Play (Beta Testing)
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
         shell: bash
         env:

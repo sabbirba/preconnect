@@ -166,20 +166,16 @@ class _DevsPageState extends State<DevsPage> {
                     () => _showAllContributors = !_showAllContributors,
                   ),
                 ),
-              ValueListenableBuilder<bool>(
-                valueListenable: AdsPreferences.instance.adsVisible,
-                builder: (context, adsVisible, _) {
-                  if (!adsVisible) return const SizedBox.shrink();
-                  return const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(height: 14),
-                      BracuSectionTitle(title: 'Sponsored'),
-                      SizedBox(height: 10),
-                      _SponsoredStrip(),
-                    ],
-                  );
-                },
+              const Padding(
+                padding: EdgeInsets.only(top: 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    BracuSectionTitle(title: 'Sponsored'),
+                    SizedBox(height: 10),
+                    _SponsoredStrip(),
+                  ],
+                ),
               ),
               const SizedBox(height: 14),
               const BracuSectionTitle(title: 'Funding & Support'),

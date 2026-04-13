@@ -31,22 +31,26 @@ fun envFromDotEnv(name: String): String? {
     return null
 }
 val androidAdAppId = "ca-app-pub-3940256099942544~1458002511"
-val rewardedAdUnitId = envOrProp("REWARDED_AD_UNIT_ID")
-    ?: throw GradleException("Missing REWARDED_AD_UNIT_ID")
-val bannerAdUnitId = envOrProp("BANNER_AD_UNIT_ID")
-    ?: throw GradleException("Missing BANNER_AD_UNIT_ID")
+val rewardedAdUnitId = envOrProp("REWARDED_AD_UNIT_ID").orEmpty()
+val bannerAdUnitId = envOrProp("BANNER_AD_UNIT_ID").orEmpty()
 
 android {
     val keystoreProperties = Properties()
     val keystorePropertiesFile = rootProject.file("key.properties")
-    val isReleaseBuild =
-        gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
 
     if (keystorePropertiesFile.exists()) {
         keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-    } else if (isReleaseBuild) {
-        throw GradleException("Missing signing config: ${keystorePropertiesFile.path}")
     }
+
+    fun keystoreValue(key: String): String? =
+        keystoreProperties.getProperty(key) ?: envOrProp(key)
+
+    val hasReleaseSigningConfig = listOf(
+        "storeFile",
+        "storePassword",
+        "keyAlias",
+        "keyPassword",
+    ).all { !keystoreValue(it).isNullOrBlank() }
 
     namespace = "com.sabbirba.preconnect"
     compileSdk = flutter.compileSdkVersion
@@ -84,23 +88,24 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            fun keystoreValue(key: String): String? =
-                keystoreProperties.getProperty(key) ?: envOrProp(key)
-
-            val storeFilePath = keystoreValue("storeFile")
-            if (!storeFilePath.isNullOrBlank()) {
-                storeFile = rootProject.file(storeFilePath)
+        if (hasReleaseSigningConfig) {
+            create("release") {
+                val storeFilePath = keystoreValue("storeFile")
+                if (!storeFilePath.isNullOrBlank()) {
+                    storeFile = rootProject.file(storeFilePath)
+                }
+                storePassword = keystoreValue("storePassword")
+                keyAlias = keystoreValue("keyAlias")
+                keyPassword = keystoreValue("keyPassword")
             }
-            storePassword = keystoreValue("storePassword")
-            keyAlias = keystoreValue("keyAlias")
-            keyPassword = keystoreValue("keyPassword")
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseSigningConfig) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
