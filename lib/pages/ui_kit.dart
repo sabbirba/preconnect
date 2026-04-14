@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show ValueListenable, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -317,7 +317,6 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
               CachedImage(
                 url: widget.imageUrls.first,
                 fit: widget.imageFit,
-                maxBytesInPrefs: widget.maxBytesInPrefs,
                 placeholder: const BracuShimmer(
                   child: BracuSkeletonBox(height: 220, radius: 8),
                 ),
@@ -337,7 +336,6 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
                   return CachedImage(
                     url: widget.imageUrls[idx],
                     fit: widget.imageFit,
-                    maxBytesInPrefs: widget.maxBytesInPrefs,
                     placeholder: const BracuShimmer(
                       child: BracuSkeletonBox(height: 220, radius: 8),
                     ),

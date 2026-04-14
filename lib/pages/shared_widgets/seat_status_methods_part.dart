@@ -267,18 +267,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
               );
             },
           ),
-          if (_isSavingCache)
-            Positioned.fill(
-              child: ColoredBox(
-                color: Colors.black.withValues(alpha: 0.14),
-                child: const Center(
-                  child: SizedBox(
-                    width: 220,
-                    child: BracuLoading(compact: true),
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );

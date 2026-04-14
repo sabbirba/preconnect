@@ -153,6 +153,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     );
     if (draft == null || !mounted) return;
 
+    final kindLabel = schedulePlannerFormatKind(draft.kind);
     try {
       final normalizedTitle = _normalizePlannerTitleForSave(draft.title);
       if (item == null) {
@@ -166,7 +167,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
           notes: draft.notes,
           isDone: draft.isDone,
         );
-        showAppSnackBar(currentContext, 'Item added');
+        showAppSnackBar(currentContext, '$kindLabel added');
       } else {
         await SchedulePlannerService().updateItem(
           itemId: item.itemId,
@@ -180,13 +181,16 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
           notes: draft.notes,
           isDone: draft.isDone,
         );
-        showAppSnackBar(currentContext, 'Item updated');
+        showAppSnackBar(currentContext, '$kindLabel updated');
       }
       RefreshBus.instance.notify(reason: 'schedule');
       await _refresh(forceRefresh: true, notify: false);
     } catch (_) {
       if (!mounted) return;
-      showAppSnackBar(currentContext, 'Unable to save item');
+      showAppSnackBar(
+        currentContext,
+        'Unable to save ${kindLabel.toLowerCase()}',
+      );
     }
   }
 
@@ -259,7 +263,10 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
         });
       }
       if (!mounted) return;
-      showAppSnackBar(currentContext, 'Unable to update item');
+      showAppSnackBar(
+        currentContext,
+        'Unable to update ${schedulePlannerFormatKind(item.kind).toLowerCase()}',
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -271,11 +278,12 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
 
   Future<void> _deleteItem(SchedulePlannerItem item) async {
     final currentContext = context;
+    final kindLabel = schedulePlannerFormatKind(item.kind).toLowerCase();
     final shouldDelete = await showBracuConfirmationDialog(
       currentContext,
       icon: Icons.delete_outline_rounded,
-      title: 'Delete item?',
-      message: 'This will remove the item from your schedule.',
+      title: 'Delete $kindLabel?',
+      message: 'This will remove this $kindLabel from your schedule.',
       confirmLabel: 'Delete',
     );
     if (!shouldDelete || !mounted) return;
@@ -283,12 +291,18 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     try {
       await SchedulePlannerService().deleteItem(item.itemId);
       if (!mounted) return;
-      showAppSnackBar(currentContext, 'Item deleted');
+      showAppSnackBar(
+        currentContext,
+        '${schedulePlannerFormatKind(item.kind)} deleted',
+      );
       RefreshBus.instance.notify(reason: 'schedule');
       await _refresh(forceRefresh: true, notify: false);
     } catch (_) {
       if (!mounted) return;
-      showAppSnackBar(currentContext, 'Unable to delete item');
+      showAppSnackBar(
+        currentContext,
+        'Unable to delete ${schedulePlannerFormatKind(item.kind).toLowerCase()}',
+      );
     }
   }
 
@@ -306,8 +320,8 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     if (reminderAt.isBefore(DateTime.now())) return;
 
     final labelCode = courseCode.trim().isNotEmpty
-      ? courseCode.trim().toUpperCase()
-      : 'Planner';
+        ? courseCode.trim().toUpperCase()
+        : 'Planner';
     final messageTitle = title.trim().isNotEmpty ? title.trim() : labelCode;
     final message = messageTitle;
 
@@ -368,7 +382,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
       icon: Icons.event_note_outlined,
       actions: [
         IconButton(
-          tooltip: 'Add item',
+          tooltip: 'Add planner task',
           onPressed: _openEditor,
           icon: const Icon(Icons.add_rounded),
         ),
@@ -412,11 +426,11 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
               onRefresh: () => _refresh(forceRefresh: true),
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
               child: _PlannerContentWrap(
-                child: const Column(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                  children: const [
                     BracuEmptyState(
-                      message: 'No items yet. Tap + to add task.',
+                      message: 'No planner tasks yet. Tap + to add one.',
                     ),
                   ],
                 ),
@@ -586,69 +600,96 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
       overlayColor: const WidgetStatePropertyAll(Colors.transparent),
       onTap: onTap,
       child: BracuCard(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Align(
-              alignment: Alignment.center,
-              child: SectionBadge(
-                label: '${item.dueAt.day}',
-                color: BracuPalette.primary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 7,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text.rich(
-                    TextSpan(
-                      children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Align(
+                  alignment: Alignment.center,
+                  child: SectionBadge(
+                    label: '${item.dueAt.day}',
+                    color: BracuPalette.primary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 7,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text.rich(
                         TextSpan(
-                          text: title,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          children: [
+                            TextSpan(
+                              text: title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        DateFormat('hh:mm a').format(item.dueAt),
+                        style: TextStyle(
+                          color: BracuPalette.textPrimary(context),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    DateFormat('hh:mm a').format(item.dueAt),
-                    style: TextStyle(
-                      color: BracuPalette.textPrimary(context),
-                      fontWeight: FontWeight.w700,
-                    ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 4,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        item.isDone ? 'Done' : 'Pending',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: BracuPalette.textSecondary(context),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      _PlannerItemActionsMenu(
+                        isDone: item.isDone,
+                        onSetDone: onSetDone,
+                        onSetPending: onSetPending,
+                        onDelete: onDelete,
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 4,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    item.isDone ? 'Done' : 'Pending',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: BracuPalette.textSecondary(context),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  _PlannerItemActionsMenu(
-                    isDone: item.isDone,
-                    onSetDone: onSetDone,
-                    onSetPending: onSetPending,
-                    onDelete: onDelete,
-                  ),
-                ],
+            if (item.notes.trim().isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: BracuPalette.textSecondary(
+                  context,
+                ).withValues(alpha: 0.14),
               ),
-            ),
+              const SizedBox(height: 8),
+              Text(
+                item.notes.trim(),
+                softWrap: true,
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.35,
+                  color: BracuPalette.textSecondary(context),
+                ),
+              ),
+            ],
           ],
         ),
       ),

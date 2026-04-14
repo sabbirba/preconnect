@@ -26,6 +26,9 @@ typedef SchedulePlannerSetAlarmCallback =
       required DateTime reminderAt,
     });
 
+typedef SchedulePlannerDeleteCallback = Future<void> Function();
+typedef SchedulePlannerToggleDoneCallback = Future<void> Function(bool isDone);
+
 typedef SchedulePlannerClassSchedule = ({
   String day,
   String startTime,
@@ -48,6 +51,8 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
   required SchedulePlannerItem? item,
   required List<SchedulePlannerCourseOption> courseOptions,
   SchedulePlannerSetAlarmCallback? onSetAlarm,
+  SchedulePlannerDeleteCallback? onDelete,
+  SchedulePlannerToggleDoneCallback? onToggleDone,
 }) async {
   final isRamadan = await RamadanTiming.isRamadan();
   var titleValue = item?.title.trim().isNotEmpty == true
@@ -106,9 +111,22 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
     );
   }
 
-  return showBracuBottomSheet<SchedulePlannerDraft>(
+  final liveTitle = ValueNotifier<String>(
+    item == null ? 'Add ${_kindLabel(kind)}' : 'Edit ${_kindLabel(kind)}',
+  );
+
+  void syncLiveTitle() {
+    liveTitle.value = item == null
+        ? 'Add ${_kindLabel(kind)}'
+        : 'Edit ${_kindLabel(kind)}';
+  }
+
+  final result = await showBracuBottomSheet<SchedulePlannerDraft>(
     context,
-    title: item == null ? 'Add Item' : 'Edit Item',
+    title: item == null
+        ? 'Add ${_kindLabel(kind)}'
+        : 'Edit ${_kindLabel(kind)}',
+    liveTitle: liveTitle,
     initialChildSize: 0.88,
     builder: (sheetContext, textPrimary, textSecondary) {
       return StatefulBuilder(
@@ -177,6 +195,7 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
               kind = template.kind;
               titleValue = _titleTemplateLabel(template);
               titleFieldVersion++;
+              syncLiveTitle();
             });
           }
 
@@ -203,6 +222,22 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
               notes: notesValue.trim(),
               isDone: isDone,
             ));
+          }
+
+          Future<void> deleteItem() async {
+            if (onDelete == null) return;
+            Navigator.of(context).pop();
+            await onDelete();
+          }
+
+          Future<void> toggleDoneStatus() async {
+            if (onToggleDone == null) return;
+            final nextDone = !isDone;
+            setState(() {
+              isDone = nextDone;
+            });
+            Navigator.of(context).pop();
+            await onToggleDone(nextDone);
           }
 
           void decreaseReminderMinutes() {
@@ -235,6 +270,7 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                   if (parsed != null) {
                     selectedCourseOption = parsed.courseOption;
                     kind = parsed.kind;
+                    syncLiveTitle();
                   }
                   setState(() {});
                 },
@@ -402,12 +438,43 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                   label: const Text('Save'),
                 ),
               ),
+              if (item != null) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: toggleDoneStatus,
+                    icon: Icon(
+                      isDone
+                          ? Icons.radio_button_unchecked_rounded
+                          : Icons.check_circle_outline_rounded,
+                    ),
+                    label: Text(isDone ? 'Mark as Pending' : 'Mark as Done'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: deleteItem,
+                    icon: const Icon(Icons.delete_outline_rounded),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                    ),
+                    label: const Text('Delete'),
+                  ),
+                ),
+              ],
             ],
           );
         },
       );
     },
   );
+
+  liveTitle.dispose();
+  return result;
 }
 
 List<SchedulePlannerCourseOption> _courseOptionsForDropdown({
@@ -697,7 +764,9 @@ String _kindLabel(String kind) {
     case 'reminder':
       return 'Reminder';
     default:
-      return 'Item';
+      final value = kind.trim();
+      if (value.isEmpty) return 'Task';
+      return value[0].toUpperCase() + value.substring(1).toLowerCase();
   }
 }
 

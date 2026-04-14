@@ -47,6 +47,7 @@ ButtonStyle bracuCompactPrimaryButtonStyle({
 Future<T?> showBracuBottomSheet<T>(
   BuildContext context, {
   required String title,
+  ValueListenable<String>? liveTitle,
   String? subtitle,
   List<Widget> actions = const <Widget>[],
   double initialChildSize = 0.80,
@@ -95,14 +96,29 @@ Future<T?> showBracuBottomSheet<T>(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          title,
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
+                        if (liveTitle == null)
+                          Text(
+                            title,
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          )
+                        else
+                          ValueListenableBuilder<String>(
+                            valueListenable: liveTitle,
+                            builder: (context, value, _) {
+                              return Text(
+                                value,
+                                style: TextStyle(
+                                  color: textPrimary,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              );
+                            },
                           ),
-                        ),
                       ],
                     ),
                   ),

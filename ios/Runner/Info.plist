@@ -124,6 +124,8 @@
 		<true/>
 		<key>NSCameraUsageDescription</key>
 		<string>PreConnect needs camera access to scan QR codes.</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>PreConnect needs location access to connect and manage campus Wi-Fi.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>PreConnect needs photo access to scan QR codes from your gallery.</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>

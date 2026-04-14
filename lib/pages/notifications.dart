@@ -110,6 +110,34 @@ class _NotificationsPageState extends State<NotificationsPage> {
       builder: (context, textPrimary, textSecondary) =>
           ConnectNotificationDetailPanel(notificationId: item.id),
     );
+    if (!mounted) return;
+    final currentData = _lastData ?? await _future;
+    if (!mounted) return;
+    final updatedConnect = currentData.connect?.copyWith(
+      items: currentData.connect?.items
+          .map(
+            (entry) => entry.id == item.id && !entry.seen
+                ? RecentConnectNotification(
+                    id: entry.id,
+                    title: entry.title,
+                    module: entry.module,
+                    link: entry.link,
+                    createdOn: entry.createdOn,
+                    expireAt: entry.expireAt,
+                    seen: true,
+                  )
+                : entry,
+          )
+          .toList(),
+    );
+    setState(() {
+      _lastData = NotificationsViewData(
+        connect: updatedConnect ?? currentData.connect,
+        scraped: currentData.scraped,
+        seenScraperIds: currentData.seenScraperIds,
+      );
+    });
+    RefreshBus.instance.notify(reason: 'notifications');
   }
 
   Future<void> _openScraperNotification(NotificationListItem item) async {

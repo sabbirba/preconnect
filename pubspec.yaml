@@ -34,9 +34,15 @@ dependencies:
   local_auth: ^3.0.1
   sembast: ^3.8.6
   shimmer: ^3.0.0
+  flutter_local_notifications: ^17.2.0
+  background_fetch: ^1.2.0
+  connectivity_plus: ^6.1.0
 
 dev_dependencies:
   flutter_lints: ^6.0.0
+
+dependency_overrides:
+  shared_preferences_android: 2.4.10
 
 flutter:
   uses-material-design: true

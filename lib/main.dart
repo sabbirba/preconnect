@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:background_fetch/background_fetch.dart';
 import 'app.dart';
 import 'tools/ads_bridge.dart';
+import 'tools/push_notifications_service.dart';
 import 'tools/token_storage.dart';
 import 'tools/reward_support_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  BackgroundFetch.registerHeadlessTask(backgroundFetchHeadlessTask);
   PaintingBinding.instance.imageCache.maximumSize = 1 << 30;
   PaintingBinding.instance.imageCache.maximumSizeBytes = 1 << 62;
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);

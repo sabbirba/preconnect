@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
+import 'dart:io';
 import 'dart:typed_data';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:preconnect/tools/image_url_utils.dart';
@@ -19,7 +23,6 @@ class CachedImage extends StatefulWidget {
     this.filterQuality = FilterQuality.low,
     this.placeholder,
     this.error,
-    this.maxBytesInPrefs = 2 * 1024 * 1024,
   });
 
   final String url;
@@ -30,7 +33,6 @@ class CachedImage extends StatefulWidget {
   final FilterQuality filterQuality;
   final Widget? placeholder;
   final Widget? error;
-  final int maxBytesInPrefs;
 
   static void clearMemoryCache() {
     _CachedImageState.clearMemoryCache();
@@ -41,8 +43,12 @@ class CachedImage extends StatefulWidget {
 }
 
 class _CachedImageState extends State<CachedImage> {
+  static const String _legacyPrefPrefix = 'img_cache_';
+  static const Duration _diskCacheTtl = Duration(days: 90);
+  static const int _maxDiskCacheFiles = 350;
   static final Future<SharedPreferences> _prefs =
       SharedPreferences.getInstance();
+  static final Future<Directory?> _cacheDirFuture = _resolveCacheDir();
   static final Map<String, Uint8List> _memoryCache = {};
 
   static void clearMemoryCache() {
@@ -72,7 +78,94 @@ class _CachedImageState extends State<CachedImage> {
 
   String _prefKey(String url) {
     final encoded = base64Url.encode(utf8.encode(url));
-    return 'img_cache_$encoded';
+    return '$_legacyPrefPrefix$encoded';
+  }
+
+  static Future<Directory?> _resolveCacheDir() async {
+    if (kIsWeb) return null;
+    try {
+      final root = await getTemporaryDirectory();
+      final dir = Directory('${root.path}/preconnect_image_cache');
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      return dir;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _cacheFileName(String key) {
+    return sha1.convert(utf8.encode(key)).toString();
+  }
+
+  Future<File?> _cacheFileFor(String key) async {
+    final dir = await _cacheDirFuture;
+    if (dir == null) return null;
+    return File('${dir.path}/${_cacheFileName(key)}.img');
+  }
+
+  Future<Uint8List?> _readDiskCache(String key) async {
+    final file = await _cacheFileFor(key);
+    if (file == null || !await file.exists()) return null;
+    try {
+      final stat = await file.stat();
+      final age = DateTime.now().difference(stat.modified);
+      if (age > _diskCacheTtl) {
+        await file.delete();
+        return null;
+      }
+      return await file.readAsBytes();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _writeDiskCache(String key, Uint8List bytes) async {
+    final file = await _cacheFileFor(key);
+    if (file == null) return;
+    try {
+      await file.writeAsBytes(bytes, flush: false);
+    } catch (_) {}
+  }
+
+  Future<void> _cleanupDiskCacheIfNeeded() async {
+    final dir = await _cacheDirFuture;
+    if (dir == null) return;
+    try {
+      final files = await dir
+          .list()
+          .where((entity) => entity is File)
+          .cast<File>()
+          .toList();
+      if (files.length <= _maxDiskCacheFiles) return;
+      files.sort((a, b) {
+        final aTs = a.statSync().modified.millisecondsSinceEpoch;
+        final bTs = b.statSync().modified.millisecondsSinceEpoch;
+        return aTs.compareTo(bTs);
+      });
+      final extra = files.length - _maxDiskCacheFiles;
+      for (var i = 0; i < extra; i++) {
+        try {
+          await files[i].delete();
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  Future<Uint8List?> _loadLegacyPrefsImage(String cacheKey) async {
+    try {
+      final prefs = await _prefs;
+      final prefKey = _prefKey(cacheKey);
+      final cached = prefs.getString(prefKey);
+      if (cached == null || cached.isEmpty) return null;
+      final decoded = base64Decode(cached);
+      await prefs.remove(prefKey);
+      await _writeDiskCache(cacheKey, decoded);
+      return decoded;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<Uint8List> _fetchWithRetry(Uri uri, {int maxAttempts = 3}) async {
@@ -166,16 +259,23 @@ class _CachedImageState extends State<CachedImage> {
     });
 
     try {
-      final prefs = await _prefs;
-      final prefKey = _prefKey(cacheKey);
-
-      final cached = prefs.getString(prefKey);
-      if (cached != null && cached.isNotEmpty) {
-        final decoded = base64Decode(cached);
-        _memoryCache[cacheKey] = decoded;
+      final diskHit = await _readDiskCache(cacheKey);
+      if (diskHit != null && diskHit.isNotEmpty) {
+        _memoryCache[cacheKey] = diskHit;
         if (!mounted) return;
         setState(() {
-          _bytes = decoded;
+          _bytes = diskHit;
+          _loading = false;
+        });
+        return;
+      }
+
+      final migrated = await _loadLegacyPrefsImage(cacheKey);
+      if (migrated != null && migrated.isNotEmpty) {
+        _memoryCache[cacheKey] = migrated;
+        if (!mounted) return;
+        setState(() {
+          _bytes = migrated;
           _loading = false;
         });
         return;
@@ -185,9 +285,8 @@ class _CachedImageState extends State<CachedImage> {
         Uri.parse(normalizedRemoteUrl ?? url),
       );
       _memoryCache[cacheKey] = bytes;
-      if (bytes.length <= widget.maxBytesInPrefs) {
-        await prefs.setString(prefKey, base64Encode(bytes));
-      }
+      await _writeDiskCache(cacheKey, bytes);
+      unawaited(_cleanupDiskCacheIfNeeded());
       if (!mounted) return;
       setState(() {
         _bytes = bytes;
