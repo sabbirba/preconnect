@@ -6,12 +6,14 @@ class BracuSelectOption<T> {
     required this.label,
     this.icon,
     this.subtitle,
+    this.showLeadingIcon = true,
   });
 
   final T value;
   final String label;
   final IconData? icon;
   final String? subtitle;
+  final bool showLeadingIcon;
 }
 
 ButtonStyle bracuNoSplashTextButtonStyle() {
@@ -23,8 +25,10 @@ ButtonStyle bracuNoSplashTextButtonStyle() {
 }
 
 ButtonStyle bracuCompactPrimaryButtonStyle({
-  EdgeInsetsGeometry padding =
-      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+  EdgeInsetsGeometry padding = const EdgeInsets.symmetric(
+    horizontal: 16,
+    vertical: 12,
+  ),
   double borderRadius = 12,
 }) {
   return ElevatedButton.styleFrom(
@@ -385,26 +389,30 @@ Future<T?> showBracuSelectSheet<T>(
                 ),
                 child: Row(
                   children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? BracuPalette.primary.withValues(alpha: 0.14)
-                            : textSecondary.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(12),
+                    if (option.showLeadingIcon) ...[
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? BracuPalette.primary.withValues(alpha: 0.14)
+                              : textSecondary.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          option.icon ??
+                              (selected
+                                  ? Icons.check_rounded
+                                  : Icons.tune_rounded),
+                          size: 18,
+                          color: selected
+                              ? BracuPalette.primary
+                              : textSecondary,
+                        ),
                       ),
-                      alignment: Alignment.center,
-                      child: Icon(
-                        option.icon ??
-                            (selected
-                                ? Icons.check_rounded
-                                : Icons.tune_rounded),
-                        size: 18,
-                        color: selected ? BracuPalette.primary : textSecondary,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
+                      const SizedBox(width: 12),
+                    ],
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

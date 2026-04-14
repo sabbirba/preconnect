@@ -147,6 +147,7 @@ Future<bool> openExternalUrl(
   LaunchMode mobileFallbackMode = LaunchMode.externalApplication,
 }) async {
   var url = rawUrl.trim();
+  url = url.replaceAll(RegExp(r'\s+'), '');
   if (url.startsWith('www.')) {
     url = 'https://$url';
   }
@@ -396,9 +397,7 @@ class _BracuImageErrorFallback extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      color: isDark
-          ? const Color(0xFF1B2430)
-          : const Color(0xFFF2F6FC),
+      color: isDark ? const Color(0xFF1B2430) : const Color(0xFFF2F6FC),
       alignment: Alignment.center,
       child: Column(
         mainAxisSize: MainAxisSize.min,

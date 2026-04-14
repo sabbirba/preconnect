@@ -103,22 +103,23 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   Future<void> _openConnectNotification(RecentConnectNotification item) async {
     if (!mounted) return;
-    await showBracuCustomBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
+    await showBracuBottomSheet<void>(
+      context,
+      title: item.title.trim().isEmpty ? 'Notification' : item.title.trim(),
       initialChildSize: 0.80,
-      builder: (context) =>
+      builder: (context, textPrimary, textSecondary) =>
           ConnectNotificationDetailPanel(notificationId: item.id),
     );
   }
 
   Future<void> _openScraperNotification(NotificationListItem item) async {
     if (!mounted) return;
-    await showBracuCustomBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
+    await showBracuBottomSheet<void>(
+      context,
+      title: item.title.trim().isEmpty ? 'Notification' : item.title.trim(),
       initialChildSize: 0.80,
-      builder: (context) => ScraperNotificationDetailPanel(item: item),
+      builder: (context, textPrimary, textSecondary) =>
+          ScraperNotificationDetailPanel(item: item),
     );
     await NotificationService().markScraperNotificationSeen(item.id);
     if (!mounted) return;

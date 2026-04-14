@@ -524,6 +524,13 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
           color: Color(0xFFFF8A34),
         ),
         _DashboardQuickAccessItem(
+          tab: HomeTab.schedulePlanner,
+          icon: Icons.event_note_outlined,
+          title: 'Planner',
+          subtitle: 'Schedules',
+          color: Color(0xFF1E6BE3),
+        ),
+        _DashboardQuickAccessItem(
           tab: HomeTab.examSchedule,
           icon: Icons.event_note_outlined,
           title: 'Exam',
@@ -542,13 +549,6 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
           icon: Icons.school_outlined,
           title: 'Degree',
           subtitle: 'Progress',
-          color: Color(0xFF2C9DFF),
-        ),
-        _DashboardQuickAccessItem(
-          tab: HomeTab.devs,
-          icon: Icons.developer_mode_outlined,
-          title: 'Devs',
-          subtitle: 'About',
           color: Color(0xFF2C9DFF),
         ),
         _DashboardQuickAccessItem(

@@ -23,6 +23,7 @@ import 'package:preconnect/pages/friend_schedule.dart';
 import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/calendar.dart';
 import 'package:preconnect/pages/free_labs.dart';
+import 'package:preconnect/pages/schedule_planner.dart';
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/settings.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
@@ -104,6 +105,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
     HomeTab.friendSchedule: (_) => FriendSchedulePage(onNavigate: _setTab),
     HomeTab.campusPrinter: (_) => const CampusPrinterPage(),
     HomeTab.devs: (_) => const DevsPage(),
+    HomeTab.schedulePlanner: (_) => const SchedulePlannerPage(),
   };
   late final List<HomeTab> _tabOrder = HomeTab.values;
   final Set<HomeTab> _builtTabs = {HomeTab.dashboard};
@@ -869,6 +871,14 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
                       subtitle: 'Printer',
                       color: const Color(0xFF22B573),
                       onTap: () => widget.onNavigate(HomeTab.campusPrinter),
+                    ),
+                    QuickAccessCard(
+                      width: layout.itemWidth,
+                      icon: Icons.developer_mode_outlined,
+                      title: 'Devs',
+                      subtitle: 'Support',
+                      color: const Color(0xFF2C9DFF),
+                      onTap: () => widget.onNavigate(HomeTab.devs),
                     ),
                   ],
                 ),

@@ -29,119 +29,89 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
     final published = item.createdOn == null
         ? item.module
         : '${item.module}  •  ${DateFormat('EEEE, d MMMM yyyy, h:mm a').format(item.createdOn!.toLocal())}';
-    return bracuBottomSheetSurface(
-      context,
-      child: SingleChildScrollView(
-        controller: dragController,
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: BracuPalette.textSecondary(
-                    context,
-                  ).withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
+    return SingleChildScrollView(
+      controller: dragController,
+      padding: const EdgeInsets.fromLTRB(2, 4, 2, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            published,
+            style: TextStyle(
+              color: BracuPalette.textSecondary(context),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
             ),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    item.title.isEmpty ? 'Notification' : item.title,
-                    style: TextStyle(
-                      color: BracuPalette.textPrimary(context),
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
+          ),
+          if (imageUrls.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            BracuImageCarousel(
+              imageUrls: imageUrls,
+              autoPlay: true,
+              autoPlayInterval: const Duration(seconds: 3),
             ),
-            const SizedBox(height: 10),
+          ],
+          const SizedBox(height: 18),
+          Text(
+            parts.body.isEmpty
+                ? 'No additional details were provided.'
+                : parts.body,
+            style: TextStyle(
+              color: BracuPalette.textPrimary(context),
+              fontSize: 15,
+              height: 1.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          if (parts.links.isNotEmpty) ...[
+            const SizedBox(height: 16),
             Text(
-              published,
-              style: TextStyle(
-                color: BracuPalette.textSecondary(context),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            if (imageUrls.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              BracuImageCarousel(
-                imageUrls: imageUrls,
-                autoPlay: true,
-                autoPlayInterval: const Duration(seconds: 3),
-              ),
-            ],
-            const SizedBox(height: 18),
-            Text(
-              parts.body.isEmpty
-                  ? 'No additional details were provided.'
-                  : parts.body,
+              'Source links:',
               style: TextStyle(
                 color: BracuPalette.textPrimary(context),
-                fontSize: 15,
-                height: 1.5,
-                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            if (parts.links.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Text(
-                'Source links:',
-                style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 8),
-              ...parts.links.map(
-                (link) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton(
-                      onPressed: () async {
+            const SizedBox(height: 8),
+            ...parts.links.map(
+              (link) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: SelectableText(
+                      displayLinkLabel(link),
+                      textAlign: TextAlign.left,
+                      style: TextStyle(
+                        color: BracuPalette.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      onTap: () async {
                         await openExternalUrl(context, link);
                       },
-                      child: Text(
-                        displayLinkLabel(link),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
                     ),
                   ),
                 ),
               ),
-            ],
-            if ((item.url ?? '').trim().isNotEmpty) ...[
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    await openExternalUrl(context, item.url!);
-                  },
-                  icon: const Icon(Icons.open_in_new),
-                  label: const Text('Open Source'),
-                ),
-              ),
-            ],
+            ),
           ],
-        ),
+          if ((item.url ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  await openExternalUrl(context, item.url!);
+                },
+                icon: const Icon(Icons.open_in_new),
+                label: const Text('Open Source'),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -175,147 +145,117 @@ class _ConnectNotificationDetailPanelState
   @override
   Widget build(BuildContext context) {
     final dragController = bracuBottomSheetScrollController(context);
-    return bracuBottomSheetSurface(
-      context,
-      child: FutureBuilder<ConnectNotificationDetail>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Padding(
-              padding: EdgeInsets.all(18),
-              child: BracuLoading(itemCount: 4),
-            );
-          }
-
-          if (snapshot.hasError || !snapshot.hasData) {
-            return Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Unable to load notification details.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: BracuPalette.textPrimary(context),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Pull to refresh the list and try again.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: BracuPalette.textSecondary(context),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          final detail = snapshot.data!;
-          final formattedDetails = cleanNotificationBodyText(
-            detail.details,
-            title: detail.title,
+    return FutureBuilder<ConnectNotificationDetail>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(18),
+            child: BracuLoading(itemCount: 4),
           );
-          final parts = splitNotificationBodyParts(formattedDetails);
-          return SingleChildScrollView(
-            controller: dragController,
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 22),
+        }
+
+        if (snapshot.hasError || !snapshot.hasData) {
+          return Padding(
+            padding: const EdgeInsets.all(24),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Center(
-                  child: Container(
-                    width: 42,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: BracuPalette.textSecondary(
-                        context,
-                      ).withValues(alpha: 0.35),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
+                Text(
+                  'Unable to load notification details.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: BracuPalette.textPrimary(context),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        detail.title.isEmpty ? 'Notification' : detail.title,
-                        style: TextStyle(
-                          color: BracuPalette.textPrimary(context),
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 Text(
-                  _detailMeta(detail),
+                  'Pull to refresh the list and try again.',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     color: BracuPalette.textSecondary(context),
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 18),
+              ],
+            ),
+          );
+        }
+
+        final detail = snapshot.data!;
+        final formattedDetails = cleanNotificationBodyText(
+          detail.details,
+          title: detail.title,
+        );
+        final parts = splitNotificationBodyParts(formattedDetails);
+        return SingleChildScrollView(
+          controller: dragController,
+          padding: const EdgeInsets.fromLTRB(2, 4, 2, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _detailMeta(detail),
+                style: TextStyle(
+                  color: BracuPalette.textSecondary(context),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                parts.body.isEmpty
+                    ? 'No additional details were provided.'
+                    : parts.body,
+                style: TextStyle(
+                  color: BracuPalette.textPrimary(context),
+                  fontSize: 15,
+                  height: 1.5,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              if (parts.links.isNotEmpty) ...[
+                const SizedBox(height: 16),
                 Text(
-                  parts.body.isEmpty
-                      ? 'No additional details were provided.'
-                      : parts.body,
+                  'Source links:',
                   style: TextStyle(
                     color: BracuPalette.textPrimary(context),
-                    fontSize: 15,
-                    height: 1.5,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                if (parts.links.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    'Source links:',
-                    style: TextStyle(
-                      color: BracuPalette.textPrimary(context),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ...parts.links.map(
-                    (link) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton(
-                          onPressed: () async {
+                const SizedBox(height: 8),
+                ...parts.links.map(
+                  (link) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: SelectableText(
+                          displayLinkLabel(link),
+                          textAlign: TextAlign.left,
+                          style: TextStyle(
+                            color: BracuPalette.primary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          onTap: () async {
                             await openExternalUrl(context, link);
                           },
-                          child: Text(
-                            displayLinkLabel(link),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
                         ),
                       ),
                     ),
                   ),
-                ],
+                ),
               ],
-            ),
-          );
-        },
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 

@@ -10,7 +10,8 @@ String _sanitizeUrlCandidate(String value) {
   return value
       .trim()
       .replaceAll(RegExp(r'^[\-\*\u2022]\s*'), '')
-      .replaceAll(RegExp(r'[\s\)\]\}\>,;.!?]+$'), '');
+      .replaceAll(RegExp(r'[\s\)\]\}\>,;.!?]+$'), '')
+      .replaceAll(RegExp(r'\s+'), '');
 }
 
 String _normalizeUrlCandidate(String value) {
@@ -234,7 +235,9 @@ NotificationBodyParts splitNotificationBodyParts(String cleaned) {
 
     if (inSourceLinks) {
       final extracted = _normalizeUrlCandidate(line);
-      if (extracted.startsWith('http://') || extracted.startsWith('https://')) {
+      if (extracted.startsWith('http://') ||
+          extracted.startsWith('https://') ||
+          extracted.startsWith('www.')) {
         links.add(extracted);
         continue;
       }
@@ -252,15 +255,5 @@ NotificationBodyParts splitNotificationBodyParts(String cleaned) {
 }
 
 String displayLinkLabel(String url) {
-  final normalized = _normalizeUrlCandidate(url);
-  try {
-    final uri = Uri.parse(normalized);
-    final host = uri.host.trim();
-    final path = uri.path.trim();
-    if (host.isEmpty && path.isEmpty) return normalized;
-    if (path.isEmpty) return host;
-    return '$host$path';
-  } catch (_) {
-    return normalized;
-  }
+  return _normalizeUrlCandidate(url);
 }
