@@ -75,9 +75,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       unawaited(_refreshCaptiveStatus());
       return;
     }
-    if (isRefreshingFrom('auth')) {
-      unawaited(_handleRefresh(notify: false));
-    }
+    unawaited(_handleRefresh(notify: false));
   }
 
   Future<void> _reloadCardVisibilityOnly() async {

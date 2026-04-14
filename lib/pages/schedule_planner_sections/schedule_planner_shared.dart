@@ -33,6 +33,8 @@ typedef SchedulePlannerClassSchedule = ({
   String endTime,
 });
 
+typedef SchedulePlannerOccurrence = ({DateTime startTime, DateTime endTime});
+
 typedef SchedulePlannerCourseOption = ({
   String courseCode,
   String sectionName,
@@ -86,11 +88,11 @@ String schedulePlannerCourseOptionIdentity(SchedulePlannerCourseOption option) {
   return '${option.courseCode}|${option.sectionName}';
 }
 
-const String _plannerTitleSeparator = '  ';
+const String _plannerTitleSeparator = ' ';
 
 List<String> _splitSchedulePlannerTitleParts(String title) {
   return title
-      .split(RegExp(r'\s*•\s*|\s{2,}'))
+      .split(RegExp(r'\s*•\s*|\s+'))
       .map((part) => part.trim())
       .where((part) => part.isNotEmpty)
       .toList();
@@ -158,7 +160,7 @@ DateTime? schedulePlannerBestOccurrenceForOption(
   return best;
 }
 
-DateTime? schedulePlannerNextOccurrence({
+SchedulePlannerOccurrence? schedulePlannerNextOccurrenceRange({
   required String day,
   required String startTime,
   required String endTime,
@@ -183,27 +185,78 @@ DateTime? schedulePlannerNextOccurrence({
   final endParsed = BracuTime.parseHourMinute(adjusted.endTime);
   final endHour = endParsed?.$1 ?? 0;
   final endMinute = endParsed?.$2 ?? 0;
-  final endMinutes = endHour * 60 + endMinute;
 
   final dayDelta = (targetWeekday - now.weekday + 7) % 7;
-  if (dayDelta == 0) {
-    if (nowMinutes >= endMinutes) {
-      return null;
-    }
-    if (nowMinutes <= startMinutes) {
-      return DateTime(now.year, now.month, now.day, startHour, startMinute);
-    }
-    return now;
+  final nextDate = dayDelta == 0 && nowMinutes <= startMinutes
+      ? now
+      : dayDelta == 0
+      ? now
+      : now.add(Duration(days: dayDelta));
+
+  if (dayDelta == 0 && nowMinutes >= endHour * 60 + endMinute) {
+    return null;
   }
 
-  final nextDate = now.add(Duration(days: dayDelta));
-  return DateTime(
-    nextDate.year,
-    nextDate.month,
-    nextDate.day,
-    startHour,
-    startMinute,
+  return (
+    startTime: DateTime(
+      nextDate.year,
+      nextDate.month,
+      nextDate.day,
+      startHour,
+      startMinute,
+    ),
+    endTime: DateTime(
+      nextDate.year,
+      nextDate.month,
+      nextDate.day,
+      endHour,
+      endMinute,
+    ),
   );
+}
+
+SchedulePlannerOccurrence? schedulePlannerDefaultOccurrenceForOption(
+  SchedulePlannerCourseOption option, {
+  required bool isRamadan,
+  DateTime? now,
+}) {
+  final currentTime = now ?? DateTime.now();
+  final nowMinutes = currentTime.hour * 60 + currentTime.minute;
+  SchedulePlannerOccurrence? best;
+  for (final schedule in option.classSchedules) {
+    final occurrence = schedulePlannerNextOccurrenceRange(
+      day: schedule.day,
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
+      isRamadan: isRamadan,
+      now: currentTime,
+      nowMinutes: nowMinutes,
+    );
+    if (occurrence == null) continue;
+    if (best == null || occurrence.startTime.isBefore(best.startTime)) {
+      best = occurrence;
+    }
+  }
+  return best;
+}
+
+DateTime? schedulePlannerNextOccurrence({
+  required String day,
+  required String startTime,
+  required String endTime,
+  required bool isRamadan,
+  required DateTime now,
+  required int nowMinutes,
+}) {
+  final range = schedulePlannerNextOccurrenceRange(
+    day: day,
+    startTime: startTime,
+    endTime: endTime,
+    isRamadan: isRamadan,
+    now: now,
+    nowMinutes: nowMinutes,
+  );
+  return range?.startTime;
 }
 
 bool schedulePlannerHasUsableSectionLabel(String value) {

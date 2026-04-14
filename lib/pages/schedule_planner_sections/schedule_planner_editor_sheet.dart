@@ -54,6 +54,51 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
     isRamadan: isRamadan,
   );
 
+  String editableTitleSuffix(
+    String rawTitle, {
+    required String courseCode,
+    required String sectionName,
+  }) {
+    final normalizedCode = courseCode.trim().toUpperCase();
+    final normalizedSection = sectionName.trim();
+    final tokens = rawTitle
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
+
+    while (tokens.isNotEmpty) {
+      final first = tokens.first;
+      if (normalizedCode.isNotEmpty && first.toUpperCase() == normalizedCode) {
+        tokens.removeAt(0);
+        continue;
+      }
+      if (normalizedSection.isNotEmpty && first == normalizedSection) {
+        tokens.removeAt(0);
+        continue;
+      }
+      break;
+    }
+
+    return tokens.join(' ').trim();
+  }
+
+  void applyDefaultClassScheduleTimes() {
+    final courseOption = selectedCourseOption;
+    if (courseOption == null || courseOption.classSchedules.isEmpty) return;
+    final occurrence = schedulePlannerDefaultOccurrenceForOption(
+      courseOption,
+      isRamadan: isRamadan,
+    );
+    if (occurrence == null) return;
+    startTime = occurrence.startTime;
+    endTime = occurrence.endTime;
+  }
+
+  if (item == null) {
+    applyDefaultClassScheduleTimes();
+  }
+
   var resolvedSectionName = schedulePlannerResolveSectionName(
     courseCode:
         selectedCourseOption?.courseCode.trim().toUpperCase() ??
@@ -67,7 +112,7 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
   );
 
   titleValue = item?.title.trim().isNotEmpty == true
-      ? schedulePlannerInitialSuffix(
+      ? editableTitleSuffix(
           item!.title.trim(),
           courseCode:
               selectedCourseOption?.courseCode.trim().toUpperCase() ??
@@ -199,12 +244,6 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
             return true;
           }
 
-          void clearEndTime() {
-            setState(() {
-              endTime = null;
-            });
-          }
-
           Future<void> pickTitleTemplate() async {
             final template =
                 await showBracuSelectSheet<SchedulePlannerTitleTemplate>(
@@ -240,6 +279,14 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
               resolvedSectionName = template.sectionName;
               kind = template.kind;
               titleValue = schedulePlannerKindLabel(template.kind);
+              final occurrence = schedulePlannerDefaultOccurrenceForOption(
+                template.courseOption,
+                isRamadan: isRamadan,
+              );
+              if (occurrence != null) {
+                startTime = occurrence.startTime;
+                endTime = occurrence.endTime;
+              }
               titleFieldVersion++;
               syncLiveTitle();
             });
@@ -255,9 +302,18 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
             );
             final courseCode = fixedCourseCode();
             final sectionName = fixedSectionName();
-            final titleSuffix = titleValue.trim().isEmpty
+            final titleSuffix =
+                editableTitleSuffix(
+                  titleValue,
+                  courseCode: courseCode,
+                  sectionName: sectionName,
+                ).trim().isEmpty
                 ? schedulePlannerKindLabel(kind)
-                : titleValue.trim();
+                : editableTitleSuffix(
+                    titleValue,
+                    courseCode: courseCode,
+                    sectionName: sectionName,
+                  );
             final title = schedulePlannerComposeTitle(
               courseCode: courseCode,
               sectionName: sectionName,
@@ -324,9 +380,10 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                   'planner_title_${titleFieldVersion}_${fixedCourseCode()}_${fixedSectionName()}',
                 ),
                 initialValue: titleValue,
+                minLines: 1,
                 textAlignVertical: TextAlignVertical.center,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 16,
                   fontWeight: FontWeight.w500,
                   height: 1,
                   color: BracuPalette.textPrimary(context),
@@ -340,13 +397,17 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                   prefixText:
                       '${fixedCourseCode().isEmpty ? 'Select course' : fixedCourseCode()} ',
                   prefixStyle: TextStyle(
-                    fontSize: 14,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     height: 1,
                     color: BracuPalette.textSecondary(context),
                   ),
                   border: const OutlineInputBorder(),
-                  isDense: true,
+                  isDense: false,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 18,
+                  ),
                   suffixIconConstraints: const BoxConstraints(
                     minWidth: 0,
                     minHeight: 0,
@@ -405,19 +466,11 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                       onPressed: pickEndTime,
                       child: Text(
                         endTime == null
-                            ? 'End (optional)'
+                            ? 'End'
                             : 'End ${DateFormat('hh:mm a').format(endTime!)}',
                       ),
                     ),
                   ),
-                  if (endTime != null) ...[
-                    const SizedBox(width: 4),
-                    IconButton(
-                      tooltip: 'Clear end time',
-                      onPressed: clearEndTime,
-                      icon: const Icon(Icons.close_rounded, size: 18),
-                    ),
-                  ],
                 ],
               ),
               const SizedBox(height: 8),

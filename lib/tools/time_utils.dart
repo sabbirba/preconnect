@@ -155,6 +155,6 @@ class BracuTime {
   }
 
   static String formatDateTime(DateTime dt) {
-    return DateFormat('h:mm a').format(dt);
+    return DateFormat('h:mm a').format(dt.toLocal());
   }
 }

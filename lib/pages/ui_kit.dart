@@ -62,7 +62,7 @@ String formatTimeRange(String? start, String? end) {
 }
 
 String formatLongDate(DateTime date) {
-  return DateFormat('d MMMM, yyyy').format(date);
+  return DateFormat('d MMMM, yyyy').format(date.toLocal());
 }
 
 String formatRelativeDayLabel(
@@ -71,10 +71,11 @@ String formatRelativeDayLabel(
   bool includeTomorrow = false,
   String? unknownLabel,
 }) {
-  if (unknownLabel != null && date.year == 1970) return unknownLabel;
+  final localDate = date.toLocal();
+  if (unknownLabel != null && localDate.year == 1970) return unknownLabel;
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
-  final target = DateTime(date.year, date.month, date.day);
+  final target = DateTime(localDate.year, localDate.month, localDate.day);
   if (target == today) return 'Today';
   if (includeYesterday && target == today.subtract(const Duration(days: 1))) {
     return 'Yesterday';
@@ -90,10 +91,11 @@ String formatDateTimeLabel(
   String separator = ' • ',
   bool includeYear = true,
 }) {
+  final localDateTime = dateTime.toLocal();
   final date = includeYear
-      ? formatLongDate(dateTime)
-      : DateFormat('d MMMM').format(dateTime);
-  return '$date$separator${BracuTime.formatDateTime(dateTime)}';
+      ? formatLongDate(localDateTime)
+      : DateFormat('d MMMM').format(localDateTime);
+  return '$date$separator${BracuTime.formatDateTime(localDateTime)}';
 }
 
 Future<bool> showRewardSupportFlow(BuildContext context) async {
