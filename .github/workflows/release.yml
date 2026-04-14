@@ -6,7 +6,7 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    # Promotion to Production release every Friday at 10:00 PM (Bangladesh Time)
+    # Promotion to Production releases every Friday at 10:00 PM (Bangladesh Time)
     - cron: '00 16 * * 5'
 
 permissions:

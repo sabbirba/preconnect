@@ -306,10 +306,10 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     if (reminderAt.isBefore(DateTime.now())) return;
 
     final labelCode = courseCode.trim().isNotEmpty
-        ? courseCode.trim().toUpperCase()
-        : 'Planner';
-    final messageTitle = title.trim().isNotEmpty ? title.trim() : 'Reminder';
-    final message = '$labelCode $messageTitle Reminder';
+      ? courseCode.trim().toUpperCase()
+      : 'Planner';
+    final messageTitle = title.trim().isNotEmpty ? title.trim() : labelCode;
+    final message = messageTitle;
 
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       try {
@@ -697,27 +697,32 @@ class _PlannerItemActionsMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return Builder(
       builder: (anchorContext) => InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         onTap: () async {
           final action = await showBracuSelectDropdown<String>(
             anchorContext,
+            title: 'Item Actions',
+            subtitle: isDone ? 'Completed item options' : 'Pending item options',
             options: [
               if (!isDone)
                 const BracuSelectOption<String>(
                   value: 'done',
                   label: 'Done',
                   icon: Icons.check_circle_outline_rounded,
+                  subtitle: 'Mark this item as done',
                 ),
               if (isDone)
                 const BracuSelectOption<String>(
                   value: 'pending',
                   label: 'Pending',
                   icon: Icons.radio_button_unchecked_rounded,
+                  subtitle: 'Move this item back to pending',
                 ),
               const BracuSelectOption<String>(
                 value: 'delete',
                 label: 'Delete',
                 icon: Icons.delete_outline_rounded,
+                subtitle: 'Remove this item from your planner',
               ),
             ],
           );
@@ -730,12 +735,15 @@ class _PlannerItemActionsMenu extends StatelessWidget {
             onDelete();
           }
         },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-          child: Icon(
-            Icons.more_horiz_rounded,
-            size: 20,
-            color: BracuPalette.textPrimary(context),
+        child: SizedBox(
+          width: 36,
+          height: 36,
+          child: Center(
+            child: Icon(
+              Icons.more_horiz_rounded,
+              size: 24,
+              color: BracuPalette.textPrimary(context),
+            ),
           ),
         ),
       ),
