@@ -12,8 +12,7 @@ class ExamMapService {
   final ApiClient _client = ApiClient();
   final SembastCache _cache = SembastCache();
 
-  static const String _indexUrl =
-      'https://api.preconnect.app/data/exammap';
+  static const String _indexUrl = 'https://api.preconnect.app/data/exammap';
   static const Duration _indexCacheTtl = Duration(hours: 6);
   static const Duration _examJsonCacheTtl = Duration(hours: 12);
 

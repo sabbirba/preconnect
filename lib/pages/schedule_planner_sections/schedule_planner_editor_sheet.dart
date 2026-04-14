@@ -11,12 +11,20 @@ typedef SchedulePlannerDraft = ({
   String kind,
   String title,
   String courseCode,
+  String sectionName,
   DateTime dueAt,
   bool useReminder,
   DateTime? reminderAt,
   String notes,
   bool isDone,
 });
+
+typedef SchedulePlannerSetAlarmCallback =
+    Future<void> Function({
+      required String courseCode,
+      required String title,
+      required DateTime reminderAt,
+    });
 
 typedef SchedulePlannerClassSchedule = ({
   String day,
@@ -39,18 +47,17 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
   BuildContext context, {
   required SchedulePlannerItem? item,
   required List<SchedulePlannerCourseOption> courseOptions,
+  SchedulePlannerSetAlarmCallback? onSetAlarm,
 }) async {
   final isRamadan = await RamadanTiming.isRamadan();
-  final titleController = TextEditingController(
-    text: item?.title.trim().isNotEmpty == true ? item!.title.trim() : '',
-  );
-  final courseCodeController = TextEditingController(
-    text: item?.courseCode ?? '',
-  );
-  final notesController = TextEditingController(text: item?.notes ?? '');
+  var titleValue = item?.title.trim().isNotEmpty == true
+      ? _normalizePlannerTitle(item!.title.trim())
+      : '';
+  var courseCodeValueText = item?.courseCode ?? '';
+  var notesValue = item?.notes ?? '';
+  var titleFieldVersion = 0;
   var kind = item != null && item.kind.isNotEmpty ? item.kind : 'quiz';
   var dueAt = item?.dueAt ?? DateTime.now().add(const Duration(days: 1));
-  var useReminder = item?.reminderAt != null;
   var reminderMinutesBefore = item?.reminderAt == null
       ? 60
       : dueAt.difference(item!.reminderAt!).inMinutes;
@@ -73,8 +80,8 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
     isRamadan: isRamadan,
   );
 
-  titleController.text = titleController.text.isNotEmpty
-      ? titleController.text
+  titleValue = titleValue.isNotEmpty
+      ? titleValue
       : _generatedTitle(
           kind: kind,
           selectedCourseOption: selectedCourseOption,
@@ -86,7 +93,7 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
     if (courseOptions.isNotEmpty) {
       return selectedCourseOption?.courseCode.trim().toUpperCase() ?? '';
     }
-    return courseCodeController.text.trim().toUpperCase();
+    return courseCodeValueText.trim().toUpperCase();
   }
 
   String generatedTitle([String? courseCode]) {
@@ -160,7 +167,7 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                 item: item,
                 selectedCourseOption: selectedCourseOption,
                 kind: kind,
-                titleValue: titleController.text.trim(),
+                titleValue: titleValue.trim(),
                 courseCodeValue: courseCodeValue(),
               ),
             );
@@ -168,18 +175,19 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
             setState(() {
               selectedCourseOption = template.courseOption;
               kind = template.kind;
-              titleController.text = _titleTemplateLabel(template);
+              titleValue = _titleTemplateLabel(template);
+              titleFieldVersion++;
             });
           }
 
           void save() {
-            final reminderAt = useReminder
-                ? dueAt.subtract(Duration(minutes: reminderMinutesBefore))
-                : null;
+            final reminderAt = dueAt.subtract(
+              Duration(minutes: reminderMinutesBefore),
+            );
             final courseCode = courseCodeValue();
-            final title = titleController.text.trim().isEmpty
+            final title = titleValue.trim().isEmpty
                 ? generatedTitle(courseCode)
-                : titleController.text.trim();
+                : titleValue.trim();
             if (courseCode.isEmpty) {
               showAppSnackBar(context, 'Select a course');
               return;
@@ -188,21 +196,13 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
               kind: kind,
               title: title,
               courseCode: courseCode,
+              sectionName: selectedCourseOption?.sectionName.trim() ?? '',
               dueAt: dueAt,
-              useReminder: useReminder,
+              useReminder: true,
               reminderAt: reminderAt,
-              notes: notesController.text.trim(),
+              notes: notesValue.trim(),
               isDone: isDone,
             ));
-          }
-
-          void setReminderEnabled(bool value) {
-            setState(() {
-              useReminder = value;
-              if (value && reminderMinutesBefore < 5) {
-                reminderMinutesBefore = 5;
-              }
-            });
           }
 
           void decreaseReminderMinutes() {
@@ -223,11 +223,13 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
             controller: bracuBottomSheetScrollController(context),
             padding: const EdgeInsets.only(bottom: 4),
             children: [
-              TextField(
-                controller: titleController,
-                onChanged: (_) {
+              TextFormField(
+                key: ValueKey('planner_title_$titleFieldVersion'),
+                initialValue: titleValue,
+                onChanged: (value) {
+                  titleValue = value;
                   final parsed = _parseTitle(
-                    titleController.text.trim(),
+                    value.trim(),
                     courseOptions: courseOptions,
                   );
                   if (parsed != null) {
@@ -266,94 +268,117 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                 ],
               ),
               const SizedBox(height: 8),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Reminder'),
-                value: useReminder,
-                onChanged: setReminderEnabled,
-              ),
-              if (useReminder) ...[
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: BracuPalette.primary.withValues(alpha: 0.04),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: BracuPalette.primary.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      InkWell(
-                        onTap: decreaseReminderMinutes,
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: BracuPalette.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.remove,
-                            size: 18,
-                            color: BracuPalette.primary,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Center(
-                          child: Column(
-                            children: [
-                              Text(
-                                '$reminderMinutesBefore min before',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: BracuPalette.textPrimary(context),
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                DateFormat('dd MMM yyyy, hh:mm a').format(
-                                  dueAt.subtract(
-                                    Duration(minutes: reminderMinutesBefore),
-                                  ),
-                                ),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: BracuPalette.textSecondary(context),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      InkWell(
-                        onTap: increaseReminderMinutes,
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: BracuPalette.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.add,
-                            size: 18,
-                            color: BracuPalette.primary,
-                          ),
-                        ),
-                      ),
-                    ],
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: BracuPalette.primary.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: BracuPalette.primary.withValues(alpha: 0.2),
                   ),
                 ),
-              ],
+                child: Row(
+                  children: [
+                    InkWell(
+                      onTap: decreaseReminderMinutes,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: BracuPalette.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.remove,
+                          size: 18,
+                          color: BracuPalette.primary,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Text(
+                              '$reminderMinutesBefore min before',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: BracuPalette.textPrimary(context),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              DateFormat('dd MMM yyyy, hh:mm a').format(
+                                dueAt.subtract(
+                                  Duration(minutes: reminderMinutesBefore),
+                                ),
+                              ),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: BracuPalette.textSecondary(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: increaseReminderMinutes,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: BracuPalette.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.add,
+                          size: 18,
+                          color: BracuPalette.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final reminderAt = dueAt.subtract(
+                      Duration(minutes: reminderMinutesBefore),
+                    );
+                    final courseCode = courseCodeValue();
+                    final title = titleValue.trim().isEmpty
+                        ? generatedTitle(courseCode)
+                        : titleValue.trim();
+                    if (courseCode.isEmpty) {
+                      showAppSnackBar(context, 'Select a course');
+                      return;
+                    }
+                    if (onSetAlarm == null) {
+                      showAppSnackBar(context, 'Alarm action unavailable.');
+                      return;
+                    }
+                    await onSetAlarm(
+                      courseCode: courseCode,
+                      title: title,
+                      reminderAt: reminderAt,
+                    );
+                  },
+                  icon: const Icon(Icons.notifications_active),
+                  label: const Text('Set Alarm'),
+                ),
+              ),
               const SizedBox(height: 12),
-              TextField(
-                controller: notesController,
+              TextFormField(
+                initialValue: notesValue,
+                onChanged: (value) => notesValue = value,
                 minLines: 2,
                 maxLines: 2,
                 maxLength: 500,
@@ -368,19 +393,6 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                   counterText: '',
                 ),
               ),
-              if (item != null) ...[
-                const SizedBox(height: 12),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Done'),
-                  value: isDone,
-                  onChanged: (value) {
-                    setState(() {
-                      isDone = value;
-                    });
-                  },
-                ),
-              ],
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
@@ -395,11 +407,7 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
         },
       );
     },
-  ).whenComplete(() {
-    titleController.dispose();
-    courseCodeController.dispose();
-    notesController.dispose();
-  });
+  );
 }
 
 List<SchedulePlannerCourseOption> _courseOptionsForDropdown({
@@ -596,13 +604,17 @@ _TitleTemplate? _parseTitle(
 }) {
   final trimmed = value.trim();
   if (trimmed.isEmpty) return null;
-  final parts = trimmed.split('•').map((part) => part.trim()).toList();
+  final parts = trimmed
+      .split('•')
+      .map((part) => part.trim())
+      .where((part) => part.isNotEmpty)
+      .toList();
   if (parts.length < 2) return null;
 
   final kind = _matchKind(parts.last);
   if (kind == null) return null;
 
-  final courseLabel = parts.take(parts.length - 1).join(' • ').trim();
+  final courseLabel = parts.first;
   final courseOption = _findCourseOptionByLabel(
     courseLabel,
     courseOptions: courseOptions,
@@ -625,12 +637,14 @@ SchedulePlannerCourseOption? _findCourseOptionByLabel(
   required List<SchedulePlannerCourseOption> courseOptions,
 }) {
   final normalized = label.trim();
+  final normalizedCode = normalized.split('•').first.trim().toUpperCase();
   for (final option in _courseOptionsForDropdown(
     courseOptions: courseOptions,
     item: null,
   )) {
     if (_courseOptionLabel(option) == normalized ||
-        option.courseCode == normalized) {
+        option.courseCode == normalized ||
+        option.courseCode == normalizedCode) {
       return option;
     }
   }
@@ -638,9 +652,7 @@ SchedulePlannerCourseOption? _findCourseOptionByLabel(
 }
 
 String _courseOptionLabel(SchedulePlannerCourseOption option) {
-  return option.sectionName.isEmpty
-      ? option.courseCode
-      : '${option.courseCode} • ${option.sectionName}';
+  return option.courseCode;
 }
 
 String _titleTemplateLabel(_TitleTemplate template) {
@@ -658,32 +670,22 @@ String _generatedTitle({
       (courseCode ?? selectedCourseOption?.courseCode ?? item?.courseCode ?? '')
           .trim()
           .toUpperCase();
-  final sectionName = _selectedSectionName(
-    code,
-    courseOptions: courseOptions,
-    selectedCourseOption: selectedCourseOption,
-  );
   final kindLabel = _kindLabel(kind);
   if (code.isEmpty) return kindLabel;
-  final courseLabel = sectionName.isEmpty ? code : '$code • $sectionName';
-  return '$courseLabel • $kindLabel';
+  return '$code • $kindLabel';
 }
 
-String _selectedSectionName(
-  String courseCode, {
-  required List<SchedulePlannerCourseOption> courseOptions,
-  required SchedulePlannerCourseOption? selectedCourseOption,
-}) {
-  if (courseCode.isEmpty) return '';
-  if (selectedCourseOption != null &&
-      selectedCourseOption.courseCode.trim().toUpperCase() == courseCode) {
-    return selectedCourseOption.sectionName.trim();
-  }
-  final matched = _findCourseOption(
-    _courseOptionsForDropdown(courseOptions: courseOptions, item: null),
-    courseCode,
-  );
-  return matched?.sectionName.trim() ?? '';
+String _normalizePlannerTitle(String title) {
+  final parts = title
+      .split('•')
+      .map((part) => part.trim())
+      .where((part) => part.isNotEmpty)
+      .toList();
+  if (parts.length < 2) return title;
+  final kind = _matchKind(parts.last);
+  if (kind == null) return title;
+  final code = parts.first;
+  return '$code • ${_kindLabel(kind)}';
 }
 
 String _kindLabel(String kind) {

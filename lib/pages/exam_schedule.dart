@@ -242,7 +242,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
     final raw = input.trim();
     final dt = BracuTime.parseDate(raw) ?? DateTime.tryParse(raw);
     if (dt == null) return raw;
-    return DateFormat('d MMMM, yyyy').format(dt);
+    return DateFormat('EEEE, d MMMM, yyyy').format(dt);
   }
 
   String _formatExamTimeLabel(String? start, String? end) {

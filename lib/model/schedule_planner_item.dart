@@ -4,6 +4,7 @@ class SchedulePlannerItem {
     required this.kind,
     required this.title,
     required this.courseCode,
+    required this.sectionName,
     required this.dueAt,
     required this.reminderAt,
     required this.notes,
@@ -16,6 +17,7 @@ class SchedulePlannerItem {
   final String kind;
   final String title;
   final String courseCode;
+  final String sectionName;
   final DateTime dueAt;
   final DateTime? reminderAt;
   final String notes;
@@ -29,6 +31,7 @@ class SchedulePlannerItem {
       kind: (json['kind'] as String? ?? '').trim().toLowerCase(),
       title: (json['title'] as String? ?? '').trim(),
       courseCode: (json['courseCode'] as String? ?? '').trim(),
+      sectionName: (json['sectionName'] as String? ?? '').trim(),
       dueAt:
           DateTime.tryParse((json['dueAt'] as String? ?? '').trim()) ??
           DateTime.fromMillisecondsSinceEpoch(0),
@@ -52,6 +55,7 @@ class SchedulePlannerItem {
       'kind': kind,
       'title': title,
       'courseCode': courseCode,
+      'sectionName': sectionName,
       'dueAt': dueAt.toUtc().toIso8601String(),
       'reminderAt': reminderAt?.toUtc().toIso8601String(),
       'notes': notes,
@@ -65,6 +69,7 @@ class SchedulePlannerItem {
     String? kind,
     String? title,
     String? courseCode,
+    String? sectionName,
     DateTime? dueAt,
     DateTime? reminderAt,
     bool? clearReminderAt,
@@ -76,6 +81,7 @@ class SchedulePlannerItem {
       kind: kind ?? this.kind,
       title: title ?? this.title,
       courseCode: courseCode ?? this.courseCode,
+      sectionName: sectionName ?? this.sectionName,
       dueAt: dueAt ?? this.dueAt,
       reminderAt: clearReminderAt == true
           ? null

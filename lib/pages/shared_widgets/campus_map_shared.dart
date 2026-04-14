@@ -145,7 +145,8 @@ class CampusMapData {
     return CampusMapData(
       campusName: '${json['campus_name'] ?? ''}'.trim(),
       address: '${json['address'] ?? ''}'.trim(),
-      mapImageUrl: normalizeImageUrl(
+      mapImageUrl:
+          normalizeImageUrl(
             '${json['map_image_url'] ?? ''}',
             baseUrl: sourceUrl,
           ) ??

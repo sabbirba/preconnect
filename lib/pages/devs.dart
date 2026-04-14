@@ -493,8 +493,7 @@ class _SponsoredTile extends StatelessWidget {
 class _AdSenseLogoImage extends StatelessWidget {
   const _AdSenseLogoImage();
 
-  static const String _logoUrl =
-      'https://preconnect.app/google-adsense.png';
+  static const String _logoUrl = 'https://preconnect.app/google-adsense.png';
 
   @override
   Widget build(BuildContext context) {

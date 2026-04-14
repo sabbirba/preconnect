@@ -235,15 +235,12 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         .toList();
 
     try {
-      final opened = await _androidAlarmChannel.invokeMethod<bool>(
-        'setAlarm',
-        {
-          'hour': hour,
-          'minute': minute,
-          'message': '$courseCode Class Reminder ($minutesBefore min before)',
-          'days': alarmDays,
-        },
-      );
+      final opened = await _androidAlarmChannel.invokeMethod<bool>('setAlarm', {
+        'hour': hour,
+        'minute': minute,
+        'message': '$courseCode Class Reminder ($minutesBefore min before)',
+        'days': alarmDays,
+      });
       if (opened != true) {
         throw Exception('Unable to open alarm on Android.');
       }
@@ -352,15 +349,12 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     }
 
     try {
-      final opened = await _androidAlarmChannel.invokeMethod<bool>(
-        'setAlarm',
-        {
-          'hour': fireAt.hour,
-          'minute': fireAt.minute,
-          'message':
-              '${entry.courseCode} ${entry.type} Reminder ($minutesBefore min before)',
-        },
-      );
+      final opened = await _androidAlarmChannel.invokeMethod<bool>('setAlarm', {
+        'hour': fireAt.hour,
+        'minute': fireAt.minute,
+        'message':
+            '${entry.courseCode} ${entry.type} Reminder ($minutesBefore min before)',
+      });
       if (opened != true) {
         throw Exception('Unable to open alarm on Android.');
       }

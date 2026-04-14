@@ -75,10 +75,7 @@ class _CachedImageState extends State<CachedImage> {
     return 'img_cache_$encoded';
   }
 
-  Future<Uint8List> _fetchWithRetry(
-    Uri uri, {
-    int maxAttempts = 3,
-  }) async {
+  Future<Uint8List> _fetchWithRetry(Uri uri, {int maxAttempts = 3}) async {
     Object? lastError;
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -184,7 +181,9 @@ class _CachedImageState extends State<CachedImage> {
         return;
       }
 
-      final bytes = await _fetchWithRetry(Uri.parse(normalizedRemoteUrl ?? url));
+      final bytes = await _fetchWithRetry(
+        Uri.parse(normalizedRemoteUrl ?? url),
+      );
       _memoryCache[cacheKey] = bytes;
       if (bytes.length <= widget.maxBytesInPrefs) {
         await prefs.setString(prefKey, base64Encode(bytes));
@@ -195,7 +194,6 @@ class _CachedImageState extends State<CachedImage> {
         _loading = false;
       });
       return;
-
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -284,9 +282,7 @@ class _CachedImageState extends State<CachedImage> {
       height: widget.height,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF20242D)
-            : const Color(0xFFF1F5FB),
+        color: isDark ? const Color(0xFF20242D) : const Color(0xFFF1F5FB),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(

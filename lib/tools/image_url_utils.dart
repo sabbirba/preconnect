@@ -1,7 +1,4 @@
-String? normalizeImageUrl(
-  String raw, {
-  String? baseUrl,
-}) {
+String? normalizeImageUrl(String raw, {String? baseUrl}) {
   final value = raw.trim();
   if (value.isEmpty) return null;
 

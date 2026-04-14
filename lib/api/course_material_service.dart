@@ -54,8 +54,7 @@ class CourseMaterialItem {
       contentType: '${json['contentType'] ?? ''}'.trim(),
       fileSize: (json['fileSize'] as num?)?.toInt() ?? 0,
       isApproved: json['isApproved'] == true,
-      canDelete:
-          (json['canDelete'] as bool?) ?? (json['can_delete'] as bool?),
+      canDelete: (json['canDelete'] as bool?) ?? (json['can_delete'] as bool?),
       filePath: '${json['filePath'] ?? ''}'.trim(),
       uploaderName: _firstNonEmpty(<dynamic>[
         json['uploaderName'],

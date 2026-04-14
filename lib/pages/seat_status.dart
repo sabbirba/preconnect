@@ -81,6 +81,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     _updatePollingStrategy();
     bindRefreshBus(_onRefreshSignal);
   }
+
   @override
   void dispose() {
     _stopSeatStatusStream();
@@ -92,6 +93,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     unbindRefreshBus(_onRefreshSignal);
     super.dispose();
   }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -106,6 +108,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       _updatePollingStrategy();
     }
   }
+
   void _onActiveTabChanged() {
     if (!mounted) return;
     _updatePollingStrategy();
@@ -118,6 +121,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     }
     unawaited(_handleRefresh(notify: false));
   }
+
   void _onCacheSaveStateChanged() {
     if (!mounted) return;
     final next = _service.isSavingDetailsCache.value;
@@ -126,6 +130,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       _isSavingCache = next;
     });
   }
+
   Future<void> _handleRefresh({bool notify = true}) async {
     if (!await ensureOnline(context, notify: notify)) {
       return;
@@ -135,6 +140,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       RefreshBus.instance.notify(reason: 'seat_status');
     }
   }
+
   Future<void> _reloadAll() async {
     if (mounted) {
       setState(() {
@@ -166,6 +172,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       });
     }
   }
+
   Future<void> _loadSeatAlerts() async {
     final loaded = await _service.loadSeatAlertConfigs();
     try {
@@ -177,6 +184,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       ..addAll(loaded);
     _refreshVisibleCards();
   }
+
   List<_SeatStatusCardData> _buildCardsFromDetailsMap(
     Map<int, SeatStatusDetailsResponse> detailsMap,
   ) {
@@ -190,6 +198,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       return _buildCardFromDetails(sectionId: sectionId, details: cached);
     }).toList();
   }
+
   Future<void> _applyDetailsUpdate(
     Map<int, SeatStatusDetailsResponse> detailsMap,
   ) async {
@@ -211,6 +220,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     unawaited(_loadCachedStaffInfoForDetails(detailsMap.values));
     _queueStaffInfoResolve(detailsMap.values);
   }
+
   Future<void> _processSeatAlerts(
     List<_SeatStatusCardData> previous,
     List<_SeatStatusCardData> next,
@@ -475,6 +485,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     return _buildPageContent(context);
   }
 }
+
 class _SeatStatusCard extends StatelessWidget {
   const _SeatStatusCard({
     required this.item,

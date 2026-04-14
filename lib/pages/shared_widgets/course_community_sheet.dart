@@ -645,12 +645,11 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                                     setSheetState(() {
                                       pickingFile = true;
                                     });
-                                    final picked = await FilePicker
-                                        .pickFiles(
-                                          type: FileType.any,
-                                          allowMultiple: false,
-                                          withData: true,
-                                        );
+                                    final picked = await FilePicker.pickFiles(
+                                      type: FileType.any,
+                                      allowMultiple: false,
+                                      withData: true,
+                                    );
                                     if (!mounted) return;
                                     if (picked == null ||
                                         picked.files.isEmpty) {

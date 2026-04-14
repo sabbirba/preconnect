@@ -111,7 +111,8 @@ class PushNotificationsService {
 class SeatAlertSyncService {
   SeatAlertSyncService._internal();
 
-  static final SeatAlertSyncService _instance = SeatAlertSyncService._internal();
+  static final SeatAlertSyncService _instance =
+      SeatAlertSyncService._internal();
   factory SeatAlertSyncService() => _instance;
 
   static const String _pushEnabledKey = 'seat_alert_push_enabled_v1';

@@ -46,6 +46,7 @@ class SchedulePlannerService {
     required DateTime dueAt,
     DateTime? reminderAt,
     String courseCode = '',
+    String sectionName = '',
     String notes = '',
     bool isDone = false,
   }) async {
@@ -56,6 +57,7 @@ class SchedulePlannerService {
         'kind': kind,
         'title': title,
         'courseCode': courseCode,
+        'sectionName': sectionName,
         'dueAt': dueAt.toUtc().toIso8601String(),
         'reminderAt': reminderAt?.toUtc().toIso8601String(),
         'notes': notes,
@@ -65,7 +67,7 @@ class SchedulePlannerService {
       acceptedStatusCodes: const {200, 201},
     );
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    final item = SchedulePlannerItem.fromJson(
+    var item = SchedulePlannerItem.fromJson(
       Map<String, dynamic>.from(decoded['item'] as Map),
     );
     await _upsertCacheItem(item);
@@ -80,6 +82,7 @@ class SchedulePlannerService {
     DateTime? reminderAt,
     bool clearReminderAt = false,
     String? courseCode,
+    String? sectionName,
     String? notes,
     bool? isDone,
   }) async {
@@ -93,6 +96,7 @@ class SchedulePlannerService {
       payload['reminderAt'] = reminderAt.toUtc().toIso8601String();
     }
     if (courseCode != null) payload['courseCode'] = courseCode;
+    if (sectionName != null) payload['sectionName'] = sectionName;
     if (notes != null) payload['notes'] = notes;
     if (isDone != null) payload['isDone'] = isDone;
 
@@ -104,9 +108,12 @@ class SchedulePlannerService {
       acceptedStatusCodes: const {200},
     );
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    final item = SchedulePlannerItem.fromJson(
+    var item = SchedulePlannerItem.fromJson(
       Map<String, dynamic>.from(decoded['item'] as Map),
     );
+    if (isDone != null && item.isDone != isDone) {
+      item = item.copyWith(isDone: isDone);
+    }
     await _upsertCacheItem(item);
     return item;
   }

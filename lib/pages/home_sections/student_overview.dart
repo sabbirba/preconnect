@@ -49,9 +49,7 @@ class StudentOverviewCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                _SupportButton(
-                  onTap: onOpenSupport,
-                ),
+                _SupportButton(onTap: onOpenSupport),
                 const SizedBox(width: 8),
                 _IconButton(
                   icon: Icons.settings_outlined,

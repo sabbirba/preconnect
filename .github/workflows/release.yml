@@ -6,8 +6,8 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    # Weekly Friday Promotion to Production at 11:00 PM (Bangladesh Time)
-    - cron: '00 17 * * 4'
+    # Promotion to Production release every Friday at 10:00 PM (Bangladesh Time)
+    - cron: '00 16 * * 5'
 
 permissions:
   contents: write
@@ -631,7 +631,7 @@ jobs:
           fi
 
   publish-google-play:
-    name: Publish Google Play Testing Tracks (Android)
+    name: Publish Google Play Release (Android)
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
     runs-on: ubuntu-latest
     needs: [detect-pending, prepare-version, build-platforms]

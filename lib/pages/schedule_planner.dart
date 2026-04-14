@@ -2,7 +2,12 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_alarmkit/flutter_alarmkit.dart';
+import 'package:intl/intl.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/api/schedule_planner_service.dart';
 import 'package:preconnect/model/schedule_planner_item.dart';
@@ -19,6 +24,9 @@ class SchedulePlannerPage extends StatefulWidget {
 
 class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     with RefreshBusState {
+  static const MethodChannel _androidAlarmChannel = MethodChannel(
+    'preconnect/android_alarm',
+  );
   late Future<List<SchedulePlannerItem>> _future;
   late Future<List<SchedulePlannerCourseOption>> _courseOptionsFuture;
   List<SchedulePlannerItem>? _latestItems;
@@ -129,17 +137,32 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
       currentContext,
       item: item,
       courseOptions: courseOptions,
+      onSetAlarm:
+          ({
+            required String courseCode,
+            required String title,
+            required DateTime reminderAt,
+          }) {
+            return _setPlannerAlarm(
+              context: currentContext,
+              courseCode: courseCode,
+              title: title,
+              reminderAt: reminderAt,
+            );
+          },
     );
     if (draft == null || !mounted) return;
 
     try {
+      final normalizedTitle = _normalizePlannerTitleForSave(draft.title);
       if (item == null) {
         await SchedulePlannerService().createItem(
           kind: draft.kind,
-          title: draft.title,
+          title: normalizedTitle,
           dueAt: draft.dueAt,
-          reminderAt: draft.useReminder ? draft.reminderAt : null,
+          reminderAt: draft.reminderAt,
           courseCode: draft.courseCode,
+          sectionName: draft.sectionName,
           notes: draft.notes,
           isDone: draft.isDone,
         );
@@ -148,11 +171,12 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
         await SchedulePlannerService().updateItem(
           itemId: item.itemId,
           kind: draft.kind,
-          title: draft.title,
+          title: normalizedTitle,
           dueAt: draft.dueAt,
-          reminderAt: draft.useReminder ? draft.reminderAt : null,
-          clearReminderAt: !draft.useReminder,
+          reminderAt: draft.reminderAt,
+          clearReminderAt: false,
           courseCode: draft.courseCode,
+          sectionName: draft.sectionName,
           notes: draft.notes,
           isDone: draft.isDone,
         );
@@ -166,25 +190,74 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     }
   }
 
-  Future<void> _toggleDone(SchedulePlannerItem item) async {
+  Future<void> _setDoneStatus(SchedulePlannerItem item, bool done) async {
+    if (item.isDone == done) return;
     final currentContext = context;
     if (_isBusy) return;
+    final previousItems = _latestItems;
+    if (previousItems != null) {
+      final optimistic = previousItems
+          .map(
+            (entry) => entry.itemId == item.itemId
+                ? entry.copyWith(isDone: done)
+                : entry,
+          )
+          .toList();
+      optimistic.sort((a, b) {
+        final doneCompare = a.isDone == b.isDone
+            ? 0
+            : a.isDone
+            ? 1
+            : -1;
+        if (doneCompare != 0) return doneCompare;
+        final dueCompare = a.dueAt.compareTo(b.dueAt);
+        if (dueCompare != 0) return dueCompare;
+        return b.createdAt.compareTo(a.createdAt);
+      });
+      setState(() {
+        _latestItems = optimistic;
+      });
+    }
     setState(() {
       _isBusy = true;
     });
     try {
-      await SchedulePlannerService().updateItem(
+      final updated = await SchedulePlannerService().updateItem(
         itemId: item.itemId,
-        isDone: !item.isDone,
+        isDone: done,
       );
+      if (mounted && _latestItems != null) {
+        final merged = _latestItems!
+            .map((entry) => entry.itemId == updated.itemId ? updated : entry)
+            .toList();
+        merged.sort((a, b) {
+          final doneCompare = a.isDone == b.isDone
+              ? 0
+              : a.isDone
+              ? 1
+              : -1;
+          if (doneCompare != 0) return doneCompare;
+          final dueCompare = a.dueAt.compareTo(b.dueAt);
+          if (dueCompare != 0) return dueCompare;
+          return b.createdAt.compareTo(a.createdAt);
+        });
+        setState(() {
+          _latestItems = merged;
+        });
+      }
       if (!mounted) return;
       showAppSnackBar(
         currentContext,
-        item.isDone ? 'Marked as pending' : 'Marked as done',
+        done ? 'Marked as done' : 'Marked as pending',
       );
       RefreshBus.instance.notify(reason: 'schedule');
-      await _refresh(forceRefresh: true, notify: false);
+      await _refresh(forceRefresh: false, notify: false);
     } catch (_) {
+      if (mounted && previousItems != null) {
+        setState(() {
+          _latestItems = previousItems;
+        });
+      }
       if (!mounted) return;
       showAppSnackBar(currentContext, 'Unable to update item');
     } finally {
@@ -216,6 +289,74 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     } catch (_) {
       if (!mounted) return;
       showAppSnackBar(currentContext, 'Unable to delete item');
+    }
+  }
+
+  Future<void> _setPlannerAlarm({
+    required BuildContext context,
+    required String courseCode,
+    required String title,
+    required DateTime reminderAt,
+  }) async {
+    if (kIsWeb) {
+      if (!context.mounted) return;
+      showAppSnackBar(context, 'Alarm setup is not available on web.');
+      return;
+    }
+    if (reminderAt.isBefore(DateTime.now())) return;
+
+    final labelCode = courseCode.trim().isNotEmpty
+        ? courseCode.trim().toUpperCase()
+        : 'Planner';
+    final messageTitle = title.trim().isNotEmpty ? title.trim() : 'Reminder';
+    final message = '$labelCode $messageTitle Reminder';
+
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      try {
+        final alarmkit = FlutterAlarmkit();
+        await alarmkit.getPlatformVersion();
+        final authorized = await alarmkit.requestAuthorization();
+        if (!authorized) {
+          if (!context.mounted) return;
+          showAppSnackBar(context, 'Alarm permission denied.');
+          return;
+        }
+        await alarmkit.scheduleOneShotAlarm(
+          timestamp: reminderAt.millisecondsSinceEpoch.toDouble(),
+          label: message,
+          tintColor: '#1E6BE3',
+        );
+        if (!context.mounted) return;
+        showAppSnackBar(context, 'Alarm scheduled on iOS.');
+      } on PlatformException catch (e) {
+        if (!context.mounted) return;
+        showAppSnackBar(
+          context,
+          e.code == 'UNSUPPORTED'
+              ? 'AlarmKit requires iOS 26+.'
+              : 'Unable to schedule alarm on this iOS.',
+        );
+      } catch (_) {
+        if (!context.mounted) return;
+        showAppSnackBar(context, 'Unable to schedule alarm on this iOS.');
+      }
+      return;
+    }
+
+    try {
+      final opened = await _androidAlarmChannel.invokeMethod<bool>('setAlarm', {
+        'hour': reminderAt.hour,
+        'minute': reminderAt.minute,
+        'message': message,
+      });
+      if (opened != true) {
+        throw Exception('Unable to open alarm on Android.');
+      }
+      if (!context.mounted) return;
+      showAppSnackBar(context, 'Alarm opened in Clock app.');
+    } catch (_) {
+      if (!context.mounted) return;
+      showAppSnackBar(context, 'Unable to open alarm on Android.');
     }
   }
 
@@ -253,63 +394,32 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
 
           final items =
               _latestItems ?? snapshot.data ?? const <SchedulePlannerItem>[];
+          if (_latestItems == null &&
+              snapshot.hasData &&
+              snapshot.data != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted || _latestItems != null) return;
+              setState(() {
+                _latestItems = List<SchedulePlannerItem>.from(snapshot.data!);
+              });
+            });
+          }
           final pendingItems = items.where((item) => !item.isDone).toList();
           final doneItems = items.where((item) => item.isDone).toList();
-          final overdueCount = pendingItems
-              .where((item) => item.isOverdue)
-              .length;
-          final dueSoonCount = pendingItems
-              .where((item) => item.isDueSoon)
-              .length;
 
           if (items.isEmpty) {
             return BracuRefreshScroll(
               onRefresh: () => _refresh(forceRefresh: true),
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _SummaryCard(
-                    totalCount: 0,
-                    pendingCount: 0,
-                    overdueCount: 0,
-                    dueSoonCount: 0,
-                  ),
-                  const SizedBox(height: 16),
-                  BracuCard(
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'No items yet',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: BracuPalette.textPrimary(context),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Add items and keep them synced.',
-                            style: TextStyle(
-                              fontSize: 13,
-                              height: 1.4,
-                              color: BracuPalette.textSecondary(context),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          ElevatedButton.icon(
-                            onPressed: () => _openEditor(),
-                            icon: const Icon(Icons.add_rounded),
-                            label: const Text('Add'),
-                          ),
-                        ],
-                      ),
+              child: _PlannerContentWrap(
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    BracuEmptyState(
+                      message: 'No items yet. Tap + to add task.',
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           }
@@ -317,173 +427,72 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
           return BracuRefreshScroll(
             onRefresh: () => _refresh(forceRefresh: true),
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _SummaryCard(
-                  totalCount: items.length,
-                  pendingCount: pendingItems.length,
-                  overdueCount: overdueCount,
-                  dueSoonCount: dueSoonCount,
-                ),
-                const SizedBox(height: 16),
-                if (pendingItems.isNotEmpty) ...[
-                  _SectionLabel(
-                    title: 'Upcoming',
-                    subtitle: '$overdueCount overdue, $dueSoonCount due soon',
-                  ),
-                  const SizedBox(height: 10),
-                  ...pendingItems.map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _ScheduleItemCard(
-                        item: item,
-                        onTap: () => _openEditor(item: item),
-                        onToggleDone: () => _toggleDone(item),
-                        onDelete: () => _deleteItem(item),
+            child: _PlannerContentWrap(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (pendingItems.isNotEmpty) ...[
+                    _DayDateHeader(date: _pendingHeaderDate(pendingItems)),
+                    const SizedBox(height: 10),
+                    ...pendingItems.map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _UpcomingScheduleItemCard(
+                          item: item,
+                          onTap: () => _openEditor(item: item),
+                          onSetDone: () => _setDoneStatus(item, true),
+                          onSetPending: () => _setDoneStatus(item, false),
+                          onDelete: () => _deleteItem(item),
+                        ),
                       ),
                     ),
-                  ),
-                ],
-                if (doneItems.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  _SectionLabel(
-                    title: 'Completed',
-                    subtitle: '${doneItems.length} items',
-                  ),
-                  const SizedBox(height: 10),
-                  ...doneItems.map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _ScheduleItemCard(
-                        item: item,
-                        onTap: () => _openEditor(item: item),
-                        onToggleDone: () => _toggleDone(item),
-                        onDelete: () => _deleteItem(item),
+                  ],
+                  if (doneItems.isNotEmpty) ...[
+                    if (pendingItems.isNotEmpty) const SizedBox(height: 16),
+                    const _SectionLabel(title: 'Completed', subtitle: ''),
+                    const SizedBox(height: 10),
+                    ...doneItems.map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _UpcomingScheduleItemCard(
+                          item: item,
+                          onTap: () => _openEditor(item: item),
+                          onSetDone: () => _setDoneStatus(item, true),
+                          onSetPending: () => _setDoneStatus(item, false),
+                          onDelete: () => _deleteItem(item),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           );
         },
       ),
     );
   }
-}
 
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({
-    required this.totalCount,
-    required this.pendingCount,
-    required this.overdueCount,
-    required this.dueSoonCount,
-  });
-
-  final int totalCount;
-  final int pendingCount;
-  final int overdueCount;
-  final int dueSoonCount;
-
-  @override
-  Widget build(BuildContext context) {
-    return BracuCard(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Schedule',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: BracuPalette.textPrimary(context),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _MetricPill(
-                    label: 'Total',
-                    value: totalCount.toString(),
-                    color: const Color(0xFF1E6BE3),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _MetricPill(
-                    label: 'Pending',
-                    value: pendingCount.toString(),
-                    color: const Color(0xFF22B573),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _MetricPill(
-                    label: 'Urgent',
-                    value: overdueCount.toString(),
-                    color: const Color(0xFFE05252),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              '$dueSoonCount items are due in the next 48 hours.',
-              style: TextStyle(
-                fontSize: 13,
-                color: BracuPalette.textSecondary(context),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  DateTime _pendingHeaderDate(List<SchedulePlannerItem> items) {
+    if (items.isEmpty) return DateTime.now();
+    return items
+        .map((item) => item.dueAt)
+        .reduce((a, b) => a.isBefore(b) ? a : b);
   }
 }
 
-class _MetricPill extends StatelessWidget {
-  const _MetricPill({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
+class _PlannerContentWrap extends StatelessWidget {
+  const _PlannerContentWrap({required this.child});
 
-  final String label;
-  final String value;
-  final Color color;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: BracuPalette.textSecondary(context),
-            ),
-          ),
-        ],
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: child,
       ),
     );
   }
@@ -499,21 +508,52 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(
-          child: Text(
-            title,
+        Expanded(child: BracuSectionTitle(title: title)),
+        if (subtitle.trim().isNotEmpty)
+          Text(
+            subtitle,
             style: TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: BracuPalette.textPrimary(context),
+              fontWeight: FontWeight.w600,
+              color: BracuPalette.textSecondary(context),
             ),
           ),
-        ),
+      ],
+    );
+  }
+}
+
+class _DayDateHeader extends StatelessWidget {
+  const _DayDateHeader({required this.date});
+
+  final DateTime date;
+
+  String _weekdayLabel(DateTime value) {
+    const days = <String>[
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    final index = value.weekday - 1;
+    if (index < 0 || index >= days.length) return '';
+    return days[index];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: BracuSectionTitle(title: _weekdayLabel(date))),
         Text(
-          subtitle,
+          formatLongDate(date),
           style: TextStyle(
-            fontSize: 12,
-            color: BracuPalette.textSecondary(context),
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: BracuPalette.textPrimary(context),
           ),
         ),
       ],
@@ -521,174 +561,182 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-class _ScheduleItemCard extends StatelessWidget {
-  const _ScheduleItemCard({
+class _UpcomingScheduleItemCard extends StatelessWidget {
+  const _UpcomingScheduleItemCard({
     required this.item,
     required this.onTap,
-    required this.onToggleDone,
+    required this.onSetDone,
+    required this.onSetPending,
     required this.onDelete,
   });
 
   final SchedulePlannerItem item;
   final VoidCallback onTap;
-  final VoidCallback onToggleDone;
+  final VoidCallback onSetDone;
+  final VoidCallback onSetPending;
   final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
-    final color = schedulePlannerKindColor(item.kind);
-    final statusLabel = item.isDone
-        ? 'Done'
-        : item.isOverdue
-        ? 'Overdue'
-        : item.isDueSoon
-        ? 'Due soon'
-        : 'Open';
+    final title = _plannerCardTitle(item.title);
 
-    return BracuCard(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: BracuCard(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Align(
+              alignment: Alignment.center,
+              child: SectionBadge(
+                label: '${item.dueAt.day}',
+                color: BracuPalette.primary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 7,
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      schedulePlannerKindIcon(item.kind),
-                      color: color,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  Text.rich(
+                    TextSpan(
                       children: [
-                        Text(
-                          item.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: BracuPalette.textPrimary(context),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          schedulePlannerFormatKind(item.kind),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: BracuPalette.textSecondary(context),
-                          ),
+                        TextSpan(
+                          text: title,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
                   ),
-                  PopupMenuButton<String>(
-                    onSelected: (value) {
-                      switch (value) {
-                        case 'toggle':
-                          onToggleDone();
-                          break;
-                        case 'delete':
-                          onDelete();
-                          break;
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: 'toggle',
-                        child: Text(
-                          item.isDone ? 'Mark as pending' : 'Mark as done',
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Text('Delete'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _StatusChip(label: statusLabel, color: color),
-                  if (item.courseCode.isNotEmpty)
-                    _StatusChip(
-                      label: item.courseCode,
-                      color: const Color(0xFF5B8DEF),
+                  const SizedBox(height: 4),
+                  Text(
+                    DateFormat('hh:mm a').format(item.dueAt),
+                    style: TextStyle(
+                      color: BracuPalette.textPrimary(context),
+                      fontWeight: FontWeight.w700,
                     ),
-                  _StatusChip(
-                    label: schedulePlannerFormatDueDate(item.dueAt),
-                    color: const Color(0xFF7C56FF),
                   ),
                 ],
               ),
-              if (item.notes.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Text(
-                  item.notes,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    height: 1.4,
-                    color: BracuPalette.textSecondary(context),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 4,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    item.isDone ? 'Done' : 'Pending',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: BracuPalette.textSecondary(context),
+                    ),
                   ),
-                ),
-              ],
-              if (item.reminderAt != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Reminder ${schedulePlannerFormatReminder(item.reminderAt!)}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: BracuPalette.textSecondary(context),
+                  const SizedBox(height: 2),
+                  _PlannerItemActionsMenu(
+                    isDone: item.isDone,
+                    onSetDone: onSetDone,
+                    onSetPending: onSetPending,
+                    onDelete: onDelete,
                   ),
-                ),
-              ],
-            ],
-          ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.label, required this.color});
+String _plannerCardTitle(String rawTitle) {
+  final parts = rawTitle
+      .split('•')
+      .map((part) => part.trim())
+      .where((part) => part.isNotEmpty)
+      .toList();
+  if (parts.length < 2) return rawTitle.trim();
+  final kind = parts.last.toLowerCase();
+  if (kind != 'quiz' && kind != 'assignment' && kind != 'reminder') {
+    return rawTitle.trim();
+  }
+  return '${parts.first} • ${parts.last}';
+}
 
-  final String label;
-  final Color color;
+String _normalizePlannerTitleForSave(String rawTitle) {
+  final parts = rawTitle
+      .split('•')
+      .map((part) => part.trim())
+      .where((part) => part.isNotEmpty)
+      .toList();
+  if (parts.length < 2) return rawTitle.trim();
+  final kind = parts.last.toLowerCase();
+  if (kind != 'quiz' && kind != 'assignment' && kind != 'reminder') {
+    return rawTitle.trim();
+  }
+  return '${parts.first} • ${parts.last}';
+}
+
+class _PlannerItemActionsMenu extends StatelessWidget {
+  const _PlannerItemActionsMenu({
+    required this.isDone,
+    required this.onSetDone,
+    required this.onSetPending,
+    required this.onDelete,
+  });
+
+  final bool isDone;
+  final VoidCallback onSetDone;
+  final VoidCallback onSetPending;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: color,
+    return Builder(
+      builder: (anchorContext) => InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () async {
+          final action = await showBracuSelectDropdown<String>(
+            anchorContext,
+            options: [
+              if (!isDone)
+                const BracuSelectOption<String>(
+                  value: 'done',
+                  label: 'Done',
+                  icon: Icons.check_circle_outline_rounded,
+                ),
+              if (isDone)
+                const BracuSelectOption<String>(
+                  value: 'pending',
+                  label: 'Pending',
+                  icon: Icons.radio_button_unchecked_rounded,
+                ),
+              const BracuSelectOption<String>(
+                value: 'delete',
+                label: 'Delete',
+                icon: Icons.delete_outline_rounded,
+              ),
+            ],
+          );
+          if (action == null) return;
+          if (action == 'done') {
+            onSetDone();
+          } else if (action == 'pending') {
+            onSetPending();
+          } else if (action == 'delete') {
+            onDelete();
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          child: Icon(
+            Icons.more_horiz_rounded,
+            size: 20,
+            color: BracuPalette.textPrimary(context),
+          ),
         ),
       ),
     );

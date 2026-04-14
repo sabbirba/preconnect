@@ -355,7 +355,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: _busy ? null : _pickPrintFile,
-                        icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                        icon: const Icon(
+                          Icons.picture_as_pdf_outlined,
+                          size: 18,
+                        ),
                         label: const Text('Choose'),
                       ),
                     ),
@@ -670,7 +673,11 @@ class _LprPrintClient {
 
       socket = await Socket.connect(printerHost, port, timeout: _timeout);
       ackReader = _LprAckReader(socket);
-      await _writeAndAck(socket, ackReader, Uint8List.fromList([0x02, ..._ascii(printerQueue), 0x0A]));
+      await _writeAndAck(
+        socket,
+        ackReader,
+        Uint8List.fromList([0x02, ..._ascii(printerQueue), 0x0A]),
+      );
       await _writeAndAck(
         socket,
         ackReader,
@@ -714,7 +721,7 @@ class _LprPrintClient {
   Future<void> _writeAndAck(
     Socket socket,
     _LprAckReader ackReader,
-  List<int> data,
+    List<int> data,
   ) async {
     socket.add(data);
     await socket.flush().timeout(_timeout);

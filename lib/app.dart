@@ -458,7 +458,9 @@ class _MyAppState extends State<MyApp>
       focusColor: Colors.transparent,
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: brightness == Brightness.dark ? Colors.white : primary,
+          foregroundColor: brightness == Brightness.dark
+              ? Colors.white
+              : primary,
           disabledForegroundColor:
               (brightness == Brightness.dark ? Colors.white : primary)
                   .withValues(alpha: 0.45),
@@ -466,15 +468,15 @@ class _MyAppState extends State<MyApp>
           overlayColor: Colors.transparent,
           enableFeedback: false,
           side: BorderSide(
-            color: (brightness == Brightness.dark
-                    ? Colors.white
-                    : primary)
+            color: (brightness == Brightness.dark ? Colors.white : primary)
                 .withValues(alpha: 0.30),
           ),
           minimumSize: const Size(0, 44),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -487,18 +489,24 @@ class _MyAppState extends State<MyApp>
           minimumSize: const Size(0, 44),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: brightness == Brightness.dark ? Colors.white : primary,
+          foregroundColor: brightness == Brightness.dark
+              ? Colors.white
+              : primary,
           splashFactory: NoSplash.splashFactory,
           overlayColor: Colors.transparent,
           enableFeedback: false,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -512,7 +520,9 @@ class _MyAppState extends State<MyApp>
           minimumSize: const Size(0, 44),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       ),
     );

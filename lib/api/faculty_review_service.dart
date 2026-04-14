@@ -153,8 +153,7 @@ class FacultyReviewItem {
           0,
       comment: '${json['comment'] ?? ''}'.trim(),
       isApproved: json['isApproved'] == true || json['is_approved'] == true,
-      canDelete:
-          (json['canDelete'] as bool?) ?? (json['can_delete'] as bool?),
+      canDelete: (json['canDelete'] as bool?) ?? (json['can_delete'] as bool?),
       canReport:
           (json['canReport'] as bool?) ?? (json['can_report'] as bool?) ?? true,
       createdAt: DateTime.tryParse(

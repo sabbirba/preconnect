@@ -502,10 +502,7 @@ class NotificationService {
     return DateTime.tryParse(normalized);
   }
 
-  List<String> _normalizeScraperImageUrls(
-    String raw, {
-    String? baseUrl,
-  }) {
+  List<String> _normalizeScraperImageUrls(String raw, {String? baseUrl}) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return const <String>[];
 
@@ -527,10 +524,7 @@ class NotificationService {
 
     final output = <String>{};
     for (var resolved in candidates) {
-      final normalized = normalizeImageUrl(
-        resolved,
-        baseUrl: baseUrl,
-      );
+      final normalized = normalizeImageUrl(resolved, baseUrl: baseUrl);
       if (normalized != null) {
         output.add(normalized);
       }
