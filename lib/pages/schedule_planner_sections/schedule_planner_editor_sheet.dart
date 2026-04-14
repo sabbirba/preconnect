@@ -4,47 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/model/schedule_planner_item.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/pages/schedule_planner_sections/schedule_planner_shared.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
-import 'package:preconnect/tools/time_utils.dart';
-
-typedef SchedulePlannerDraft = ({
-  String kind,
-  String title,
-  String courseCode,
-  String sectionName,
-  DateTime dueAt,
-  bool useReminder,
-  DateTime? reminderAt,
-  String notes,
-  bool isDone,
-});
-
-typedef SchedulePlannerSetAlarmCallback =
-    Future<void> Function({
-      required String courseCode,
-      required String title,
-      required DateTime reminderAt,
-    });
-
-typedef SchedulePlannerDeleteCallback = Future<void> Function();
-typedef SchedulePlannerToggleDoneCallback = Future<void> Function(bool isDone);
-
-typedef SchedulePlannerClassSchedule = ({
-  String day,
-  String startTime,
-  String endTime,
-});
-
-typedef SchedulePlannerCourseOption = ({
-  String courseCode,
-  String sectionName,
-  List<SchedulePlannerClassSchedule> classSchedules,
-});
-
-typedef _TitleTemplate = ({
-  SchedulePlannerCourseOption courseOption,
-  String kind,
-});
 
 Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
   BuildContext context, {
@@ -56,9 +17,10 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
 }) async {
   final isRamadan = await RamadanTiming.isRamadan();
   var titleValue = item?.title.trim().isNotEmpty == true
-      ? _normalizePlannerTitle(item!.title.trim())
+      ? schedulePlannerNormalizeTitle(item!.title.trim())
       : '';
   var courseCodeValueText = item?.courseCode ?? '';
+  var sectionNameValueText = item?.sectionName ?? '';
   var notesValue = item?.notes ?? '';
   var titleFieldVersion = 0;
   var kind = item != null && item.kind.isNotEmpty ? item.kind : 'quiz';
@@ -71,28 +33,48 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
   }
   var isDone = item?.isDone ?? false;
 
-  final availableCourseOptions = _courseOptionsForDropdown(
+  final availableCourseOptions = schedulePlannerCourseOptionsForDropdown(
     courseOptions: courseOptions,
     item: item,
   );
   final initialCourseCode = item?.courseCode.trim().toUpperCase();
+  final initialSectionName = item?.sectionName.trim() ?? '';
   SchedulePlannerCourseOption? selectedCourseOption =
       initialCourseCode != null && initialCourseCode.isNotEmpty
-      ? _findCourseOption(availableCourseOptions, initialCourseCode)
+      ? schedulePlannerFindCourseOption(
+          availableCourseOptions,
+          initialCourseCode,
+          preferredSectionName: initialSectionName,
+        )
       : null;
-  selectedCourseOption ??= _selectDefaultCourseOption(
+  selectedCourseOption ??= schedulePlannerSelectDefaultCourseOption(
     availableCourseOptions,
     isRamadan: isRamadan,
   );
 
-  titleValue = titleValue.isNotEmpty
-      ? titleValue
-      : _generatedTitle(
-          kind: kind,
-          selectedCourseOption: selectedCourseOption,
-          courseOptions: courseOptions,
-          item: item,
-        );
+  var resolvedSectionName = schedulePlannerResolveSectionName(
+    courseCode:
+        selectedCourseOption?.courseCode.trim().toUpperCase() ??
+        initialCourseCode ??
+        courseCodeValueText.trim().toUpperCase(),
+    sectionName: selectedCourseOption?.sectionName.trim().isNotEmpty == true
+        ? selectedCourseOption!.sectionName.trim()
+        : initialSectionName,
+    title: item?.title.trim() ?? '',
+    courseOptions: availableCourseOptions,
+  );
+
+  titleValue = item?.title.trim().isNotEmpty == true
+      ? schedulePlannerInitialSuffix(
+          item!.title.trim(),
+          courseCode:
+              selectedCourseOption?.courseCode.trim().toUpperCase() ??
+              item.courseCode.trim().toUpperCase(),
+          sectionName: resolvedSectionName.isNotEmpty
+              ? resolvedSectionName
+              : sectionNameValueText.trim(),
+        )
+      : schedulePlannerKindLabel(kind);
 
   String courseCodeValue() {
     if (courseOptions.isNotEmpty) {
@@ -101,31 +83,41 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
     return courseCodeValueText.trim().toUpperCase();
   }
 
-  String generatedTitle([String? courseCode]) {
-    return _generatedTitle(
-      kind: kind,
-      selectedCourseOption: selectedCourseOption,
-      courseOptions: courseOptions,
-      item: item,
-      courseCode: courseCode,
+  String fixedCourseCode() {
+    return courseCodeValue();
+  }
+
+  String fixedSectionName() {
+    if (schedulePlannerHasUsableSectionLabel(resolvedSectionName)) {
+      return resolvedSectionName.trim();
+    }
+    final fallback = sectionNameValueText.trim();
+    if (schedulePlannerHasUsableSectionLabel(fallback)) return fallback;
+    return schedulePlannerResolveSectionName(
+      courseCode: fixedCourseCode(),
+      sectionName: fallback,
+      title: item?.title.trim() ?? '',
+      courseOptions: availableCourseOptions,
     );
   }
 
   final liveTitle = ValueNotifier<String>(
-    item == null ? 'Add ${_kindLabel(kind)}' : 'Edit ${_kindLabel(kind)}',
+    item == null
+        ? 'Add ${schedulePlannerKindLabel(kind)}'
+        : 'Edit ${schedulePlannerKindLabel(kind)}',
   );
 
   void syncLiveTitle() {
     liveTitle.value = item == null
-        ? 'Add ${_kindLabel(kind)}'
-        : 'Edit ${_kindLabel(kind)}';
+        ? 'Add ${schedulePlannerKindLabel(kind)}'
+        : 'Edit ${schedulePlannerKindLabel(kind)}';
   }
 
   final result = await showBracuBottomSheet<SchedulePlannerDraft>(
     context,
     title: item == null
-        ? 'Add ${_kindLabel(kind)}'
-        : 'Edit ${_kindLabel(kind)}',
+        ? 'Add ${schedulePlannerKindLabel(kind)}'
+        : 'Edit ${schedulePlannerKindLabel(kind)}',
     liveTitle: liveTitle,
     initialChildSize: 0.88,
     builder: (sheetContext, textPrimary, textSecondary) {
@@ -168,32 +160,40 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
           }
 
           Future<void> pickTitleTemplate() async {
-            final template = await showBracuSelectSheet<_TitleTemplate>(
-              context,
-              title: 'Title Template',
-              options: _titleTemplates(courseOptions: courseOptions, item: item)
-                  .map(
-                    (template) => BracuSelectOption<_TitleTemplate>(
-                      value: template,
-                      label: _titleTemplateLabel(template),
-                      showLeadingIcon: false,
-                    ),
-                  )
-                  .toList(),
-              selectedValue: _currentTemplate(
-                courseOptions: courseOptions,
-                item: item,
-                selectedCourseOption: selectedCourseOption,
-                kind: kind,
-                titleValue: titleValue.trim(),
-                courseCodeValue: courseCodeValue(),
-              ),
-            );
+            final template =
+                await showBracuSelectSheet<SchedulePlannerTitleTemplate>(
+                  context,
+                  title: 'Title Template',
+                  options:
+                      schedulePlannerTitleTemplates(
+                            courseOptions: courseOptions,
+                            item: item,
+                          )
+                          .map(
+                            (template) =>
+                                BracuSelectOption<SchedulePlannerTitleTemplate>(
+                                  value: template,
+                                  label: schedulePlannerTitleTemplateLabel(
+                                    template,
+                                  ),
+                                  showLeadingIcon: false,
+                                ),
+                          )
+                          .toList(),
+                  selectedValue: schedulePlannerCurrentTemplateBySelection(
+                    courseOptions: courseOptions,
+                    item: item,
+                    selectedCourseOption: selectedCourseOption,
+                    resolvedSectionName: resolvedSectionName,
+                    kind: kind,
+                  ),
+                );
             if (template == null || !context.mounted) return;
             setState(() {
               selectedCourseOption = template.courseOption;
+              resolvedSectionName = template.sectionName;
               kind = template.kind;
-              titleValue = _titleTemplateLabel(template);
+              titleValue = schedulePlannerKindLabel(template.kind);
               titleFieldVersion++;
               syncLiveTitle();
             });
@@ -203,19 +203,29 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
             final reminderAt = dueAt.subtract(
               Duration(minutes: reminderMinutesBefore),
             );
-            final courseCode = courseCodeValue();
-            final title = titleValue.trim().isEmpty
-                ? generatedTitle(courseCode)
+            final courseCode = fixedCourseCode();
+            final sectionName = fixedSectionName();
+            final titleSuffix = titleValue.trim().isEmpty
+                ? schedulePlannerKindLabel(kind)
                 : titleValue.trim();
+            final title = schedulePlannerComposeTitle(
+              courseCode: courseCode,
+              sectionName: sectionName,
+              suffix: titleSuffix,
+            );
             if (courseCode.isEmpty) {
               showAppSnackBar(context, 'Select a course');
+              return;
+            }
+            if (sectionName.isEmpty) {
+              showAppSnackBar(context, 'Select a section');
               return;
             }
             Navigator.of(context).pop((
               kind: kind,
               title: title,
               courseCode: courseCode,
-              sectionName: selectedCourseOption?.sectionName.trim() ?? '',
+              sectionName: sectionName,
               dueAt: dueAt,
               useReminder: true,
               reminderAt: reminderAt,
@@ -259,23 +269,23 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
             padding: const EdgeInsets.only(bottom: 4),
             children: [
               TextFormField(
-                key: ValueKey('planner_title_$titleFieldVersion'),
+                key: ValueKey(
+                  'planner_title_${titleFieldVersion}_${fixedCourseCode()}_${fixedSectionName()}',
+                ),
                 initialValue: titleValue,
                 onChanged: (value) {
                   titleValue = value;
-                  final parsed = _parseTitle(
-                    value.trim(),
-                    courseOptions: courseOptions,
-                  );
-                  if (parsed != null) {
-                    selectedCourseOption = parsed.courseOption;
-                    kind = parsed.kind;
-                    syncLiveTitle();
-                  }
                   setState(() {});
                 },
                 decoration: InputDecoration(
                   labelText: 'Title',
+                  prefixText:
+                      '${fixedCourseCode().isEmpty ? 'Select course' : fixedCourseCode()} • ',
+                  prefixStyle: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: BracuPalette.textSecondary(context),
+                  ),
                   border: const OutlineInputBorder(),
                   isDense: true,
                   suffixIcon: IconButton(
@@ -391,7 +401,13 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                     );
                     final courseCode = courseCodeValue();
                     final title = titleValue.trim().isEmpty
-                        ? generatedTitle(courseCode)
+                        ? schedulePlannerGeneratedTitle(
+                            kind: kind,
+                            selectedCourseOption: selectedCourseOption,
+                            courseOptions: courseOptions,
+                            item: item,
+                            courseCode: courseCode,
+                          )
                         : titleValue.trim();
                     if (courseCode.isEmpty) {
                       showAppSnackBar(context, 'Select a course');
@@ -475,311 +491,6 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
 
   liveTitle.dispose();
   return result;
-}
-
-List<SchedulePlannerCourseOption> _courseOptionsForDropdown({
-  required List<SchedulePlannerCourseOption> courseOptions,
-  required SchedulePlannerItem? item,
-}) {
-  final normalized = <SchedulePlannerCourseOption>[];
-  final seen = <String>{};
-  for (final option in courseOptions) {
-    final code = option.courseCode.trim().toUpperCase();
-    if (code.isEmpty) continue;
-    final next = (
-      courseCode: code,
-      sectionName: option.sectionName.trim(),
-      classSchedules: option.classSchedules,
-    );
-    if (seen.add(_courseOptionIdentity(next))) {
-      normalized.add(next);
-    }
-  }
-  final currentCourseCode = item?.courseCode.trim().toUpperCase();
-  if (currentCourseCode != null && currentCourseCode.isNotEmpty) {
-    final current = (
-      courseCode: currentCourseCode,
-      sectionName: '',
-      classSchedules: const <SchedulePlannerClassSchedule>[],
-    );
-    if (seen.add(_courseOptionIdentity(current))) {
-      normalized.add(current);
-    }
-  }
-  normalized.sort((a, b) {
-    final codeCmp = a.courseCode.compareTo(b.courseCode);
-    if (codeCmp != 0) return codeCmp;
-    return a.sectionName.compareTo(b.sectionName);
-  });
-  return normalized;
-}
-
-String _courseOptionIdentity(SchedulePlannerCourseOption option) {
-  return '${option.courseCode}|${option.sectionName}';
-}
-
-SchedulePlannerCourseOption? _selectDefaultCourseOption(
-  List<SchedulePlannerCourseOption> options, {
-  required bool isRamadan,
-}) {
-  if (options.isEmpty) return null;
-
-  final now = DateTime.now();
-  SchedulePlannerCourseOption? bestOption;
-  DateTime? bestOccurrence;
-
-  for (final option in options) {
-    final occurrence = _bestOccurrenceForOption(
-      option,
-      now: now,
-      isRamadan: isRamadan,
-    );
-    if (occurrence == null) continue;
-    if (bestOccurrence == null || occurrence.isBefore(bestOccurrence)) {
-      bestOccurrence = occurrence;
-      bestOption = option;
-    }
-  }
-
-  return bestOption ?? options.first;
-}
-
-DateTime? _bestOccurrenceForOption(
-  SchedulePlannerCourseOption option, {
-  required DateTime now,
-  required bool isRamadan,
-}) {
-  DateTime? best;
-  final nowMinutes = now.hour * 60 + now.minute;
-  for (final schedule in option.classSchedules) {
-    final occurrence = _nextOccurrence(
-      day: schedule.day,
-      startTime: schedule.startTime,
-      endTime: schedule.endTime,
-      isRamadan: isRamadan,
-      now: now,
-      nowMinutes: nowMinutes,
-    );
-    if (occurrence == null) continue;
-    if (best == null || occurrence.isBefore(best)) {
-      best = occurrence;
-    }
-  }
-  return best;
-}
-
-DateTime? _nextOccurrence({
-  required String day,
-  required String startTime,
-  required String endTime,
-  required bool isRamadan,
-  required DateTime now,
-  required int nowMinutes,
-}) {
-  final targetWeekday = BracuTime.weekdayFromName(day);
-  if (targetWeekday == null) return null;
-
-  final adjusted = RamadanTiming.adjustRange(
-    startTime,
-    endTime,
-    isRamadan: isRamadan,
-  );
-
-  final startParsed = BracuTime.parseHourMinute(adjusted.startTime);
-  if (startParsed == null) return null;
-  final (startHour, startMinute) = startParsed;
-  final startMinutes = startHour * 60 + startMinute;
-
-  final endParsed = BracuTime.parseHourMinute(adjusted.endTime);
-  final endHour = endParsed?.$1 ?? 0;
-  final endMinute = endParsed?.$2 ?? 0;
-  final endMinutes = endHour * 60 + endMinute;
-
-  final dayDelta = (targetWeekday - now.weekday + 7) % 7;
-  if (dayDelta == 0) {
-    if (nowMinutes >= endMinutes) {
-      return null;
-    }
-    if (nowMinutes <= startMinutes) {
-      return DateTime(now.year, now.month, now.day, startHour, startMinute);
-    }
-    return now;
-  }
-
-  final nextDate = now.add(Duration(days: dayDelta));
-  return DateTime(
-    nextDate.year,
-    nextDate.month,
-    nextDate.day,
-    startHour,
-    startMinute,
-  );
-}
-
-SchedulePlannerCourseOption? _findCourseOption(
-  List<SchedulePlannerCourseOption> options,
-  String courseCode,
-) {
-  for (final option in options) {
-    if (option.courseCode == courseCode) {
-      return option;
-    }
-  }
-  return options.isNotEmpty ? options.first : null;
-}
-
-List<_TitleTemplate> _titleTemplates({
-  required List<SchedulePlannerCourseOption> courseOptions,
-  required SchedulePlannerItem? item,
-}) {
-  final templates = <_TitleTemplate>[];
-  final kinds = const ['quiz', 'assignment', 'reminder'];
-  for (final course in _courseOptionsForDropdown(
-    courseOptions: courseOptions,
-    item: item,
-  )) {
-    for (final nextKind in kinds) {
-      templates.add((courseOption: course, kind: nextKind));
-    }
-  }
-  return templates;
-}
-
-_TitleTemplate? _currentTemplate({
-  required List<SchedulePlannerCourseOption> courseOptions,
-  required SchedulePlannerItem? item,
-  required SchedulePlannerCourseOption? selectedCourseOption,
-  required String kind,
-  required String titleValue,
-  required String courseCodeValue,
-}) {
-  final parsed = _parseTitle(titleValue, courseOptions: courseOptions);
-  if (parsed != null) return parsed;
-  final courseOption =
-      selectedCourseOption ??
-      _findCourseOption(
-        _courseOptionsForDropdown(courseOptions: courseOptions, item: item),
-        courseCodeValue,
-      );
-  if (courseOption == null) return null;
-  return (courseOption: courseOption, kind: kind);
-}
-
-_TitleTemplate? _parseTitle(
-  String value, {
-  required List<SchedulePlannerCourseOption> courseOptions,
-}) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return null;
-  final parts = trimmed
-      .split('•')
-      .map((part) => part.trim())
-      .where((part) => part.isNotEmpty)
-      .toList();
-  if (parts.length < 2) return null;
-
-  final kind = _matchKind(parts.last);
-  if (kind == null) return null;
-
-  final courseLabel = parts.first;
-  final courseOption = _findCourseOptionByLabel(
-    courseLabel,
-    courseOptions: courseOptions,
-  );
-  if (courseOption == null) return null;
-
-  return (courseOption: courseOption, kind: kind);
-}
-
-String? _matchKind(String value) {
-  final normalized = value.trim().toLowerCase();
-  for (final kind in const ['quiz', 'assignment', 'reminder']) {
-    if (normalized == kind) return kind;
-  }
-  return null;
-}
-
-SchedulePlannerCourseOption? _findCourseOptionByLabel(
-  String label, {
-  required List<SchedulePlannerCourseOption> courseOptions,
-}) {
-  final normalized = label.trim();
-  final normalizedCode = normalized.split('•').first.trim().toUpperCase();
-  for (final option in _courseOptionsForDropdown(
-    courseOptions: courseOptions,
-    item: null,
-  )) {
-    if (_courseOptionLabel(option) == normalized ||
-        option.courseCode == normalized ||
-        option.courseCode == normalizedCode) {
-      return option;
-    }
-  }
-  return null;
-}
-
-String _courseOptionLabel(SchedulePlannerCourseOption option) {
-  return option.courseCode;
-}
-
-String _titleTemplateLabel(_TitleTemplate template) {
-  return '${_courseOptionLabel(template.courseOption)} • ${_kindLabel(template.kind)}';
-}
-
-String _generatedTitle({
-  required String kind,
-  required SchedulePlannerCourseOption? selectedCourseOption,
-  required List<SchedulePlannerCourseOption> courseOptions,
-  required SchedulePlannerItem? item,
-  String? courseCode,
-}) {
-  final code =
-      (courseCode ?? selectedCourseOption?.courseCode ?? item?.courseCode ?? '')
-          .trim()
-          .toUpperCase();
-  final kindLabel = _kindLabel(kind);
-  if (code.isEmpty) return kindLabel;
-  return '$code • $kindLabel';
-}
-
-String _normalizePlannerTitle(String title) {
-  final parts = title
-      .split('•')
-      .map((part) => part.trim())
-      .where((part) => part.isNotEmpty)
-      .toList();
-  if (parts.length < 2) return title;
-  final kind = _matchKind(parts.last);
-  if (kind == null) return title;
-  final code = parts.first;
-  return '$code • ${_kindLabel(kind)}';
-}
-
-String _kindLabel(String kind) {
-  switch (kind) {
-    case 'quiz':
-      return 'Quiz';
-    case 'assignment':
-      return 'Assignment';
-    case 'reminder':
-      return 'Reminder';
-    default:
-      final value = kind.trim();
-      if (value.isEmpty) return 'Task';
-      return value[0].toUpperCase() + value.substring(1).toLowerCase();
-  }
-}
-
-String schedulePlannerFormatKind(String kind) {
-  return _kindLabel(kind);
-}
-
-String schedulePlannerFormatDueDate(DateTime dueAt) {
-  return DateFormat('dd MMM, hh:mm a').format(dueAt);
-}
-
-String schedulePlannerFormatReminder(DateTime reminderAt) {
-  return DateFormat('dd MMM, hh:mm a').format(reminderAt);
 }
 
 IconData schedulePlannerKindIcon(String kind) {

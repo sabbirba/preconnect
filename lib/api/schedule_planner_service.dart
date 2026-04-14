@@ -40,6 +40,32 @@ class SchedulePlannerService {
     }
   }
 
+  Future<List<SchedulePlannerItem>?> getCachedItems() async {
+    return _readCachedItems();
+  }
+
+  Future<List<SchedulePlannerItem>> autoCompleteOverdueItems(
+    List<SchedulePlannerItem> items,
+  ) async {
+    final overdueItems = items.where((item) => item.isOverdue).toList();
+    if (overdueItems.isEmpty) return items;
+
+    final updatedItems = List<SchedulePlannerItem>.from(items);
+    for (final overdue in overdueItems) {
+      final updated = await _markItemDone(overdue);
+      for (var i = 0; i < updatedItems.length; i++) {
+        if (updatedItems[i].itemId == updated.itemId) {
+          updatedItems[i] = updated;
+          break;
+        }
+      }
+    }
+
+    updatedItems.sort(_compareItems);
+    await _writeCache(updatedItems);
+    return updatedItems;
+  }
+
   Future<SchedulePlannerItem> createItem({
     required String kind,
     required String title,
@@ -118,6 +144,16 @@ class SchedulePlannerService {
     return item;
   }
 
+  Future<SchedulePlannerItem> _markItemDone(SchedulePlannerItem item) async {
+    try {
+      return await updateItem(itemId: item.itemId, isDone: true);
+    } catch (_) {
+      final updated = item.copyWith(isDone: true);
+      await _upsertCacheItem(updated);
+      return updated;
+    }
+  }
+
   Future<void> deleteItem(int itemId) async {
     await _client.authenticatedRequest(
       'DELETE',
@@ -181,6 +217,18 @@ class SchedulePlannerService {
     await _writeCache(next);
   }
 
+  int _compareItems(SchedulePlannerItem a, SchedulePlannerItem b) {
+    final doneCompare = a.isDone == b.isDone
+        ? 0
+        : a.isDone
+        ? 1
+        : -1;
+    if (doneCompare != 0) return doneCompare;
+    final dueCompare = a.dueAt.compareTo(b.dueAt);
+    if (dueCompare != 0) return dueCompare;
+    return b.createdAt.compareTo(a.createdAt);
+  }
+
   List<SchedulePlannerItem> _decodeItems(dynamic decoded) {
     final rawItems = decoded is Map ? decoded['items'] : null;
     if (rawItems is! List) return const <SchedulePlannerItem>[];
@@ -191,17 +239,7 @@ class SchedulePlannerService {
               SchedulePlannerItem.fromJson(Map<String, dynamic>.from(item)),
         )
         .toList(growable: false);
-    items.sort((a, b) {
-      final doneCompare = a.isDone == b.isDone
-          ? 0
-          : a.isDone
-          ? 1
-          : -1;
-      if (doneCompare != 0) return doneCompare;
-      final dueCompare = a.dueAt.compareTo(b.dueAt);
-      if (dueCompare != 0) return dueCompare;
-      return b.createdAt.compareTo(a.createdAt);
-    });
+    items.sort(_compareItems);
     return items;
   }
 }

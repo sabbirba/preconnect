@@ -107,6 +107,13 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
               ? ScheduleService().fetchStudentSchedule()
               : ScheduleService().getStudentSchedule())
         : Future<String?>.value(null);
+    final plannerFuture = cardVisibility.showExamCountdownCard
+        ? (forceRefresh
+              ? SchedulePlannerService().getItems(forceRefresh: true)
+              : SchedulePlannerService().getItems())
+        : Future<List<SchedulePlannerItem>>.value(
+            const <SchedulePlannerItem>[],
+          );
     final ramadanFuture = needsRamadan
         ? RamadanTiming.getRamadanStatus(forceRefresh: forceRefresh)
         : Future<RamadanStatus>.value(const RamadanStatus(isRamadan: false));
@@ -117,15 +124,17 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     final results = await Future.wait<dynamic>([
       profileFuture,
       scheduleFuture,
+      plannerFuture,
       ramadanFuture,
       holidayFuture,
     ]);
 
     Map<String, String?>? profile = results[0] as Map<String, String?>?;
     String? scheduleJson = results[1] as String?;
-    final ramadan = results[2] as RamadanStatus;
+    final plannerItems = results[2] as List<SchedulePlannerItem>;
+    final ramadan = results[3] as RamadanStatus;
     final isRamadan = ramadan.isRamadan;
-    final holidayStatus = results[3] as HolidayStatus;
+    final holidayStatus = results[4] as HolidayStatus;
 
     if (!forceRefresh &&
         (profile == null || (needsSchedule && scheduleJson == null))) {
@@ -185,6 +194,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       photoUrl: photoUrl,
       sections: sections,
       examOverrides: examOverrides,
+      plannerItems: plannerItems,
       isRamadan: isRamadan,
       ramadan: ramadan,
       holiday: holidayStatus,
@@ -384,13 +394,13 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     }
   }
 
-  _ExamCountdownData? _nextExamCountdown(
+  _CountdownCardData? _nextExamCountdown(
     List<section.Section> sections,
     Map<String, ExamScheduleOverride> overrides,
   ) {
     final examService = ExamScheduleService();
     final now = DateTime.now();
-    final exams = <_ExamCountdownData>[];
+    final exams = <_CountdownCardData>[];
     for (final s in sections) {
       final resolved = examService.resolveSection(
         section: s,
@@ -402,7 +412,13 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       );
       if (mid != null) {
         exams.add(
-          _ExamCountdownData(time: mid, courseCode: s.courseCode, type: 'Mid'),
+          _CountdownCardData(
+            title: mid.difference(now).inDays <= 3
+                ? '${s.courseCode} Mid Exam'
+                : 'Mid Exam',
+            targetDateTime: mid,
+            tab: HomeTab.examSchedule,
+          ),
         );
       }
       final fin = BracuTime.parseDateTime(
@@ -411,18 +427,53 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       );
       if (fin != null) {
         exams.add(
-          _ExamCountdownData(
-            time: fin,
-            courseCode: s.courseCode,
-            type: 'Final',
+          _CountdownCardData(
+            title: fin.difference(now).inDays <= 3
+                ? '${s.courseCode} Final Exam'
+                : 'Final Exam',
+            targetDateTime: fin,
+            tab: HomeTab.examSchedule,
           ),
         );
       }
     }
-    final upcoming = exams.where((e) => !e.time.isBefore(now)).toList()
-      ..sort((a, b) => a.time.compareTo(b.time));
+    final upcoming =
+        exams.where((e) => !e.targetDateTime.isBefore(now)).toList()
+          ..sort((a, b) => a.targetDateTime.compareTo(b.targetDateTime));
     if (upcoming.isEmpty) return null;
     return upcoming.first;
+  }
+
+  _CountdownCardData? _nextPlannerCountdown(List<SchedulePlannerItem> items) {
+    final now = DateTime.now();
+    final upcoming =
+        items
+            .where((item) => !item.isDone && item.dueAt.isAfter(now))
+            .map(
+              (item) => _CountdownCardData(
+                title: schedulePlannerCardTitle(item.title),
+                targetDateTime: item.dueAt,
+                tab: HomeTab.schedulePlanner,
+              ),
+            )
+            .toList()
+          ..sort((a, b) => a.targetDateTime.compareTo(b.targetDateTime));
+    if (upcoming.isEmpty) return null;
+    return upcoming.first;
+  }
+
+  _CountdownCardData? _nextDeadlineCountdown(
+    List<section.Section> sections,
+    Map<String, ExamScheduleOverride> overrides,
+    List<SchedulePlannerItem> plannerItems,
+  ) {
+    final nextExam = _nextExamCountdown(sections, overrides);
+    final nextPlanner = _nextPlannerCountdown(plannerItems);
+    if (nextExam == null) return nextPlanner;
+    if (nextPlanner == null) return nextExam;
+    return nextPlanner.targetDateTime.isBefore(nextExam.targetDateTime)
+        ? nextPlanner
+        : nextExam;
   }
 
   bool _isSameDate(DateTime a, DateTime b) {

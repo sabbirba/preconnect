@@ -12,7 +12,9 @@ import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/api/schedule_planner_service.dart';
 import 'package:preconnect/model/schedule_planner_item.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/pages/schedule_planner_sections/schedule_planner_editor_sheet.dart';
+import 'package:preconnect/pages/schedule_planner_sections/schedule_planner_editor_sheet.dart'
+    show showSchedulePlannerEditorSheet;
+import 'package:preconnect/pages/schedule_planner_sections/schedule_planner_shared.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
 class SchedulePlannerPage extends StatefulWidget {
@@ -23,27 +25,46 @@ class SchedulePlannerPage extends StatefulWidget {
 }
 
 class _SchedulePlannerPageState extends State<SchedulePlannerPage>
-    with RefreshBusState {
+    with RefreshBusState, WidgetsBindingObserver {
   static const MethodChannel _androidAlarmChannel = MethodChannel(
     'preconnect/android_alarm',
   );
+  static const Duration _autoRefreshInterval = Duration(seconds: 20);
   late Future<List<SchedulePlannerItem>> _future;
   late Future<List<SchedulePlannerCourseOption>> _courseOptionsFuture;
   List<SchedulePlannerItem>? _latestItems;
+  List<SchedulePlannerCourseOption> _latestCourseOptions =
+      const <SchedulePlannerCourseOption>[];
   bool _isBusy = false;
+  Timer? _autoRefreshTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _future = _loadItems();
     _courseOptionsFuture = _loadCourseOptions();
+    unawaited(_primeCachedItems());
+    _autoRefreshTimer = Timer.periodic(_autoRefreshInterval, (_) {
+      if (!mounted || _isBusy) return;
+      unawaited(_refresh(forceRefresh: true, notify: false));
+    });
     bindRefreshBus(_onRefreshSignal);
   }
 
   @override
   void dispose() {
+    _autoRefreshTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     unbindRefreshBus(_onRefreshSignal);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      unawaited(_refresh(forceRefresh: true, notify: false));
+    }
   }
 
   void _onRefreshSignal() {
@@ -55,10 +76,17 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
   Future<List<SchedulePlannerItem>> _loadItems({
     bool forceRefresh = false,
   }) async {
-    final items = await SchedulePlannerService().getItems(
-      forceRefresh: forceRefresh,
-    );
-    return items;
+    final service = SchedulePlannerService();
+    final items = await service.getItems(forceRefresh: forceRefresh);
+    return service.autoCompleteOverdueItems(items);
+  }
+
+  Future<void> _primeCachedItems() async {
+    final cached = await SchedulePlannerService().getCachedItems();
+    if (!mounted || cached == null || cached.isEmpty) return;
+    setState(() {
+      _latestItems = cached;
+    });
   }
 
   Future<List<SchedulePlannerCourseOption>> _loadCourseOptions({
@@ -97,6 +125,11 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
         return a.sectionName.compareTo(b.sectionName);
       });
       final options = courseOptions;
+      if (mounted) {
+        setState(() {
+          _latestCourseOptions = options;
+        });
+      }
       return options;
     } catch (_) {
       return const <SchedulePlannerCourseOption>[];
@@ -137,6 +170,10 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
       currentContext,
       item: item,
       courseOptions: courseOptions,
+      onDelete: item == null ? null : () => _deleteItem(item),
+      onToggleDone: item == null
+          ? null
+          : (isDone) => _setDoneStatus(item, isDone),
       onSetAlarm:
           ({
             required String courseCode,
@@ -418,8 +455,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
               });
             });
           }
-          final pendingItems = items.where((item) => !item.isDone).toList();
-          final doneItems = items.where((item) => item.isDone).toList();
+          final dayGroups = _groupItemsByDay(items);
 
           if (items.isEmpty) {
             return BracuRefreshScroll(
@@ -440,40 +476,29 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
 
           return BracuRefreshScroll(
             onRefresh: () => _refresh(forceRefresh: true),
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             child: _PlannerContentWrap(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (pendingItems.isNotEmpty) ...[
-                    _DayDateHeader(date: _pendingHeaderDate(pendingItems)),
-                    const SizedBox(height: 10),
-                    ...pendingItems.map(
+                  for (
+                    var groupIndex = 0;
+                    groupIndex < dayGroups.length;
+                    groupIndex++
+                  ) ...[
+                    if (groupIndex > 0) const SizedBox(height: 10),
+                    _DayDateHeader(date: dayGroups[groupIndex].date),
+                    const SizedBox(height: 8),
+                    ...dayGroups[groupIndex].items.map(
                       (item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.only(bottom: 8),
                         child: _UpcomingScheduleItemCard(
                           item: item,
+                          sectionBadgeLabel: _plannerSectionBadgeLabel(
+                            item,
+                            _latestCourseOptions,
+                          ),
                           onTap: () => _openEditor(item: item),
-                          onSetDone: () => _setDoneStatus(item, true),
-                          onSetPending: () => _setDoneStatus(item, false),
-                          onDelete: () => _deleteItem(item),
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (doneItems.isNotEmpty) ...[
-                    if (pendingItems.isNotEmpty) const SizedBox(height: 16),
-                    const _SectionLabel(title: 'Completed', subtitle: ''),
-                    const SizedBox(height: 10),
-                    ...doneItems.map(
-                      (item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _UpcomingScheduleItemCard(
-                          item: item,
-                          onTap: () => _openEditor(item: item),
-                          onSetDone: () => _setDoneStatus(item, true),
-                          onSetPending: () => _setDoneStatus(item, false),
-                          onDelete: () => _deleteItem(item),
                         ),
                       ),
                     ),
@@ -487,11 +512,39 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     );
   }
 
-  DateTime _pendingHeaderDate(List<SchedulePlannerItem> items) {
-    if (items.isEmpty) return DateTime.now();
-    return items
-        .map((item) => item.dueAt)
-        .reduce((a, b) => a.isBefore(b) ? a : b);
+  List<_PlannerDayGroup> _groupItemsByDay(List<SchedulePlannerItem> items) {
+    final grouped = <DateTime, List<SchedulePlannerItem>>{};
+    for (final item in items) {
+      final localDueAt = item.dueAt.toLocal();
+      final date = DateTime(localDueAt.year, localDueAt.month, localDueAt.day);
+      grouped.putIfAbsent(date, () => <SchedulePlannerItem>[]).add(item);
+    }
+
+    final groups =
+        grouped.entries
+            .map(
+              (entry) => _PlannerDayGroup(
+                date: entry.key,
+                items: List<SchedulePlannerItem>.from(entry.value)
+                  ..sort(_comparePlannerItems),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => a.date.compareTo(b.date));
+
+    return groups;
+  }
+
+  int _comparePlannerItems(SchedulePlannerItem a, SchedulePlannerItem b) {
+    final doneCompare = a.isDone == b.isDone
+        ? 0
+        : a.isDone
+        ? 1
+        : -1;
+    if (doneCompare != 0) return doneCompare;
+    final dueCompare = a.dueAt.compareTo(b.dueAt);
+    if (dueCompare != 0) return dueCompare;
+    return b.createdAt.compareTo(a.createdAt);
   }
 }
 
@@ -512,29 +565,11 @@ class _PlannerContentWrap extends StatelessWidget {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel({required this.title, required this.subtitle});
+class _PlannerDayGroup {
+  const _PlannerDayGroup({required this.date, required this.items});
 
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: BracuSectionTitle(title: title)),
-        if (subtitle.trim().isNotEmpty)
-          Text(
-            subtitle,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: BracuPalette.textSecondary(context),
-            ),
-          ),
-      ],
-    );
-  }
+  final DateTime date;
+  final List<SchedulePlannerItem> items;
 }
 
 class _DayDateHeader extends StatelessWidget {
@@ -542,26 +577,12 @@ class _DayDateHeader extends StatelessWidget {
 
   final DateTime date;
 
-  String _weekdayLabel(DateTime value) {
-    const days = <String>[
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
-    final index = value.weekday - 1;
-    if (index < 0 || index >= days.length) return '';
-    return days[index];
-  }
-
   @override
   Widget build(BuildContext context) {
+    final weekdayLabel = formatWeekdayTitle(DateFormat('EEEE').format(date));
     return Row(
       children: [
-        Expanded(child: BracuSectionTitle(title: _weekdayLabel(date))),
+        Expanded(child: BracuSectionTitle(title: weekdayLabel)),
         Text(
           formatLongDate(date),
           style: TextStyle(
@@ -578,21 +599,29 @@ class _DayDateHeader extends StatelessWidget {
 class _UpcomingScheduleItemCard extends StatelessWidget {
   const _UpcomingScheduleItemCard({
     required this.item,
+    required this.sectionBadgeLabel,
     required this.onTap,
-    required this.onSetDone,
-    required this.onSetPending,
-    required this.onDelete,
   });
 
   final SchedulePlannerItem item;
+  final String sectionBadgeLabel;
   final VoidCallback onTap;
-  final VoidCallback onSetDone;
-  final VoidCallback onSetPending;
-  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
     final title = _plannerCardTitle(item.title);
+    final dueAt = item.dueAt.toLocal();
+    final isComplete = item.isDone || !dueAt.isAfter(DateTime.now());
+    final titleStyle = TextStyle(
+      fontWeight: FontWeight.w600,
+      decoration: isComplete ? TextDecoration.lineThrough : null,
+      color: isComplete
+          ? BracuPalette.textSecondary(context)
+          : BracuPalette.textPrimary(context),
+    );
+    final timeColor = isComplete
+        ? BracuPalette.textSecondary(context)
+        : BracuPalette.textPrimary(context);
 
     return InkWell(
       borderRadius: BorderRadius.circular(18),
@@ -609,7 +638,7 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
                 Align(
                   alignment: Alignment.center,
                   child: SectionBadge(
-                    label: '${item.dueAt.day}',
+                    label: sectionBadgeLabel,
                     color: BracuPalette.primary,
                   ),
                 ),
@@ -622,21 +651,14 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
                     children: [
                       Text.rich(
                         TextSpan(
-                          children: [
-                            TextSpan(
-                              text: title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                          children: [TextSpan(text: title, style: titleStyle)],
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        DateFormat('hh:mm a').format(item.dueAt),
+                        DateFormat('hh:mm a').format(dueAt),
                         style: TextStyle(
-                          color: BracuPalette.textPrimary(context),
+                          color: timeColor,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -644,30 +666,6 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
-                  flex: 4,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        item.isDone ? 'Done' : 'Pending',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: BracuPalette.textSecondary(context),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      _PlannerItemActionsMenu(
-                        isDone: item.isDone,
-                        onSetDone: onSetDone,
-                        onSetPending: onSetPending,
-                        onDelete: onDelete,
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
             if (item.notes.trim().isNotEmpty) ...[
@@ -698,100 +696,16 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
 }
 
 String _plannerCardTitle(String rawTitle) {
-  final parts = rawTitle
-      .split('•')
-      .map((part) => part.trim())
-      .where((part) => part.isNotEmpty)
-      .toList();
-  if (parts.length < 2) return rawTitle.trim();
-  final kind = parts.last.toLowerCase();
-  if (kind != 'quiz' && kind != 'assignment' && kind != 'reminder') {
-    return rawTitle.trim();
-  }
-  return '${parts.first} • ${parts.last}';
+  return schedulePlannerCardTitle(rawTitle);
 }
 
 String _normalizePlannerTitleForSave(String rawTitle) {
-  final parts = rawTitle
-      .split('•')
-      .map((part) => part.trim())
-      .where((part) => part.isNotEmpty)
-      .toList();
-  if (parts.length < 2) return rawTitle.trim();
-  final kind = parts.last.toLowerCase();
-  if (kind != 'quiz' && kind != 'assignment' && kind != 'reminder') {
-    return rawTitle.trim();
-  }
-  return '${parts.first} • ${parts.last}';
+  return schedulePlannerNormalizeTitleForSave(rawTitle);
 }
 
-class _PlannerItemActionsMenu extends StatelessWidget {
-  const _PlannerItemActionsMenu({
-    required this.isDone,
-    required this.onSetDone,
-    required this.onSetPending,
-    required this.onDelete,
-  });
-
-  final bool isDone;
-  final VoidCallback onSetDone;
-  final VoidCallback onSetPending;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return Builder(
-      builder: (anchorContext) => InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () async {
-          final action = await showBracuSelectDropdown<String>(
-            anchorContext,
-            optionFontSize: 16,
-            optionPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 8,
-            ),
-            options: [
-              if (!isDone)
-                const BracuSelectOption<String>(
-                  value: 'done',
-                  label: 'Done',
-                  icon: Icons.check_circle_outline_rounded,
-                ),
-              if (isDone)
-                const BracuSelectOption<String>(
-                  value: 'pending',
-                  label: 'Pending',
-                  icon: Icons.radio_button_unchecked_rounded,
-                ),
-              const BracuSelectOption<String>(
-                value: 'delete',
-                label: 'Delete',
-                icon: Icons.delete_outline_rounded,
-              ),
-            ],
-          );
-          if (action == null) return;
-          if (action == 'done') {
-            onSetDone();
-          } else if (action == 'pending') {
-            onSetPending();
-          } else if (action == 'delete') {
-            onDelete();
-          }
-        },
-        child: SizedBox(
-          width: 24,
-          height: 24,
-          child: Center(
-            child: Icon(
-              Icons.more_horiz_rounded,
-              size: 18,
-              color: BracuPalette.textPrimary(context),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+String _plannerSectionBadgeLabel(
+  SchedulePlannerItem item,
+  List<SchedulePlannerCourseOption> courseOptions,
+) {
+  return schedulePlannerSectionBadgeLabel(item, courseOptions);
 }

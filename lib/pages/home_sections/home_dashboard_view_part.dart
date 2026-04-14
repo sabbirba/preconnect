@@ -80,10 +80,11 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                       final visibleEntries = isTodayHoliday
                           ? <_ScheduleEntry>[]
                           : todayEntries;
-                      final nextExam = _nextExamCountdown(
+                      final nextCountdown = _nextDeadlineCountdown(
                         data?.sections ?? const <section.Section>[],
                         data?.examOverrides ??
                             const <String, ExamScheduleOverride>{},
+                        data?.plannerItems ?? const <SchedulePlannerItem>[],
                       );
                       final todayExams = _todayExamEntries(
                         data?.sections ?? const <section.Section>[],
@@ -128,22 +129,16 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                               onLogout: widget.onLogout,
                               countdown:
                                   !cardVisibility.showExamCountdownCard ||
-                                      nextExam == null
+                                      nextCountdown == null
                                   ? null
                                   : InkWell(
                                       borderRadius: BorderRadius.circular(18),
-                                      onTap: () => widget.onNavigate(
-                                        HomeTab.examSchedule,
-                                      ),
+                                      onTap: () =>
+                                          widget.onNavigate(nextCountdown.tab),
                                       child: ExamCountdownCard(
-                                        title:
-                                            nextExam.time
-                                                    .difference(DateTime.now())
-                                                    .inDays <=
-                                                3
-                                            ? '${nextExam.courseCode} ${nextExam.type} Exam'
-                                            : '${nextExam.type} Exam',
-                                        targetDateTime: nextExam.time,
+                                        title: nextCountdown.title,
+                                        targetDateTime:
+                                            nextCountdown.targetDateTime,
                                       ),
                                     ),
                             ),

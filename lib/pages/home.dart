@@ -8,6 +8,7 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/exam_map_service.dart';
 import 'package:preconnect/api/profile_service.dart';
+import 'package:preconnect/api/schedule_planner_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/class_schedule.dart';
@@ -24,6 +25,7 @@ import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/calendar.dart';
 import 'package:preconnect/pages/free_labs.dart';
 import 'package:preconnect/pages/schedule_planner.dart';
+import 'package:preconnect/pages/schedule_planner_sections/schedule_planner_shared.dart';
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/settings.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
@@ -32,6 +34,7 @@ import 'package:preconnect/pages/home_sections/exam_countdown.dart';
 import 'package:preconnect/pages/home_sections/student_overview.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
 import 'package:preconnect/model/section_info.dart' as section;
+import 'package:preconnect/model/schedule_planner_item.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/android_network_assist.dart';
@@ -726,6 +729,7 @@ class _HomeData {
     required this.photoUrl,
     required this.sections,
     required this.examOverrides,
+    required this.plannerItems,
     required this.isRamadan,
     required this.ramadan,
     required this.holiday,
@@ -737,6 +741,7 @@ class _HomeData {
   final String? photoUrl;
   final List<section.Section> sections;
   final Map<String, ExamScheduleOverride> examOverrides;
+  final List<SchedulePlannerItem> plannerItems;
   final bool isRamadan;
   final RamadanStatus ramadan;
   final HolidayStatus holiday;
@@ -749,6 +754,7 @@ class _HomeData {
       photoUrl: photoUrl,
       sections: sections,
       examOverrides: examOverrides,
+      plannerItems: plannerItems,
       isRamadan: isRamadan,
       ramadan: ramadan,
       holiday: holiday,
@@ -777,16 +783,16 @@ class _ScheduleEntry {
   final String faculties;
 }
 
-class _ExamCountdownData {
-  _ExamCountdownData({
-    required this.time,
-    required this.courseCode,
-    required this.type,
+class _CountdownCardData {
+  _CountdownCardData({
+    required this.title,
+    required this.targetDateTime,
+    required this.tab,
   });
 
-  final DateTime time;
-  final String courseCode;
-  final String type;
+  final String title;
+  final DateTime targetDateTime;
+  final HomeTab tab;
 }
 
 class _TodayExamEntry {
