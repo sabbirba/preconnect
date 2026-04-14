@@ -467,6 +467,11 @@ Future<T?> showBracuSelectDropdown<T>(
   String? subtitle,
   required List<BracuSelectOption<T>> options,
   T? selectedValue,
+  double optionFontSize = 14,
+  EdgeInsetsGeometry optionPadding = const EdgeInsets.symmetric(
+    horizontal: 12,
+    vertical: 6,
+  ),
 }) async {
   final renderBox = context.findRenderObject() as RenderBox?;
   final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
@@ -536,10 +541,7 @@ Future<T?> showBracuSelectDropdown<T>(
                             Navigator.of(dialogContext).pop(option.value),
                         borderRadius: BorderRadius.circular(14),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
+                          padding: optionPadding,
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -547,7 +549,7 @@ Future<T?> showBracuSelectDropdown<T>(
                                 option.label,
                                 style: TextStyle(
                                   color: textPrimary,
-                                  fontSize: 14,
+                                  fontSize: optionFontSize,
                                   fontWeight: selected
                                       ? FontWeight.w800
                                       : FontWeight.w600,

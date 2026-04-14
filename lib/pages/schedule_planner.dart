@@ -582,10 +582,12 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
 
     return InkWell(
       borderRadius: BorderRadius.circular(18),
+      splashFactory: NoSplash.splashFactory,
+      overlayColor: const WidgetStatePropertyAll(Colors.transparent),
       onTap: onTap,
       child: BracuCard(
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Align(
               alignment: Alignment.center,
@@ -599,6 +601,7 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
               flex: 7,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text.rich(
                     TextSpan(
@@ -625,12 +628,13 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
             Expanded(
               flex: 4,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
                     item.isDone ? 'Done' : 'Pending',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: BracuPalette.textSecondary(context),
                     ),
@@ -701,28 +705,28 @@ class _PlannerItemActionsMenu extends StatelessWidget {
         onTap: () async {
           final action = await showBracuSelectDropdown<String>(
             anchorContext,
-            title: 'Item Actions',
-            subtitle: isDone ? 'Completed item options' : 'Pending item options',
+            optionFontSize: 16,
+            optionPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 8,
+            ),
             options: [
               if (!isDone)
                 const BracuSelectOption<String>(
                   value: 'done',
                   label: 'Done',
                   icon: Icons.check_circle_outline_rounded,
-                  subtitle: 'Mark this item as done',
                 ),
               if (isDone)
                 const BracuSelectOption<String>(
                   value: 'pending',
                   label: 'Pending',
                   icon: Icons.radio_button_unchecked_rounded,
-                  subtitle: 'Move this item back to pending',
                 ),
               const BracuSelectOption<String>(
                 value: 'delete',
                 label: 'Delete',
                 icon: Icons.delete_outline_rounded,
-                subtitle: 'Remove this item from your planner',
               ),
             ],
           );
@@ -736,12 +740,12 @@ class _PlannerItemActionsMenu extends StatelessWidget {
           }
         },
         child: SizedBox(
-          width: 36,
-          height: 36,
+          width: 24,
+          height: 24,
           child: Center(
             child: Icon(
               Icons.more_horiz_rounded,
-              size: 24,
+              size: 18,
               color: BracuPalette.textPrimary(context),
             ),
           ),
