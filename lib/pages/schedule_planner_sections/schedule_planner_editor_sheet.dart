@@ -24,10 +24,12 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
   var notesValue = item?.notes ?? '';
   var titleFieldVersion = 0;
   var kind = item != null && item.kind.isNotEmpty ? item.kind : 'quiz';
-  var dueAt = item?.dueAt ?? DateTime.now().add(const Duration(days: 1));
+  var startTime =
+      item?.startTime ?? DateTime.now().add(const Duration(days: 1));
+  var endTime = item?.endTime;
   var reminderMinutesBefore = item?.reminderAt == null
       ? 60
-      : dueAt.difference(item!.reminderAt!).inMinutes;
+      : startTime.difference(item!.reminderAt!).inMinutes;
   if (reminderMinutesBefore < 5) {
     reminderMinutesBefore = 5;
   }
@@ -123,39 +125,83 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
     builder: (sheetContext, textPrimary, textSecondary) {
       return StatefulBuilder(
         builder: (context, setState) {
-          Future<void> pickDueDate() async {
+          Future<bool> pickDueDate() async {
             final picked = await showDatePicker(
               context: context,
-              initialDate: dueAt,
+              initialDate: startTime,
               firstDate: DateTime.now().subtract(const Duration(days: 1)),
               lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
             );
-            if (picked == null || !context.mounted) return;
+            if (picked == null || !context.mounted) return false;
             setState(() {
-              dueAt = DateTime(
+              startTime = DateTime(
                 picked.year,
                 picked.month,
                 picked.day,
-                dueAt.hour,
-                dueAt.minute,
+                startTime.hour,
+                startTime.minute,
               );
+              if (endTime != null) {
+                endTime = DateTime(
+                  picked.year,
+                  picked.month,
+                  picked.day,
+                  endTime!.hour,
+                  endTime!.minute,
+                );
+              }
             });
+            return true;
           }
 
-          Future<void> pickDueTime() async {
+          Future<bool> pickStartTime() async {
             final picked = await showTimePicker(
               context: context,
-              initialTime: TimeOfDay.fromDateTime(dueAt),
+              initialTime: TimeOfDay.fromDateTime(startTime),
             );
-            if (picked == null || !context.mounted) return;
+            if (picked == null || !context.mounted) return false;
             setState(() {
-              dueAt = DateTime(
-                dueAt.year,
-                dueAt.month,
-                dueAt.day,
+              startTime = DateTime(
+                startTime.year,
+                startTime.month,
+                startTime.day,
                 picked.hour,
                 picked.minute,
               );
+              if (endTime != null && endTime!.isBefore(startTime)) {
+                endTime = startTime.add(const Duration(hours: 1));
+              }
+            });
+            return true;
+          }
+
+          Future<bool> pickEndTime() async {
+            final initial = endTime ?? startTime.add(const Duration(hours: 1));
+            final picked = await showTimePicker(
+              context: context,
+              initialTime: TimeOfDay.fromDateTime(initial),
+            );
+            if (picked == null || !context.mounted) return false;
+            final nextEndAt = DateTime(
+              startTime.year,
+              startTime.month,
+              startTime.day,
+              picked.hour,
+              picked.minute,
+            );
+            if (nextEndAt.isBefore(startTime)) {
+              showAppSnackBar(context, 'End time must be after start time');
+              return false;
+            }
+            setState(() {
+              endTime = nextEndAt;
+            });
+            return true;
+          }
+
+          void clearEndTime() {
+            setState(() {
+              endTime = null;
             });
           }
 
@@ -200,7 +246,11 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
           }
 
           void save() {
-            final reminderAt = dueAt.subtract(
+            if (endTime != null && endTime!.isBefore(startTime)) {
+              showAppSnackBar(context, 'End time must be after start time');
+              return;
+            }
+            final reminderAt = startTime.subtract(
               Duration(minutes: reminderMinutesBefore),
             );
             final courseCode = fixedCourseCode();
@@ -226,7 +276,8 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
               title: title,
               courseCode: courseCode,
               sectionName: sectionName,
-              dueAt: dueAt,
+              startTime: startTime,
+              endTime: endTime,
               useReminder: true,
               reminderAt: reminderAt,
               notes: notesValue.trim(),
@@ -273,6 +324,13 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                   'planner_title_${titleFieldVersion}_${fixedCourseCode()}_${fixedSectionName()}',
                 ),
                 initialValue: titleValue,
+                textAlignVertical: TextAlignVertical.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  height: 1,
+                  color: BracuPalette.textPrimary(context),
+                ),
                 onChanged: (value) {
                   titleValue = value;
                   setState(() {});
@@ -280,37 +338,86 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                 decoration: InputDecoration(
                   labelText: 'Title',
                   prefixText:
-                      '${fixedCourseCode().isEmpty ? 'Select course' : fixedCourseCode()} • ',
+                      '${fixedCourseCode().isEmpty ? 'Select course' : fixedCourseCode()} ',
                   prefixStyle: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
+                    height: 1,
                     color: BracuPalette.textSecondary(context),
                   ),
                   border: const OutlineInputBorder(),
                   isDense: true,
-                  suffixIcon: IconButton(
-                    tooltip: 'Select title template',
+                  suffixIconConstraints: const BoxConstraints(
+                    minWidth: 0,
+                    minHeight: 0,
+                  ),
+                  suffixIcon: TextButton(
                     onPressed: pickTitleTemplate,
-                    icon: const Icon(Icons.filter_list_rounded),
+                    style: TextButton.styleFrom(
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      foregroundColor: BracuPalette.textSecondary(context),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Choose',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(width: 2),
+                        Padding(
+                          padding: EdgeInsets.only(top: 1),
+                          child: Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 17,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: pickDueDate,
+                child: Text(DateFormat('dd MMM yyyy').format(startTime)),
+              ),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: pickDueDate,
-                      child: Text(DateFormat('dd MMM yyyy').format(dueAt)),
+                      onPressed: pickStartTime,
+                      child: Text(
+                        'Start ${DateFormat('hh:mm a').format(startTime)}',
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: pickDueTime,
-                      child: Text(DateFormat('hh:mm a').format(dueAt)),
+                      onPressed: pickEndTime,
+                      child: Text(
+                        endTime == null
+                            ? 'End (optional)'
+                            : 'End ${DateFormat('hh:mm a').format(endTime!)}',
+                      ),
                     ),
                   ),
+                  if (endTime != null) ...[
+                    const SizedBox(width: 4),
+                    IconButton(
+                      tooltip: 'Clear end time',
+                      onPressed: clearEndTime,
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 8),
@@ -359,7 +466,7 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                             const SizedBox(height: 2),
                             Text(
                               DateFormat('dd MMM yyyy, hh:mm a').format(
-                                dueAt.subtract(
+                                startTime.subtract(
                                   Duration(minutes: reminderMinutesBefore),
                                 ),
                               ),
@@ -396,7 +503,7 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () async {
-                    final reminderAt = dueAt.subtract(
+                    final reminderAt = startTime.subtract(
                       Duration(minutes: reminderMinutesBefore),
                     );
                     final courseCode = courseCodeValue();

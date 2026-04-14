@@ -448,11 +448,11 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     final now = DateTime.now();
     final upcoming =
         items
-            .where((item) => !item.isDone && item.dueAt.isAfter(now))
+            .where((item) => !item.isDone && item.startTime.isAfter(now))
             .map(
               (item) => _CountdownCardData(
                 title: schedulePlannerCardTitle(item.title),
-                targetDateTime: item.dueAt,
+                targetDateTime: item.startTime,
                 tab: HomeTab.schedulePlanner,
               ),
             )

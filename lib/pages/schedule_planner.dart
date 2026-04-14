@@ -197,7 +197,8 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
         await SchedulePlannerService().createItem(
           kind: draft.kind,
           title: normalizedTitle,
-          dueAt: draft.dueAt,
+          startTime: draft.startTime,
+          endTime: draft.endTime,
           reminderAt: draft.reminderAt,
           courseCode: draft.courseCode,
           sectionName: draft.sectionName,
@@ -210,7 +211,9 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
           itemId: item.itemId,
           kind: draft.kind,
           title: normalizedTitle,
-          dueAt: draft.dueAt,
+          startTime: draft.startTime,
+          endTime: draft.endTime,
+          clearEndTime: draft.endTime == null,
           reminderAt: draft.reminderAt,
           clearReminderAt: false,
           courseCode: draft.courseCode,
@@ -251,7 +254,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
             ? 1
             : -1;
         if (doneCompare != 0) return doneCompare;
-        final dueCompare = a.dueAt.compareTo(b.dueAt);
+        final dueCompare = a.startTime.compareTo(b.startTime);
         if (dueCompare != 0) return dueCompare;
         return b.createdAt.compareTo(a.createdAt);
       });
@@ -278,7 +281,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
               ? 1
               : -1;
           if (doneCompare != 0) return doneCompare;
-          final dueCompare = a.dueAt.compareTo(b.dueAt);
+          final dueCompare = a.startTime.compareTo(b.startTime);
           if (dueCompare != 0) return dueCompare;
           return b.createdAt.compareTo(a.createdAt);
         });
@@ -419,7 +422,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
       icon: Icons.event_note_outlined,
       actions: [
         IconButton(
-          tooltip: 'Add planner task',
+          tooltip: 'Add planner schedule',
           onPressed: _openEditor,
           icon: const Icon(Icons.add_rounded),
         ),
@@ -466,7 +469,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: const [
                     BracuEmptyState(
-                      message: 'No planner tasks yet. Tap + to add one.',
+                      message: 'No planner schedules yet. Tap + to add one.',
                     ),
                   ],
                 ),
@@ -515,7 +518,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
   List<_PlannerDayGroup> _groupItemsByDay(List<SchedulePlannerItem> items) {
     final grouped = <DateTime, List<SchedulePlannerItem>>{};
     for (final item in items) {
-      final localDueAt = item.dueAt.toLocal();
+      final localDueAt = item.startTime.toLocal();
       final date = DateTime(localDueAt.year, localDueAt.month, localDueAt.day);
       grouped.putIfAbsent(date, () => <SchedulePlannerItem>[]).add(item);
     }
@@ -542,7 +545,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
         ? 1
         : -1;
     if (doneCompare != 0) return doneCompare;
-    final dueCompare = a.dueAt.compareTo(b.dueAt);
+    final dueCompare = a.startTime.compareTo(b.startTime);
     if (dueCompare != 0) return dueCompare;
     return b.createdAt.compareTo(a.createdAt);
   }
@@ -610,8 +613,9 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = _plannerCardTitle(item.title);
-    final dueAt = item.dueAt.toLocal();
-    final isComplete = item.isDone || !dueAt.isAfter(DateTime.now());
+    final startTime = item.startTime.toLocal();
+    final endTime = item.endTime?.toLocal();
+    final isComplete = item.isDone || !startTime.isAfter(DateTime.now());
     final titleStyle = TextStyle(
       fontWeight: FontWeight.w600,
       decoration: isComplete ? TextDecoration.lineThrough : null,
@@ -656,7 +660,9 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        DateFormat('hh:mm a').format(dueAt),
+                        endTime == null
+                            ? DateFormat('hh:mm a').format(startTime)
+                            : '${DateFormat('hh:mm a').format(startTime)} - ${DateFormat('hh:mm a').format(endTime)}',
                         style: TextStyle(
                           color: timeColor,
                           fontWeight: FontWeight.w700,

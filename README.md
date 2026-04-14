@@ -24,6 +24,7 @@ A Flutter app for BRAC University students with SSO login and Connect API integr
 - Offline-friendly, cache-first experience
 
 ## Screenshots
+
 <div>
 <img src="screenshots/Apple iPhone 16 Pro Max Screenshot 1.png" alt="Apple iPhone 16 Pro Max Screenshot 1" width="240" />
 <img src="screenshots/Apple iPhone 16 Pro Max Screenshot 2.png" alt="Apple iPhone 16 Pro Max Screenshot 2" width="240" />
@@ -169,12 +170,12 @@ build/app/outputs/bundle/release/app-release.aab
 
 ## Platform Support
 
-| Platform | Status | Notes |
-| --- | --- | --- |
-| Android | Stable | Signed APK/AAB are generated in release workflow when signing secrets are configured. |
-| Web | Stable | Built by CI and deployed via containerized web service on VPS. |
-| iOS | Beta | CI builds are enabled, but signing/export depends on Apple certificates/profiles. |
-| macOS | Beta | CI builds and packages a DMG artifact from release workflow. |
+| Platform | Status | Notes                                                                                 |
+| -------- | ------ | ------------------------------------------------------------------------------------- |
+| Android  | Stable | Signed APK/AAB are generated in release workflow when signing secrets are configured. |
+| Web      | Stable | Built by CI and deployed via containerized web service on VPS.                        |
+| iOS      | Beta   | CI builds are enabled, but signing/export depends on Apple certificates/profiles.     |
+| macOS    | Beta   | CI builds and packages a DMG artifact from release workflow.                          |
 
 ## CI/CD
 
@@ -212,15 +213,15 @@ Why this architecture:
 
 Key packages related to user data safety/privacy are listed below.
 
-| Package | What it does for privacy/safety |
-| --- | --- |
-| `flutter_secure_storage` | Stores sensitive auth/session tokens in encrypted device-backed secure storage (Keychain/Keystore), instead of plain local storage. |
-| `shared_preferences` | Stores non-sensitive app settings and flags (for example onboarding and UI preferences). Not used for secret credentials. |
-| `sembast` | Provides structured local database caching so app data can stay on-device and support offline usage with controlled reads/writes. |
-| `local_auth` | Enables optional biometric/PIN app lock so only the device owner can open protected screens. |
-| `push_notifications_service` | Polls the VPS backend for queued seat alerts using a local installation ID, without Firebase. |
-| `permission_handler` | Ensures runtime permissions (camera/notifications) are requested explicitly and can be denied by the user. |
-| `crypto` | Used for cryptographic hashing in integrity/security flows to strengthen request validation. |
+| Package                      | What it does for privacy/safety                                                                                                     |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `flutter_secure_storage`     | Stores sensitive auth/session tokens in encrypted device-backed secure storage (Keychain/Keystore), instead of plain local storage. |
+| `shared_preferences`         | Stores non-sensitive app settings and flags (for example onboarding and UI preferences). Not used for secret credentials.           |
+| `sembast`                    | Provides structured local database caching so app data can stay on-device and support offline usage with controlled reads/writes.   |
+| `local_auth`                 | Enables optional biometric/PIN app lock so only the device owner can open protected screens.                                        |
+| `push_notifications_service` | Polls the VPS backend for queued seat alerts using a local installation ID, without Firebase.                                       |
+| `permission_handler`         | Ensures runtime permissions (camera/notifications) are requested explicitly and can be denied by the user.                          |
+| `crypto`                     | Used for cryptographic hashing in integrity/security flows to strengthen request validation.                                        |
 
 Privacy notes:
 
@@ -333,10 +334,12 @@ The app uses a hosted proxy (`api.preconnect.app`) that handles caching and stre
 - Infrastructure providers: VPS-hosted services and the configured push provider
 
 ## Developer Credit
+
 - NaiveInvestigator — GitHub: [@NaiveInvestigator](https://github.com/NaiveInvestigator)
 - Sabbir Bin Abbas — GitHub: [@sabbirba](https://github.com/sabbirba)
 
 ## Licenses
+
 This project is licensed under GPL-3.0 (see [LICENSE](LICENSE)).
 
 Third-party packages follow their own license (see package pages on [pub.dev](https://pub.dev)).

@@ -1,68 +1,88 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <base href="$FLUTTER_BASE_HREF">
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
-  >
-  <meta name="description" content="PreConnect Web: Login with QR and access your student dashboard, classes, profile, and schedule from browser.">
-  <meta name="robots" content="index,follow,max-image-preview:large">
-  <link rel="canonical" href="https://web.preconnect.app/">
-  <meta name="theme-color" content="#FFFFFF">
+  <head>
+    <base href="$FLUTTER_BASE_HREF" />
+    <meta charset="UTF-8" />
+    <meta content="IE=Edge" http-equiv="X-UA-Compatible" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta
+      name="description"
+      content="PreConnect Web: Login with QR and access your student dashboard, classes, profile, and schedule from browser."
+    />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <link rel="canonical" href="https://web.preconnect.app/" />
+    <meta name="theme-color" content="#FFFFFF" />
 
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="PreConnect">
-  <meta property="og:title" content="PreConnect Web">
-  <meta property="og:description" content="Login with QR and use PreConnect in your browser for BRAC University student services.">
-  <meta property="og:url" content="https://web.preconnect.app/">
-  <meta property="og:image" content="https://web.preconnect.app/icons/Icon-512.png">
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="PreConnect" />
+    <meta property="og:title" content="PreConnect Web" />
+    <meta
+      property="og:description"
+      content="Login with QR and use PreConnect in your browser for BRAC University student services."
+    />
+    <meta property="og:url" content="https://web.preconnect.app/" />
+    <meta
+      property="og:image"
+      content="https://web.preconnect.app/icons/Icon-512.png"
+    />
 
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="PreConnect Web">
-  <meta name="twitter:description" content="Login with QR and use PreConnect in your browser for BRAC University student services.">
-  <meta name="twitter:image" content="https://web.preconnect.app/icons/Icon-512.png">
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="PreConnect Web" />
+    <meta
+      name="twitter:description"
+      content="Login with QR and use PreConnect in your browser for BRAC University student services."
+    />
+    <meta
+      name="twitter:image"
+      content="https://web.preconnect.app/icons/Icon-512.png"
+    />
 
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="PreConnect">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="PreConnect" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 
-  <link rel="icon" href="favicon.ico"/>
+    <link rel="icon" href="favicon.ico" />
 
-  <title>PreConnect Web | Fast, Calm Academic Companion App for BRAC University</title>
-  <link rel="manifest" href="manifest.json">
-  <style>
-    html, body {
-      margin: 0;
-      width: 100%;
-      height: 100%;
-      background: #FFFFFF;
-    }
-  </style>
-</head>
-<body>
-  <script>
-    (function () {
-      if (!('serviceWorker' in navigator)) return;
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.getRegistrations().then(function (registrations) {
-          for (var i = 0; i < registrations.length; i++) {
-            registrations[i].unregister();
+    <title>
+      PreConnect Web | Fast, Calm Academic Companion App for BRAC University
+    </title>
+    <link rel="manifest" href="manifest.json" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      (function () {
+        if (!("serviceWorker" in navigator)) return;
+        window.addEventListener("load", function () {
+          navigator.serviceWorker
+            .getRegistrations()
+            .then(function (registrations) {
+              for (var i = 0; i < registrations.length; i++) {
+                registrations[i].unregister();
+              }
+            });
+          if ("caches" in window) {
+            caches.keys().then(function (keys) {
+              for (var i = 0; i < keys.length; i++) {
+                caches.delete(keys[i]);
+              }
+            });
           }
         });
-        if ('caches' in window) {
-          caches.keys().then(function (keys) {
-            for (var i = 0; i < keys.length; i++) {
-              caches.delete(keys[i]);
-            }
-          });
-        }
-      });
-    })();
-  </script>
-  <script src="flutter_bootstrap.js" async></script>
-</body>
+      })();
+    </script>
+    <script src="flutter_bootstrap.js" async></script>
+  </body>
 </html>

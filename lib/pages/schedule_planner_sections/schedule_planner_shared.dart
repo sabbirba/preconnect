@@ -9,7 +9,8 @@ typedef SchedulePlannerDraft = ({
   String title,
   String courseCode,
   String sectionName,
-  DateTime dueAt,
+  DateTime startTime,
+  DateTime? endTime,
   bool useReminder,
   DateTime? reminderAt,
   String notes,
@@ -83,6 +84,23 @@ List<SchedulePlannerCourseOption> schedulePlannerCourseOptionsForDropdown({
 
 String schedulePlannerCourseOptionIdentity(SchedulePlannerCourseOption option) {
   return '${option.courseCode}|${option.sectionName}';
+}
+
+const String _plannerTitleSeparator = '  ';
+
+List<String> _splitSchedulePlannerTitleParts(String title) {
+  return title
+      .split(RegExp(r'\s*•\s*|\s{2,}'))
+      .map((part) => part.trim())
+      .where((part) => part.isNotEmpty)
+      .toList();
+}
+
+String _joinSchedulePlannerTitleParts(Iterable<String> parts) {
+  return parts
+      .map((part) => part.trim())
+      .where((part) => part.isNotEmpty)
+      .join(_plannerTitleSeparator);
 }
 
 SchedulePlannerCourseOption? schedulePlannerSelectDefaultCourseOption(
@@ -245,11 +263,7 @@ SchedulePlannerCourseOption? schedulePlannerFindCourseOption(
 }
 
 String schedulePlannerTitleSectionCandidate(String title) {
-  final parts = title
-      .split('•')
-      .map((part) => part.trim())
-      .where((part) => part.isNotEmpty)
-      .toList();
+  final parts = _splitSchedulePlannerTitleParts(title);
   if (parts.length < 2) return '';
   return parts[1];
 }
@@ -375,7 +389,7 @@ String schedulePlannerTitleTemplateLabel(
   SchedulePlannerTitleTemplate template,
 ) {
   final courseCode = template.courseOption.courseCode.trim().toUpperCase();
-  return '$courseCode • ${schedulePlannerKindLabel(template.kind)}';
+  return '$courseCode$_plannerTitleSeparator${schedulePlannerKindLabel(template.kind)}';
 }
 
 String schedulePlannerGeneratedTitle({
@@ -391,17 +405,17 @@ String schedulePlannerGeneratedTitle({
           .toUpperCase();
   final kindLabel = schedulePlannerKindLabel(kind);
   if (code.isEmpty) return kindLabel;
-  return '$code • $kindLabel';
+  return '$code$_plannerTitleSeparator$kindLabel';
 }
 
 String schedulePlannerNormalizeTitle(String title) {
-  final parts = title
-      .split('•')
-      .map((part) => part.trim())
-      .where((part) => part.isNotEmpty)
-      .toList();
+  final parts = _splitSchedulePlannerTitleParts(title);
   if (parts.length >= 3) {
-    return '${parts[0]} • ${parts[1]} • ${parts.sublist(2).join(' • ')}';
+    return _joinSchedulePlannerTitleParts(<String>[
+      parts[0],
+      parts[1],
+      parts.sublist(2).join(_plannerTitleSeparator),
+    ]);
   }
   if (parts.length < 2) return title;
   final kind = parts.last.toLowerCase();
@@ -409,7 +423,7 @@ String schedulePlannerNormalizeTitle(String title) {
     return title;
   }
   final code = parts.first;
-  return '$code • ${schedulePlannerKindLabel(kind)}';
+  return '$code$_plannerTitleSeparator${schedulePlannerKindLabel(kind)}';
 }
 
 String schedulePlannerComposeTitle({
@@ -422,10 +436,10 @@ String schedulePlannerComposeTitle({
   final extra = suffix.trim();
   if (code.isEmpty) return extra;
   if (section.isEmpty) {
-    return extra.isEmpty ? code : '$code • $extra';
+    return extra.isEmpty ? code : '$code$_plannerTitleSeparator$extra';
   }
-  if (extra.isEmpty) return '$code • $section';
-  return '$code • $section • $extra';
+  if (extra.isEmpty) return '$code$_plannerTitleSeparator$section';
+  return '$code$_plannerTitleSeparator$section$_plannerTitleSeparator$extra';
 }
 
 String schedulePlannerInitialSuffix(
@@ -433,11 +447,7 @@ String schedulePlannerInitialSuffix(
   required String courseCode,
   required String sectionName,
 }) {
-  final parts = rawTitle
-      .split('•')
-      .map((part) => part.trim())
-      .where((part) => part.isNotEmpty)
-      .toList();
+  final parts = _splitSchedulePlannerTitleParts(rawTitle);
   if (parts.isEmpty) return '';
   final normalizedCode = courseCode.trim().toUpperCase();
   final normalizedSection = sectionName.trim();
@@ -446,10 +456,10 @@ String schedulePlannerInitialSuffix(
       (parts[1] == normalizedSection ||
           (!schedulePlannerHasUsableSectionLabel(parts[1]) &&
               normalizedSection.isNotEmpty))) {
-    return parts.sublist(2).join(' • ');
+    return _joinSchedulePlannerTitleParts(parts.sublist(2));
   }
   if (parts.length >= 2 && parts.first.toUpperCase() == normalizedCode) {
-    return parts.sublist(1).join(' • ');
+    return _joinSchedulePlannerTitleParts(parts.sublist(1));
   }
   return rawTitle.trim();
 }
@@ -478,37 +488,36 @@ String schedulePlannerFormatDueDate(DateTime dueAt) {
 }
 
 String schedulePlannerCardTitle(String rawTitle) {
-  final parts = rawTitle
-      .split('•')
-      .map((part) => part.trim())
-      .where((part) => part.isNotEmpty)
-      .toList();
+  final parts = _splitSchedulePlannerTitleParts(rawTitle);
   if (parts.length >= 3) {
-    return '${parts[0]} • ${parts.sublist(2).join(' • ')}';
+    return _joinSchedulePlannerTitleParts(<String>[
+      parts[0],
+      parts.sublist(2).join(_plannerTitleSeparator),
+    ]);
   }
   if (parts.length < 2) return rawTitle.trim();
   final kind = parts.last.toLowerCase();
   if (kind != 'quiz' && kind != 'assignment' && kind != 'reminder') {
     return rawTitle.trim();
   }
-  return '${parts.first} • ${parts.last}';
+  return '${parts.first}$_plannerTitleSeparator${parts.last}';
 }
 
 String schedulePlannerNormalizeTitleForSave(String rawTitle) {
-  final parts = rawTitle
-      .split('•')
-      .map((part) => part.trim())
-      .where((part) => part.isNotEmpty)
-      .toList();
+  final parts = _splitSchedulePlannerTitleParts(rawTitle);
   if (parts.length >= 3) {
-    return '${parts[0]} • ${parts[1]} • ${parts.sublist(2).join(' • ')}';
+    return _joinSchedulePlannerTitleParts(<String>[
+      parts[0],
+      parts[1],
+      parts.sublist(2).join(_plannerTitleSeparator),
+    ]);
   }
   if (parts.length < 2) return rawTitle.trim();
   final kind = parts.last.toLowerCase();
   if (kind != 'quiz' && kind != 'assignment' && kind != 'reminder') {
     return rawTitle.trim();
   }
-  return '${parts.first} • ${parts.last}';
+  return '${parts.first}$_plannerTitleSeparator${parts.last}';
 }
 
 String schedulePlannerSectionBadgeLabel(
@@ -517,11 +526,7 @@ String schedulePlannerSectionBadgeLabel(
 ) {
   final direct = formatSectionBadge(item.sectionName);
   if (direct != '?') return direct;
-  final parts = item.title
-      .split('•')
-      .map((part) => part.trim())
-      .where((part) => part.isNotEmpty)
-      .toList();
+  final parts = _splitSchedulePlannerTitleParts(item.title);
   if (parts.length >= 2) {
     final fallback = formatSectionBadge(parts[1]);
     if (fallback != '?') return fallback;

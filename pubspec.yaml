@@ -1,6 +1,6 @@
 name: preconnect
 description: "Your personalised student portal for BRAC University"
-publish_to: 'none'
+publish_to: "none"
 
 version: 1.5.5+202604050
 

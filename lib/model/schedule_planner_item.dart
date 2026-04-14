@@ -5,7 +5,8 @@ class SchedulePlannerItem {
     required this.title,
     required this.courseCode,
     required this.sectionName,
-    required this.dueAt,
+    required this.startTime,
+    required this.endTime,
     required this.reminderAt,
     required this.notes,
     required this.isDone,
@@ -18,7 +19,8 @@ class SchedulePlannerItem {
   final String title;
   final String courseCode;
   final String sectionName;
-  final DateTime dueAt;
+  final DateTime startTime;
+  final DateTime? endTime;
   final DateTime? reminderAt;
   final String notes;
   final bool isDone;
@@ -32,9 +34,10 @@ class SchedulePlannerItem {
       title: (json['title'] as String? ?? '').trim(),
       courseCode: (json['courseCode'] as String? ?? '').trim(),
       sectionName: (json['sectionName'] as String? ?? '').trim(),
-      dueAt:
-          DateTime.tryParse((json['dueAt'] as String? ?? '').trim()) ??
+      startTime:
+          DateTime.tryParse((json['startTime'] as String? ?? '').trim()) ??
           DateTime.fromMillisecondsSinceEpoch(0),
+      endTime: DateTime.tryParse((json['endTime'] as String? ?? '').trim()),
       reminderAt: DateTime.tryParse(
         (json['reminderAt'] as String? ?? '').trim(),
       ),
@@ -56,7 +59,8 @@ class SchedulePlannerItem {
       'title': title,
       'courseCode': courseCode,
       'sectionName': sectionName,
-      'dueAt': dueAt.toUtc().toIso8601String(),
+      'startTime': startTime.toUtc().toIso8601String(),
+      'endTime': endTime?.toUtc().toIso8601String(),
       'reminderAt': reminderAt?.toUtc().toIso8601String(),
       'notes': notes,
       'isDone': isDone,
@@ -70,7 +74,9 @@ class SchedulePlannerItem {
     String? title,
     String? courseCode,
     String? sectionName,
-    DateTime? dueAt,
+    DateTime? startTime,
+    DateTime? endTime,
+    bool? clearEndTime,
     DateTime? reminderAt,
     bool? clearReminderAt,
     String? notes,
@@ -82,7 +88,8 @@ class SchedulePlannerItem {
       title: title ?? this.title,
       courseCode: courseCode ?? this.courseCode,
       sectionName: sectionName ?? this.sectionName,
-      dueAt: dueAt ?? this.dueAt,
+      startTime: startTime ?? this.startTime,
+      endTime: clearEndTime == true ? null : endTime ?? this.endTime,
       reminderAt: clearReminderAt == true
           ? null
           : reminderAt ?? this.reminderAt,
@@ -93,12 +100,12 @@ class SchedulePlannerItem {
     );
   }
 
-  bool get isOverdue => !isDone && dueAt.isBefore(DateTime.now());
+  bool get isOverdue => !isDone && startTime.isBefore(DateTime.now());
 
   bool get isDueSoon {
     if (isDone) return false;
     final now = DateTime.now();
-    return !dueAt.isBefore(now) &&
-        dueAt.difference(now) <= const Duration(days: 2);
+    return !startTime.isBefore(now) &&
+        startTime.difference(now) <= const Duration(days: 2);
   }
 }

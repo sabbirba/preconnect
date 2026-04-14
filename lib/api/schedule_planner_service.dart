@@ -69,7 +69,8 @@ class SchedulePlannerService {
   Future<SchedulePlannerItem> createItem({
     required String kind,
     required String title,
-    required DateTime dueAt,
+    required DateTime startTime,
+    DateTime? endTime,
     DateTime? reminderAt,
     String courseCode = '',
     String sectionName = '',
@@ -84,7 +85,8 @@ class SchedulePlannerService {
         'title': title,
         'courseCode': courseCode,
         'sectionName': sectionName,
-        'dueAt': dueAt.toUtc().toIso8601String(),
+        'startTime': startTime.toUtc().toIso8601String(),
+        'endTime': endTime?.toUtc().toIso8601String(),
         'reminderAt': reminderAt?.toUtc().toIso8601String(),
         'notes': notes,
         'isDone': isDone,
@@ -104,7 +106,9 @@ class SchedulePlannerService {
     required int itemId,
     String? kind,
     String? title,
-    DateTime? dueAt,
+    DateTime? startTime,
+    DateTime? endTime,
+    bool clearEndTime = false,
     DateTime? reminderAt,
     bool clearReminderAt = false,
     String? courseCode,
@@ -115,7 +119,14 @@ class SchedulePlannerService {
     final payload = <String, dynamic>{};
     if (kind != null) payload['kind'] = kind;
     if (title != null) payload['title'] = title;
-    if (dueAt != null) payload['dueAt'] = dueAt.toUtc().toIso8601String();
+    if (startTime != null) {
+      payload['startTime'] = startTime.toUtc().toIso8601String();
+    }
+    if (clearEndTime) {
+      payload['endTime'] = null;
+    } else if (endTime != null) {
+      payload['endTime'] = endTime.toUtc().toIso8601String();
+    }
     if (clearReminderAt) {
       payload['reminderAt'] = null;
     } else if (reminderAt != null) {
@@ -210,7 +221,7 @@ class SchedulePlannerService {
           ? 1
           : -1;
       if (doneCompare != 0) return doneCompare;
-      final dueCompare = a.dueAt.compareTo(b.dueAt);
+      final dueCompare = a.startTime.compareTo(b.startTime);
       if (dueCompare != 0) return dueCompare;
       return b.createdAt.compareTo(a.createdAt);
     });
@@ -224,7 +235,7 @@ class SchedulePlannerService {
         ? 1
         : -1;
     if (doneCompare != 0) return doneCompare;
-    final dueCompare = a.dueAt.compareTo(b.dueAt);
+    final dueCompare = a.startTime.compareTo(b.startTime);
     if (dueCompare != 0) return dueCompare;
     return b.createdAt.compareTo(a.createdAt);
   }
