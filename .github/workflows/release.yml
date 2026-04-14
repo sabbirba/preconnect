@@ -400,17 +400,6 @@ jobs:
             exit 1
           fi
 
-      - name: Patch flutter_alarmkit iOS Entry Point
-        if: matrix.platform == 'ios'
-        shell: bash
-        run: |
-          target="ios/.symlinks/plugins/flutter_alarmkit/ios/Classes/AlarmLiveActivityBundle.swift"
-          if [ -f "$target" ]; then
-            perl -0777 -i -pe 's/\n@main\nstruct AlarmLiveActivityBundle/\nstruct AlarmLiveActivityBundle/g' "$target"
-          else
-            echo "flutter_alarmkit entry file not found at $target"
-          fi
-
       - name: Refresh CocoaPods Dependencies
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
         shell: bash
