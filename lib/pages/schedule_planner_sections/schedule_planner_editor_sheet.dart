@@ -445,9 +445,22 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                 ),
               ),
               const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: pickDueDate,
-                child: Text(DateFormat('dd MMM yyyy').format(startTime)),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: pickDueDate,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: Text(
+                    DateFormat('dd MMM yyyy').format(startTime),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 8),
               Row(
