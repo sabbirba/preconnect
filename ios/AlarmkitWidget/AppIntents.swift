@@ -2,7 +2,7 @@ import AlarmKit
 import AppIntents
 
 @available(iOS 26.0, *)
-public struct PauseIntent: LiveActivityIntent {
+public struct PreconnectPauseIntent: LiveActivityIntent {
     public func perform() throws -> some IntentResult {
         try AlarmManager.shared.pause(id: UUID(uuidString: alarmID)!)
         return .result()
@@ -24,7 +24,7 @@ public struct PauseIntent: LiveActivityIntent {
 }
 
 @available(iOS 26.0, *)
-public struct StopIntent: LiveActivityIntent {
+public struct PreconnectStopIntent: LiveActivityIntent {
     public func perform() throws -> some IntentResult {
         try AlarmManager.shared.stop(id: UUID(uuidString: alarmID)!)
         return .result()
@@ -46,7 +46,7 @@ public struct StopIntent: LiveActivityIntent {
 }
 
 @available(iOS 26.0, *)
-public struct RepeatIntent: LiveActivityIntent {
+public struct PreconnectRepeatIntent: LiveActivityIntent {
     public func perform() throws -> some IntentResult {
         try AlarmManager.shared.countdown(id: UUID(uuidString: alarmID)!)
         return .result()
@@ -68,7 +68,7 @@ public struct RepeatIntent: LiveActivityIntent {
 }
 
 @available(iOS 26.0, *)
-public struct ResumeIntent: LiveActivityIntent {
+public struct PreconnectResumeIntent: LiveActivityIntent {
     public func perform() throws -> some IntentResult {
         try AlarmManager.shared.resume(id: UUID(uuidString: alarmID)!)
         return .result()
@@ -90,7 +90,7 @@ public struct ResumeIntent: LiveActivityIntent {
 }
 
 @available(iOS 26.0, *)
-public struct OpenAlarmAppIntent: LiveActivityIntent {
+public struct PreconnectOpenAlarmAppIntent: LiveActivityIntent {
     public func perform() throws -> some IntentResult {
         try AlarmManager.shared.stop(id: UUID(uuidString: alarmID)!)
         return .result()
