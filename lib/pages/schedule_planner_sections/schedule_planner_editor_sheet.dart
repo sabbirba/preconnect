@@ -24,12 +24,15 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
   var notesValue = item?.notes ?? '';
   var titleFieldVersion = 0;
   var kind = item != null && item.kind.isNotEmpty ? item.kind : 'quiz';
+  final existingStartTime = item?.startTime.toLocal();
+  final existingEndTime = item?.endTime?.toLocal();
+  final existingReminderAt = item?.reminderAt?.toLocal();
   var startTime =
-      item?.startTime ?? DateTime.now().add(const Duration(days: 1));
-  var endTime = item?.endTime;
-  var reminderMinutesBefore = item?.reminderAt == null
+      existingStartTime ?? DateTime.now().add(const Duration(days: 1));
+  var endTime = existingEndTime;
+  var reminderMinutesBefore = existingReminderAt == null
       ? 60
-      : startTime.difference(item!.reminderAt!).inMinutes;
+      : startTime.difference(existingReminderAt).inMinutes;
   if (reminderMinutesBefore < 5) {
     reminderMinutesBefore = 5;
   }
@@ -279,13 +282,15 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
               resolvedSectionName = template.sectionName;
               kind = template.kind;
               titleValue = schedulePlannerKindLabel(template.kind);
-              final occurrence = schedulePlannerDefaultOccurrenceForOption(
-                template.courseOption,
-                isRamadan: isRamadan,
-              );
-              if (occurrence != null) {
-                startTime = occurrence.startTime;
-                endTime = occurrence.endTime;
+              if (item == null) {
+                final occurrence = schedulePlannerDefaultOccurrenceForOption(
+                  template.courseOption,
+                  isRamadan: isRamadan,
+                );
+                if (occurrence != null) {
+                  startTime = occurrence.startTime;
+                  endTime = occurrence.endTime;
+                }
               }
               titleFieldVersion++;
               syncLiveTitle();
@@ -635,7 +640,7 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                     onPressed: toggleDoneStatus,
                     icon: Icon(
                       isDone
-                          ? Icons.radio_button_unchecked_rounded
+                          ? Icons.schedule_rounded
                           : Icons.check_circle_outline_rounded,
                     ),
                     label: Text(isDone ? 'Mark as Pending' : 'Mark as Done'),
