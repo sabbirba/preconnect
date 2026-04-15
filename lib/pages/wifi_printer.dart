@@ -19,7 +19,7 @@ class CampusPrinterPage extends StatefulWidget {
 
 class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const int _printerPort = 515;
-  static const String _printerQueue = 'lp';
+  static const String _printerQueue = 'secure';
   static const String _historyKey = 'campus_printer_history';
 
   Uint8List? _fileBytes;
@@ -28,6 +28,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _studentName = '';
   String _studentShortCode = '';
   String _printerHost = '';
+  String _clientName = '';
   String _printerStatus = 'Detecting campus printer...';
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
   bool _busy = false;
@@ -90,6 +91,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _studentId = studentId;
       _studentName = fullName;
       _studentShortCode = shortCode;
+      _clientName = studentId;
     });
   }
 
@@ -198,7 +200,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   Future<void> _sendToPrinter() async {
     if (_busy) return;
     final host = _printerHost.trim();
-    final user = _studentId.trim().isEmpty ? 'student' : _studentId.trim();
+    final studentId = _studentId.trim();
+    final user = studentId.isEmpty ? 'student' : studentId;
     final bytes = _fileBytes;
 
     if (host.isEmpty) {
@@ -209,7 +212,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       showAppSnackBar(context, 'Choose a file first');
       return;
     }
-    if (_studentId.trim().isEmpty) {
+    if (studentId.isEmpty) {
       showAppSnackBar(context, 'Student ID not found. Refresh profile first.');
       return;
     }
@@ -227,7 +230,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         bytes: bytes,
         fileName: _fileName,
         user: user,
-        sourceHost: Platform.localHostname,
+        clientName: _clientName.isEmpty ? studentId : _clientName,
       );
       if (!mounted) return;
       await _addHistory(
@@ -296,6 +299,21 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  'Campus Printing on Wi-Fi',
+                  style: TextStyle(
+                    color: BracuPalette.textPrimary(context),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _StudentPrintDetails(
+                  name: _studentName,
+                  shortCode: _studentShortCode,
+                  studentId: _studentId,
+                ),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Icon(
@@ -327,12 +345,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                           : const Text('Scan'),
                     ),
                   ],
-                ),
-                const SizedBox(height: 10),
-                _StudentPrintDetails(
-                  name: _studentName,
-                  shortCode: _studentShortCode,
-                  studentId: _studentId,
                 ),
               ],
             ),
@@ -642,7 +654,7 @@ class _LprPrintClient {
     required Uint8List bytes,
     required String fileName,
     required String user,
-    required String sourceHost,
+    required String clientName,
   }) async {
     final printerHost = host.trim();
     if (printerHost.isEmpty) {
@@ -651,10 +663,10 @@ class _LprPrintClient {
 
     final printerQueue = queue;
     final owner = user;
-    final origin = sourceHost;
+    final client = clientName.trim().isEmpty ? user : clientName.trim();
     final safeFileName = fileName.split(Platform.pathSeparator).last;
     final jobToken =
-        'dfA${(DateTime.now().microsecondsSinceEpoch % 999 + 1).toString().padLeft(3, '0')}$origin';
+        'dfA${(DateTime.now().microsecondsSinceEpoch % 999 + 1).toString().padLeft(3, '0')}$client';
 
     Socket? socket;
     _LprAckReader? ackReader;
@@ -662,7 +674,7 @@ class _LprPrintClient {
       final sendBytes = bytes;
       final control = _ascii(
         [
-          'H$origin',
+          'H$client',
           'P$owner',
           'l$jobToken',
           'U$jobToken',
