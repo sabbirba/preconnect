@@ -47,7 +47,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   Timer? _searchDebounce;
   bool _isInitialLoading = true;
   String _searchQuery = '';
-  bool _cacheLoaded = false;
   bool _isAppForeground = true;
   bool _isDetailsRefreshing = false;
   bool _isResolvingStaffInfo = false;
@@ -147,22 +146,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
         _isInitialLoading = true;
       });
     }
-    if (!_cacheLoaded) {
-      final cached = await _service.loadCachedDetails(
-        maxAge: const Duration(hours: 1),
-      );
-      if (cached.isNotEmpty) {
-        _detailsCache
-          ..clear()
-          ..addAll(cached);
-        final cachedCards = _buildCardsFromDetailsMap(cached);
-        _sortCardsByCourseAndSection(cachedCards);
-        _applyCardsSnapshot(cachedCards, isInitialLoading: false);
-        unawaited(_loadCachedStaffInfoForDetails(cached.values));
-        _queueStaffInfoResolve(cached.values);
-      }
-      _cacheLoaded = true;
-    }
 
     await _refreshDetailsFromApi();
     if (!mounted) return;
@@ -217,7 +200,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       });
     }
     await _processSeatAlerts(previousCards, updated);
-    unawaited(_loadCachedStaffInfoForDetails(detailsMap.values));
     _queueStaffInfoResolve(detailsMap.values);
   }
 
