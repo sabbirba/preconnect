@@ -747,33 +747,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     unawaited(_resolvePendingStaffInfo());
   }
 
-  Future<void> _loadCachedStaffInfoForDetails(
-    Iterable<SeatStatusDetailsResponse> detailsValues,
-  ) async {
-    final initials = <String>{};
-    for (final details in detailsValues) {
-      final main = details.section.faculties.trim().toUpperCase();
-      if (main.isNotEmpty) initials.add(main);
-      final child = (details.childSection?.faculties ?? '')
-          .trim()
-          .toUpperCase();
-      if (child.isNotEmpty) initials.add(child);
-    }
-    if (initials.isEmpty) return;
-    final cached = await _service.loadCachedStaffInfoByInitials(initials);
-    if (cached.isEmpty) return;
-    var changed = false;
-    for (final entry in cached.entries) {
-      if (_staffInfoByInitial.containsKey(entry.key)) continue;
-      _staffInfoByInitial[entry.key] = entry.value;
-      changed = true;
-    }
-    if (!changed || !mounted || _detailsCache.isEmpty) return;
-    final refreshed = _buildCardsFromDetailsMap(_detailsCache);
-    _sortCardsByCourseAndSection(refreshed);
-    _applyCardsSnapshot(refreshed, isInitialLoading: false);
-  }
-
   Future<void> _resolvePendingStaffInfo() async {
     if (_isResolvingStaffInfo) return;
     if (_pendingInitials.isEmpty) return;
