@@ -101,7 +101,7 @@ class PushNotificationsService {
       iOS: iosSettings,
     );
 
-    await _localNotifications.initialize(initSettings);
+    await _localNotifications.initialize(settings: initSettings);
   }
 
   Future<void> _initializeBackgroundFetch() async {
@@ -556,10 +556,10 @@ class PushNotificationsService {
       );
 
       await _localNotifications.show(
-        sectionId.hashCode,
-        title,
-        body,
-        details,
+        id: sectionId.hashCode,
+        title: title,
+        body: body,
+        notificationDetails: details,
         payload: jsonEncode({'sectionId': sectionId}),
       );
 
@@ -737,10 +737,10 @@ class PushNotificationsService {
     );
 
     await _localNotifications.show(
-      id,
-      title,
-      body,
-      details,
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: details,
       payload: jsonEncode(payload),
     );
   }
