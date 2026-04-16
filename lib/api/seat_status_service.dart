@@ -266,38 +266,6 @@ class SeatStatusService {
     return _parseSeatMapResponse(raw);
   }
 
-  Future<Map<String, SeatStatusStaffInfo>> loadCachedStaffInfoByInitials(
-    Iterable<String> initials,
-  ) async {
-    final keys = _normalizedInitials(initials);
-    if (keys.isEmpty) return const <String, SeatStatusStaffInfo>{};
-    try {
-      final db = await _openDb();
-      final output = <String, SeatStatusStaffInfo>{};
-      final unresolved = <String>[];
-      for (final key in keys) {
-        final cached = _staffInfoByInitialCache[key];
-        if (cached != null) {
-          output[key] = cached;
-        } else {
-          unresolved.add(key);
-        }
-      }
-      if (unresolved.isNotEmpty) {
-        final snapshot = await _getStaffSnapshot(db);
-        for (final key in unresolved) {
-          final info = snapshot[key];
-          if (info == null) continue;
-          _staffInfoByInitialCache[key] = info;
-          output[key] = info;
-        }
-      }
-      return output;
-    } catch (_) {
-      return const <String, SeatStatusStaffInfo>{};
-    }
-  }
-
   Future<void> preloadSeatStatusCache({int detailConcurrency = 8}) async {
     try {
       final db = await _openDb();
