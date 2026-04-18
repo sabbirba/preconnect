@@ -104,14 +104,6 @@ class TokenStorage {
         if (value != null && value.isNotEmpty) {
           // Found in secure storage but not in AppStorage - sync to AppStorage
           await AppStorage.instance.setString(key, value);
-
-          // For tokens, wait for persistence to ensure it's not lost again
-          if (key == 'refresh_token' || key == 'access_token') {
-            await Future.delayed(const Duration(milliseconds: 50));
-            // Verify it persisted
-            final verified = await AppStorage.instance.getString(key);
-            if (verified != value) {}
-          }
           return value;
         }
       } catch (_) {}
@@ -141,22 +133,13 @@ class TokenStorage {
     } else {
       await AppStorage.instance.setString(key, value);
 
-      // Give SharedPreferences MULTIPLE opportunities to persist to disk
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      // Verify write succeeded - attempt 1
       var verified = await AppStorage.instance.getString(key);
       var verificationPassed = verified == value;
-      if (verificationPassed) {
-      } else {
+      if (!verificationPassed) {
         // Retry: write again if first attempt failed
         await AppStorage.instance.setString(key, value);
-        await Future.delayed(const Duration(milliseconds: 200));
-
         verified = await AppStorage.instance.getString(key);
         verificationPassed = verified == value;
-        if (verificationPassed) {
-        } else {}
       }
     }
 
@@ -167,14 +150,11 @@ class TokenStorage {
 
         // For critical tokens, verify the secure storage write also succeeded
         if (key == 'refresh_token' || key == 'access_token') {
-          await Future.delayed(const Duration(milliseconds: 50));
           final verified = await _secure.read(key: key);
-          if (verified == value) {
-          } else {
+          if (verified != value) {
             // Try again if verification failed
             try {
               await _secure.write(key: key, value: value);
-              await Future.delayed(const Duration(milliseconds: 50));
               final retryVerify = await _secure.read(key: key);
               if (retryVerify != value) {
                 throw TokenPersistenceException(

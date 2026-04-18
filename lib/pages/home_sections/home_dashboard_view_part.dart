@@ -38,6 +38,79 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                   child: FutureBuilder<_HomeData>(
                     future: _future,
                     builder: (context, snapshot) {
+                      final isLoading =
+                          snapshot.connectionState == ConnectionState.waiting &&
+                          _latestData == null;
+                      if (isLoading) {
+                        return BracuRefreshScroll(
+                          onRefresh: _handleRefresh,
+                          showScrollTopButton: false,
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const _HomeDashboardSkeletonHeader(),
+                              const SizedBox(height: 12),
+                              const _HomeDashboardSkeletonCard(
+                                height: 168,
+                                children: [
+                                  _HomeDashboardSkeletonLine(
+                                    widthFactor: 0.26,
+                                    height: 10,
+                                  ),
+                                  SizedBox(height: 14),
+                                  _HomeDashboardSkeletonLine(
+                                    widthFactor: 0.54,
+                                    height: 16,
+                                  ),
+                                  SizedBox(height: 10),
+                                  _HomeDashboardSkeletonLine(
+                                    widthFactor: 0.42,
+                                    height: 12,
+                                  ),
+                                  SizedBox(height: 18),
+                                  _HomeDashboardSkeletonPillRow(),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              const _HomeDashboardSkeletonCard(
+                                height: 136,
+                                children: [
+                                  _HomeDashboardSkeletonLine(
+                                    widthFactor: 0.22,
+                                    height: 10,
+                                  ),
+                                  SizedBox(height: 12),
+                                  _HomeDashboardSkeletonLine(
+                                    widthFactor: 0.46,
+                                    height: 14,
+                                  ),
+                                  SizedBox(height: 12),
+                                  _HomeDashboardSkeletonLine(
+                                    widthFactor: 0.64,
+                                    height: 12,
+                                  ),
+                                  SizedBox(height: 12),
+                                  _HomeDashboardSkeletonLine(
+                                    widthFactor: 0.34,
+                                    height: 12,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              const _HomeDashboardSkeletonSectionTitle(
+                                widthFactor: 0.34,
+                              ),
+                              const SizedBox(height: 8),
+                              const _HomeDashboardSkeletonQuickAccessActions(),
+                              const SizedBox(height: 10),
+                              const _HomeDashboardSkeletonQuickAccess(),
+                              const SizedBox(height: 12),
+                            ],
+                          ),
+                        );
+                      }
+
                       final data = _latestData ?? snapshot.data;
                       final profile = data?.profile ?? {};
                       final photoUrl = data?.photoUrl;
@@ -568,4 +641,169 @@ class _DashboardQuickAccessItem {
   final String title;
   final String subtitle;
   final Color color;
+}
+
+class _HomeDashboardSkeletonHeader extends StatelessWidget {
+  const _HomeDashboardSkeletonHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return const BracuShimmer(
+      child: Row(
+        children: [
+          BracuSkeletonBox(width: 42, height: 42, radius: 14),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                BracuSkeletonBox(width: 96, height: 10, radius: 5),
+                SizedBox(height: 8),
+                BracuSkeletonBox(width: 160, height: 16, radius: 8),
+              ],
+            ),
+          ),
+          SizedBox(width: 12),
+          BracuSkeletonBox(width: 44, height: 44, radius: 22),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeDashboardSkeletonCard extends StatelessWidget {
+  const _HomeDashboardSkeletonCard({
+    required this.height,
+    required this.children,
+  });
+
+  final double height;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuShimmer(
+      child: BracuCard(
+        child: SizedBox(
+          height: height,
+          width: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeDashboardSkeletonLine extends StatelessWidget {
+  const _HomeDashboardSkeletonLine({
+    required this.widthFactor,
+    required this.height,
+  });
+
+  final double widthFactor;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return FractionallySizedBox(
+      widthFactor: widthFactor,
+      alignment: Alignment.centerLeft,
+      child: BracuSkeletonBox(height: height, radius: 8),
+    );
+  }
+}
+
+class _HomeDashboardSkeletonPillRow extends StatelessWidget {
+  const _HomeDashboardSkeletonPillRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: const [
+        BracuSkeletonBox(width: 56, height: 28, radius: 10),
+        SizedBox(width: 8),
+        BracuSkeletonBox(width: 78, height: 28, radius: 10),
+        SizedBox(width: 8),
+        BracuSkeletonBox(width: 68, height: 28, radius: 10),
+      ],
+    );
+  }
+}
+
+class _HomeDashboardSkeletonQuickAccess extends StatelessWidget {
+  const _HomeDashboardSkeletonQuickAccess();
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuShimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: List.generate(8, (index) {
+              return const SizedBox(
+                width: 80,
+                height: 88,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    BracuSkeletonBox(width: 44, height: 44, radius: 14),
+                    SizedBox(height: 7),
+                    BracuSkeletonBox(width: 52, height: 10, radius: 5),
+                    SizedBox(height: 6),
+                    BracuSkeletonBox(width: 34, height: 8, radius: 4),
+                  ],
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeDashboardSkeletonQuickAccessActions extends StatelessWidget {
+  const _HomeDashboardSkeletonQuickAccessActions();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        Spacer(),
+        BracuSkeletonBox(width: 64, height: 22, radius: 8),
+        SizedBox(width: 8),
+        BracuSkeletonBox(width: 72, height: 22, radius: 8),
+      ],
+    );
+  }
+}
+
+class _HomeDashboardSkeletonSectionTitle extends StatelessWidget {
+  const _HomeDashboardSkeletonSectionTitle({required this.widthFactor});
+
+  final double widthFactor;
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuShimmer(
+      child: FractionallySizedBox(
+        widthFactor: widthFactor,
+        alignment: Alignment.centerLeft,
+        child: const BracuSkeletonBox(
+          width: double.infinity,
+          height: 12,
+          radius: 6,
+        ),
+      ),
+    );
+  }
 }

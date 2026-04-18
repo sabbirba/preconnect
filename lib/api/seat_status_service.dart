@@ -51,7 +51,6 @@ class SeatStatusService {
       _detailsSnapshot = Map<int, SeatStatusDetailsResponse>.from(snapshot);
       return snapshot;
     } catch (e) {
-      debugPrint('[SEAT_STATUS] Failed to load cached details: $e');
       return const <int, SeatStatusDetailsResponse>{};
     }
   }
@@ -93,7 +92,6 @@ class SeatStatusService {
           .map((item) => item.cast<String, dynamic>())
           .toList();
     } catch (e) {
-      debugPrint('[SEAT_STATUS] Failed to load cached free labs slots: $e');
       return const <Map<String, dynamic>>[];
     }
   }
@@ -137,15 +135,10 @@ class SeatStatusService {
             sectionId,
             Map<String, dynamic>.from(entry.value as Map),
           );
-        } catch (e) {
-          debugPrint(
-            '[SEAT_STATUS:DEBUG] Alert config decode failed for sectionId=$sectionId: $e',
-          );
-        }
+        } catch (_) {}
       }
       return output;
-    } catch (e) {
-      debugPrint('[SEAT_STATUS:ERROR] Load alert configs failed: $e');
+    } catch (_) {
       return const <int, SeatAlertConfig>{};
     }
   }

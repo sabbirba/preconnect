@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/model/section_info.dart';
@@ -112,7 +111,6 @@ class ExamMapService {
       });
       return decoded;
     } catch (e) {
-      debugPrint('[EXAM_MAP] ERROR fetching JSON from $url: $e');
       final cached = await _store.getJsonMap(cacheKey);
       return cached?['data'];
     }

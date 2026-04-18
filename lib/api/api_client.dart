@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
-import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
@@ -38,42 +38,18 @@ class ApiClient {
   }
 
   Future<String?> getAccessToken({int retries = 3}) async {
-    debugPrint(
-      '[API.TOKEN] Starting getAccessToken() with $retries attempts...',
-    );
     for (int i = 0; i < retries; i++) {
       try {
-        debugPrint(
-          '[API.TOKEN] Attempt ${i + 1}/$retries: Reading access_token from storage...',
-        );
         final token = await _storage.read(key: 'access_token');
         if (token != null && token.isNotEmpty) {
-          debugPrint(
-            '[API.TOKEN] ✓ SUCCESS on attempt ${i + 1}/$retries: Retrieved ${token.length} byte token',
-          );
           return token;
         }
-        debugPrint(
-          '[API.TOKEN] Attempt ${i + 1}/$retries returned null/empty token',
-        );
-      } catch (e) {
-        debugPrint('[API.TOKEN] ERROR on attempt ${i + 1}/$retries: $e');
-      }
+      } catch (_) {}
 
-      // Add exponential backoff for subsequent retries to help very slow devices
       if (i < retries - 1) {
-        final nextDelayMs = (100 * (i + 1))
-            .toInt(); // 100ms, 200ms, 300ms, etc.
-        debugPrint(
-          '[API.TOKEN] Waiting ${nextDelayMs}ms before retry (exponential backoff)...',
-        );
-        await Future.delayed(Duration(milliseconds: nextDelayMs));
+        continue;
       }
     }
-
-    debugPrint(
-      '[API.TOKEN] ✗ CRITICAL - Failed to retrieve token after $retries attempts!',
-    );
     return null;
   }
 
@@ -87,25 +63,17 @@ class ApiClient {
     Map<String, String> additionalHeaders = const <String, String>{},
     Set<int> acceptedStatusCodes = const <int>{200},
   }) async {
-    debugPrint('[API.REQUEST] GET $url - checking session...');
     if (!await _ensureWebSessionActive()) {
-      debugPrint('[API.REQUEST] GET $url - session expired, logging out');
       await AuthService().logout();
       throw const SessionExpiredException();
     }
 
     final token = await getAccessToken();
     if (token == null || token.isEmpty) {
-      debugPrint('[API:ERROR] GET $url - MISSING ACCESS TOKEN!');
-      debugPrint('[API:ERROR] TOKEN DISAPPEARED - FORCING LOGOUT');
       // Tokens disappeared mid-session - force logout
       unawaited(AuthService().logout(force: true));
       throw const UnauthenticatedException();
     }
-
-    debugPrint(
-      '[API:DEBUG] GET $url - token available (${token.length} bytes), sending request...',
-    );
     final headers = await _authHeaders(token, method: 'GET', url: url);
     if (additionalHeaders.isNotEmpty) {
       headers.addAll(additionalHeaders);
@@ -114,60 +82,26 @@ class ApiClient {
     final response = await http
         .get(Uri.parse(url), headers: headers)
         .timeout(_requestTimeout);
-
-    debugPrint('[API:DEBUG] GET $url - Response: ${response.statusCode}');
     if (acceptedStatusCodes.contains(response.statusCode)) return response;
 
     if (response.statusCode == 401) {
-      debugPrint(
-        '[API:DEBUG] GET $url - 401 Unauthorized, attempting token refresh...',
-      );
-
-      // Retry token refresh up to 3 times with exponential backoff for transient failures
       TokenRefreshStatus refreshStatus = TokenRefreshStatus.retryableFailure;
       for (int retryAttempt = 0; retryAttempt < 3; retryAttempt++) {
         try {
           refreshStatus = await AuthService().refreshTokenStatus();
 
           if (refreshStatus == TokenRefreshStatus.refreshed) {
-            debugPrint(
-              '[API.REQUEST] ✓ Token refresh successful on attempt ${retryAttempt + 1}',
-            );
             break;
           }
 
           if (refreshStatus == TokenRefreshStatus.invalidSession) {
-            debugPrint(
-              '[API.REQUEST] ✗ Invalid session (401 - no refresh token)',
-            );
             await AuthService().logout();
             throw const SessionExpiredException();
           }
-
-          // Retryable failure - wait and retry
-          if (retryAttempt < 2) {
-            final delayMs = 100 * (retryAttempt + 1); // 100ms, 200ms, 300ms
-            debugPrint(
-              '[API.REQUEST] Token refresh failed, retrying in ${delayMs}ms (attempt ${retryAttempt + 1}/3)...',
-            );
-            await Future.delayed(Duration(milliseconds: delayMs));
-          }
-        } catch (e) {
-          debugPrint(
-            '[API.REQUEST] Exception during token refresh attempt ${retryAttempt + 1}: $e',
-          );
-          if (retryAttempt < 2) {
-            final delayMs = 100 * (retryAttempt + 1);
-            debugPrint(
-              '[API.REQUEST] Retrying token refresh in ${delayMs}ms...',
-            );
-            await Future.delayed(Duration(milliseconds: delayMs));
-          }
-        }
+        } catch (_) {}
       }
 
       if (refreshStatus != TokenRefreshStatus.refreshed) {
-        debugPrint('[API.REQUEST] ✗ Token refresh failed after 3 attempts');
         throw const SessionExpiredException();
       }
 
@@ -175,8 +109,6 @@ class ApiClient {
       if (newToken == null || newToken.isEmpty) {
         throw const SessionExpiredException();
       }
-
-      debugPrint('[API.REQUEST] Retrying original request with new token...');
       final retryHeaders = await _authHeaders(
         newToken,
         method: 'GET',
@@ -196,12 +128,6 @@ class ApiClient {
       if (retryResponse.statusCode == 401) {
         // Token refresh succeeded but retry still got 401
         // This is a hard failure - endpoint doesn't accept even fresh tokens
-        debugPrint(
-          '[API.REQUEST] ✗ HARD FAILURE: Retry after token refresh still got 401',
-        );
-        debugPrint(
-          '[API.REQUEST] Indicates: token scope issue, endpoint requires re-auth, or server issue',
-        );
         throw const SessionExpiredException(); // Hard failure - session is invalid
       }
       if (retryResponse.statusCode >= 500) {
@@ -223,7 +149,6 @@ class ApiClient {
     Set<int> acceptedStatusCodes = const <int>{200},
   }) async {
     final normalizedMethod = method.trim().toUpperCase();
-    debugPrint('[API.REQUEST] $normalizedMethod $url - checking session...');
 
     if (normalizedMethod == 'GET') {
       return authenticatedGet(
@@ -233,24 +158,14 @@ class ApiClient {
       );
     }
     if (!await _ensureWebSessionActive()) {
-      debugPrint(
-        '[API.REQUEST] $normalizedMethod $url - session expired, logging out',
-      );
       await AuthService().logout();
       throw const SessionExpiredException();
     }
 
     final token = await getAccessToken();
     if (token == null || token.isEmpty) {
-      debugPrint(
-        '[API.REQUEST] ✗ $normalizedMethod $url - MISSING ACCESS TOKEN!',
-      );
       throw const UnauthenticatedException();
     }
-
-    debugPrint(
-      '[API.REQUEST] ✓ $normalizedMethod $url - token available (${token.length} bytes), sending request...',
-    );
     final headers = await _authHeaders(
       token,
       method: normalizedMethod,
@@ -267,48 +182,24 @@ class ApiClient {
       headers: headers,
       body: body,
     );
-    debugPrint(
-      '[API.REQUEST] $normalizedMethod $url - Response: ${response.statusCode}',
-    );
     if (acceptedStatusCodes.contains(response.statusCode)) return response;
 
     if (response.statusCode == 401) {
-      debugPrint(
-        '[API.REQUEST] $normalizedMethod $url - 401 Unauthorized, attempting token refresh...',
-      );
-
-      // Retry token refresh up to 3 times with exponential backoff for transient failures
       TokenRefreshStatus refreshStatus = TokenRefreshStatus.retryableFailure;
       for (int retryAttempt = 0; retryAttempt < 3; retryAttempt++) {
         refreshStatus = await AuthService().refreshTokenStatus();
 
         if (refreshStatus == TokenRefreshStatus.refreshed) {
-          debugPrint(
-            '[API.REQUEST] ✓ Token refresh successful on attempt ${retryAttempt + 1}',
-          );
           break;
         }
 
         if (refreshStatus == TokenRefreshStatus.invalidSession) {
-          debugPrint(
-            '[API.REQUEST] ✗ Invalid session (401 - no refresh token)',
-          );
           await AuthService().logout();
           throw const SessionExpiredException();
-        }
-
-        // Retryable failure - wait and retry
-        if (retryAttempt < 2) {
-          final delayMs = 100 * (retryAttempt + 1); // 100ms, 200ms, 300ms
-          debugPrint(
-            '[API.REQUEST] Token refresh failed, retrying in ${delayMs}ms (attempt ${retryAttempt + 1}/3)...',
-          );
-          await Future.delayed(Duration(milliseconds: delayMs));
         }
       }
 
       if (refreshStatus != TokenRefreshStatus.refreshed) {
-        debugPrint('[API.REQUEST] ✗ Token refresh failed after 3 attempts');
         throw const SessionExpiredException();
       }
 
@@ -316,8 +207,6 @@ class ApiClient {
       if (newToken == null || newToken.isEmpty) {
         throw const SessionExpiredException();
       }
-
-      debugPrint('[API.REQUEST] Retrying original request with new token...');
       final retryHeaders = await _authHeaders(
         newToken,
         method: normalizedMethod,
@@ -338,9 +227,6 @@ class ApiClient {
       }
       if (retryResponse.statusCode == 401) {
         // Token refresh succeeded but retry still got 401 - hard failure
-        debugPrint(
-          '[API.REQUEST] ✗ HARD FAILURE: Retry after token refresh still got 401',
-        );
         throw const SessionExpiredException();
       }
       throw ApiException(retryResponse.statusCode, retryResponse.body);
@@ -356,9 +242,6 @@ class ApiClient {
     if (_cachedWebSessionActive != null && _cachedWebSessionCheckTime != null) {
       final age = DateTime.now().difference(_cachedWebSessionCheckTime!);
       if (age < _webSessionCacheTtl) {
-        debugPrint(
-          '[API.WEB_SESSION] Using cached validation (${age.inSeconds}s old)',
-        );
         return _cachedWebSessionActive!;
       }
     }
@@ -371,7 +254,6 @@ class ApiClient {
       return false;
     }
     try {
-      debugPrint('[API.WEB_SESSION] Validating web session (not cached)...');
       final isActive = await _webLoginBroker.isActiveWebSession(
         webSessionId: sessionId!,
         webSessionToken: sessionToken!,
@@ -379,12 +261,8 @@ class ApiClient {
       // Cache the result
       _cachedWebSessionActive = isActive;
       _cachedWebSessionCheckTime = DateTime.now();
-      debugPrint(
-        '[API.WEB_SESSION] Session is ${isActive ? 'ACTIVE' : 'INACTIVE'} (cached for 5 minutes)',
-      );
       return isActive;
     } catch (e) {
-      debugPrint('[API.WEB_SESSION] Validation failed: $e');
       _cachedWebSessionActive = false;
       _cachedWebSessionCheckTime = DateTime.now();
       return false;
@@ -597,30 +475,19 @@ Future<String?> resolvePortfolioId({
         .toList();
 
     if (recentFailures.isNotEmpty) {
-      debugPrint(
-        '[API.PORTFOLIO_ID] Resolution in cooldown (${recentFailures.length} recent failures in last 5 minutes)',
-      );
       return null;
     }
 
     // Don't retry indefinitely - limit to maxRetries attempts
     if (currentRetry >= maxRetries) {
-      debugPrint(
-        '[API.PORTFOLIO_ID] Failed to resolve portfolio ID after $maxRetries attempts',
-      );
       _portfolioIdResolutionFailures.add(
         now,
       ); // Record failure for rate limiting
       return null;
     }
-
-    debugPrint(
-      '[API.PORTFOLIO_ID] Portfolio ID not found, attempting profile refresh (attempt ${currentRetry + 1}/$maxRetries)...',
-    );
     try {
       await refreshProfile();
     } catch (e) {
-      debugPrint('[API.PORTFOLIO_ID] Profile refresh failed: $e');
       _portfolioIdResolutionFailures.add(
         now,
       ); // Record failure for rate limiting

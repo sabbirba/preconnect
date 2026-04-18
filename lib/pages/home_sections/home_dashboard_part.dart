@@ -102,7 +102,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
                 ? ProfileService().fetchProfile()
                 : ProfileService().getProfile())
             .catchError((e) {
-              debugPrint('[HOME_DASHBOARD] Profile load failed: $e');
               return null;
             });
 
@@ -111,7 +110,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
                   ? ScheduleService().fetchStudentSchedule()
                   : ScheduleService().getStudentSchedule())
               .catchError((e) {
-                debugPrint('[HOME_DASHBOARD] Schedule load failed: $e');
                 return null;
               })
         : Future<String?>.value(null);
@@ -121,7 +119,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
                   ? SchedulePlannerService().getItems(forceRefresh: true)
                   : SchedulePlannerService().getItems())
               .catchError((e) {
-                debugPrint('[HOME_DASHBOARD] Planner load failed: $e');
                 return const <SchedulePlannerItem>[];
               })
         : Future<List<SchedulePlannerItem>>.value(
@@ -131,7 +128,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     final ramadanFuture = needsRamadan
         ? RamadanTiming.getRamadanStatus(forceRefresh: forceRefresh).catchError(
             (e) {
-              debugPrint('[HOME_DASHBOARD] Ramadan status load failed: $e');
               return const RamadanStatus(isRamadan: false);
             },
           )
@@ -141,7 +137,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         ? HolidayTiming.getTodayStatus(forceRefresh: forceRefresh).catchError((
             e,
           ) {
-            debugPrint('[HOME_DASHBOARD] Holiday status load failed: $e');
             return HolidayStatus.empty;
           })
         : Future<HolidayStatus>.value(HolidayStatus.empty);
@@ -248,7 +243,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         RefreshBus.instance.notify(reason: 'home_dashboard');
       }
     } catch (e) {
-      debugPrint('[HOME_DASHBOARD.UI] Refresh failed: $e');
       // Error will be displayed in the UI if no data is available
       // If we have cached data, it will continue showing
     } finally {

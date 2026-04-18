@@ -3,7 +3,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb, debugPrint;
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_alarmkit/flutter_alarmkit.dart';
@@ -81,7 +81,6 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
       final items = await service.getItems(forceRefresh: forceRefresh);
       return service.autoCompleteOverdueItems(items);
     } catch (e) {
-      debugPrint('[SCHEDULE_PLANNER:ERROR] Load items failed: $e');
       // Try to return cached items on error
       final cached = await SchedulePlannerService().getCachedItems();
       return cached ?? const <SchedulePlannerItem>[];
@@ -162,7 +161,6 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
         _latestItems = items;
       });
     } catch (e) {
-      debugPrint('[SCHEDULE_PLANNER.UI] Refresh failed: $e');
       // Error will be shown by FutureBuilder, no need to crash here
       // FutureBuilder will display the error in snapshot.hasError
     } finally {

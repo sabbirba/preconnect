@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
@@ -235,7 +234,6 @@ class ProfileService {
               });
             }
           } catch (e) {
-            debugPrint('[PROFILE:ERROR] Misc data fetch failed: $e');
             // Continue with partial profile - don't crash
           }
         }

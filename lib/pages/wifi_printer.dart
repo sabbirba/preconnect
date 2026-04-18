@@ -20,6 +20,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const int _printerPort = 515;
   static const String _printerQueue = 'secure';
   static const String _historyKey = 'campus_printer_history';
+  static const String _paperSizeKey = 'campus_printer_paper_size';
+  static const String _marginsKey = 'campus_printer_margins';
+  static const String _colorPrintingKey = 'campus_printer_color_printing';
+  static const String _duplexKey = 'campus_printer_duplex';
+  static const String _resolutionKey = 'campus_printer_resolution';
+  static const String _orientationKey = 'campus_printer_orientation';
+  static const String _copiesKey = 'campus_printer_copies';
 
   Uint8List? _fileBytes;
   String _fileName = '';
@@ -30,6 +37,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _clientName = '';
   String _printerStatus = 'Detecting campus printer...';
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
+  _PaperSize _paperSize = _PaperSize.a4;
+  _MarginPreset _margins = _MarginPreset.mm10;
+  bool _colorPrinting = false;
+  _DuplexMode _duplexMode = _DuplexMode.none;
+  _PrintResolution _resolution = _PrintResolution.medium;
+  _PaperOrientation _orientation = _PaperOrientation.portrait;
+  int _copies = 1;
   bool _busy = false;
   bool _discovering = false;
 
@@ -46,25 +60,51 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   Future<void> _bootstrap() async {
     await Future.wait([
-      _loadStudentProfile().catchError((e) {
-        debugPrint('[WIFI_PRINTER] Student profile load failed: $e');
-      }),
-      _loadHistory().catchError((e) {
-        debugPrint('[WIFI_PRINTER] History load failed: $e');
-      }),
+      _loadStudentProfile().catchError((e) {}),
+      _loadHistory().catchError((e) {}),
+      _loadPrinterPreferences().catchError((e) {}),
     ]);
     if (!mounted) return;
-    unawaited(
-      _discoverPrinter().catchError((e) {
-        debugPrint('[WIFI_PRINTER] Printer discovery failed: $e');
-      }),
-    );
+    unawaited(_discoverPrinter().catchError((e) {}));
   }
 
   Future<void> _refreshPrinterInfo() async {
     await _loadHistory();
     await _loadStudentProfile();
+    await _loadPrinterPreferences();
     await _discoverPrinter();
+  }
+
+  Future<void> _loadPrinterPreferences() async {
+    final paperSize = await AppStorage.instance.getString(_paperSizeKey);
+    final margins = await AppStorage.instance.getString(_marginsKey);
+    final colorPrinting = await AppStorage.instance.getBool(_colorPrintingKey);
+    final duplex = await AppStorage.instance.getString(_duplexKey);
+    final resolution = await AppStorage.instance.getString(_resolutionKey);
+    final orientation = await AppStorage.instance.getString(_orientationKey);
+    final copies = await AppStorage.instance.getString(_copiesKey);
+    if (!mounted) return;
+    setState(() {
+      _paperSize = _PaperSize.fromStorage(paperSize);
+      _margins = _MarginPreset.fromStorage(margins);
+      _colorPrinting = colorPrinting ?? false;
+      _duplexMode = _DuplexMode.fromStorage(duplex);
+      _resolution = _PrintResolution.fromStorage(resolution);
+      _orientation = _PaperOrientation.fromStorage(orientation);
+      _copies = int.tryParse(copies ?? '')?.clamp(1, 999) ?? 1;
+    });
+  }
+
+  Future<void> _savePrinterPreferences() async {
+    await Future.wait([
+      AppStorage.instance.setString(_paperSizeKey, _paperSize.storageValue),
+      AppStorage.instance.setString(_marginsKey, _margins.storageValue),
+      AppStorage.instance.setBool(_colorPrintingKey, _colorPrinting),
+      AppStorage.instance.setString(_duplexKey, _duplexMode.storageValue),
+      AppStorage.instance.setString(_resolutionKey, _resolution.storageValue),
+      AppStorage.instance.setString(_orientationKey, _orientation.storageValue),
+      AppStorage.instance.setString(_copiesKey, _copies.toString()),
+    ]);
   }
 
   Future<void> _loadStudentProfile() async {
@@ -192,7 +232,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     }
     setState(() {
       _fileBytes = bytes;
-      _fileName = file.name.trim().isEmpty ? 'document.pdf' : file.name.trim();
+      _fileName = file.name.trim();
     });
   }
 
@@ -230,6 +270,15 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         fileName: _fileName,
         user: user,
         clientName: _clientName.isEmpty ? studentId : _clientName,
+        preferences: _PrintTicket(
+          paperSize: _paperSize,
+          margins: _margins,
+          colorPrinting: _colorPrinting,
+          duplexMode: _duplexMode,
+          resolution: _resolution,
+          orientation: _orientation,
+          copies: _copies,
+        ),
       );
       if (!mounted) return;
       await _addHistory(
@@ -294,25 +343,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         onRefresh: _refreshPrinterInfo,
         children: [
           BracuCard(
-            padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Campus Printing on Wi-Fi',
-                  style: TextStyle(
-                    color: BracuPalette.textPrimary(context),
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _StudentPrintDetails(
-                  name: _studentName,
-                  shortCode: _studentShortCode,
-                  studentId: _studentId,
-                ),
-                const SizedBox(height: 12),
                 Row(
                   children: [
                     Icon(
@@ -344,6 +378,50 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                           : const Text('Scan'),
                     ),
                   ],
+                ),
+                const SizedBox(height: 4),
+                _StudentPrintDetails(
+                  name: _studentName,
+                  shortCode: _studentShortCode,
+                  studentId: _studentId,
+                ),
+                const SizedBox(height: 12),
+                _PrinterPreferencesPanel(
+                  paperSize: _paperSize,
+                  margins: _margins,
+                  colorPrinting: _colorPrinting,
+                  duplexMode: _duplexMode,
+                  resolution: _resolution,
+                  orientation: _orientation,
+                  copies: _copies,
+                  onPaperSizeChanged: (value) {
+                    setState(() => _paperSize = value);
+                    unawaited(_savePrinterPreferences());
+                  },
+                  onMarginsChanged: (value) {
+                    setState(() => _margins = value);
+                    unawaited(_savePrinterPreferences());
+                  },
+                  onColorPrintingChanged: (value) {
+                    setState(() => _colorPrinting = value);
+                    unawaited(_savePrinterPreferences());
+                  },
+                  onDuplexModeChanged: (value) {
+                    setState(() => _duplexMode = value);
+                    unawaited(_savePrinterPreferences());
+                  },
+                  onResolutionChanged: (value) {
+                    setState(() => _resolution = value);
+                    unawaited(_savePrinterPreferences());
+                  },
+                  onOrientationChanged: (value) {
+                    setState(() => _orientation = value);
+                    unawaited(_savePrinterPreferences());
+                  },
+                  onCopiesChanged: (value) {
+                    setState(() => _copies = value);
+                    unawaited(_savePrinterPreferences());
+                  },
                 ),
               ],
             ),
@@ -654,6 +732,7 @@ class _LprPrintClient {
     required String fileName,
     required String user,
     required String clientName,
+    required _PrintTicket preferences,
   }) async {
     final printerHost = host.trim();
     if (printerHost.isEmpty) {
@@ -663,18 +742,30 @@ class _LprPrintClient {
     final printerQueue = queue;
     final owner = user;
     final client = clientName.trim().isEmpty ? user : clientName.trim();
-    final safeFileName = fileName.split(Platform.pathSeparator).last;
+    final safeFileName = fileName.trim();
+    final printableJobName = safeFileName.toLowerCase().endsWith('.pdf')
+        ? safeFileName.substring(0, safeFileName.length - 4)
+        : safeFileName;
+    final isPostScript = _looksLikePostScript(safeFileName, bytes);
     final jobToken =
         'dfA${(DateTime.now().microsecondsSinceEpoch % 999 + 1).toString().padLeft(3, '0')}$client';
 
     Socket? socket;
     _LprAckReader? ackReader;
     try {
-      final sendBytes = bytes;
+      final sendBytes = isPostScript
+          ? Uint8List.fromList([
+              ..._ascii(preferences.postScriptPreamble),
+              ...bytes,
+            ])
+          : bytes;
       final control = _ascii(
         [
           'H$client',
           'P$owner',
+          'J$printableJobName',
+          'C$printableJobName',
+          'M${preferences.summary}',
           'l$jobToken',
           'U$jobToken',
           'N$safeFileName',
@@ -729,6 +820,13 @@ class _LprPrintClient {
     }
   }
 
+  bool _looksLikePostScript(String fileName, Uint8List bytes) {
+    final lower = fileName.toLowerCase();
+    if (lower.endsWith('.ps') || lower.endsWith('.eps')) return true;
+    if (bytes.length >= 2 && bytes[0] == 0x25 && bytes[1] == 0x21) return true;
+    return false;
+  }
+
   Future<void> _writeAndAck(
     Socket socket,
     _LprAckReader ackReader,
@@ -741,6 +839,306 @@ class _LprPrintClient {
       throw const _LprPrintException('Printer rejected the job');
     }
   }
+}
+
+class _PrinterPreferencesPanel extends StatelessWidget {
+  const _PrinterPreferencesPanel({
+    required this.paperSize,
+    required this.margins,
+    required this.colorPrinting,
+    required this.duplexMode,
+    required this.resolution,
+    required this.orientation,
+    required this.copies,
+    required this.onPaperSizeChanged,
+    required this.onMarginsChanged,
+    required this.onColorPrintingChanged,
+    required this.onDuplexModeChanged,
+    required this.onResolutionChanged,
+    required this.onOrientationChanged,
+    required this.onCopiesChanged,
+  });
+
+  final _PaperSize paperSize;
+  final _MarginPreset margins;
+  final bool colorPrinting;
+  final _DuplexMode duplexMode;
+  final _PrintResolution resolution;
+  final _PaperOrientation orientation;
+  final int copies;
+  final ValueChanged<_PaperSize> onPaperSizeChanged;
+  final ValueChanged<_MarginPreset> onMarginsChanged;
+  final ValueChanged<bool> onColorPrintingChanged;
+  final ValueChanged<_DuplexMode> onDuplexModeChanged;
+  final ValueChanged<_PrintResolution> onResolutionChanged;
+  final ValueChanged<_PaperOrientation> onOrientationChanged;
+  final ValueChanged<int> onCopiesChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _PrinterDropdown<_PaperSize>(
+          label: 'Page size',
+          value: paperSize,
+          items: _PaperSize.values,
+          onChanged: onPaperSizeChanged,
+        ),
+        const SizedBox(height: 10),
+        _PrinterDropdown<_MarginPreset>(
+          label: 'Margins',
+          value: margins,
+          items: _MarginPreset.values,
+          onChanged: onMarginsChanged,
+        ),
+        const SizedBox(height: 10),
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          value: colorPrinting,
+          onChanged: onColorPrintingChanged,
+          title: Text(
+            'Color printing',
+            style: TextStyle(
+              color: BracuPalette.textPrimary(context),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          subtitle: Text(
+            colorPrinting ? 'Color' : 'Monochrome',
+            style: TextStyle(color: BracuPalette.textSecondary(context)),
+          ),
+        ),
+        const SizedBox(height: 2),
+        _PrinterDropdown<_DuplexMode>(
+          label: 'Two-sided printing',
+          value: duplexMode,
+          items: _DuplexMode.values,
+          onChanged: onDuplexModeChanged,
+        ),
+        const SizedBox(height: 10),
+        _PrinterDropdown<_PrintResolution>(
+          label: 'Resolution',
+          value: resolution,
+          items: _PrintResolution.values,
+          onChanged: onResolutionChanged,
+        ),
+        const SizedBox(height: 10),
+        _PrinterDropdown<_PaperOrientation>(
+          label: 'Orientation',
+          value: orientation,
+          items: _PaperOrientation.values,
+          onChanged: onOrientationChanged,
+        ),
+        const SizedBox(height: 10),
+        TextFormField(
+          initialValue: copies.toString(),
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Copies',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+          onChanged: (value) {
+            final parsed = int.tryParse(value.trim());
+            onCopiesChanged((parsed ?? 1).clamp(1, 999));
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _PrinterDropdown<T extends _PrinterOption> extends StatelessWidget {
+  const _PrinterDropdown({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  final String label;
+  final T value;
+  final List<T> items;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<T>(
+      initialValue: value,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        isDense: true,
+      ),
+      items: items
+          .map(
+            (item) => DropdownMenuItem<T>(value: item, child: Text(item.label)),
+          )
+          .toList(growable: false),
+      onChanged: (selected) {
+        if (selected == null) return;
+        onChanged(selected);
+      },
+    );
+  }
+}
+
+abstract class _PrinterOption {
+  const _PrinterOption(this.storageValue, this.label);
+
+  final String storageValue;
+  final String label;
+}
+
+enum _PaperSize implements _PrinterOption {
+  a4('a4', 'A4'),
+  letter('letter', 'Letter'),
+  legal('legal', 'Legal');
+
+  const _PaperSize(this.storageValue, this.label);
+  @override
+  final String storageValue;
+  @override
+  final String label;
+
+  static _PaperSize fromStorage(String? value) {
+    return _PaperSize.values.firstWhere(
+      (item) => item.storageValue == value,
+      orElse: () => _PaperSize.a4,
+    );
+  }
+}
+
+enum _MarginPreset implements _PrinterOption {
+  mm0('0', '0 mm'),
+  mm10('10', '10 mm'),
+  mm15('15', '15 mm'),
+  mm20('20', '20 mm');
+
+  const _MarginPreset(this.storageValue, this.label);
+  @override
+  final String storageValue;
+  @override
+  final String label;
+
+  static _MarginPreset fromStorage(String? value) {
+    return _MarginPreset.values.firstWhere(
+      (item) => item.storageValue == value,
+      orElse: () => _MarginPreset.mm10,
+    );
+  }
+}
+
+enum _DuplexMode implements _PrinterOption {
+  none('none', 'No'),
+  longEdge('long_edge', 'Long edge'),
+  shortEdge('short_edge', 'Short edge');
+
+  const _DuplexMode(this.storageValue, this.label);
+  @override
+  final String storageValue;
+  @override
+  final String label;
+
+  static _DuplexMode fromStorage(String? value) {
+    return _DuplexMode.values.firstWhere(
+      (item) => item.storageValue == value,
+      orElse: () => _DuplexMode.none,
+    );
+  }
+}
+
+enum _PrintResolution implements _PrinterOption {
+  low('low', 'Low'),
+  medium('medium', 'Medium'),
+  high('high', 'High');
+
+  const _PrintResolution(this.storageValue, this.label);
+  @override
+  final String storageValue;
+  @override
+  final String label;
+
+  static _PrintResolution fromStorage(String? value) {
+    return _PrintResolution.values.firstWhere(
+      (item) => item.storageValue == value,
+      orElse: () => _PrintResolution.medium,
+    );
+  }
+}
+
+enum _PaperOrientation implements _PrinterOption {
+  portrait('portrait', 'Portrait'),
+  landscape('landscape', 'Landscape');
+
+  const _PaperOrientation(this.storageValue, this.label);
+  @override
+  final String storageValue;
+  @override
+  final String label;
+
+  static _PaperOrientation fromStorage(String? value) {
+    return _PaperOrientation.values.firstWhere(
+      (item) => item.storageValue == value,
+      orElse: () => _PaperOrientation.portrait,
+    );
+  }
+}
+
+class _PrintTicket {
+  const _PrintTicket({
+    required this.paperSize,
+    required this.margins,
+    required this.colorPrinting,
+    required this.duplexMode,
+    required this.resolution,
+    required this.orientation,
+    required this.copies,
+  });
+
+  final _PaperSize paperSize;
+  final _MarginPreset margins;
+  final bool colorPrinting;
+  final _DuplexMode duplexMode;
+  final _PrintResolution resolution;
+  final _PaperOrientation orientation;
+  final int copies;
+
+  String get summary {
+    final color = colorPrinting ? 'Color' : 'Mono';
+    final duplex = duplexMode == _DuplexMode.none
+        ? 'Simplex'
+        : duplexMode.label;
+    return [
+      paperSize.label,
+      '${margins.label} margins',
+      color,
+      duplex,
+      resolution.label,
+      orientation.label,
+      '$copies copies',
+    ].join(' | ');
+  }
+
+  String get postScriptPreamble =>
+      '''
+%!PS-Adobe-3.0
+%%Creator: PreConnect
+%%Title: PreConnect Print Job
+<< /PageSize [${paperSize == _PaperSize.legal
+          ? 612
+          : paperSize == _PaperSize.letter
+          ? 612
+          : 595} ${paperSize == _PaperSize.legal
+          ? 1008
+          : paperSize == _PaperSize.letter
+          ? 792
+          : 842}]
+   /Orientation (${orientation == _PaperOrientation.landscape ? 'Landscape' : 'Portrait'})
+   /Duplex (${duplexMode.label})
+>> setpagedevice
+''';
 }
 
 class _LprAckReader {

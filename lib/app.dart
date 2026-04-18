@@ -34,54 +34,29 @@ class MyApp extends StatefulWidget {
   final AppBootstrapState? bootstrapState;
 
   static Future<AppBootstrapState> bootstrap() async {
-    debugPrint('[BOOTSTRAP] 🔵🔵🔵 APP BOOTSTRAP STARTING 🔵🔵🔵');
     final prefs = AppStorage.instance;
     final savedTheme = await prefs.getString('themeMode') ?? 'system';
-    debugPrint('[BOOTSTRAP] Saved theme: $savedTheme');
 
     // CRITICAL: ONLY check actual tokens from storage, NEVER trust cached data
-    debugPrint('[BOOTSTRAP] 🔐 Checking for ACTUAL TOKENS in storage...');
     final token = await TokenStorage.instance.read(key: 'access_token');
     final refreshToken = await TokenStorage.instance.read(key: 'refresh_token');
     final tokenPresent = token != null && token.isNotEmpty;
     final refreshTokenPresent = refreshToken != null && refreshToken.isNotEmpty;
     final hasToken = tokenPresent && refreshTokenPresent;
 
-    debugPrint(
-      '[BOOTSTRAP] access_token present: $tokenPresent (${token?.length ?? 0} bytes)',
-    );
-    debugPrint(
-      '[BOOTSTRAP] refresh_token present: $refreshTokenPresent (${refreshToken?.length ?? 0} bytes)',
-    );
-    debugPrint('[BOOTSTRAP] 🔐 Overall hasToken: $hasToken');
-
     // If tokens are missing, DO NOT ALLOW OFFLINE ACCESS
     // Tokens = source of truth for login state
     if (!hasToken) {
-      debugPrint(
-        '[BOOTSTRAP] ✗ NO TOKENS FOUND - Clearing ALL cached session data...',
-      );
       // Clear everything that depends on valid tokens
       await prefs.setBool('cached_has_auth_session', false);
       await prefs.remove('StudentSchedule');
       await prefs.remove('StudentProgramProgress');
       await prefs.remove('StudentProgramProgressSummary');
       await prefs.remove('SemesterPaymentInfo');
-      debugPrint(
-        '[BOOTSTRAP] ✗ Cleared all cached session data - FORCING LOGIN',
-      );
-    } else {
-      debugPrint('[BOOTSTRAP] ✓ Valid tokens present - User is logged in');
-    }
+    } else {}
 
     // offline access ONLY if tokens exist AND offline snapshot available
     final canOpenOffline = hasToken && await _hasOfflineSnapshot();
-    debugPrint(
-      '[BOOTSTRAP] Final state - isLoggedIn=$hasToken, canOpenOffline=$canOpenOffline',
-    );
-    debugPrint(
-      '[BOOTSTRAP] 🔵 BOOTSTRAP COMPLETE - Sending to ${hasToken ? '/home' : '/login'}',
-    );
 
     return AppBootstrapState(
       themeMode: _decodeTheme(savedTheme),

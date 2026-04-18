@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
@@ -31,14 +30,8 @@ class SchedulePlannerService {
         '${ApiConfig.seatStatusProxyBase}/v1/schedule-planner',
       );
       if (response.statusCode != 200) {
-        debugPrint(
-          '[SCHEDULE_PLANNER] ERROR: Got ${response.statusCode} response from API',
-        );
         final cached = await _readCachedItems();
         if (cached != null) {
-          debugPrint(
-            '[SCHEDULE_PLANNER] Falling back to cached data after ${response.statusCode}',
-          );
           return cached;
         }
         throw ApiException(response.statusCode, response.body);
@@ -48,15 +41,10 @@ class SchedulePlannerService {
       await _writeCache(items);
       return items;
     } catch (e) {
-      debugPrint('[SCHEDULE_PLANNER] EXCEPTION: $e');
       final cached = await _readCachedItems();
       if (cached != null) {
-        debugPrint('[SCHEDULE_PLANNER] Returning cached data after exception');
         return cached;
       }
-      debugPrint(
-        '[SCHEDULE_PLANNER] No cached data available, rethrowing exception',
-      );
       rethrow;
     }
   }

@@ -33,21 +33,16 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 ? NotificationService().fetchRecentNotifications()
                 : NotificationService().getRecentNotifications())
             .catchError((e) {
-              debugPrint(
-                '[NOTIFICATIONS] Connect notifications load failed: $e',
-              );
               return null;
             });
     final scraperFuture = NotificationService()
         .getScraperContentFeed(forceRefresh: forceRefresh)
         .catchError((e) {
-          debugPrint('[NOTIFICATIONS] Scraper content load failed: $e');
           return const <ScraperContentItem>[];
         });
     final seenScraperIdsFuture = NotificationService()
         .getSeenScraperNotificationIds()
         .catchError((e) {
-          debugPrint('[NOTIFICATIONS] Seen scraper IDs load failed: $e');
           return <String>{};
         });
     final results = await Future.wait<dynamic>(<Future<dynamic>>[

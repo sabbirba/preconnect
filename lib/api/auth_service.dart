@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:synchronized/synchronized.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/api_config.dart';
@@ -49,33 +49,17 @@ class AuthService {
   Future<void> logout({bool instant = false, bool force = false}) async {
     // Prevent concurrent logout operations
     if (_isLoggingOut) {
-      debugPrint(
-        '[AUTH] logout() already in progress - ignoring concurrent logout call',
-      );
       return;
     }
     _isLoggingOut = true;
 
     try {
-      debugPrint(
-        '[AUTH] logout() called - starting logout sequence (force=$force)',
-      );
-
       // CRITICAL: Prevent accidental token clearing during bootstrap
       if (!force && _bootstrapStartTime != null) {
         final timeSinceBootstrap = DateTime.now().difference(
           _bootstrapStartTime!,
         );
         if (timeSinceBootstrap < _bootstrapGracePeriod) {
-          debugPrint(
-            '[AUTH] ⚠ BLOCKED logout during bootstrap grace period (${timeSinceBootstrap.inMilliseconds}ms since startup)',
-          );
-          debugPrint(
-            '[AUTH] Tokens are likely fresh from login - refusing to clear them',
-          );
-          debugPrint(
-            '[AUTH] Call logout(force: true) if logout is truly needed',
-          );
           return;
         }
       }
@@ -84,36 +68,23 @@ class AuthService {
       final refreshToken = await _storage.read(key: 'refresh_token');
       final accessToken = await _storage.read(key: 'access_token');
       if (accessToken == null && refreshToken == null) {
-        debugPrint(
-          '[AUTH] logout() called but no tokens present - skipping logout',
-        );
         return;
       }
 
       await _clearAuthSessionData();
       if (instant) {
-        debugPrint(
-          '[AUTH] logout() instant=true, finishing logout in background',
-        );
         unawaited(_finishLogout(refreshToken));
         return;
       }
-      debugPrint('[AUTH] logout() awaiting full logout completion');
       await _finishLogout(refreshToken);
     } finally {
       _isLoggingOut = false;
-      debugPrint(
-        '[AUTH] logout() completed, concurrent logout protection released',
-      );
     }
   }
 
   Future<void> _finishLogout(String? refreshToken) async {
-    debugPrint('[AUTH] _finishLogout() starting - revoking server session');
     await _revokeServerSession(refreshToken);
-    debugPrint('[AUTH] _finishLogout() - clearing local caches');
     await _clearLocalCaches();
-    debugPrint('[AUTH] _finishLogout() completed');
   }
 
   Future<void> _revokeServerSession(String? refreshToken) async {
@@ -134,31 +105,15 @@ class AuthService {
   }
 
   Future<void> _clearAuthSessionData() async {
-    debugPrint(
-      '[AUTH] _clearAuthSessionData() - deleting all tokens from storage',
-    );
     await _storage.deleteAll();
-    debugPrint('[AUTH] _clearAuthSessionData() - clearing web login session');
     await WebLoginSessionStore.clear();
-    debugPrint(
-      '[AUTH] _clearAuthSessionData() - clearing login page artifacts',
-    );
     await LoginPage.clearSessionArtifacts();
-    debugPrint('[AUTH] _clearAuthSessionData() completed');
   }
 
   Future<void> _clearLocalCaches() async {
-    debugPrint(
-      '[AUTH] _clearLocalCaches() starting - clearing app caches (NOT tokens)...',
-    );
     try {
       await SeatAlertSyncService().clearAll();
-      debugPrint('[AUTH] _clearLocalCaches() - SeatAlertSyncService cleared');
-    } catch (e) {
-      debugPrint(
-        '[AUTH] _clearLocalCaches() ERROR clearing SeatAlertSyncService: $e',
-      );
-    }
+    } catch (_) {}
 
     // CRITICAL: Only clear specific cache keys, NOT all of AppStorage (which contains tokens!)
     // AppStorage.clear() was wiping tokens and causing all API failures
@@ -185,21 +140,11 @@ class AuthService {
         await AppStorage.instance.remove(key);
       } catch (_) {}
     }
-    debugPrint(
-      '[AUTH] _clearLocalCaches() - AppStorage cache keys cleared (tokens preserved)',
-    );
 
     await FriendScheduleStore().clearAll();
-    debugPrint('[AUTH] _clearLocalCaches() - FriendScheduleStore cleared');
     await SeatStatusService().clearAll();
-    debugPrint('[AUTH] _clearLocalCaches() - SeatStatusService cleared');
     await ProfileImageCache.instance.clear();
-    debugPrint('[AUTH] _clearLocalCaches() - ProfileImageCache cleared');
     CachedImage.clearMemoryCache();
-    debugPrint('[AUTH] _clearLocalCaches() - CachedImage memory cleared');
-    debugPrint(
-      '[AUTH] _clearLocalCaches() completed - app caches cleared, tokens preserved',
-    );
   }
 
   Future<TokenRefreshStatus> refreshTokenStatus() async {
@@ -209,9 +154,6 @@ class AuthService {
       if (_lastRefreshStatus != null && _lastRefreshTime != null) {
         final age = DateTime.now().difference(_lastRefreshTime!);
         if (age < _refreshResultTtl) {
-          debugPrint(
-            '[AUTH] Returning cached refresh result from ${age.inMilliseconds}ms ago',
-          );
           return _lastRefreshStatus!;
         }
       }
@@ -266,7 +208,6 @@ class AuthService {
       _cacheRefreshResult(TokenRefreshStatus.retryableFailure);
       return TokenRefreshStatus.retryableFailure;
     } catch (e) {
-      debugPrint('[AUTH] Token refresh error: $e');
       _cacheRefreshResult(TokenRefreshStatus.retryableFailure);
       return TokenRefreshStatus.retryableFailure;
     }
@@ -287,80 +228,38 @@ class AuthService {
   }
 
   Future<bool> ensureSignedIn() async {
-    debugPrint('[AUTH] ensureSignedIn: Checking if user is still signed in...');
     final accessToken = await _storage.read(key: 'access_token');
     if (accessToken == null || accessToken.isEmpty) {
-      debugPrint('[AUTH] ensureSignedIn: No access_token found');
       return false;
     }
-    debugPrint(
-      '[AUTH] ensureSignedIn: Found access_token (${accessToken.length} bytes), checking expiry...',
-    );
 
     final expired = await isTokenExpired();
-    debugPrint('[AUTH] ensureSignedIn: Token expired=$expired');
     if (!expired) {
-      debugPrint(
-        '[AUTH] ensureSignedIn: Token is still valid, user is signed in',
-      );
       return true;
     }
-
-    debugPrint(
-      '[AUTH] ensureSignedIn: Token is expired, checking if in bootstrap grace period...',
-    );
     if (_bootstrapStartTime != null) {
       final timeSinceBootstrap = DateTime.now().difference(
         _bootstrapStartTime!,
       );
       if (timeSinceBootstrap < _bootstrapGracePeriod) {
-        debugPrint(
-          '[AUTH] ensureSignedIn: In bootstrap grace period (${timeSinceBootstrap.inMilliseconds}ms), treating expired token as valid',
-        );
         return true;
       }
     }
-
-    debugPrint(
-      '[AUTH] ensureSignedIn: Token is expired, checking network connection...',
-    );
     if (!await ApiClient().hasConnection()) {
-      debugPrint(
-        '[AUTH] ensureSignedIn: No network connection, returning true to avoid logout',
-      );
       return true;
     }
-
-    debugPrint(
-      '[AUTH] ensureSignedIn: Token expired and network available, attempting refresh...',
-    );
     final refreshStatus = await refreshTokenStatus();
-    debugPrint('[AUTH] ensureSignedIn: Refresh status=$refreshStatus');
     if (refreshStatus == TokenRefreshStatus.refreshed) {
-      debugPrint('[AUTH] ensureSignedIn: Token refreshed successfully');
       return true;
     }
     if (refreshStatus == TokenRefreshStatus.retryableFailure) {
-      debugPrint(
-        '[AUTH] ensureSignedIn: Refresh failed but retryable, returning true to allow retry',
-      );
       return true;
     }
-
-    debugPrint(
-      '[AUTH] ensureSignedIn: CRITICAL - Token refresh failed non-recoverable',
-    );
-    debugPrint(
-      '[AUTH] ensureSignedIn: Checking if in bootstrap grace period before logout...',
-    );
     if (_bootstrapStartTime != null) {
       final timeSinceBootstrap = DateTime.now().difference(
         _bootstrapStartTime!,
       );
       if (timeSinceBootstrap < _bootstrapGracePeriod) {
-        debugPrint(
-          '[AUTH] ensureSignedIn: In bootstrap grace period (${timeSinceBootstrap.inMilliseconds}ms), returning false without logout',
-        );
         return false;
       }
     }
@@ -374,13 +273,11 @@ class AuthService {
     try {
       final parts = token.split('.');
       if (parts.length != 3) {
-        debugPrint('[AUTH] JWT validation failed: not 3-part structure');
         return false;
       }
 
       for (int i = 0; i < 3; i++) {
         if (parts[i].isEmpty) {
-          debugPrint('[AUTH] JWT validation failed: empty part at index $i');
           return false;
         }
       }
@@ -389,7 +286,6 @@ class AuthService {
       try {
         base64Url.decode(base64Url.normalize(parts[0]));
       } catch (e) {
-        debugPrint('[AUTH] JWT validation failed: invalid header base64: $e');
         return false;
       }
 
@@ -400,13 +296,9 @@ class AuthService {
         );
         final payload = json.decode(payloadJson);
         if (payload is! Map || !payload.containsKey('exp')) {
-          debugPrint('[AUTH] JWT validation failed: missing exp claim');
           return false;
         }
       } catch (e) {
-        debugPrint(
-          '[AUTH] JWT validation failed: invalid payload base64 or JSON: $e',
-        );
         return false;
       }
 
@@ -414,16 +306,10 @@ class AuthService {
       try {
         base64Url.decode(base64Url.normalize(parts[2]));
       } catch (e) {
-        debugPrint(
-          '[AUTH] JWT validation failed: invalid signature base64: $e',
-        );
         return false;
       }
-
-      debugPrint('[AUTH] JWT validation passed');
       return true;
     } catch (e) {
-      debugPrint('[AUTH] JWT validation error: $e');
       return false;
     }
   }
@@ -434,7 +320,6 @@ class AuthService {
       return DateTime.fromMillisecondsSinceEpoch(0);
     }
     if (!_isValidJwt(token)) {
-      debugPrint('[AUTH] Rejecting invalid JWT token');
       return DateTime.fromMillisecondsSinceEpoch(0);
     }
     try {

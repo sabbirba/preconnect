@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
@@ -62,7 +61,6 @@ class ScheduleService {
       final decoded = jsonDecode(scheduleJson);
       return decoded is List && decoded.isNotEmpty;
     } catch (e) {
-      debugPrint('[SCHEDULE] Cache data parsing error: $e');
       return false;
     }
   }
@@ -79,7 +77,6 @@ class ScheduleService {
           .map(section.Section.fromJson)
           .toList();
     } catch (e) {
-      debugPrint('[SCHEDULE] Failed to parse student sections JSON: $e');
       return const <section.Section>[];
     }
   }
@@ -124,7 +121,6 @@ class ScheduleService {
             ..sort((a, b) => b.compareTo(a));
       return ids;
     } catch (e) {
-      debugPrint('[SCHEDULE] Failed to decode semester IDs: $e');
       return const <int>[];
     }
   }

@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:path_provider/path_provider.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
@@ -51,9 +50,7 @@ class GradeSheetService {
       );
       final bytes = _extractPdfBytes(response.bodyBytes, response.body);
       if (bytes != null && bytes.isNotEmpty) return bytes;
-    } catch (e) {
-      debugPrint('[GRADE_SHEET] ERROR in fetchGradeSheetBytes: $e');
-    }
+    } catch (_) {}
 
     if (fromGet) return null;
     return fetchGradeSheetBytes(fromGet: true);
@@ -188,10 +185,7 @@ class GradeSheetService {
       if (_looksLikePdf(decoded)) {
         return Uint8List.fromList(decoded);
       }
-      debugPrint('[GRADE_SHEET] Extracted bytes don\'t look like PDF');
-    } catch (e) {
-      debugPrint('[GRADE_SHEET] PDF extraction error: $e');
-    }
+    } catch (_) {}
 
     return null;
   }
