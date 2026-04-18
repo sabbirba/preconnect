@@ -11,7 +11,7 @@ import 'package:preconnect/api/schedule_service.dart';
 import 'package:archive/archive.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
@@ -75,10 +75,11 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       errorMessage = null;
     });
 
-    final prefs = await SharedPreferences.getInstance();
-    final cachedBase64 = prefs.getString('qr_base64');
-    final cachedHash = prefs.getString('qr_hash');
-    final cachedVersion = prefs.getInt('qr_payload_version');
+    final cachedBase64 = await AppStorage.instance.getString('qr_base64');
+    final cachedHash = await AppStorage.instance.getString('qr_hash');
+    final cachedVersion = await AppStorage.instance.getInt(
+      'qr_payload_version',
+    );
 
     if (cachedBase64 != null &&
         cachedBase64.isNotEmpty &&
@@ -177,10 +178,9 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       final gzipBytes = GZipEncoder().encode(utf8Bytes);
       final base64Str = base64.encode(gzipBytes);
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('qr_base64', base64Str);
-      await prefs.setString('qr_hash', fingerprint);
-      await prefs.setInt('qr_payload_version', _qrPayloadVersion);
+      await AppStorage.instance.setString('qr_base64', base64Str);
+      await AppStorage.instance.setString('qr_hash', fingerprint);
+      await AppStorage.instance.setInt('qr_payload_version', _qrPayloadVersion);
 
       _safeSetState(() {
         _base64Data = base64Str;
@@ -212,10 +212,9 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
     if (!await ensureOnline(context)) {
       return;
     }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('qr_base64');
-    await prefs.remove('qr_hash');
-    await prefs.remove('qr_payload_version');
+    await AppStorage.instance.remove('qr_base64');
+    await AppStorage.instance.remove('qr_hash');
+    await AppStorage.instance.remove('qr_payload_version');
     await _fetchAndConvertSchedule(forceRefresh: true);
     RefreshBus.instance.notify(reason: 'share_schedule');
   }

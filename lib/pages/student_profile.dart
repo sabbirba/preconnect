@@ -114,7 +114,9 @@ class _StudentProfileState extends State<StudentProfile>
       profile = await ProfileService().getProfile();
       photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
       cachedImage = await ProfileImageCache.instance.getProfileImage(photoUrl);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[STUDENT_PROFILE:ERROR] Profile fetch failed: $e');
+    }
 
     try {
       final List<dynamic> paymentsJson = _decodeList(
@@ -125,14 +127,19 @@ class _StudentProfileState extends State<StudentProfile>
               .map<PaymentInfo?>((item) {
                 try {
                   return PaymentInfo.fromJson(item as Map<String, dynamic>);
-                } catch (_) {
+                } catch (e) {
+                  debugPrint(
+                    '[STUDENT_PROFILE:DEBUG] Payment item decode failed: $e',
+                  );
                   return null;
                 }
               })
               .whereType<PaymentInfo>()
               .toList()
             ..sort(_comparePayments);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[STUDENT_PROFILE:ERROR] Payment info fetch failed: $e');
+    }
 
     try {
       final List<dynamic> attendanceJson = _decodeList(
@@ -142,23 +149,32 @@ class _StudentProfileState extends State<StudentProfile>
           .map<AttendanceInfo?>((e) {
             try {
               return AttendanceInfo.fromJson(e as Map<String, dynamic>);
-            } catch (_) {
+            } catch (e) {
+              debugPrint(
+                '[STUDENT_PROFILE:DEBUG] Attendance item decode failed: $e',
+              );
               return null;
             }
           })
           .whereType<AttendanceInfo>()
           .toList();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[STUDENT_PROFILE:ERROR] Attendance info fetch failed: $e');
+    }
 
     try {
       advising = await AdvisingService().getAdvisingInfo() ?? advising;
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[STUDENT_PROFILE:ERROR] Advising info fetch failed: $e');
+    }
 
     try {
       progressSummary =
           await ProgressService().getProgressSummary(fromFetch: true) ??
           progressSummary;
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[STUDENT_PROFILE:ERROR] Progress load failed: $e');
+    }
 
     if (!mounted) return;
     setState(() {
@@ -195,7 +211,9 @@ class _StudentProfileState extends State<StudentProfile>
       photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
       ProfileImageCache.instance.invalidate();
       cachedImage = await ProfileImageCache.instance.getProfileImage(photoUrl);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[STUDENT_PROFILE:ERROR] Profile refresh failed: $e');
+    }
 
     try {
       final List<dynamic> paymentsJson = _decodeList(
@@ -206,14 +224,19 @@ class _StudentProfileState extends State<StudentProfile>
               .map<PaymentInfo?>((item) {
                 try {
                   return PaymentInfo.fromJson(item as Map<String, dynamic>);
-                } catch (_) {
+                } catch (e) {
+                  debugPrint(
+                    '[STUDENT_PROFILE:DEBUG] Payment item decode failed: $e',
+                  );
                   return null;
                 }
               })
               .whereType<PaymentInfo>()
               .toList()
             ..sort(_comparePayments);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[STUDENT_PROFILE:ERROR] Payment refresh failed: $e');
+    }
 
     try {
       final List<dynamic> attendanceJson = _decodeList(
@@ -223,23 +246,32 @@ class _StudentProfileState extends State<StudentProfile>
           .map<AttendanceInfo?>((e) {
             try {
               return AttendanceInfo.fromJson(e as Map<String, dynamic>);
-            } catch (_) {
+            } catch (e) {
+              debugPrint(
+                '[STUDENT_PROFILE:DEBUG] Attendance item decode failed: $e',
+              );
               return null;
             }
           })
           .whereType<AttendanceInfo>()
           .toList();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[STUDENT_PROFILE:ERROR] Attendance refresh failed: $e');
+    }
 
     try {
       advising = await AdvisingService().fetchAdvisingInfo() ?? advising;
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[STUDENT_PROFILE:ERROR] Advising refresh failed: $e');
+    }
 
     try {
       progressSummary =
           await ProgressService().getProgressSummary(fromFetch: true) ??
           progressSummary;
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[STUDENT_PROFILE:ERROR] Progress refresh failed: $e');
+    }
 
     if (!mounted) return;
     setState(() {

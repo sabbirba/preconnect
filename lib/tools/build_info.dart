@@ -8,7 +8,6 @@ class BuildInfo {
   static const String buildNumber = String.fromEnvironment('APP_BUILD_NUMBER');
 
   static const MethodChannel _channel = MethodChannel('preconnect/build_info');
-  static Future<_BuildInfoData>? _cachedInfo;
 
   static Future<String> displayVersion() async {
     final info = await _info();
@@ -29,7 +28,7 @@ class BuildInfo {
   }
 
   static Future<_BuildInfoData> _info() {
-    return _cachedInfo ??= _loadInfo();
+    return _loadInfo();
   }
 
   static Future<_BuildInfoData> _loadInfo() async {

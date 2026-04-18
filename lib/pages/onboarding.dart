@@ -7,7 +7,7 @@ import 'package:preconnect/pages/free_labs.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/seat_status.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -35,7 +35,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 
   Future<void> _completeOnboarding(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = AppStorage.instance;
     await prefs.setBool(OnboardingPage.seenKey, true);
     if (!context.mounted) return;
     Navigator.of(context).pushReplacement(
@@ -151,7 +151,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             icon: Icons.privacy_tip_outlined,
                             title: 'Privacy First',
                             body:
-                                'PreConnect is not an official BRAC University app. It is an initiative run by BRAC University students. Your data stays on your device via local cache with sign-in tokens in secure storage.',
+                                'PreConnect is not an official BRAC University app. It is an initiative run by BRAC University students. Your data stays on your device with sign-in tokens in secure storage.',
                             color: BracuPalette.accent,
                           ),
                           const SizedBox(height: 10),

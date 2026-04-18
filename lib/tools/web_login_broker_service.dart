@@ -177,7 +177,6 @@ class WebLoginBrokerService {
         )
         .timeout(_timeout);
     if (response.statusCode == 404) {
-      // Backward compatibility: old broker builds may not expose this endpoint.
       return const <WebActiveSession>[];
     }
     if (response.statusCode != 200) {

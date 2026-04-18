@@ -69,7 +69,9 @@ class _WebLoginSetupPageState extends State<WebLoginSetupPage>
     if (state == AppLifecycleState.resumed &&
         _cameraGranted == true &&
         !_busy) {
-      _controller.start().catchError((_) {});
+      _controller.start().catchError((e) {
+        debugPrint('[WEB_LOGIN] Scanner start error (app resumed): $e');
+      });
       return;
     }
     if (state == AppLifecycleState.inactive ||
@@ -84,7 +86,9 @@ class _WebLoginSetupPageState extends State<WebLoginSetupPage>
     if (!mounted) return;
     setState(() => _cameraGranted = granted);
     if (granted) {
-      await _controller.start().catchError((_) {});
+      await _controller.start().catchError((e) {
+        debugPrint('[WEB_LOGIN] Scanner start error (permission granted): $e');
+      });
     }
   }
 
@@ -218,7 +222,9 @@ class _WebLoginSetupPageState extends State<WebLoginSetupPage>
       if (mounted) {
         setState(() => _busy = false);
         if (_cameraGranted == true) {
-          await _controller.start().catchError((_) {});
+          await _controller.start().catchError((e) {
+            debugPrint('[WEB_LOGIN] Scanner start error (after approval): $e');
+          });
         }
       }
     }

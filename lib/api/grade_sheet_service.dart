@@ -3,12 +3,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:path_provider/path_provider.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile_service.dart';
-import 'package:preconnect/api/sembast_cache.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:preconnect/api/app_preferences_store.dart';
+import 'package:preconnect/tools/app_storage.dart';
 
 class GradeSheetFile {
   const GradeSheetFile({required this.file, required this.fromCache});
@@ -34,9 +35,8 @@ class GradeSheetService {
   }
 
   Future<Uint8List?> fetchGradeSheetBytes({bool fromGet = false}) async {
-    final prefs = SharedPreferencesAsync();
     final profileId = await resolvePortfolioId(
-      prefs: prefs,
+      prefs: AppPreferencesStore(),
       refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
     );
 
@@ -51,7 +51,9 @@ class GradeSheetService {
       );
       final bytes = _extractPdfBytes(response.bodyBytes, response.body);
       if (bytes != null && bytes.isNotEmpty) return bytes;
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[GRADE_SHEET] ERROR in fetchGradeSheetBytes: $e');
+    }
 
     if (fromGet) return null;
     return fetchGradeSheetBytes(fromGet: true);
@@ -76,9 +78,8 @@ class GradeSheetService {
   Future<GradeSheetFile?> _fetchGradeSheetInternal({
     required bool fromGet,
   }) async {
-    final prefs = SharedPreferencesAsync();
     final profileId = await resolvePortfolioId(
-      prefs: prefs,
+      prefs: AppPreferencesStore(),
       refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
     );
 
@@ -112,9 +113,8 @@ class GradeSheetService {
   }
 
   Future<GradeSheetFile?> getGradeSheet({bool fromFetch = false}) async {
-    final prefs = SharedPreferencesAsync();
     final profileId = await resolvePortfolioId(
-      prefs: prefs,
+      prefs: AppPreferencesStore(),
       refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
     );
     if (profileId == null || profileId.isEmpty) return null;
@@ -144,9 +144,10 @@ class GradeSheetService {
   }
 
   Future<String> gradeSheetFileName({String? profileId}) async {
-    final cache = SembastCache();
-    final fullName = (await cache.getString('fullName') ?? '').trim();
-    final studentId = (await cache.getString('studentId') ?? '').trim();
+    final fullName = (await AppStorage.instance.getString('fullName') ?? '')
+        .trim();
+    final studentId = (await AppStorage.instance.getString('studentId') ?? '')
+        .trim();
     final safeName = fullName
         .replaceAll(RegExp(r'[\\/:*?"<>|]+'), ' ')
         .replaceAll(RegExp(r'\s+'), ' ')
@@ -187,7 +188,10 @@ class GradeSheetService {
       if (_looksLikePdf(decoded)) {
         return Uint8List.fromList(decoded);
       }
-    } catch (_) {}
+      debugPrint('[GRADE_SHEET] Extracted bytes don\'t look like PDF');
+    } catch (e) {
+      debugPrint('[GRADE_SHEET] PDF extraction error: $e');
+    }
 
     return null;
   }

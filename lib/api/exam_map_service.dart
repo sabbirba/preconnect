@@ -1,7 +1,8 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:preconnect/api/api_client.dart';
-import 'package:preconnect/api/sembast_cache.dart';
+import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/model/section_info.dart';
 
 class ExamMapService {
@@ -10,7 +11,7 @@ class ExamMapService {
   factory ExamMapService() => _instance;
 
   final ApiClient _client = ApiClient();
-  final SembastCache _cache = SembastCache();
+  final AppPreferencesStore _store = AppPreferencesStore();
 
   static const String _indexUrl = 'https://api.preconnect.app/data/exammap';
   static const Duration _indexCacheTtl = Duration(hours: 6);
@@ -91,7 +92,7 @@ class ExamMapService {
     required bool forceRefresh,
   }) async {
     if (!forceRefresh) {
-      final cached = await _cache.getJsonMap(cacheKey);
+      final cached = await _store.getJsonMap(cacheKey);
       final ts = cached?['ts'];
       final data = cached?['data'];
       if (ts is int && data != null) {
@@ -105,13 +106,14 @@ class ExamMapService {
     try {
       final response = await _client.publicGet(url);
       final decoded = jsonDecode(response.body);
-      await _cache.setJson(cacheKey, <String, dynamic>{
+      await _store.setJson(cacheKey, <String, dynamic>{
         'ts': DateTime.now().millisecondsSinceEpoch,
         'data': decoded,
       });
       return decoded;
-    } catch (_) {
-      final cached = await _cache.getJsonMap(cacheKey);
+    } catch (e) {
+      debugPrint('[EXAM_MAP] ERROR fetching JSON from $url: $e');
+      final cached = await _store.getJsonMap(cacheKey);
       return cached?['data'];
     }
   }

@@ -21,8 +21,8 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _showRamadanCard = true;
   bool _showExamCountdownCard = true;
   bool _showTodaySchedule = true;
+  bool _showSponsoredContent = true;
   bool _appLockEnabled = false;
-  bool _hideAds = false;
 
   @override
   void initState() {
@@ -32,7 +32,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _load() async {
     final visibility = await HomeCardPreferences.load();
-    await AdsPreferences.instance.load();
     final appLockEnabled = await AppLockService().isEnabled();
     if (!mounted) return;
     setState(() {
@@ -40,8 +39,8 @@ class _SettingsPageState extends State<SettingsPage> {
       _showRamadanCard = visibility.showRamadanCard;
       _showExamCountdownCard = visibility.showExamCountdownCard;
       _showTodaySchedule = visibility.showTodaySchedule;
+      _showSponsoredContent = visibility.showSponsoredContent;
       _appLockEnabled = appLockEnabled;
-      _hideAds = AdsPreferences.instance.isHidden;
       _isLoading = false;
     });
   }
@@ -82,14 +81,13 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Future<void> _setHideAds(bool value) async {
-    setState(() {
-      _hideAds = value;
-    });
-    await AdsPreferences.instance.setHidden(value);
-    RefreshBus.instance.notify(reason: 'ads_settings_changed');
-    if (!mounted) return;
-    showAppSnackBar(context, value ? 'Ads hidden' : 'Ads shown');
+  Future<void> _setShowSponsoredContent(bool value) async {
+    await _setVisibility(
+      label: 'Sponsored Content',
+      value: value,
+      applyLocal: () => _showSponsoredContent = value,
+      persist: HomeCardPreferences.setShowSponsoredContent,
+    );
   }
 
   Future<void> _setVisibility({
@@ -267,6 +265,21 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                   _ToggleRow(
+                    title: 'Sponsored Content',
+                    subtitle: 'Show sponsor sections in the app',
+                    value: _showSponsoredContent,
+                    onChanged: _setShowSponsoredContent,
+                  ),
+                  Divider(
+                    height: 12,
+                    thickness: 1,
+                    color: BracuPalette.textSecondary(context).withValues(
+                      alpha: Theme.of(context).brightness == Brightness.dark
+                          ? 0.20
+                          : 0.12,
+                    ),
+                  ),
+                  _ToggleRow(
                     title: 'Quick Access',
                     subtitle: 'Show quick shortcuts on home',
                     value: _showQuickAccessSection,
@@ -280,12 +293,6 @@ class _SettingsPageState extends State<SettingsPage> {
                           ? 0.20
                           : 0.12,
                     ),
-                  ),
-                  _ToggleRow(
-                    title: 'Hide Ads',
-                    subtitle: 'Hide sponsored content and ads',
-                    value: _hideAds,
-                    onChanged: _setHideAds,
                   ),
                 ],
               ),

@@ -3,10 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:in_app_update/in_app_update.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/api_client.dart';
-import 'package:preconnect/api/sembast_cache.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/login.dart';
@@ -35,18 +34,55 @@ class MyApp extends StatefulWidget {
   final AppBootstrapState? bootstrapState;
 
   static Future<AppBootstrapState> bootstrap() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedTheme = prefs.getString('themeMode') ?? 'system';
-    var hasToken = await TokenStorage.instance.readCachedHasSession();
-    if (hasToken == null) {
-      final token = await TokenStorage.instance.read(key: 'access_token');
-      hasToken = token != null && token.isNotEmpty;
-      await TokenStorage.instance.write(
-        key: 'access_token',
-        value: hasToken ? token : null,
+    debugPrint('[BOOTSTRAP] 🔵🔵🔵 APP BOOTSTRAP STARTING 🔵🔵🔵');
+    final prefs = AppStorage.instance;
+    final savedTheme = await prefs.getString('themeMode') ?? 'system';
+    debugPrint('[BOOTSTRAP] Saved theme: $savedTheme');
+
+    // CRITICAL: ONLY check actual tokens from storage, NEVER trust cached data
+    debugPrint('[BOOTSTRAP] 🔐 Checking for ACTUAL TOKENS in storage...');
+    final token = await TokenStorage.instance.read(key: 'access_token');
+    final refreshToken = await TokenStorage.instance.read(key: 'refresh_token');
+    final tokenPresent = token != null && token.isNotEmpty;
+    final refreshTokenPresent = refreshToken != null && refreshToken.isNotEmpty;
+    final hasToken = tokenPresent && refreshTokenPresent;
+
+    debugPrint(
+      '[BOOTSTRAP] access_token present: $tokenPresent (${token?.length ?? 0} bytes)',
+    );
+    debugPrint(
+      '[BOOTSTRAP] refresh_token present: $refreshTokenPresent (${refreshToken?.length ?? 0} bytes)',
+    );
+    debugPrint('[BOOTSTRAP] 🔐 Overall hasToken: $hasToken');
+
+    // If tokens are missing, DO NOT ALLOW OFFLINE ACCESS
+    // Tokens = source of truth for login state
+    if (!hasToken) {
+      debugPrint(
+        '[BOOTSTRAP] ✗ NO TOKENS FOUND - Clearing ALL cached session data...',
       );
+      // Clear everything that depends on valid tokens
+      await prefs.setBool('cached_has_auth_session', false);
+      await prefs.remove('StudentSchedule');
+      await prefs.remove('StudentProgramProgress');
+      await prefs.remove('StudentProgramProgressSummary');
+      await prefs.remove('SemesterPaymentInfo');
+      debugPrint(
+        '[BOOTSTRAP] ✗ Cleared all cached session data - FORCING LOGIN',
+      );
+    } else {
+      debugPrint('[BOOTSTRAP] ✓ Valid tokens present - User is logged in');
     }
-    final canOpenOffline = !hasToken && await _hasOfflineSnapshot(prefs);
+
+    // offline access ONLY if tokens exist AND offline snapshot available
+    final canOpenOffline = hasToken && await _hasOfflineSnapshot();
+    debugPrint(
+      '[BOOTSTRAP] Final state - isLoggedIn=$hasToken, canOpenOffline=$canOpenOffline',
+    );
+    debugPrint(
+      '[BOOTSTRAP] 🔵 BOOTSTRAP COMPLETE - Sending to ${hasToken ? '/home' : '/login'}',
+    );
+
     return AppBootstrapState(
       themeMode: _decodeTheme(savedTheme),
       isLoggedIn: hasToken,
@@ -54,23 +90,11 @@ class MyApp extends StatefulWidget {
     );
   }
 
-  static Future<bool> _hasOfflineSnapshot(SharedPreferences prefs) async {
-    final cache = SembastCache();
-    final studentId =
-        ((await cache.getString('studentId')) ??
-                prefs.getString('studentId') ??
-                '')
-            .trim();
-    final fullName =
-        ((await cache.getString('fullName')) ??
-                prefs.getString('fullName') ??
-                '')
-            .trim();
-    final schedule =
-        ((await cache.getString('StudentSchedule')) ??
-                prefs.getString('StudentSchedule') ??
-                '')
-            .trim();
+  static Future<bool> _hasOfflineSnapshot() async {
+    final prefs = AppStorage.instance;
+    final studentId = (await prefs.getString('studentId') ?? '').trim();
+    final fullName = (await prefs.getString('fullName') ?? '').trim();
+    final schedule = (await prefs.getString('StudentSchedule') ?? '').trim();
     if (schedule.isNotEmpty) return true;
     return studentId.isNotEmpty && fullName.isNotEmpty;
   }
@@ -154,8 +178,8 @@ class _MyAppState extends State<MyApp>
   }
 
   Future<void> _consumePendingShortcutAction() async {
-    final prefs = await SharedPreferences.getInstance();
-    final pendingAction = prefs.getString(_pendingShortcutPrefsKey);
+    final prefs = AppStorage.instance;
+    final pendingAction = await prefs.getString(_pendingShortcutPrefsKey);
     if (pendingAction == null || pendingAction.isEmpty) return;
     await prefs.remove(_pendingShortcutPrefsKey);
     _handleShortcutAction(pendingAction);
@@ -369,7 +393,7 @@ class _MyAppState extends State<MyApp>
   }
 
   Future<void> _persistTheme(ThemeMode mode) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = AppStorage.instance;
     final value = switch (mode) {
       ThemeMode.light => 'light',
       ThemeMode.dark => 'dark',

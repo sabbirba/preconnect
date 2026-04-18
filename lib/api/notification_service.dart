@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/sembast_cache.dart';
+import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/tools/image_url_utils.dart';
 
 class RecentConnectNotification {
@@ -44,7 +44,7 @@ class ScraperDataService {
   factory ScraperDataService() => _instance;
 
   final ApiClient _client = ApiClient();
-  final SembastCache _cache = SembastCache();
+  final AppPreferencesStore _store = AppPreferencesStore();
 
   Future<List<Map<String, dynamic>>> fetchList({
     required String path,
@@ -88,7 +88,7 @@ class ScraperDataService {
     required bool forceRefresh,
   }) async {
     if (!forceRefresh) {
-      final cached = await _cache.getJsonMap(cacheKey);
+      final cached = await _store.getJsonMap(cacheKey);
       final ts = cached?['ts'];
       final data = cached?['data'];
       if (ts is int && data != null) {
@@ -104,13 +104,13 @@ class ScraperDataService {
     try {
       final response = await _client.publicGet(url);
       final decoded = jsonDecode(response.body);
-      await _cache.setJson(cacheKey, <String, dynamic>{
+      await _store.setJson(cacheKey, <String, dynamic>{
         'ts': DateTime.now().millisecondsSinceEpoch,
         'data': decoded,
       });
       return decoded;
     } catch (_) {
-      final cached = await _cache.getJsonMap(cacheKey);
+      final cached = await _store.getJsonMap(cacheKey);
       return cached?['data'];
     }
   }
@@ -213,7 +213,7 @@ class NotificationService {
   final ApiClient _client = ApiClient();
   final ScraperDataService _scraper = ScraperDataService();
 
-  static const String _cacheKey = 'RecentNotificationsFeed';
+  static const String _recentFeedKey = 'RecentNotificationsFeed';
   static const String _scraperFeedCacheKey = 'scraper_notifications_feed_v1';
   static const String _scraperSeenIdsCacheKey = 'scraper_notifications_seen_v1';
 
@@ -255,7 +255,9 @@ class NotificationService {
   }
 
   Future<Set<String>> getSeenScraperNotificationIds() async {
-    final cached = await SembastCache().getJsonMap(_scraperSeenIdsCacheKey);
+    final cached = await AppPreferencesStore().getJsonMap(
+      _scraperSeenIdsCacheKey,
+    );
     final raw = cached?['ids'];
     if (raw is! List) return <String>{};
     return raw
@@ -301,7 +303,7 @@ class NotificationService {
       url: '${ApiConfig.connectApiBase}${ApiConfig.recentNotificationsPath}',
       fromGet: fromGet,
       cacheResponse: (response) async {
-        await SembastCache().setString(_cacheKey, response.body);
+        await AppPreferencesStore().setString(_recentFeedKey, response.body);
       },
       readCache: ({required bool fromFetch}) async {
         final cached = await _readCachedFeed();
@@ -351,13 +353,13 @@ class NotificationService {
           )
           .toList(),
     );
-    await SembastCache().setJson(_cacheKey, _feedToJson(updated));
+    await AppPreferencesStore().setJson(_recentFeedKey, _feedToJson(updated));
     return updated;
   }
 
   Future<NotificationsFeed?> _readCachedFeed() async {
-    return readCachedSembastJsonMapWithFallback<NotificationsFeed>(
-      key: _cacheKey,
+    return readStoredJsonMapWithFallback<NotificationsFeed>(
+      key: _recentFeedKey,
       fromFetch: true,
       decoder: NotificationsFeed.fromJson,
       onCacheMiss: () async => null,
@@ -408,7 +410,7 @@ class NotificationService {
   }
 
   Future<List<ScraperContentItem>?> _readCachedScraperFeed() async {
-    final cached = await SembastCache().getJsonMap(_scraperFeedCacheKey);
+    final cached = await AppPreferencesStore().getJsonMap(_scraperFeedCacheKey);
     if (cached == null) return null;
     final rawItems = cached['items'];
     if (rawItems is! List) return null;
@@ -450,7 +452,7 @@ class NotificationService {
   }
 
   Future<void> _writeCachedScraperFeed(List<ScraperContentItem> items) async {
-    await SembastCache().setJson(_scraperFeedCacheKey, <String, dynamic>{
+    await AppPreferencesStore().setJson(_scraperFeedCacheKey, <String, dynamic>{
       'ts': DateTime.now().millisecondsSinceEpoch,
       'items': items
           .map(
@@ -470,9 +472,10 @@ class NotificationService {
   }
 
   Future<void> _writeSeenScraperNotificationIds(Set<String> ids) async {
-    await SembastCache().setJson(_scraperSeenIdsCacheKey, <String, dynamic>{
-      'ids': ids.toList()..sort(),
-    });
+    await AppPreferencesStore().setJson(
+      _scraperSeenIdsCacheKey,
+      <String, dynamic>{'ids': ids.toList()..sort()},
+    );
   }
 
   DateTime? _parseScraperPublishedDate(String raw) {

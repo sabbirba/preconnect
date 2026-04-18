@@ -1,10 +1,10 @@
 import 'dart:convert';
 
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile_service.dart';
-import 'package:preconnect/api/sembast_cache.dart';
+import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/model/progress_info.dart';
 
 class ProgressService {
@@ -45,7 +45,7 @@ class ProgressService {
   }
 
   Future<ProgressInfo?> _fetchProgressInternal({required bool fromGet}) async {
-    final asyncPrefs = SharedPreferencesAsync();
+    final asyncPrefs = AppStorage.instance;
     final portfolioId = await resolvePortfolioId(
       prefs: asyncPrefs,
       refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
@@ -69,7 +69,7 @@ class ProgressService {
           '${ApiConfig.connectApiBase}${ApiConfig.programCurriculumsPath(portfolioId)}';
       final coursePrerequisitesUrl =
           '${ApiConfig.seatStatusProxyBase}/course-prerequisites';
-      final cache = SembastCache();
+      final cache = AppPreferencesStore();
 
       final majorEtag = await cache.getString(_majorMinorsEtagKey);
       final completedEtag = await cache.getString(_completedCoursesEtagKey);
@@ -143,7 +143,7 @@ class ProgressService {
   }
 
   Future<dynamic> _resolveComponent({
-    required SembastCache cache,
+    required AppPreferencesStore cache,
     required dynamic response,
     required String dataKey,
     required String etagKey,
@@ -164,7 +164,7 @@ class ProgressService {
   }
 
   Future<dynamic> _resolvePublicComponent({
-    required SembastCache cache,
+    required AppPreferencesStore cache,
     required String url,
     required String dataKey,
   }) async {
@@ -181,7 +181,7 @@ class ProgressService {
   }
 
   Future<ProgressInfo?> getProgress({bool fromFetch = false}) async {
-    return readCachedSembastJsonMapWithFallback<ProgressInfo>(
+    return readStoredJsonMapWithFallback<ProgressInfo>(
       key: _cacheKey,
       fromFetch: fromFetch,
       decoder: ProgressInfo.fromPayload,
@@ -193,13 +193,13 @@ class ProgressService {
   }
 
   Future<ProgressSummary?> getProgressSummary({bool fromFetch = false}) async {
-    return readCachedSembastJsonMapWithFallback<ProgressSummary>(
+    return readStoredJsonMapWithFallback<ProgressSummary>(
       key: _summaryCacheKey,
       fromFetch: fromFetch,
       decoder: ProgressSummary.fromJson,
       onCacheMiss: () async {
         await fetchProgress(fromGet: true);
-        return SembastCache()
+        return AppPreferencesStore()
             .getJsonMap(_summaryCacheKey)
             .then(
               (value) => value == null ? null : ProgressSummary.fromJson(value),

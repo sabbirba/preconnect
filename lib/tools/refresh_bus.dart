@@ -44,7 +44,7 @@ mixin RefreshBusState<T extends StatefulWidget> on State<T> {
 Future<bool> ensureOnline(BuildContext context, {bool notify = true}) async {
   final online = await ApiClient().hasConnection();
   if (!online && notify && context.mounted) {
-    showAppSnackBar(context, 'Offline. Showing cached data.');
+    showAppSnackBar(context, 'Offline. Showing stored data.');
   }
   return online;
 }

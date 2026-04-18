@@ -1,89 +1,229 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart'
     show ValueNotifier, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart' show TargetPlatform;
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 import 'package:in_app_review/in_app_review.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/web_kv_store_stub.dart'
     if (dart.library.html) 'package:preconnect/tools/web_kv_store_web.dart';
-import 'dart:io';
+
+/// Exception thrown when token persistence verification fails
+class TokenPersistenceException implements Exception {
+  TokenPersistenceException(this.message);
+  final String message;
+
+  @override
+  String toString() => 'TokenPersistenceException: $message';
+}
+
+class AdsPreferences {
+  AdsPreferences._();
+
+  static final AdsPreferences instance = AdsPreferences._();
+  static const String _hideAdsKey = 'hide_ads';
+  final ValueNotifier<bool> adsVisible = ValueNotifier<bool>(true);
+
+  Future<void> load() async {
+    try {
+      final hidden = await AppStorage.instance.getBool(_hideAdsKey) ?? false;
+      adsVisible.value = !hidden;
+    } catch (_) {}
+  }
+
+  bool get isVisible => adsVisible.value;
+  bool get isHidden => !adsVisible.value;
+
+  Future<void> setHidden(bool hidden) async {
+    try {
+      await load();
+      await AppStorage.instance.setBool(_hideAdsKey, hidden);
+      adsVisible.value = !hidden;
+    } catch (_) {}
+  }
+}
 
 class TokenStorage {
   TokenStorage._();
 
   static final TokenStorage instance = TokenStorage._();
   static const String _cachedHasSessionKey = 'cached_has_auth_session';
+  static bool _diagnosticsRun = false;
 
   final FlutterSecureStorage _secure = const FlutterSecureStorage();
 
   bool get _useSecure =>
       !kIsWeb && defaultTargetPlatform != TargetPlatform.macOS;
 
+  /// Run diagnostics on AppStorage to ensure it's working
+  Future<void> _runDiagnostics() async {
+    if (_diagnosticsRun) return;
+    _diagnosticsRun = true;
+
+    try {
+      const testKey = '__token_storage_diag_test__';
+      const testValue = 'diagnostic_test_12345';
+
+      await AppStorage.instance.setString(testKey, testValue);
+
+      final readValue = await AppStorage.instance.getString(testKey);
+
+      if (readValue == testValue) {}
+      await AppStorage.instance.remove(testKey);
+    } catch (_) {}
+  }
+
   Future<String?> read({required String key}) async {
     if (kIsWeb) {
       final value = webKvGet(key);
-      if (value != null && value.isNotEmpty) return value;
+      if (value != null && value.isNotEmpty) {
+        return value;
+      }
+      return await AppStorage.instance.getString(key);
     }
+
+    // ALWAYS try AppStorage first - it's the most reliable storage
+    try {
+      final appStorageValue = await AppStorage.instance.getString(key);
+      if (appStorageValue != null && appStorageValue.isNotEmpty) {
+        return appStorageValue;
+      }
+    } catch (_) {}
+
+    // Secondary fallback: try secure storage if AppStorage has nothing
     if (_useSecure) {
-      return _secure.read(key: key);
+      try {
+        final value = await _secure.read(key: key);
+        if (value != null && value.isNotEmpty) {
+          // Found in secure storage but not in AppStorage - sync to AppStorage
+          await AppStorage.instance.setString(key, value);
+
+          // For tokens, wait for persistence to ensure it's not lost again
+          if (key == 'refresh_token' || key == 'access_token') {
+            await Future.delayed(const Duration(milliseconds: 50));
+            // Verify it persisted
+            final verified = await AppStorage.instance.getString(key);
+            if (verified != value) {}
+          }
+          return value;
+        }
+      } catch (_) {}
     }
-    final prefs = SharedPreferencesAsync();
-    return prefs.getString(key);
+
+    return null;
   }
 
-  Future<bool?> readCachedHasSession() async {
-    final prefs = SharedPreferencesAsync();
-    return await prefs.getBool(_cachedHasSessionKey);
+  Future<bool?> readCachedHasSession() {
+    return AppStorage.instance.getBool(_cachedHasSessionKey);
   }
 
   Future<void> write({required String key, String? value}) async {
+    // Run diagnostics on first write
+    if (!_diagnosticsRun) {
+      unawaited(_runDiagnostics());
+    }
+
     if (kIsWeb && webKvSet(key, value)) {
       await _updateCachedSessionFlagForKey(key, value);
       return;
     }
-    if (_useSecure) {
-      await _secure.write(key: key, value: value);
-      await _updateCachedSessionFlagForKey(key, value);
-      return;
-    }
-    final prefs = SharedPreferencesAsync();
-    if (value == null) {
-      await prefs.remove(key);
+
+    // Always write to AppStorage first and verify
+    if (value == null || value.isEmpty) {
+      await AppStorage.instance.remove(key);
     } else {
-      await prefs.setString(key, value);
+      await AppStorage.instance.setString(key, value);
+
+      // Give SharedPreferences MULTIPLE opportunities to persist to disk
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      // Verify write succeeded - attempt 1
+      var verified = await AppStorage.instance.getString(key);
+      var verificationPassed = verified == value;
+      if (verificationPassed) {
+      } else {
+        // Retry: write again if first attempt failed
+        await AppStorage.instance.setString(key, value);
+        await Future.delayed(const Duration(milliseconds: 200));
+
+        verified = await AppStorage.instance.getString(key);
+        verificationPassed = verified == value;
+        if (verificationPassed) {
+        } else {}
+      }
     }
+
+    // Also write to secure storage as backup (critical for token persistence)
+    if (_useSecure && value != null && value.isNotEmpty) {
+      try {
+        await _secure.write(key: key, value: value);
+
+        // For critical tokens, verify the secure storage write also succeeded
+        if (key == 'refresh_token' || key == 'access_token') {
+          await Future.delayed(const Duration(milliseconds: 50));
+          final verified = await _secure.read(key: key);
+          if (verified == value) {
+          } else {
+            // Try again if verification failed
+            try {
+              await _secure.write(key: key, value: value);
+              await Future.delayed(const Duration(milliseconds: 50));
+              final retryVerify = await _secure.read(key: key);
+              if (retryVerify != value) {
+                throw TokenPersistenceException(
+                  'Failed to persist $key to secure storage after 2 attempts. '
+                  'Expected ${value.length} bytes, got ${retryVerify?.length ?? 0} bytes.',
+                );
+              }
+            } catch (retryError) {
+              if (retryError is TokenPersistenceException) rethrow;
+              throw TokenPersistenceException(
+                'Failed to persist $key to secure storage: $retryError',
+              );
+            }
+          }
+        }
+      } catch (e) {
+        if (e is TokenPersistenceException) rethrow;
+      }
+    } else if (_useSecure && (value == null || value.isEmpty)) {
+      try {
+        await _secure.delete(key: key);
+      } catch (_) {}
+    }
+
     await _updateCachedSessionFlagForKey(key, value);
   }
 
   Future<void> deleteAll() async {
+    // Always clear from AppStorage
+    await AppStorage.instance.remove('access_token');
+    await AppStorage.instance.remove('refresh_token');
+    await AppStorage.instance.setBool(_cachedHasSessionKey, false);
+
+    // Try to clear from secure storage if available
     if (kIsWeb) {
       webKvClearKeys(const ['access_token', 'refresh_token']);
-      final prefs = SharedPreferencesAsync();
-      await prefs.remove('access_token');
-      await prefs.remove('refresh_token');
-      await prefs.setBool(_cachedHasSessionKey, false);
-      return;
+    } else if (_useSecure) {
+      try {
+        await _secure.deleteAll();
+      } catch (_) {
+        // Ignore errors
+      }
     }
-    if (_useSecure) {
-      await _secure.deleteAll();
-      final prefs = SharedPreferencesAsync();
-      await prefs.setBool(_cachedHasSessionKey, false);
-      return;
-    }
-    final prefs = SharedPreferencesAsync();
-    await prefs.clear();
   }
 
   Future<void> _updateCachedSessionFlagForKey(String key, String? value) async {
     if (key != 'access_token') return;
-    final prefs = SharedPreferencesAsync();
     final hasValue = value != null && value.isNotEmpty;
-    await prefs.setBool(_cachedHasSessionKey, hasValue);
+    await AppStorage.instance.setBool(_cachedHasSessionKey, hasValue);
   }
 }
 
@@ -106,18 +246,23 @@ class WebLoginSessionStore {
     String? webSessionId,
     String? webSessionToken,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
     await TokenStorage.instance.write(key: 'access_token', value: accessToken);
     await TokenStorage.instance.write(
       key: 'refresh_token',
       value: refreshToken,
     );
-    await prefs.setString(_studentEmailKey, studentEmail.trim());
+    await AppStorage.instance.setString(_studentEmailKey, studentEmail.trim());
     final normalizedSessionId = (webSessionId ?? '').trim();
     final normalizedSessionToken = (webSessionToken ?? '').trim();
     if (normalizedSessionId.isNotEmpty && normalizedSessionToken.isNotEmpty) {
-      await prefs.setString(_webSessionIdKey, normalizedSessionId);
-      await prefs.setString(_webSessionTokenKey, normalizedSessionToken);
+      await AppStorage.instance.setString(
+        _webSessionIdKey,
+        normalizedSessionId,
+      );
+      await AppStorage.instance.setString(
+        _webSessionTokenKey,
+        normalizedSessionToken,
+      );
     }
   }
 
@@ -128,24 +273,36 @@ class WebLoginSessionStore {
   }
 
   static Future<String?> getWebSessionId() async {
-    final prefs = await SharedPreferences.getInstance();
-    final value = prefs.getString(_webSessionIdKey)?.trim();
+    final value = (await AppStorage.instance.getString(
+      _webSessionIdKey,
+    ))?.trim();
     if (value == null || value.isEmpty) return null;
     return value;
   }
 
   static Future<String?> getWebSessionToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    final value = prefs.getString(_webSessionTokenKey)?.trim();
+    final value = (await AppStorage.instance.getString(
+      _webSessionTokenKey,
+    ))?.trim();
     if (value == null || value.isEmpty) return null;
     return value;
   }
 
   static Future<void> clear() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_studentEmailKey);
-    await prefs.remove(_webSessionIdKey);
-    await prefs.remove(_webSessionTokenKey);
+    await AppStorage.instance.remove(_studentEmailKey);
+    await AppStorage.instance.remove(_webSessionIdKey);
+    await AppStorage.instance.remove(_webSessionTokenKey);
+
+    // Verify that session keys were actually cleared
+    final stillPresent =
+        (await AppStorage.instance.getString(_webSessionIdKey))?.isNotEmpty ==
+            true ||
+        (await AppStorage.instance.getString(
+              _webSessionTokenKey,
+            ))?.isNotEmpty ==
+            true;
+    if (stillPresent) {
+    } else {}
   }
 }
 
@@ -199,8 +356,9 @@ class CoursePinStore {
   static String _key(String scope) => 'course_pins_$scope';
 
   static Future<Set<String>> load(String scope) async {
-    final prefs = await SharedPreferences.getInstance();
-    final values = prefs.getStringList(_key(scope)) ?? const <String>[];
+    final values =
+        (await AppStorage.instance.getStringList(_key(scope))) ??
+        const <String>[];
     return values
         .map((e) => e.trim().toUpperCase())
         .where((e) => e.isNotEmpty)
@@ -208,14 +366,13 @@ class CoursePinStore {
   }
 
   static Future<void> save(String scope, Set<String> pins) async {
-    final prefs = await SharedPreferences.getInstance();
     final values =
         pins
             .map((e) => e.trim().toUpperCase())
             .where((e) => e.isNotEmpty)
             .toList()
           ..sort();
-    await prefs.setStringList(_key(scope), values);
+    await AppStorage.instance.setStringList(_key(scope), values);
   }
 }
 
@@ -228,23 +385,31 @@ class HomeCardPreferences {
   static const String _showExamCountdownCardKey =
       'home_show_exam_countdown_card';
   static const String _showTodayScheduleKey = 'home_show_today_schedule';
+  static const String _showSponsoredContentKey = 'home_show_sponsored_content';
 
   static const HomeCardVisibility defaults = HomeCardVisibility(
     showQuickAccessSection: true,
     showRamadanCard: true,
     showExamCountdownCard: true,
     showTodaySchedule: true,
+    showSponsoredContent: true,
   );
 
   static Future<HomeCardVisibility> load() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
       return HomeCardVisibility(
         showQuickAccessSection:
-            prefs.getBool(_showQuickAccessSectionKey) ?? true,
-        showRamadanCard: prefs.getBool(_showRamadanCardKey) ?? true,
-        showExamCountdownCard: prefs.getBool(_showExamCountdownCardKey) ?? true,
-        showTodaySchedule: prefs.getBool(_showTodayScheduleKey) ?? true,
+            await AppStorage.instance.getBool(_showQuickAccessSectionKey) ??
+            true,
+        showRamadanCard:
+            await AppStorage.instance.getBool(_showRamadanCardKey) ?? true,
+        showExamCountdownCard:
+            await AppStorage.instance.getBool(_showExamCountdownCardKey) ??
+            true,
+        showTodaySchedule:
+            await AppStorage.instance.getBool(_showTodayScheduleKey) ?? true,
+        showSponsoredContent:
+            await AppStorage.instance.getBool(_showSponsoredContentKey) ?? true,
       );
     } catch (_) {
       return defaults;
@@ -253,64 +418,31 @@ class HomeCardPreferences {
 
   static Future<void> setShowRamadanCard(bool value) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_showRamadanCardKey, value);
+      await AppStorage.instance.setBool(_showRamadanCardKey, value);
     } catch (_) {}
   }
 
   static Future<void> setShowExamCountdownCard(bool value) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_showExamCountdownCardKey, value);
+      await AppStorage.instance.setBool(_showExamCountdownCardKey, value);
     } catch (_) {}
   }
 
   static Future<void> setShowQuickAccessSection(bool value) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_showQuickAccessSectionKey, value);
+      await AppStorage.instance.setBool(_showQuickAccessSectionKey, value);
     } catch (_) {}
   }
 
   static Future<void> setShowTodaySchedule(bool value) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_showTodayScheduleKey, value);
+      await AppStorage.instance.setBool(_showTodayScheduleKey, value);
     } catch (_) {}
   }
-}
 
-class AdsPreferences {
-  AdsPreferences._();
-
-  static final AdsPreferences instance = AdsPreferences._();
-
-  static const String _hideAdsKey = 'hide_ads';
-
-  final ValueNotifier<bool> adsVisible = ValueNotifier<bool>(true);
-  bool _loaded = false;
-
-  Future<void> load() async {
-    if (_loaded) return;
-    _loaded = true;
+  static Future<void> setShowSponsoredContent(bool value) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      adsVisible.value = !(prefs.getBool(_hideAdsKey) ?? false);
-    } catch (_) {
-      adsVisible.value = true;
-    }
-  }
-
-  bool get isVisible => adsVisible.value;
-
-  bool get isHidden => !adsVisible.value;
-
-  Future<void> setHidden(bool hidden) async {
-    try {
-      await load();
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_hideAdsKey, hidden);
-      adsVisible.value = !hidden;
+      await AppStorage.instance.setBool(_showSponsoredContentKey, value);
     } catch (_) {}
   }
 }
@@ -321,12 +453,14 @@ class HomeCardVisibility {
     required this.showRamadanCard,
     required this.showExamCountdownCard,
     required this.showTodaySchedule,
+    required this.showSponsoredContent,
   });
 
   final bool showQuickAccessSection;
   final bool showRamadanCard;
   final bool showExamCountdownCard;
   final bool showTodaySchedule;
+  final bool showSponsoredContent;
 }
 
 class InAppReviewPrompt {
@@ -345,15 +479,16 @@ class InAppReviewPrompt {
     try {
       if (!(Platform.isAndroid || Platform.isIOS)) return;
 
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = AppStorage.instance;
       final now = DateTime.now().toUtc();
 
-      final launches = (prefs.getInt(_launchCountKey) ?? 0) + 1;
+      final launches = (await prefs.getInt(_launchCountKey) ?? 0) + 1;
       await prefs.setInt(_launchCountKey, launches);
 
+      final hasFirstOpen = await prefs.containsKey(_firstOpenKey);
       final firstOpenMs =
-          prefs.getInt(_firstOpenKey) ?? now.millisecondsSinceEpoch;
-      if (!prefs.containsKey(_firstOpenKey)) {
+          await prefs.getInt(_firstOpenKey) ?? now.millisecondsSinceEpoch;
+      if (!hasFirstOpen) {
         await prefs.setInt(_firstOpenKey, firstOpenMs);
       }
       final firstOpen = DateTime.fromMillisecondsSinceEpoch(
@@ -361,8 +496,8 @@ class InAppReviewPrompt {
         isUtc: true,
       );
 
-      final lastPromptMs = prefs.getInt(_lastPromptKey);
-      final lastAttemptMs = prefs.getInt(_lastAttemptKey);
+      final lastPromptMs = await prefs.getInt(_lastPromptKey);
+      final lastAttemptMs = await prefs.getInt(_lastAttemptKey);
 
       if (launches < _minLaunchCount) return;
       if (now.difference(firstOpen).inDays < _minDaysFromFirstOpen) return;
@@ -448,13 +583,11 @@ class AppLockService {
   final LocalAuthentication _auth = LocalAuthentication();
 
   Future<bool> isEnabled() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_prefsKey) ?? false;
+    return await AppStorage.instance.getBool(_prefsKey) ?? false;
   }
 
   Future<void> setEnabled(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_prefsKey, value);
+    await AppStorage.instance.setBool(_prefsKey, value);
   }
 
   Future<bool> authenticate({required String reason}) async {
@@ -489,10 +622,9 @@ class ProfileImageCache {
 
     final dir = await getApplicationSupportDirectory();
     final file = File('${dir.path}/profile_photo.jpg');
-    final prefs = await SharedPreferences.getInstance();
 
-    final cachedUrl = prefs.getString(_cachedUrlKey);
-    await prefs.remove(_legacyCachedBytesKey);
+    final cachedUrl = await AppStorage.instance.getString(_cachedUrlKey);
+    await AppStorage.instance.remove(_legacyCachedBytesKey);
 
     if (file.existsSync() &&
         file.lengthSync() > 0 &&
@@ -506,7 +638,7 @@ class ProfileImageCache {
       final response = await http.get(Uri.parse(photoUrl));
       if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
         await file.writeAsBytes(response.bodyBytes, flush: true);
-        await prefs.setString(_cachedUrlKey, photoUrl);
+        await AppStorage.instance.setString(_cachedUrlKey, photoUrl);
         _cachedFile = file;
         return file;
       }
@@ -520,8 +652,7 @@ class ProfileImageCache {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
         await file.writeAsBytes(response.bodyBytes, flush: true);
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_cachedUrlKey, url);
+        await AppStorage.instance.setString(_cachedUrlKey, url);
       }
     } catch (_) {}
   }
@@ -538,9 +669,8 @@ class ProfileImageCache {
         await file.delete();
       }
     } catch (_) {}
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_cachedUrlKey);
-    await prefs.remove(_legacyCachedBytesKey);
+    await AppStorage.instance.remove(_cachedUrlKey);
+    await AppStorage.instance.remove(_legacyCachedBytesKey);
     _cachedFile = null;
   }
 }

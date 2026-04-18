@@ -2,7 +2,7 @@ name: preconnect
 description: "Your personalised student portal for BRAC University"
 publish_to: "none"
 
-version: 1.5.5+202604050
+version: 1.6.0+202604060
 
 environment:
   sdk: ^3.8.1
@@ -32,6 +32,7 @@ dependencies:
   in_app_update: ^4.2.5
   in_app_review: ^2.0.11
   local_auth: ^3.0.1
+  synchronized: ^3.4.0
   sembast: ^3.8.6
   shimmer: ^3.0.0
   flutter_local_notifications: ^21.0.0

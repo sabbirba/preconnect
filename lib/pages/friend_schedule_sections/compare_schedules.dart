@@ -5,7 +5,7 @@ import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/time_utils.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:preconnect/tools/app_storage.dart';
 
 class CompareSchedulesPage extends StatefulWidget {
   const CompareSchedulesPage({
@@ -254,8 +254,10 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
   }
 
   Future<void> _loadPins() async {
-    final prefs = await SharedPreferences.getInstance();
-    final all = prefs.getStringList(_pinKey()) ?? const <String>[];
+    final all = <String>[
+      ...(await AppStorage.instance.getStringList(_pinKey()) ??
+          const <String>[]),
+    ];
     if (!mounted) return;
     setState(() {
       _pinnedEntries
@@ -265,8 +267,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
   }
 
   Future<void> _savePins() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_pinKey(), _pinnedEntries.toList());
+    await AppStorage.instance.setStringList(_pinKey(), _pinnedEntries.toList());
   }
 
   void _togglePin(String key) {

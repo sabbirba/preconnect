@@ -23,7 +23,8 @@ class ApiConfig {
   static const String pushAlertsBase = 'https://api.preconnect.app';
 
   static const String clientId = 'slm';
-  static const String redirectUri = 'https://connect.bracu.ac.bd/';
+  static const String redirectUri =
+      'https://connect.bracu.ac.bd/student/profile/overview';
 
   static const String profilePath = '/mds/v1/portfolios';
   static const String miscellaneousInfoPath =
@@ -76,7 +77,9 @@ class ApiConfig {
 
   static const Map<String, String> apiHeaders = {
     'X-REALM': 'bracu',
-    'Accept': 'application/json',
+    'X-SOURCE': '3',
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'en-US,en;q=0.9',
   };
 
   static const int playIntegrityCloudProjectNumber = 53508941136;
@@ -115,10 +118,22 @@ class ApiConfig {
   static const String authUrl =
       '$authEndpoint'
       '?client_id=$clientId'
-      '&redirect_uri=https%3A%2F%2Fconnect.bracu.ac.bd%2F'
+      '&redirect_uri=https%3A%2F%2Fconnect.bracu.ac.bd%2Fstudent%2Fprofile%2Foverview'
       '&response_type=code'
       '&response_mode=query'
       '&scope=openid offline_access';
+
+  static String authUrlWithPkce(String codeChallenge) {
+    final encodedChallenge = Uri.encodeQueryComponent(codeChallenge);
+    return '$authEndpoint'
+        '?client_id=$clientId'
+        '&redirect_uri=https%3A%2F%2Fconnect.bracu.ac.bd%2Fstudent%2Fprofile%2Foverview'
+        '&response_type=code'
+        '&response_mode=query'
+        '&scope=openid offline_access'
+        '&code_challenge=$encodedChallenge'
+        '&code_challenge_method=S256';
+  }
 
   static String? photoUrl(String? filePath) {
     if (filePath == null || filePath.isEmpty) return null;

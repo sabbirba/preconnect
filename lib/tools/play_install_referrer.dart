@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:preconnect/tools/app_storage.dart';
 
 class PlayInstallReferrer {
   PlayInstallReferrer._();
@@ -24,8 +24,7 @@ class PlayInstallReferrer {
     final cached = _cachedHeaders;
     if (cached != null) return cached;
 
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_cacheKey);
+    final raw = await AppStorage.instance.getString(_cacheKey);
     if (raw != null && raw.isNotEmpty) {
       final parsed = _parseHeadersFromJson(raw);
       if (parsed.isNotEmpty) {
@@ -45,7 +44,7 @@ class PlayInstallReferrer {
       final headers = _headersFromPayload(payload);
       if (headers.isEmpty) return const {};
 
-      await prefs.setString(_cacheKey, jsonEncode(payload));
+      await AppStorage.instance.setString(_cacheKey, jsonEncode(payload));
       _cachedHeaders = headers;
       return headers;
     } catch (_) {

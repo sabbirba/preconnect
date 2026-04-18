@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/notification_service.dart';
-import 'package:preconnect/api/sembast_cache.dart';
+import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/calendar_info.dart';
 
@@ -126,7 +126,7 @@ class CalendarService {
   }
 
   Future<CalendarFeed?> _readCache() async {
-    final cache = SembastCache();
+    final cache = AppPreferencesStore();
     final decoded = await cache.getJsonMap(_cacheKey);
     if (decoded == null) return null;
     try {
@@ -149,7 +149,7 @@ class CalendarService {
   }
 
   Future<void> _writeCache(CalendarFeed feed) async {
-    final cache = SembastCache();
+    final cache = AppPreferencesStore();
     await cache.setJsonIfChanged(_cacheKey, feed.toJson());
     await cache.setStringMap(<String, String>{
       _rangeStartKey: feed.rangeStart,

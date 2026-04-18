@@ -97,26 +97,53 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         cardVisibility.showRamadanCard || cardVisibility.showTodaySchedule;
     final needsHoliday = cardVisibility.showTodaySchedule;
 
-    final profileFuture = forceRefresh
-        ? ProfileService().fetchProfile()
-        : ProfileService().getProfile();
+    final profileFuture =
+        (forceRefresh
+                ? ProfileService().fetchProfile()
+                : ProfileService().getProfile())
+            .catchError((e) {
+              debugPrint('[HOME_DASHBOARD] Profile load failed: $e');
+              return null;
+            });
+
     final scheduleFuture = needsSchedule
         ? (forceRefresh
-              ? ScheduleService().fetchStudentSchedule()
-              : ScheduleService().getStudentSchedule())
+                  ? ScheduleService().fetchStudentSchedule()
+                  : ScheduleService().getStudentSchedule())
+              .catchError((e) {
+                debugPrint('[HOME_DASHBOARD] Schedule load failed: $e');
+                return null;
+              })
         : Future<String?>.value(null);
+
     final plannerFuture = cardVisibility.showExamCountdownCard
         ? (forceRefresh
-              ? SchedulePlannerService().getItems(forceRefresh: true)
-              : SchedulePlannerService().getItems())
+                  ? SchedulePlannerService().getItems(forceRefresh: true)
+                  : SchedulePlannerService().getItems())
+              .catchError((e) {
+                debugPrint('[HOME_DASHBOARD] Planner load failed: $e');
+                return const <SchedulePlannerItem>[];
+              })
         : Future<List<SchedulePlannerItem>>.value(
             const <SchedulePlannerItem>[],
           );
+
     final ramadanFuture = needsRamadan
-        ? RamadanTiming.getRamadanStatus(forceRefresh: forceRefresh)
+        ? RamadanTiming.getRamadanStatus(forceRefresh: forceRefresh).catchError(
+            (e) {
+              debugPrint('[HOME_DASHBOARD] Ramadan status load failed: $e');
+              return const RamadanStatus(isRamadan: false);
+            },
+          )
         : Future<RamadanStatus>.value(const RamadanStatus(isRamadan: false));
+
     final holidayFuture = needsHoliday
-        ? HolidayTiming.getTodayStatus(forceRefresh: forceRefresh)
+        ? HolidayTiming.getTodayStatus(forceRefresh: forceRefresh).catchError((
+            e,
+          ) {
+            debugPrint('[HOME_DASHBOARD] Holiday status load failed: $e');
+            return HolidayStatus.empty;
+          })
         : Future<HolidayStatus>.value(HolidayStatus.empty);
 
     final results = await Future.wait<dynamic>([
@@ -220,6 +247,10 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       if (notify) {
         RefreshBus.instance.notify(reason: 'home_dashboard');
       }
+    } catch (e) {
+      debugPrint('[HOME_DASHBOARD.UI] Refresh failed: $e');
+      // Error will be displayed in the UI if no data is available
+      // If we have cached data, it will continue showing
     } finally {
       _isRefreshing = false;
     }

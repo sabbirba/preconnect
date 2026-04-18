@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
-import 'package:preconnect/api/sembast_cache.dart';
+import 'package:preconnect/api/app_preferences_store.dart';
 
 class ProfileService {
   static final ProfileService _instance = ProfileService._internal();
@@ -43,7 +44,7 @@ class ProfileService {
     return '';
   }
 
-  static const List<String> cacheKeys = [
+  static const List<String> profileFields = [
     'id',
     'studentId',
     'fullName',
@@ -157,8 +158,8 @@ class ProfileService {
         final data = jsonDecode(response.body);
         if (data is List && data.isNotEmpty) {
           final profile = data[0];
-          final cache = SembastCache();
-          await cache.setStringMap(<String, String>{
+          final store = AppPreferencesStore();
+          await store.setStringMap(<String, String>{
             'id': profile['id']?.toString() ?? '',
             'studentId': profile['studentId']?.toString() ?? '',
             'program': profile['programOrCourse'] ?? '',
@@ -199,7 +200,7 @@ class ProfileService {
                 bloodGroupName: miscData['bloodGroupName'],
                 bloodType: miscData['bloodType'],
               );
-              await cache.setStringMap(<String, String>{
+              await store.setStringMap(<String, String>{
                 if (resolvedBloodGroup.isNotEmpty)
                   'bloodGroup': resolvedBloodGroup,
                 'permanentAddress':
@@ -233,7 +234,10 @@ class ProfileService {
                     miscData['disabilityDetails']?.toString() ?? '',
               });
             }
-          } catch (_) {}
+          } catch (e) {
+            debugPrint('[PROFILE:ERROR] Misc data fetch failed: $e');
+            // Continue with partial profile - don't crash
+          }
         }
       },
       readCache: ({required bool fromFetch}) =>
@@ -242,7 +246,9 @@ class ProfileService {
   }
 
   Future<Map<String, String?>?> getProfile({bool fromFetch = false}) async {
-    final profileData = await SembastCache().getStringMap(cacheKeys.toSet());
+    final profileData = await AppPreferencesStore().getStringMap(
+      profileFields.toSet(),
+    );
 
     final anyRequiredMissing = _requiredKeys.any((key) {
       final value = profileData[key];
@@ -339,7 +345,7 @@ class AdvisingService {
 
   final ApiClient _client = ApiClient();
 
-  static const List<String> cacheKeys = [
+  static const List<String> storedProfileKeys = [
     'advisingStartDate',
     'advisingEndDate',
     'activeSemesterSessionId',
@@ -352,8 +358,8 @@ class AdvisingService {
   Future<Map<String, String?>?> fetchAdvisingInfo({
     bool fromGet = false,
   }) async {
-    final asyncPrefs = SharedPreferencesAsync();
-    String? studentId = await SembastCache().getString('studentId');
+    final asyncPrefs = AppStorage.instance;
+    String? studentId = await AppPreferencesStore().getString('studentId');
     studentId ??= await asyncPrefs.getString('studentId');
     if (studentId == null || studentId.isEmpty) {
       final profile = await ProfileService().getProfile(fromFetch: true);
@@ -371,7 +377,7 @@ class AdvisingService {
       fromGet: fromGet,
       cacheResponse: (response) async {
         final data = jsonDecode(response.body)[0];
-        await SembastCache().setStringMap(<String, String>{
+        await AppPreferencesStore().setStringMap(<String, String>{
           'advisingStartDate': '${data['startDate'] ?? ''}',
           'advisingEndDate': '${data['endDate'] ?? ''}',
           'activeSemesterSessionId': '${data['activeSemesterSessionId'] ?? ''}',
@@ -389,7 +395,9 @@ class AdvisingService {
   Future<Map<String, String?>?> getAdvisingInfo({
     bool fromFetch = false,
   }) async {
-    final data = await SembastCache().getStringMap(cacheKeys.toSet());
+    final data = await AppPreferencesStore().getStringMap(
+      storedProfileKeys.toSet(),
+    );
     final isIncomplete = data.values.any(
       (value) => value == null || value == '',
     );
@@ -408,10 +416,10 @@ class AttendanceService {
 
   final ApiClient _client = ApiClient();
 
-  static const String _cacheKey = 'attendance';
+  static const String _attendanceKey = 'attendance';
 
   Future<String?> fetchAttendanceInfo({bool fromGet = false}) async {
-    final asyncPrefs = SharedPreferencesAsync();
+    final asyncPrefs = AppStorage.instance;
     final id = await resolvePortfolioId(
       prefs: asyncPrefs,
       refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
@@ -427,7 +435,7 @@ class AttendanceService {
       url: url,
       fromGet: fromGet,
       cacheResponse: (response) async {
-        await SembastCache().setString(_cacheKey, response.body);
+        await AppPreferencesStore().setString(_attendanceKey, response.body);
       },
       readCache: ({required bool fromFetch}) =>
           getAttendanceInfo(fromFetch: fromFetch),
@@ -435,7 +443,7 @@ class AttendanceService {
   }
 
   Future<String?> getAttendanceInfo({bool fromFetch = false}) async {
-    final value = await SembastCache().getString(_cacheKey);
+    final value = await AppPreferencesStore().getString(_attendanceKey);
     if (value != null && value.isNotEmpty) return value;
     if (fromFetch) return null;
     return fetchAttendanceInfo(fromGet: true);
@@ -449,10 +457,10 @@ class PaymentService {
 
   final ApiClient _client = ApiClient();
 
-  static const String _cacheKey = 'SemesterPaymentInfo';
+  static const String _paymentInfoKey = 'SemesterPaymentInfo';
 
   Future<String?> fetchPaymentInfo({bool fromGet = false}) async {
-    final asyncPrefs = SharedPreferencesAsync();
+    final asyncPrefs = AppStorage.instance;
     final id = await resolvePortfolioId(
       prefs: asyncPrefs,
       refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
@@ -468,7 +476,7 @@ class PaymentService {
       url: url,
       fromGet: fromGet,
       cacheResponse: (response) async {
-        await SembastCache().setString(_cacheKey, response.body);
+        await AppPreferencesStore().setString(_paymentInfoKey, response.body);
       },
       readCache: ({required bool fromFetch}) =>
           getPaymentInfo(fromFetch: fromFetch),
@@ -476,7 +484,7 @@ class PaymentService {
   }
 
   Future<String?> getPaymentInfo({bool fromFetch = false}) async {
-    final value = await SembastCache().getString(_cacheKey);
+    final value = await AppPreferencesStore().getString(_paymentInfoKey);
     if (value != null && value.isNotEmpty) return value;
     if (fromFetch) return null;
     return fetchPaymentInfo(fromGet: true);

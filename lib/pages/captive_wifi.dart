@@ -5,11 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/api/profile_service.dart';
-import 'package:preconnect/api/sembast_cache.dart';
 import 'package:preconnect/tools/android_network_assist.dart';
 import 'package:preconnect/tools/captive_wifi_http_service.dart';
 import 'package:preconnect/tools/token_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:preconnect/tools/app_storage.dart';
 
 class CaptiveWifiPage extends StatefulWidget {
   const CaptiveWifiPage({super.key, this.autoOpenCaptiveWifiOnStart = false});
@@ -54,11 +53,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     final autoExtendEnabled = await CaptiveLoginStore.instance
         .readAutoExtendEnabled();
     final creds = await CaptiveLoginStore.instance.read();
-    final prefs = SharedPreferencesAsync();
-    var studentId = (await SembastCache().getString('studentId') ?? '').trim();
-    if (studentId.isEmpty) {
-      studentId = (await prefs.getString('studentId') ?? '').trim();
-    }
+    var studentId = (await AppStorage.instance.getString('studentId') ?? '')
+        .trim();
     if (studentId.isEmpty) {
       final profile = await ProfileService().getProfile(fromFetch: true);
       studentId = (profile?['studentId'] ?? '').trim();

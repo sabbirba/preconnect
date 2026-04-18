@@ -1,5 +1,4 @@
 // ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
-
 import 'dart:async';
 import 'dart:html' as html;
 import 'dart:typed_data';
@@ -13,7 +12,6 @@ Future<void> openPdfInBrowserImpl({
   try {
     html.window.open(objectUrl, '_blank');
   } catch (_) {
-    // Safari may block popup windows after async work; fallback to same tab.
     html.window.location.assign(objectUrl);
     return;
   }

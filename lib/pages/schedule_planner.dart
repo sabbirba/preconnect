@@ -3,7 +3,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb;
+    show TargetPlatform, defaultTargetPlatform, kIsWeb, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_alarmkit/flutter_alarmkit.dart';
@@ -76,9 +76,16 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
   Future<List<SchedulePlannerItem>> _loadItems({
     bool forceRefresh = false,
   }) async {
-    final service = SchedulePlannerService();
-    final items = await service.getItems(forceRefresh: forceRefresh);
-    return service.autoCompleteOverdueItems(items);
+    try {
+      final service = SchedulePlannerService();
+      final items = await service.getItems(forceRefresh: forceRefresh);
+      return service.autoCompleteOverdueItems(items);
+    } catch (e) {
+      debugPrint('[SCHEDULE_PLANNER:ERROR] Load items failed: $e');
+      // Try to return cached items on error
+      final cached = await SchedulePlannerService().getCachedItems();
+      return cached ?? const <SchedulePlannerItem>[];
+    }
   }
 
   Future<void> _primeCachedItems() async {
@@ -154,6 +161,10 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
       setState(() {
         _latestItems = items;
       });
+    } catch (e) {
+      debugPrint('[SCHEDULE_PLANNER.UI] Refresh failed: $e');
+      // Error will be shown by FutureBuilder, no need to crash here
+      // FutureBuilder will display the error in snapshot.hasError
     } finally {
       if (mounted) {
         setState(() {

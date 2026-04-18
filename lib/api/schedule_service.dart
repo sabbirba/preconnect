@@ -1,9 +1,10 @@
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/profile_service.dart';
-import 'package:preconnect/api/sembast_cache.dart';
+import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 
 class ScheduleService {
@@ -15,12 +16,14 @@ class ScheduleService {
   final Map<String, Future<String?>> _scheduleFetchInFlight =
       <String, Future<String?>>{};
 
-  static const String _cacheKey = 'StudentSchedule';
-  static const String _validSemestersCacheKey = 'StudentScheduleValidSemesters';
+  static const String _scheduleKey = 'StudentSchedule';
+  static const String _validSemestersKey = 'StudentScheduleValidSemesters';
   static const String _archiveSourceFingerprintKey =
       'StudentScheduleArchiveSourceFingerprint';
   String _cacheKeyForSemester(int? semesterSessionId) =>
-      semesterSessionId == null ? _cacheKey : '${_cacheKey}_$semesterSessionId';
+      semesterSessionId == null
+      ? _scheduleKey
+      : '${_scheduleKey}_$semesterSessionId';
 
   int _guessCurrentSessionId() {
     final now = DateTime.now();
@@ -58,7 +61,8 @@ class ScheduleService {
     try {
       final decoded = jsonDecode(scheduleJson);
       return decoded is List && decoded.isNotEmpty;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[SCHEDULE] Cache data parsing error: $e');
       return false;
     }
   }
@@ -74,7 +78,8 @@ class ScheduleService {
           .whereType<Map<String, dynamic>>()
           .map(section.Section.fromJson)
           .toList();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[SCHEDULE] Failed to parse student sections JSON: $e');
       return const <section.Section>[];
     }
   }
@@ -118,13 +123,14 @@ class ScheduleService {
               .toList()
             ..sort((a, b) => b.compareTo(a));
       return ids;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[SCHEDULE] Failed to decode semester IDs: $e');
       return const <int>[];
     }
   }
 
   Future<List<int>> getCachedValidSemesterSessionIds() async {
-    final raw = await SembastCache().getString(_validSemestersCacheKey) ?? '';
+    final raw = await AppPreferencesStore().getString(_validSemestersKey) ?? '';
     if (raw.trim().isEmpty) return const <int>[];
     return _decodeSemesterIds(raw);
   }
@@ -134,8 +140,8 @@ class ScheduleService {
     int count = 12,
     bool forceRefresh = false,
   }) async {
-    final cache = SembastCache();
-    final cachedRaw = await cache.getString(_validSemestersCacheKey);
+    final store = AppPreferencesStore();
+    final cachedRaw = await store.getString(_validSemestersKey);
     final cached = (cachedRaw == null || cachedRaw.trim().isEmpty)
         ? const <int>[]
         : _decodeSemesterIds(cachedRaw);
@@ -165,7 +171,7 @@ class ScheduleService {
       }
     }
     available.sort((a, b) => b.compareTo(a));
-    await cache.setJson(_validSemestersCacheKey, available);
+    await store.setJson(_validSemestersKey, available);
     return available;
   }
 
@@ -174,10 +180,10 @@ class ScheduleService {
     int? baseSessionId,
     int count = 12,
   }) async {
-    final cache = SembastCache();
+    final store = AppPreferencesStore();
     final currentFingerprint = _scheduleFingerprint(currentScheduleJson);
     final cachedFingerprint =
-        await cache.getString(_archiveSourceFingerprintKey) ?? '';
+        await store.getString(_archiveSourceFingerprintKey) ?? '';
     final cached = await getCachedValidSemesterSessionIds();
 
     if (cached.isNotEmpty && currentFingerprint == cachedFingerprint) {
@@ -189,7 +195,7 @@ class ScheduleService {
       count: count,
       forceRefresh: true,
     );
-    await cache.setString(_archiveSourceFingerprintKey, currentFingerprint);
+    await store.setString(_archiveSourceFingerprintKey, currentFingerprint);
     await preloadSemesterScheduleCache(
       semesterSessionIds: refreshed,
       forceRefresh: true,
@@ -269,8 +275,8 @@ class ScheduleService {
     required bool fromGet,
   }) async {
     final cacheKey = _cacheKeyForSemester(semesterSessionId);
-    final cache = SembastCache();
-    final asyncPrefs = SharedPreferencesAsync();
+    final store = AppPreferencesStore();
+    final asyncPrefs = AppStorage.instance;
     final id = await resolvePortfolioId(
       prefs: asyncPrefs,
       refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
@@ -292,7 +298,7 @@ class ScheduleService {
       fromGet: fromGet,
       cacheResponse: (response) async {
         final data = jsonDecode(response.body);
-        await cache.setJson(cacheKey, data);
+        await store.setJson(cacheKey, data);
       },
       readCache: ({required bool fromFetch}) => getStudentScheduleForSemester(
         semesterSessionId: semesterSessionId,
@@ -313,7 +319,7 @@ class ScheduleService {
     bool fromFetch = false,
   }) async {
     final cacheKey = _cacheKeyForSemester(semesterSessionId);
-    return readCachedSembastStringWithFallback(
+    return readStoredStringWithFallback(
       key: cacheKey,
       fromFetch: fromFetch,
       onCacheMiss: () => fetchStudentScheduleForSemester(

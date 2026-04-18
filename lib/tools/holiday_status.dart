@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 typedef HolidayItem = ({String startDate, String endDate, String label});
 
@@ -156,33 +155,15 @@ class HolidayTiming {
 
   static String get _statusUrl => '${ApiConfig.seatStatusProxyBase}/holiday';
   static const Duration _requestTimeout = Duration(seconds: 3);
-  static const Duration _cacheTtl = Duration(hours: 6);
-  static const String _prefsStatusKey = 'holiday_status_json';
-  static const String _prefsLastCheckKey = 'holiday_last_check_epoch_ms';
 
-  static DateTime? _lastCheckAt;
-  static HolidayStatus? _cachedStatus;
-  static bool _cacheLoaded = false;
-  static Future<void>? _cacheLoadInflight;
   static Future<HolidayStatus>? _inflight;
 
   static Future<HolidayStatus> getTodayStatus({
     bool forceRefresh = false,
   }) async {
-    await _ensureCacheLoaded();
-
-    final now = DateTime.now();
-    final hasFreshCache =
-        !forceRefresh &&
-        _cachedStatus != null &&
-        _lastCheckAt != null &&
-        _sameDate(now, _lastCheckAt!) &&
-        now.difference(_lastCheckAt!) <= _cacheTtl;
-
-    if (hasFreshCache) return _cachedStatus!;
     if (_inflight != null) return _inflight!;
 
-    _inflight = _refreshStatus(now);
+    _inflight = _refreshStatus();
     return _inflight!;
   }
 
@@ -193,68 +174,15 @@ class HolidayTiming {
     return status.nextHolidaysThisYear;
   }
 
-  static Future<HolidayStatus> _refreshStatus(DateTime now) async {
+  static Future<HolidayStatus> _refreshStatus() async {
     try {
       final result = await _fetchTodayStatus();
-      final value = result.fromNetwork
+      return result.fromNetwork
           ? result.value
-          : _fallbackOfflineStatus(now);
-      _cachedStatus = value;
-      if (result.fromNetwork) {
-        _lastCheckAt = now;
-        await _persistCache();
-      }
-      return value;
+          : _fallbackOfflineStatus(DateTime.now());
     } finally {
       _inflight = null;
     }
-  }
-
-  static Future<void> _ensureCacheLoaded() async {
-    if (_cacheLoaded) return;
-    if (_cacheLoadInflight != null) return _cacheLoadInflight!;
-
-    _cacheLoadInflight = _loadCacheFromPrefs();
-    try {
-      await _cacheLoadInflight!;
-    } finally {
-      _cacheLoadInflight = null;
-    }
-  }
-
-  static Future<void> _loadCacheFromPrefs() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final rawStatus = prefs.getString(_prefsStatusKey);
-      final rawEpoch = prefs.getInt(_prefsLastCheckKey);
-
-      _cachedStatus = rawStatus == null
-          ? HolidayStatus.empty
-          : HolidayStatus.fromCache(jsonDecode(rawStatus));
-      _lastCheckAt = rawEpoch == null
-          ? null
-          : DateTime.fromMillisecondsSinceEpoch(rawEpoch);
-    } catch (_) {
-      _cachedStatus = HolidayStatus.empty;
-      _lastCheckAt = null;
-    } finally {
-      _cacheLoaded = true;
-    }
-  }
-
-  static Future<void> _persistCache() async {
-    final status = _cachedStatus;
-    final lastCheckAt = _lastCheckAt;
-    if (status == null || lastCheckAt == null) return;
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_prefsStatusKey, jsonEncode(status.toCacheJson()));
-      await prefs.setInt(
-        _prefsLastCheckKey,
-        lastCheckAt.millisecondsSinceEpoch,
-      );
-    } catch (_) {}
   }
 
   static Future<({HolidayStatus value, bool fromNetwork})>
@@ -268,38 +196,26 @@ class HolidayTiming {
           .timeout(_requestTimeout);
 
       if (response.statusCode != 200 || response.body.trim().isEmpty) {
-        return (
-          value: _cachedStatus ?? HolidayStatus.empty,
-          fromNetwork: false,
-        );
+        return (value: HolidayStatus.empty, fromNetwork: false);
       }
 
       final payload = jsonDecode(response.body);
       if (payload is! List && payload is! Map<String, dynamic>) {
-        return (
-          value: _cachedStatus ?? HolidayStatus.empty,
-          fromNetwork: false,
-        );
+        return (value: HolidayStatus.empty, fromNetwork: false);
       }
 
       return (value: HolidayStatus.fromApi(payload), fromNetwork: true);
     } catch (_) {
-      return (value: _cachedStatus ?? HolidayStatus.empty, fromNetwork: false);
+      return (value: HolidayStatus.empty, fromNetwork: false);
     }
   }
 
   static HolidayStatus _fallbackOfflineStatus(DateTime now) {
-    final cached = _cachedStatus ?? HolidayStatus.empty;
-    if (_isCacheForDate(now)) return cached;
-
-    final inferredToday = _inferTodayHolidayNames(
-      now,
-      cached.nextHolidaysThisYear,
-    );
+    final inferredToday = _inferTodayHolidayNames(now, const <HolidayItem>[]);
     return HolidayStatus(
       isTodayHoliday: inferredToday.isNotEmpty,
       todayHolidayNames: inferredToday,
-      nextHolidaysThisYear: cached.nextHolidaysThisYear,
+      nextHolidaysThisYear: const <HolidayItem>[],
     );
   }
 
@@ -316,15 +232,6 @@ class HolidayTiming {
       names.add(holiday.label);
     }
     return names;
-  }
-
-  static bool _isCacheForDate(DateTime date) {
-    final lastCheck = _lastCheckAt;
-    return lastCheck != null && _sameDate(date, lastCheck);
-  }
-
-  static bool _sameDate(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   static String _toIsoDate(DateTime date) {

@@ -11,12 +11,13 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/notification_service.dart';
 import 'package:preconnect/api/seat_status_service.dart';
+import 'package:preconnect/model/seat_status_info.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:preconnect/tools/app_storage.dart';
 
 @pragma('vm:entry-point')
 void backgroundFetchHeadlessTask(HeadlessTask task) async {
@@ -40,7 +41,6 @@ class PushNotificationsService {
   factory PushNotificationsService() => _instance;
 
   static const String _deviceTokenKey = 'vps_push_device_token_v1';
-  static const String _dedupeCacheKey = 'vps_push_dedupe_cache_v1';
   static const Duration _pollInterval = Duration(seconds: 30);
   static const Duration _streamReconnectDelay = Duration(seconds: 5);
   static const Duration _payloadDedupeWindow = Duration(seconds: 90);
@@ -64,7 +64,6 @@ class PushNotificationsService {
   final Map<int, int> _lastNotifiedSeatCount = <int, int>{};
   final Map<String, int> _recentPayloadMs = <String, int>{};
   final List<String> _pendingSseDataLines = <String>[];
-  bool _dedupeCacheLoaded = false;
 
   Future<void> initialize() async {
     if (_initialized || !_isSupportedPlatform()) return;
@@ -72,7 +71,6 @@ class PushNotificationsService {
     try {
       await _initializeLocalNotifications();
       await _initializeBackgroundFetch();
-      await _loadPersistedDedupeCache();
       await _syncDevice();
       await _connectToSeatStream();
       _setupConnectivityListener();
@@ -133,8 +131,8 @@ class PushNotificationsService {
     } catch (_) {}
 
     if (_deviceToken == null || _deviceToken!.trim().isEmpty) {
-      final prefs = await SharedPreferences.getInstance();
-      final savedToken = (prefs.getString(_deviceTokenKey) ?? '').trim();
+      final prefs = AppStorage.instance;
+      final savedToken = (await prefs.getString(_deviceTokenKey) ?? '').trim();
       if (savedToken.isNotEmpty) {
         _deviceToken = savedToken;
       } else {
@@ -142,8 +140,6 @@ class PushNotificationsService {
         await prefs.setString(_deviceTokenKey, _deviceToken!);
       }
     }
-
-    await _loadPersistedDedupeCache();
   }
 
   Future<bool> hasNotificationPermission() async {
@@ -176,12 +172,12 @@ class PushNotificationsService {
   }
 
   Future<void> _syncDevice() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = (prefs.getString(_deviceTokenKey) ?? '').trim();
+    final prefs = AppStorage.instance;
+    final token = (await prefs.getString(_deviceTokenKey) ?? '').trim();
 
     _deviceToken = token.isNotEmpty ? token : _generateDeviceToken();
     if (_deviceToken != null) {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = AppStorage.instance;
       await prefs.setString(_deviceTokenKey, _deviceToken!);
     }
 
@@ -613,9 +609,7 @@ class PushNotificationsService {
   }) {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     final cutoffMs = nowMs - _payloadDedupeWindow.inMilliseconds;
-    final beforePrune = _recentPayloadMs.length;
     _recentPayloadMs.removeWhere((_, ts) => ts < cutoffMs);
-    var changed = _recentPayloadMs.length != beforePrune;
 
     final payloadKey = _payloadKey(payload, kind: kind);
     final seenAt = _recentPayloadMs[payloadKey];
@@ -624,7 +618,6 @@ class PushNotificationsService {
       return true;
     }
     _recentPayloadMs[payloadKey] = nowMs;
-    changed = true;
 
     if (_recentPayloadMs.length > _maxDedupeEntries) {
       final entries = _recentPayloadMs.entries.toList()
@@ -633,55 +626,9 @@ class PushNotificationsService {
       for (var i = 0; i < overflow; i++) {
         _recentPayloadMs.remove(entries[i].key);
       }
-      changed = true;
     }
 
-    if (changed) {
-      unawaited(_savePersistedDedupeCache());
-    }
     return false;
-  }
-
-  Future<void> _loadPersistedDedupeCache() async {
-    if (_dedupeCacheLoaded) return;
-    _dedupeCacheLoaded = true;
-
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_dedupeCacheKey);
-    if (raw == null || raw.trim().isEmpty) return;
-
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map) return;
-
-      final nowMs = DateTime.now().millisecondsSinceEpoch;
-      final cutoffMs = nowMs - _payloadDedupeWindow.inMilliseconds;
-
-      for (final entry in decoded.entries) {
-        final key = '${entry.key}'.trim();
-        final ts = int.tryParse('${entry.value}') ?? 0;
-        if (key.isEmpty || ts < cutoffMs) continue;
-        _recentPayloadMs[key] = ts;
-      }
-
-      if (_recentPayloadMs.length > _maxDedupeEntries) {
-        final entries = _recentPayloadMs.entries.toList()
-          ..sort((a, b) => a.value.compareTo(b.value));
-        final overflow = _recentPayloadMs.length - _maxDedupeEntries;
-        for (var i = 0; i < overflow; i++) {
-          _recentPayloadMs.remove(entries[i].key);
-        }
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _savePersistedDedupeCache() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (_recentPayloadMs.isEmpty) {
-      await prefs.remove(_dedupeCacheKey);
-      return;
-    }
-    await prefs.setString(_dedupeCacheKey, jsonEncode(_recentPayloadMs));
   }
 
   String _payloadKey(Map<String, dynamic> payload, {required String kind}) {
@@ -775,24 +722,24 @@ class SeatAlertSyncService {
   bool get isEnabled => _deviceToken != null && _deviceToken!.trim().isNotEmpty;
 
   Future<void> initialize() async {
-    final prefs = await SharedPreferences.getInstance();
-    final enabled = prefs.getBool(_pushEnabledKey) ?? false;
-    final token = (prefs.getString(_deviceTokenKey) ?? '').trim();
+    final enabled =
+        (await AppStorage.instance.getBool(_pushEnabledKey)) ?? false;
+    final token = (await AppStorage.instance.getString(_deviceTokenKey) ?? '')
+        .trim();
     _deviceToken = enabled && token.isNotEmpty ? token : null;
   }
 
   Future<void> configureDeviceToken(String token) async {
     final normalized = token.trim();
-    final prefs = await SharedPreferences.getInstance();
     if (normalized.isEmpty) {
       _deviceToken = null;
-      await prefs.remove(_deviceTokenKey);
-      await prefs.setBool(_pushEnabledKey, false);
+      await AppStorage.instance.remove(_deviceTokenKey);
+      await AppStorage.instance.setBool(_pushEnabledKey, false);
       return;
     }
     _deviceToken = normalized;
-    await prefs.setString(_deviceTokenKey, normalized);
-    await prefs.setBool(_pushEnabledKey, true);
+    await AppStorage.instance.setString(_deviceTokenKey, normalized);
+    await AppStorage.instance.setBool(_pushEnabledKey, true);
   }
 
   Future<void> registerDevice({
@@ -902,10 +849,9 @@ class SeatAlertSyncService {
 
   Future<void> clearAll() async {
     await unregisterDevice();
-    final prefs = await SharedPreferences.getInstance();
     _deviceToken = null;
-    await prefs.remove(_deviceTokenKey);
-    await prefs.setBool(_pushEnabledKey, false);
+    await AppStorage.instance.remove(_deviceTokenKey);
+    await AppStorage.instance.setBool(_pushEnabledKey, false);
   }
 
   Future<void> handleIncomingSeatAlertPayload(
@@ -915,9 +861,8 @@ class SeatAlertSyncService {
     if (kind != 'seat_alert') return;
     final sectionId = int.tryParse('${payload['sectionId'] ?? ''}');
     if (sectionId == null || sectionId <= 0) return;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_pendingSectionIdKey, sectionId);
-    await prefs.setString(
+    await AppStorage.instance.setInt(_pendingSectionIdKey, sectionId);
+    await AppStorage.instance.setString(
       _pendingSourceKey,
       '${payload['source'] ?? 'vps'}'.trim(),
     );
@@ -925,11 +870,10 @@ class SeatAlertSyncService {
   }
 
   Future<int?> consumePendingSectionId() async {
-    final prefs = await SharedPreferences.getInstance();
-    final sectionId = prefs.getInt(_pendingSectionIdKey);
+    final sectionId = await AppStorage.instance.getInt(_pendingSectionIdKey);
     if (sectionId != null) {
-      await prefs.remove(_pendingSectionIdKey);
-      await prefs.remove(_pendingSourceKey);
+      await AppStorage.instance.remove(_pendingSectionIdKey);
+      await AppStorage.instance.remove(_pendingSourceKey);
     }
     return sectionId;
   }

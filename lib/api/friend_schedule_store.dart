@@ -1,9 +1,8 @@
 import 'dart:convert';
 
 import 'package:archive/archive.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:preconnect/model/friend_schedule.dart';
-import 'package:sembast/sembast_io.dart';
+import 'package:preconnect/tools/app_storage.dart';
 
 class FriendScheduleStore {
   FriendScheduleStore._internal();
@@ -11,44 +10,32 @@ class FriendScheduleStore {
   static final FriendScheduleStore _instance = FriendScheduleStore._internal();
   factory FriendScheduleStore() => _instance;
 
-  static const String _dbName = 'friend_schedule.db';
-
-  final StoreRef<String, Object?> _scheduleStore = StoreRef<String, Object?>(
-    'friend_schedules',
-  );
-  final StoreRef<String, Object?> _metadataStore = StoreRef<String, Object?>(
-    'friend_metadata',
-  );
-
-  Database? _db;
+  static const String _encodedSchedulesKey = 'friend_schedules_encoded_v1';
+  static const String _metadataKey = 'friend_schedules_metadata_v1';
 
   Future<FriendScheduleStoreSnapshot> loadSnapshot() async {
     try {
-      final db = await _openDb();
-      final scheduleSnaps = await _scheduleStore.find(db);
-      final metadataSnaps = await _metadataStore.find(db);
-
-      final encodedSchedules = <String>[];
-      for (final snap in scheduleSnaps) {
-        final value = snap.value;
-        if (value is! Map) continue;
-        final encoded = '${value['encoded'] ?? ''}'.trim();
-        if (encoded.isNotEmpty) {
-          encodedSchedules.add(encoded);
+      final prefs = AppStorage.instance;
+      final encodedRaw = await prefs.getString(_encodedSchedulesKey);
+      final metadataRaw = await prefs.getString(_metadataKey);
+      final encodedSchedules = encodedRaw == null || encodedRaw.isEmpty
+          ? const <String>[]
+          : (jsonDecode(encodedRaw) as List).whereType<String>().toList(
+              growable: false,
+            );
+      final metadata = <String, FriendMetadata>{};
+      if (metadataRaw != null && metadataRaw.isNotEmpty) {
+        final decoded = jsonDecode(metadataRaw);
+        if (decoded is Map) {
+          for (final entry in decoded.entries) {
+            try {
+              metadata['${entry.key}'] = FriendMetadata.fromJson(
+                Map<String, dynamic>.from(entry.value as Map),
+              );
+            } catch (_) {}
+          }
         }
       }
-
-      final metadata = <String, FriendMetadata>{};
-      for (final snap in metadataSnaps) {
-        final value = snap.value;
-        if (value is! Map) continue;
-        try {
-          metadata[snap.key] = FriendMetadata.fromJson(
-            value.cast<String, dynamic>(),
-          );
-        } catch (_) {}
-      }
-
       return FriendScheduleStoreSnapshot(
         encodedSchedules: encodedSchedules,
         metadata: metadata,
@@ -66,69 +53,31 @@ class FriendScheduleStore {
     if (encoded.isEmpty) return;
     final friendId = _extractFriendId(encoded);
     if (friendId == null || friendId.isEmpty) return;
-
-    try {
-      final db = await _openDb();
-      await _scheduleStore.record(friendId).put(db, <String, Object?>{
-        'encoded': encoded,
-      });
-    } catch (_) {}
+    final snapshot = await loadSnapshot();
+    final next = <String>{...snapshot.encodedSchedules, encoded}.toList();
+    await AppStorage.instance.setString(_encodedSchedulesKey, jsonEncode(next));
   }
 
   Future<void> removeByEncoded(String encodedValue) async {
     final encoded = encodedValue.trim();
     if (encoded.isEmpty) return;
-    final friendId = _extractFriendId(encoded);
-
-    try {
-      final db = await _openDb();
-      if (friendId != null && friendId.isNotEmpty) {
-        await _scheduleStore.record(friendId).delete(db);
-        return;
-      }
-      final snaps = await _scheduleStore.find(db);
-      for (final snap in snaps) {
-        final value = snap.value;
-        if (value is! Map) continue;
-        if ('${value['encoded'] ?? ''}'.trim() == encoded) {
-          await _scheduleStore.record(snap.key).delete(db);
-          break;
-        }
-      }
-    } catch (_) {}
+    final snapshot = await loadSnapshot();
+    final next = snapshot.encodedSchedules
+        .where((value) => value != encoded)
+        .toList();
+    await AppStorage.instance.setString(_encodedSchedulesKey, jsonEncode(next));
   }
 
   Future<void> saveAllMetadata(Map<String, FriendMetadata> metadata) async {
-    try {
-      final db = await _openDb();
-      await db.transaction((txn) async {
-        await _metadataStore.delete(txn);
-        for (final entry in metadata.entries) {
-          await _metadataStore.record(entry.key).put(txn, entry.value.toJson());
-        }
-      });
-    } catch (_) {}
+    await AppStorage.instance.setString(
+      _metadataKey,
+      jsonEncode(metadata.map((key, value) => MapEntry(key, value.toJson()))),
+    );
   }
 
   Future<void> clearAll() async {
-    try {
-      final db = await _openDb();
-      await db.transaction((txn) async {
-        await _scheduleStore.delete(txn);
-        await _metadataStore.delete(txn);
-      });
-    } catch (_) {}
-  }
-
-  Future<Database> _openDb() async {
-    final existing = _db;
-    if (existing != null) return existing;
-
-    final dir = await getApplicationDocumentsDirectory();
-    final dbPath = '${dir.path}/$_dbName';
-    final db = await databaseFactoryIo.openDatabase(dbPath);
-    _db = db;
-    return db;
+    await AppStorage.instance.remove(_encodedSchedulesKey);
+    await AppStorage.instance.remove(_metadataKey);
   }
 
   String? _extractFriendId(String base64Data) {

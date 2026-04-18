@@ -28,14 +28,28 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Future<NotificationsViewData> _loadData({bool forceRefresh = false}) async {
-    final connectFuture = forceRefresh
-        ? NotificationService().fetchRecentNotifications()
-        : NotificationService().getRecentNotifications();
-    final scraperFuture = NotificationService().getScraperContentFeed(
-      forceRefresh: forceRefresh,
-    );
+    final connectFuture =
+        (forceRefresh
+                ? NotificationService().fetchRecentNotifications()
+                : NotificationService().getRecentNotifications())
+            .catchError((e) {
+              debugPrint(
+                '[NOTIFICATIONS] Connect notifications load failed: $e',
+              );
+              return null;
+            });
+    final scraperFuture = NotificationService()
+        .getScraperContentFeed(forceRefresh: forceRefresh)
+        .catchError((e) {
+          debugPrint('[NOTIFICATIONS] Scraper content load failed: $e');
+          return const <ScraperContentItem>[];
+        });
     final seenScraperIdsFuture = NotificationService()
-        .getSeenScraperNotificationIds();
+        .getSeenScraperNotificationIds()
+        .catchError((e) {
+          debugPrint('[NOTIFICATIONS] Seen scraper IDs load failed: $e');
+          return <String>{};
+        });
     final results = await Future.wait<dynamic>(<Future<dynamic>>[
       connectFuture,
       scraperFuture,

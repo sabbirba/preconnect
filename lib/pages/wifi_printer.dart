@@ -6,9 +6,8 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/profile_service.dart';
-import 'package:preconnect/api/sembast_cache.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:preconnect/tools/app_storage.dart';
 
 class CampusPrinterPage extends StatefulWidget {
   const CampusPrinterPage({super.key});
@@ -46,9 +45,20 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   }
 
   Future<void> _bootstrap() async {
-    await Future.wait([_loadStudentProfile(), _loadHistory()]);
+    await Future.wait([
+      _loadStudentProfile().catchError((e) {
+        debugPrint('[WIFI_PRINTER] Student profile load failed: $e');
+      }),
+      _loadHistory().catchError((e) {
+        debugPrint('[WIFI_PRINTER] History load failed: $e');
+      }),
+    ]);
     if (!mounted) return;
-    unawaited(_discoverPrinter());
+    unawaited(
+      _discoverPrinter().catchError((e) {
+        debugPrint('[WIFI_PRINTER] Printer discovery failed: $e');
+      }),
+    );
   }
 
   Future<void> _refreshPrinterInfo() async {
@@ -58,21 +68,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   }
 
   Future<void> _loadStudentProfile() async {
-    final cache = SembastCache();
-    final prefs = SharedPreferencesAsync();
-    var studentId = (await cache.getString('studentId') ?? '').trim();
-    var fullName = (await cache.getString('fullName') ?? '').trim();
-    var shortCode = (await cache.getString('shortCode') ?? '').trim();
-
-    if (studentId.isEmpty) {
-      studentId = (await prefs.getString('studentId') ?? '').trim();
-    }
-    if (fullName.isEmpty) {
-      fullName = (await prefs.getString('fullName') ?? '').trim();
-    }
-    if (shortCode.isEmpty) {
-      shortCode = (await prefs.getString('shortCode') ?? '').trim();
-    }
+    var studentId = (await AppStorage.instance.getString('studentId') ?? '')
+        .trim();
+    var fullName = (await AppStorage.instance.getString('fullName') ?? '')
+        .trim();
+    var shortCode = (await AppStorage.instance.getString('shortCode') ?? '')
+        .trim();
 
     if (studentId.isEmpty || fullName.isEmpty || shortCode.isEmpty) {
       final profile = await ProfileService().getProfile(fromFetch: true);
@@ -133,8 +134,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   }
 
   Future<void> _loadHistory() async {
-    final prefs = SharedPreferencesAsync();
-    final raw = (await prefs.getString(_historyKey) ?? '').trim();
+    final raw = (await AppStorage.instance.getString(_historyKey) ?? '').trim();
     if (raw.isEmpty) return;
     try {
       final decoded = jsonDecode(raw);
@@ -167,8 +167,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     setState(() {
       _history = history;
     });
-    final prefs = SharedPreferencesAsync();
-    await prefs.setString(
+    await AppStorage.instance.setString(
       _historyKey,
       jsonEncode(history.map((item) => item.toJson()).toList()),
     );
