@@ -89,7 +89,6 @@ class TokenStorage {
       return await AppStorage.instance.getString(key);
     }
 
-    // ALWAYS try AppStorage first - it's the most reliable storage
     try {
       final appStorageValue = await AppStorage.instance.getString(key);
       if (appStorageValue != null && appStorageValue.isNotEmpty) {
@@ -97,12 +96,10 @@ class TokenStorage {
       }
     } catch (_) {}
 
-    // Secondary fallback: try secure storage if AppStorage has nothing
     if (_useSecure) {
       try {
         final value = await _secure.read(key: key);
         if (value != null && value.isNotEmpty) {
-          // Found in secure storage but not in AppStorage - sync to AppStorage
           await AppStorage.instance.setString(key, value);
           return value;
         }
@@ -117,7 +114,6 @@ class TokenStorage {
   }
 
   Future<void> write({required String key, String? value}) async {
-    // Run diagnostics on first write
     if (!_diagnosticsRun) {
       unawaited(_runDiagnostics());
     }
@@ -127,7 +123,6 @@ class TokenStorage {
       return;
     }
 
-    // Always write to AppStorage first and verify
     if (value == null || value.isEmpty) {
       await AppStorage.instance.remove(key);
     } else {
@@ -136,23 +131,19 @@ class TokenStorage {
       var verified = await AppStorage.instance.getString(key);
       var verificationPassed = verified == value;
       if (!verificationPassed) {
-        // Retry: write again if first attempt failed
         await AppStorage.instance.setString(key, value);
         verified = await AppStorage.instance.getString(key);
         verificationPassed = verified == value;
       }
     }
 
-    // Also write to secure storage as backup (critical for token persistence)
     if (_useSecure && value != null && value.isNotEmpty) {
       try {
         await _secure.write(key: key, value: value);
 
-        // For critical tokens, verify the secure storage write also succeeded
         if (key == 'refresh_token' || key == 'access_token') {
           final verified = await _secure.read(key: key);
           if (verified != value) {
-            // Try again if verification failed
             try {
               await _secure.write(key: key, value: value);
               final retryVerify = await _secure.read(key: key);
@@ -183,20 +174,16 @@ class TokenStorage {
   }
 
   Future<void> deleteAll() async {
-    // Always clear from AppStorage
     await AppStorage.instance.remove('access_token');
     await AppStorage.instance.remove('refresh_token');
     await AppStorage.instance.setBool(_cachedHasSessionKey, false);
 
-    // Try to clear from secure storage if available
     if (kIsWeb) {
       webKvClearKeys(const ['access_token', 'refresh_token']);
     } else if (_useSecure) {
       try {
         await _secure.deleteAll();
-      } catch (_) {
-        // Ignore errors
-      }
+      } catch (_) {}
     }
   }
 
@@ -273,7 +260,6 @@ class WebLoginSessionStore {
     await AppStorage.instance.remove(_webSessionIdKey);
     await AppStorage.instance.remove(_webSessionTokenKey);
 
-    // Verify that session keys were actually cleared
     final stillPresent =
         (await AppStorage.instance.getString(_webSessionIdKey))?.isNotEmpty ==
             true ||
@@ -610,7 +596,6 @@ class ProfileImageCache {
         file.lengthSync() > 0 &&
         (cachedUrl == null || cachedUrl == photoUrl)) {
       _cachedFile = file;
-      _downloadInBackground(photoUrl, file);
       return file;
     }
 
@@ -625,16 +610,6 @@ class ProfileImageCache {
     } catch (_) {}
 
     return null;
-  }
-
-  void _downloadInBackground(String url, File file) async {
-    try {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
-        await file.writeAsBytes(response.bodyBytes, flush: true);
-        await AppStorage.instance.setString(_cachedUrlKey, url);
-      }
-    } catch (_) {}
   }
 
   void invalidate() {

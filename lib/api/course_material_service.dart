@@ -364,9 +364,11 @@ class CourseMaterialService {
   }
 
   Map<String, dynamic> _decodeMap(String raw) {
-    final decoded = jsonDecode(raw);
-    if (decoded is Map<String, dynamic>) return decoded;
-    if (decoded is Map) return decoded.cast<String, dynamic>();
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return decoded.cast<String, dynamic>();
+    } catch (_) {}
     return const <String, dynamic>{};
   }
 

@@ -63,19 +63,27 @@ class WebLoginBrokerService {
             : 'Unable to create login session (${response.statusCode}): $message',
       );
     }
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    return WebLoginBrokerSession(
-      request: WebLoginRequestPayload(
-        version: 1,
-        type: 'web_login_request',
-        sessionId: '${json['sessionId'] ?? ''}',
-        sessionToken: '${json['sessionToken'] ?? ''}',
-        studentEmail: '${json['studentEmail'] ?? ''}',
-        nonce: '${json['nonce'] ?? ''}',
-        expiresAtMillis: (json['expiresAt'] as num?)?.toInt() ?? 0,
-      ),
-      status: '${json['status'] ?? 'pending'}',
-    );
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        throw FormatException('Expected Map from login session response');
+      }
+      final json = decoded;
+      return WebLoginBrokerSession(
+        request: WebLoginRequestPayload(
+          version: 1,
+          type: 'web_login_request',
+          sessionId: '${json['sessionId'] ?? ''}',
+          sessionToken: '${json['sessionToken'] ?? ''}',
+          studentEmail: '${json['studentEmail'] ?? ''}',
+          nonce: '${json['nonce'] ?? ''}',
+          expiresAtMillis: (json['expiresAt'] as num?)?.toInt() ?? 0,
+        ),
+        status: '${json['status'] ?? 'pending'}',
+      );
+    } catch (e) {
+      throw Exception('Unable to parse login session response: $e');
+    }
   }
 
   Future<WebLoginBrokerStatus> getStatus(WebLoginRequestPayload request) async {
@@ -90,13 +98,21 @@ class WebLoginBrokerService {
     if (response.statusCode != 200) {
       throw Exception('Unable to check login status');
     }
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    return WebLoginBrokerStatus(
-      status: '${json['status'] ?? ''}',
-      sessionId: '${json['sessionId'] ?? ''}',
-      approved: json['approved'] == true,
-      expired: json['expired'] == true,
-    );
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        throw FormatException('Expected Map from login status response');
+      }
+      final json = decoded;
+      return WebLoginBrokerStatus(
+        status: '${json['status'] ?? ''}',
+        sessionId: '${json['sessionId'] ?? ''}',
+        approved: json['approved'] == true,
+        expired: json['expired'] == true,
+      );
+    } catch (e) {
+      throw Exception('Unable to parse login status response: $e');
+    }
   }
 
   Future<bool> isActiveWebSession({
@@ -115,8 +131,13 @@ class WebLoginBrokerService {
         .get(uri, headers: {'Cache-Control': 'no-store'})
         .timeout(_timeout);
     if (response.statusCode != 200) return false;
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    return json['active'] == true;
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) return false;
+      return decoded['active'] == true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<WebLoginApprovePayload> consume(WebLoginRequestPayload request) async {
@@ -133,9 +154,15 @@ class WebLoginBrokerService {
     if (response.statusCode != 200) {
       throw Exception('Unable to complete web login');
     }
-    return WebLoginApprovePayload.fromJson(
-      jsonDecode(response.body) as Map<String, dynamic>,
-    );
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        throw FormatException('Expected Map from web login response');
+      }
+      return WebLoginApprovePayload.fromJson(decoded);
+    } catch (e) {
+      throw Exception('Unable to parse web login response: $e');
+    }
   }
 
   Future<void> approve({

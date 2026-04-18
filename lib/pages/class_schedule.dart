@@ -466,10 +466,19 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
             return BracuRefreshScroll(
               onRefresh: _handleRefresh,
               showScrollTopButton: false,
-              child: const Center(
-                child: Padding(
-                  padding: EdgeInsets.only(top: 120),
-                  child: CircularProgressIndicator(),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    _ClassScheduleLoadingHeader(),
+                    SizedBox(height: 12),
+                    BracuLoading(itemCount: 4),
+                    SizedBox(height: 12),
+                    BracuLoading(itemCount: 3),
+                    SizedBox(height: 12),
+                    BracuLoading(itemCount: 4),
+                  ],
                 ),
               ),
             );
@@ -630,6 +639,22 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
           );
         },
       ),
+    );
+  }
+}
+
+class _ClassScheduleLoadingHeader extends StatelessWidget {
+  const _ClassScheduleLoadingHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        BracuLoading(itemCount: 1, compact: true),
+        SizedBox(height: 12),
+        BracuLoading(itemCount: 2, compact: true),
+      ],
     );
   }
 }

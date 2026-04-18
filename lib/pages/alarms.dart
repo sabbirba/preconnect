@@ -394,8 +394,20 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
               onRefresh: _handleRefresh,
               showScrollTopButton: false,
               children: const [
-                SizedBox(height: 120),
-                Center(child: CircularProgressIndicator()),
+                SizedBox(height: 16),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      BracuLoading(itemCount: 1, compact: true),
+                      SizedBox(height: 12),
+                      BracuLoading(itemCount: 4),
+                      SizedBox(height: 12),
+                      BracuLoading(itemCount: 4),
+                    ],
+                  ),
+                ),
               ],
             );
           }

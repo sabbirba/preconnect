@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
 class StudentOverviewCard extends StatelessWidget {
@@ -142,7 +143,10 @@ class _SupportButtonState extends State<_SupportButton> {
     });
 
     try {
-      await widget.onTap();
+      if (mounted) {
+        await widget.onTap();
+      }
+      await AdsBridge.showInterstitial();
     } finally {
       if (mounted) {
         setState(() {
@@ -157,44 +161,41 @@ class _SupportButtonState extends State<_SupportButton> {
     return InkWell(
       onTap: _isLoading ? null : _handleTap,
       borderRadius: BorderRadius.circular(14),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 180),
-        switchInCurve: Curves.easeOut,
-        switchOutCurve: Curves.easeIn,
-        child: _isLoading ? _buildLoadingTile() : _buildButtonTile(),
-      ),
+      child: _buildButtonTile(),
     );
   }
 
   Widget _buildButtonTile() {
     return _buildTile(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.favorite_border_rounded,
-            size: 16,
-            color: BracuPalette.primary,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            'Support',
-            style: TextStyle(
-              color: BracuPalette.primary,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.1,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLoadingTile() {
-    return BracuShimmer(
-      child: _buildTile(
-        child: const BracuSkeletonBox(width: 56, height: 16, radius: 8),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 180),
+        child: _isLoading
+            ? const BracuShimmerLabel(
+                label: 'Support',
+                dotSize: 12,
+                gap: 6,
+                fontSize: 12,
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.favorite_border_rounded,
+                    size: 16,
+                    color: BracuPalette.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Support',
+                    style: TextStyle(
+                      color: BracuPalette.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.1,
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }

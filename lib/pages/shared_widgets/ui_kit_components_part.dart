@@ -788,11 +788,15 @@ class _BracuNotificationsIconButtonState
     extends State<BracuNotificationsIconButton>
     with RefreshBusState {
   late Future<int> _future;
+  int? _cachedCount;
+  static const String _cachedUnreadCountKey = 'notifications_unread_count_v1';
 
   @override
   void initState() {
     super.initState();
+    unawaited(_loadCachedCount());
     _future = NotificationService().getTotalUnreadCount();
+    unawaited(_future.then(_persistCount));
     bindRefreshBus(_onRefreshSignal);
   }
 
@@ -807,6 +811,27 @@ class _BracuNotificationsIconButtonState
     setState(() {
       _future = NotificationService().getTotalUnreadCount();
     });
+    unawaited(_future.then(_persistCount));
+  }
+
+  Future<void> _loadCachedCount() async {
+    try {
+      final count = await AppStorage.instance.getInt(_cachedUnreadCountKey);
+      if (!mounted) return;
+      setState(() {
+        _cachedCount = count;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _persistCount(int count) async {
+    try {
+      await AppStorage.instance.setInt(_cachedUnreadCountKey, count);
+      if (!mounted) return;
+      setState(() {
+        _cachedCount = count;
+      });
+    } catch (_) {}
   }
 
   @override
@@ -814,7 +839,7 @@ class _BracuNotificationsIconButtonState
     return FutureBuilder<int>(
       future: _future,
       builder: (context, snapshot) {
-        final newCount = snapshot.data ?? 0;
+        final newCount = snapshot.data ?? _cachedCount ?? 0;
         return Stack(
           clipBehavior: Clip.none,
           children: [
@@ -1715,7 +1740,7 @@ class BracuShimmer extends StatelessWidget {
       highlightColor: isDark
           ? const Color(0xFF343434)
           : const Color(0xFFF8FBFF),
-      period: const Duration(milliseconds: 1300),
+      period: const Duration(milliseconds: 400),
       child: child,
     );
   }

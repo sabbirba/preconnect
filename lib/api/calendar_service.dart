@@ -30,6 +30,10 @@ class CalendarService {
     return fetchCalendar(rangeOverride: range);
   }
 
+  Future<CalendarFeed?> getCachedCalendar() {
+    return _readCache();
+  }
+
   Future<CalendarFeed?> fetchCalendar({
     CalendarFeed? fallback,
     ({String startDate, String endDate, String sourceFingerprint})?
@@ -40,7 +44,12 @@ class CalendarService {
         '${ApiConfig.connectApiBase}${ApiConfig.calendarPath(0, startDate: range.startDate, endDate: range.endDate)}';
     try {
       final response = await _client.authenticatedGet(url);
-      final decoded = jsonDecode(response.body);
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(response.body);
+      } catch (e) {
+        return fallback ?? await _readCache();
+      }
       var items = _parseEntries(decoded);
       List<({String eventName, String startDate, String endDate})>
       academicDates =

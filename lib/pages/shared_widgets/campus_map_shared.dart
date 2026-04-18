@@ -480,12 +480,7 @@ Future<void> showCampusMapBottomSheet(
               ),
               if (mapData.images.isNotEmpty) ...[
                 sectionTitle('Campus Gallery'),
-                BracuImageCarousel(
-                  imageUrls: mapData.images,
-                  borderRadius: 12,
-                  autoPlay: true,
-                  autoPlayInterval: const Duration(seconds: 3),
-                ),
+                BracuImageCarousel(imageUrls: mapData.images, borderRadius: 12),
               ],
               if (mapData.highlights.isNotEmpty) ...[
                 sectionTitle('Highlights'),

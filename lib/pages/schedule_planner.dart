@@ -81,7 +81,6 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
       final items = await service.getItems(forceRefresh: forceRefresh);
       return service.autoCompleteOverdueItems(items);
     } catch (e) {
-      // Try to return cached items on error
       final cached = await SchedulePlannerService().getCachedItems();
       return cached ?? const <SchedulePlannerItem>[];
     }
@@ -160,9 +159,6 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
       setState(() {
         _latestItems = items;
       });
-    } catch (e) {
-      // Error will be shown by FutureBuilder, no need to crash here
-      // FutureBuilder will display the error in snapshot.hasError
     } finally {
       if (mounted) {
         setState(() {

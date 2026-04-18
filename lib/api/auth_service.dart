@@ -20,26 +20,21 @@ class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal() {
-    // Start grace period immediately on app startup
     _bootstrapStartTime = DateTime.now();
   }
 
   final TokenStorage _storage = TokenStorage.instance;
   static const Duration _authRequestTimeout = Duration(seconds: 12);
 
-  // Mutex lock to prevent concurrent token refresh race conditions
   static final _tokenRefreshLock = Lock();
 
-  // Cache token refresh result to avoid repeated refreshes within 5 seconds
   static TokenRefreshStatus? _lastRefreshStatus;
   static DateTime? _lastRefreshTime;
   static const Duration _refreshResultTtl = Duration(seconds: 5);
 
-  // Grace period to prevent logout during initial bootstrap (tokens just written)
   static DateTime? _bootstrapStartTime;
   static const Duration _bootstrapGracePeriod = Duration(seconds: 10);
 
-  // Flag to prevent concurrent logout race conditions
   static bool _isLoggingOut = false;
 
   Future<void> login(BuildContext context) async {
@@ -47,14 +42,12 @@ class AuthService {
   }
 
   Future<void> logout({bool instant = false, bool force = false}) async {
-    // Prevent concurrent logout operations
     if (_isLoggingOut) {
       return;
     }
     _isLoggingOut = true;
 
     try {
-      // CRITICAL: Prevent accidental token clearing during bootstrap
       if (!force && _bootstrapStartTime != null) {
         final timeSinceBootstrap = DateTime.now().difference(
           _bootstrapStartTime!,
@@ -64,7 +57,6 @@ class AuthService {
         }
       }
 
-      // Verify tokens actually exist before clearing them
       final refreshToken = await _storage.read(key: 'refresh_token');
       final accessToken = await _storage.read(key: 'access_token');
       if (accessToken == null && refreshToken == null) {
@@ -115,8 +107,6 @@ class AuthService {
       await SeatAlertSyncService().clearAll();
     } catch (_) {}
 
-    // CRITICAL: Only clear specific cache keys, NOT all of AppStorage (which contains tokens!)
-    // AppStorage.clear() was wiping tokens and causing all API failures
     final cacheKeysToRemove = [
       'StudentSchedule',
       'StudentProgramProgress',
@@ -148,9 +138,7 @@ class AuthService {
   }
 
   Future<TokenRefreshStatus> refreshTokenStatus() async {
-    // Serialize token refresh operations with a lock
     return _tokenRefreshLock.synchronized(() async {
-      // Check if another thread just completed refresh within TTL
       if (_lastRefreshStatus != null && _lastRefreshTime != null) {
         final age = DateTime.now().difference(_lastRefreshTime!);
         if (age < _refreshResultTtl) {
@@ -158,7 +146,6 @@ class AuthService {
         }
       }
 
-      // Perform actual token refresh
       return _performTokenRefresh();
     });
   }
@@ -282,14 +269,12 @@ class AuthService {
         }
       }
 
-      // Verify header is valid base64url
       try {
         base64Url.decode(base64Url.normalize(parts[0]));
       } catch (e) {
         return false;
       }
 
-      // Verify payload is valid base64url and contains exp claim
       try {
         final payloadJson = utf8.decode(
           base64Url.decode(base64Url.normalize(parts[1])),
@@ -302,7 +287,6 @@ class AuthService {
         return false;
       }
 
-      // Verify signature is valid base64url (doesn't need to be valid signature, just format)
       try {
         base64Url.decode(base64Url.normalize(parts[2]));
       } catch (e) {

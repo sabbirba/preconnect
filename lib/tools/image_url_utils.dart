@@ -1,3 +1,27 @@
+/// Sanitizes a media (image) URL by stripping query strings, fragments, and trailing noise.
+/// This should be used for image assets to ensure consistent URL handling.
+String? normalizeMediaUrl(String raw) {
+  final value = raw.trim();
+  if (value.isEmpty) return null;
+
+  if (value.startsWith('data:')) return null;
+
+  final uri = Uri.tryParse(value);
+  if (uri == null) return null;
+
+  if (uri.scheme != 'http' && uri.scheme != 'https') return null;
+
+  final cleaned = Uri(
+    scheme: uri.scheme,
+    userInfo: uri.userInfo,
+    host: uri.host,
+    port: uri.port,
+    path: uri.path.replaceAll(RegExp(r'[/\\]+$'), ''),
+  ).toString();
+
+  return cleaned.isEmpty ? null : cleaned;
+}
+
 String? normalizeImageUrl(String raw, {String? baseUrl}) {
   final value = raw.trim();
   if (value.isEmpty) return null;
@@ -8,7 +32,7 @@ String? normalizeImageUrl(String raw, {String? baseUrl}) {
 
   final parsed = Uri.tryParse(value);
   if (parsed != null && (parsed.scheme == 'http' || parsed.scheme == 'https')) {
-    return parsed.toString();
+    return normalizeMediaUrl(parsed.toString());
   }
 
   final base = baseUrl?.trim();
@@ -16,7 +40,8 @@ String? normalizeImageUrl(String raw, {String? baseUrl}) {
     final baseUri = Uri.tryParse(base);
     if (baseUri != null) {
       try {
-        return baseUri.resolve(value).toString();
+        final resolved = baseUri.resolve(value).toString();
+        return normalizeMediaUrl(resolved);
       } catch (_) {}
     }
   }

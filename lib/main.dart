@@ -8,7 +8,6 @@ import 'tools/push_notifications_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize AppStorage (SharedPreferences) for reliable token persistence
   await AppStorage.initialize();
 
   BackgroundFetch.registerHeadlessTask(backgroundFetchHeadlessTask);

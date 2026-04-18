@@ -111,8 +111,6 @@ class _WebLoginSetupPageState extends State<WebLoginSetupPage>
       setState(() {
         _activeSessions = _dedupeSessions(sessions);
       });
-    } catch (e) {
-      // quiet when session endpoints are unavailable.
     } finally {
       if (mounted) {
         setState(() {

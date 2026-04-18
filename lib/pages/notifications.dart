@@ -16,7 +16,7 @@ class NotificationsPage extends StatefulWidget {
 }
 
 class _NotificationsPageState extends State<NotificationsPage> {
-  static const int _pageSize = 10;
+  static const int _pageSize = 32;
   late Future<NotificationsViewData> _future;
   NotificationsViewData? _lastData;
   int _visibleItemCount = _pageSize;
@@ -24,7 +24,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   void initState() {
     super.initState();
-    _future = _loadData(forceRefresh: true);
+    _future = _loadData(forceRefresh: true).then((data) {
+      _lastData = data;
+      return data;
+    });
   }
 
   Future<NotificationsViewData> _loadData({bool forceRefresh = false}) async {

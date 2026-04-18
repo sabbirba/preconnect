@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/calendar_service.dart';
@@ -23,6 +25,7 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
   @override
   void initState() {
     super.initState();
+    unawaited(_loadCachedFeed());
     _future = CalendarService().getCalendar();
     bindRefreshBus(_onRefreshSignal);
   }
@@ -37,6 +40,14 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
     if (!mounted) return;
     if (isRefreshingFrom('calendar')) return;
     _refresh(notify: false);
+  }
+
+  Future<void> _loadCachedFeed() async {
+    final cached = await CalendarService().getCachedCalendar();
+    if (!mounted || cached == null) return;
+    setState(() {
+      _lastFeed = cached;
+    });
   }
 
   Future<void> _refresh({bool notify = true}) async {

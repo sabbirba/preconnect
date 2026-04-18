@@ -234,7 +234,11 @@ class SeatStatusService {
       url,
       acceptedStatusCodes: const <int>{200},
     );
-    return jsonDecode(response.body);
+    try {
+      return jsonDecode(response.body);
+    } catch (e) {
+      throw FormatException('Invalid JSON response from $url: $e');
+    }
   }
 
   Map<int, int> _parseSeatMapResponse(dynamic raw) {

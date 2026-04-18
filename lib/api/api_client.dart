@@ -21,7 +21,6 @@ class ApiClient {
   static const Duration _requestTimeout = Duration(seconds: 12);
   static const Duration _connectivityProbeTimeout = Duration(seconds: 3);
 
-  // Cache for web session validation to avoid repeated 12s network calls
   static bool? _cachedWebSessionActive;
   static DateTime? _cachedWebSessionCheckTime;
   static const Duration _webSessionCacheTtl = Duration(minutes: 5);
@@ -70,7 +69,6 @@ class ApiClient {
 
     final token = await getAccessToken();
     if (token == null || token.isEmpty) {
-      // Tokens disappeared mid-session - force logout
       unawaited(AuthService().logout(force: true));
       throw const UnauthenticatedException();
     }
@@ -126,12 +124,9 @@ class ApiClient {
         return retryResponse;
       }
       if (retryResponse.statusCode == 401) {
-        // Token refresh succeeded but retry still got 401
-        // This is a hard failure - endpoint doesn't accept even fresh tokens
-        throw const SessionExpiredException(); // Hard failure - session is invalid
+        throw const SessionExpiredException();
       }
       if (retryResponse.statusCode >= 500) {
-        // Server error after retry - this is transient, let caller decide to retry
         throw ApiException(retryResponse.statusCode, retryResponse.body);
       }
 
@@ -226,7 +221,6 @@ class ApiClient {
         return retryResponse;
       }
       if (retryResponse.statusCode == 401) {
-        // Token refresh succeeded but retry still got 401 - hard failure
         throw const SessionExpiredException();
       }
       throw ApiException(retryResponse.statusCode, retryResponse.body);
@@ -238,7 +232,6 @@ class ApiClient {
   Future<bool> _ensureWebSessionActive() async {
     if (!kIsWeb) return true;
 
-    // Check cache first - avoid expensive network call if recently validated
     if (_cachedWebSessionActive != null && _cachedWebSessionCheckTime != null) {
       final age = DateTime.now().difference(_cachedWebSessionCheckTime!);
       if (age < _webSessionCacheTtl) {
@@ -258,7 +251,6 @@ class ApiClient {
         webSessionId: sessionId!,
         webSessionToken: sessionToken!,
       );
-      // Cache the result
       _cachedWebSessionActive = isActive;
       _cachedWebSessionCheckTime = DateTime.now();
       return isActive;
@@ -456,7 +448,6 @@ String? extractEtagFromResponse(http.Response response) {
   return extractEtagFromHeaders(response.headers);
 }
 
-// Portfolio ID resolution failure tracking for rate limiting cascading calls
 final _portfolioIdResolutionFailures = <DateTime>[];
 const _portfolioIdQuarantinePeriod = Duration(minutes: 5);
 
@@ -468,7 +459,6 @@ Future<String?> resolvePortfolioId({
 }) async {
   var id = await prefs.getString('id');
   if (id == null || id.isEmpty) {
-    // Check if we're in quarantine from recent failures (rate limiting)
     final now = DateTime.now();
     final recentFailures = _portfolioIdResolutionFailures
         .where((t) => now.difference(t) < _portfolioIdQuarantinePeriod)
@@ -478,19 +468,14 @@ Future<String?> resolvePortfolioId({
       return null;
     }
 
-    // Don't retry indefinitely - limit to maxRetries attempts
     if (currentRetry >= maxRetries) {
-      _portfolioIdResolutionFailures.add(
-        now,
-      ); // Record failure for rate limiting
+      _portfolioIdResolutionFailures.add(now);
       return null;
     }
     try {
       await refreshProfile();
     } catch (e) {
-      _portfolioIdResolutionFailures.add(
-        now,
-      ); // Record failure for rate limiting
+      _portfolioIdResolutionFailures.add(now);
       return null;
     }
 

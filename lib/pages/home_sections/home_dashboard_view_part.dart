@@ -100,6 +100,8 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                               const SizedBox(height: 12),
                               const _HomeDashboardSkeletonQuickAccess(),
                               const SizedBox(height: 12),
+                              const _HomeDashboardSkeletonActionCard(),
+                              const SizedBox(height: 12),
                             ],
                           ),
                         );
@@ -123,7 +125,7 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                       final isTodayHoliday = holidayStatus.isTodayHoliday;
                       final today = _todayName();
                       final todayDate = DateFormat(
-                        'd MMMM',
+                        'd MMMM, yyyy',
                       ).format(DateTime.now());
                       final todayEntries =
                           (data?.entries ?? [])
@@ -601,7 +603,7 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
         ),
         _DashboardQuickAccessItem(
           tab: HomeTab.friendSchedule,
-          icon: Icons.people_outline,
+          icon: Icons.people_outline_rounded,
           title: 'Friends',
           subtitle: 'Schedules',
           color: Color(0xFF5B8DEF),
@@ -856,6 +858,51 @@ class _HomeDashboardSkeletonQuickAccess extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HomeDashboardSkeletonActionCard extends StatelessWidget {
+  const _HomeDashboardSkeletonActionCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuShimmer(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        decoration: BoxDecoration(
+          color: BracuPalette.card(context).withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: BracuPalette.primary.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              alignment: Alignment.center,
+              child: const BracuSkeletonBox(width: 26, height: 26, radius: 8),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  BracuSkeletonBox(width: 168, height: 16, radius: 8),
+                  SizedBox(height: 8),
+                  BracuSkeletonBox(width: 212, height: 11, radius: 6),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            const BracuSkeletonBox(width: 16, height: 16, radius: 8),
+          ],
+        ),
       ),
     );
   }

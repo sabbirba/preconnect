@@ -39,17 +39,13 @@ class MyApp extends StatefulWidget {
     final prefs = AppStorage.instance;
     final savedTheme = await prefs.getString('themeMode') ?? 'system';
 
-    // CRITICAL: ONLY check actual tokens from storage, NEVER trust cached data
     final token = await TokenStorage.instance.read(key: 'access_token');
     final refreshToken = await TokenStorage.instance.read(key: 'refresh_token');
     final tokenPresent = token != null && token.isNotEmpty;
     final refreshTokenPresent = refreshToken != null && refreshToken.isNotEmpty;
     final hasToken = tokenPresent && refreshTokenPresent;
 
-    // If tokens are missing, DO NOT ALLOW OFFLINE ACCESS
-    // Tokens = source of truth for login state
     if (!hasToken) {
-      // Clear everything that depends on valid tokens
       await prefs.setBool('cached_has_auth_session', false);
       await prefs.remove('StudentSchedule');
       await prefs.remove('StudentProgramProgress');
@@ -57,7 +53,6 @@ class MyApp extends StatefulWidget {
       await prefs.remove('SemesterPaymentInfo');
     } else {}
 
-    // offline access ONLY if tokens exist AND offline snapshot available
     final canOpenOffline = hasToken && await _hasOfflineSnapshot();
 
     return AppBootstrapState(

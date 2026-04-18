@@ -36,10 +36,18 @@ class SchedulePlannerService {
         }
         throw ApiException(response.statusCode, response.body);
       }
-      final decoded = jsonDecode(response.body);
-      final items = _decodeItems(decoded);
-      await _writeCache(items);
-      return items;
+      try {
+        final decoded = jsonDecode(response.body);
+        final items = _decodeItems(decoded);
+        await _writeCache(items);
+        return items;
+      } catch (e) {
+        final cached = await _readCachedItems();
+        if (cached != null) {
+          return cached;
+        }
+        rethrow;
+      }
     } catch (e) {
       final cached = await _readCachedItems();
       if (cached != null) {
@@ -153,15 +161,26 @@ class SchedulePlannerService {
       additionalHeaders: const {'Content-Type': 'application/json'},
       acceptedStatusCodes: const {200},
     );
-    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    var item = SchedulePlannerItem.fromJson(
-      Map<String, dynamic>.from(decoded['item'] as Map),
-    );
-    if (isDone != null && item.isDone != isDone) {
-      item = item.copyWith(isDone: isDone);
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        throw FormatException('Expected Map from API response');
+      }
+      final itemData = decoded['item'];
+      if (itemData is! Map) {
+        throw FormatException('Expected item Map in API response');
+      }
+      var item = SchedulePlannerItem.fromJson(
+        Map<String, dynamic>.from(itemData),
+      );
+      if (isDone != null && item.isDone != isDone) {
+        item = item.copyWith(isDone: isDone);
+      }
+      await _upsertCacheItem(item);
+      return item;
+    } catch (e) {
+      rethrow;
     }
-    await _upsertCacheItem(item);
-    return item;
   }
 
   Future<SchedulePlannerItem> _markItemDone(SchedulePlannerItem item) async {

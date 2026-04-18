@@ -35,12 +35,16 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   static const Duration _autoAssistantCooldown = Duration(seconds: 45);
   static const Duration _autoSessionExtendCooldown = Duration(seconds: 60);
   static const int _autoSessionExtendThresholdSeconds = 21600;
+  static const String _homeDashboardSnapshotCacheKey =
+      'home_dashboard_snapshot_v1';
 
   @override
   void initState() {
     super.initState();
+    unawaited(_loadHomeDashboardSnapshot());
     _future = _loadData().then((data) {
       _latestData = data;
+      unawaited(_saveHomeDashboardSnapshot(data));
       return data;
     });
     if (AndroidNetworkAssist.isSupported) {
@@ -63,6 +67,31 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     _networkStatusSubscription?.cancel();
     _captiveAutoTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _loadHomeDashboardSnapshot() async {
+    try {
+      final raw = await AppStorage.instance.getString(
+        _homeDashboardSnapshotCacheKey,
+      );
+      if (raw == null || raw.isEmpty) return;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return;
+      final cached = _HomeData.fromCache(Map<String, dynamic>.from(decoded));
+      if (cached == null || !mounted) return;
+      setState(() {
+        _latestData = cached;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _saveHomeDashboardSnapshot(_HomeData data) async {
+    try {
+      await AppStorage.instance.setString(
+        _homeDashboardSnapshotCacheKey,
+        jsonEncode(data.toCacheJson()),
+      );
+    } catch (_) {}
   }
 
   void _onRefreshSignal() {
@@ -219,6 +248,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       ramadan: ramadan,
       holiday: holidayStatus,
       cardVisibility: cardVisibility,
+      scheduleJson: scheduleJson,
     );
   }
 
@@ -238,13 +268,11 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       setState(() {
         _latestData = fresh;
       });
+      unawaited(_saveHomeDashboardSnapshot(fresh));
       unawaited(_refreshCaptiveStatus());
       if (notify) {
         RefreshBus.instance.notify(reason: 'home_dashboard');
       }
-    } catch (e) {
-      // Error will be displayed in the UI if no data is available
-      // If we have cached data, it will continue showing
     } finally {
       _isRefreshing = false;
     }
@@ -340,7 +368,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       if (!mounted) return;
       unawaited(_refreshCaptiveStatus());
     } catch (_) {
-      // Best-effort background extension; ignore transient failures.
     } finally {
       _isAutoExtendingSession = false;
     }

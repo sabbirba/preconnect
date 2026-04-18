@@ -45,11 +45,7 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
           ),
           if (imageUrls.isNotEmpty) ...[
             const SizedBox(height: 14),
-            BracuImageCarousel(
-              imageUrls: imageUrls,
-              autoPlay: true,
-              autoPlayInterval: const Duration(seconds: 3),
-            ),
+            _DirectNotificationImageGallery(imageUrls: imageUrls),
           ],
           const SizedBox(height: 18),
           Text(
@@ -112,6 +108,123 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _DirectNotificationImageGallery extends StatefulWidget {
+  const _DirectNotificationImageGallery({required this.imageUrls});
+
+  final List<String> imageUrls;
+
+  @override
+  State<_DirectNotificationImageGallery> createState() =>
+      _DirectNotificationImageGalleryState();
+}
+
+class _DirectNotificationImageGalleryState
+    extends State<_DirectNotificationImageGallery> {
+  late final PageController _controller;
+  int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PageController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.imageUrls.isEmpty) return const SizedBox.shrink();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (widget.imageUrls.length == 1)
+              Image.network(
+                widget.imageUrls.first,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return const _DirectImageErrorFallback();
+                },
+              )
+            else
+              PageView.builder(
+                controller: _controller,
+                itemCount: widget.imageUrls.length,
+                onPageChanged: (value) {
+                  if (!mounted) return;
+                  setState(() {
+                    _index = value;
+                  });
+                },
+                itemBuilder: (context, idx) {
+                  return Image.network(
+                    widget.imageUrls[idx],
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const _DirectImageErrorFallback();
+                    },
+                  );
+                },
+              ),
+            if (widget.imageUrls.length >= 2)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 10,
+                child: Center(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      child: Text(
+                        '${_index + 1}/${widget.imageUrls.length}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DirectImageErrorFallback extends StatelessWidget {
+  const _DirectImageErrorFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: BracuPalette.primary.withValues(alpha: 0.08),
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.broken_image_outlined,
+        color: BracuPalette.primary.withValues(alpha: 0.7),
+        size: 34,
       ),
     );
   }

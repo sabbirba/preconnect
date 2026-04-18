@@ -36,6 +36,18 @@ class RecentConnectNotification {
       seen: json['seen'] == true,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'title': title,
+      'module': module,
+      'link': link,
+      'createdOn': createdOn?.toIso8601String(),
+      'expireAt': expireAt?.toIso8601String(),
+      'seen': seen,
+    };
+  }
 }
 
 class ScraperDataService {
@@ -140,6 +152,13 @@ class NotificationsFeed {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'new': newCount,
+      'items': items.map((item) => item.toJson()).toList(),
+    };
+  }
+
   NotificationsFeed copyWith({
     int? newCount,
     List<RecentConnectNotification>? items,
@@ -203,6 +222,38 @@ class ScraperContentItem {
   final DateTime? publishedAt;
   final String? imageUrl;
   final List<String> imageUrls;
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'source': source,
+      'title': title,
+      'message': message,
+      'url': url,
+      'publishedAt': publishedAt?.toIso8601String(),
+      'imageUrl': imageUrl,
+      'imageUrls': imageUrls,
+    };
+  }
+
+  factory ScraperContentItem.fromJson(Map<String, dynamic> json) {
+    final rawImageUrls = json['imageUrls'];
+    final imageUrls = rawImageUrls is List
+        ? rawImageUrls.map((e) => '$e').toList(growable: false)
+        : const <String>[];
+    return ScraperContentItem(
+      id: (json['id'] as String? ?? '').trim(),
+      source: (json['source'] as String? ?? '').trim(),
+      title: (json['title'] as String? ?? '').trim(),
+      message: (json['message'] as String? ?? '').trim(),
+      url: (json['url'] as String? ?? '').trim(),
+      publishedAt: DateTime.tryParse(
+        (json['publishedAt'] as String? ?? '').trim(),
+      ),
+      imageUrl: (json['imageUrl'] as String?)?.trim(),
+      imageUrls: imageUrls,
+    );
+  }
 }
 
 class NotificationService {
@@ -383,10 +434,9 @@ class NotificationService {
           final title = '${row['title'] ?? ''}'.trim();
           final message = '${row['message'] ?? ''}'.trim();
           final url = '${row['url'] ?? ''}'.trim();
-          final imageUrls = _normalizeScraperImageUrls(
-            '${row['image_url'] ?? ''}',
-            baseUrl: url,
-          );
+
+          final imageUrls = _extractAndNormalizeImageUrls(row, baseUrl: url);
+
           final publishedRaw = '${row['published_date'] ?? ''}'.trim();
           if (title.isEmpty && message.isEmpty) return null;
           return ScraperContentItem(
@@ -418,18 +468,37 @@ class NotificationService {
         .whereType<Map>()
         .map((item) => item.cast<String, dynamic>())
         .map((item) {
-          final normalizedImageUrls = _normalizeScraperImageUrls(
-            (item['imageUrls'] is List
-                ? jsonEncode(item['imageUrls'])
-                : (item['imageUrl'] ?? '').toString()),
-            baseUrl: (item['url'] ?? '').toString(),
-          );
+          final baseUrl = (item['url'] ?? '').toString().trim();
+          final cachedImageUrls = item['imageUrls'];
+          final cachedImageUrl = item['imageUrl'];
+
+          final imageUrlsToNormalize = <String>[];
+          if (cachedImageUrls is List) {
+            for (final url in cachedImageUrls) {
+              final urlStr = '$url'.trim();
+              if (urlStr.isNotEmpty) imageUrlsToNormalize.add(urlStr);
+            }
+          }
+          if (cachedImageUrl is String) {
+            final urlStr = cachedImageUrl.trim();
+            if (urlStr.isNotEmpty && !imageUrlsToNormalize.contains(urlStr)) {
+              imageUrlsToNormalize.add(urlStr);
+            }
+          }
+
+          final normalizedImageUrls = imageUrlsToNormalize.isEmpty
+              ? <String>[]
+              : _normalizeScraperImageUrls(
+                  imageUrlsToNormalize.join('|'),
+                  baseUrl: baseUrl,
+                );
+
           return ScraperContentItem(
             id: (item['id'] ?? '').toString().trim().isEmpty
                 ? _scraperContentId(
                     source: (item['source'] ?? '').toString().trim(),
                     title: (item['title'] ?? '').toString().trim(),
-                    url: (item['url'] ?? '').toString().trim(),
+                    url: baseUrl,
                     publishedAt: DateTime.tryParse(
                       (item['publishedAt'] ?? '').toString().trim(),
                     ),
@@ -438,7 +507,7 @@ class NotificationService {
             source: (item['source'] ?? '').toString().trim(),
             title: (item['title'] ?? '').toString().trim(),
             message: (item['message'] ?? '').toString().trim(),
-            url: (item['url'] ?? '').toString().trim(),
+            url: baseUrl,
             publishedAt: DateTime.tryParse(
               (item['publishedAt'] ?? '').toString().trim(),
             ),
@@ -505,12 +574,60 @@ class NotificationService {
     return DateTime.tryParse(normalized);
   }
 
+  /// Extracts image URLs from an API row, checking multiple possible field names.
+  /// Handles various formats: single URL, JSON array, comma-separated, etc.
+  List<String> _extractAndNormalizeImageUrls(
+    Map<String, dynamic> row, {
+    required String baseUrl,
+  }) {
+    final candidates = <String>[];
+
+    final imageFields = [
+      'image_url',
+      'image_urls',
+      'image',
+      'images',
+      'thumbnail',
+      'thumbnailUrl',
+      'imageUrl',
+      'featured_image',
+      'featuredImage',
+    ];
+
+    for (final field in imageFields) {
+      final value = row[field];
+      if (value == null) continue;
+
+      if (value is String) {
+        final trimmed = value.trim();
+        if (trimmed.isNotEmpty) {
+          candidates.add(trimmed);
+        }
+      } else if (value is List) {
+        for (final item in value) {
+          final itemStr = '$item'.trim();
+          if (itemStr.isNotEmpty) {
+            candidates.add(itemStr);
+          }
+        }
+      }
+    }
+
+    return _normalizeScraperImageUrls(candidates.join('|'), baseUrl: baseUrl);
+  }
+
   List<String> _normalizeScraperImageUrls(String raw, {String? baseUrl}) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return const <String>[];
 
     final candidates = <String>[];
-    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+
+    if (trimmed.contains('|')) {
+      for (final part in trimmed.split('|')) {
+        final p = part.trim();
+        if (p.isNotEmpty) candidates.add(p);
+      }
+    } else if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
       try {
         final decoded = jsonDecode(trimmed);
         if (decoded is List) {
@@ -520,19 +637,24 @@ class NotificationService {
           }
         }
       } catch (_) {}
-    }
-    if (candidates.isEmpty) {
+    } else if (trimmed.contains(',')) {
+      for (final part in trimmed.split(',')) {
+        final p = part.trim();
+        if (p.isNotEmpty) candidates.add(p);
+      }
+    } else {
       candidates.add(trimmed);
     }
 
-    final output = <String>{};
-    for (var resolved in candidates) {
-      final normalized = normalizeImageUrl(resolved, baseUrl: baseUrl);
-      if (normalized != null) {
-        output.add(normalized);
+    final output = <String, String>{};
+    for (var rawUrl in candidates) {
+      final normalized = normalizeImageUrl(rawUrl, baseUrl: baseUrl);
+      if (normalized != null && normalized.isNotEmpty) {
+        output[normalized] = normalized;
       }
     }
-    return output.toList(growable: false);
+
+    return output.values.toList(growable: false);
   }
 
   String _scraperContentId({

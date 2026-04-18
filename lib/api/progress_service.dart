@@ -151,16 +151,24 @@ class ProgressService {
     if (response.statusCode == 304) {
       final cached = await cache.getString(dataKey);
       if (cached == null || cached.trim().isEmpty) return null;
-      return jsonDecode(cached);
+      try {
+        return jsonDecode(cached);
+      } catch (e) {
+        return null;
+      }
     }
     if (response.statusCode != 200) return null;
-    final decoded = jsonDecode(response.body);
-    await cache.setJson(dataKey, decoded);
-    final etag = extractEtagFromHeaders(response.headers);
-    if (etag != null && etag.isNotEmpty) {
-      await cache.setString(etagKey, etag);
+    try {
+      final decoded = jsonDecode(response.body);
+      await cache.setJson(dataKey, decoded);
+      final etag = extractEtagFromHeaders(response.headers);
+      if (etag != null && etag.isNotEmpty) {
+        await cache.setString(etagKey, etag);
+      }
+      return decoded;
+    } catch (e) {
+      return null;
     }
-    return decoded;
   }
 
   Future<dynamic> _resolvePublicComponent({

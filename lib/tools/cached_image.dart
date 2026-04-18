@@ -1,11 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
+import 'dart:io';
 import 'dart:typed_data';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/image_url_utils.dart';
 
 class CachedImage extends StatefulWidget {
@@ -31,7 +35,7 @@ class CachedImage extends StatefulWidget {
   final Widget? error;
 
   static void clearMemoryCache() {
-    return;
+    _CachedImageState.clearMemoryCache();
   }
 
   @override
@@ -39,9 +43,20 @@ class CachedImage extends StatefulWidget {
 }
 
 class _CachedImageState extends State<CachedImage> {
+  static final Map<String, Uint8List> _memoryCache = <String, Uint8List>{};
+  static final Map<String, Future<Uint8List>> _inFlightFetches =
+      <String, Future<Uint8List>>{};
+  static const String _manifestKey = 'cached_image_manifest_v1';
+  static Map<String, String>? _manifest;
+  static bool _cleanupScheduled = false;
+
   Uint8List? _bytes;
   Object? _error;
   bool _loading = false;
+
+  static void clearMemoryCache() {
+    _memoryCache.clear();
+  }
 
   @override
   void initState() {
@@ -96,6 +111,131 @@ class _CachedImageState extends State<CachedImage> {
     throw StateError('Image fetch failed without an error');
   }
 
+  String _cacheKey(String value) {
+    return sha256.convert(utf8.encode(value)).toString();
+  }
+
+  Future<Directory> _cacheDirectory() async {
+    final base = await getApplicationSupportDirectory();
+    final dir = Directory('${base.path}/cached_images');
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    return dir;
+  }
+
+  Future<File> _cacheFileFor(String value) async {
+    final dir = await _cacheDirectory();
+    return File('${dir.path}/${_cacheKey(value)}.img');
+  }
+
+  Future<Map<String, String>> _readManifest() async {
+    final current = _manifest;
+    if (current != null) return current;
+    try {
+      final raw = await AppStorage.instance.getString(_manifestKey);
+      if (raw == null || raw.isEmpty) {
+        _manifest = <String, String>{};
+        return _manifest!;
+      }
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) {
+        _manifest = <String, String>{};
+        return _manifest!;
+      }
+      _manifest = decoded.map((key, value) => MapEntry('$key', '$value'));
+      _scheduleCleanup();
+      return _manifest!;
+    } catch (_) {
+      _manifest = <String, String>{};
+      return _manifest!;
+    }
+  }
+
+  Future<void> _writeManifest(Map<String, String> manifest) async {
+    _manifest = manifest;
+    try {
+      await AppStorage.instance.setString(_manifestKey, jsonEncode(manifest));
+    } catch (_) {}
+  }
+
+  void _scheduleCleanup() {
+    if (_cleanupScheduled) return;
+    _cleanupScheduled = true;
+    unawaited(_cleanupManifest());
+  }
+
+  Future<void> _cleanupManifest() async {
+    try {
+      final manifest = await _readManifest();
+      if (manifest.isEmpty) return;
+      var changed = false;
+      for (final entry in manifest.entries.toList(growable: false)) {
+        final filePath = entry.value;
+        if (filePath.isEmpty) {
+          manifest.remove(entry.key);
+          changed = true;
+          continue;
+        }
+        final file = File(filePath);
+        if (!await file.exists()) {
+          manifest.remove(entry.key);
+          changed = true;
+        }
+      }
+      if (changed) {
+        await _writeManifest(manifest);
+      }
+    } catch (_) {
+    } finally {
+      _cleanupScheduled = false;
+    }
+  }
+
+  Future<Uint8List?> _readCachedBytes(String value) async {
+    final normalized = value.trim();
+    if (normalized.isEmpty) return null;
+    final inMemory = _memoryCache[normalized];
+    if (inMemory != null && inMemory.isNotEmpty) {
+      return inMemory;
+    }
+    try {
+      final manifest = await _readManifest();
+      final mappedPath = manifest[normalized];
+      if (mappedPath != null && mappedPath.isNotEmpty) {
+        final mappedFile = File(mappedPath);
+        if (await mappedFile.exists()) {
+          final bytes = await mappedFile.readAsBytes();
+          if (bytes.isNotEmpty) {
+            _memoryCache[normalized] = bytes;
+            return bytes;
+          }
+        }
+      }
+      final file = await _cacheFileFor(normalized);
+      if (!await file.exists()) return null;
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) return null;
+      _memoryCache[normalized] = bytes;
+      return bytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _writeCachedBytes(String value, Uint8List bytes) async {
+    final normalized = value.trim();
+    if (normalized.isEmpty || bytes.isEmpty) return;
+    _memoryCache[normalized] = bytes;
+    try {
+      final file = await _cacheFileFor(normalized);
+      await file.writeAsBytes(bytes, flush: true);
+      final manifest = await _readManifest();
+      manifest[normalized] = file.path;
+      await _writeManifest(manifest);
+    } catch (_) {}
+  }
+
   Uint8List? _tryDecodeInline(String value) {
     final raw = value.trim();
     if (raw.isEmpty) return null;
@@ -137,21 +277,36 @@ class _CachedImageState extends State<CachedImage> {
       return;
     }
 
+    final cachedBytes = await _readCachedBytes(normalizedRemoteUrl ?? url);
+    if (cachedBytes != null && cachedBytes.isNotEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _bytes = cachedBytes;
+        _loading = false;
+      });
+      return;
+    }
+
     setState(() {
       _loading = true;
     });
 
     try {
-      final bytes = await _fetchWithRetry(
-        Uri.parse(normalizedRemoteUrl ?? url),
-      );
+      final cacheKey = normalizedRemoteUrl ?? url;
+      final bytes = await _inFlightFetches.putIfAbsent(cacheKey, () async {
+        final fetched = await _fetchWithRetry(Uri.parse(cacheKey));
+        await _writeCachedBytes(cacheKey, fetched);
+        return fetched;
+      });
       if (!mounted) return;
       setState(() {
         _bytes = bytes;
         _loading = false;
       });
+      _inFlightFetches.remove(cacheKey);
       return;
     } catch (e) {
+      _inFlightFetches.remove(normalizedRemoteUrl ?? url);
       if (!mounted) return;
       setState(() {
         _error = e;

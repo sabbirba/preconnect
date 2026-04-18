@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/seat_status_service.dart';
@@ -28,6 +30,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   @override
   void initState() {
     super.initState();
+    unawaited(_primeCachedSlots());
     _future = _loadSlots();
     HomeTabRegistry.activeTab.addListener(_onActiveTabChanged);
   }
@@ -134,6 +137,15 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     );
     await _writeCachedSlots(allSlots);
     return allSlots;
+  }
+
+  Future<void> _primeCachedSlots() async {
+    final cached = await _readCachedSlots();
+    if (!mounted || cached.isEmpty) return;
+    setState(() {
+      _lastSlots = cached;
+      _lastAllSlots = cached;
+    });
   }
 
   Future<void> _refresh() async {

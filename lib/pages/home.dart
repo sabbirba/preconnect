@@ -39,6 +39,7 @@ import 'package:preconnect/model/schedule_planner_item.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/android_network_assist.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/captive_wifi_http_service.dart';
@@ -742,6 +743,7 @@ class _HomeData {
     required this.ramadan,
     required this.holiday,
     required this.cardVisibility,
+    this.scheduleJson,
   });
 
   final Map<String, String?>? profile;
@@ -754,6 +756,7 @@ class _HomeData {
   final RamadanStatus ramadan;
   final HolidayStatus holiday;
   final HomeCardVisibility cardVisibility;
+  final String? scheduleJson;
 
   _HomeData copyWith({HomeCardVisibility? cardVisibility}) {
     return _HomeData(
@@ -767,6 +770,136 @@ class _HomeData {
       ramadan: ramadan,
       holiday: holiday,
       cardVisibility: cardVisibility ?? this.cardVisibility,
+      scheduleJson: scheduleJson,
+    );
+  }
+
+  Map<String, dynamic> toCacheJson() {
+    return <String, dynamic>{
+      'profile': profile,
+      'photoUrl': photoUrl,
+      'scheduleJson': scheduleJson,
+      'plannerItems': plannerItems.map((item) => item.toJson()).toList(),
+      'isRamadan': isRamadan,
+      'ramadan': {
+        'isRamadan': ramadan.isRamadan,
+        'sehriEndsAt': ramadan.sehriEndsAt,
+        'iftarAt': ramadan.iftarAt,
+      },
+      'holiday': holiday.toCacheJson(),
+      'cardVisibility': {
+        'showQuickAccessSection': cardVisibility.showQuickAccessSection,
+        'showRamadanCard': cardVisibility.showRamadanCard,
+        'showTodaySchedule': cardVisibility.showTodaySchedule,
+        'showExamCountdownCard': cardVisibility.showExamCountdownCard,
+        'showSponsoredContent': cardVisibility.showSponsoredContent,
+      },
+      'sections': scheduleJson,
+      'examOverrides': examOverrides.map(
+        (key, value) => MapEntry(key, <String, dynamic>{
+          'midDate': value.midDate,
+          'midStartTime': value.midStartTime,
+          'midEndTime': value.midEndTime,
+          'midRoomNumber': value.midRoomNumber,
+          'finalDate': value.finalDate,
+          'finalStartTime': value.finalStartTime,
+          'finalEndTime': value.finalEndTime,
+          'finalRoomNumber': value.finalRoomNumber,
+        }),
+      ),
+    };
+  }
+
+  static _HomeData? fromCache(Map<String, dynamic> json) {
+    final profileJson = json['profile'];
+    final profile = profileJson is Map
+        ? profileJson.map((key, value) => MapEntry('$key', value?.toString()))
+        : null;
+    final scheduleJson = json['scheduleJson']?.toString();
+    final sections = section.parseSectionsFromScheduleJson(scheduleJson);
+    final entries = <_ScheduleEntry>[];
+    for (final sectionItem in sections) {
+      for (final classSchedule in sectionItem.sectionSchedule.classSchedules) {
+        entries.add(
+          _ScheduleEntry(
+            day: classSchedule.day,
+            startTime: classSchedule.startTime,
+            endTime: classSchedule.endTime,
+            courseCode: sectionItem.courseCode,
+            sectionName: sectionItem.sectionName,
+            roomNumber: sectionItem.roomNumber,
+            faculties: sectionItem.faculties,
+          ),
+        );
+      }
+    }
+    final plannerItemsJson = json['plannerItems'];
+    final plannerItems = plannerItemsJson is List
+        ? plannerItemsJson
+              .whereType<Map>()
+              .map(
+                (item) => SchedulePlannerItem.fromJson(
+                  Map<String, dynamic>.from(item),
+                ),
+              )
+              .toList(growable: false)
+        : const <SchedulePlannerItem>[];
+    final ramadanJson = json['ramadan'];
+    final ramadan = ramadanJson is Map
+        ? RamadanStatus(
+            isRamadan: ramadanJson['isRamadan'] == true,
+            sehriEndsAt: ramadanJson['sehriEndsAt']?.toString(),
+            iftarAt: ramadanJson['iftarAt']?.toString(),
+          )
+        : const RamadanStatus(isRamadan: false);
+    final holidayJson = json['holiday'];
+    final holiday = holidayJson is Map
+        ? HolidayStatus.fromCache(holidayJson)
+        : HolidayStatus.empty;
+    final visibilityJson = json['cardVisibility'];
+    final cardVisibility = visibilityJson is Map
+        ? HomeCardVisibility(
+            showQuickAccessSection:
+                visibilityJson['showQuickAccessSection'] == true,
+            showRamadanCard: visibilityJson['showRamadanCard'] == true,
+            showTodaySchedule: visibilityJson['showTodaySchedule'] == true,
+            showExamCountdownCard:
+                visibilityJson['showExamCountdownCard'] == true,
+            showSponsoredContent:
+                visibilityJson['showSponsoredContent'] == true,
+          )
+        : HomeCardPreferences.defaults;
+    final overridesJson = json['examOverrides'];
+    final examOverrides = <String, ExamScheduleOverride>{};
+    if (overridesJson is Map) {
+      for (final entry in overridesJson.entries) {
+        final raw = entry.value;
+        if (raw is! Map) continue;
+        final map = Map<String, dynamic>.from(raw);
+        examOverrides[entry.key.toString()] = ExamScheduleOverride(
+          midDate: map['midDate']?.toString(),
+          midStartTime: map['midStartTime']?.toString(),
+          midEndTime: map['midEndTime']?.toString(),
+          midRoomNumber: map['midRoomNumber']?.toString(),
+          finalDate: map['finalDate']?.toString(),
+          finalStartTime: map['finalStartTime']?.toString(),
+          finalEndTime: map['finalEndTime']?.toString(),
+          finalRoomNumber: map['finalRoomNumber']?.toString(),
+        );
+      }
+    }
+    return _HomeData(
+      profile: profile,
+      entries: entries,
+      photoUrl: json['photoUrl']?.toString(),
+      sections: sections,
+      examOverrides: examOverrides,
+      plannerItems: plannerItems,
+      isRamadan: ramadan.isRamadan,
+      ramadan: ramadan,
+      holiday: holiday,
+      cardVisibility: cardVisibility,
+      scheduleJson: scheduleJson,
     );
   }
 }

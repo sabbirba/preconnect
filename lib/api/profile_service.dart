@@ -234,7 +234,7 @@ class ProfileService {
               });
             }
           } catch (e) {
-            // Continue with partial profile - don't crash
+            // Ignore miscellaneous data fetch errors
           }
         }
       },
@@ -374,16 +374,27 @@ class AdvisingService {
       url: url,
       fromGet: fromGet,
       cacheResponse: (response) async {
-        final data = jsonDecode(response.body)[0];
-        await AppPreferencesStore().setStringMap(<String, String>{
-          'advisingStartDate': '${data['startDate'] ?? ''}',
-          'advisingEndDate': '${data['endDate'] ?? ''}',
-          'activeSemesterSessionId': '${data['activeSemesterSessionId'] ?? ''}',
-          'advisingPhase': '${data['advisingPhase'] ?? ''}',
-          'totalCredit': '${data['totalCredit'] ?? ''}',
-          'earnedCredit': '${data['earnedCredit'] ?? ''}',
-          'noOfSemester': '${data['noOfSemester'] ?? ''}',
-        });
+        try {
+          final decoded = jsonDecode(response.body);
+          final dataList = decoded is List ? decoded : <dynamic>[];
+          if (dataList.isEmpty) return;
+
+          final data = dataList.first is Map
+              ? dataList.first as Map<String, dynamic>
+              : null;
+          if (data == null) return;
+
+          await AppPreferencesStore().setStringMap(<String, String>{
+            'advisingStartDate': '${data['startDate'] ?? ''}',
+            'advisingEndDate': '${data['endDate'] ?? ''}',
+            'activeSemesterSessionId':
+                '${data['activeSemesterSessionId'] ?? ''}',
+            'advisingPhase': '${data['advisingPhase'] ?? ''}',
+            'totalCredit': '${data['totalCredit'] ?? ''}',
+            'earnedCredit': '${data['earnedCredit'] ?? ''}',
+            'noOfSemester': '${data['noOfSemester'] ?? ''}',
+          });
+        } catch (_) {}
       },
       readCache: ({required bool fromFetch}) =>
           getAdvisingInfo(fromFetch: fromFetch),

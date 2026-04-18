@@ -14,6 +14,7 @@ import 'package:preconnect/model/progress_info.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/cgpa_calculator.dart';
 import 'package:preconnect/tools/ads_bridge.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/reward_support_controller.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -246,8 +247,6 @@ class BracuImageCarousel extends StatefulWidget {
     this.borderRadius = 14,
     this.imageFit = BoxFit.cover,
     this.maxBytesInPrefs = 8 * 1024 * 1024,
-    this.autoPlay = false,
-    this.autoPlayInterval = const Duration(seconds: 4),
   });
 
   final List<String> imageUrls;
@@ -255,8 +254,6 @@ class BracuImageCarousel extends StatefulWidget {
   final double borderRadius;
   final BoxFit imageFit;
   final int maxBytesInPrefs;
-  final bool autoPlay;
-  final Duration autoPlayInterval;
 
   @override
   State<BracuImageCarousel> createState() => _BracuImageCarouselState();
@@ -264,47 +261,23 @@ class BracuImageCarousel extends StatefulWidget {
 
 class _BracuImageCarouselState extends State<BracuImageCarousel> {
   late final PageController _controller;
-  Timer? _autoPlayTimer;
   int _index = 0;
 
   @override
   void initState() {
     super.initState();
     _controller = PageController();
-    _restartAutoPlay();
   }
 
   @override
   void didUpdateWidget(covariant BracuImageCarousel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final shouldRestart =
-        oldWidget.autoPlay != widget.autoPlay ||
-        oldWidget.autoPlayInterval != widget.autoPlayInterval ||
-        oldWidget.imageUrls.length != widget.imageUrls.length;
-    if (!shouldRestart) return;
-    _autoPlayTimer?.cancel();
-    _index = 0;
-    _restartAutoPlay();
   }
 
   @override
   void dispose() {
-    _autoPlayTimer?.cancel();
     _controller.dispose();
     super.dispose();
-  }
-
-  void _restartAutoPlay() {
-    if (!widget.autoPlay || widget.imageUrls.length < 2) return;
-    _autoPlayTimer = Timer.periodic(widget.autoPlayInterval, (_) {
-      if (!mounted || !_controller.hasClients) return;
-      final next = (_index + 1) % widget.imageUrls.length;
-      _controller.animateToPage(
-        next,
-        duration: const Duration(milliseconds: 360),
-        curve: Curves.easeInOut,
-      );
-    });
   }
 
   @override
@@ -681,8 +654,6 @@ Future<void> showBracuFundingSupportSheet(BuildContext context) async {
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 14),
-          const BracuInterstitialAdSection(),
           const SizedBox(height: 14),
           const BracuRewardVideoSection(),
           const SizedBox(height: 14),
