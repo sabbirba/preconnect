@@ -16,7 +16,6 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   static const double _sectionGap = 14;
 
-  bool _isLoading = true;
   bool _showQuickAccessSection = true;
   bool _showRamadanCard = true;
   bool _showExamCountdownCard = true;
@@ -42,7 +41,6 @@ class _SettingsPageState extends State<SettingsPage> {
       _showTodaySchedule = visibility.showTodaySchedule;
       _appLockEnabled = appLockEnabled;
       _hideAds = AdsPreferences.instance.isHidden;
-      _isLoading = false;
     });
   }
 
@@ -159,147 +157,141 @@ class _SettingsPageState extends State<SettingsPage> {
         onRefresh: _load,
         showScrollTopButton: false,
         children: [
-          if (_isLoading)
-            const BracuLoading(itemCount: 5)
-          else ...[
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(14),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const CaptiveWifiPage()),
-                  );
-                },
-                child: Ink(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: BracuPalette.textSecondary(
-                        context,
-                      ).withValues(alpha: 0.18),
-                    ),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CaptiveWifiPage()),
+                );
+              },
+              child: Ink(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: BracuPalette.textSecondary(
+                      context,
+                    ).withValues(alpha: 0.18),
                   ),
-                  child: const ListTile(
-                    leading: Icon(Icons.wifi_rounded, size: 20),
-                    title: Text('Wi-Fi Auto Login Setup'),
-                    trailing: Icon(Icons.chevron_right_rounded, size: 20),
-                  ),
+                ),
+                child: const ListTile(
+                  leading: Icon(Icons.wifi_rounded, size: 20),
+                  title: Text('Wi-Fi Auto Login Setup'),
+                  trailing: Icon(Icons.chevron_right_rounded, size: 20),
                 ),
               ),
             ),
-            const SizedBox(height: _sectionGap),
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(14),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const WebLoginSetupPage(),
-                    ),
-                  );
-                },
-                child: Ink(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: BracuPalette.textSecondary(
-                        context,
-                      ).withValues(alpha: 0.18),
-                    ),
+          ),
+          const SizedBox(height: _sectionGap),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const WebLoginSetupPage()),
+                );
+              },
+              child: Ink(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: BracuPalette.textSecondary(
+                      context,
+                    ).withValues(alpha: 0.18),
                   ),
-                  child: const ListTile(
-                    leading: Icon(Icons.language_rounded, size: 20),
-                    title: Text('Login to Web'),
-                    trailing: Icon(Icons.chevron_right_rounded, size: 20),
-                  ),
+                ),
+                child: const ListTile(
+                  leading: Icon(Icons.language_rounded, size: 20),
+                  title: Text('Login to Web'),
+                  trailing: Icon(Icons.chevron_right_rounded, size: 20),
                 ),
               ),
             ),
-            const SizedBox(height: _sectionGap),
-            BracuCard(
-              child: Column(
-                children: [
-                  _ToggleRow(
-                    title: 'Exam Countdown',
-                    subtitle: 'Show upcoming exam countdown',
-                    value: _showExamCountdownCard,
-                    onChanged: _setShowExamCountdownCard,
+          ),
+          const SizedBox(height: _sectionGap),
+          BracuCard(
+            child: Column(
+              children: [
+                _ToggleRow(
+                  title: 'Exam Countdown',
+                  subtitle: 'Show upcoming exam countdown',
+                  value: _showExamCountdownCard,
+                  onChanged: _setShowExamCountdownCard,
+                ),
+                Divider(
+                  height: 12,
+                  thickness: 1,
+                  color: BracuPalette.textSecondary(context).withValues(
+                    alpha: Theme.of(context).brightness == Brightness.dark
+                        ? 0.20
+                        : 0.12,
                   ),
-                  Divider(
-                    height: 12,
-                    thickness: 1,
-                    color: BracuPalette.textSecondary(context).withValues(
-                      alpha: Theme.of(context).brightness == Brightness.dark
-                          ? 0.20
-                          : 0.12,
-                    ),
+                ),
+                _ToggleRow(
+                  title: 'Ramadan Times',
+                  subtitle: 'Show Sehri and Iftar times',
+                  value: _showRamadanCard,
+                  onChanged: _setShowRamadanCard,
+                ),
+                Divider(
+                  height: 12,
+                  thickness: 1,
+                  color: BracuPalette.textSecondary(context).withValues(
+                    alpha: Theme.of(context).brightness == Brightness.dark
+                        ? 0.20
+                        : 0.12,
                   ),
-                  _ToggleRow(
-                    title: 'Ramadan Times',
-                    subtitle: 'Show Sehri and Iftar times',
-                    value: _showRamadanCard,
-                    onChanged: _setShowRamadanCard,
+                ),
+                _ToggleRow(
+                  title: 'Today\'s Schedule',
+                  subtitle: 'Show today\'s class schedule',
+                  value: _showTodaySchedule,
+                  onChanged: _setShowTodaySchedule,
+                ),
+                Divider(
+                  height: 12,
+                  thickness: 1,
+                  color: BracuPalette.textSecondary(context).withValues(
+                    alpha: Theme.of(context).brightness == Brightness.dark
+                        ? 0.20
+                        : 0.12,
                   ),
-                  Divider(
-                    height: 12,
-                    thickness: 1,
-                    color: BracuPalette.textSecondary(context).withValues(
-                      alpha: Theme.of(context).brightness == Brightness.dark
-                          ? 0.20
-                          : 0.12,
-                    ),
+                ),
+                _ToggleRow(
+                  title: 'Quick Access',
+                  subtitle: 'Show quick shortcuts on home',
+                  value: _showQuickAccessSection,
+                  onChanged: _setShowQuickAccessSection,
+                ),
+                Divider(
+                  height: 12,
+                  thickness: 1,
+                  color: BracuPalette.textSecondary(context).withValues(
+                    alpha: Theme.of(context).brightness == Brightness.dark
+                        ? 0.20
+                        : 0.12,
                   ),
-                  _ToggleRow(
-                    title: 'Today\'s Schedule',
-                    subtitle: 'Show today\'s class schedule',
-                    value: _showTodaySchedule,
-                    onChanged: _setShowTodaySchedule,
-                  ),
-                  Divider(
-                    height: 12,
-                    thickness: 1,
-                    color: BracuPalette.textSecondary(context).withValues(
-                      alpha: Theme.of(context).brightness == Brightness.dark
-                          ? 0.20
-                          : 0.12,
-                    ),
-                  ),
-                  _ToggleRow(
-                    title: 'Quick Access',
-                    subtitle: 'Show quick shortcuts on home',
-                    value: _showQuickAccessSection,
-                    onChanged: _setShowQuickAccessSection,
-                  ),
-                  Divider(
-                    height: 12,
-                    thickness: 1,
-                    color: BracuPalette.textSecondary(context).withValues(
-                      alpha: Theme.of(context).brightness == Brightness.dark
-                          ? 0.20
-                          : 0.12,
-                    ),
-                  ),
-                  _ToggleRow(
-                    title: 'Hide Support',
-                    subtitle: 'Hide support content and ads',
-                    value: _hideAds,
-                    onChanged: _setHideAds,
-                  ),
-                ],
-              ),
+                ),
+                _ToggleRow(
+                  title: 'Hide Support',
+                  subtitle: 'Hide support content and ads',
+                  value: _hideAds,
+                  onChanged: _setHideAds,
+                ),
+              ],
             ),
-            const SizedBox(height: _sectionGap),
-            BracuCard(
-              child: _ToggleRow(
-                title: 'App Lock',
-                subtitle: 'Use system lock for the app',
-                value: _appLockEnabled,
-                onChanged: _setAppLockEnabled,
-              ),
+          ),
+          const SizedBox(height: _sectionGap),
+          BracuCard(
+            child: _ToggleRow(
+              title: 'App Lock',
+              subtitle: 'Use system lock for the app',
+              value: _appLockEnabled,
+              onChanged: _setAppLockEnabled,
             ),
-          ],
+          ),
         ],
       ),
     );

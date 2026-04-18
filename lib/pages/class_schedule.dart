@@ -463,7 +463,16 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return buildRefreshLoadingState(onRefresh: _handleRefresh);
+            return BracuRefreshScroll(
+              onRefresh: _handleRefresh,
+              showScrollTopButton: false,
+              child: const Center(
+                child: Padding(
+                  padding: EdgeInsets.only(top: 120),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+            );
           }
           if (snapshot.hasError) {
             return buildRefreshErrorState(

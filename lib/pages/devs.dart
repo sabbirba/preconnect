@@ -34,61 +34,86 @@ class _DevsPageState extends State<DevsPage> {
     return BuildInfo.displayVersion();
   }
 
-  Future<void> _loadContributors() async {
+  Future<void> _loadContributors({bool forceRefresh = false}) async {
     if (_contributorsLoading) return;
     _contributorsLoading = true;
-    final cache = SembastCache();
-    final cached = await _readCachedContributors(cache);
-    if (cached.isNotEmpty && mounted) {
-      setState(() {
-        _contributors = cached;
-        _contributorsLoaded = true;
-      });
-    }
-
     try {
+      final cache = SembastCache();
+      if (!forceRefresh) {
+        final cached = await _readCachedContributors(cache);
+        if (cached.isNotEmpty) {
+          if (!mounted) return;
+          setState(() {
+            _contributors = cached;
+            _contributorsLoaded = true;
+          });
+          return;
+        }
+      }
+
       final fresh = await _fetchContributors();
       if (!mounted) return;
       setState(() {
-        _contributors = fresh;
+        _contributors = fresh.isNotEmpty
+            ? fresh
+            : _dedupeContributors([
+                ..._pinnedGitHubContributors,
+                ..._manualContributors,
+              ]);
         _contributorsLoaded = true;
       });
-      await cache.setJson(
-        _contributorsCacheKey,
-        fresh.map((item) => item.toJson()).toList(),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      if (cached.isEmpty) {
-        setState(() {
-          _contributors = const <_ContributorProfile>[];
-          _contributorsLoaded = true;
-        });
+      if (fresh.isNotEmpty) {
+        await cache.setJson(
+          _contributorsCacheKey,
+          fresh.map((item) => item.toJson()).toList(),
+        );
       }
     } finally {
       _contributorsLoading = false;
     }
   }
 
+  Future<void> _refreshContributors() async {
+    await _loadContributors(forceRefresh: true);
+  }
+
   Future<List<_ContributorProfile>> _fetchContributors() async {
-    final uri = Uri.parse('$_contributorsApiUrl/contributors');
-    final response = await http.get(uri, headers: _githubHeaders);
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('Unable to load contributors');
+    try {
+      final uri = Uri.parse(
+        'https://api.github.com/repos/sabbirba/preconnect/contributors',
+      );
+      final response = await http.get(
+        uri,
+        headers: const {
+          'Accept': 'application/vnd.github+json',
+          'User-Agent':
+              'PreConnectApp/1.0 (+https://github.com/sabbirba/preconnect)',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return const <_ContributorProfile>[];
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! List) return const <_ContributorProfile>[];
+      final contributors = decoded
+          .whereType<Map>()
+          .map((raw) {
+            final contributor = _ContributorProfile.fromGitHubContributor(
+              raw.cast<String, dynamic>(),
+            );
+            return contributor;
+          })
+          .where((item) => item.name.isNotEmpty && item.avatarUrl.isNotEmpty)
+          .where((item) => !item.key.endsWith('[bot]'))
+          .toList();
+      return _dedupeContributors([
+        ...contributors,
+        ..._pinnedGitHubContributors,
+      ]);
+    } catch (_) {
+      return const <_ContributorProfile>[];
     }
-    final decoded = jsonDecode(response.body);
-    if (decoded is! List) return const <_ContributorProfile>[];
-    final contributors = decoded
-        .whereType<Map>()
-        .map((raw) => _ContributorProfile.fromGitHubContributor(raw.cast()))
-        .where((item) => item.name.isNotEmpty && item.avatarUrl.isNotEmpty)
-        .where((item) => !item.key.endsWith('[bot]'))
-        .toList();
-    final withPinned = _dedupeContributors([
-      ...contributors,
-      ..._pinnedGitHubContributors,
-    ]);
-    return Future.wait(withPinned.map(_loadGitHubProfile));
   }
 
   Future<List<_ContributorProfile>> _readCachedContributors(
@@ -101,27 +126,6 @@ class _DevsPageState extends State<DevsPage> {
         .map((entry) => _ContributorProfile.fromJson(entry.cast()))
         .where((item) => item.name.isNotEmpty && item.avatarUrl.isNotEmpty)
         .toList();
-  }
-
-  Future<_ContributorProfile> _loadGitHubProfile(
-    _ContributorProfile contributor,
-  ) async {
-    final login = contributor.githubLogin;
-    if (login.isEmpty) return contributor;
-    try {
-      final response = await http.get(
-        Uri.parse('https://api.github.com/users/$login'),
-        headers: _githubHeaders,
-      );
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        return contributor;
-      }
-      final decoded = jsonDecode(response.body);
-      if (decoded is! Map) return contributor;
-      return contributor.withGitHubProfile(decoded.cast());
-    } catch (_) {
-      return contributor;
-    }
   }
 
   Future<void> _onHeaderSecretTap() async {
@@ -145,42 +149,46 @@ class _DevsPageState extends State<DevsPage> {
           subtitle: subtitle,
           icon: Icons.developer_mode_outlined,
           onHeaderTap: _onHeaderSecretTap,
-          body: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
-            children: [
-              const _IntroCard(),
-              const SizedBox(height: 14),
-              const BracuSectionTitle(title: 'Contributors'),
-              const SizedBox(height: 10),
-              if (!_contributorsLoaded)
+          body: RefreshIndicator(
+            onRefresh: _refreshContributors,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                const _IntroCard(),
+                const SizedBox(height: 14),
+                const BracuSectionTitle(title: 'Contributors'),
+                const SizedBox(height: 10),
+                if (!_contributorsLoaded)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10),
+                    child: _ContributorLoadingList(),
+                  )
+                else
+                  _ContributorsGrid(
+                    contributors: _contributors,
+                    showAll: _showAllContributors,
+                    onToggle: () => setState(
+                      () => _showAllContributors = !_showAllContributors,
+                    ),
+                  ),
                 const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 10),
-                  child: _ContributorLoadingList(),
-                )
-              else
-                _ContributorsGrid(
-                  contributors: _contributors,
-                  showAll: _showAllContributors,
-                  onToggle: () => setState(
-                    () => _showAllContributors = !_showAllContributors,
+                  padding: EdgeInsets.only(top: 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      BracuSectionTitle(title: 'Sponsored'),
+                      SizedBox(height: 10),
+                      _SponsoredStrip(),
+                    ],
                   ),
                 ),
-              const Padding(
-                padding: EdgeInsets.only(top: 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    BracuSectionTitle(title: 'Sponsored'),
-                    SizedBox(height: 10),
-                    _SponsoredStrip(),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              const BracuSectionTitle(title: 'Funding & Support'),
-              const SizedBox(height: 10),
-              const _FundingCard(),
-            ],
+                const SizedBox(height: 14),
+                const BracuSectionTitle(title: 'Funding & Support'),
+                const SizedBox(height: 10),
+                const _FundingCard(),
+              ],
+            ),
           ),
         );
       },
@@ -189,12 +197,8 @@ class _DevsPageState extends State<DevsPage> {
 }
 
 const _repoUrl = 'https://github.com/sabbirba/preconnect';
-const _contributorsApiUrl = 'https://api.github.com/repos/sabbirba/preconnect';
 const _contributorsCacheKey = 'devs_contributors_v1';
 const _collapsedContributorCount = 6;
-const _githubHeaders = <String, String>{
-  'Accept': 'application/vnd.github+json',
-};
 
 const _pinnedGitHubContributors = <_ContributorProfile>[
   _ContributorProfile.github(
@@ -222,29 +226,27 @@ class _IntroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textSecondary = BracuPalette.textSecondary(context);
-    return BracuCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'PreConnect App Runs by Students',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Community driven and free for every student.',
-            style: TextStyle(color: textSecondary),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Bug reports, feature requests, and ideas are welcome. '
-            'Please create issues in our GitHub repo.',
-            style: TextStyle(color: textSecondary),
-          ),
-          const SizedBox(height: 12),
-          const _RepoButton(),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'PreConnect App Runs by Students',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Community driven and free for every student.',
+          style: TextStyle(color: textSecondary),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Bug reports, feature requests, and ideas are welcome. '
+          'Please create issues in our GitHub repo.',
+          style: TextStyle(color: textSecondary),
+        ),
+        const SizedBox(height: 12),
+        const _RepoButton(),
+      ],
     );
   }
 }
@@ -351,24 +353,17 @@ class _FundingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BracuCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'iOS Funding',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'App Store publishing needs the \$99/year Apple Developer '
-            'membership. Any contribution towards this funding will be highly appreciated.',
-            style: TextStyle(color: BracuPalette.textSecondary(context)),
-          ),
-          const SizedBox(height: 12),
-          const BracuFundingSupportContent(),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'App Store publishing needs the \$99/year Apple Developer '
+          'membership. Any contribution towards this funding will be highly appreciated.',
+          style: TextStyle(color: BracuPalette.textSecondary(context)),
+        ),
+        const SizedBox(height: 12),
+        const BracuFundingSupportContent(qrFit: BoxFit.cover),
+      ],
     );
   }
 }
@@ -763,12 +758,15 @@ class _ContributorProfile {
     );
   }
 
-  String get githubLogin {
-    if (key.isNotEmpty) return handle.trim();
-    final uri = Uri.tryParse(url);
-    final isGitHub = uri?.host.toLowerCase().contains('github.com') ?? false;
-    if (!isGitHub || uri!.pathSegments.isEmpty) return '';
-    return uri.pathSegments.first;
+  factory _ContributorProfile.fromGitHubContributor(Map<String, dynamic> json) {
+    final login = '${json['login'] ?? ''}'.trim();
+    return _ContributorProfile.github(
+      handle: login,
+      name: login,
+      role: _githubRole(login),
+      avatarUrl: '${json['avatar_url'] ?? ''}'.trim(),
+      url: '${json['html_url'] ?? ''}'.trim(),
+    );
   }
 
   String get identity {
@@ -780,31 +778,6 @@ class _ContributorProfile {
   }
 
   bool matchesHandle(String value) => key == value.trim().toLowerCase();
-
-  _ContributorProfile withGitHubProfile(Map<String, dynamic> json) {
-    final displayName = '${json['name'] ?? ''}'.trim();
-    final profileAvatarUrl = '${json['avatar_url'] ?? ''}'.trim();
-    final profileUrl = '${json['html_url'] ?? ''}'.trim();
-    return _ContributorProfile(
-      handle: handle,
-      name: displayName.isEmpty ? name : displayName,
-      role: role,
-      avatarUrl: profileAvatarUrl.isEmpty ? avatarUrl : profileAvatarUrl,
-      linkLabel: linkLabel,
-      url: profileUrl.isEmpty ? url : profileUrl,
-    );
-  }
-
-  factory _ContributorProfile.fromGitHubContributor(Map<String, dynamic> json) {
-    final login = '${json['login'] ?? ''}'.trim();
-    return _ContributorProfile.github(
-      handle: login,
-      name: login,
-      role: _githubRole(login),
-      avatarUrl: '${json['avatar_url'] ?? ''}'.trim(),
-      url: '${json['html_url'] ?? ''}'.trim(),
-    );
-  }
 }
 
 String _githubRole(String login) {

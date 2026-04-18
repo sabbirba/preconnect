@@ -254,6 +254,12 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
             0,
             (sum, section) => sum + section.courseCredit,
           );
+          final summaryStats = [
+            (title: 'Total', value: _formatCredit(summaryTotal)),
+            (title: 'Done', value: _formatCredit(summaryCompleted)),
+            (title: 'Attempt', value: _formatCredit(attemptedCredit)),
+            (title: 'Left', value: _formatCredit(remainingCredit)),
+          ];
           final topCourses = [...info.completedCourses]
             ..sort((a, b) => compareNaturalText(a.code, b.code));
           final completedCodes = info.completedCourses
@@ -302,36 +308,25 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _Metric(
-                            title: 'Total',
-                            value: _formatCredit(summaryTotal),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _Metric(
-                            title: 'Done',
-                            value: _formatCredit(summaryCompleted),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _Metric(
-                            title: 'Attempt',
-                            value: _formatCredit(attemptedCredit),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _Metric(
-                            title: 'Left',
-                            value: _formatCredit(remainingCredit),
-                          ),
-                        ),
-                      ],
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: List.generate(summaryStats.length, (index) {
+                          final item = summaryStats[index];
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              right: index == summaryStats.length - 1 ? 0 : 10,
+                            ),
+                            child: SizedBox(
+                              width: 96,
+                              child: _Metric(
+                                title: item.title,
+                                value: item.value,
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Row(

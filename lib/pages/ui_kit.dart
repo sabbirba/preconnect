@@ -682,6 +682,8 @@ Future<void> showBracuFundingSupportSheet(BuildContext context) async {
             ),
           ),
           const SizedBox(height: 14),
+          const BracuInterstitialAdSection(),
+          const SizedBox(height: 14),
           const BracuRewardVideoSection(),
           const SizedBox(height: 14),
           const BracuFundingSupportContent(),
@@ -821,6 +823,107 @@ class _BracuRewardVideoSectionState extends State<BracuRewardVideoSection> {
               ),
             );
           },
+        );
+      },
+    );
+  }
+}
+
+class BracuInterstitialAdSection extends StatefulWidget {
+  const BracuInterstitialAdSection({super.key});
+
+  @override
+  State<BracuInterstitialAdSection> createState() =>
+      _BracuInterstitialAdSectionState();
+}
+
+class _BracuInterstitialAdSectionState
+    extends State<BracuInterstitialAdSection> {
+  bool _isLoading = false;
+
+  Future<void> _showInterstitial() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final shown = await AdsBridge.showInterstitial();
+      if (!mounted) return;
+      showAppSnackBar(context, shown ? 'Shown' : 'Not ready');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: AdsPreferences.instance.adsVisible,
+      builder: (context, adsVisible, _) {
+        if (!adsVisible) return const SizedBox.shrink();
+        final textPrimary = BracuPalette.textPrimary(context);
+        final textSecondary = BracuPalette.textSecondary(context);
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Interstitial',
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Show a full-screen ad before support actions',
+                      style: TextStyle(
+                        color: textSecondary,
+                        fontSize: 12,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 118),
+                child: OutlinedButton(
+                  onPressed: _isLoading ? null : _showInterstitial,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: BracuPalette.primary,
+                    side: BorderSide(
+                      color: BracuPalette.primary.withValues(alpha: 0.26),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const BracuShimmerLabel(label: 'Loading')
+                      : const Text('Show'),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -1035,89 +1138,77 @@ const String _kPreconnectWhatsAppUrl =
     'https://api.whatsapp.com/send?phone=8801865493144&text=Hi%20PreConnect%2C%20I%20want%20to%20support%20the%20app.';
 
 class BracuFundingSupportContent extends StatelessWidget {
-  const BracuFundingSupportContent({super.key});
+  const BracuFundingSupportContent({super.key, this.qrFit = BoxFit.contain});
+
+  final BoxFit qrFit;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark
-            ? const Color(0xFF0B0B0B)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: BracuPalette.primary.withValues(alpha: 0.12)),
-      ),
-      child: Column(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              color: Colors.white,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final size = constraints.maxWidth;
-                  return CachedImage(
-                    url: _kPreconnectSupportQrUrl,
-                    width: size,
-                    height: size,
-                    fit: BoxFit.contain,
-                    placeholder: const BracuShimmer(
-                      child: BracuSkeletonBox(height: 220, radius: 12),
-                    ),
-                    error: const Icon(Icons.qr_code_2_rounded),
-                  );
-                },
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          const BracuSupportNumberRow(number: _kPreconnectSupportNumber),
-          const SizedBox(height: 12),
-          Text(
-            "We're looking for Sponsor",
-            style: TextStyle(
-              color: BracuPalette.textPrimary(context),
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Support our iOS App Store launch',
-            style: TextStyle(
-              color: BracuPalette.textSecondary(context),
-              fontSize: 13,
-              height: 1.35,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _BracuSponsorActionChip(
-                icon: Icons.call_outlined,
-                label: _kPreconnectSupportNumber,
-                onTap: () =>
-                    copyToClipboard(context, _kPreconnectSupportNumber),
-              ),
-              _BracuSponsorActionChip(
-                icon: Icons.chat_bubble_outline_rounded,
-                label: 'WhatsApp',
-                onTap: () => openExternalUrl(
-                  context,
-                  _kPreconnectWhatsAppUrl,
-                  failureMessage: 'Unable to open WhatsApp.',
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final size = constraints.maxWidth;
+              return CachedImage(
+                url: _kPreconnectSupportQrUrl,
+                width: size,
+                height: size,
+                fit: qrFit,
+                placeholder: const BracuShimmer(
+                  child: BracuSkeletonBox(height: 220, radius: 12),
                 ),
-              ),
-            ],
+                error: const Icon(Icons.qr_code_2_rounded),
+              );
+            },
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 8),
+        const BracuSupportNumberRow(number: _kPreconnectSupportNumber),
+        const SizedBox(height: 12),
+        Text(
+          "We're looking for Sponsor",
+          style: TextStyle(
+            color: BracuPalette.textPrimary(context),
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Support our iOS App Store launch',
+          style: TextStyle(
+            color: BracuPalette.textSecondary(context),
+            fontSize: 13,
+            height: 1.35,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _BracuSponsorActionChip(
+              icon: Icons.call_outlined,
+              label: _kPreconnectSupportNumber,
+              onTap: () => copyToClipboard(context, _kPreconnectSupportNumber),
+            ),
+            _BracuSponsorActionChip(
+              icon: Icons.chat_bubble_outline_rounded,
+              label: 'WhatsApp',
+              onTap: () => openExternalUrl(
+                context,
+                _kPreconnectWhatsAppUrl,
+                failureMessage: 'Unable to open WhatsApp.',
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

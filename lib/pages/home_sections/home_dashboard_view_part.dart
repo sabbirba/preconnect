@@ -98,12 +98,6 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                                 ],
                               ),
                               const SizedBox(height: 12),
-                              const _HomeDashboardSkeletonSectionTitle(
-                                widthFactor: 0.34,
-                              ),
-                              const SizedBox(height: 8),
-                              const _HomeDashboardSkeletonQuickAccessActions(),
-                              const SizedBox(height: 10),
                               const _HomeDashboardSkeletonQuickAccess(),
                               const SizedBox(height: 12),
                             ],
@@ -195,14 +189,6 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                               currentSemester: profile['currentSemester'] ?? '',
                               currentSessionSemesterId:
                                   profile['currentSessionSemesterId'] ?? '',
-                              onOpenInterstitial: () async {
-                                final shown = await AdsBridge.showInterstitial();
-                                if (!context.mounted) return;
-                                showAppSnackBar(
-                                  context,
-                                  shown ? 'Shown' : 'Not ready',
-                                );
-                              },
                               onOpenSupport: () =>
                                   showBracuFundingSupportSheet(context),
                               onOpenSettings: () =>
@@ -621,10 +607,10 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
           color: Color(0xFF5B8DEF),
         ),
         _DashboardQuickAccessItem(
-          tab: HomeTab.degreeProgress,
-          icon: Icons.school_outlined,
-          title: 'Degree',
-          subtitle: 'Progress',
+          tab: HomeTab.devs,
+          icon: Icons.developer_mode_outlined,
+          title: 'Devs',
+          subtitle: 'Support',
           color: Color(0xFF2C9DFF),
         ),
         _DashboardQuickAccessItem(
@@ -842,64 +828,34 @@ class _HomeDashboardSkeletonQuickAccess extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: List.generate(8, (index) {
-              return const SizedBox(
-                width: 80,
-                height: 88,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    BracuSkeletonBox(width: 44, height: 44, radius: 14),
-                    SizedBox(height: 7),
-                    BracuSkeletonBox(width: 52, height: 10, radius: 5),
-                    SizedBox(height: 6),
-                    BracuSkeletonBox(width: 34, height: 8, radius: 4),
-                  ],
-                ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final layout = quickAccessGridLayout(constraints.maxWidth);
+              return Wrap(
+                alignment: WrapAlignment.center,
+                runAlignment: WrapAlignment.center,
+                spacing: layout.spacing,
+                runSpacing: layout.spacing,
+                children: List.generate(8, (index) {
+                  return SizedBox(
+                    width: layout.itemWidth,
+                    height: 88,
+                    child: const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        BracuSkeletonBox(width: 40, height: 40, radius: 14),
+                        SizedBox(height: 7),
+                        BracuSkeletonBox(width: 46, height: 10, radius: 5),
+                        SizedBox(height: 6),
+                        BracuSkeletonBox(width: 30, height: 8, radius: 4),
+                      ],
+                    ),
+                  );
+                }),
               );
-            }),
+            },
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _HomeDashboardSkeletonQuickAccessActions extends StatelessWidget {
-  const _HomeDashboardSkeletonQuickAccessActions();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Row(
-      children: [
-        Spacer(),
-        BracuSkeletonBox(width: 64, height: 22, radius: 8),
-        SizedBox(width: 8),
-        BracuSkeletonBox(width: 72, height: 22, radius: 8),
-      ],
-    );
-  }
-}
-
-class _HomeDashboardSkeletonSectionTitle extends StatelessWidget {
-  const _HomeDashboardSkeletonSectionTitle({required this.widthFactor});
-
-  final double widthFactor;
-
-  @override
-  Widget build(BuildContext context) {
-    return BracuShimmer(
-      child: FractionallySizedBox(
-        widthFactor: widthFactor,
-        alignment: Alignment.centerLeft,
-        child: const BracuSkeletonBox(
-          width: double.infinity,
-          height: 12,
-          radius: 6,
-        ),
       ),
     );
   }

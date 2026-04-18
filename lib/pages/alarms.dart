@@ -390,9 +390,13 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         future: _futureData,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return buildRefreshLoadingState(
+            return BracuRefreshList(
               onRefresh: _handleRefresh,
-              label: 'Loading...',
+              showScrollTopButton: false,
+              children: const [
+                SizedBox(height: 120),
+                Center(child: CircularProgressIndicator()),
+              ],
             );
           }
           if (snapshot.hasError) {

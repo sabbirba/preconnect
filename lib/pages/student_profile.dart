@@ -407,7 +407,11 @@ class _CardSectionSkeleton extends StatelessWidget {
                       alignment: Alignment.center,
                       child: const RotatedBox(
                         quarterTurns: 3,
-                        child: BracuSkeletonBox(width: 72, height: 12, radius: 5),
+                        child: BracuSkeletonBox(
+                          width: 72,
+                          height: 12,
+                          radius: 5,
+                        ),
                       ),
                     ),
                     Expanded(
@@ -429,15 +433,35 @@ class _CardSectionSkeleton extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: const [
-                                  BracuSkeletonBox(width: 126, height: 12, radius: 6),
+                                  BracuSkeletonBox(
+                                    width: 126,
+                                    height: 12,
+                                    radius: 6,
+                                  ),
                                   SizedBox(height: 8),
-                                  BracuSkeletonBox(width: 92, height: 9, radius: 5),
+                                  BracuSkeletonBox(
+                                    width: 92,
+                                    height: 9,
+                                    radius: 5,
+                                  ),
                                   SizedBox(height: 10),
-                                  BracuSkeletonBox(width: 94, height: 10, radius: 5),
+                                  BracuSkeletonBox(
+                                    width: 94,
+                                    height: 10,
+                                    radius: 5,
+                                  ),
                                   SizedBox(height: 6),
-                                  BracuSkeletonBox(width: 72, height: 10, radius: 5),
+                                  BracuSkeletonBox(
+                                    width: 72,
+                                    height: 10,
+                                    radius: 5,
+                                  ),
                                   SizedBox(height: 6),
-                                  BracuSkeletonBox(width: 82, height: 10, radius: 5),
+                                  BracuSkeletonBox(
+                                    width: 82,
+                                    height: 10,
+                                    radius: 5,
+                                  ),
                                 ],
                               ),
                             ),
@@ -474,7 +498,12 @@ class _AcademicSummarySkeleton extends StatelessWidget {
           children: const [
             Row(
               children: [
-                Expanded(child: _ProfileLabelValueSkeleton(labelWidth: 28, valueWidth: 94)),
+                Expanded(
+                  child: _ProfileLabelValueSkeleton(
+                    labelWidth: 28,
+                    valueWidth: 94,
+                  ),
+                ),
                 SizedBox(width: 8),
                 Expanded(
                   child: _ProfileLabelValueSkeleton(
@@ -529,8 +558,8 @@ class _ProfileLabelValueSkeleton extends StatelessWidget {
       crossAxisAlignment: end
           ? CrossAxisAlignment.end
           : center
-              ? CrossAxisAlignment.center
-              : CrossAxisAlignment.start,
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.start,
       children: [
         BracuSkeletonBox(width: labelWidth, height: 10, radius: 5),
         const SizedBox(height: 6),
@@ -578,9 +607,7 @@ class _PersonalInfoSkeleton extends StatelessWidget {
           color: BracuPalette.card(context),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: BracuPalette.textSecondary(
-              context,
-            ).withValues(alpha: 0.18),
+            color: BracuPalette.textSecondary(context).withValues(alpha: 0.18),
           ),
         ),
         child: Column(

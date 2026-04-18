@@ -374,23 +374,30 @@ class _TopBar extends StatelessWidget {
                         ),
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Welcome Back',
-                      style: TextStyle(fontSize: 12, color: textSecondary),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      name,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: textPrimary,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Welcome Back',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: textSecondary),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -881,11 +888,11 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
                     ),
                     QuickAccessCard(
                       width: layout.itemWidth,
-                      icon: Icons.developer_mode_outlined,
-                      title: 'Devs',
-                      subtitle: 'Support',
+                      icon: Icons.school_outlined,
+                      title: 'Degree',
+                      subtitle: 'Progress',
                       color: const Color(0xFF2C9DFF),
-                      onTap: () => widget.onNavigate(HomeTab.devs),
+                      onTap: () => widget.onNavigate(HomeTab.degreeProgress),
                     ),
                   ],
                 ),
