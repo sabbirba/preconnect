@@ -195,7 +195,8 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                               currentSemester: profile['currentSemester'] ?? '',
                               currentSessionSemesterId:
                                   profile['currentSessionSemesterId'] ?? '',
-                              onOpenSupport: () async {},
+                              onOpenSupport: () =>
+                                  showBracuFundingSupportSheet(context),
                               onOpenSettings: () =>
                                   widget.onNavigate(HomeTab.settings),
                               onLogout: widget.onLogout,
@@ -530,6 +531,7 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                               onTap: _openCampusMapSheet,
                             ),
                             const SizedBox(height: 12),
+                            const _InlineBannerAd(),
                           ],
                         ),
                       );
@@ -641,6 +643,93 @@ class _DashboardQuickAccessItem {
   final String title;
   final String subtitle;
   final Color color;
+}
+
+class _InlineBannerAd extends StatefulWidget {
+  const _InlineBannerAd();
+
+  @override
+  State<_InlineBannerAd> createState() => _InlineBannerAdState();
+}
+
+class _InlineBannerAdState extends State<_InlineBannerAd> {
+  static const double _placeholderHeight = 50;
+  static const MethodChannel _bannerEventsChannel = MethodChannel(
+    'preconnect/banner_ad_events',
+  );
+
+  double _bannerHeight = _placeholderHeight;
+
+  @override
+  void initState() {
+    super.initState();
+    _bannerEventsChannel.setMethodCallHandler(_handleBannerEvent);
+  }
+
+  @override
+  void dispose() {
+    _bannerEventsChannel.setMethodCallHandler(null);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: AdsPreferences.instance.adsVisible,
+      builder: (context, adsVisible, _) {
+        if (!adsVisible || !AdsBridge.isSupportedPlatform) {
+          return const SizedBox.shrink();
+        }
+
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final width =
+                constraints.maxWidth.isFinite && constraints.maxWidth > 0
+                ? constraints.maxWidth
+                : MediaQuery.sizeOf(context).width;
+            final viewType = defaultTargetPlatform == TargetPlatform.iOS
+                ? 'preconnect/banner_ad_ios'
+                : 'preconnect/banner_ad_android';
+
+            return SizedBox(
+              width: width,
+              height: _bannerHeight,
+              child: defaultTargetPlatform == TargetPlatform.iOS
+                  ? UiKitView(
+                      viewType: viewType,
+                      creationParams: <String, dynamic>{'width': width},
+                      creationParamsCodec: const StandardMessageCodec(),
+                      layoutDirection: Directionality.of(context),
+                    )
+                  : AndroidView(
+                      viewType: viewType,
+                      creationParams: <String, dynamic>{'width': width},
+                      creationParamsCodec: const StandardMessageCodec(),
+                      layoutDirection: Directionality.of(context),
+                    ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<dynamic> _handleBannerEvent(MethodCall call) async {
+    switch (call.method) {
+      case 'bannerSizeChanged':
+        final args = call.arguments as Map?;
+        final height = (args?['height'] as num?)?.toDouble();
+        if (!mounted || height == null || height <= 0) {
+          return null;
+        }
+        setState(() {
+          _bannerHeight = height;
+        });
+        return null;
+      default:
+        return null;
+    }
+  }
 }
 
 class _HomeDashboardSkeletonHeader extends StatelessWidget {

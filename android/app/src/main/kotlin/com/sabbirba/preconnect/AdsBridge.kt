@@ -122,7 +122,11 @@ private class BannerAdPlatformView(
 
     init {
         val bannerWidthDp = resolveBannerWidthDp(context, args)
-        adView.adUnitId = BuildConfig.BANNER_AD_UNIT_ID
+        val adUnitId = BuildConfig.BANNER_AD_UNIT_ID
+        if (adUnitId.isBlank()) {
+            return
+        }
+        adView.adUnitId = adUnitId
         adView.setAdSize(
             AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, bannerWidthDp),
         )

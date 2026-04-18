@@ -2,12 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:preconnect/api/app_preferences_store.dart';
+import 'package:preconnect/api/sembast_cache.dart';
 import 'package:preconnect/pages/api_test.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/tools/cached_image.dart';
-import 'package:preconnect/tools/token_storage.dart';
 
 class DevsPage extends StatefulWidget {
   const DevsPage({super.key});
@@ -18,7 +17,6 @@ class DevsPage extends StatefulWidget {
 
 class _DevsPageState extends State<DevsPage> {
   late Future<String> _subtitleFuture;
-  late Future<bool> _showSponsoredContentFuture;
   List<_ContributorProfile> _contributors = const <_ContributorProfile>[];
   bool _contributorsLoaded = false;
   bool _contributorsLoading = false;
@@ -29,13 +27,7 @@ class _DevsPageState extends State<DevsPage> {
   void initState() {
     super.initState();
     _subtitleFuture = _buildVersionSubtitle();
-    _showSponsoredContentFuture = _loadSponsoredContentVisibility();
     _loadContributors();
-  }
-
-  Future<bool> _loadSponsoredContentVisibility() async {
-    final visibility = await HomeCardPreferences.load();
-    return visibility.showSponsoredContent;
   }
 
   Future<String> _buildVersionSubtitle() async {
@@ -45,7 +37,7 @@ class _DevsPageState extends State<DevsPage> {
   Future<void> _loadContributors() async {
     if (_contributorsLoading) return;
     _contributorsLoading = true;
-    final cache = AppPreferencesStore();
+    final cache = SembastCache();
     final cached = await _readCachedContributors(cache);
     if (cached.isNotEmpty && mounted) {
       setState(() {
@@ -100,7 +92,7 @@ class _DevsPageState extends State<DevsPage> {
   }
 
   Future<List<_ContributorProfile>> _readCachedContributors(
-    AppPreferencesStore cache,
+    SembastCache cache,
   ) async {
     final raw = await cache.getJsonList(_contributorsCacheKey);
     if (raw == null || raw.isEmpty) return const <_ContributorProfile>[];
@@ -148,45 +140,48 @@ class _DevsPageState extends State<DevsPage> {
       future: _subtitleFuture,
       builder: (context, snapshot) {
         final subtitle = snapshot.data ?? 'App Version';
-        return FutureBuilder<bool>(
-          future: _showSponsoredContentFuture,
-          builder: (context, sponsoredSnapshot) {
-            final showSponsoredContent = sponsoredSnapshot.data ?? true;
-            return BracuPageScaffold(
-              title: 'Devs & Support',
-              subtitle: subtitle,
-              icon: Icons.developer_mode_outlined,
-              onHeaderTap: _onHeaderSecretTap,
-              body: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
-                children: [
-                  const _IntroCard(),
-                  const SizedBox(height: 14),
-                  const BracuSectionTitle(title: 'Contributors'),
-                  const SizedBox(height: 10),
-                  if (!_contributorsLoaded)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 10),
-                      child: _ContributorLoadingList(),
-                    )
-                  else
-                    _ContributorsGrid(
-                      contributors: _contributors,
-                      showAll: _showAllContributors,
-                      onToggle: () => setState(
-                        () => _showAllContributors = !_showAllContributors,
-                      ),
-                    ),
-                  if (showSponsoredContent) ...[
-                    const SizedBox(height: 14),
-                    const BracuSectionTitle(title: 'Funding & Support'),
-                    const SizedBox(height: 10),
-                    const _FundingCard(),
+        return BracuPageScaffold(
+          title: 'Devs & Support',
+          subtitle: subtitle,
+          icon: Icons.developer_mode_outlined,
+          onHeaderTap: _onHeaderSecretTap,
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
+            children: [
+              const _IntroCard(),
+              const SizedBox(height: 14),
+              const BracuSectionTitle(title: 'Contributors'),
+              const SizedBox(height: 10),
+              if (!_contributorsLoaded)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: _ContributorLoadingList(),
+                )
+              else
+                _ContributorsGrid(
+                  contributors: _contributors,
+                  showAll: _showAllContributors,
+                  onToggle: () => setState(
+                    () => _showAllContributors = !_showAllContributors,
+                  ),
+                ),
+              const Padding(
+                padding: EdgeInsets.only(top: 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    BracuSectionTitle(title: 'Sponsored'),
+                    SizedBox(height: 10),
+                    _SponsoredStrip(),
                   ],
-                ],
+                ),
               ),
-            );
-          },
+              const SizedBox(height: 14),
+              const BracuSectionTitle(title: 'Funding & Support'),
+              const SizedBox(height: 10),
+              const _FundingCard(),
+            ],
+          ),
         );
       },
     );
@@ -370,8 +365,145 @@ class _FundingCard extends StatelessWidget {
             'membership. Any contribution towards this funding will be highly appreciated.',
             style: TextStyle(color: BracuPalette.textSecondary(context)),
           ),
+          const SizedBox(height: 12),
+          const BracuFundingSupportContent(),
         ],
       ),
+    );
+  }
+}
+
+class _SponsoredStrip extends StatelessWidget {
+  const _SponsoredStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 62,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: EdgeInsets.zero,
+        children: const [
+          _SponsoredTile(
+            title: 'Google AdSense',
+            subtitle: 'Rewarded Ads Provider',
+            iconColor: BracuPalette.primary,
+            leading: _AdSenseLogoImage(),
+            url: 'https://adsense.google.com/',
+          ),
+          SizedBox(width: 25),
+          _SponsoredTile(
+            width: 220,
+            title: 'Become a Sponsor',
+            subtitle: 'Tap to chat on WhatsApp',
+            icon: Icons.add,
+            iconColor: Color(0xFF25D366),
+            url:
+                'https://api.whatsapp.com/send?phone=8801865493144&text=Hi%20PreConnect%2C%20I%20want%20to%20become%20a%20sponsor%20for%20the%20app.',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SponsoredTile extends StatelessWidget {
+  const _SponsoredTile({
+    this.width,
+    required this.title,
+    required this.subtitle,
+    this.icon,
+    required this.iconColor,
+    this.leading,
+    this.url,
+  });
+
+  final double? width;
+  final String title;
+  final String subtitle;
+  final IconData? icon;
+  final Color iconColor;
+  final Widget? leading;
+  final String? url;
+
+  @override
+  Widget build(BuildContext context) {
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        leading ??
+            (icon != null
+                ? Icon(icon, color: iconColor, size: 22)
+                : const SizedBox.shrink()),
+        const SizedBox(width: 10),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: BracuPalette.textPrimary(context),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11.5,
+                color: BracuPalette.textSecondary(context),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 0),
+      child: row,
+    );
+
+    if (width != null) {
+      return SizedBox(
+        width: width,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: url == null ? null : () => openExternalUrl(context, url!),
+          child: content,
+        ),
+      );
+    }
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: url == null ? null : () => openExternalUrl(context, url!),
+      child: content,
+    );
+  }
+}
+
+class _AdSenseLogoImage extends StatelessWidget {
+  const _AdSenseLogoImage();
+
+  static const String _logoUrl = 'https://preconnect.app/google-adsense.png';
+
+  @override
+  Widget build(BuildContext context) {
+    return CachedImage(
+      url: _logoUrl,
+      width: 24,
+      height: 24,
+      fit: BoxFit.contain,
+      placeholder: const SizedBox.shrink(),
+      error: const SizedBox.shrink(),
     );
   }
 }

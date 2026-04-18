@@ -11,7 +11,9 @@ import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/play_install_referrer.dart';
+import 'package:preconnect/tools/reward_support_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/push_notifications_service.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
@@ -122,6 +124,9 @@ class _MyAppState extends State<MyApp>
     unawaited(_initializeAppLock());
     bindRefreshBus(_onRefreshSignal);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(AdsPreferences.instance.load());
+      unawaited(AdsBridge.initialize());
+      unawaited(RewardSupportController.instance.load());
       PushNotificationsService().initialize().catchError((_) {});
       SeatAlertSyncService().initialize().catchError((_) {});
       PlayIntegrity.prepare().catchError((_) {});
