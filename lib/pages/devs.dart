@@ -44,7 +44,7 @@ class _DevsPageState extends State<DevsPage> {
         if (cached.isNotEmpty) {
           if (!mounted) return;
           setState(() {
-            _contributors = cached;
+            _contributors = _withPinnedAndManualContributors(cached);
             _contributorsLoaded = true;
           });
           return;
@@ -55,11 +55,8 @@ class _DevsPageState extends State<DevsPage> {
       if (!mounted) return;
       setState(() {
         _contributors = fresh.isNotEmpty
-            ? fresh
-            : _dedupeContributors([
-                ..._pinnedGitHubContributors,
-                ..._manualContributors,
-              ]);
+            ? _withPinnedAndManualContributors(fresh)
+            : _withPinnedAndManualContributors(const <_ContributorProfile>[]);
         _contributorsLoaded = true;
       });
       if (fresh.isNotEmpty) {
@@ -126,6 +123,16 @@ class _DevsPageState extends State<DevsPage> {
         .map((entry) => _ContributorProfile.fromJson(entry.cast()))
         .where((item) => item.name.isNotEmpty && item.avatarUrl.isNotEmpty)
         .toList();
+  }
+
+  List<_ContributorProfile> _withPinnedAndManualContributors(
+    List<_ContributorProfile> items,
+  ) {
+    return _dedupeContributors([
+      ...items,
+      ..._pinnedGitHubContributors,
+      ..._manualContributors,
+    ]);
   }
 
   Future<void> _onHeaderSecretTap() async {
@@ -381,11 +388,11 @@ class _SponsoredStrip extends StatelessWidget {
         padding: EdgeInsets.zero,
         children: const [
           _SponsoredTile(
-            title: 'Google',
+            title: 'Google Admob',
             subtitle: 'Ads Support Provider',
             iconColor: BracuPalette.primary,
             leading: _AdSenseLogoImage(),
-            url: 'https://adsense.google.com/',
+            url: 'https://admob.google.com/',
           ),
           SizedBox(width: 25),
           _SponsoredTile(

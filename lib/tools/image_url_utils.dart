@@ -1,5 +1,3 @@
-/// Sanitizes a media (image) URL by stripping query strings, fragments, and trailing noise.
-/// This should be used for image assets to ensure consistent URL handling.
 String? normalizeMediaUrl(String raw) {
   final value = raw.trim();
   if (value.isEmpty) return null;
@@ -17,6 +15,8 @@ String? normalizeMediaUrl(String raw) {
     host: uri.host,
     port: uri.port,
     path: uri.path.replaceAll(RegExp(r'[/\\]+$'), ''),
+    query: uri.query,
+    fragment: uri.fragment,
   ).toString();
 
   return cleaned.isEmpty ? null : cleaned;

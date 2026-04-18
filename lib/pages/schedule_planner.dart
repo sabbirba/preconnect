@@ -367,8 +367,10 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     final labelCode = courseCode.trim().isNotEmpty
         ? courseCode.trim().toUpperCase()
         : 'Planner';
-    final messageTitle = title.trim().isNotEmpty ? title.trim() : labelCode;
-    final message = messageTitle;
+    final trimmedTitle = title.trim();
+    final message = trimmedTitle.isEmpty
+        ? labelCode
+        : '$labelCode $trimmedTitle';
 
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       try {

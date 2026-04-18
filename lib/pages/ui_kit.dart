@@ -1103,7 +1103,6 @@ PopupMenuItem<T> compactPopupMenuItem<T>({
   );
 }
 
-const String _kPreconnectSupportQrUrl = 'https://preconnect.app/bkash-qr.jpg';
 const String _kPreconnectSupportNumber = '01865493144';
 const String _kPreconnectWhatsAppUrl =
     'https://api.whatsapp.com/send?phone=8801865493144&text=Hi%20PreConnect%2C%20I%20want%20to%20support%20the%20app.';
@@ -1117,22 +1116,34 @@ class BracuFundingSupportContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final size = constraints.maxWidth;
-              return CachedImage(
-                url: _kPreconnectSupportQrUrl,
-                width: size,
-                height: size,
-                fit: qrFit,
-                placeholder: const BracuShimmer(
-                  child: BracuSkeletonBox(height: 220, radius: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: BracuPalette.primary.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: BracuPalette.primary.withValues(alpha: 0.12),
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                Icons.volunteer_activism_rounded,
+                color: BracuPalette.primary,
+                size: 34,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Support via bKash, Nagad, or Upay',
+                style: TextStyle(
+                  color: BracuPalette.textPrimary(context),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
                 ),
-                error: const Icon(Icons.qr_code_2_rounded),
-              );
-            },
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 8),
@@ -1219,10 +1230,12 @@ class BracuSupportNumberRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textSecondary = BracuPalette.textSecondary(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Column(
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () => copyToClipboard(context, number),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Row(
@@ -1255,7 +1268,7 @@ class BracuSupportNumberRow extends StatelessWidget {
             ),
           ],
         ),
-      ],
+      ),
     );
   }
 }
