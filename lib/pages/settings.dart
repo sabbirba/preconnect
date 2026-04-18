@@ -89,7 +89,7 @@ class _SettingsPageState extends State<SettingsPage> {
     await AdsPreferences.instance.setHidden(value);
     RefreshBus.instance.notify(reason: 'ads_settings_changed');
     if (!mounted) return;
-    showAppSnackBar(context, value ? 'Ads hidden' : 'Ads shown');
+    showAppSnackBar(context, value ? 'Hidden' : 'Shown');
   }
 
   Future<void> _setVisibility({
@@ -282,8 +282,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                   _ToggleRow(
-                    title: 'Hide Ads',
-                    subtitle: 'Hide sponsored content and ads',
+                    title: 'Hide Support',
+                    subtitle: 'Hide support content and ads',
                     value: _hideAds,
                     onChanged: _setHideAds,
                   ),

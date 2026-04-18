@@ -100,11 +100,11 @@ String formatDateTimeLabel(
 
 Future<bool> showRewardSupportFlow(BuildContext context) async {
   if (!AdsPreferences.instance.isVisible) {
-    showAppSnackBar(context, 'Ads are hidden in settings');
+    showAppSnackBar(context, 'Hidden in settings');
     return false;
   }
   if (!AdsBridge.isSupportedPlatform) {
-    showAppSnackBar(context, 'Support videos are available on mobile only');
+    showAppSnackBar(context, 'Available on mobile only');
     return false;
   }
 
@@ -122,6 +122,8 @@ Future<bool> showRewardSupportFlow(BuildContext context) async {
     }
 
     final count = await RewardSupportController.instance.recordReward();
+    if (!context.mounted) return false;
+    await AdsBridge.showInterstitial();
     if (!context.mounted) return false;
     HapticFeedback.lightImpact();
     showAppSnackBar(context, 'Thanks! Support #$count added.');

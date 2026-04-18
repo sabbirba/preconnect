@@ -140,6 +140,8 @@
 		<string>$(REWARDED_AD_UNIT_ID)</string>
 		<key>BANNER_AD_UNIT_ID</key>
 		<string>$(BANNER_AD_UNIT_ID)</string>
+		<key>INTERSTITIAL_AD_UNIT_ID</key>
+		<string>$(INTERSTITIAL_AD_UNIT_ID)</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>

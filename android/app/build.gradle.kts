@@ -33,6 +33,7 @@ fun envFromDotEnv(name: String): String? {
 val androidAdAppId = "ca-app-pub-3940256099942544~1458002511"
 val rewardedAdUnitId = envOrProp("REWARDED_AD_UNIT_ID").orEmpty()
 val bannerAdUnitId = envOrProp("BANNER_AD_UNIT_ID").orEmpty()
+val interstitialAdUnitId = envOrProp("INTERSTITIAL_AD_UNIT_ID").orEmpty()
 
 android {
     val keystoreProperties = Properties()
@@ -84,6 +85,7 @@ android {
         manifestPlaceholders["adAppId"] = androidAdAppId
         buildConfigField("String", "REWARDED_AD_UNIT_ID", "\"$rewardedAdUnitId\"")
         buildConfigField("String", "BANNER_AD_UNIT_ID", "\"$bannerAdUnitId\"")
+        buildConfigField("String", "INTERSTITIAL_AD_UNIT_ID", "\"$interstitialAdUnitId\"")
 
     }
 

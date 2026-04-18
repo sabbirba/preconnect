@@ -195,6 +195,14 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                               currentSemester: profile['currentSemester'] ?? '',
                               currentSessionSemesterId:
                                   profile['currentSessionSemesterId'] ?? '',
+                              onOpenInterstitial: () async {
+                                final shown = await AdsBridge.showInterstitial();
+                                if (!context.mounted) return;
+                                showAppSnackBar(
+                                  context,
+                                  shown ? 'Shown' : 'Not ready',
+                                );
+                              },
                               onOpenSupport: () =>
                                   showBracuFundingSupportSheet(context),
                               onOpenSettings: () =>

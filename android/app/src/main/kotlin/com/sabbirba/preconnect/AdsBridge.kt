@@ -13,6 +13,8 @@ import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.RequestConfiguration
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.google.android.gms.ads.rewarded.RewardItem
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
@@ -33,6 +35,7 @@ class AdsBridge(
         when (call.method) {
             "initialize" -> initialize(call, result)
             "showRewarded" -> showRewarded(call, result)
+            "showInterstitial" -> showInterstitial(call, result)
             else -> result.notImplemented()
         }
     }
@@ -55,12 +58,11 @@ class AdsBridge(
         val adUnitId = call.argument<String>("adUnitId")
             ?.takeIf { it.isNotBlank() }
             ?: BuildConfig.REWARDED_AD_UNIT_ID
-        val nonPersonalizedAds = call.argument<Boolean>("nonPersonalizedAds") ?: false
 
         RewardedAd.load(
             activity,
             adUnitId,
-            buildAdRequest(nonPersonalizedAds),
+            buildAdRequest(),
             object : RewardedAdLoadCallback() {
                 override fun onAdFailedToLoad(error: LoadAdError) {
                     result.error("ADS_REWARDED_LOAD", error.message, null)
@@ -92,16 +94,43 @@ class AdsBridge(
         )
     }
 
-    internal fun buildAdRequest(
-        nonPersonalizedAds: Boolean,
-    ): AdRequest {
-        val builder = AdRequest.Builder()
-        if (nonPersonalizedAds) {
-            val extras = Bundle()
-            extras.putString("npa", "1")
-            builder.addNetworkExtrasBundle(com.google.ads.mediation.admob.AdMobAdapter::class.java, extras)
+    private fun showInterstitial(call: MethodCall, result: MethodChannel.Result) {
+        val adUnitId = call.argument<String>("adUnitId")
+            ?.takeIf { it.isNotBlank() }
+            ?: BuildConfig.INTERSTITIAL_AD_UNIT_ID
+
+        if (adUnitId.isBlank()) {
+            result.success(false)
+            return
         }
-        return builder.build()
+
+        InterstitialAd.load(
+            activity,
+            adUnitId,
+            buildAdRequest(),
+            object : InterstitialAdLoadCallback() {
+                override fun onAdFailedToLoad(error: LoadAdError) {
+                    result.error("ADS_INTERSTITIAL_LOAD", error.message, null)
+                }
+
+                override fun onAdLoaded(ad: InterstitialAd) {
+                    ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+                        override fun onAdDismissedFullScreenContent() {
+                            result.success(true)
+                        }
+
+                        override fun onAdFailedToShowFullScreenContent(adError: com.google.android.gms.ads.AdError) {
+                            result.error("ADS_INTERSTITIAL_SHOW", adError.message, null)
+                        }
+                    }
+                    ad.show(activity)
+                }
+            },
+        )
+    }
+
+    internal fun buildAdRequest(): AdRequest {
+        return AdRequest.Builder().build()
     }
 }
 
@@ -123,22 +152,21 @@ private class BannerAdPlatformView(
     init {
         val bannerWidthDp = resolveBannerWidthDp(context, args)
         val adUnitId = BuildConfig.BANNER_AD_UNIT_ID
-        if (adUnitId.isBlank()) {
-            return
+        if (adUnitId.isNotBlank()) {
+            adView.adUnitId = adUnitId
+            adView.setAdSize(
+                AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, bannerWidthDp),
+            )
+            container.addView(
+                adView,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    Gravity.CENTER_HORIZONTAL,
+                ),
+            )
+            adView.loadAd(AdRequest.Builder().build())
         }
-        adView.adUnitId = adUnitId
-        adView.setAdSize(
-            AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, bannerWidthDp),
-        )
-        container.addView(
-            adView,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.CENTER_HORIZONTAL,
-            ),
-        )
-        adView.loadAd(AdRequest.Builder().build())
     }
 
     override fun getView(): View = container

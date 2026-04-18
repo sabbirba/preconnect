@@ -148,7 +148,7 @@ SPEC CHECKSUMS:
   file_picker: a0560bc09d61de87f12d246fc47d2119e6ef37be
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_alarmkit: fcec41c9c26868e0d9d01272e8d781fb876813ae
-  flutter_local_notifications: ad39620c743ea4c15127860f4b5641649a988100
+  flutter_local_notifications: 643a3eda1ce1c0599413ca31672536d423dee214
   flutter_secure_storage_darwin: acdb3f316ed05a3e68f856e0353b133eec373a23
   Google-Mobile-Ads-SDK: f0365e190d66539c65cea8ded43e2c367abb5477
   GoogleUserMessagingPlatform: befe603da6501006420c206222acd449bba45a9c
@@ -165,6 +165,6 @@ SPEC CHECKSUMS:
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
   webview_flutter_wkwebview: 8ebf4fded22593026f7dbff1fbff31ea98573c8d
 
-PODFILE CHECKSUM: b6f6cb353cd69459d6185aeab1469c11de847505
+PODFILE CHECKSUM: 6aa104a6b1186ce35e334d23a303109764b04133
 
 COCOAPODS: 1.16.2

@@ -162,6 +162,18 @@ Output:
 build/app/outputs/bundle/release/app-release.aab
 ```
 
+### Build iOS IPA
+
+```bash
+flutter build ipa --no-codesign --dart-define-from-file=.env
+```
+
+Output:
+
+```bash
+build/ios/ipa/
+```
+
 ## Download
 
 - Latest release assets (APK / AAB / Web zip / iOS / macOS): [GitHub Releases](https://github.com/sabbirba/preconnect/releases/latest)

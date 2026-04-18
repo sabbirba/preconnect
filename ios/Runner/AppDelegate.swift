@@ -227,6 +227,7 @@ private final class BannerAdPlatformView: NSObject, FlutterPlatformView {
 
 private final class PreconnectAdsBridge: NSObject {
   private var rewardedCoordinator: RewardedCoordinator?
+  private var interstitialCoordinator: InterstitialCoordinator?
 
   func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(
@@ -245,6 +246,8 @@ private final class PreconnectAdsBridge: NSObject {
       initialize(args: args, result: result)
     case "showRewarded":
       showRewarded(args: args, result: result)
+    case "showInterstitial":
+      showInterstitial(args: args, result: result)
     default:
       result(FlutterMethodNotImplemented)
     }
@@ -284,11 +287,8 @@ private final class PreconnectAdsBridge: NSObject {
       )
       return
     }
-    let nonPersonalizedAds = args["nonPersonalizedAds"] as? Bool ?? false
-
     let coordinator = RewardedCoordinator(
       adUnitId: adUnitId,
-      nonPersonalizedAds: nonPersonalizedAds,
       presenter: presenter,
       onSuccess: { [weak self] payload in
         self?.rewardedCoordinator = nil
@@ -300,6 +300,50 @@ private final class PreconnectAdsBridge: NSObject {
       }
     )
     rewardedCoordinator = coordinator
+    coordinator.loadAndShow()
+  }
+
+  private func showInterstitial(args: [String: Any], result: @escaping FlutterResult) {
+    guard let presenter = UIApplication.preconnectTopViewController() else {
+      result(
+        FlutterError(
+          code: "ADS_INTERSTITIAL_CONTEXT",
+          message: "No presenter available",
+          details: nil
+        )
+      )
+      return
+    }
+    let rawAdUnitId = (args["adUnitId"] as? String)?
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    let adUnitId = (rawAdUnitId?.isEmpty == false)
+      ? rawAdUnitId!
+      : resolvedEnvValue(forKey: "INTERSTITIAL_AD_UNIT_ID")
+    guard let adUnitId else {
+      result(
+        FlutterError(
+          code: "ADS_INTERSTITIAL_CONFIG",
+          message: "Missing INTERSTITIAL_AD_UNIT_ID",
+          details: nil
+        )
+      )
+      return
+    }
+    let nonPersonalizedAds = args["nonPersonalizedAds"] as? Bool ?? false
+
+    let coordinator = InterstitialCoordinator(
+      adUnitId: adUnitId,
+      presenter: presenter,
+      onSuccess: { [weak self] in
+        self?.interstitialCoordinator = nil
+        result(true)
+      },
+      onError: { [weak self] code, message in
+        self?.interstitialCoordinator = nil
+        result(FlutterError(code: code, message: message, details: nil))
+      }
+    )
+    interstitialCoordinator = coordinator
     coordinator.loadAndShow()
   }
 
@@ -328,7 +372,6 @@ private func resolvedEnvValue(forKey key: String) -> String? {
 
 private final class RewardedCoordinator: NSObject, FullScreenContentDelegate {
   private let adUnitId: String
-  private let nonPersonalizedAds: Bool
   private weak var presenter: UIViewController?
   private let onSuccess: ([String: Any]) -> Void
   private let onError: (String, String) -> Void
@@ -338,13 +381,11 @@ private final class RewardedCoordinator: NSObject, FullScreenContentDelegate {
 
   init(
     adUnitId: String,
-    nonPersonalizedAds: Bool,
     presenter: UIViewController,
     onSuccess: @escaping ([String: Any]) -> Void,
     onError: @escaping (String, String) -> Void
   ) {
     self.adUnitId = adUnitId
-    self.nonPersonalizedAds = nonPersonalizedAds
     self.presenter = presenter
     self.onSuccess = onSuccess
     self.onError = onError
@@ -353,7 +394,7 @@ private final class RewardedCoordinator: NSObject, FullScreenContentDelegate {
   func loadAndShow() {
     RewardedAd.load(
       with: adUnitId,
-      request: Self.adRequest(nonPersonalizedAds: nonPersonalizedAds)
+      request: Request()
     ) { [weak self] ad, error in
       guard let self else { return }
       if let error {
@@ -374,16 +415,6 @@ private final class RewardedCoordinator: NSObject, FullScreenContentDelegate {
     }
   }
 
-  private static func adRequest(nonPersonalizedAds: Bool) -> Request {
-    let request = Request()
-    if nonPersonalizedAds {
-      let extras = Extras()
-      extras.additionalParameters = ["npa": "1"]
-      request.register(extras)
-    }
-    return request
-  }
-
   func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
     onSuccess([
       "shown": true,
@@ -398,6 +429,57 @@ private final class RewardedCoordinator: NSObject, FullScreenContentDelegate {
     didFailToPresentFullScreenContentWithError error: Error
   ) {
     onError("ADS_REWARDED_SHOW", error.localizedDescription)
+  }
+}
+
+private final class InterstitialCoordinator: NSObject, FullScreenContentDelegate {
+  private let adUnitId: String
+  private weak var presenter: UIViewController?
+  private let onSuccess: () -> Void
+  private let onError: (String, String) -> Void
+  private var ad: InterstitialAd?
+
+  init(
+    adUnitId: String,
+    presenter: UIViewController,
+    onSuccess: @escaping () -> Void,
+    onError: @escaping (String, String) -> Void
+  ) {
+    self.adUnitId = adUnitId
+    self.presenter = presenter
+    self.onSuccess = onSuccess
+    self.onError = onError
+  }
+
+  func loadAndShow() {
+    InterstitialAd.load(
+      with: adUnitId,
+      request: Request()
+    ) { [weak self] ad, error in
+      guard let self else { return }
+      if let error {
+        self.onError("ADS_INTERSTITIAL_LOAD", error.localizedDescription)
+        return
+      }
+      guard let ad, let presenter = self.presenter else {
+        self.onError("ADS_INTERSTITIAL_CONTEXT", "No presenter available")
+        return
+      }
+      self.ad = ad
+      ad.fullScreenContentDelegate = self
+      ad.present(from: presenter)
+    }
+  }
+
+  func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
+    onSuccess()
+  }
+
+  func ad(
+    _ ad: FullScreenPresentingAd,
+    didFailToPresentFullScreenContentWithError error: Error
+  ) {
+    onError("ADS_INTERSTITIAL_SHOW", error.localizedDescription)
   }
 }
 

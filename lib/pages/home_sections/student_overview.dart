@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/token_storage.dart';
 
 class StudentOverviewCard extends StatelessWidget {
   const StudentOverviewCard({
@@ -9,6 +10,7 @@ class StudentOverviewCard extends StatelessWidget {
     required this.department,
     required this.currentSemester,
     required this.currentSessionSemesterId,
+    required this.onOpenInterstitial,
     required this.onOpenSupport,
     required this.onOpenSettings,
     required this.onLogout,
@@ -20,6 +22,7 @@ class StudentOverviewCard extends StatelessWidget {
   final String department;
   final String currentSemester;
   final String currentSessionSemesterId;
+  final Future<void> Function() onOpenInterstitial;
   final Future<void> Function() onOpenSupport;
   final VoidCallback onOpenSettings;
   final Future<void> Function() onLogout;
@@ -49,7 +52,25 @@ class StudentOverviewCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                _SupportButton(onTap: onOpenSupport),
+                ValueListenableBuilder<bool>(
+                  valueListenable: AdsPreferences.instance.adsVisible,
+                  builder: (context, adsVisible, _) {
+                    return Visibility(
+                      visible: adsVisible,
+                      maintainAnimation: true,
+                      maintainState: true,
+                      maintainSize: true,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _InterstitialButton(onTap: onOpenInterstitial),
+                          const SizedBox(width: 8),
+                          _SupportButton(onTap: onOpenSupport),
+                        ],
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(width: 8),
                 _IconButton(
                   icon: Icons.settings_outlined,
@@ -114,6 +135,81 @@ class _SupportButton extends StatefulWidget {
 
   @override
   State<_SupportButton> createState() => _SupportButtonState();
+}
+
+class _InterstitialButton extends StatefulWidget {
+  const _InterstitialButton({required this.onTap});
+
+  final Future<void> Function() onTap;
+
+  @override
+  State<_InterstitialButton> createState() => _InterstitialButtonState();
+}
+
+class _InterstitialButtonState extends State<_InterstitialButton> {
+  bool _isLoading = false;
+
+  Future<void> _handleTap() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await widget.onTap();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: _isLoading ? null : _handleTap,
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 180),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        child: _isLoading ? _buildLoadingTile() : _buildButtonTile(),
+      ),
+    );
+  }
+
+  Widget _buildButtonTile() {
+    return _buildTile(
+      child: Icon(
+        Icons.slideshow_rounded,
+        size: 16,
+        color: BracuPalette.primary,
+      ),
+    );
+  }
+
+  Widget _buildLoadingTile() {
+    return BracuShimmer(
+      child: _buildTile(
+        child: const BracuShimmerLabel(label: 'Loading'),
+      ),
+    );
+  }
+
+  Widget _buildTile({required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: BracuPalette.primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      alignment: Alignment.center,
+      child: child,
+    );
+  }
 }
 
 class _SupportButtonState extends State<_SupportButton> {

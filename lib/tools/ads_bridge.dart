@@ -20,7 +20,7 @@ class AdsBridge {
     }
     await _channel.invokeMethod<void>('initialize', <String, dynamic>{
       'testDeviceIds': testDeviceIds,
-      'nonPersonalizedAds': nonPersonalizedAds,
+      'nonPersonalizedAds': false,
     });
   }
 
@@ -36,7 +36,7 @@ class AdsBridge {
         type: '',
       );
     }
-    final args = <String, dynamic>{'nonPersonalizedAds': nonPersonalizedAds};
+    final args = <String, dynamic>{'nonPersonalizedAds': false};
     if (adUnitId != null && adUnitId.isNotEmpty) {
       args['adUnitId'] = adUnitId;
     }
@@ -50,6 +50,21 @@ class AdsBridge {
       amount: (response?['amount'] as num?)?.toInt() ?? 0,
       type: '${response?['type'] ?? ''}',
     );
+  }
+
+  static Future<bool> showInterstitial({
+    String? adUnitId,
+    bool nonPersonalizedAds = false,
+  }) async {
+    if (!isSupportedPlatform || !AdsPreferences.instance.isVisible) {
+      return false;
+    }
+    final args = <String, dynamic>{'nonPersonalizedAds': false};
+    if (adUnitId != null && adUnitId.isNotEmpty) {
+      args['adUnitId'] = adUnitId;
+    }
+    final result = await _channel.invokeMethod<bool>('showInterstitial', args);
+    return result ?? false;
   }
 }
 
