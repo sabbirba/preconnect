@@ -622,10 +622,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                 },
               ),
             ),
-          if (_filteredSchedules.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            const SizedBox(height: 12),
-          ],
+          if (_filteredSchedules.isNotEmpty) ...[const SizedBox(height: 12)],
         ],
       ),
     );

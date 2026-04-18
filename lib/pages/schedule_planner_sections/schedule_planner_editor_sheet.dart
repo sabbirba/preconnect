@@ -492,7 +492,6 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                 ],
               ),
               const SizedBox(height: 8),
-              const SizedBox(height: 4),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,

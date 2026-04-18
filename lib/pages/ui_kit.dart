@@ -647,11 +647,12 @@ Future<void> showBracuFundingSupportSheet(BuildContext context) async {
         controller: sheetScroll,
         children: [
           Text(
-            'PreConnect is made for students and stays free to use. Your support helps keep it running.',
+            'PreConnect is built by students for BRACU students. We keep it free, maintain the app, and add new features from community feedback. Your support helps keep it running.',
             style: TextStyle(
               color: textSecondary,
               fontSize: 13,
               fontWeight: FontWeight.w500,
+              height: 1.45,
             ),
           ),
           const SizedBox(height: 14),
@@ -1106,6 +1107,8 @@ PopupMenuItem<T> compactPopupMenuItem<T>({
 const String _kPreconnectSupportNumber = '01865493144';
 const String _kPreconnectWhatsAppUrl =
     'https://api.whatsapp.com/send?phone=8801865493144&text=Hi%20PreConnect%2C%20I%20want%20to%20support%20the%20app.';
+const String kPreconnectRepositoryUrl =
+    'https://github.com/sabbirba/preconnect';
 
 class BracuFundingSupportContent extends StatelessWidget {
   const BracuFundingSupportContent({super.key, this.qrFit = BoxFit.contain});
@@ -1148,23 +1151,13 @@ class BracuFundingSupportContent extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const BracuSupportNumberRow(number: _kPreconnectSupportNumber),
-        const SizedBox(height: 12),
+        const SizedBox(height: 6),
         Text(
-          "We're looking for Sponsor",
-          style: TextStyle(
-            color: BracuPalette.textPrimary(context),
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Support our iOS App Store launch',
+          'Your support helps cover server costs, ongoing development, and app releases so PreConnect can stay reliable.',
           style: TextStyle(
             color: BracuPalette.textSecondary(context),
             fontSize: 13,
-            height: 1.35,
+            height: 1.45,
           ),
           textAlign: TextAlign.center,
         ),
@@ -1187,6 +1180,11 @@ class BracuFundingSupportContent extends StatelessWidget {
                 _kPreconnectWhatsAppUrl,
                 failureMessage: 'Unable to open WhatsApp.',
               ),
+            ),
+            _BracuSponsorActionChip(
+              icon: Icons.open_in_new_rounded,
+              label: 'GitHub Repository',
+              onTap: () => openExternalUrl(context, kPreconnectRepositoryUrl),
             ),
           ],
         ),
@@ -1232,7 +1230,12 @@ class BracuSupportNumberRow extends StatelessWidget {
     final textSecondary = BracuPalette.textSecondary(context);
     return InkWell(
       borderRadius: BorderRadius.circular(10),
-      onTap: () => copyToClipboard(context, number),
+      onTap: () async {
+        await Clipboard.setData(ClipboardData(text: number));
+        if (!context.mounted) return;
+        showAppSnackBar(context, 'Copied to clipboard');
+        await openPhoneDialer(context, number);
+      },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Column(
@@ -1259,7 +1262,7 @@ class BracuSupportNumberRow extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              'Tap to copy',
+              'Tap to copy and call',
               style: TextStyle(
                 color: textSecondary,
                 fontSize: 10,

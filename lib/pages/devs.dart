@@ -203,7 +203,6 @@ class _DevsPageState extends State<DevsPage> {
   }
 }
 
-const _repoUrl = 'https://github.com/sabbirba/preconnect';
 const _contributorsCacheKey = 'devs_contributors_v1';
 const _collapsedContributorCount = 6;
 
@@ -264,7 +263,7 @@ class _RepoButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () => openExternalUrl(context, _repoUrl),
+      onTap: () => openExternalUrl(context, kPreconnectRepositoryUrl),
       borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
