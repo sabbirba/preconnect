@@ -79,4 +79,13 @@ class AppStorage {
     final prefs = await _getInstance();
     await prefs.clear();
   }
+
+  Future<void> clearExcept(Set<String> keepKeys) async {
+    final prefs = await _getInstance();
+    final keys = prefs.getKeys();
+    for (final key in keys) {
+      if (keepKeys.contains(key)) continue;
+      await prefs.remove(key);
+    }
+  }
 }

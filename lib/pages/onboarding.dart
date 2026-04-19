@@ -5,7 +5,7 @@ import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/friend_schedule.dart';
 import 'package:preconnect/pages/free_labs.dart';
 import 'package:preconnect/pages/home_tab.dart';
-import 'package:preconnect/pages/seat_status.dart';
+import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/tools/app_storage.dart';
@@ -160,7 +160,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             icon: Icons.auto_awesome_rounded,
                             title: 'Built for Daily Use',
                             body:
-                                'Quickly check class schedules, seat status, exams, reminders, free labs, and more from one student-friendly app.',
+                                'Quickly check class schedules, notifications, exams, reminders, free labs, and more from one student-friendly app.',
                             color: const Color(0xFF7C4DFF),
                           ),
                           const SizedBox(height: 10),
@@ -252,11 +252,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           children: [
                             _CompactQuickAccessCard(
                               width: layout.itemWidth,
-                              icon: Icons.event_seat_outlined,
+                              icon: Icons.notifications_outlined,
                               color: const Color(0xFF2C9DFF),
                               showLabels: false,
                               onTap: () => _openOnboardingQuickPage(
-                                const SeatStatusPage(),
+                                const NotificationsPage(),
                               ),
                             ),
                             _CompactQuickAccessCard(

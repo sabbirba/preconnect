@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/pages/home.dart';
@@ -47,10 +48,9 @@ class MyApp extends StatefulWidget {
 
     if (!hasToken) {
       await prefs.setBool('cached_has_auth_session', false);
-      await prefs.remove('StudentSchedule');
-      await prefs.remove('StudentProgramProgress');
-      await prefs.remove('StudentProgramProgressSummary');
-      await prefs.remove('SemesterPaymentInfo');
+      // Clear all schedule caches including semester-specific ones
+      final keepKeys = <String>{'access_token', 'refresh_token', 'themeMode'};
+      await AppPreferencesStore().clearAllExcept(keepKeys);
     } else {}
 
     final canOpenOffline = hasToken && await _hasOfflineSnapshot();

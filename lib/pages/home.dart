@@ -33,6 +33,7 @@ import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/home_sections/exam_countdown.dart';
 import 'package:preconnect/pages/home_sections/student_overview.dart';
+import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/model/schedule_planner_item.dart';

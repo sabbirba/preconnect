@@ -21,6 +21,7 @@ import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/web_pdf_opener.dart';
+import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -524,7 +525,10 @@ Future<void> openCgpaCalculatorPage(BuildContext context) async {
   try {
     final info = await ProgressService().getProgress();
     final profile = await ProfileService().getProfile();
-    final scheduleJson = await ScheduleService().getStudentSchedule();
+    final semesterSessionId = await resolveCurrentSessionSemesterId();
+    final scheduleJson = await ScheduleService().getStudentScheduleForSemester(
+      semesterSessionId: semesterSessionId,
+    );
     if (!context.mounted) return;
 
     if (info == null) {

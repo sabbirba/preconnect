@@ -12,6 +12,7 @@ import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/token_storage.dart';
+import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/web_login.dart';
 
@@ -238,7 +239,11 @@ class _LoginPageState extends State<LoginPage> {
         return false;
       }
       unawaited(ProfileService().fetchProfile());
-      unawaited(ScheduleService().fetchStudentSchedule());
+      unawaited(
+        ScheduleService().fetchStudentScheduleForSemester(
+          semesterSessionId: await resolveCurrentSessionSemesterId(),
+        ),
+      );
       unawaited(PaymentService().fetchPaymentInfo());
       unawaited(AttendanceService().fetchAttendanceInfo());
       unawaited(AdvisingService().fetchAdvisingInfo());

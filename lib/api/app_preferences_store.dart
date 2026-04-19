@@ -67,6 +67,10 @@ class AppPreferencesStore {
   Future<void> clearAll() async {
     await AppStorage.instance.clear();
   }
+
+  Future<void> clearAllExcept(Set<String> keepKeys) async {
+    await AppStorage.instance.clearExcept(keepKeys);
+  }
 }
 
 Future<String?> readStoredStringWithFallback({

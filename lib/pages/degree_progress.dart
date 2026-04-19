@@ -10,6 +10,7 @@ import 'package:preconnect/pages/all_courses.dart';
 import 'package:preconnect/pages/cgpa_calculator.dart';
 import 'package:preconnect/pages/requirement_courses.dart';
 import 'package:preconnect/pages/shared_widgets/grade_sheet_card.dart';
+import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
@@ -138,7 +139,11 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
       final freshSummary = await ProgressService().getProgressSummary(
         fromFetch: true,
       );
-      final freshScheduleJson = await ScheduleService().fetchStudentSchedule();
+      final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+      final freshScheduleJson = await ScheduleService()
+          .fetchStudentScheduleForSemester(
+            semesterSessionId: currentSessionSemesterId,
+          );
       final freshSections = section.parseSectionsFromScheduleJson(
         freshScheduleJson,
       );

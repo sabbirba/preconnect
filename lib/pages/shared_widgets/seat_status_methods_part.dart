@@ -818,7 +818,11 @@ class _SeatStatusLoadingState extends StatelessWidget {
                   SizedBox(height: 8),
                   BracuSkeletonBox(width: 176, height: 12, radius: 6),
                   SizedBox(height: 8),
-                  BracuSkeletonBox(width: double.infinity, height: 10, radius: 5),
+                  BracuSkeletonBox(
+                    width: double.infinity,
+                    height: 10,
+                    radius: 5,
+                  ),
                 ],
               ),
             ),

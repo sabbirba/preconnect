@@ -6,6 +6,7 @@ import 'package:flutter_alarmkit/flutter_alarmkit.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/exam_map_service.dart';
+import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/shared_widgets/schedule_entry_card.dart';
@@ -32,9 +33,16 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   @override
   void initState() {
     super.initState();
-    unawaited(ScheduleService().fetchStudentSchedule());
-    _futureData = _fetchSchedule();
+    _initializeAlarms();
     bindRefreshBus(_onRefreshSignal);
+  }
+
+  Future<void> _initializeAlarms() async {
+    await _primeCurrentSemesterSchedule();
+    if (!mounted) return;
+    setState(() {
+      _futureData = _fetchSchedule();
+    });
   }
 
   @override
@@ -48,13 +56,44 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     if (isRefreshingFrom('alarms')) {
       return;
     }
+    if (isRefreshingFrom('cache_cleared')) {
+      unawaited(_handleRefresh(notify: false));
+      return;
+    }
     unawaited(_handleRefresh(notify: false));
+  }
+
+  Future<int?> _resolveCurrentSessionSemesterId() async {
+    final parsed = int.tryParse(
+      (await AppPreferencesStore().getString('currentSessionSemesterId') ?? '')
+          .trim(),
+    );
+    if (parsed != null && parsed > 0) return parsed;
+    return null;
+  }
+
+  Future<void> _primeCurrentSemesterSchedule() async {
+    final semesterSessionId = await _resolveCurrentSessionSemesterId();
+    await ScheduleService().fetchStudentScheduleForSemester(
+      semesterSessionId: semesterSessionId,
+    );
   }
 
   Future<_AlarmData> _fetchSchedule({bool forceRefresh = false}) async {
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
-    final sections = await ScheduleService().getStudentSections(
-      forceRefresh: forceRefresh,
+    final semesterSessionId = await _resolveCurrentSessionSemesterId();
+    final scheduleService = ScheduleService();
+    final jsonString = forceRefresh
+        ? await scheduleService.fetchStudentScheduleForSemester(
+            semesterSessionId: semesterSessionId,
+            fromGet: true,
+          )
+        : await scheduleService.getStudentScheduleForSemester(
+            semesterSessionId: semesterSessionId,
+          );
+    final sections = scheduleService.parseStudentSections(
+      jsonString,
+      semesterSessionId: semesterSessionId,
     );
     final overrides = await ExamScheduleService().getOverridesForSections(
       sections,
@@ -933,7 +972,11 @@ class _AlarmLoadingState extends StatelessWidget {
                 SizedBox(height: 8),
                 BracuSkeletonBox(width: 110, height: 11, radius: 6),
                 SizedBox(height: 12),
-                BracuSkeletonBox(width: double.infinity, height: 84, radius: 12),
+                BracuSkeletonBox(
+                  width: double.infinity,
+                  height: 84,
+                  radius: 12,
+                ),
               ],
             ),
           ),
@@ -946,7 +989,11 @@ class _AlarmLoadingState extends StatelessWidget {
                 SizedBox(height: 8),
                 BracuSkeletonBox(width: 110, height: 11, radius: 6),
                 SizedBox(height: 12),
-                BracuSkeletonBox(width: double.infinity, height: 84, radius: 12),
+                BracuSkeletonBox(
+                  width: double.infinity,
+                  height: 84,
+                  radius: 12,
+                ),
               ],
             ),
           ),
@@ -959,7 +1006,11 @@ class _AlarmLoadingState extends StatelessWidget {
                 SizedBox(height: 8),
                 BracuSkeletonBox(width: 110, height: 11, radius: 6),
                 SizedBox(height: 12),
-                BracuSkeletonBox(width: double.infinity, height: 84, radius: 12),
+                BracuSkeletonBox(
+                  width: double.infinity,
+                  height: 84,
+                  radius: 12,
+                ),
               ],
             ),
           ),

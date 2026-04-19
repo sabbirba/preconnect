@@ -104,6 +104,10 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       unawaited(_refreshCaptiveStatus());
       return;
     }
+    if (isRefreshingFrom('cache_cleared')) {
+      unawaited(_handleRefresh(notify: false));
+      return;
+    }
     unawaited(_handleRefresh(notify: false));
   }
 
@@ -134,10 +138,15 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
               return null;
             });
 
+    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
     final scheduleFuture = needsSchedule
         ? (forceRefresh
-                  ? ScheduleService().fetchStudentSchedule()
-                  : ScheduleService().getStudentSchedule())
+                  ? ScheduleService().fetchStudentScheduleForSemester(
+                      semesterSessionId: currentSessionSemesterId,
+                    )
+                  : ScheduleService().getStudentScheduleForSemester(
+                      semesterSessionId: currentSessionSemesterId,
+                    ))
               .catchError((e) {
                 return null;
               })
@@ -192,7 +201,9 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
             ? ProfileService().fetchProfile()
             : Future.value(profile),
         scheduleJson == null && needsSchedule
-            ? ScheduleService().fetchStudentSchedule()
+            ? ScheduleService().fetchStudentScheduleForSemester(
+                semesterSessionId: currentSessionSemesterId,
+              )
             : Future.value(scheduleJson),
       ]);
       profile = fallbackResults[0] as Map<String, String?>?;
@@ -205,9 +216,10 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     Map<String, ExamScheduleOverride> examOverrides =
         const <String, ExamScheduleOverride>{};
     if (scheduleJson != null && scheduleJson.trim().isNotEmpty) {
-      final decoded = (jsonDecode(scheduleJson) as List<dynamic>)
-          .map((e) => section.Section.fromJson(e))
-          .toList();
+      final decoded = ScheduleService().parseStudentSections(
+        scheduleJson,
+        semesterSessionId: currentSessionSemesterId,
+      );
       sections.addAll(decoded);
       for (final section in decoded) {
         for (final s in section.sectionSchedule.classSchedules) {

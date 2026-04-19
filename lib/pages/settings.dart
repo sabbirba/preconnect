@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:preconnect/app.dart';
+import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/web_login_setup.dart';
@@ -123,6 +124,33 @@ class _SettingsPageState extends State<SettingsPage> {
     });
     RefreshBus.instance.notify(reason: 'app_lock_settings_changed');
     showAppSnackBar(context, value ? 'App lock enabled' : 'App lock disabled');
+  }
+
+  Future<void> _clearCacheKeepingLoginData() async {
+    final confirmed = await showBracuConfirmationDialog(
+      context,
+      icon: Icons.delete_outline_rounded,
+      title: 'Clear cached data?',
+      message: 'Clean app cache and data.',
+      confirmLabel: 'Clear',
+      confirmColor: BracuPalette.danger,
+    );
+    if (!confirmed) return;
+
+    final keepKeys = <String>{
+      'access_token',
+      'refresh_token',
+      'cached_has_auth_session',
+      'web_login_student_email',
+      'web_login_session_id',
+      'web_login_session_token',
+      'currentSessionSemesterId',
+    };
+
+    await AppPreferencesStore().clearAllExcept(keepKeys);
+    RefreshBus.instance.notify(reason: 'cache_cleared');
+    if (!mounted) return;
+    showAppSnackBar(context, 'Cached data cleared');
   }
 
   @override
@@ -290,6 +318,29 @@ class _SettingsPageState extends State<SettingsPage> {
               subtitle: 'Use system lock for the app',
               value: _appLockEnabled,
               onChanged: _setAppLockEnabled,
+            ),
+          ),
+          const SizedBox(height: _sectionGap),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: _clearCacheKeepingLoginData,
+              child: Ink(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: BracuPalette.textSecondary(
+                      context,
+                    ).withValues(alpha: 0.18),
+                  ),
+                ),
+                child: const ListTile(
+                  leading: Icon(Icons.delete_outline_rounded, size: 20),
+                  title: Text('Clear Cached Data'),
+                  trailing: Icon(Icons.chevron_right_rounded, size: 20),
+                ),
+              ),
             ),
           ),
         ],

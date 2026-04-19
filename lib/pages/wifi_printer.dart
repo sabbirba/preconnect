@@ -348,7 +348,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   @override
   Widget build(BuildContext context) {
-    final displayGuestName = _guestName.trim().isNotEmpty ? _guestName.trim() : 'Guest';
+    final displayGuestName = _guestName.trim().isNotEmpty
+        ? _guestName.trim()
+        : 'Guest';
     final displayGuestId = _guestId.trim();
     final showIdentityFields =
         !_hasSignedInProfile &&

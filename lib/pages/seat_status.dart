@@ -118,6 +118,10 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     if (isRefreshingFrom('seat_status')) {
       return;
     }
+    if (isRefreshingFrom('cache_cleared')) {
+      unawaited(_handleRefresh(notify: false));
+      return;
+    }
     unawaited(_handleRefresh(notify: false));
   }
 

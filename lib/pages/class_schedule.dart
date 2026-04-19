@@ -4,6 +4,7 @@ import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/shared_widgets/course_community_sheet.dart';
 import 'package:preconnect/pages/shared_widgets/schedule_entry_card.dart';
+import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
@@ -36,8 +37,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
 
   late Future<_ScheduleData> _future;
   final ScrollController _scrollController = ScrollController();
-  List<int> _semesterSessionOptions = const <int>[];
-  int? _selectedSemesterSessionId;
+  int? _currentSessionSemesterId;
   GlobalKey? _highlightKey;
   String? _lastHighlightToken;
   bool _didScroll = false;
@@ -47,10 +47,17 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   @override
   void initState() {
     super.initState();
-    unawaited(_loadSemesterOptions());
-    _future = _loadSchedule();
+    _initializeSchedule();
     ClassSchedule.jumpSignal.addListener(_onJumpRequested);
     bindRefreshBus(_onRefreshSignal);
+  }
+
+  Future<void> _initializeSchedule() async {
+    await _loadCurrentSessionSemesterId();
+    if (!mounted) return;
+    setState(() {
+      _future = _loadSchedule();
+    });
   }
 
   @override
@@ -64,6 +71,10 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   void _onRefreshSignal() {
     if (!mounted) return;
     if (isRefreshingFrom('class_schedule')) {
+      return;
+    }
+    if (isRefreshingFrom('cache_cleared')) {
+      unawaited(_handleRefresh(notify: false));
       return;
     }
     unawaited(_handleRefresh(notify: false));
@@ -95,24 +106,25 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   }
 
   Future<_ScheduleData> _loadSchedule({bool forceRefresh = false}) async {
-    final shouldHighlightCurrentSemester = _selectedSemesterSessionId == null;
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
     final service = ScheduleService();
-    final sections = shouldHighlightCurrentSemester
-        ? await service.getStudentSections(
-            semesterSessionId: null,
-            forceRefresh: forceRefresh,
+    final currentSessionSemesterId = _currentSessionSemesterId;
+    final jsonString = forceRefresh
+        ? await service.fetchStudentScheduleForSemester(
+            semesterSessionId: currentSessionSemesterId,
+            fromGet: true,
           )
-        : service.parseStudentSections(
-            await service.getStudentScheduleForSemester(
-              semesterSessionId: _selectedSemesterSessionId,
-              fromFetch: true,
-            ),
+        : await service.getStudentScheduleForSemester(
+            semesterSessionId: currentSessionSemesterId,
           );
+    final sections = service.parseStudentSections(
+      jsonString,
+      semesterSessionId: currentSessionSemesterId,
+    );
     final isRamadan = await ramadanFuture;
     return _buildScheduleDataFromSections(
       sections,
-      shouldHighlightCurrentSemester: shouldHighlightCurrentSemester,
+      shouldHighlightCurrentSemester: true,
       isRamadan: isRamadan,
     );
   }
@@ -129,17 +141,6 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
         scrollDateTime: null,
         isRamadan: isRamadan,
       );
-    }
-
-    if (sections.isNotEmpty) {
-      final sessionIds = sections.map((s) => s.semesterSessionId).toList()
-        ..sort((a, b) => b.compareTo(a));
-      final baseSessionId = sessionIds.first;
-      if (!_semesterSessionOptions.contains(baseSessionId) && mounted) {
-        setState(() {
-          _semesterSessionOptions = [baseSessionId, ..._semesterSessionOptions];
-        });
-      }
     }
 
     final Map<String, List<Map<String, dynamic>>> grouped = {};
@@ -217,120 +218,24 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     );
   }
 
-  bool _sameIntList(List<int> a, List<int> b) {
-    if (identical(a, b)) return true;
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
-
-  Future<void> _loadSemesterOptions({
-    int? baseSessionId,
-    bool forceRefresh = false,
-  }) async {
-    final service = ScheduleService();
-    final cached = await service.getCachedValidSemesterSessionIds();
-    if (mounted &&
-        cached.isNotEmpty &&
-        !_sameIntList(_semesterSessionOptions, cached)) {
-      setState(() {
-        _semesterSessionOptions = cached;
-      });
-    }
-    if (!forceRefresh && cached.isNotEmpty) return;
-    final refreshed = await service.preloadValidSemesterSessionIds(
-      baseSessionId: baseSessionId,
-      forceRefresh: forceRefresh,
-    );
-    if (cached.isEmpty) {
-      unawaited(
-        service.preloadSemesterScheduleCache(
-          semesterSessionIds: refreshed,
-          forceRefresh: forceRefresh,
-        ),
-      );
-    }
-    if (!mounted) return;
-    if (_sameIntList(_semesterSessionOptions, refreshed)) return;
+  Future<void> _loadCurrentSessionSemesterId() async {
+    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+    if (!mounted || currentSessionSemesterId == null) return;
+    if (_currentSessionSemesterId == currentSessionSemesterId) return;
     setState(() {
-      _semesterSessionOptions = refreshed;
+      _currentSessionSemesterId = currentSessionSemesterId;
     });
-  }
-
-  String _semesterLabel(int? sessionId) {
-    if (sessionId == null) return 'Current';
-    return formatSemesterFromSessionIdInt(sessionId);
-  }
-
-  Future<void> _selectSemester(int? sessionId) async {
-    if (_selectedSemesterSessionId == sessionId) return;
-    setState(() {
-      _selectedSemesterSessionId = sessionId;
-      _didScroll = false;
-      _scrollRetry = false;
-      _visibleWeekCount = _initialVisibleWeekCount;
-      _future = _loadSchedule(forceRefresh: true);
-    });
-    await _future;
-  }
-
-  Widget _buildSemesterDropdownAction() {
-    const currentMenuValue = -1;
-    return BracuSelectDropdownChip<int>(
-      label: _semesterLabel(_selectedSemesterSessionId),
-      title: 'Select Semester',
-      subtitle: 'Switch between current and archived class schedules',
-      selectedValue: _selectedSemesterSessionId ?? currentMenuValue,
-      options: [
-        const BracuSelectOption<int>(
-          value: currentMenuValue,
-          label: 'Current',
-          icon: Icons.bolt_rounded,
-          subtitle: 'Latest class schedule',
-        ),
-        ..._semesterSessionOptions.map(
-          (sessionId) => BracuSelectOption<int>(
-            value: sessionId,
-            label: _semesterLabel(sessionId),
-            icon: Icons.history_rounded,
-            subtitle: 'Archived semester',
-          ),
-        ),
-      ],
-      onSelected: (value) {
-        if (!mounted) return;
-        final sessionId = value == currentMenuValue ? null : value;
-        unawaited(_selectSemester(sessionId));
-      },
-    );
   }
 
   Future<void> _handleRefresh({bool notify = true}) async {
     if (!await ensureOnline(context, notify: notify)) {
       return;
     }
-    final service = ScheduleService();
-    String? currentScheduleJson;
-    if (_selectedSemesterSessionId == null) {
-      currentScheduleJson = await service.fetchStudentSchedule();
-      final refreshed = await service.refreshArchiveSemesterCacheIfNeeded(
-        currentScheduleJson: currentScheduleJson,
-      );
-      if (mounted && !_sameIntList(_semesterSessionOptions, refreshed)) {
-        setState(() {
-          _semesterSessionOptions = refreshed;
-        });
-      }
-    }
     setState(() {
       _didScroll = false;
       _scrollRetry = false;
       _visibleWeekCount = _initialVisibleWeekCount;
-      _future = _selectedSemesterSessionId == null
-          ? _loadScheduleFromJson(currentScheduleJson)
-          : _loadSchedule(forceRefresh: true);
+      _future = _loadSchedule(forceRefresh: true);
     });
     await _future;
     if (notify) {
@@ -366,18 +271,6 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
           semesterLabel: semesterLabel,
         );
       },
-    );
-  }
-
-  Future<_ScheduleData> _loadScheduleFromJson(String? scheduleJson) async {
-    final shouldHighlightCurrentSemester = _selectedSemesterSessionId == null;
-    final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: true);
-    final sections = ScheduleService().parseStudentSections(scheduleJson);
-    final isRamadan = await ramadanFuture;
-    return _buildScheduleDataFromSections(
-      sections,
-      shouldHighlightCurrentSemester: shouldHighlightCurrentSemester,
-      isRamadan: isRamadan,
     );
   }
 
@@ -458,7 +351,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       title: 'Schedules',
       subtitle: 'Class Timing',
       icon: Icons.schedule_outlined,
-      actions: [_buildSemesterDropdownAction()],
+      actions: const [],
       body: FutureBuilder<_ScheduleData>(
         future: _future,
         builder: (context, snapshot) {
@@ -482,8 +375,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
           final grouped = snapshot.data?.grouped ?? {};
           final scrollSchedule = snapshot.data?.scrollSchedule;
           final scrollDateTime = snapshot.data?.scrollDateTime;
-          final shouldHighlightCurrentSemester =
-              _selectedSemesterSessionId == null;
+          const shouldHighlightCurrentSemester = true;
           final isRamadan = snapshot.data?.isRamadan ?? false;
           if (grouped.isEmpty) {
             return buildRefreshEmptyState(
@@ -568,7 +460,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
                         highlighted: isScrollTarget,
                         onTap: () {
                           final semesterLabel = semesterSessionId == null
-                              ? _semesterLabel(_selectedSemesterSessionId)
+                              ? 'Current'
                               : formatSemesterFromSessionIdInt(
                                   semesterSessionId,
                                 );

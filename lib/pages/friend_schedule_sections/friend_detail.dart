@@ -6,6 +6,7 @@ import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/friend_schedule_sections/compare_schedules.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
+import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/time_utils.dart';
@@ -52,7 +53,10 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
   }
 
   Future<List<Course>?> _loadMyCourses() async {
-    final jsonString = await ScheduleService().getStudentSchedule();
+    final semesterSessionId = await resolveCurrentSessionSemesterId();
+    final jsonString = await ScheduleService().getStudentScheduleForSemester(
+      semesterSessionId: semesterSessionId,
+    );
     if (jsonString == null || jsonString.isEmpty) return null;
     final parsed = jsonDecode(jsonString);
     final coursesData = parsed is Map ? parsed['courses'] : parsed;

@@ -69,8 +69,9 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
     }
     if (reason == 'share_schedule' ||
         reason == 'scan_schedule' ||
-        reason == 'auth') {
-      unawaited(_loadSchedules());
+        reason == 'auth' ||
+        reason == 'cache_cleared') {
+      unawaited(_loadSchedules(forceRefresh: reason == 'cache_cleared'));
     }
   }
 
@@ -82,12 +83,17 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
     });
   }
 
-  Future<void> _loadSchedules() async {
+  Future<void> _loadSchedules({bool forceRefresh = false}) async {
     if (_isLoadingSchedules) return;
     _isLoadingSchedules = true;
     try {
       final ramadanFuture = RamadanTiming.isRamadan();
-      final snapshot = await _store.loadSnapshot();
+      final snapshot = forceRefresh
+          ? const FriendScheduleStoreSnapshot(
+              encodedSchedules: [],
+              metadata: {},
+            )
+          : await _store.loadSnapshot();
       final encodedList = snapshot.encodedSchedules;
       _metadata = snapshot.metadata;
 

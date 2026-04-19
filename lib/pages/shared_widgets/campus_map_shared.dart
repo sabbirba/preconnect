@@ -765,7 +765,11 @@ class _CampusMapLoadingState extends StatelessWidget {
                 children: const [
                   BracuSkeletonBox(width: 140, height: 15, radius: 7),
                   SizedBox(height: 8),
-                  BracuSkeletonBox(width: double.infinity, height: 12, radius: 6),
+                  BracuSkeletonBox(
+                    width: double.infinity,
+                    height: 12,
+                    radius: 6,
+                  ),
                   SizedBox(height: 8),
                   BracuSkeletonBox(width: 92, height: 12, radius: 6),
                 ],

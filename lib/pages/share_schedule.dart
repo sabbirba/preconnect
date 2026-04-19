@@ -10,6 +10,7 @@ import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:archive/archive.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:share_plus/share_plus.dart';
@@ -40,7 +41,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
   void initState() {
     super.initState();
     unawaited(ProfileService().fetchProfile());
-    unawaited(ScheduleService().fetchStudentSchedule());
+    unawaited(_primeCurrentSemesterSchedule());
     _loadCachedAndRefresh();
     bindRefreshBus(_onRefreshSignal);
   }
@@ -60,6 +61,13 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
     if (reason == 'auth' || reason == 'friend_schedule') {
       unawaited(_refreshIfOnline());
     }
+  }
+
+  Future<void> _primeCurrentSemesterSchedule() async {
+    final semesterSessionId = await resolveCurrentSessionSemesterId();
+    await ScheduleService().fetchStudentScheduleForSemester(
+      semesterSessionId: semesterSessionId,
+    );
   }
 
   Future<void> _refreshIfOnline({bool notify = false}) async {
@@ -123,10 +131,17 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       final studentId = profile?['studentId'] ?? '';
       final photoFilePath = profile?['photoFilePath'] ?? '';
 
-      final cachedSchedule = await ScheduleService().getStudentSchedule();
+      final semesterSessionId = await resolveCurrentSessionSemesterId();
+      final cachedSchedule = await ScheduleService()
+          .getStudentScheduleForSemester(semesterSessionId: semesterSessionId);
       final jsonString = forceRefresh
-          ? await ScheduleService().fetchStudentSchedule()
-          : (cachedSchedule ?? await ScheduleService().fetchStudentSchedule());
+          ? await ScheduleService().fetchStudentScheduleForSemester(
+              semesterSessionId: semesterSessionId,
+            )
+          : (cachedSchedule ??
+                await ScheduleService().fetchStudentScheduleForSemester(
+                  semesterSessionId: semesterSessionId,
+                ));
       if (jsonString == null || jsonString.trim().isEmpty) {
         if (_base64Data == null) {
           _safeSetState(() {
@@ -149,7 +164,10 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
         return;
       }
 
-      final sections = ScheduleService().parseStudentSections(jsonString);
+      final sections = ScheduleService().parseStudentSections(
+        jsonString,
+        semesterSessionId: semesterSessionId,
+      );
 
       final courses = sections.map((section) {
         final schedules = section.sectionSchedule.classSchedules.map((c) {
@@ -437,7 +455,11 @@ class _ShareScheduleLoadingState extends StatelessWidget {
                 children: const [
                   BracuSkeletonBox(width: 140, height: 14, radius: 7),
                   SizedBox(height: 10),
-                  BracuSkeletonBox(width: double.infinity, height: 220, radius: 14),
+                  BracuSkeletonBox(
+                    width: double.infinity,
+                    height: 220,
+                    radius: 14,
+                  ),
                 ],
               ),
             ),

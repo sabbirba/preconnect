@@ -15,6 +15,7 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/schedule_planner_sections/schedule_planner_editor_sheet.dart'
     show showSchedulePlannerEditorSheet;
 import 'package:preconnect/pages/schedule_planner_sections/schedule_planner_shared.dart';
+import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
 class SchedulePlannerPage extends StatefulWidget {
@@ -70,6 +71,14 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
   void _onRefreshSignal() {
     if (!mounted) return;
     if (isRefreshingFrom('schedule')) return;
+    if (isRefreshingFrom('cache_cleared')) {
+      if (mounted) {
+        setState(() {
+          _future = SchedulePlannerService().getItems(forceRefresh: true);
+        });
+      }
+      return;
+    }
     unawaited(_refresh(forceRefresh: false, notify: false));
   }
 
@@ -98,8 +107,19 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     bool forceRefresh = false,
   }) async {
     try {
-      final sections = await ScheduleService().getStudentSections(
-        forceRefresh: forceRefresh,
+      final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+      final scheduleService = ScheduleService();
+      final jsonString = forceRefresh
+          ? await scheduleService.fetchStudentScheduleForSemester(
+              semesterSessionId: currentSessionSemesterId,
+              fromGet: true,
+            )
+          : await scheduleService.getStudentScheduleForSemester(
+              semesterSessionId: currentSessionSemesterId,
+            );
+      final sections = scheduleService.parseStudentSections(
+        jsonString,
+        semesterSessionId: currentSessionSemesterId,
       );
       final courseOptions = <SchedulePlannerCourseOption>[];
       final seen = <String>{};

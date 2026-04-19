@@ -5,6 +5,7 @@ import 'package:preconnect/api/exam_map_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/shared_widgets/course_community_sheet.dart';
+import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/exam_sorting.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
@@ -26,8 +27,7 @@ class ExamSchedule extends StatefulWidget {
 class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   late Future<_ExamScheduleData> _future;
   final ScrollController _scrollController = ScrollController();
-  List<int> _semesterSessionOptions = const <int>[];
-  int? _selectedSemesterSessionId;
+  int? _currentSessionSemesterId;
   GlobalKey? _highlightKey;
   String? _lastHighlightKey;
   bool _didScroll = false;
@@ -36,10 +36,17 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   @override
   void initState() {
     super.initState();
-    unawaited(_loadSemesterOptions());
-    _future = _fetchExamData();
+    _initializeExamSchedule();
     ExamSchedule.jumpSignal.addListener(_onJumpRequested);
     bindRefreshBus(_onRefreshSignal);
+  }
+
+  Future<void> _initializeExamSchedule() async {
+    await _loadCurrentSessionSemesterId();
+    if (!mounted) return;
+    setState(() {
+      _future = _fetchExamData();
+    });
   }
 
   @override
@@ -55,6 +62,10 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
     if (isRefreshingFrom('exam_schedule')) {
       return;
     }
+    if (isRefreshingFrom('cache_cleared')) {
+      unawaited(_handleRefresh(notify: false));
+      return;
+    }
     unawaited(_handleRefresh(notify: false));
   }
 
@@ -68,30 +79,22 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
 
   Future<_ExamScheduleData> _fetchExamData({bool forceRefresh = false}) async {
     final service = ScheduleService();
-    List<Section> sections;
-    if (_selectedSemesterSessionId == null) {
-      sections = await service.getStudentSections(forceRefresh: forceRefresh);
-      return _buildExamDataFromSections(
-        sections,
-        forceRefresh: forceRefresh,
-        forcedSemesterSessionId: null,
-      );
-    }
-    if (forceRefresh) {
-      await service.fetchStudentScheduleForSemester(
-        semesterSessionId: _selectedSemesterSessionId,
-      );
-    }
-    sections = service.parseStudentSections(
-      await service.getStudentScheduleForSemester(
-        semesterSessionId: _selectedSemesterSessionId,
-        fromFetch: true,
-      ),
-    );
+    final currentSessionSemesterId = _currentSessionSemesterId;
+    final jsonString = forceRefresh
+        ? await service.fetchStudentScheduleForSemester(
+            semesterSessionId: currentSessionSemesterId,
+            fromGet: true,
+          )
+        : await service.getStudentScheduleForSemester(
+            semesterSessionId: currentSessionSemesterId,
+          );
     return _buildExamDataFromSections(
-      sections,
+      service.parseStudentSections(
+        jsonString,
+        semesterSessionId: currentSessionSemesterId,
+      ),
       forceRefresh: forceRefresh,
-      forcedSemesterSessionId: _selectedSemesterSessionId,
+      forcedSemesterSessionId: currentSessionSemesterId,
     );
   }
 
@@ -107,7 +110,8 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
       );
     }
 
-    final overrides = await ExamScheduleService().getOverridesForSections(
+    final examService = ExamScheduleService();
+    var overrides = await examService.getOverridesForSections(
       sections,
       forceRefresh: forceRefresh,
       forcedSemesterSessionId: forcedSemesterSessionId,
@@ -115,121 +119,23 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
     return _ExamScheduleData(sections: sections, overrides: overrides);
   }
 
-  bool _sameIntList(List<int> a, List<int> b) {
-    if (identical(a, b)) return true;
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
-
-  Future<void> _loadSemesterOptions({
-    int? baseSessionId,
-    bool forceRefresh = false,
-  }) async {
-    final service = ScheduleService();
-    final cached = await service.getCachedValidSemesterSessionIds();
-    if (mounted &&
-        cached.isNotEmpty &&
-        !_sameIntList(_semesterSessionOptions, cached)) {
-      setState(() {
-        _semesterSessionOptions = cached;
-      });
-    }
-    if (!forceRefresh && cached.isNotEmpty) return;
-    final refreshed = await service.preloadValidSemesterSessionIds(
-      baseSessionId: baseSessionId,
-      forceRefresh: forceRefresh,
-    );
-    if (cached.isEmpty) {
-      unawaited(
-        service.preloadSemesterScheduleCache(
-          semesterSessionIds: refreshed,
-          forceRefresh: forceRefresh,
-        ),
-      );
-    }
-    if (!mounted || _sameIntList(_semesterSessionOptions, refreshed)) return;
+  Future<void> _loadCurrentSessionSemesterId() async {
+    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+    if (!mounted || currentSessionSemesterId == null) return;
+    if (_currentSessionSemesterId == currentSessionSemesterId) return;
     setState(() {
-      _semesterSessionOptions = refreshed;
+      _currentSessionSemesterId = currentSessionSemesterId;
     });
-  }
-
-  String _semesterLabel(int? sessionId) {
-    if (sessionId == null) return 'Current';
-    return formatSemesterFromSessionIdInt(sessionId);
-  }
-
-  Future<void> _selectSemester(int? sessionId) async {
-    if (_selectedSemesterSessionId == sessionId) return;
-    setState(() {
-      _selectedSemesterSessionId = sessionId;
-      _didScroll = false;
-      _scrollRetry = false;
-      _future = _fetchExamData(forceRefresh: true);
-    });
-    await _future;
-  }
-
-  Widget _buildSemesterDropdownAction() {
-    const currentMenuValue = -1;
-    return BracuSelectDropdownChip<int>(
-      label: _semesterLabel(_selectedSemesterSessionId),
-      title: 'Select Semester',
-      subtitle: 'Switch between current and archived exam schedules',
-      selectedValue: _selectedSemesterSessionId ?? currentMenuValue,
-      options: [
-        const BracuSelectOption<int>(
-          value: currentMenuValue,
-          label: 'Current',
-          icon: Icons.bolt_rounded,
-          subtitle: 'Latest exam schedule',
-        ),
-        ..._semesterSessionOptions.map(
-          (sessionId) => BracuSelectOption<int>(
-            value: sessionId,
-            label: _semesterLabel(sessionId),
-            icon: Icons.history_rounded,
-            subtitle: 'Archived semester',
-          ),
-        ),
-      ],
-      onSelected: (value) {
-        if (!mounted) return;
-        final sessionId = value == currentMenuValue ? null : value;
-        unawaited(_selectSemester(sessionId));
-      },
-    );
   }
 
   Future<void> _handleRefresh({bool notify = true}) async {
     if (!await ensureOnline(context, notify: notify)) {
       return;
     }
-    final service = ScheduleService();
-    String? currentScheduleJson;
-    if (_selectedSemesterSessionId == null) {
-      currentScheduleJson = await service.fetchStudentSchedule();
-      final refreshed = await service.refreshArchiveSemesterCacheIfNeeded(
-        currentScheduleJson: currentScheduleJson,
-      );
-      if (mounted && !_sameIntList(_semesterSessionOptions, refreshed)) {
-        setState(() {
-          _semesterSessionOptions = refreshed;
-        });
-      }
-    }
     setState(() {
       _didScroll = false;
       _scrollRetry = false;
-      _future = _selectedSemesterSessionId == null
-          ? _buildExamDataFromSections(
-              service.parseStudentSections(currentScheduleJson),
-              forceRefresh: true,
-              forcedSemesterSessionId: null,
-            )
-          : _fetchExamData(forceRefresh: true);
+      _future = _fetchExamData(forceRefresh: true);
     });
     await _future;
     if (notify) {
@@ -266,7 +172,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   }) async {
     final semesterLabel = section.semesterSessionId > 0
         ? formatSemesterFromSessionIdInt(section.semesterSessionId)
-        : _semesterLabel(_selectedSemesterSessionId);
+        : 'Current';
     await showBracuBottomSheet<void>(
       context,
       title: section.courseCode,
@@ -294,7 +200,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
       title: 'Exams',
       subtitle: 'Mid & Final',
       icon: Icons.event_note_outlined,
-      actions: [_buildSemesterDropdownAction()],
+      actions: const [],
       body: FutureBuilder<_ExamScheduleData>(
         future: _future,
         builder: (context, snapshot) {
@@ -394,8 +300,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           }
 
           final now = DateTime.now();
-          final shouldHighlightCurrentSemester =
-              _selectedSemesterSessionId == null;
+          const shouldHighlightCurrentSemester = true;
           DateTime? nextExamTime;
           String? nextExamKey;
           DateTime? ongoingExamEnd;
@@ -448,9 +353,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
             }
           }
 
-          final highlightedKey = shouldHighlightCurrentSemester
-              ? ongoingExamKey ?? nextExamKey
-              : null;
+          final highlightedKey = ongoingExamKey ?? nextExamKey;
 
           final children = <Widget>[];
           _highlightKey = null;
