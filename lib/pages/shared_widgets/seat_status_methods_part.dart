@@ -240,7 +240,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
               if (showLoadingState) {
                 return const Padding(
                   padding: EdgeInsets.only(top: 28),
-                  child: BracuLoading(itemCount: 4),
+                  child: _SeatStatusLoadingState(),
                 );
               }
               if (!hasCards) {
@@ -796,5 +796,35 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
 
   String _facultyMetaForInitial(String facultyInitial) {
     return '';
+  }
+}
+
+class _SeatStatusLoadingState extends StatelessWidget {
+  const _SeatStatusLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuShimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var index = 0; index < 4; index++) ...[
+            if (index != 0) const SizedBox(height: 12),
+            BracuCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  BracuSkeletonBox(width: 128, height: 15, radius: 7),
+                  SizedBox(height: 8),
+                  BracuSkeletonBox(width: 176, height: 12, radius: 6),
+                  SizedBox(height: 8),
+                  BracuSkeletonBox(width: double.infinity, height: 10, radius: 5),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }

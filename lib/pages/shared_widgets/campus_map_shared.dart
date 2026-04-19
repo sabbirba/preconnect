@@ -274,7 +274,7 @@ Future<void> showCampusMapBottomSheet(
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Padding(
               padding: EdgeInsets.all(18),
-              child: BracuLoading(itemCount: 3),
+              child: _CampusMapLoadingState(),
             );
           }
           final values = snapshot.data;
@@ -746,4 +746,34 @@ Future<void> showCampusMapBottomSheet(
       );
     },
   );
+}
+
+class _CampusMapLoadingState extends StatelessWidget {
+  const _CampusMapLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuShimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var index = 0; index < 3; index++) ...[
+            if (index != 0) const SizedBox(height: 12),
+            BracuCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  BracuSkeletonBox(width: 140, height: 15, radius: 7),
+                  SizedBox(height: 8),
+                  BracuSkeletonBox(width: double.infinity, height: 12, radius: 6),
+                  SizedBox(height: 8),
+                  BracuSkeletonBox(width: 92, height: 12, radius: 6),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

@@ -637,13 +637,17 @@ class _ClassScheduleLoadingHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        BracuLoading(itemCount: 1, compact: true),
-        SizedBox(height: 12),
-        BracuLoading(itemCount: 2, compact: true),
-      ],
+    return BracuShimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          BracuSkeletonBox(width: 132, height: 14, radius: 7),
+          SizedBox(height: 10),
+          BracuSkeletonBox(width: 220, height: 12, radius: 6),
+          SizedBox(height: 12),
+          BracuSkeletonBox(width: 164, height: 12, radius: 6),
+        ],
+      ),
     );
   }
 }

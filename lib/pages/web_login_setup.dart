@@ -303,7 +303,7 @@ class _WebLoginSetupPageState extends State<WebLoginSetupPage>
                         },
                       )
                     : (_cameraGranted == null
-                          ? const Center(child: BracuLoading(compact: true))
+                          ? const Center(child: _WebLoginLoadingState())
                           : Center(
                               child: TextButton(
                                 onPressed: _ensurePermission,
@@ -524,6 +524,26 @@ class _WebLoginSetupPageState extends State<WebLoginSetupPage>
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WebLoginLoadingState extends StatelessWidget {
+  const _WebLoginLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuShimmer(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          BracuSkeletonBox(width: 180, height: 16, radius: 7),
+          SizedBox(height: 10),
+          BracuSkeletonBox(width: 220, height: 12, radius: 6),
+          SizedBox(height: 14),
+          BracuSkeletonBox(width: 260, height: 180, radius: 18),
         ],
       ),
     );

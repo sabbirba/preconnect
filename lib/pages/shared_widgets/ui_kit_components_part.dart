@@ -1740,7 +1740,7 @@ class BracuShimmer extends StatelessWidget {
       highlightColor: isDark
           ? const Color(0xFF343434)
           : const Color(0xFFF8FBFF),
-      period: const Duration(milliseconds: 400),
+      period: const Duration(milliseconds: 600),
       child: child,
     );
   }

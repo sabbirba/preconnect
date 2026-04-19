@@ -1347,7 +1347,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
         if (_reviewsLoading)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 14),
-            child: BracuLoading(itemCount: 2, compact: true),
+            child: _CourseCommunityLoadingState(cardCount: 2),
           )
         else if (_reviewsError != null)
           BracuCard(
@@ -1426,7 +1426,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
         if (_materialsLoading)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 14),
-            child: BracuLoading(itemCount: 3, compact: true),
+            child: _CourseCommunityLoadingState(cardCount: 3),
           )
         else if (_materialsError != null)
           BracuCard(
@@ -1694,6 +1694,38 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
       return '${(bytes / 1024).toStringAsFixed(1)} KB';
     }
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+}
+
+class _CourseCommunityLoadingState extends StatelessWidget {
+  const _CourseCommunityLoadingState({required this.cardCount});
+
+  final int cardCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuShimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var index = 0; index < cardCount; index++) ...[
+            if (index != 0) const SizedBox(height: 10),
+            BracuCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  BracuSkeletonBox(width: 180, height: 14, radius: 7),
+                  SizedBox(height: 8),
+                  BracuSkeletonBox(width: double.infinity, height: 12, radius: 6),
+                  SizedBox(height: 8),
+                  BracuSkeletonBox(width: 96, height: 12, radius: 6),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 

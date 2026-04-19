@@ -202,7 +202,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                               )
                             : (_cameraGranted == null
                                   ? const Center(
-                                      child: BracuLoading(compact: true),
+                                      child: _ScanScheduleLoadingState(),
                                     )
                                   : Center(
                                       child: TextButton(
@@ -373,6 +373,26 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
             const SizedBox(height: 12),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ScanScheduleLoadingState extends StatelessWidget {
+  const _ScanScheduleLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuShimmer(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          BracuSkeletonBox(width: 176, height: 16, radius: 7),
+          SizedBox(height: 10),
+          BracuSkeletonBox(width: 220, height: 12, radius: 6),
+          SizedBox(height: 14),
+          BracuSkeletonBox(width: 260, height: 180, radius: 18),
+        ],
       ),
     );
   }

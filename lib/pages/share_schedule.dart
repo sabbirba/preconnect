@@ -285,7 +285,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
         onRefresh: _handleRefresh,
         children: [
           if (isLoading)
-            const BracuLoading(itemCount: 4)
+            const _ShareScheduleLoadingState()
           else if (errorMessage != null)
             BracuEmptyState(message: "Error: $errorMessage")
           else ...[
@@ -414,6 +414,34 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
             ),
           ],
           const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShareScheduleLoadingState extends StatelessWidget {
+  const _ShareScheduleLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuShimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var index = 0; index < 4; index++) ...[
+            if (index != 0) const SizedBox(height: 12),
+            BracuCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  BracuSkeletonBox(width: 140, height: 14, radius: 7),
+                  SizedBox(height: 10),
+                  BracuSkeletonBox(width: double.infinity, height: 220, radius: 14),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
