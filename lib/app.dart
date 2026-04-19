@@ -7,6 +7,7 @@ import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/api_client.dart';
+import 'package:preconnect/api/schedule_planner_service.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/login.dart';
@@ -48,7 +49,12 @@ class MyApp extends StatefulWidget {
 
     if (!hasToken) {
       await prefs.setBool('cached_has_auth_session', false);
-      final keepKeys = <String>{'access_token', 'refresh_token', 'themeMode'};
+      final keepKeys = <String>{
+        'access_token',
+        'refresh_token',
+        'themeMode',
+        SchedulePlannerService.cacheKey,
+      };
       await AppPreferencesStore().clearAllExcept(keepKeys);
     } else {}
 

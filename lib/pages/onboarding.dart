@@ -144,7 +144,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             icon: Icons.info_outline_rounded,
                             title: 'About the App',
                             body:
-                                'Track classes, exams, reminders, and shared schedules in one place with your BRACU SSO account.',
+                                'Track classes, exams, and reminders in one place with your BRACU SSO account.',
                             color: BracuPalette.primary,
                           ),
                           const SizedBox(height: 10),

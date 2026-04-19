@@ -16,7 +16,7 @@ class ApiTestPage extends StatefulWidget {
 
 class _ApiTestPageState extends State<ApiTestPage> {
   final TextEditingController _urlController = TextEditingController(
-    text: '/adp/v1/staffs/3334160',
+    text: '/adp/v1/staffs/7487',
   );
 
   final List<String> _methods = const <String>[
@@ -140,10 +140,10 @@ class _ApiTestPageState extends State<ApiTestPage> {
   Widget build(BuildContext context) {
     return BracuPageScaffold(
       title: 'Devs API Test',
-      subtitle: '',
+      subtitle: 'BRACU SSO Session',
       icon: Icons.science_outlined,
       body: BracuRefreshList(
-        onRefresh: _sendRequest,
+        onRefresh: _sendRequest, 
         children: [
           BracuCard(
             child: Column(
@@ -172,7 +172,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
                 TextField(
                   controller: _urlController,
                   decoration: const InputDecoration(
-                    hintText: '/adp/v1/staffs/3334160',
+                    hintText: '/adp/v1/staffs/7487',
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),

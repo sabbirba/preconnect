@@ -109,14 +109,10 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     try {
       final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
       final scheduleService = ScheduleService();
-      final jsonString = forceRefresh
-          ? await scheduleService.fetchStudentScheduleForSemester(
-              semesterSessionId: currentSessionSemesterId,
-              fromGet: true,
-            )
-          : await scheduleService.getStudentScheduleForSemester(
-              semesterSessionId: currentSessionSemesterId,
-            );
+      // Use only existing cached schedule data (no BRACU fetching)
+      final jsonString = await scheduleService.getStudentScheduleForSemester(
+        semesterSessionId: currentSessionSemesterId,
+      );
       final sections = scheduleService.parseStudentSections(
         jsonString,
         semesterSessionId: currentSessionSemesterId,
