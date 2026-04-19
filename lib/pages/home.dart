@@ -1014,11 +1014,11 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
                     ),
                     QuickAccessCard(
                       width: layout.itemWidth,
-                      icon: Icons.school_outlined,
-                      title: 'Degree',
-                      subtitle: 'Progress',
-                      color: const Color(0xFF2C9DFF),
-                      onTap: () => widget.onNavigate(HomeTab.degreeProgress),
+                      icon: Icons.local_printshop_outlined,
+                      title: 'Printer',
+                      subtitle: 'Campus',
+                      color: const Color(0xFF22B573),
+                      onTap: () => widget.onNavigate(HomeTab.campusPrinter),
                     ),
                     QuickAccessCard(
                       width: layout.itemWidth,

@@ -609,11 +609,11 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
           color: Color(0xFF5B8DEF),
         ),
         _DashboardQuickAccessItem(
-          tab: HomeTab.campusPrinter,
-          icon: Icons.local_printshop_outlined,
-          title: 'Printer',
-          subtitle: 'Campus',
-          color: Color(0xFF22B573),
+          tab: HomeTab.degreeProgress,
+          icon: Icons.trending_up_rounded,
+          title: 'Degree',
+          subtitle: 'Progress',
+          color: Color(0xFF2C9DFF),
         ),
         _DashboardQuickAccessItem(
           tab: HomeTab.moreQuickAccess,
