@@ -36,17 +36,14 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   @override
   void initState() {
     super.initState();
-    _initializeExamSchedule();
+    _future = _initializeExamSchedule();
     ExamSchedule.jumpSignal.addListener(_onJumpRequested);
     bindRefreshBus(_onRefreshSignal);
   }
 
-  Future<void> _initializeExamSchedule() async {
+  Future<_ExamScheduleData> _initializeExamSchedule() async {
     await _loadCurrentSessionSemesterId();
-    if (!mounted) return;
-    setState(() {
-      _future = _fetchExamData();
-    });
+    return _fetchExamData();
   }
 
   @override

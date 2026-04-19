@@ -363,6 +363,187 @@ Future<bool> showBracuConfirmationDialog(
   return confirmed == true;
 }
 
+Future<bool> showBracuConfirmationWithActionDialog(
+  BuildContext context, {
+  required IconData icon,
+  required String title,
+  required String message,
+  String cancelLabel = 'Cancel',
+  required String confirmLabel,
+  Color confirmColor = BracuPalette.primary,
+  required Future<void> Function() onConfirm,
+}) async {
+  final dialogKey = GlobalKey<_BracuConfirmationActionDialogState>();
+  
+  final result = await showDialog<bool>(
+    context: context,
+    barrierColor: Colors.black.withValues(alpha: 0.25),
+    barrierDismissible: false,
+    builder: (dialogContext) => _BracuConfirmationActionDialog(
+      key: dialogKey,
+      icon: icon,
+      title: title,
+      message: message,
+      cancelLabel: cancelLabel,
+      confirmLabel: confirmLabel,
+      confirmColor: confirmColor,
+      onConfirm: onConfirm,
+    ),
+  );
+  return result == true;
+}
+
+class _BracuConfirmationActionDialog extends StatefulWidget {
+  const _BracuConfirmationActionDialog({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.cancelLabel,
+    required this.confirmLabel,
+    required this.confirmColor,
+    required this.onConfirm,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final String cancelLabel;
+  final String confirmLabel;
+  final Color confirmColor;
+  final Future<void> Function() onConfirm;
+
+  @override
+  State<_BracuConfirmationActionDialog> createState() =>
+      _BracuConfirmationActionDialogState();
+}
+
+class _BracuConfirmationActionDialogState
+    extends State<_BracuConfirmationActionDialog> {
+  bool _isLoading = false;
+
+  Future<void> _handleConfirm() async {
+    if (_isLoading) return;
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      await widget.onConfirm();
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: BracuPalette.card(context),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(widget.icon, color: widget.confirmColor),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: TextStyle(
+                        color: BracuPalette.textPrimary(context),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                widget.message,
+                style: TextStyle(
+                  color: BracuPalette.textSecondary(context),
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _isLoading
+                          ? null
+                          : () => Navigator.of(context).pop(false),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: widget.confirmColor,
+                        side: BorderSide(
+                          color: widget.confirmColor.withValues(alpha: 0.6),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(widget.cancelLabel),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _handleConfirm,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: widget.confirmColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        disabledBackgroundColor: widget.confirmColor
+                            .withValues(alpha: 0.5),
+                      ),
+                      child: _isLoading
+                          ? SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white.withValues(alpha: 0.8),
+                                ),
+                              ),
+                            )
+                          : Text(widget.confirmLabel),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 Future<T?> showBracuSelectSheet<T>(
   BuildContext context, {
   required String title,

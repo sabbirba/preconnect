@@ -234,7 +234,7 @@ class ProfileService {
               });
             }
           } catch (e) {
-            // Ignore miscellaneous data fetch errors
+            // ignore: empty_catches
           }
         }
       },

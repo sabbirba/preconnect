@@ -28,10 +28,12 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   DateTime? _lastAutoAssistantOpenAt;
   DateTime? _lastAutoSessionExtendAt;
   Timer? _captiveAutoTimer;
+  Timer? _todayScheduleAutoRefreshTimer;
   Future<CampusMapData?>? _campusMapFuture;
   Future<String?>? _transportScheduleUrlFuture;
 
   static const Duration _captiveAutoPollInterval = Duration(seconds: 30);
+  static const Duration _todayScheduleAutoRefreshInterval = Duration(minutes: 1);
   static const Duration _autoAssistantCooldown = Duration(seconds: 45);
   static const Duration _autoSessionExtendCooldown = Duration(seconds: 60);
   static const int _autoSessionExtendThresholdSeconds = 21600;
@@ -58,6 +60,13 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       });
     }
     unawaited(_refreshCaptiveStatus());
+    _todayScheduleAutoRefreshTimer = Timer.periodic(
+      _todayScheduleAutoRefreshInterval,
+      (_) {
+        if (!mounted) return;
+        unawaited(_handleRefresh(notify: false));
+      },
+    );
     bindRefreshBus(_onRefreshSignal);
   }
 
@@ -66,6 +75,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     unbindRefreshBus(_onRefreshSignal);
     _networkStatusSubscription?.cancel();
     _captiveAutoTimer?.cancel();
+    _todayScheduleAutoRefreshTimer?.cancel();
     super.dispose();
   }
 

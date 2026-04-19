@@ -228,10 +228,15 @@ class _WebLoginSetupPageState extends State<WebLoginSetupPage>
       title: 'Login to Web',
       subtitle: 'Scan browser QR',
       icon: Icons.qr_code_scanner_rounded,
-      body: BracuRefreshList(
-        onRefresh: _refreshAll,
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-        children: [
+      body: _cameraGranted == null
+          ? buildRefreshLoadingState(
+              onRefresh: _refreshAll,
+              topSpacing: 180,
+            )
+          : BracuRefreshList(
+              onRefresh: _refreshAll,
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              children: [
           const BracuSectionTitle(title: 'Scan Browser QR'),
           const SizedBox(height: 10),
           BracuCard(
@@ -525,7 +530,7 @@ class _WebLoginSetupPageState extends State<WebLoginSetupPage>
             ),
           ),
         ],
-      ),
+            ),
     );
   }
 }

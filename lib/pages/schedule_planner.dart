@@ -344,18 +344,21 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
   Future<void> _deleteItem(SchedulePlannerItem item) async {
     final currentContext = context;
     final kindLabel = schedulePlannerFormatKind(item.kind).toLowerCase();
-    final shouldDelete = await showBracuConfirmationDialog(
+    
+    final deleted = await showBracuConfirmationWithActionDialog(
       currentContext,
       icon: Icons.delete_outline_rounded,
       title: 'Delete $kindLabel?',
       message: 'This will remove this $kindLabel from your schedule.',
       confirmLabel: 'Delete',
+      onConfirm: () async {
+        await SchedulePlannerService().deleteItem(item.itemId);
+      },
     );
-    if (!shouldDelete || !mounted) return;
-
+    
+    if (!deleted || !mounted) return;
+    
     try {
-      await SchedulePlannerService().deleteItem(item.itemId);
-      if (!mounted) return;
       showAppSnackBar(
         currentContext,
         '${schedulePlannerFormatKind(item.kind)} deleted',
@@ -366,7 +369,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
       if (!mounted) return;
       showAppSnackBar(
         currentContext,
-        'Unable to delete ${schedulePlannerFormatKind(item.kind).toLowerCase()}',
+        'Unable to refresh after delete',
       );
     }
   }

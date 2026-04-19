@@ -15,7 +15,6 @@ import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/web_kv_store_stub.dart'
     if (dart.library.html) 'package:preconnect/tools/web_kv_store_web.dart';
 
-/// Exception thrown when token persistence verification fails
 class TokenPersistenceException implements Exception {
   TokenPersistenceException(this.message);
   final String message;
@@ -62,7 +61,6 @@ class TokenStorage {
   bool get _useSecure =>
       !kIsWeb && defaultTargetPlatform != TargetPlatform.macOS;
 
-  /// Run diagnostics on AppStorage to ensure it's working
   Future<void> _runDiagnostics() async {
     if (_diagnosticsRun) return;
     _diagnosticsRun = true;

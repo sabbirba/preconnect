@@ -94,10 +94,15 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
         title: 'Scan Schedule',
         subtitle: 'Import From QR',
         icon: Icons.qr_code_scanner,
-        body: BracuRefreshList(
-          onRefresh: _handleRefresh,
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-          children: [
+        body: _cameraGranted == null
+            ? buildRefreshLoadingState(
+                onRefresh: _handleRefresh,
+                topSpacing: 180,
+              )
+            : BracuRefreshList(
+                onRefresh: _handleRefresh,
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                children: [
             if (scannedValue == null)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

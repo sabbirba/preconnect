@@ -275,6 +275,17 @@ class _StudentProfileState extends State<StudentProfile>
   @override
   Widget build(BuildContext context) {
     final isLoading = _profile == null;
+    if (isLoading) {
+      return BracuPageScaffold(
+        title: 'Student Profile',
+        subtitle: 'Academic & Finance',
+        icon: Icons.person_outline,
+        body: buildRefreshLoadingState(
+          onRefresh: _refreshProfile,
+          topSpacing: 180,
+        ),
+      );
+    }
     return BracuPageScaffold(
       title: 'Student Profile',
       subtitle: 'Academic & Finance',
@@ -282,25 +293,21 @@ class _StudentProfileState extends State<StudentProfile>
       body: BracuRefreshList(
         onRefresh: _refreshProfile,
         children: [
-          const SizedBox(height: 6),
-          if (isLoading) ...[
-            const _StudentProfileLoadingSection(),
-          ] else ...[
-            CardSection(profile: _profile, photoUrl: _photoUrl),
-            const SizedBox(height: 18),
-            AcademicSummaryCard(
-              profile: _profile ?? const {},
-              advising: _advising,
-              progressSummary: _progressSummary,
-            ),
-            const SizedBox(height: 18),
-            const BracuSectionTitle(title: 'Documents'),
-            const SizedBox(height: 10),
-            const GradeSheetCard(),
-            const SizedBox(height: 18),
-            const BracuSectionTitle(title: 'Personal Info'),
-            const SizedBox(height: 10),
-            PersonalInfoCard(profile: _profile ?? const {}),
+          CardSection(profile: _profile, photoUrl: _photoUrl),
+          const SizedBox(height: 18),
+          AcademicSummaryCard(
+            profile: _profile ?? const {},
+            advising: _advising,
+            progressSummary: _progressSummary,
+          ),
+          const SizedBox(height: 18),
+          const BracuSectionTitle(title: 'Documents'),
+          const SizedBox(height: 10),
+          const GradeSheetCard(),
+          const SizedBox(height: 18),
+          const BracuSectionTitle(title: 'Personal Info'),
+          const SizedBox(height: 10),
+          PersonalInfoCard(profile: _profile ?? const {}),
             const SizedBox(height: 18),
             const BracuSectionTitle(title: 'Attendance'),
             const SizedBox(height: 10),
@@ -319,146 +326,8 @@ class _StudentProfileState extends State<StudentProfile>
               const BracuEmptyState(message: 'No payments found')
             else
               PaymentList(payments: _payments),
+            const SizedBox(height: 12),
           ],
-          const SizedBox(height: 12),
-        ],
-      ),
-    );
-  }
-}
-
-class _StudentProfileLoadingSection extends StatelessWidget {
-  const _StudentProfileLoadingSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: _CardSectionSkeleton());
-  }
-}
-
-class _CardSectionSkeleton extends StatelessWidget {
-  const _CardSectionSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return BracuShimmer(
-      child: Center(
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.black),
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
-                child: Row(
-                  children: const [
-                    BracuSkeletonBox(width: 34, height: 34, radius: 10),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: BracuSkeletonBox(
-                          width: 140,
-                          height: 16,
-                          radius: 6,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(
-                color: Colors.black,
-                thickness: 0.9,
-                height: 0,
-                indent: 0,
-              ),
-              ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 138),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 38,
-                      alignment: Alignment.center,
-                      child: const RotatedBox(
-                        quarterTurns: 3,
-                        child: BracuSkeletonBox(
-                          width: 72,
-                          height: 12,
-                          radius: 5,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF7BB3D3),
-                          borderRadius: BorderRadius.only(
-                            bottomRight: Radius.circular(16),
-                          ),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              flex: 6,
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: const [
-                                  BracuSkeletonBox(
-                                    width: 126,
-                                    height: 12,
-                                    radius: 6,
-                                  ),
-                                  SizedBox(height: 8),
-                                  BracuSkeletonBox(
-                                    width: 92,
-                                    height: 9,
-                                    radius: 5,
-                                  ),
-                                  SizedBox(height: 10),
-                                  BracuSkeletonBox(
-                                    width: 94,
-                                    height: 10,
-                                    radius: 5,
-                                  ),
-                                  SizedBox(height: 6),
-                                  BracuSkeletonBox(
-                                    width: 72,
-                                    height: 10,
-                                    radius: 5,
-                                  ),
-                                  SizedBox(height: 6),
-                                  BracuSkeletonBox(
-                                    width: 82,
-                                    height: 10,
-                                    radius: 5,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            const SizedBox(
-                              width: 90,
-                              height: 106,
-                              child: BracuSkeletonBox(height: 106, radius: 4),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

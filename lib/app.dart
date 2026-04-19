@@ -48,7 +48,6 @@ class MyApp extends StatefulWidget {
 
     if (!hasToken) {
       await prefs.setBool('cached_has_auth_session', false);
-      // Clear all schedule caches including semester-specific ones
       final keepKeys = <String>{'access_token', 'refresh_token', 'themeMode'};
       await AppPreferencesStore().clearAllExcept(keepKeys);
     } else {}

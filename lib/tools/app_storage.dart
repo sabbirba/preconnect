@@ -8,12 +8,10 @@ class AppStorage {
   static final AppStorage instance = AppStorage._();
   static SharedPreferences? _prefs;
 
-  /// Initialize SharedPreferences instance (call once at app startup)
   static Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
   }
 
-  /// Get the SharedPreferences instance, initializing if needed
   static Future<SharedPreferences> _getInstance() async {
     _prefs ??= await SharedPreferences.getInstance();
     return _prefs!;

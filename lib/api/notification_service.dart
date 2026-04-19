@@ -574,8 +574,6 @@ class NotificationService {
     return DateTime.tryParse(normalized);
   }
 
-  /// Extracts image URLs from an API row, checking multiple possible field names.
-  /// Handles various formats: single URL, JSON array, comma-separated, etc.
   List<String> _extractAndNormalizeImageUrls(
     Map<String, dynamic> row, {
     required String baseUrl,

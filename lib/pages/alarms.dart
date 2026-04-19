@@ -33,16 +33,13 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   @override
   void initState() {
     super.initState();
-    _initializeAlarms();
+    _futureData = _initializeAlarms();
     bindRefreshBus(_onRefreshSignal);
   }
 
-  Future<void> _initializeAlarms() async {
+  Future<_AlarmData> _initializeAlarms() async {
     await _primeCurrentSemesterSchedule();
-    if (!mounted) return;
-    setState(() {
-      _futureData = _fetchSchedule();
-    });
+    return _fetchSchedule();
   }
 
   @override
@@ -429,13 +426,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         future: _futureData,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return BracuRefreshScroll(
+            return buildRefreshLoadingState(
               onRefresh: _handleRefresh,
-              showScrollTopButton: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-                child: const _AlarmLoadingState(),
-              ),
+              topSpacing: 180,
             );
           }
           if (snapshot.hasError) {
@@ -948,73 +941,6 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
             },
           );
         },
-      ),
-    );
-  }
-}
-
-class _AlarmLoadingState extends StatelessWidget {
-  const _AlarmLoadingState();
-
-  @override
-  Widget build(BuildContext context) {
-    return BracuShimmer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const BracuSkeletonBox(width: 150, height: 16, radius: 7),
-          const SizedBox(height: 12),
-          const BracuCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                BracuSkeletonBox(width: 160, height: 15, radius: 7),
-                SizedBox(height: 8),
-                BracuSkeletonBox(width: 110, height: 11, radius: 6),
-                SizedBox(height: 12),
-                BracuSkeletonBox(
-                  width: double.infinity,
-                  height: 84,
-                  radius: 12,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          const BracuCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                BracuSkeletonBox(width: 160, height: 15, radius: 7),
-                SizedBox(height: 8),
-                BracuSkeletonBox(width: 110, height: 11, radius: 6),
-                SizedBox(height: 12),
-                BracuSkeletonBox(
-                  width: double.infinity,
-                  height: 84,
-                  radius: 12,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          const BracuCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                BracuSkeletonBox(width: 160, height: 15, radius: 7),
-                SizedBox(height: 8),
-                BracuSkeletonBox(width: 110, height: 11, radius: 6),
-                SizedBox(height: 12),
-                BracuSkeletonBox(
-                  width: double.infinity,
-                  height: 84,
-                  radius: 12,
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

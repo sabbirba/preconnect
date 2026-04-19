@@ -127,27 +127,28 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _clearCacheKeepingLoginData() async {
-    final confirmed = await showBracuConfirmationDialog(
+    final confirmed = await showBracuConfirmationWithActionDialog(
       context,
       icon: Icons.delete_outline_rounded,
-      title: 'Clear cached data?',
-      message: 'Clean app cache and data.',
+      title: 'Clear Cached?',
+      message: 'Clean app cache storage.',
       confirmLabel: 'Clear',
       confirmColor: BracuPalette.danger,
+      onConfirm: () async {
+        final keepKeys = <String>{
+          'access_token',
+          'refresh_token',
+          'cached_has_auth_session',
+          'web_login_student_email',
+          'web_login_session_id',
+          'web_login_session_token',
+          'currentSessionSemesterId',
+        };
+        await AppPreferencesStore().clearAllExcept(keepKeys);
+      },
     );
     if (!confirmed) return;
-
-    final keepKeys = <String>{
-      'access_token',
-      'refresh_token',
-      'cached_has_auth_session',
-      'web_login_student_email',
-      'web_login_session_id',
-      'web_login_session_token',
-      'currentSessionSemesterId',
-    };
-
-    await AppPreferencesStore().clearAllExcept(keepKeys);
+    
     RefreshBus.instance.notify(reason: 'cache_cleared');
     if (!mounted) return;
     showAppSnackBar(context, 'Cached data cleared');
@@ -238,6 +239,29 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: _clearCacheKeepingLoginData,
+              child: Ink(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: BracuPalette.textSecondary(
+                      context,
+                    ).withValues(alpha: 0.18),
+                  ),
+                ),
+                child: const ListTile(
+                  leading: Icon(Icons.delete_outline_rounded, size: 20),
+                  title: Text('Clear cached'),
+                  trailing: Icon(Icons.chevron_right_rounded, size: 20),
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: _sectionGap),
           BracuCard(
             child: Column(
@@ -321,28 +345,6 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           const SizedBox(height: _sectionGap),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: _clearCacheKeepingLoginData,
-              child: Ink(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: BracuPalette.textSecondary(
-                      context,
-                    ).withValues(alpha: 0.18),
-                  ),
-                ),
-                child: const ListTile(
-                  leading: Icon(Icons.delete_outline_rounded, size: 20),
-                  title: Text('Clear Cached Data'),
-                  trailing: Icon(Icons.chevron_right_rounded, size: 20),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );

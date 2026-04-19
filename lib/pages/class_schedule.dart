@@ -47,17 +47,14 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   @override
   void initState() {
     super.initState();
-    _initializeSchedule();
+    _future = _initializeSchedule();
     ClassSchedule.jumpSignal.addListener(_onJumpRequested);
     bindRefreshBus(_onRefreshSignal);
   }
 
-  Future<void> _initializeSchedule() async {
+  Future<_ScheduleData> _initializeSchedule() async {
     await _loadCurrentSessionSemesterId();
-    if (!mounted) return;
-    setState(() {
-      _future = _loadSchedule();
-    });
+    return _loadSchedule();
   }
 
   @override
@@ -356,13 +353,9 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return BracuRefreshScroll(
+            return buildRefreshLoadingState(
               onRefresh: _handleRefresh,
-              showScrollTopButton: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-                child: const _ClassScheduleLoadingState(),
-              ),
+              topSpacing: 180,
             );
           }
           if (snapshot.hasError) {
@@ -519,68 +512,6 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
             children: children,
           );
         },
-      ),
-    );
-  }
-}
-
-class _ClassScheduleLoadingHeader extends StatelessWidget {
-  const _ClassScheduleLoadingHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    return BracuShimmer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          BracuSkeletonBox(width: 132, height: 14, radius: 7),
-          SizedBox(height: 10),
-          BracuSkeletonBox(width: 220, height: 12, radius: 6),
-          SizedBox(height: 12),
-          BracuSkeletonBox(width: 164, height: 12, radius: 6),
-        ],
-      ),
-    );
-  }
-}
-
-class _ClassScheduleLoadingState extends StatelessWidget {
-  const _ClassScheduleLoadingState();
-
-  @override
-  Widget build(BuildContext context) {
-    return BracuShimmer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _ClassScheduleLoadingHeader(),
-          const SizedBox(height: 12),
-          const _ClassScheduleLoadingCard(),
-          const SizedBox(height: 12),
-          const _ClassScheduleLoadingCard(),
-          const SizedBox(height: 12),
-          const _ClassScheduleLoadingCard(),
-        ],
-      ),
-    );
-  }
-}
-
-class _ClassScheduleLoadingCard extends StatelessWidget {
-  const _ClassScheduleLoadingCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return BracuCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          BracuSkeletonBox(width: 170, height: 15, radius: 7),
-          SizedBox(height: 8),
-          BracuSkeletonBox(width: 120, height: 11, radius: 6),
-          SizedBox(height: 12),
-          BracuSkeletonBox(width: double.infinity, height: 84, radius: 12),
-        ],
       ),
     );
   }

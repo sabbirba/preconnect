@@ -425,33 +425,18 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
   }
 
   Future<void> _deleteReview(int reviewId) async {
-    final ok = await showBracuConfirmationDialog(
+    final deleted = await showBracuConfirmationWithActionDialog(
       context,
       icon: Icons.delete_outline_rounded,
       title: 'Delete Review?',
       message: 'You can only delete your own review.',
       confirmLabel: 'Delete',
       confirmColor: BracuPalette.danger,
+      onConfirm: () => _facultyService.deleteReview(reviewId),
     );
-    if (!ok) return;
-    setState(() {
-      _busyWriteAction = true;
-    });
-    try {
-      await _facultyService.deleteReview(reviewId);
-      if (!mounted) return;
-      showAppSnackBar(context, 'Review deleted');
-      await _loadReviews();
-    } catch (_) {
-      if (!mounted) return;
-      showAppSnackBar(context, 'Delete not available now');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _busyWriteAction = false;
-        });
-      }
-    }
+    if (!deleted || !mounted) return;
+    showAppSnackBar(context, 'Review deleted');
+    await _loadReviews();
   }
 
   Future<void> _openMaterial(CourseMaterialItem item) async {
@@ -490,37 +475,22 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
   }
 
   Future<void> _deleteMaterial(CourseMaterialItem item) async {
-    final ok = await showBracuConfirmationDialog(
+    final deleted = await showBracuConfirmationWithActionDialog(
       context,
       icon: Icons.delete_outline_rounded,
       title: 'Delete Material?',
       message: 'You can only delete your own uploaded material.',
       confirmLabel: 'Delete',
       confirmColor: BracuPalette.danger,
-    );
-    if (!ok) return;
-    setState(() {
-      _busyWriteAction = true;
-    });
-    try {
-      await _materialService.delete(
+      onConfirm: () => _materialService.delete(
         semester: item.semester,
         courseCode: item.courseCode,
         fileName: item.fileName,
-      );
-      if (!mounted) return;
-      showAppSnackBar(context, 'Material deleted');
-      await _loadMaterials();
-    } catch (_) {
-      if (!mounted) return;
-      showAppSnackBar(context, 'Delete not available now');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _busyWriteAction = false;
-        });
-      }
-    }
+      ),
+    );
+    if (!deleted || !mounted) return;
+    showAppSnackBar(context, 'Material deleted');
+    await _loadMaterials();
   }
 
   String _contentTypeForPath(String fileName) {

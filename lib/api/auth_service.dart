@@ -243,8 +243,6 @@ class AuthService {
     return false;
   }
 
-  /// Validates JWT token format and structure
-  /// Returns true if token has valid 3-part structure, valid base64 encoding, and exp claim
   bool _isValidJwt(String token) {
     try {
       final parts = token.split('.');
