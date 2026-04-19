@@ -468,18 +468,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
               showScrollTopButton: false,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    _ClassScheduleLoadingHeader(),
-                    SizedBox(height: 12),
-                    BracuLoading(itemCount: 4),
-                    SizedBox(height: 12),
-                    BracuLoading(itemCount: 3),
-                    SizedBox(height: 12),
-                    BracuLoading(itemCount: 4),
-                  ],
-                ),
+                child: const _ClassScheduleLoadingState(),
               ),
             );
           }
@@ -655,6 +644,48 @@ class _ClassScheduleLoadingHeader extends StatelessWidget {
         SizedBox(height: 12),
         BracuLoading(itemCount: 2, compact: true),
       ],
+    );
+  }
+}
+
+class _ClassScheduleLoadingState extends StatelessWidget {
+  const _ClassScheduleLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuShimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _ClassScheduleLoadingHeader(),
+          const SizedBox(height: 12),
+          const _ClassScheduleLoadingCard(),
+          const SizedBox(height: 12),
+          const _ClassScheduleLoadingCard(),
+          const SizedBox(height: 12),
+          const _ClassScheduleLoadingCard(),
+        ],
+      ),
+    );
+  }
+}
+
+class _ClassScheduleLoadingCard extends StatelessWidget {
+  const _ClassScheduleLoadingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          BracuSkeletonBox(width: 170, height: 15, radius: 7),
+          SizedBox(height: 8),
+          BracuSkeletonBox(width: 120, height: 11, radius: 6),
+          SizedBox(height: 12),
+          BracuSkeletonBox(width: double.infinity, height: 84, radius: 12),
+        ],
+      ),
     );
   }
 }
