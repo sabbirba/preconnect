@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/token_storage.dart';
 
 class CampusPrinterPage extends StatefulWidget {
   const CampusPrinterPage({super.key});
@@ -33,9 +34,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _studentId = '';
   String _studentName = '';
   String _studentShortCode = '';
+  String _guestName = '';
+  String _guestId = '';
   String _printerHost = '';
   String _clientName = '';
   String _printerStatus = 'Detecting campus printer...';
+  bool _hasSignedInProfile = false;
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
   _PaperSize _paperSize = _PaperSize.a4;
   _MarginPreset _margins = _MarginPreset.mm10;
@@ -59,12 +63,16 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   }
 
   Future<void> _bootstrap() async {
+    final hasSession = await TokenStorage.instance.readCachedHasSession();
     await Future.wait([
       _loadStudentProfile().catchError((e) {}),
       _loadHistory().catchError((e) {}),
       _loadPrinterPreferences().catchError((e) {}),
     ]);
     if (!mounted) return;
+    setState(() {
+      _hasSignedInProfile = hasSession ?? false;
+    });
     unawaited(_discoverPrinter().catchError((e) {}));
   }
 
@@ -132,7 +140,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _studentId = studentId;
       _studentName = fullName;
       _studentShortCode = shortCode;
-      _clientName = studentId;
+      _clientName = _clientName.trim().isEmpty ? studentId : _clientName;
+      if (_guestName.trim().isEmpty) {
+        _guestName = fullName.isNotEmpty ? fullName : 'Guest';
+      }
+      if (_guestId.trim().isEmpty) {
+        _guestId = studentId;
+      }
     });
   }
 
@@ -239,8 +253,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   Future<void> _sendToPrinter() async {
     if (_busy) return;
     final host = _printerHost.trim();
-    final studentId = _studentId.trim();
-    final user = studentId.isEmpty ? 'student' : studentId;
+    final studentId = _studentId.trim().isNotEmpty
+        ? _studentId.trim()
+        : _guestId.trim();
+    final clientName = _clientName.trim().isNotEmpty
+        ? _clientName.trim()
+        : (_guestName.trim().isNotEmpty ? _guestName.trim() : studentId);
+    final user = studentId.isEmpty ? 'guest' : studentId;
     final bytes = _fileBytes;
 
     if (host.isEmpty) {
@@ -251,8 +270,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       showAppSnackBar(context, 'Choose a file first');
       return;
     }
-    if (studentId.isEmpty) {
-      showAppSnackBar(context, 'Student ID not found. Refresh profile first.');
+    if (clientName.isEmpty || studentId.isEmpty) {
+      showAppSnackBar(context, 'Name and Student ID are required.');
       return;
     }
 
@@ -269,7 +288,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         bytes: bytes,
         fileName: _fileName,
         user: user,
-        clientName: _clientName.isEmpty ? studentId : _clientName,
+        clientName: clientName,
         preferences: _PrintTicket(
           paperSize: _paperSize,
           margins: _margins,
@@ -329,12 +348,19 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   @override
   Widget build(BuildContext context) {
+    final displayGuestName = _guestName.trim().isNotEmpty ? _guestName.trim() : 'Guest';
+    final displayGuestId = _guestId.trim();
+    final showIdentityFields =
+        !_hasSignedInProfile &&
+        _studentName.trim().isEmpty &&
+        _studentId.trim().isEmpty;
     final selected = _fileName.isEmpty ? 'No file selected' : _fileName;
     final canPrint =
         !_busy &&
         !_discovering &&
         _printerHost.isNotEmpty &&
-        _studentId.isNotEmpty;
+        (_guestId.isNotEmpty || _studentId.isNotEmpty) &&
+        (_guestName.isNotEmpty || _studentName.isNotEmpty);
     return BracuPageScaffold(
       title: 'Printer',
       subtitle: 'Print File',
@@ -386,6 +412,19 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   studentId: _studentId,
                 ),
                 const SizedBox(height: 12),
+                if (showIdentityFields) ...[
+                  _PrinterIdentityPanel(
+                    guestName: displayGuestName,
+                    guestId: displayGuestId,
+                    onGuestNameChanged: (value) {
+                      setState(() => _guestName = value);
+                    },
+                    onGuestIdChanged: (value) {
+                      setState(() => _guestId = value);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 _PrinterPreferencesPanel(
                   paperSize: _paperSize,
                   margins: _margins,
@@ -431,11 +470,15 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  selected,
-                  style: TextStyle(
-                    color: BracuPalette.textPrimary(context),
-                    fontWeight: FontWeight.w700,
+                SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    selected,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: BracuPalette.textPrimary(context),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -500,13 +543,7 @@ class _StudentPrintDetails extends StatelessWidget {
     ].where((row) => row.value.isNotEmpty).toList();
 
     if (rows.isEmpty) {
-      return Text(
-        'Student details not available',
-        style: TextStyle(
-          color: BracuPalette.textSecondary(context),
-          fontWeight: FontWeight.w700,
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
     return Column(
@@ -566,15 +603,7 @@ class _PrintHistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (history.isEmpty) {
-      return BracuCard(
-        child: Text(
-          'No print history yet',
-          style: TextStyle(
-            color: BracuPalette.textSecondary(context),
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
     return BracuCard(
@@ -943,6 +972,48 @@ class _PrinterPreferencesPanel extends StatelessWidget {
             final parsed = int.tryParse(value.trim());
             onCopiesChanged((parsed ?? 1).clamp(1, 999));
           },
+        ),
+      ],
+    );
+  }
+}
+
+class _PrinterIdentityPanel extends StatelessWidget {
+  const _PrinterIdentityPanel({
+    required this.guestName,
+    required this.guestId,
+    required this.onGuestNameChanged,
+    required this.onGuestIdChanged,
+  });
+
+  final String guestName;
+  final String guestId;
+  final ValueChanged<String> onGuestNameChanged;
+  final ValueChanged<String> onGuestIdChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          initialValue: guestName,
+          decoration: const InputDecoration(
+            labelText: 'Name',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+          onChanged: onGuestNameChanged,
+        ),
+        const SizedBox(height: 10),
+        TextFormField(
+          initialValue: guestId,
+          decoration: const InputDecoration(
+            labelText: 'Student ID / PIN',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+          onChanged: onGuestIdChanged,
         ),
       ],
     );

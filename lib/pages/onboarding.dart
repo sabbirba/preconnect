@@ -7,6 +7,7 @@ import 'package:preconnect/pages/free_labs.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/seat_status.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
+import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/login.dart';
@@ -240,7 +241,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     builder: (context, constraints) {
                       final layout = quickAccessGridLayout(
                         constraints.maxWidth,
-                        targetColumns: 4,
+                        targetColumns: 5,
                         minItemWidth: 62,
                       );
                       return Center(
@@ -252,9 +253,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             _CompactQuickAccessCard(
                               width: layout.itemWidth,
                               icon: Icons.event_seat_outlined,
-                              title: 'Seat',
-                              subtitle: 'Status',
                               color: const Color(0xFF2C9DFF),
+                              showLabels: false,
                               onTap: () => _openOnboardingQuickPage(
                                 const SeatStatusPage(),
                               ),
@@ -262,9 +262,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             _CompactQuickAccessCard(
                               width: layout.itemWidth,
                               icon: Icons.science_outlined,
-                              title: 'Free',
-                              subtitle: 'Labs',
                               color: const Color(0xFF22B573),
+                              showLabels: false,
                               onTap: () => _openOnboardingQuickPage(
                                 const FreeLabsPage(),
                               ),
@@ -272,19 +271,26 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             _CompactQuickAccessCard(
                               width: layout.itemWidth,
                               icon: Icons.people_outline_rounded,
-                              title: 'Friends',
-                              subtitle: 'Schedules',
                               color: const Color(0xFF5B8DEF),
+                              showLabels: false,
                               onTap: () => _openOnboardingQuickPage(
                                 FriendSchedulePage(onNavigate: (HomeTab _) {}),
                               ),
                             ),
                             _CompactQuickAccessCard(
                               width: layout.itemWidth,
+                              icon: Icons.local_printshop_outlined,
+                              color: const Color(0xFF22B573),
+                              showLabels: false,
+                              onTap: () => _openOnboardingQuickPage(
+                                const CampusPrinterPage(),
+                              ),
+                            ),
+                            _CompactQuickAccessCard(
+                              width: layout.itemWidth,
                               icon: Icons.developer_mode_outlined,
-                              title: 'Devs',
-                              subtitle: 'About',
                               color: const Color(0xFF5B8DEF),
+                              showLabels: false,
                               onTap: () =>
                                   _openOnboardingQuickPage(const DevsPage()),
                             ),
@@ -300,6 +306,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       onPressed: _openCampusMapBottomSheet,
                       icon: const Icon(Icons.map_rounded),
                       label: const Text('Campus Map'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(42),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -308,7 +317,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     child: FilledButton.icon(
                       onPressed: () => _completeOnboarding(context),
                       icon: const Icon(Icons.arrow_forward_rounded),
-                      label: const Text('Continue'),
+                      label: const Text(
+                        'Continue',
+                        style: TextStyle(fontSize: 17),
+                      ),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(54),
+                      ),
                     ),
                   ),
                 ],
@@ -432,18 +447,16 @@ class _CompactQuickAccessCard extends StatelessWidget {
   const _CompactQuickAccessCard({
     required this.width,
     required this.icon,
-    required this.title,
-    required this.subtitle,
     required this.color,
     required this.onTap,
+    this.showLabels = true,
   });
 
   final double width;
   final IconData icon;
-  final String title;
-  final String subtitle;
   final Color color;
   final VoidCallback onTap;
+  final bool showLabels;
 
   @override
   Widget build(BuildContext context) {
@@ -466,38 +479,40 @@ class _CompactQuickAccessCard extends StatelessWidget {
               ),
               child: Icon(icon, color: color, size: 22),
             ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  softWrap: false,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: textPrimary,
+            if (showLabels) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: textPrimary,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 2),
-            SizedBox(
-              width: double.infinity,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  subtitle,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  softWrap: false,
-                  style: TextStyle(fontSize: 11, color: textSecondary),
+              const SizedBox(height: 2),
+              SizedBox(
+                width: double.infinity,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: TextStyle(fontSize: 11, color: textSecondary),
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),

@@ -9,6 +9,7 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/friend_schedule_store.dart';
 import 'package:preconnect/api/seat_status_service.dart';
+import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/push_notifications_service.dart';
@@ -107,7 +108,7 @@ class AuthService {
       await SeatAlertSyncService().clearAll();
     } catch (_) {}
 
-    final cacheKeysToRemove = [
+    final cacheKeysToRemove = <String>[
       'StudentSchedule',
       'StudentProgramProgress',
       'StudentProgramProgressSummary',
@@ -124,7 +125,26 @@ class AuthService {
       'home_show_exam_countdown_card',
       'home_show_today_schedule',
       'home_show_sponsored_content',
+      'campus_printer_history',
+      'campus_printer_paper_size',
+      'campus_printer_margins',
+      'campus_printer_color_printing',
+      'campus_printer_duplex',
+      'campus_printer_resolution',
+      'campus_printer_orientation',
+      'campus_printer_copies',
+      'qr_base64',
+      'qr_hash',
+      'qr_payload_version',
+      'web_login_student_email',
+      'web_login_session_id',
+      'web_login_session_token',
     ];
+    cacheKeysToRemove.addAll(ProfileService.profileFields);
+    cacheKeysToRemove.addAll(const [
+      'attendance_data_cache',
+      'advising_data_cache',
+    ]);
     for (final key in cacheKeysToRemove) {
       try {
         await AppStorage.instance.remove(key);

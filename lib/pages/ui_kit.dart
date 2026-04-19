@@ -1170,7 +1170,7 @@ class BracuFundingSupportContent extends StatelessWidget {
             _BracuSponsorActionChip(
               icon: Icons.call_outlined,
               label: _kPreconnectSupportNumber,
-              onTap: () => copyToClipboard(context, _kPreconnectSupportNumber),
+              onTap: () => openPhoneDialer(context, _kPreconnectSupportNumber),
             ),
             _BracuSponsorActionChip(
               icon: Icons.chat_bubble_outline_rounded,
@@ -1234,7 +1234,6 @@ class BracuSupportNumberRow extends StatelessWidget {
         await Clipboard.setData(ClipboardData(text: number));
         if (!context.mounted) return;
         showAppSnackBar(context, 'Copied to clipboard');
-        await openPhoneDialer(context, number);
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -1262,7 +1261,7 @@ class BracuSupportNumberRow extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              'Tap to copy and call',
+              'Tap to copy',
               style: TextStyle(
                 color: textSecondary,
                 fontSize: 10,

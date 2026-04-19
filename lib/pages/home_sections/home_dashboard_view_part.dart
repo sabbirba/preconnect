@@ -616,20 +616,6 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
           color: Color(0xFF22B573),
         ),
         _DashboardQuickAccessItem(
-          tab: HomeTab.degreeProgress,
-          icon: Icons.school_outlined,
-          title: 'Degree',
-          subtitle: 'Progress',
-          color: Color(0xFF2C9DFF),
-        ),
-        _DashboardQuickAccessItem(
-          tab: HomeTab.devs,
-          icon: Icons.developer_mode_outlined,
-          title: 'Devs',
-          subtitle: 'Support',
-          color: Color(0xFF2C9DFF),
-        ),
-        _DashboardQuickAccessItem(
           tab: HomeTab.moreQuickAccess,
           icon: Icons.more_horiz_rounded,
           title: 'More',
