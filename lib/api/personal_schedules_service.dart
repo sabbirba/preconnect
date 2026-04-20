@@ -1,35 +1,33 @@
 import 'package:preconnect/api/app_preferences_store.dart';
-import 'package:preconnect/model/schedule_planner_item.dart';
+import 'package:preconnect/model/personal_schedule.dart';
 
-class SchedulePlannerService {
-  SchedulePlannerService._internal();
+class PersonalSchedulesService {
+  PersonalSchedulesService._internal();
 
-  static final SchedulePlannerService _instance =
-      SchedulePlannerService._internal();
-  factory SchedulePlannerService() => _instance;
+  static final PersonalSchedulesService _instance =
+      PersonalSchedulesService._internal();
+  factory PersonalSchedulesService() => _instance;
 
   final AppPreferencesStore _store = AppPreferencesStore();
 
-  static const String cacheKey = 'schedule_planner_items_v1';
+  static const String cacheKey = 'personal_schedules_v1';
 
-  Future<List<SchedulePlannerItem>> getItems({
-    bool forceRefresh = false,
-  }) async {
+  Future<List<PersonalSchedule>> getItems({bool forceRefresh = false}) async {
     final cached = await _readCachedItems();
-    return cached ?? const <SchedulePlannerItem>[];
+    return cached ?? const <PersonalSchedule>[];
   }
 
-  Future<List<SchedulePlannerItem>?> getCachedItems() async {
+  Future<List<PersonalSchedule>?> getCachedItems() async {
     return _readCachedItems();
   }
 
-  Future<List<SchedulePlannerItem>> autoCompleteOverdueItems(
-    List<SchedulePlannerItem> items,
+  Future<List<PersonalSchedule>> autoCompleteOverdueItems(
+    List<PersonalSchedule> items,
   ) async {
     final overdueItems = items.where((item) => item.isOverdue).toList();
     if (overdueItems.isEmpty) return items;
 
-    final updatedItems = List<SchedulePlannerItem>.from(items);
+    final updatedItems = List<PersonalSchedule>.from(items);
     for (final overdue in overdueItems) {
       final updated = await _markItemDone(overdue);
       for (var i = 0; i < updatedItems.length; i++) {
@@ -45,7 +43,7 @@ class SchedulePlannerService {
     return updatedItems;
   }
 
-  Future<SchedulePlannerItem> createItem({
+  Future<PersonalSchedule> createItem({
     required String kind,
     required String title,
     required DateTime startTime,
@@ -57,7 +55,7 @@ class SchedulePlannerService {
     bool isDone = false,
   }) async {
     final now = DateTime.now().toUtc();
-    final item = SchedulePlannerItem(
+    final item = PersonalSchedule(
       itemId: await _nextItemId(),
       kind: kind,
       title: title,
@@ -75,7 +73,7 @@ class SchedulePlannerService {
     return item;
   }
 
-  Future<SchedulePlannerItem> updateItem({
+  Future<PersonalSchedule> updateItem({
     required int itemId,
     String? kind,
     String? title,
@@ -89,10 +87,10 @@ class SchedulePlannerService {
     String? notes,
     bool? isDone,
   }) async {
-    final current = await _readCachedItems() ?? const <SchedulePlannerItem>[];
+    final current = await _readCachedItems() ?? const <PersonalSchedule>[];
     final index = current.indexWhere((item) => item.itemId == itemId);
     if (index < 0) {
-      throw StateError('Schedule planner item not found: $itemId');
+      throw StateError('My schedule item not found: $itemId');
     }
 
     final existing = current[index];
@@ -114,7 +112,7 @@ class SchedulePlannerService {
     return updated;
   }
 
-  Future<SchedulePlannerItem> _markItemDone(SchedulePlannerItem item) async {
+  Future<PersonalSchedule> _markItemDone(PersonalSchedule item) async {
     try {
       return await updateItem(itemId: item.itemId, isDone: true);
     } catch (_) {
@@ -140,7 +138,7 @@ class SchedulePlannerService {
     return maxId + 1;
   }
 
-  Future<List<SchedulePlannerItem>?> _readCachedItems() async {
+  Future<List<PersonalSchedule>?> _readCachedItems() async {
     try {
       final raw = await _store.getJsonMap(cacheKey);
       final items = raw?['items'];
@@ -149,7 +147,7 @@ class SchedulePlannerService {
           .whereType<Map>()
           .map(
             (item) =>
-                SchedulePlannerItem.fromJson(Map<String, dynamic>.from(item)),
+                PersonalSchedule.fromJson(Map<String, dynamic>.from(item)),
           )
           .toList(growable: false);
     } catch (_) {
@@ -157,7 +155,7 @@ class SchedulePlannerService {
     }
   }
 
-  Future<void> _writeCache(List<SchedulePlannerItem> items) async {
+  Future<void> _writeCache(List<PersonalSchedule> items) async {
     try {
       await _store.setJson(cacheKey, <String, dynamic>{
         'ts': DateTime.now().millisecondsSinceEpoch,
@@ -166,13 +164,13 @@ class SchedulePlannerService {
     } catch (_) {}
   }
 
-  Future<void> _upsertCacheItem(SchedulePlannerItem item) async {
+  Future<void> _upsertCacheItem(PersonalSchedule item) async {
     final current = await _readCachedItems();
     if (current == null) {
-      await _writeCache(<SchedulePlannerItem>[item]);
+      await _writeCache(<PersonalSchedule>[item]);
       return;
     }
-    final next = <SchedulePlannerItem>[
+    final next = <PersonalSchedule>[
       for (final existing in current)
         if (existing.itemId != item.itemId) existing,
       item,
@@ -181,8 +179,8 @@ class SchedulePlannerService {
       final doneCompare = a.isDone == b.isDone
           ? 0
           : a.isDone
-              ? 1
-              : -1;
+          ? 1
+          : -1;
       if (doneCompare != 0) return doneCompare;
       final dueCompare = a.startTime.compareTo(b.startTime);
       if (dueCompare != 0) return dueCompare;
@@ -191,12 +189,12 @@ class SchedulePlannerService {
     await _writeCache(next);
   }
 
-  int _compareItems(SchedulePlannerItem a, SchedulePlannerItem b) {
+  int _compareItems(PersonalSchedule a, PersonalSchedule b) {
     final doneCompare = a.isDone == b.isDone
         ? 0
         : a.isDone
-            ? 1
-            : -1;
+        ? 1
+        : -1;
     if (doneCompare != 0) return doneCompare;
     final dueCompare = a.startTime.compareTo(b.startTime);
     if (dueCompare != 0) return dueCompare;

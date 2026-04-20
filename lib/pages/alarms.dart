@@ -19,6 +19,10 @@ import 'package:preconnect/tools/time_utils.dart';
 class AlarmPage extends StatefulWidget {
   const AlarmPage({super.key});
 
+  static Future<void> preload() async {
+    await _AlarmPageState.preloadData();
+  }
+
   @override
   State<AlarmPage> createState() => _AlarmPageState();
 }
@@ -27,19 +31,20 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   static const MethodChannel _androidAlarmChannel = MethodChannel(
     'preconnect/android_alarm',
   );
+  static _AlarmData? _cachedData;
+  static Future<_AlarmData>? _preloadFuture;
+
   late Future<_AlarmData> _futureData;
   final Map<String, int> _minutesBefore = {};
 
   @override
   void initState() {
     super.initState();
-    _futureData = _initializeAlarms();
+    _futureData = _cachedData == null
+        ? _fetchSchedule()
+        : Future<_AlarmData>.value(_cachedData);
     bindRefreshBus(_onRefreshSignal);
-  }
-
-  Future<_AlarmData> _initializeAlarms() async {
-    await _primeCurrentSemesterSchedule();
-    return _fetchSchedule();
+    unawaited(_warmAndBind());
   }
 
   @override
@@ -60,7 +65,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     unawaited(_handleRefresh(notify: false));
   }
 
-  Future<int?> _resolveCurrentSessionSemesterId() async {
+  static Future<int?> _resolveCurrentSessionSemesterId() async {
     final parsed = int.tryParse(
       (await AppPreferencesStore().getString('currentSessionSemesterId') ?? '')
           .trim(),
@@ -69,14 +74,45 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     return null;
   }
 
-  Future<void> _primeCurrentSemesterSchedule() async {
-    final semesterSessionId = await _resolveCurrentSessionSemesterId();
-    await ScheduleService().fetchStudentScheduleForSemester(
-      semesterSessionId: semesterSessionId,
-    );
+  Future<void> _warmAndBind() async {
+    final data = await preloadData();
+    if (!mounted) return;
+    if (!identical(_futureData, _preloadFuture)) {
+      setState(() {
+        _futureData = Future<_AlarmData>.value(data);
+      });
+    }
+  }
+
+  static Future<_AlarmData> preloadData({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedData != null) {
+      return _cachedData!;
+    }
+    if (!forceRefresh) {
+      final inFlight = _preloadFuture;
+      if (inFlight != null) {
+        return inFlight;
+      }
+    }
+
+    final future = _loadAlarmData(forceRefresh: forceRefresh);
+    _preloadFuture = future;
+    try {
+      final data = await future;
+      _cachedData = data;
+      return data;
+    } finally {
+      if (identical(_preloadFuture, future)) {
+        _preloadFuture = null;
+      }
+    }
   }
 
   Future<_AlarmData> _fetchSchedule({bool forceRefresh = false}) async {
+    return preloadData(forceRefresh: forceRefresh);
+  }
+
+  static Future<_AlarmData> _loadAlarmData({bool forceRefresh = false}) async {
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
     final semesterSessionId = await _resolveCurrentSessionSemesterId();
     final scheduleService = ScheduleService();
@@ -114,7 +150,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     );
   }
 
-  List<_ExamAlarmEntry> _buildExamEntries(
+  static List<_ExamAlarmEntry> _buildExamEntries(
     List<Section> sections,
     Map<String, ExamScheduleOverride> overrides,
   ) {
@@ -187,7 +223,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       return;
     }
     setState(() {
-      _futureData = _fetchSchedule(forceRefresh: true);
+      _futureData = preloadData(forceRefresh: true);
     });
     await _futureData;
   }

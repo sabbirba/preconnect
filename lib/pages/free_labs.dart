@@ -725,38 +725,35 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
       controller: _scrollController,
       children: [
         const SizedBox(height: 160),
-        BracuCard(
-          backgroundColor: Colors.transparent,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                'Today\'s lab hours are over.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              'Today\'s lab hours are over.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: BracuPalette.textPrimary(context),
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Show next day labs for $nextDateLabel?',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: BracuPalette.textSecondary(context),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Show next day labs for $nextDateLabel?',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: BracuPalette.textSecondary(context),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
               ),
-              const SizedBox(height: 14),
-              OutlinedButton.icon(
-                onPressed: _showNextDayLabs,
-                icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                label: const Text('Show Next Day Labs'),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: _showNextDayLabs,
+              icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+              label: const Text('Show Next Day Labs'),
+            ),
+          ],
         ),
       ],
     );

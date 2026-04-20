@@ -18,7 +18,7 @@ enum HomeTab {
   friendSchedule,
   campusPrinter,
   devs,
-  schedulePlanner,
+  personalSchedules,
 }
 
 class HomeTabRegistry {

@@ -80,7 +80,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
       navigator.push(
         MaterialPageRoute(
           builder: (context) => CompareSchedulesPage(
-            mySchedule: myCourses,
+            personalSchedule: myCourses,
             friendItem: widget.friend,
             myPhotoUrl: myPhotoUrl,
             isRamadan: widget.isRamadan,

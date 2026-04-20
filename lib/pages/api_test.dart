@@ -143,7 +143,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
       subtitle: 'BRACU SSO Session',
       icon: Icons.science_outlined,
       body: BracuRefreshList(
-        onRefresh: _sendRequest, 
+        onRefresh: _sendRequest,
         children: [
           BracuCard(
             child: Column(

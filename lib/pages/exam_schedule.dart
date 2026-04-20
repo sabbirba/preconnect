@@ -16,6 +16,10 @@ class ExamSchedule extends StatefulWidget {
 
   static final ValueNotifier<int> jumpSignal = ValueNotifier<int>(0);
 
+  static Future<void> preload() async {
+    await _ExamScheduleState.preloadData();
+  }
+
   static void requestJump() {
     jumpSignal.value++;
   }
@@ -25,6 +29,9 @@ class ExamSchedule extends StatefulWidget {
 }
 
 class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
+  static _ExamScheduleData? _cachedData;
+  static Future<_ExamScheduleData>? _preloadFuture;
+
   late Future<_ExamScheduleData> _future;
   final ScrollController _scrollController = ScrollController();
   int? _currentSessionSemesterId;
@@ -36,9 +43,83 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   @override
   void initState() {
     super.initState();
-    _future = _initializeExamSchedule();
+    _future = _cachedData == null
+        ? _initializeExamSchedule()
+        : Future<_ExamScheduleData>.value(_cachedData!);
+    unawaited(_loadCurrentSessionSemesterId());
+    unawaited(_warmAndBind());
     ExamSchedule.jumpSignal.addListener(_onJumpRequested);
     bindRefreshBus(_onRefreshSignal);
+  }
+
+  Future<void> _warmAndBind() async {
+    final data = await preloadData();
+    if (!mounted) return;
+    if (!identical(_future, _preloadFuture)) {
+      setState(() {
+        _future = Future<_ExamScheduleData>.value(data);
+      });
+    }
+  }
+
+  static Future<_ExamScheduleData> preloadData({
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh && _cachedData != null) {
+      return _cachedData!;
+    }
+    if (!forceRefresh) {
+      final inFlight = _preloadFuture;
+      if (inFlight != null) {
+        return inFlight;
+      }
+    }
+
+    final future = _loadExamData(forceRefresh: forceRefresh);
+    _preloadFuture = future;
+    try {
+      final data = await future;
+      _cachedData = data;
+      return data;
+    } finally {
+      if (identical(_preloadFuture, future)) {
+        _preloadFuture = null;
+      }
+    }
+  }
+
+  static Future<_ExamScheduleData> _loadExamData({
+    bool forceRefresh = false,
+  }) async {
+    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+    final service = ScheduleService();
+    final jsonString = forceRefresh
+        ? await service.fetchStudentScheduleForSemester(
+            semesterSessionId: currentSessionSemesterId,
+            fromGet: true,
+          )
+        : await service.getStudentScheduleForSemester(
+            semesterSessionId: currentSessionSemesterId,
+          );
+    final sections = service.parseStudentSections(
+      jsonString,
+      semesterSessionId: currentSessionSemesterId,
+    );
+
+    if (sections.isEmpty) {
+      return const _ExamScheduleData(
+        sections: <Section>[],
+        overrides: <String, ExamScheduleOverride>{},
+      );
+    }
+
+    final examService = ExamScheduleService();
+    final overrides = await examService.getOverridesForSections(
+      sections,
+      forceRefresh: forceRefresh,
+      forcedSemesterSessionId: currentSessionSemesterId,
+    );
+    return _ExamScheduleData(sections: sections, overrides: overrides);
   }
 
   Future<_ExamScheduleData> _initializeExamSchedule() async {
@@ -85,7 +166,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
         : await service.getStudentScheduleForSemester(
             semesterSessionId: currentSessionSemesterId,
           );
-    return _buildExamDataFromSections(
+    final data = await _buildExamDataFromSections(
       service.parseStudentSections(
         jsonString,
         semesterSessionId: currentSessionSemesterId,
@@ -93,6 +174,8 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
       forceRefresh: forceRefresh,
       forcedSemesterSessionId: currentSessionSemesterId,
     );
+    _cachedData = data;
+    return data;
   }
 
   Future<_ExamScheduleData> _buildExamDataFromSections(
@@ -132,7 +215,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
     setState(() {
       _didScroll = false;
       _scrollRetry = false;
-      _future = _fetchExamData(forceRefresh: true);
+      _future = preloadData(forceRefresh: true);
     });
     await _future;
     if (notify) {

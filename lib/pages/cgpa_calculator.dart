@@ -3,7 +3,7 @@ import 'package:preconnect/model/progress_info.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
 
-part 'shared_widgets/cgpa_calculator_models_part.dart';
+part 'shared_widgets/cgpa_calculator_models.dart';
 
 class CgpaCalculatorPage extends StatefulWidget {
   const CgpaCalculatorPage({

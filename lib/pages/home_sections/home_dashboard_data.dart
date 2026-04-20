@@ -33,7 +33,9 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   Future<String?>? _transportScheduleUrlFuture;
 
   static const Duration _captiveAutoPollInterval = Duration(seconds: 30);
-  static const Duration _todayScheduleAutoRefreshInterval = Duration(minutes: 1);
+  static const Duration _todayScheduleAutoRefreshInterval = Duration(
+    minutes: 1,
+  );
   static const Duration _autoAssistantCooldown = Duration(seconds: 45);
   static const Duration _autoSessionExtendCooldown = Duration(seconds: 60);
   static const int _autoSessionExtendThresholdSeconds = 21600;
@@ -162,16 +164,14 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
               })
         : Future<String?>.value(null);
 
-    final plannerFuture = cardVisibility.showExamCountdownCard
+    final personalSchedulesFuture = cardVisibility.showExamCountdownCard
         ? (forceRefresh
-                  ? SchedulePlannerService().getItems(forceRefresh: true)
-                  : SchedulePlannerService().getItems())
+                  ? PersonalSchedulesService().getItems(forceRefresh: true)
+                  : PersonalSchedulesService().getItems())
               .catchError((e) {
-                return const <SchedulePlannerItem>[];
+                return const <PersonalSchedule>[];
               })
-        : Future<List<SchedulePlannerItem>>.value(
-            const <SchedulePlannerItem>[],
-          );
+        : Future<List<PersonalSchedule>>.value(const <PersonalSchedule>[]);
 
     final ramadanFuture = needsRamadan
         ? RamadanTiming.getRamadanStatus(forceRefresh: forceRefresh).catchError(
@@ -192,14 +192,14 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     final results = await Future.wait<dynamic>([
       profileFuture,
       scheduleFuture,
-      plannerFuture,
+      personalSchedulesFuture,
       ramadanFuture,
       holidayFuture,
     ]);
 
     Map<String, String?>? profile = results[0] as Map<String, String?>?;
     String? scheduleJson = results[1] as String?;
-    final plannerItems = results[2] as List<SchedulePlannerItem>;
+    final personalSchedules = results[2] as List<PersonalSchedule>;
     final ramadan = results[3] as RamadanStatus;
     final isRamadan = ramadan.isRamadan;
     final holidayStatus = results[4] as HolidayStatus;
@@ -265,7 +265,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       photoUrl: photoUrl,
       sections: sections,
       examOverrides: examOverrides,
-      plannerItems: plannerItems,
+      personalSchedules: personalSchedules,
       isRamadan: isRamadan,
       ramadan: ramadan,
       holiday: holidayStatus,
@@ -348,7 +348,10 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     setState(() {
       _captiveStatus = mapped;
     });
-    if (status.captive) {
+    final shouldOpenAssistant =
+        status.captive ||
+        (status.transport == 'wifi' && status.connected && !status.validated);
+    if (shouldOpenAssistant) {
       unawaited(_maybeAutoOpenWifiAssistant(status));
     } else {
       _autoOpenedWifiAssistant = false;
@@ -516,16 +519,16 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     return upcoming.first;
   }
 
-  _CountdownCardData? _nextPlannerCountdown(List<SchedulePlannerItem> items) {
+  _CountdownCardData? _nextMyCountdown(List<PersonalSchedule> items) {
     final now = DateTime.now();
     final upcoming =
         items
             .where((item) => !item.isDone && item.startTime.isAfter(now))
             .map(
               (item) => _CountdownCardData(
-                title: schedulePlannerCardTitle(item.title),
+                title: personalSchedulesCardTitle(item.title),
                 targetDateTime: item.startTime,
-                tab: HomeTab.schedulePlanner,
+                tab: HomeTab.personalSchedules,
               ),
             )
             .toList()
@@ -537,14 +540,14 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   _CountdownCardData? _nextDeadlineCountdown(
     List<section.Section> sections,
     Map<String, ExamScheduleOverride> overrides,
-    List<SchedulePlannerItem> plannerItems,
+    List<PersonalSchedule> personalSchedules,
   ) {
     final nextExam = _nextExamCountdown(sections, overrides);
-    final nextPlanner = _nextPlannerCountdown(plannerItems);
-    if (nextExam == null) return nextPlanner;
-    if (nextPlanner == null) return nextExam;
-    return nextPlanner.targetDateTime.isBefore(nextExam.targetDateTime)
-        ? nextPlanner
+    final nextMy = _nextMyCountdown(personalSchedules);
+    if (nextExam == null) return nextMy;
+    if (nextMy == null) return nextExam;
+    return nextMy.targetDateTime.isBefore(nextExam.targetDateTime)
+        ? nextMy
         : nextExam;
   }
 

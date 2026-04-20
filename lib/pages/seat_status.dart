@@ -14,7 +14,7 @@ import 'package:preconnect/tools/push_notifications_service.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/time_utils.dart';
-part 'shared_widgets/seat_status_methods_part.dart';
+part 'shared_widgets/seat_status_methods.dart';
 
 class SeatStatusPage extends StatefulWidget {
   const SeatStatusPage({super.key});

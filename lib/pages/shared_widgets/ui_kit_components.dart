@@ -374,7 +374,7 @@ Future<bool> showBracuConfirmationWithActionDialog(
   required Future<void> Function() onConfirm,
 }) async {
   final dialogKey = GlobalKey<_BracuConfirmationActionDialogState>();
-  
+
   final result = await showDialog<bool>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.25),
@@ -517,8 +517,9 @@ class _BracuConfirmationActionDialogState
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        disabledBackgroundColor: widget.confirmColor
-                            .withValues(alpha: 0.5),
+                        disabledBackgroundColor: widget.confirmColor.withValues(
+                          alpha: 0.5,
+                        ),
                       ),
                       child: _isLoading
                           ? SizedBox(

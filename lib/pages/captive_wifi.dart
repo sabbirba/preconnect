@@ -24,6 +24,10 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
   static const Duration _autoSessionCheckInterval = Duration(seconds: 30);
   static const Duration _autoExtendCooldown = Duration(seconds: 60);
   static const int _autoExtendThresholdSeconds = 21600;
+  static const Duration _wifiAssociationTimeout = Duration(seconds: 12);
+  static const Duration _wifiAssociationPollInterval = Duration(
+    milliseconds: 600,
+  );
 
   final TextEditingController _ssidController = TextEditingController(
     text: CaptiveLoginStore.defaultCampusSsid,
@@ -106,18 +110,40 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     final ssid = _ssidController.text.trim();
     if (ssid.isEmpty) return 'invalid';
     final securityType = _inferSecurityType(ssid);
+    final suggestionPassword = securityType == 'wpa2'
+        ? _passwordController.text
+        : '';
     return AndroidNetworkAssist.addWifiSuggestion(
       ssid: ssid,
-      password: '',
+      password: suggestionPassword,
       securityType: securityType,
     );
   }
 
   String _inferSecurityType(String ssid) {
-    if (ssid.trim().toLowerCase() == 'student-wifi') {
+    final lowered = ssid.trim().toLowerCase();
+    if (lowered == 'student-wifi') {
       return 'owe';
     }
+    if (lowered.contains('wpa') || lowered.contains('secure')) {
+      return 'wpa2';
+    }
     return 'open';
+  }
+
+  Future<void> _waitForTargetWifiAssociation() async {
+    if (!AndroidNetworkAssist.isSupported) return;
+    final targetSsid = _ssidController.text.trim().toLowerCase();
+    if (targetSsid.isEmpty) return;
+    final deadline = DateTime.now().add(_wifiAssociationTimeout);
+    while (DateTime.now().isBefore(deadline)) {
+      final status = await AndroidNetworkAssist.getNetworkStatus();
+      final currentSsid = (status?.ssid ?? '').trim().toLowerCase();
+      if (currentSsid == targetSsid) {
+        return;
+      }
+      await Future<void>.delayed(_wifiAssociationPollInterval);
+    }
   }
 
   Future<bool> _ensureWifiSuggestionPermissions() async {
@@ -187,6 +213,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       if (suggestion == 'permission-required' || suggestion == 'invalid') {
         _showLocalSnackBar('Wi-Fi setup skipped: $suggestion');
       }
+
+      await _waitForTargetWifiAssociation();
 
       final loggedIn = await _loginViaCaptiveApi(
         studentId: studentId,
@@ -554,7 +582,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     if (parsedUrl != null) {
       return parsedUrl;
     }
-    if (status.transport == 'wifi' && status.captive) {
+    if (status.transport == 'wifi' && (status.captive || !status.validated)) {
       return CaptiveWifiHttpService.defaultProbeUri;
     }
     return null;
@@ -741,7 +769,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                             ? null
                             : () => unawaited(_runOneTapConnect()),
                         child: Text(
-                          _isConnecting ? 'Connecting...' : 'One Tap Connect',
+                          _isConnecting ? 'Connecting...' : 'Connect',
                         ),
                       ),
                     ),

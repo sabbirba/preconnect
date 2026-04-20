@@ -398,5 +398,3 @@ class _ConnectNotificationDetailPanelState
     return '$module  •  $fullTime';
   }
 }
-
-

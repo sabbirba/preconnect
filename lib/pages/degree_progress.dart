@@ -14,7 +14,7 @@ import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
-part 'student_profile_sections/degree_progress_helpers_part.dart';
+part 'student_profile_sections/degree_progress_helpers.dart';
 
 class DegreeProgressPage extends StatefulWidget {
   const DegreeProgressPage({super.key});

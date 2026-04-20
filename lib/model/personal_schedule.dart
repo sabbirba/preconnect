@@ -1,5 +1,5 @@
-class SchedulePlannerItem {
-  const SchedulePlannerItem({
+class PersonalSchedule {
+  const PersonalSchedule({
     required this.itemId,
     required this.kind,
     required this.title,
@@ -27,8 +27,8 @@ class SchedulePlannerItem {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  factory SchedulePlannerItem.fromJson(Map<String, dynamic> json) {
-    return SchedulePlannerItem(
+  factory PersonalSchedule.fromJson(Map<String, dynamic> json) {
+    return PersonalSchedule(
       itemId: (json['itemId'] as num?)?.toInt() ?? 0,
       kind: (json['kind'] as String? ?? '').trim().toLowerCase(),
       title: (json['title'] as String? ?? '').trim(),
@@ -69,7 +69,7 @@ class SchedulePlannerItem {
     };
   }
 
-  SchedulePlannerItem copyWith({
+  PersonalSchedule copyWith({
     String? kind,
     String? title,
     String? courseCode,
@@ -82,7 +82,7 @@ class SchedulePlannerItem {
     String? notes,
     bool? isDone,
   }) {
-    return SchedulePlannerItem(
+    return PersonalSchedule(
       itemId: itemId,
       kind: kind ?? this.kind,
       title: title ?? this.title,

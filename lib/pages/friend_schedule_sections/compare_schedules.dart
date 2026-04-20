@@ -10,13 +10,13 @@ import 'package:preconnect/tools/app_storage.dart';
 class CompareSchedulesPage extends StatefulWidget {
   const CompareSchedulesPage({
     super.key,
-    required this.mySchedule,
+    required this.personalSchedule,
     required this.friendItem,
     this.myPhotoUrl,
     this.isRamadan = false,
   });
 
-  final List<Course>? mySchedule;
+  final List<Course>? personalSchedule;
   final FriendSchedule friendItem;
   final String? myPhotoUrl;
   final bool isRamadan;
@@ -45,7 +45,7 @@ class CompareSchedulesPage extends StatefulWidget {
       if (friendCodes.contains(code)) commonClasses.add(code);
     }
 
-    final myScheduleMap = _buildScheduleMap(myCourses, isRamadan);
+    final personalScheduleMap = _buildScheduleMap(myCourses, isRamadan);
     final friendScheduleMap = _buildScheduleMap(friendCourses, isRamadan);
 
     const days = [
@@ -59,7 +59,7 @@ class CompareSchedulesPage extends StatefulWidget {
     ];
 
     for (final day in days) {
-      final mySlots = myScheduleMap[day] ?? [];
+      final mySlots = personalScheduleMap[day] ?? [];
       final friendSlots = friendScheduleMap[day] ?? [];
       final mergedMy = _mergeSlots(mySlots);
       final mergedFriend = _mergeSlots(friendSlots);
@@ -368,7 +368,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
       );
     }
 
-    final myCourses = widget.mySchedule ?? const <Course>[];
+    final myCourses = widget.personalSchedule ?? const <Course>[];
     for (final code in commonClasses) {
       final days = _commonDaysForCode(
         code,
@@ -493,7 +493,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
     final subtitle =
         'With ${widget.friendItem.name.trim().isEmpty ? 'Friend' : widget.friendItem.name}';
 
-    if (widget.mySchedule == null || widget.mySchedule!.isEmpty) {
+    if (widget.personalSchedule == null || widget.personalSchedule!.isEmpty) {
       return Scaffold(
         body: BracuPageScaffold(
           title: title,
@@ -509,7 +509,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
     }
 
     final comparison = CompareSchedulesPage.compareSchedules(
-      widget.mySchedule!,
+      widget.personalSchedule!,
       widget.friendItem.courses,
       widget.isRamadan,
     );
@@ -603,7 +603,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
         children: [
           _buildPerson(
             label: 'You',
-            scheduleCount: widget.mySchedule?.length ?? 0,
+            scheduleCount: widget.personalSchedule?.length ?? 0,
             photoUrl: widget.myPhotoUrl,
             textPrimary: textPrimary,
             textSecondary: textSecondary,

@@ -61,7 +61,7 @@
 
         <receiver
             android:name=".WifiSuggestionPostConnectionReceiver"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.net.wifi.action.WIFI_NETWORK_SUGGESTION_POST_CONNECTION" />
             </intent-filter>

@@ -25,7 +25,7 @@ import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-part 'shared_widgets/ui_kit_components_part.dart';
+part 'shared_widgets/ui_kit_components.dart';
 
 String formatDate(String? input) {
   if (input == null || input.trim().isEmpty) return '';

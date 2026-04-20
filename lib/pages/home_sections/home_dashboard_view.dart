@@ -1,6 +1,6 @@
 part of 'package:preconnect/pages/home.dart';
 
-extension _HomeDashboardViewPart on _HomeDashboardState {
+extension _HomeDashboardView on _HomeDashboardState {
   Widget _buildHomeDashboardView(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgTop = isDark ? Colors.black : _HomeDashboardState._bgTop;
@@ -153,7 +153,7 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
                         data?.sections ?? const <section.Section>[],
                         data?.examOverrides ??
                             const <String, ExamScheduleOverride>{},
-                        data?.plannerItems ?? const <SchedulePlannerItem>[],
+                        data?.personalSchedules ?? const <PersonalSchedule>[],
                       );
                       final todayExams = _todayExamEntries(
                         data?.sections ?? const <section.Section>[],
@@ -564,69 +564,68 @@ extension _HomeDashboardViewPart on _HomeDashboardState {
     );
   }
 
-  List<_DashboardQuickAccessItem> get _quickAccessItems =>
-      <_DashboardQuickAccessItem>[
-        _DashboardQuickAccessItem(
-          tab: HomeTab.profile,
-          icon: Icons.person_outline,
-          title: 'Profile',
-          subtitle: 'Info & ID',
-          color: _HomeDashboardState._primary,
-        ),
-        _DashboardQuickAccessItem(
-          tab: HomeTab.studentSchedule,
-          icon: Icons.schedule_outlined,
-          title: 'Class',
-          subtitle: 'Schedules',
-          color: _HomeDashboardState._accent,
-        ),
-        _DashboardQuickAccessItem(
-          tab: HomeTab.alarms,
-          icon: Icons.alarm_outlined,
-          title: 'Alarm',
-          subtitle: 'Reminders',
-          color: Color(0xFFFF8A34),
-        ),
-        _DashboardQuickAccessItem(
-          tab: HomeTab.schedulePlanner,
-          icon: Icons.event_note_outlined,
-          title: 'Planner',
-          subtitle: 'Schedules',
-          color: Color(0xFF1E6BE3),
-        ),
-        _DashboardQuickAccessItem(
-          tab: HomeTab.examSchedule,
-          icon: Icons.event_note_outlined,
-          title: 'Exam',
-          subtitle: 'Dates',
-          color: Color(0xFF7C56FF),
-        ),
-        _DashboardQuickAccessItem(
-          tab: HomeTab.friendSchedule,
-          icon: Icons.people_outline_rounded,
-          title: 'Friends',
-          subtitle: 'Schedules',
-          color: Color(0xFF5B8DEF),
-        ),
-        _DashboardQuickAccessItem(
-          tab: HomeTab.degreeProgress,
-          icon: Icons.trending_up_rounded,
-          title: 'Degree',
-          subtitle: 'Progress',
-          color: Color(0xFF2C9DFF),
-        ),
-        _DashboardQuickAccessItem(
-          tab: HomeTab.moreQuickAccess,
-          icon: Icons.more_horiz_rounded,
-          title: 'More',
-          subtitle: 'Options',
-          color: Color(0xFF00A8E8),
-        ),
-      ];
+  List<_DashboardQuickAccess> get _quickAccessItems => <_DashboardQuickAccess>[
+    _DashboardQuickAccess(
+      tab: HomeTab.profile,
+      icon: Icons.person_outline,
+      title: 'Profile',
+      subtitle: 'Info & ID',
+      color: _HomeDashboardState._primary,
+    ),
+    _DashboardQuickAccess(
+      tab: HomeTab.studentSchedule,
+      icon: Icons.schedule_outlined,
+      title: 'Class',
+      subtitle: 'Schedules',
+      color: _HomeDashboardState._accent,
+    ),
+    _DashboardQuickAccess(
+      tab: HomeTab.alarms,
+      icon: Icons.alarm_outlined,
+      title: 'Alarm',
+      subtitle: 'Reminders',
+      color: Color(0xFFFF8A34),
+    ),
+    _DashboardQuickAccess(
+      tab: HomeTab.examSchedule,
+      icon: Icons.event_note_outlined,
+      title: 'Exam',
+      subtitle: 'Schedules',
+      color: Color(0xFF7C56FF),
+    ),
+    _DashboardQuickAccess(
+      tab: HomeTab.personalSchedules,
+      icon: Icons.event_note_outlined,
+      title: 'Personal',
+      subtitle: 'Schedules',
+      color: Color(0xFF1E6BE3),
+    ),
+    _DashboardQuickAccess(
+      tab: HomeTab.friendSchedule,
+      icon: Icons.people_outline_rounded,
+      title: 'Friends',
+      subtitle: 'Schedules',
+      color: Color(0xFF5B8DEF),
+    ),
+    _DashboardQuickAccess(
+      tab: HomeTab.degreeProgress,
+      icon: Icons.trending_up_rounded,
+      title: 'Degree',
+      subtitle: 'Progress',
+      color: Color(0xFF2C9DFF),
+    ),
+    _DashboardQuickAccess(
+      tab: HomeTab.moreQuickAccess,
+      icon: Icons.more_horiz_rounded,
+      title: 'More',
+      subtitle: 'Options',
+      color: Color(0xFF00A8E8),
+    ),
+  ];
 }
 
-class _DashboardQuickAccessItem {
-  const _DashboardQuickAccessItem({
+class _DashboardQuickAccess {
+  const _DashboardQuickAccess({
     required this.tab,
     required this.icon,
     required this.title,

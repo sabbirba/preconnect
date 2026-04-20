@@ -424,6 +424,7 @@ class MainActivity : FlutterFragmentActivity() {
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 builder.setIsAppInteractionRequired(true)
+                builder.setIsUserInteractionRequired(true)
             }
             val suggestion = builder.build()
             val statusCode = wifiManager.addNetworkSuggestions(listOf(suggestion))

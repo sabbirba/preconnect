@@ -9,7 +9,7 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/exam_map_service.dart';
 import 'package:preconnect/api/profile_service.dart';
-import 'package:preconnect/api/schedule_planner_service.dart';
+import 'package:preconnect/api/personal_schedules_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/class_schedule.dart';
@@ -25,8 +25,8 @@ import 'package:preconnect/pages/friend_schedule.dart';
 import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/calendar.dart';
 import 'package:preconnect/pages/free_labs.dart';
-import 'package:preconnect/pages/schedule_planner.dart';
-import 'package:preconnect/pages/schedule_planner_sections/schedule_planner_shared.dart';
+import 'package:preconnect/pages/personal_schedules.dart';
+import 'package:preconnect/pages/personal_schedules_sections/personal_schedules_shared.dart';
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/settings.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
@@ -36,7 +36,7 @@ import 'package:preconnect/pages/home_sections/student_overview.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
 import 'package:preconnect/model/section_info.dart' as section;
-import 'package:preconnect/model/schedule_planner_item.dart';
+import 'package:preconnect/model/personal_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/android_network_assist.dart';
@@ -51,8 +51,8 @@ import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:share_plus/share_plus.dart';
 
-part 'home_sections/home_dashboard_part.dart';
-part 'home_sections/home_dashboard_view_part.dart';
+part 'home_sections/home_dashboard_data.dart';
+part 'home_sections/home_dashboard_view.dart';
 
 enum CaptiveWifiState { offline, validated, captive, unknown }
 
@@ -111,7 +111,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
     HomeTab.friendSchedule: (_) => FriendSchedulePage(onNavigate: _setTab),
     HomeTab.campusPrinter: (_) => const CampusPrinterPage(),
     HomeTab.devs: (_) => const DevsPage(),
-    HomeTab.schedulePlanner: (_) => const SchedulePlannerPage(),
+    HomeTab.personalSchedules: (_) => const PersonalSchedulesPage(),
   };
   late final List<HomeTab> _tabOrder = HomeTab.values;
   final Set<HomeTab> _builtTabs = {HomeTab.dashboard};
@@ -132,6 +132,10 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
       if (!mounted) return;
       _setTab(tab);
     });
+    unawaited(AlarmPage.preload());
+    unawaited(ClassSchedule.preload());
+    unawaited(ExamSchedule.preload());
+    unawaited(PersonalSchedulesPage.preload());
   }
 
   @override
@@ -739,7 +743,7 @@ class _HomeData {
     required this.photoUrl,
     required this.sections,
     required this.examOverrides,
-    required this.plannerItems,
+    required this.personalSchedules,
     required this.isRamadan,
     required this.ramadan,
     required this.holiday,
@@ -752,7 +756,7 @@ class _HomeData {
   final String? photoUrl;
   final List<section.Section> sections;
   final Map<String, ExamScheduleOverride> examOverrides;
-  final List<SchedulePlannerItem> plannerItems;
+  final List<PersonalSchedule> personalSchedules;
   final bool isRamadan;
   final RamadanStatus ramadan;
   final HolidayStatus holiday;
@@ -766,7 +770,7 @@ class _HomeData {
       photoUrl: photoUrl,
       sections: sections,
       examOverrides: examOverrides,
-      plannerItems: plannerItems,
+      personalSchedules: personalSchedules,
       isRamadan: isRamadan,
       ramadan: ramadan,
       holiday: holiday,
@@ -780,7 +784,9 @@ class _HomeData {
       'profile': profile,
       'photoUrl': photoUrl,
       'scheduleJson': scheduleJson,
-      'plannerItems': plannerItems.map((item) => item.toJson()).toList(),
+      'personalSchedules': personalSchedules
+          .map((item) => item.toJson())
+          .toList(),
       'isRamadan': isRamadan,
       'ramadan': {
         'isRamadan': ramadan.isRamadan,
@@ -834,17 +840,16 @@ class _HomeData {
         );
       }
     }
-    final plannerItemsJson = json['plannerItems'];
-    final plannerItems = plannerItemsJson is List
-        ? plannerItemsJson
+    final personalSchedulesJson = json['personalSchedules'];
+    final personalSchedules = personalSchedulesJson is List
+        ? personalSchedulesJson
               .whereType<Map>()
               .map(
-                (item) => SchedulePlannerItem.fromJson(
-                  Map<String, dynamic>.from(item),
-                ),
+                (item) =>
+                    PersonalSchedule.fromJson(Map<String, dynamic>.from(item)),
               )
               .toList(growable: false)
-        : const <SchedulePlannerItem>[];
+        : const <PersonalSchedule>[];
     final ramadanJson = json['ramadan'];
     final ramadan = ramadanJson is Map
         ? RamadanStatus(
@@ -895,7 +900,7 @@ class _HomeData {
       photoUrl: json['photoUrl']?.toString(),
       sections: sections,
       examOverrides: examOverrides,
-      plannerItems: plannerItems,
+      personalSchedules: personalSchedules,
       isRamadan: ramadan.isRamadan,
       ramadan: ramadan,
       holiday: holiday,

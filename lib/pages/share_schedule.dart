@@ -325,8 +325,9 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
                                   child: Text(
                                     'No QR data available',
                                     style: TextStyle(
-                                      color:
-                                          BracuPalette.textSecondary(context),
+                                      color: BracuPalette.textSecondary(
+                                        context,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -345,8 +346,9 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
                                   child: Text(
                                     'Unable to generate QR',
                                     style: TextStyle(
-                                      color:
-                                          BracuPalette.textSecondary(context),
+                                      color: BracuPalette.textSecondary(
+                                        context,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -411,8 +413,9 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
                                 Icon(
                                   Icons.arrow_forward_ios,
                                   size: 14,
-                                  color:
-                                      BracuPalette.primary.withValues(alpha: 0.7),
+                                  color: BracuPalette.primary.withValues(
+                                    alpha: 0.7,
+                                  ),
                                 ),
                               ],
                             ),

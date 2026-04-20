@@ -229,307 +229,318 @@ class _WebLoginSetupPageState extends State<WebLoginSetupPage>
       subtitle: 'Scan browser QR',
       icon: Icons.qr_code_scanner_rounded,
       body: _cameraGranted == null
-          ? buildRefreshLoadingState(
-              onRefresh: _refreshAll,
-              topSpacing: 180,
-            )
+          ? buildRefreshLoadingState(onRefresh: _refreshAll, topSpacing: 180)
           : BracuRefreshList(
               onRefresh: _refreshAll,
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
               children: [
-          const BracuSectionTitle(title: 'Scan Browser QR'),
-          const SizedBox(height: 10),
-          BracuCard(
-            child: AspectRatio(
-              aspectRatio: 1,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: _cameraGranted == true
-                    ? MobileScanner(
-                        controller: _controller,
-                        errorBuilder: (context, error) {
-                          final isPermissionError =
-                              error.errorCode ==
-                              MobileScannerErrorCode.permissionDenied;
-                          final message =
-                              (error.errorDetails?.message?.trim().isNotEmpty ??
-                                  false)
-                              ? error.errorDetails!.message!
-                              : error.errorCode.message;
-                          return Container(
-                            color: Colors.black,
-                            alignment: Alignment.center,
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.error_outline,
-                                  color: Colors.white,
-                                  size: 34,
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  message,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
+                const BracuSectionTitle(title: 'Scan Browser QR'),
+                const SizedBox(height: 10),
+                BracuCard(
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: _cameraGranted == true
+                          ? MobileScanner(
+                              controller: _controller,
+                              errorBuilder: (context, error) {
+                                final isPermissionError =
+                                    error.errorCode ==
+                                    MobileScannerErrorCode.permissionDenied;
+                                final message =
+                                    (error.errorDetails?.message
+                                            ?.trim()
+                                            .isNotEmpty ??
+                                        false)
+                                    ? error.errorDetails!.message!
+                                    : error.errorCode.message;
+                                return Container(
+                                  color: Colors.black,
+                                  alignment: Alignment.center,
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.error_outline,
+                                        color: Colors.white,
+                                        size: 34,
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        message,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      TextButton(
+                                        onPressed: () {
+                                          if (isPermissionError) {
+                                            _ensurePermission();
+                                            return;
+                                          }
+                                          _ensurePermission();
+                                        },
+                                        child: const Text(
+                                          'Retry Camera',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                const SizedBox(height: 12),
-                                TextButton(
-                                  onPressed: () {
-                                    if (isPermissionError) {
-                                      _ensurePermission();
-                                      return;
-                                    }
-                                    _ensurePermission();
-                                  },
-                                  child: const Text(
-                                    'Retry Camera',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
+                                );
+                              },
+                              onDetect: (capture) {
+                                if (capture.barcodes.isEmpty) return;
+                                final raw =
+                                    capture.barcodes.first.rawValue?.trim() ??
+                                    '';
+                                if (raw.isNotEmpty) {
+                                  _approve(raw);
+                                }
+                              },
+                            )
+                          : (_cameraGranted == null
+                                ? const Center(child: _WebLoginLoadingState())
+                                : Center(
+                                    child: TextButton(
+                                      onPressed: _ensurePermission,
+                                      child: Text(
+                                        'Tap to enable camera',
+                                        style: TextStyle(
+                                          color: BracuPalette.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
                                     ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                        onDetect: (capture) {
-                          if (capture.barcodes.isEmpty) return;
-                          final raw =
-                              capture.barcodes.first.rawValue?.trim() ?? '';
-                          if (raw.isNotEmpty) {
-                            _approve(raw);
-                          }
-                        },
-                      )
-                    : (_cameraGranted == null
-                          ? const Center(child: _WebLoginLoadingState())
-                          : Center(
-                              child: TextButton(
-                                onPressed: _ensurePermission,
-                                child: Text(
-                                  'Tap to enable camera',
-                                  style: TextStyle(
-                                    color: BracuPalette.primary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            )),
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          BracuCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'Active Web Sessions',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: BracuPalette.textPrimary(context),
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      tooltip: 'Refresh',
-                      onPressed: _loadingSessions ? null : _loadActiveSessions,
-                      icon: const Icon(Icons.refresh_rounded),
-                    ),
-                  ],
-                ),
-                if (_loadingSessions)
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 8),
-                    child: BracuShimmer(
-                      child: BracuSkeletonBox(height: 3, radius: 2),
-                    ),
-                  ),
-                if (!_loadingSessions && _activeSessions.isEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'No active browser sessions.',
-                    style: TextStyle(
-                      color: BracuPalette.textSecondary(context),
-                    ),
-                  ),
-                ] else ...[
-                  const SizedBox(height: 8),
-                  for (final session in _activeSessions) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 3,
-                      ),
-                      margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: BracuPalette.primary.withValues(alpha: 0.18),
-                        ),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Wrap(
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              spacing: 8,
-                              runSpacing: 4,
-                              children: [
-                                Text(
-                                  _sessionLabel(session),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: BracuPalette.textPrimary(context),
-                                  ),
-                                ),
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: session.revoked
-                                        ? Colors.redAccent
-                                        : Colors.greenAccent,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                Text(
-                                  session.revoked ? 'Logged Out' : 'Active',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: session.revoked
-                                        ? Colors.redAccent
-                                        : Colors.greenAccent,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          TextButton(
-                            onPressed: session.revoked
-                                ? null
-                                : () => _revokeSession(session),
-                            child: const Text('Logout'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          BracuCard(
-            child: Row(
-              children: [
-                Icon(
-                  _busy
-                      ? Icons.hourglass_top_rounded
-                      : Icons.verified_user_outlined,
-                  color: BracuPalette.primary,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    _status ??
-                        (_busy
-                            ? 'Approving browser login...'
-                            : 'Scan the browser QR and approve login.'),
-                    style: TextStyle(
-                      color: BracuPalette.textSecondary(context),
+                                  )),
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          InkWell(
-            onTap: () => openExternalUrl(
-              context,
-              'https://web.preconnect.app',
-              failureMessage: 'Unable to open web.preconnect.app',
-            ),
-            borderRadius: BorderRadius.circular(18),
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: BracuPalette.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: BracuPalette.primary.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.open_in_new,
-                        color: BracuPalette.primary,
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 14),
+                BracuCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
                           Text(
-                            'Open PreConnect Web',
+                            'Active Web Sessions',
                             style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
                               color: BracuPalette.textPrimary(context),
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'PreConnect • Prepare. Connect. Succeed.',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: BracuPalette.textSecondary(context),
+                          const Spacer(),
+                          IconButton(
+                            tooltip: 'Refresh',
+                            onPressed: _loadingSessions
+                                ? null
+                                : _loadActiveSessions,
+                            icon: const Icon(Icons.refresh_rounded),
+                          ),
+                        ],
+                      ),
+                      if (_loadingSessions)
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 8),
+                          child: BracuShimmer(
+                            child: BracuSkeletonBox(height: 3, radius: 2),
+                          ),
+                        ),
+                      if (!_loadingSessions && _activeSessions.isEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'No active browser sessions.',
+                          style: TextStyle(
+                            color: BracuPalette.textSecondary(context),
+                          ),
+                        ),
+                      ] else ...[
+                        const SizedBox(height: 8),
+                        for (final session in _activeSessions) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 3,
                             ),
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: BracuPalette.primary.withValues(
+                                  alpha: 0.18,
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: Wrap(
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    spacing: 8,
+                                    runSpacing: 4,
+                                    children: [
+                                      Text(
+                                        _sessionLabel(session),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          color: BracuPalette.textPrimary(
+                                            context,
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          color: session.revoked
+                                              ? Colors.redAccent
+                                              : Colors.greenAccent,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      Text(
+                                        session.revoked
+                                            ? 'Logged Out'
+                                            : 'Active',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: session.revoked
+                                              ? Colors.redAccent
+                                              : Colors.greenAccent,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                TextButton(
+                                  onPressed: session.revoked
+                                      ? null
+                                      : () => _revokeSession(session),
+                                  child: const Text('Logout'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                BracuCard(
+                  child: Row(
+                    children: [
+                      Icon(
+                        _busy
+                            ? Icons.hourglass_top_rounded
+                            : Icons.verified_user_outlined,
+                        color: BracuPalette.primary,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _status ??
+                              (_busy
+                                  ? 'Approving browser login...'
+                                  : 'Scan the browser QR and approve login.'),
+                          style: TextStyle(
+                            color: BracuPalette.textSecondary(context),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () => openExternalUrl(
+                    context,
+                    'https://web.preconnect.app',
+                    failureMessage: 'Unable to open web.preconnect.app',
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: BracuPalette.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: BracuPalette.primary.withValues(
+                                alpha: 0.12,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.open_in_new,
+                              color: BracuPalette.primary,
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Open PreConnect Web',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: BracuPalette.textPrimary(context),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'PreConnect • Prepare. Connect. Succeed.',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: BracuPalette.textSecondary(context),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right,
+                            color: BracuPalette.textSecondary(context),
                           ),
                         ],
                       ),
                     ),
-                    Icon(
-                      Icons.chevron_right,
-                      color: BracuPalette.textSecondary(context),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ),
-        ],
+              ],
             ),
     );
   }

@@ -2,22 +2,22 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:preconnect/model/schedule_planner_item.dart';
+import 'package:preconnect/model/personal_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/pages/schedule_planner_sections/schedule_planner_shared.dart';
+import 'package:preconnect/pages/personal_schedules_sections/personal_schedules_shared.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 
-Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
+Future<PersonalSchedulesDraft?> showPersonalSchedulesEditorSheet(
   BuildContext context, {
-  required SchedulePlannerItem? item,
-  required List<SchedulePlannerCourseOption> courseOptions,
-  SchedulePlannerSetAlarmCallback? onSetAlarm,
-  SchedulePlannerDeleteCallback? onDelete,
-  SchedulePlannerToggleDoneCallback? onToggleDone,
+  required PersonalSchedule? item,
+  required List<PersonalSchedulesCourseOption> courseOptions,
+  PersonalSchedulesSetAlarmCallback? onSetAlarm,
+  PersonalSchedulesDeleteCallback? onDelete,
+  PersonalSchedulesToggleDoneCallback? onToggleDone,
 }) async {
   final isRamadan = await RamadanTiming.isRamadan();
   var titleValue = item?.title.trim().isNotEmpty == true
-      ? schedulePlannerNormalizeTitle(item!.title.trim())
+      ? personalSchedulesNormalizeTitle(item!.title.trim())
       : '';
   var courseCodeValueText = item?.courseCode ?? '';
   var sectionNameValueText = item?.sectionName ?? '';
@@ -38,21 +38,21 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
   }
   var isDone = item?.isDone ?? false;
 
-  final availableCourseOptions = schedulePlannerCourseOptionsForDropdown(
+  final availableCourseOptions = personalSchedulesCourseOptionsForDropdown(
     courseOptions: courseOptions,
     item: item,
   );
   final initialCourseCode = item?.courseCode.trim().toUpperCase();
   final initialSectionName = item?.sectionName.trim() ?? '';
-  SchedulePlannerCourseOption? selectedCourseOption =
+  PersonalSchedulesCourseOption? selectedCourseOption =
       initialCourseCode != null && initialCourseCode.isNotEmpty
-      ? schedulePlannerFindCourseOption(
+      ? personalSchedulesFindCourseOption(
           availableCourseOptions,
           initialCourseCode,
           preferredSectionName: initialSectionName,
         )
       : null;
-  selectedCourseOption ??= schedulePlannerSelectDefaultCourseOption(
+  selectedCourseOption ??= personalSchedulesSelectDefaultCourseOption(
     availableCourseOptions,
     isRamadan: isRamadan,
   );
@@ -89,7 +89,7 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
   void applyDefaultClassScheduleTimes() {
     final courseOption = selectedCourseOption;
     if (courseOption == null || courseOption.classSchedules.isEmpty) return;
-    final occurrence = schedulePlannerDefaultOccurrenceForOption(
+    final occurrence = personalSchedulesDefaultOccurrenceForOption(
       courseOption,
       isRamadan: isRamadan,
     );
@@ -102,7 +102,7 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
     applyDefaultClassScheduleTimes();
   }
 
-  var resolvedSectionName = schedulePlannerResolveSectionName(
+  var resolvedSectionName = personalSchedulesResolveSectionName(
     courseCode:
         selectedCourseOption?.courseCode.trim().toUpperCase() ??
         initialCourseCode ??
@@ -124,7 +124,7 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
               ? resolvedSectionName
               : sectionNameValueText.trim(),
         )
-      : schedulePlannerKindLabel(kind);
+      : personalSchedulesKindLabel(kind);
 
   String courseCodeValue() {
     if (courseOptions.isNotEmpty) {
@@ -138,12 +138,12 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
   }
 
   String fixedSectionName() {
-    if (schedulePlannerHasUsableSectionLabel(resolvedSectionName)) {
+    if (personalSchedulesHasUsableSectionLabel(resolvedSectionName)) {
       return resolvedSectionName.trim();
     }
     final fallback = sectionNameValueText.trim();
-    if (schedulePlannerHasUsableSectionLabel(fallback)) return fallback;
-    return schedulePlannerResolveSectionName(
+    if (personalSchedulesHasUsableSectionLabel(fallback)) return fallback;
+    return personalSchedulesResolveSectionName(
       courseCode: fixedCourseCode(),
       sectionName: fallback,
       title: item?.title.trim() ?? '',
@@ -153,21 +153,21 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
 
   final liveTitle = ValueNotifier<String>(
     item == null
-        ? 'Add ${schedulePlannerKindLabel(kind)}'
-        : 'Edit ${schedulePlannerKindLabel(kind)}',
+        ? 'Add ${personalSchedulesKindLabel(kind)}'
+        : 'Edit ${personalSchedulesKindLabel(kind)}',
   );
 
   void syncLiveTitle() {
     liveTitle.value = item == null
-        ? 'Add ${schedulePlannerKindLabel(kind)}'
-        : 'Edit ${schedulePlannerKindLabel(kind)}';
+        ? 'Add ${personalSchedulesKindLabel(kind)}'
+        : 'Edit ${personalSchedulesKindLabel(kind)}';
   }
 
-  final result = await showBracuBottomSheet<SchedulePlannerDraft>(
+  final result = await showBracuBottomSheet<PersonalSchedulesDraft>(
     context,
     title: item == null
-        ? 'Add ${schedulePlannerKindLabel(kind)}'
-        : 'Edit ${schedulePlannerKindLabel(kind)}',
+        ? 'Add ${personalSchedulesKindLabel(kind)}'
+        : 'Edit ${personalSchedulesKindLabel(kind)}',
     liveTitle: liveTitle,
     initialChildSize: 0.88,
     builder: (sheetContext, textPrimary, textSecondary) {
@@ -249,26 +249,28 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
 
           Future<void> pickTitleTemplate() async {
             final template =
-                await showBracuSelectSheet<SchedulePlannerTitleTemplate>(
+                await showBracuSelectSheet<PersonalSchedulesTitleTemplate>(
                   context,
                   title: 'Title Template',
                   options:
-                      schedulePlannerTitleTemplates(
+                      personalSchedulesTitleTemplates(
                             courseOptions: courseOptions,
                             item: item,
                           )
                           .map(
                             (template) =>
-                                BracuSelectOption<SchedulePlannerTitleTemplate>(
+                                BracuSelectOption<
+                                  PersonalSchedulesTitleTemplate
+                                >(
                                   value: template,
-                                  label: schedulePlannerTitleTemplateLabel(
+                                  label: personalSchedulesTitleTemplateLabel(
                                     template,
                                   ),
                                   showLeadingIcon: false,
                                 ),
                           )
                           .toList(),
-                  selectedValue: schedulePlannerCurrentTemplateBySelection(
+                  selectedValue: personalSchedulesCurrentTemplateBySelection(
                     courseOptions: courseOptions,
                     item: item,
                     selectedCourseOption: selectedCourseOption,
@@ -281,9 +283,9 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
               selectedCourseOption = template.courseOption;
               resolvedSectionName = template.sectionName;
               kind = template.kind;
-              titleValue = schedulePlannerKindLabel(template.kind);
+              titleValue = personalSchedulesKindLabel(template.kind);
               if (item == null) {
-                final occurrence = schedulePlannerDefaultOccurrenceForOption(
+                final occurrence = personalSchedulesDefaultOccurrenceForOption(
                   template.courseOption,
                   isRamadan: isRamadan,
                 );
@@ -313,13 +315,13 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                   courseCode: courseCode,
                   sectionName: sectionName,
                 ).trim().isEmpty
-                ? schedulePlannerKindLabel(kind)
+                ? personalSchedulesKindLabel(kind)
                 : editableTitleSuffix(
                     titleValue,
                     courseCode: courseCode,
                     sectionName: sectionName,
                   );
-            final title = schedulePlannerComposeTitle(
+            final title = personalSchedulesComposeTitle(
               courseCode: courseCode,
               sectionName: sectionName,
               suffix: titleSuffix,
@@ -382,7 +384,7 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
             children: [
               TextFormField(
                 key: ValueKey(
-                  'planner_title_${titleFieldVersion}_${fixedCourseCode()}_${fixedSectionName()}',
+                  'my_title_${titleFieldVersion}_${fixedCourseCode()}_${fixedSectionName()}',
                 ),
                 initialValue: titleValue,
                 minLines: 1,
@@ -459,7 +461,7 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                   child: Text(
-                    DateFormat('dd MMM yyyy').format(startTime),
+                    DateFormat('d MMM yyyy').format(startTime),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -578,7 +580,7 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
                     );
                     final courseCode = courseCodeValue();
                     final title = titleValue.trim().isEmpty
-                        ? schedulePlannerGeneratedTitle(
+                        ? personalSchedulesGeneratedTitle(
                             kind: kind,
                             selectedCourseOption: selectedCourseOption,
                             courseOptions: courseOptions,
@@ -670,7 +672,7 @@ Future<SchedulePlannerDraft?> showSchedulePlannerEditorSheet(
   return result;
 }
 
-IconData schedulePlannerKindIcon(String kind) {
+IconData personalSchedulesKindIcon(String kind) {
   switch (kind) {
     case 'quiz':
       return Icons.quiz_outlined;
@@ -683,7 +685,7 @@ IconData schedulePlannerKindIcon(String kind) {
   }
 }
 
-Color schedulePlannerKindColor(String kind) {
+Color personalSchedulesKindColor(String kind) {
   switch (kind) {
     case 'quiz':
       return const Color(0xFF7C56FF);

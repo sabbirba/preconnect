@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
-import 'package:preconnect/api/schedule_planner_service.dart';
+import 'package:preconnect/api/personal_schedules_service.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/web_login_setup.dart';
@@ -23,7 +23,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _showExamCountdownCard = true;
   bool _showTodaySchedule = true;
   bool _appLockEnabled = false;
-  bool _hideAds = false;
+  bool _showSupport = true;
 
   @override
   void initState() {
@@ -42,7 +42,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _showExamCountdownCard = visibility.showExamCountdownCard;
       _showTodaySchedule = visibility.showTodaySchedule;
       _appLockEnabled = appLockEnabled;
-      _hideAds = AdsPreferences.instance.isHidden;
+      _showSupport = AdsPreferences.instance.isVisible;
     });
   }
 
@@ -82,14 +82,14 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Future<void> _setHideAds(bool value) async {
+  Future<void> _setShowSupport(bool value) async {
     setState(() {
-      _hideAds = value;
+      _showSupport = value;
     });
-    await AdsPreferences.instance.setHidden(value);
+    await AdsPreferences.instance.setHidden(!value);
     RefreshBus.instance.notify(reason: 'ads_settings_changed');
     if (!mounted) return;
-    showAppSnackBar(context, value ? 'Hidden' : 'Shown');
+    showAppSnackBar(context, value ? 'Support shown' : 'Support hidden');
   }
 
   Future<void> _setVisibility({
@@ -131,7 +131,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final confirmed = await showBracuConfirmationWithActionDialog(
       context,
       icon: Icons.delete_outline_rounded,
-      title: 'Clear Cached?',
+      title: 'Clear cache?',
       message: 'Clean app cache storage.',
       confirmLabel: 'Clear',
       confirmColor: BracuPalette.danger,
@@ -144,13 +144,13 @@ class _SettingsPageState extends State<SettingsPage> {
           'web_login_session_id',
           'web_login_session_token',
           'currentSessionSemesterId',
-          SchedulePlannerService.cacheKey,
+          PersonalSchedulesService.cacheKey,
         };
         await AppPreferencesStore().clearAllExcept(keepKeys);
       },
     );
     if (!confirmed) return;
-    
+
     RefreshBus.instance.notify(reason: 'cache_cleared');
     if (!mounted) return;
     showAppSnackBar(context, 'Cached data cleared');
@@ -208,7 +208,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 child: const ListTile(
                   leading: Icon(Icons.wifi_rounded, size: 20),
-                  title: Text('Wi-Fi Auto Login Setup'),
+                  title: Text('Wi-Fi Setup'),
                   trailing: Icon(Icons.chevron_right_rounded, size: 20),
                 ),
               ),
@@ -258,7 +258,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 child: const ListTile(
                   leading: Icon(Icons.delete_outline_rounded, size: 20),
-                  title: Text('Clear cached'),
+                  title: Text('Clear Cache'),
                   trailing: Icon(Icons.chevron_right_rounded, size: 20),
                 ),
               ),
@@ -329,10 +329,10 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
                 _ToggleRow(
-                  title: 'Hide Support',
-                  subtitle: 'Hide support content and ads',
-                  value: _hideAds,
-                  onChanged: _setHideAds,
+                  title: 'Show Support',
+                  subtitle: 'Show support content and ads',
+                  value: _showSupport,
+                  onChanged: _setShowSupport,
                 ),
               ],
             ),

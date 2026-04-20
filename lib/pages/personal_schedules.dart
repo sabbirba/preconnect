@@ -9,33 +9,41 @@ import 'package:flutter/services.dart';
 import 'package:flutter_alarmkit/flutter_alarmkit.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/schedule_service.dart';
-import 'package:preconnect/api/schedule_planner_service.dart';
-import 'package:preconnect/model/schedule_planner_item.dart';
+import 'package:preconnect/api/personal_schedules_service.dart';
+import 'package:preconnect/model/personal_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/pages/schedule_planner_sections/schedule_planner_editor_sheet.dart'
-    show showSchedulePlannerEditorSheet;
-import 'package:preconnect/pages/schedule_planner_sections/schedule_planner_shared.dart';
+import 'package:preconnect/pages/personal_schedules_sections/personal_schedules_editor_sheet.dart'
+    show showPersonalSchedulesEditorSheet;
+import 'package:preconnect/pages/personal_schedules_sections/personal_schedules_shared.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
-class SchedulePlannerPage extends StatefulWidget {
-  const SchedulePlannerPage({super.key});
+class PersonalSchedulesPage extends StatefulWidget {
+  const PersonalSchedulesPage({super.key});
+
+  static Future<void> preload() async {
+    await _PersonalSchedulesPageState.preloadData();
+  }
 
   @override
-  State<SchedulePlannerPage> createState() => _SchedulePlannerPageState();
+  State<PersonalSchedulesPage> createState() => _PersonalSchedulesPageState();
 }
 
-class _SchedulePlannerPageState extends State<SchedulePlannerPage>
+class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
     with RefreshBusState, WidgetsBindingObserver {
   static const MethodChannel _androidAlarmChannel = MethodChannel(
     'preconnect/android_alarm',
   );
   static const Duration _autoRefreshInterval = Duration(seconds: 20);
-  late Future<List<SchedulePlannerItem>> _future;
-  late Future<List<SchedulePlannerCourseOption>> _courseOptionsFuture;
-  List<SchedulePlannerItem>? _latestItems;
-  List<SchedulePlannerCourseOption> _latestCourseOptions =
-      const <SchedulePlannerCourseOption>[];
+  static List<PersonalSchedule>? _cachedItems;
+  static List<PersonalSchedulesCourseOption>? _cachedCourseOptions;
+  static Future<void>? _preloadFuture;
+
+  late Future<List<PersonalSchedule>> _future;
+  List<PersonalSchedule>? _latestItems;
+  List<PersonalSchedulesCourseOption> _latestCourseOptions =
+      const <PersonalSchedulesCourseOption>[];
+  Future<List<PersonalSchedulesCourseOption>>? _courseOptionsLoadInFlight;
   bool _isBusy = false;
   Timer? _autoRefreshTimer;
 
@@ -43,14 +51,115 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _future = _loadItems();
-    _courseOptionsFuture = _loadCourseOptions();
+    _future = _cachedItems == null
+        ? _loadItems()
+        : Future<List<PersonalSchedule>>.value(_cachedItems!);
+    if (_cachedCourseOptions != null && _cachedCourseOptions!.isNotEmpty) {
+      _latestCourseOptions = _cachedCourseOptions!;
+    }
+    unawaited(_warmAndBind());
     unawaited(_primeCachedItems());
     _autoRefreshTimer = Timer.periodic(_autoRefreshInterval, (_) {
       if (!mounted || _isBusy) return;
       unawaited(_refresh(forceRefresh: true, notify: false));
     });
     bindRefreshBus(_onRefreshSignal);
+  }
+
+  Future<void> _warmAndBind() async {
+    await preloadData();
+    if (!mounted) return;
+    setState(() {
+      _future = Future<List<PersonalSchedule>>.value(
+        _cachedItems ?? const <PersonalSchedule>[],
+      );
+      if (_cachedItems != null) {
+        _latestItems = _cachedItems;
+      }
+      if (_cachedCourseOptions != null) {
+        _latestCourseOptions = _cachedCourseOptions!;
+      }
+    });
+  }
+
+  static Future<void> preloadData({bool forceRefresh = false}) async {
+    if (!forceRefresh &&
+        _cachedItems != null &&
+        _cachedCourseOptions != null &&
+        _cachedCourseOptions!.isNotEmpty) {
+      return;
+    }
+    if (!forceRefresh) {
+      final inFlight = _preloadFuture;
+      if (inFlight != null) {
+        await inFlight;
+        return;
+      }
+    }
+
+    final future = _loadPreloadData(forceRefresh: forceRefresh);
+    _preloadFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_preloadFuture, future)) {
+        _preloadFuture = null;
+      }
+    }
+  }
+
+  static Future<void> _loadPreloadData({bool forceRefresh = false}) async {
+    final service = PersonalSchedulesService();
+    try {
+      final items = await service.getItems(forceRefresh: forceRefresh);
+      _cachedItems = await service.autoCompleteOverdueItems(items);
+    } catch (_) {
+      _cachedItems =
+          await service.getCachedItems() ?? const <PersonalSchedule>[];
+    }
+
+    try {
+      final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+      final scheduleService = ScheduleService();
+      final jsonString = await scheduleService.getStudentScheduleForSemester(
+        semesterSessionId: currentSessionSemesterId,
+      );
+      final sections = scheduleService.parseStudentSections(
+        jsonString,
+        semesterSessionId: currentSessionSemesterId,
+      );
+      final courseOptions = <PersonalSchedulesCourseOption>[];
+      final seen = <String>{};
+      for (final sectionItem in sections) {
+        final code = sectionItem.courseCode.trim().toUpperCase();
+        if (code.isEmpty) continue;
+        final option = (
+          courseCode: code,
+          sectionName: sectionItem.sectionName.trim(),
+          classSchedules: sectionItem.sectionSchedule.classSchedules
+              .map(
+                (schedule) => (
+                  day: schedule.day,
+                  startTime: schedule.startTime,
+                  endTime: schedule.endTime,
+                ),
+              )
+              .toList(),
+        );
+        final identity = '${option.courseCode}|${option.sectionName}';
+        if (seen.add(identity)) {
+          courseOptions.add(option);
+        }
+      }
+      courseOptions.sort((a, b) {
+        final codeCmp = a.courseCode.compareTo(b.courseCode);
+        if (codeCmp != 0) return codeCmp;
+        return a.sectionName.compareTo(b.sectionName);
+      });
+      _cachedCourseOptions = courseOptions;
+    } catch (_) {
+      _cachedCourseOptions ??= const <PersonalSchedulesCourseOption>[];
+    }
   }
 
   @override
@@ -74,7 +183,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     if (isRefreshingFrom('cache_cleared')) {
       if (mounted) {
         setState(() {
-          _future = SchedulePlannerService().getItems(forceRefresh: true);
+          _future = PersonalSchedulesService().getItems(forceRefresh: true);
         });
       }
       return;
@@ -82,82 +191,118 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     unawaited(_refresh(forceRefresh: false, notify: false));
   }
 
-  Future<List<SchedulePlannerItem>> _loadItems({
-    bool forceRefresh = false,
-  }) async {
+  Future<List<PersonalSchedule>> _loadItems({bool forceRefresh = false}) async {
     try {
-      final service = SchedulePlannerService();
+      final service = PersonalSchedulesService();
       final items = await service.getItems(forceRefresh: forceRefresh);
-      return service.autoCompleteOverdueItems(items);
+      final normalizedItems = await service.autoCompleteOverdueItems(items);
+      _cachedItems = normalizedItems;
+      return normalizedItems;
     } catch (e) {
-      final cached = await SchedulePlannerService().getCachedItems();
-      return cached ?? const <SchedulePlannerItem>[];
+      final cached = await PersonalSchedulesService().getCachedItems();
+      final fallback = cached ?? const <PersonalSchedule>[];
+      _cachedItems = fallback;
+      return fallback;
     }
   }
 
   Future<void> _primeCachedItems() async {
-    final cached = await SchedulePlannerService().getCachedItems();
+    if (_cachedItems != null && _cachedItems!.isNotEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _latestItems = _cachedItems;
+      });
+      return;
+    }
+    final cached = await PersonalSchedulesService().getCachedItems();
     if (!mounted || cached == null || cached.isEmpty) return;
     setState(() {
       _latestItems = cached;
     });
+    _cachedItems = cached;
   }
 
-  Future<List<SchedulePlannerCourseOption>> _loadCourseOptions({
+  Future<List<PersonalSchedulesCourseOption>> _loadCourseOptions({
     bool forceRefresh = false,
   }) async {
-    try {
-      final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
-      final scheduleService = ScheduleService();
-      // Use only existing cached schedule data (no BRACU fetching)
-      final jsonString = await scheduleService.getStudentScheduleForSemester(
-        semesterSessionId: currentSessionSemesterId,
-      );
-      final sections = scheduleService.parseStudentSections(
-        jsonString,
-        semesterSessionId: currentSessionSemesterId,
-      );
-      final courseOptions = <SchedulePlannerCourseOption>[];
-      final seen = <String>{};
-      for (final sectionItem in sections) {
-        final code = sectionItem.courseCode.trim().toUpperCase();
-        if (code.isNotEmpty) {
-          final option = (
-            courseCode: code,
-            sectionName: sectionItem.sectionName.trim(),
-            classSchedules: sectionItem.sectionSchedule.classSchedules
-                .map(
-                  (schedule) => (
-                    day: schedule.day,
-                    startTime: schedule.startTime,
-                    endTime: schedule.endTime,
-                  ),
-                )
-                .toList(),
-          );
-          if (seen.add(_courseOptionIdentity(option))) {
-            courseOptions.add(option);
-          }
-        }
-      }
-      courseOptions.sort((a, b) {
-        final codeCmp = a.courseCode.compareTo(b.courseCode);
-        if (codeCmp != 0) return codeCmp;
-        return a.sectionName.compareTo(b.sectionName);
-      });
-      final options = courseOptions;
-      if (mounted) {
+    if (!forceRefresh &&
+        _cachedCourseOptions != null &&
+        _cachedCourseOptions!.isNotEmpty) {
+      if (_latestCourseOptions.isEmpty && mounted) {
         setState(() {
-          _latestCourseOptions = options;
+          _latestCourseOptions = _cachedCourseOptions!;
         });
       }
-      return options;
-    } catch (_) {
-      return const <SchedulePlannerCourseOption>[];
+      return _cachedCourseOptions!;
     }
+    if (!forceRefresh && _latestCourseOptions.isNotEmpty) {
+      return _latestCourseOptions;
+    }
+    if (_courseOptionsLoadInFlight != null) {
+      return _courseOptionsLoadInFlight!;
+    }
+
+    final loadFuture = () async {
+      try {
+        final currentSessionSemesterId =
+            await resolveCurrentSessionSemesterId();
+        final scheduleService = ScheduleService();
+        // Use only existing cached schedule data (no BRACU fetching)
+        final jsonString = await scheduleService.getStudentScheduleForSemester(
+          semesterSessionId: currentSessionSemesterId,
+        );
+        final sections = scheduleService.parseStudentSections(
+          jsonString,
+          semesterSessionId: currentSessionSemesterId,
+        );
+        final courseOptions = <PersonalSchedulesCourseOption>[];
+        final seen = <String>{};
+        for (final sectionItem in sections) {
+          final code = sectionItem.courseCode.trim().toUpperCase();
+          if (code.isNotEmpty) {
+            final option = (
+              courseCode: code,
+              sectionName: sectionItem.sectionName.trim(),
+              classSchedules: sectionItem.sectionSchedule.classSchedules
+                  .map(
+                    (schedule) => (
+                      day: schedule.day,
+                      startTime: schedule.startTime,
+                      endTime: schedule.endTime,
+                    ),
+                  )
+                  .toList(),
+            );
+            if (seen.add(_courseOptionIdentity(option))) {
+              courseOptions.add(option);
+            }
+          }
+        }
+        courseOptions.sort((a, b) {
+          final codeCmp = a.courseCode.compareTo(b.courseCode);
+          if (codeCmp != 0) return codeCmp;
+          return a.sectionName.compareTo(b.sectionName);
+        });
+        final options = courseOptions;
+        if (mounted) {
+          setState(() {
+            _latestCourseOptions = options;
+          });
+        }
+        _cachedCourseOptions = options;
+        return options;
+      } catch (_) {
+        return const <PersonalSchedulesCourseOption>[];
+      } finally {
+        _courseOptionsLoadInFlight = null;
+      }
+    }();
+
+    _courseOptionsLoadInFlight = loadFuture;
+    return loadFuture;
   }
 
-  String _courseOptionIdentity(SchedulePlannerCourseOption option) {
+  String _courseOptionIdentity(PersonalSchedulesCourseOption option) {
     return '${option.courseCode}|${option.sectionName}';
   }
 
@@ -167,8 +312,8 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     setState(() {
       _isBusy = true;
       _future = _loadItems(forceRefresh: forceRefresh);
-      _courseOptionsFuture = _loadCourseOptions(forceRefresh: forceRefresh);
     });
+    unawaited(_loadCourseOptions(forceRefresh: forceRefresh));
     try {
       final items = await _future;
       if (!mounted) return;
@@ -184,10 +329,10 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     }
   }
 
-  Future<void> _openEditor({SchedulePlannerItem? item}) async {
+  Future<void> _openEditor({PersonalSchedule? item}) async {
     final currentContext = context;
-    final courseOptions = await _courseOptionsFuture;
-    final draft = await showSchedulePlannerEditorSheet(
+    final courseOptions = _latestCourseOptions;
+    final draft = await showPersonalSchedulesEditorSheet(
       currentContext,
       item: item,
       courseOptions: courseOptions,
@@ -201,7 +346,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
             required String title,
             required DateTime reminderAt,
           }) {
-            return _setPlannerAlarm(
+            return _setMyAlarm(
               context: currentContext,
               courseCode: courseCode,
               title: title,
@@ -211,11 +356,11 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     );
     if (draft == null || !mounted) return;
 
-    final kindLabel = schedulePlannerFormatKind(draft.kind);
+    final kindLabel = personalSchedulesFormatKind(draft.kind);
     try {
-      final normalizedTitle = _normalizePlannerTitleForSave(draft.title);
+      final normalizedTitle = _normalizeMyTitleForSave(draft.title);
       if (item == null) {
-        await SchedulePlannerService().createItem(
+        await PersonalSchedulesService().createItem(
           kind: draft.kind,
           title: normalizedTitle,
           startTime: draft.startTime,
@@ -228,7 +373,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
         );
         showAppSnackBar(currentContext, '$kindLabel added');
       } else {
-        await SchedulePlannerService().updateItem(
+        await PersonalSchedulesService().updateItem(
           itemId: item.itemId,
           kind: draft.kind,
           title: normalizedTitle,
@@ -255,7 +400,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     }
   }
 
-  Future<void> _setDoneStatus(SchedulePlannerItem item, bool done) async {
+  Future<void> _setDoneStatus(PersonalSchedule item, bool done) async {
     if (item.isDone == done) return;
     final currentContext = context;
     if (_isBusy) return;
@@ -287,7 +432,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
       _isBusy = true;
     });
     try {
-      final updated = await SchedulePlannerService().updateItem(
+      final updated = await PersonalSchedulesService().updateItem(
         itemId: item.itemId,
         isDone: done,
       );
@@ -326,7 +471,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
       if (!mounted) return;
       showAppSnackBar(
         currentContext,
-        'Unable to update ${schedulePlannerFormatKind(item.kind).toLowerCase()}',
+        'Unable to update ${personalSchedulesFormatKind(item.kind).toLowerCase()}',
       );
     } finally {
       if (mounted) {
@@ -337,10 +482,10 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     }
   }
 
-  Future<void> _deleteItem(SchedulePlannerItem item) async {
+  Future<void> _deleteItem(PersonalSchedule item) async {
     final currentContext = context;
-    final kindLabel = schedulePlannerFormatKind(item.kind).toLowerCase();
-    
+    final kindLabel = personalSchedulesFormatKind(item.kind).toLowerCase();
+
     final deleted = await showBracuConfirmationWithActionDialog(
       currentContext,
       icon: Icons.delete_outline_rounded,
@@ -348,29 +493,26 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
       message: 'This will remove this $kindLabel from your schedule.',
       confirmLabel: 'Delete',
       onConfirm: () async {
-        await SchedulePlannerService().deleteItem(item.itemId);
+        await PersonalSchedulesService().deleteItem(item.itemId);
       },
     );
-    
+
     if (!deleted || !mounted) return;
-    
+
     try {
       showAppSnackBar(
         currentContext,
-        '${schedulePlannerFormatKind(item.kind)} deleted',
+        '${personalSchedulesFormatKind(item.kind)} deleted',
       );
       RefreshBus.instance.notify(reason: 'schedule');
       await _refresh(forceRefresh: true, notify: false);
     } catch (_) {
       if (!mounted) return;
-      showAppSnackBar(
-        currentContext,
-        'Unable to refresh after delete',
-      );
+      showAppSnackBar(currentContext, 'Unable to refresh after delete');
     }
   }
 
-  Future<void> _setPlannerAlarm({
+  Future<void> _setMyAlarm({
     required BuildContext context,
     required String courseCode,
     required String title,
@@ -385,7 +527,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
 
     final labelCode = courseCode.trim().isNotEmpty
         ? courseCode.trim().toUpperCase()
-        : 'Planner';
+        : 'My';
     final trimmedTitle = title.trim();
     final message = trimmedTitle.isEmpty
         ? labelCode
@@ -443,17 +585,17 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
   @override
   Widget build(BuildContext context) {
     return BracuPageScaffold(
-      title: 'Planner',
+      title: 'Personal',
       subtitle: 'Schedules',
       icon: Icons.event_note_outlined,
       actions: [
         IconButton(
-          tooltip: 'Add planner schedule',
+          tooltip: 'Add personal schedule',
           onPressed: _openEditor,
           icon: const Icon(Icons.add_rounded),
         ),
       ],
-      body: FutureBuilder<List<SchedulePlannerItem>>(
+      body: FutureBuilder<List<PersonalSchedule>>(
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting &&
@@ -473,40 +615,64 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
           }
 
           final items =
-              _latestItems ?? snapshot.data ?? const <SchedulePlannerItem>[];
+              _latestItems ?? snapshot.data ?? const <PersonalSchedule>[];
           if (_latestItems == null &&
               snapshot.hasData &&
               snapshot.data != null) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted || _latestItems != null) return;
               setState(() {
-                _latestItems = List<SchedulePlannerItem>.from(snapshot.data!);
+                _latestItems = List<PersonalSchedule>.from(snapshot.data!);
               });
             });
           }
           final dayGroups = _groupItemsByDay(items);
 
           if (items.isEmpty) {
-            return BracuRefreshScroll(
+            return BracuRefreshList(
               onRefresh: () => _refresh(forceRefresh: true),
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-              child: _PlannerContentWrap(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    BracuEmptyState(
-                      message: 'No planner schedules yet. Tap + to add one.',
-                    ),
-                  ],
+              children: [
+                const SizedBox(height: 160),
+                _MyContentWrap(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        'No personal schedules yet.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: BracuPalette.textPrimary(context),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tap plus to add your first one.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: BracuPalette.textSecondary(context),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      OutlinedButton.icon(
+                        onPressed: _openEditor,
+                        icon: const Icon(Icons.add_rounded, size: 16),
+                        label: const Text('Add Schedule'),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             );
           }
 
           return BracuRefreshScroll(
             onRefresh: () => _refresh(forceRefresh: true),
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-            child: _PlannerContentWrap(
+            child: _MyContentWrap(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -523,10 +689,11 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
                         padding: const EdgeInsets.only(bottom: 8),
                         child: _UpcomingScheduleItemCard(
                           item: item,
-                          sectionBadgeLabel: _plannerSectionBadgeLabel(
-                            item,
-                            _latestCourseOptions,
-                          ),
+                          sectionBadgeLabel:
+                              _personalSchedulesSectionBadgeLabel(
+                                item,
+                                _latestCourseOptions,
+                              ),
                           onTap: () => _openEditor(item: item),
                         ),
                       ),
@@ -541,21 +708,21 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     );
   }
 
-  List<_PlannerDayGroup> _groupItemsByDay(List<SchedulePlannerItem> items) {
-    final grouped = <DateTime, List<SchedulePlannerItem>>{};
+  List<_MyDayGroup> _groupItemsByDay(List<PersonalSchedule> items) {
+    final grouped = <DateTime, List<PersonalSchedule>>{};
     for (final item in items) {
       final localDueAt = item.startTime.toLocal();
       final date = DateTime(localDueAt.year, localDueAt.month, localDueAt.day);
-      grouped.putIfAbsent(date, () => <SchedulePlannerItem>[]).add(item);
+      grouped.putIfAbsent(date, () => <PersonalSchedule>[]).add(item);
     }
 
     final groups =
         grouped.entries
             .map(
-              (entry) => _PlannerDayGroup(
+              (entry) => _MyDayGroup(
                 date: entry.key,
-                items: List<SchedulePlannerItem>.from(entry.value)
-                  ..sort(_comparePlannerItems),
+                items: List<PersonalSchedule>.from(entry.value)
+                  ..sort(_compareMyItems),
               ),
             )
             .toList()
@@ -564,7 +731,7 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
     return groups;
   }
 
-  int _comparePlannerItems(SchedulePlannerItem a, SchedulePlannerItem b) {
+  int _compareMyItems(PersonalSchedule a, PersonalSchedule b) {
     final doneCompare = a.isDone == b.isDone
         ? 0
         : a.isDone
@@ -577,8 +744,8 @@ class _SchedulePlannerPageState extends State<SchedulePlannerPage>
   }
 }
 
-class _PlannerContentWrap extends StatelessWidget {
-  const _PlannerContentWrap({required this.child});
+class _MyContentWrap extends StatelessWidget {
+  const _MyContentWrap({required this.child});
 
   final Widget child;
 
@@ -594,11 +761,11 @@ class _PlannerContentWrap extends StatelessWidget {
   }
 }
 
-class _PlannerDayGroup {
-  const _PlannerDayGroup({required this.date, required this.items});
+class _MyDayGroup {
+  const _MyDayGroup({required this.date, required this.items});
 
   final DateTime date;
-  final List<SchedulePlannerItem> items;
+  final List<PersonalSchedule> items;
 }
 
 class _DayDateHeader extends StatelessWidget {
@@ -632,13 +799,13 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
     required this.onTap,
   });
 
-  final SchedulePlannerItem item;
+  final PersonalSchedule item;
   final String sectionBadgeLabel;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final title = _plannerCardTitle(item.title);
+    final title = _personalSchedulesCardTitle(item.title);
     final startTime = item.startTime.toLocal();
     final endTime = item.endTime?.toLocal();
     final isComplete = item.isDone || !startTime.isAfter(DateTime.now());
@@ -727,17 +894,17 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
   }
 }
 
-String _plannerCardTitle(String rawTitle) {
-  return schedulePlannerCardTitle(rawTitle);
+String _personalSchedulesCardTitle(String rawTitle) {
+  return personalSchedulesCardTitle(rawTitle);
 }
 
-String _normalizePlannerTitleForSave(String rawTitle) {
-  return schedulePlannerNormalizeTitleForSave(rawTitle);
+String _normalizeMyTitleForSave(String rawTitle) {
+  return personalSchedulesNormalizeTitleForSave(rawTitle);
 }
 
-String _plannerSectionBadgeLabel(
-  SchedulePlannerItem item,
-  List<SchedulePlannerCourseOption> courseOptions,
+String _personalSchedulesSectionBadgeLabel(
+  PersonalSchedule item,
+  List<PersonalSchedulesCourseOption> courseOptions,
 ) {
-  return schedulePlannerSectionBadgeLabel(item, courseOptions);
+  return personalSchedulesSectionBadgeLabel(item, courseOptions);
 }

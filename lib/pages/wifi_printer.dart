@@ -21,6 +21,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const int _printerPort = 515;
   static const String _printerQueue = 'secure';
   static const String _historyKey = 'campus_printer_history';
+  static const String _lastPrinterHostKey = 'campus_printer_last_host';
+  static const int _maxHistoryEntries = 50;
   static const String _paperSizeKey = 'campus_printer_paper_size';
   static const String _marginsKey = 'campus_printer_margins';
   static const String _colorPrintingKey = 'campus_printer_color_printing';
@@ -28,6 +30,15 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const String _resolutionKey = 'campus_printer_resolution';
   static const String _orientationKey = 'campus_printer_orientation';
   static const String _copiesKey = 'campus_printer_copies';
+  static const String _snackFileReadFailed = "Couldn't read selected file";
+  static const String _snackUnsupportedFile = 'Unsupported file. Use PDF.';
+  static const String _snackNoPrinter = 'No printer detected';
+  static const String _snackChooseFile = 'Select a file first';
+  static const String _snackIdentityRequired = 'Name + Student ID required';
+  static const String _snackAdvancedNeedsPs =
+      'Advanced options are unavailable for PDF';
+  static const String _snackPrintSent = 'Print sent';
+  static const String _snackPrintFailed = 'Print failed';
 
   Uint8List? _fileBytes;
   String _fileName = '';
@@ -51,15 +62,18 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   bool _busy = false;
   bool _discovering = false;
 
+  bool get _hasAdvancedPdfOptionsSelected {
+    return _margins != _MarginPreset.mm10 ||
+        _colorPrinting ||
+        _duplexMode != _DuplexMode.none ||
+        _resolution != _PrintResolution.medium ||
+        _orientation != _PaperOrientation.portrait;
+  }
+
   @override
   void initState() {
     super.initState();
     _bootstrap();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 
   Future<void> _bootstrap() async {
@@ -86,6 +100,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   Future<void> _loadPrinterPreferences() async {
     final paperSize = await AppStorage.instance.getString(_paperSizeKey);
     final margins = await AppStorage.instance.getString(_marginsKey);
+    final hasValidSavedMargins = _MarginPreset.values.any(
+      (item) => item.storageValue == margins,
+    );
     final colorPrinting = await AppStorage.instance.getBool(_colorPrintingKey);
     final duplex = await AppStorage.instance.getString(_duplexKey);
     final resolution = await AppStorage.instance.getString(_resolutionKey);
@@ -101,6 +118,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _orientation = _PaperOrientation.fromStorage(orientation);
       _copies = int.tryParse(copies ?? '')?.clamp(1, 999) ?? 1;
     });
+    if (!hasValidSavedMargins) {
+      await AppStorage.instance.setString(
+        _marginsKey,
+        _MarginPreset.mm10.storageValue,
+      );
+    }
   }
 
   Future<void> _savePrinterPreferences() async {
@@ -158,8 +181,18 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _printerStatus = 'Scanning...';
     });
     try {
+      final savedHost =
+          (await AppStorage.instance.getString(_lastPrinterHostKey) ?? '')
+              .trim();
       final printers = await _WifiPrinterDiscovery.findLprPrinters(
         port: _printerPort,
+        timeout: const Duration(milliseconds: 220),
+        concurrency: 24,
+        limit: 1,
+        maxSubnets: 1,
+        preferredHosts: savedHost.isEmpty
+            ? const <String>[]
+            : <String>[savedHost],
       );
       if (!mounted) return;
       if (printers.isEmpty) {
@@ -169,6 +202,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         return;
       }
       final printer = printers.first;
+      await AppStorage.instance.setString(_lastPrinterHostKey, printer.address);
       setState(() {
         _printerHost = printer.address;
         _printerStatus = 'Campus Printer found';
@@ -218,18 +252,20 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   }
 
   Future<void> _saveHistory(List<_PrintHistoryEntry> history) async {
+    final trimmed = history.take(_maxHistoryEntries).toList(growable: false);
     setState(() {
-      _history = history;
+      _history = trimmed;
     });
     await AppStorage.instance.setString(
       _historyKey,
-      jsonEncode(history.map((item) => item.toJson()).toList()),
+      jsonEncode(trimmed.map((item) => item.toJson()).toList()),
     );
   }
 
   Future<void> _pickPrintFile() async {
     final picked = await FilePicker.pickFiles(
-      type: FileType.any,
+      type: FileType.custom,
+      allowedExtensions: const <String>['pdf'],
       allowMultiple: false,
       withData: true,
     );
@@ -241,9 +277,18 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       bytes = await File(path).readAsBytes();
     }
     if (bytes == null || bytes.isEmpty) {
-      if (mounted) showAppSnackBar(context, 'Unable to read selected file');
+      if (mounted) showAppSnackBar(context, _snackFileReadFailed);
       return;
     }
+
+    final format = _detectRawPrintFormat(file.name, bytes);
+    if (format == _RawPrintFormat.unknown) {
+      if (mounted) {
+        showAppSnackBar(context, _snackUnsupportedFile);
+      }
+      return;
+    }
+
     setState(() {
       _fileBytes = bytes;
       _fileName = file.name.trim();
@@ -263,15 +308,34 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     final bytes = _fileBytes;
 
     if (host.isEmpty) {
-      showAppSnackBar(context, 'No printer found');
+      showAppSnackBar(context, _snackNoPrinter);
       return;
     }
     if (bytes == null || bytes.isEmpty) {
-      showAppSnackBar(context, 'Choose a file first');
+      showAppSnackBar(context, _snackChooseFile);
+      return;
+    }
+    final format = _detectRawPrintFormat(_fileName, bytes);
+    if (format == _RawPrintFormat.unknown) {
+      showAppSnackBar(context, _snackUnsupportedFile);
       return;
     }
     if (clientName.isEmpty || studentId.isEmpty) {
-      showAppSnackBar(context, 'Name and Student ID are required.');
+      showAppSnackBar(context, _snackIdentityRequired);
+      return;
+    }
+
+    final ticket = _PrintTicket(
+      paperSize: _paperSize,
+      margins: _margins,
+      colorPrinting: _colorPrinting,
+      duplexMode: _duplexMode,
+      resolution: _resolution,
+      orientation: _orientation,
+      copies: _copies,
+    );
+    if (format == _RawPrintFormat.pdf && _hasAdvancedPdfOptionsSelected) {
+      showAppSnackBar(context, _snackAdvancedNeedsPs);
       return;
     }
 
@@ -289,15 +353,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         fileName: _fileName,
         user: user,
         clientName: clientName,
-        preferences: _PrintTicket(
-          paperSize: _paperSize,
-          margins: _margins,
-          colorPrinting: _colorPrinting,
-          duplexMode: _duplexMode,
-          resolution: _resolution,
-          orientation: _orientation,
-          copies: _copies,
-        ),
+        preferences: ticket,
+        format: format,
       );
       if (!mounted) return;
       await _addHistory(
@@ -310,7 +367,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         ),
       );
       if (!mounted) return;
-      showAppSnackBar(context, 'File sent to campus printer');
+      showAppSnackBar(context, _snackPrintSent);
     } on _LprPrintException catch (error) {
       if (!mounted) return;
       await _addHistory(
@@ -331,12 +388,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
           fileName: _fileName,
           printerHost: host,
           status: 'Failed',
-          message: 'Unable to send file to campus printer',
+          message: _snackPrintFailed,
           createdAt: DateTime.now(),
         ),
       );
       if (!mounted) return;
-      showAppSnackBar(context, 'Unable to send file to campus printer');
+      showAppSnackBar(context, _snackPrintFailed);
     } finally {
       if (mounted) {
         setState(() {
@@ -757,6 +814,10 @@ class _LprPrintClient {
   final int port;
   final String queue;
   static const Duration _timeout = Duration(seconds: 15);
+  static const String _errPrinterHostRequired = 'Printer host is required';
+  static const String _errPrinterConnectionTimedOut =
+      'Printer connection timed out';
+  static const String _errPrinterRejectedJob = 'Printer rejected the job';
 
   Future<void> sendFile({
     required Uint8List bytes,
@@ -764,41 +825,51 @@ class _LprPrintClient {
     required String user,
     required String clientName,
     required _PrintTicket preferences,
+    required _RawPrintFormat format,
   }) async {
     final printerHost = host.trim();
     if (printerHost.isEmpty) {
-      throw const _LprPrintException('Printer host is required');
+      throw const _LprPrintException(_errPrinterHostRequired);
     }
 
     final printerQueue = queue;
-    final owner = user;
-    final client = clientName.trim().isEmpty ? user : clientName.trim();
-    final safeFileName = fileName.trim();
+    final owner = _sanitizeLprText(user, fallback: 'guest');
+    final client = _sanitizeLprText(
+      clientName.trim().isEmpty ? user : clientName.trim(),
+      fallback: owner,
+    );
+    final localHost = _sanitizeLprToken(
+      Platform.localHostname,
+      fallback: 'app',
+    );
+    final safeFileName = _sanitizeLprText(
+      fileName.trim(),
+      fallback: 'print-job',
+    );
     final printableJobName = safeFileName.toLowerCase().endsWith('.pdf')
         ? safeFileName.substring(0, safeFileName.length - 4)
         : safeFileName;
-    final isPostScript = _looksLikePostScript(safeFileName, bytes);
-    final jobToken =
-        'dfA${(DateTime.now().microsecondsSinceEpoch % 999 + 1).toString().padLeft(3, '0')}$client';
+    final copies = preferences.copies.clamp(1, 999);
+    final sequence = (DateTime.now().microsecondsSinceEpoch % 999 + 1)
+        .toString()
+        .padLeft(3, '0');
+    final controlFileName = 'cfA$sequence$localHost';
+    final dataFileName = 'dfA$sequence$localHost';
 
     Socket? socket;
     _LprAckReader? ackReader;
     try {
-      final sendBytes = isPostScript
-          ? Uint8List.fromList([
-              ..._ascii(preferences.postScriptPreamble),
-              ...bytes,
-            ])
-          : bytes;
+      final sendBytes = bytes;
       final control = _ascii(
         [
-          'H$client',
+          'H$localHost',
           'P$owner',
           'J$printableJobName',
-          'C$printableJobName',
+          'C$localHost',
+          'L$client',
           'M${preferences.summary}',
-          'l$jobToken',
-          'U$jobToken',
+          for (var i = 0; i < copies; i++) 'l$dataFileName',
+          'U$dataFileName',
           'N$safeFileName',
           '',
         ].join('\n'),
@@ -816,7 +887,7 @@ class _LprPrintClient {
         ackReader,
         Uint8List.fromList([
           0x02,
-          ..._ascii('${control.length} $jobToken'),
+          ..._ascii('${control.length} $controlFileName'),
           0x0A,
         ]),
       );
@@ -830,7 +901,7 @@ class _LprPrintClient {
         ackReader,
         Uint8List.fromList([
           0x03,
-          ..._ascii('${sendBytes.length} $jobToken'),
+          ..._ascii('${sendBytes.length} $dataFileName'),
           0x0A,
         ]),
       );
@@ -842,20 +913,13 @@ class _LprPrintClient {
     } on _LprPrintException {
       rethrow;
     } on TimeoutException {
-      throw const _LprPrintException('Printer connection timed out');
+      throw const _LprPrintException(_errPrinterConnectionTimedOut);
     } on SocketException catch (error) {
       throw _LprPrintException(error.message);
     } finally {
       await ackReader?.cancel();
       socket?.destroy();
     }
-  }
-
-  bool _looksLikePostScript(String fileName, Uint8List bytes) {
-    final lower = fileName.toLowerCase();
-    if (lower.endsWith('.ps') || lower.endsWith('.eps')) return true;
-    if (bytes.length >= 2 && bytes[0] == 0x25 && bytes[1] == 0x21) return true;
-    return false;
   }
 
   Future<void> _writeAndAck(
@@ -867,7 +931,7 @@ class _LprPrintClient {
     await socket.flush().timeout(_timeout);
     final ack = await ackReader.readByte().timeout(_timeout);
     if (ack != 0) {
-      throw const _LprPrintException('Printer rejected the job');
+      throw const _LprPrintException(_errPrinterRejectedJob);
     }
   }
 }
@@ -911,7 +975,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _PrinterDropdown<_PaperSize>(
-          label: 'Page size',
+          label: 'Size',
           value: paperSize,
           items: _PaperSize.values,
           onChanged: onPaperSizeChanged,
@@ -942,7 +1006,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
         ),
         const SizedBox(height: 2),
         _PrinterDropdown<_DuplexMode>(
-          label: 'Two-sided printing',
+          label: 'Two-sided',
           value: duplexMode,
           items: _DuplexMode.values,
           onChanged: onDuplexModeChanged,
@@ -1085,7 +1149,7 @@ enum _PaperSize implements _PrinterOption {
 
 enum _MarginPreset implements _PrinterOption {
   mm0('0', '0 mm'),
-  mm10('10', '10 mm'),
+  mm10('10', 'Default'),
   mm15('15', '15 mm'),
   mm20('20', '20 mm');
 
@@ -1193,29 +1257,13 @@ class _PrintTicket {
       '$copies copies',
     ].join(' | ');
   }
-
-  String get postScriptPreamble =>
-      '''
-%!PS-Adobe-3.0
-%%Creator: PreConnect
-%%Title: PreConnect Print Job
-<< /PageSize [${paperSize == _PaperSize.legal
-          ? 612
-          : paperSize == _PaperSize.letter
-          ? 612
-          : 595} ${paperSize == _PaperSize.legal
-          ? 1008
-          : paperSize == _PaperSize.letter
-          ? 792
-          : 842}]
-   /Orientation (${orientation == _PaperOrientation.landscape ? 'Landscape' : 'Portrait'})
-   /Duplex (${duplexMode.label})
->> setpagedevice
-''';
 }
 
 class _LprAckReader {
   _LprAckReader(Socket socket) : _iterator = StreamIterator<List<int>>(socket);
+
+  static const String _errPrinterClosedConnection =
+      'Printer closed the connection';
 
   final StreamIterator<List<int>> _iterator;
   final List<int> _buffer = <int>[];
@@ -1224,7 +1272,7 @@ class _LprAckReader {
     while (_buffer.isEmpty) {
       final hasData = await _iterator.moveNext();
       if (!hasData) {
-        throw const _LprPrintException('Printer closed the connection');
+        throw const _LprPrintException(_errPrinterClosedConnection);
       }
       _buffer.addAll(_iterator.current);
     }
@@ -1254,11 +1302,23 @@ class _WifiPrinterDiscovery {
     Duration timeout = const Duration(milliseconds: 260),
     int concurrency = 48,
     int limit = 3,
+    int maxSubnets = 2,
+    List<String> preferredHosts = const <String>[],
   }) async {
     final subnets = await _localIpv4Subnets();
     final found = <_WifiPrinterCandidate>[];
     final seen = <String>{};
     final active = <Future<void>>{};
+
+    for (final address in preferredHosts) {
+      final host = address.trim();
+      if (host.isEmpty || !seen.add(host)) continue;
+      final open = await _probe(host, port, timeout);
+      if (open) {
+        found.add(_WifiPrinterCandidate(address: host, interfaceName: 'saved'));
+        if (found.length >= limit) return found;
+      }
+    }
 
     for (final address in _campusPrinterHosts) {
       if (!seen.add(address)) continue;
@@ -1271,7 +1331,10 @@ class _WifiPrinterDiscovery {
       }
     }
 
+    var subnetCount = 0;
     for (final subnet in subnets) {
+      subnetCount++;
+      if (subnetCount > maxSubnets) break;
       for (var host = 1; host <= 254; host++) {
         if (host == subnet.hostOctet) continue;
         final address = '${subnet.prefix}.$host';
@@ -1344,6 +1407,42 @@ class _WifiPrinterDiscovery {
     }
     return subnets;
   }
+}
+
+enum _RawPrintFormat { pdf, unknown }
+
+_RawPrintFormat _detectRawPrintFormat(String fileName, Uint8List bytes) {
+  final lower = fileName.trim().toLowerCase();
+  if (lower.endsWith('.pdf')) {
+    return _RawPrintFormat.pdf;
+  }
+
+  if (bytes.length >= 4 &&
+      bytes[0] == 0x25 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x44 &&
+      bytes[3] == 0x46) {
+    return _RawPrintFormat.pdf;
+  }
+
+  return _RawPrintFormat.unknown;
+}
+
+String _sanitizeLprToken(String value, {required String fallback}) {
+  final sanitized = value
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]'), '')
+      .trim();
+  if (sanitized.isEmpty) return fallback;
+  return sanitized.length <= 31 ? sanitized : sanitized.substring(0, 31);
+}
+
+String _sanitizeLprText(String value, {required String fallback}) {
+  final collapsed = value
+      .replaceAll(RegExp(r'[\r\n\x00]'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  return collapsed.isEmpty ? fallback : collapsed;
 }
 
 class _Ipv4Subnet {
