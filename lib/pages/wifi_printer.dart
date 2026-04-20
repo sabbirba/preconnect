@@ -993,7 +993,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
           value: colorPrinting,
           onChanged: onColorPrintingChanged,
           title: Text(
-            'Color printing',
+            'Printing',
             style: TextStyle(
               color: BracuPalette.textPrimary(context),
               fontWeight: FontWeight.w700,

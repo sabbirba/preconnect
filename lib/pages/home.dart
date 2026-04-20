@@ -24,6 +24,7 @@ import 'package:preconnect/pages/scan_schedule.dart';
 import 'package:preconnect/pages/friend_schedule.dart';
 import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/calendar.dart';
+import 'package:preconnect/pages/bus.dart';
 import 'package:preconnect/pages/free_labs.dart';
 import 'package:preconnect/pages/personal_schedules.dart';
 import 'package:preconnect/pages/personal_schedules_sections/personal_schedules_shared.dart';
@@ -98,6 +99,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
       onLogout: () => _confirmLogout(context),
     ),
     HomeTab.moreQuickAccess: (_) => MoreQuickAccessPage(onNavigate: _setTab),
+    HomeTab.bus: (_) => const BusPage(),
     HomeTab.freeLabs: (_) => const FreeLabsPage(),
     HomeTab.calendar: (_) => const CalendarPage(),
     HomeTab.profile: (_) => const StudentProfile(),
@@ -995,11 +997,19 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
                   children: [
                     QuickAccessCard(
                       width: layout.itemWidth,
-                      icon: Icons.calendar_today_outlined,
-                      title: 'Events',
-                      subtitle: 'Calendar',
-                      color: const Color(0xFF00A86B),
-                      onTap: () => widget.onNavigate(HomeTab.calendar),
+                      icon: Icons.directions_bus_rounded,
+                      title: 'Bus',
+                      subtitle: 'Routes',
+                      color: const Color(0xFF1E6BE3),
+                      onTap: () => widget.onNavigate(HomeTab.bus),
+                    ),
+                    QuickAccessCard(
+                      width: layout.itemWidth,
+                      icon: Icons.local_printshop_outlined,
+                      title: 'Printer',
+                      subtitle: 'Campus',
+                      color: const Color(0xFF22B573),
+                      onTap: () => widget.onNavigate(HomeTab.campusPrinter),
                     ),
                     QuickAccessCard(
                       width: layout.itemWidth,
@@ -1019,11 +1029,11 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
                     ),
                     QuickAccessCard(
                       width: layout.itemWidth,
-                      icon: Icons.local_printshop_outlined,
-                      title: 'Printer',
-                      subtitle: 'Campus',
-                      color: const Color(0xFF22B573),
-                      onTap: () => widget.onNavigate(HomeTab.campusPrinter),
+                      icon: Icons.calendar_today_outlined,
+                      title: 'Events',
+                      subtitle: 'Calendar',
+                      color: const Color(0xFF00A86B),
+                      onTap: () => widget.onNavigate(HomeTab.calendar),
                     ),
                     QuickAccessCard(
                       width: layout.itemWidth,
