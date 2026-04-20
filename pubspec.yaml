@@ -36,7 +36,7 @@ dependencies:
   sembast: ^3.8.6
   shimmer: ^3.0.0
   flutter_local_notifications: ^21.0.0
-  background_fetch: ^1.2.0
+  background_fetch: ^1.6.2
   connectivity_plus: ^7.1.1
 
 dev_dependencies:

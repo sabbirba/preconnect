@@ -29,10 +29,10 @@ packages:
     dependency: "direct main"
     description:
       name: background_fetch
-      sha256: f5f0a5774cbe5e71ce62a9daf7f01007d07b3ac0c1fea1ecb131a3c5a273ca38
+      sha256: "360697885b0a0d3d3045ee1e1dcce19486319b8cb9df2d0ef07518f737bebb31"
       url: "https://pub.dev"
     source: hosted
-    version: "1.5.1"
+    version: "1.6.2"
   barcode:
     dependency: transitive
     description:
