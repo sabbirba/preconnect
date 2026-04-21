@@ -183,6 +183,16 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Cache Flutter Pub
+        uses: actions/cache@v5.0.3
+        with:
+          path: |
+            ~/.pub-cache
+            C:\Users\runneradmin\AppData\Local\Pub\Cache
+          key: ${{ runner.os }}-flutter-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-pub-
+
       - name: Flutter Pub Get
         shell: bash
         run: |
@@ -197,6 +207,16 @@ jobs:
             echo "flutter pub get failed after 3 attempts."
             exit 1
           fi
+
+      - name: Cache Flutter Build
+        uses: actions/cache@v5.0.3
+        with:
+          path: |
+            build
+            .dart_tool
+          key: ${{ runner.os }}-web-flutter-build-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-web-flutter-build-
 
       - name: Create Web Build Env
         shell: bash
@@ -333,19 +353,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-flutter-pub-
 
-      - name: Cache CocoaPods
-        if: matrix.platform == 'ios' || matrix.platform == 'macos'
-        uses: actions/cache@v5.0.3
-        with:
-          path: |
-            ios/Pods
-            macos/Pods
-            ~/.cocoapods
-            ~/Library/Caches/CocoaPods
-          key: ${{ runner.os }}-cocoapods-${{ hashFiles('ios/Podfile.lock', 'macos/Podfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cocoapods-
-
       - name: Cache Gradle
         if: matrix.platform == 'android'
         uses: actions/cache@v5.0.3
@@ -402,27 +409,6 @@ jobs:
             exit 1
           fi
 
-      - name: Refresh CocoaPods Dependencies
-        if: matrix.platform == 'ios' || matrix.platform == 'macos'
-        shell: bash
-        run: |
-          if [ "${{ matrix.platform }}" = "ios" ]; then
-            cd ios
-          else
-            cd macos
-          fi
-          attempt=1
-          until [ $attempt -gt 3 ]; do
-            pod install --repo-update && break
-            echo "pod install --repo-update failed (attempt $attempt)."
-            attempt=$((attempt+1))
-            sleep $((10 * attempt))
-          done
-          if [ $attempt -gt 3 ]; then
-            echo "pod install --repo-update failed after 3 attempts."
-            exit 1
-          fi
-
       - name: Create Release Env
         shell: bash
         run: |
@@ -435,6 +421,16 @@ jobs:
           DEVELOPMENT_TEAM=${{ secrets.DEVELOPMENT_TEAM }}
           PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=${{ secrets.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER }}
           EOF
+
+      - name: Clean Build State
+        if: matrix.platform == 'android' || matrix.platform == 'ios' || matrix.platform == 'macos'
+        shell: bash
+        run: |
+          flutter clean
+          if [ "${{ matrix.platform }}" = "android" ]; then
+            cd android
+            ./gradlew clean
+          fi
 
       - name: Restore Android Keystore
         if: matrix.platform == 'android'

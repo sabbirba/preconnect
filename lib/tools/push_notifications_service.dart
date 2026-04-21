@@ -1,7 +1,6 @@
- import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 
-import 'package:background_fetch/background_fetch.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -18,20 +17,6 @@ import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/tools/app_storage.dart';
-
-@pragma('vm:entry-point')
-void backgroundFetchHeadlessTask(HeadlessEvent event) async {
-  String taskId = event.taskId;
-
-  try {
-    final service = PushNotificationsService();
-    await service._prepareForBackgroundRun();
-    await service._checkSeatAlerts();
-    await service._pollServerPushAlerts();
-  } catch (_) {}
-
-  await BackgroundFetch.finish(taskId);
-}
 
 class PushNotificationsService {
   PushNotificationsService._internal();
@@ -70,7 +55,6 @@ class PushNotificationsService {
 
     try {
       await _initializeLocalNotifications();
-      await _initializeBackgroundFetch();
       await _syncDevice();
       await _connectToSeatStream();
       _setupConnectivityListener();
@@ -100,46 +84,6 @@ class PushNotificationsService {
     );
 
     await _localNotifications.initialize(settings: initSettings);
-  }
-
-  Future<void> _initializeBackgroundFetch() async {
-    try {
-      await BackgroundFetch.configure(
-        BackgroundFetchConfig(
-          minimumFetchInterval: 15,
-          stopOnTerminate: false,
-          enableHeadless: true,
-          requiresBatteryNotLow: false,
-          requiresDeviceIdle: false,
-          requiresStorageNotLow: false,
-          startOnBoot: true,
-        ),
-        backgroundFetchHeadlessTask,
-      );
-    } catch (e) {
-      if (kDebugMode) {
-        print('Background fetch initialization error: $e');
-      }
-    }
-  }
-
-  Future<void> _prepareForBackgroundRun() async {
-    if (!_isSupportedPlatform()) return;
-
-    try {
-      await _initializeLocalNotifications();
-    } catch (_) {}
-
-    if (_deviceToken == null || _deviceToken!.trim().isEmpty) {
-      final prefs = AppStorage.instance;
-      final savedToken = (await prefs.getString(_deviceTokenKey) ?? '').trim();
-      if (savedToken.isNotEmpty) {
-        _deviceToken = savedToken;
-      } else {
-        _deviceToken = _generateDeviceToken();
-        await prefs.setString(_deviceTokenKey, _deviceToken!);
-      }
-    }
   }
 
   Future<bool> hasNotificationPermission() async {
