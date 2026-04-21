@@ -91,7 +91,16 @@ class _BusPageState extends State<BusPage> {
     return BracuPageScaffold(
       title: 'Bus',
       subtitle: 'Routes',
-      icon: Icons.directions_bus_rounded,
+      icon: Icons.directions_bus_filled_rounded,
+      actions: [
+        IconButton(
+          tooltip: 'Open official schedule',
+          onPressed: schedulePdfUrl.isEmpty
+              ? null
+              : () => openExternalUrl(context, schedulePdfUrl),
+          icon: const Icon(Icons.picture_as_pdf_outlined),
+        ),
+      ],
       body: BracuRefreshList(
         onRefresh: () => _load(forceRefresh: true),
         children: [
@@ -151,10 +160,6 @@ class _BusPageState extends State<BusPage> {
           if (!_loading && instructions.isNotEmpty) ...[
             const SizedBox(height: 2),
             _GeneralInstructionsCard(instructions: instructions),
-          ],
-          if (!_loading && schedulePdfUrl.isNotEmpty) ...[
-            const SizedBox(height: 2),
-            _SchedulePdfSection(url: schedulePdfUrl),
           ],
         ],
       ),
@@ -216,48 +221,7 @@ class _TransportRouteCard extends StatelessWidget {
                 ),
               ),
               if (expanded) ...[
-                if (route.attendantPhone.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  InkWell(
-                    onTap: () => openPhoneDialer(context, route.attendantPhone),
-                    borderRadius: BorderRadius.circular(10),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 2,
-                        vertical: 2,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.call_rounded,
-                            size: 16,
-                            color: BracuPalette.primary,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Call Attendant (${route.attendantPhone})',
-                            style: TextStyle(
-                              color: BracuPalette.primary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
                 const SizedBox(height: 10),
-                Text(
-                  'Stops',
-                  style: TextStyle(
-                    color: textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 8),
                 if (route.stops.isEmpty)
                   Text(
                     'Stop details are unavailable for this route.',
@@ -270,6 +234,41 @@ class _TransportRouteCard extends StatelessWidget {
                       isLast: entry.key == route.stops.length - 1,
                     ),
                   ),
+                if (route.attendantPhone.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Center(
+                    child: InkWell(
+                      onTap: () =>
+                          openPhoneDialer(context, route.attendantPhone),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 2,
+                          vertical: 2,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.call_rounded,
+                              size: 16,
+                              color: BracuPalette.primary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Call Attendant (${route.attendantPhone})',
+                              style: TextStyle(
+                                color: BracuPalette.primary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ],
           ),
@@ -487,66 +486,6 @@ class _FareCard extends StatelessWidget {
   }
 }
 
-class _SchedulePdfSection extends StatelessWidget {
-  const _SchedulePdfSection({required this.url});
-
-  final String url;
-
-  @override
-  Widget build(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: BracuPalette.primary.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: BracuPalette.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              alignment: Alignment.center,
-              child: Icon(
-                Icons.picture_as_pdf_rounded,
-                size: 17,
-                color: BracuPalette.primary,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Schedule Source',
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            OutlinedButton.icon(
-              onPressed: () => openExternalUrl(context, url),
-              icon: const Icon(Icons.open_in_new_rounded, size: 16),
-              label: const Text('Open'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _ContactsCard extends StatelessWidget {
   const _ContactsCard({required this.contacts});
 
@@ -616,9 +555,14 @@ class _ContactsCard extends StatelessWidget {
                         if (entry.value.email.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: _InfoChip(
-                              icon: Icons.mail_outline_rounded,
-                              text: entry.value.email,
+                            child: InkWell(
+                              onTap: () =>
+                                  openMailComposer(context, entry.value.email),
+                              borderRadius: BorderRadius.circular(999),
+                              child: _InfoChip(
+                                icon: Icons.mail_outline_rounded,
+                                text: entry.value.email,
+                              ),
                             ),
                           ),
                       ],

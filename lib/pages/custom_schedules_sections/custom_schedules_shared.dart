@@ -1,10 +1,10 @@
 import 'package:intl/intl.dart';
-import 'package:preconnect/model/personal_schedule.dart';
+import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
-typedef PersonalSchedulesDraft = ({
+typedef CustomSchedulesDraft = ({
   String kind,
   String title,
   String courseCode,
@@ -17,42 +17,42 @@ typedef PersonalSchedulesDraft = ({
   bool isDone,
 });
 
-typedef PersonalSchedulesSetAlarmCallback =
+typedef CustomSchedulesSetAlarmCallback =
     Future<void> Function({
       required String courseCode,
       required String title,
       required DateTime reminderAt,
     });
 
-typedef PersonalSchedulesDeleteCallback = Future<void> Function();
-typedef PersonalSchedulesToggleDoneCallback =
+typedef CustomSchedulesDeleteCallback = Future<void> Function();
+typedef CustomSchedulesToggleDoneCallback =
     Future<void> Function(bool isDone);
 
-typedef PersonalSchedulesClassSchedule = ({
+typedef CustomSchedulesClassSchedule = ({
   String day,
   String startTime,
   String endTime,
 });
 
-typedef PersonalSchedulesOccurrence = ({DateTime startTime, DateTime endTime});
+typedef CustomSchedulesOccurrence = ({DateTime startTime, DateTime endTime});
 
-typedef PersonalSchedulesCourseOption = ({
+typedef CustomSchedulesCourseOption = ({
   String courseCode,
   String sectionName,
-  List<PersonalSchedulesClassSchedule> classSchedules,
+  List<CustomSchedulesClassSchedule> classSchedules,
 });
 
-typedef PersonalSchedulesTitleTemplate = ({
-  PersonalSchedulesCourseOption courseOption,
+typedef CustomSchedulesTitleTemplate = ({
+  CustomSchedulesCourseOption courseOption,
   String sectionName,
   String kind,
 });
 
-List<PersonalSchedulesCourseOption> personalSchedulesCourseOptionsForDropdown({
-  required List<PersonalSchedulesCourseOption> courseOptions,
-  required PersonalSchedule? item,
+List<CustomSchedulesCourseOption> personalSchedulesCourseOptionsForDropdown({
+  required List<CustomSchedulesCourseOption> courseOptions,
+  required CustomSchedule? item,
 }) {
-  final normalized = <PersonalSchedulesCourseOption>[];
+  final normalized = <CustomSchedulesCourseOption>[];
   final seen = <String>{};
   for (final option in courseOptions) {
     final code = option.courseCode.trim().toUpperCase();
@@ -71,7 +71,7 @@ List<PersonalSchedulesCourseOption> personalSchedulesCourseOptionsForDropdown({
     final current = (
       courseCode: currentCourseCode,
       sectionName: '',
-      classSchedules: const <PersonalSchedulesClassSchedule>[],
+      classSchedules: const <CustomSchedulesClassSchedule>[],
     );
     if (seen.add(personalSchedulesCourseOptionIdentity(current))) {
       normalized.add(current);
@@ -86,14 +86,14 @@ List<PersonalSchedulesCourseOption> personalSchedulesCourseOptionsForDropdown({
 }
 
 String personalSchedulesCourseOptionIdentity(
-  PersonalSchedulesCourseOption option,
+  CustomSchedulesCourseOption option,
 ) {
   return '${option.courseCode}|${option.sectionName}';
 }
 
 const String _myTitleSeparator = ' ';
 
-List<String> _splitPersonalSchedulesTitleParts(String title) {
+List<String> _splitCustomSchedulesTitleParts(String title) {
   return title
       .split(RegExp(r'\s*•\s*|\s+'))
       .map((part) => part.trim())
@@ -101,15 +101,15 @@ List<String> _splitPersonalSchedulesTitleParts(String title) {
       .toList();
 }
 
-String _joinPersonalSchedulesTitleParts(Iterable<String> parts) {
+String _joinCustomSchedulesTitleParts(Iterable<String> parts) {
   return parts
       .map((part) => part.trim())
       .where((part) => part.isNotEmpty)
       .join(_myTitleSeparator);
 }
 
-PersonalSchedulesCourseOption? personalSchedulesSelectDefaultCourseOption(
-  List<PersonalSchedulesCourseOption> options, {
+CustomSchedulesCourseOption? personalSchedulesSelectDefaultCourseOption(
+  List<CustomSchedulesCourseOption> options, {
   required bool isRamadan,
 }) {
   if (options.isEmpty) return null;
@@ -120,7 +120,7 @@ PersonalSchedulesCourseOption? personalSchedulesSelectDefaultCourseOption(
   final pool = usableOptions.isNotEmpty ? usableOptions.toList() : options;
 
   final now = DateTime.now();
-  PersonalSchedulesCourseOption? bestOption;
+  CustomSchedulesCourseOption? bestOption;
   DateTime? bestOccurrence;
 
   for (final option in pool) {
@@ -140,7 +140,7 @@ PersonalSchedulesCourseOption? personalSchedulesSelectDefaultCourseOption(
 }
 
 DateTime? personalSchedulesBestOccurrenceForOption(
-  PersonalSchedulesCourseOption option, {
+  CustomSchedulesCourseOption option, {
   required DateTime now,
   required bool isRamadan,
 }) {
@@ -163,7 +163,7 @@ DateTime? personalSchedulesBestOccurrenceForOption(
   return best;
 }
 
-PersonalSchedulesOccurrence? personalSchedulesNextOccurrenceRange({
+CustomSchedulesOccurrence? personalSchedulesNextOccurrenceRange({
   required String day,
   required String startTime,
   required String endTime,
@@ -218,14 +218,14 @@ PersonalSchedulesOccurrence? personalSchedulesNextOccurrenceRange({
   );
 }
 
-PersonalSchedulesOccurrence? personalSchedulesDefaultOccurrenceForOption(
-  PersonalSchedulesCourseOption option, {
+CustomSchedulesOccurrence? personalSchedulesDefaultOccurrenceForOption(
+  CustomSchedulesCourseOption option, {
   required bool isRamadan,
   DateTime? now,
 }) {
   final currentTime = now ?? DateTime.now();
   final nowMinutes = currentTime.hour * 60 + currentTime.minute;
-  PersonalSchedulesOccurrence? best;
+  CustomSchedulesOccurrence? best;
   for (final schedule in option.classSchedules) {
     final occurrence = personalSchedulesNextOccurrenceRange(
       day: schedule.day,
@@ -272,8 +272,8 @@ int personalSchedulesSectionRank(String value) {
   return int.tryParse(badge) ?? 9999;
 }
 
-PersonalSchedulesCourseOption? personalSchedulesFindCourseOption(
-  List<PersonalSchedulesCourseOption> options,
+CustomSchedulesCourseOption? personalSchedulesFindCourseOption(
+  List<CustomSchedulesCourseOption> options,
   String courseCode, {
   String? preferredSectionName,
 }) {
@@ -319,7 +319,7 @@ PersonalSchedulesCourseOption? personalSchedulesFindCourseOption(
 }
 
 String personalSchedulesTitleSectionCandidate(String title) {
-  final parts = _splitPersonalSchedulesTitleParts(title);
+  final parts = _splitCustomSchedulesTitleParts(title);
   if (parts.length < 2) return '';
   return parts[1];
 }
@@ -328,7 +328,7 @@ String personalSchedulesResolveSectionName({
   required String courseCode,
   required String sectionName,
   required String title,
-  required List<PersonalSchedulesCourseOption> courseOptions,
+  required List<CustomSchedulesCourseOption> courseOptions,
 }) {
   final direct = sectionName.trim();
   if (personalSchedulesHasUsableSectionLabel(direct)) return direct;
@@ -383,11 +383,11 @@ String personalSchedulesResolveSectionName({
   return direct;
 }
 
-List<PersonalSchedulesTitleTemplate> personalSchedulesTitleTemplates({
-  required List<PersonalSchedulesCourseOption> courseOptions,
-  required PersonalSchedule? item,
+List<CustomSchedulesTitleTemplate> personalSchedulesTitleTemplates({
+  required List<CustomSchedulesCourseOption> courseOptions,
+  required CustomSchedule? item,
 }) {
-  final templates = <PersonalSchedulesTitleTemplate>[];
+  final templates = <CustomSchedulesTitleTemplate>[];
   final kinds = const ['quiz', 'assignment', 'reminder'];
   for (final course in personalSchedulesCourseOptionsForDropdown(
     courseOptions: courseOptions,
@@ -410,10 +410,10 @@ List<PersonalSchedulesTitleTemplate> personalSchedulesTitleTemplates({
   return templates;
 }
 
-PersonalSchedulesTitleTemplate? personalSchedulesCurrentTemplateBySelection({
-  required List<PersonalSchedulesCourseOption> courseOptions,
-  required PersonalSchedule? item,
-  required PersonalSchedulesCourseOption? selectedCourseOption,
+CustomSchedulesTitleTemplate? personalSchedulesCurrentTemplateBySelection({
+  required List<CustomSchedulesCourseOption> courseOptions,
+  required CustomSchedule? item,
+  required CustomSchedulesCourseOption? selectedCourseOption,
   required String resolvedSectionName,
   required String kind,
 }) {
@@ -442,7 +442,7 @@ PersonalSchedulesTitleTemplate? personalSchedulesCurrentTemplateBySelection({
 }
 
 String personalSchedulesTitleTemplateLabel(
-  PersonalSchedulesTitleTemplate template,
+  CustomSchedulesTitleTemplate template,
 ) {
   final courseCode = template.courseOption.courseCode.trim().toUpperCase();
   return '$courseCode$_myTitleSeparator${personalSchedulesKindLabel(template.kind)}';
@@ -450,9 +450,9 @@ String personalSchedulesTitleTemplateLabel(
 
 String personalSchedulesGeneratedTitle({
   required String kind,
-  required PersonalSchedulesCourseOption? selectedCourseOption,
-  required List<PersonalSchedulesCourseOption> courseOptions,
-  required PersonalSchedule? item,
+  required CustomSchedulesCourseOption? selectedCourseOption,
+  required List<CustomSchedulesCourseOption> courseOptions,
+  required CustomSchedule? item,
   String? courseCode,
 }) {
   final code =
@@ -465,9 +465,9 @@ String personalSchedulesGeneratedTitle({
 }
 
 String personalSchedulesNormalizeTitle(String title) {
-  final parts = _splitPersonalSchedulesTitleParts(title);
+  final parts = _splitCustomSchedulesTitleParts(title);
   if (parts.length >= 3) {
-    return _joinPersonalSchedulesTitleParts(<String>[
+    return _joinCustomSchedulesTitleParts(<String>[
       parts[0],
       parts[1],
       parts.sublist(2).join(_myTitleSeparator),
@@ -503,7 +503,7 @@ String personalSchedulesInitialSuffix(
   required String courseCode,
   required String sectionName,
 }) {
-  final parts = _splitPersonalSchedulesTitleParts(rawTitle);
+  final parts = _splitCustomSchedulesTitleParts(rawTitle);
   if (parts.isEmpty) return '';
   final normalizedCode = courseCode.trim().toUpperCase();
   final normalizedSection = sectionName.trim();
@@ -512,10 +512,10 @@ String personalSchedulesInitialSuffix(
       (parts[1] == normalizedSection ||
           (!personalSchedulesHasUsableSectionLabel(parts[1]) &&
               normalizedSection.isNotEmpty))) {
-    return _joinPersonalSchedulesTitleParts(parts.sublist(2));
+    return _joinCustomSchedulesTitleParts(parts.sublist(2));
   }
   if (parts.length >= 2 && parts.first.toUpperCase() == normalizedCode) {
-    return _joinPersonalSchedulesTitleParts(parts.sublist(1));
+    return _joinCustomSchedulesTitleParts(parts.sublist(1));
   }
   return rawTitle.trim();
 }
@@ -544,9 +544,9 @@ String personalSchedulesFormatDueDate(DateTime dueAt) {
 }
 
 String personalSchedulesCardTitle(String rawTitle) {
-  final parts = _splitPersonalSchedulesTitleParts(rawTitle);
+  final parts = _splitCustomSchedulesTitleParts(rawTitle);
   if (parts.length >= 3) {
-    return _joinPersonalSchedulesTitleParts(<String>[
+    return _joinCustomSchedulesTitleParts(<String>[
       parts[0],
       parts.sublist(2).join(_myTitleSeparator),
     ]);
@@ -560,9 +560,9 @@ String personalSchedulesCardTitle(String rawTitle) {
 }
 
 String personalSchedulesNormalizeTitleForSave(String rawTitle) {
-  final parts = _splitPersonalSchedulesTitleParts(rawTitle);
+  final parts = _splitCustomSchedulesTitleParts(rawTitle);
   if (parts.length >= 3) {
-    return _joinPersonalSchedulesTitleParts(<String>[
+    return _joinCustomSchedulesTitleParts(<String>[
       parts[0],
       parts[1],
       parts.sublist(2).join(_myTitleSeparator),
@@ -577,12 +577,12 @@ String personalSchedulesNormalizeTitleForSave(String rawTitle) {
 }
 
 String personalSchedulesSectionBadgeLabel(
-  PersonalSchedule item,
-  List<PersonalSchedulesCourseOption> courseOptions,
+  CustomSchedule item,
+  List<CustomSchedulesCourseOption> courseOptions,
 ) {
   final direct = formatSectionBadge(item.sectionName);
   if (direct != '?') return direct;
-  final parts = _splitPersonalSchedulesTitleParts(item.title);
+  final parts = _splitCustomSchedulesTitleParts(item.title);
   if (parts.length >= 2) {
     final fallback = formatSectionBadge(parts[1]);
     if (fallback != '?') return fallback;

@@ -8,7 +8,7 @@ import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/friend_schedule_store.dart';
-import 'package:preconnect/api/personal_schedules_service.dart';
+import 'package:preconnect/api/custom_schedules_service.dart';
 import 'package:preconnect/api/seat_status_service.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/pages/login.dart';
@@ -116,7 +116,7 @@ class AuthService {
       'web_login_student_email',
       'web_login_session_id',
       'web_login_session_token',
-      PersonalSchedulesService.cacheKey,
+      CustomSchedulesService.cacheKey,
     };
     keepKeys.addAll(ProfileService.profileFields);
 

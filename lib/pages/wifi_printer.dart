@@ -31,12 +31,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const String _orientationKey = 'campus_printer_orientation';
   static const String _copiesKey = 'campus_printer_copies';
   static const String _snackFileReadFailed = "Couldn't read selected file";
-  static const String _snackUnsupportedFile = 'Unsupported file. Use PDF.';
   static const String _snackNoPrinter = 'No printer detected';
   static const String _snackChooseFile = 'Select a file first';
   static const String _snackIdentityRequired = 'Name + Student ID required';
-  static const String _snackAdvancedNeedsPs =
-      'Advanced options are unavailable for PDF';
   static const String _snackPrintSent = 'Print sent';
   static const String _snackPrintFailed = 'Print failed';
 
@@ -45,6 +42,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _studentId = '';
   String _studentName = '';
   String _studentShortCode = '';
+  String _studentEmail = '';
   String _guestName = '';
   String _guestId = '';
   String _printerHost = '';
@@ -61,14 +59,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   int _copies = 1;
   bool _busy = false;
   bool _discovering = false;
-
-  bool get _hasAdvancedPdfOptionsSelected {
-    return _margins != _MarginPreset.mm10 ||
-        _colorPrinting ||
-        _duplexMode != _DuplexMode.none ||
-        _resolution != _PrintResolution.medium ||
-        _orientation != _PaperOrientation.portrait;
-  }
 
   @override
   void initState() {
@@ -145,8 +135,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         .trim();
     var shortCode = (await AppStorage.instance.getString('shortCode') ?? '')
         .trim();
+    var email = (await AppStorage.instance.getString('studentEmail') ?? '')
+        .trim();
 
-    if (studentId.isEmpty || fullName.isEmpty || shortCode.isEmpty) {
+    if (studentId.isEmpty ||
+        fullName.isEmpty ||
+        shortCode.isEmpty ||
+        email.isEmpty) {
       final profile = await ProfileService().getProfile(fromFetch: true);
       studentId = studentId.isEmpty
           ? (profile?['studentId'] ?? '').trim()
@@ -157,12 +152,16 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       shortCode = shortCode.isEmpty
           ? (profile?['shortCode'] ?? '').trim()
           : shortCode;
+      email = email.isEmpty
+          ? (profile?['studentEmail'] ?? profile?['email'] ?? '').trim()
+          : email;
     }
     if (!mounted) return;
     setState(() {
       _studentId = studentId;
       _studentName = fullName;
       _studentShortCode = shortCode;
+      _studentEmail = email;
       _clientName = _clientName.trim().isEmpty ? studentId : _clientName;
       if (_guestName.trim().isEmpty) {
         _guestName = fullName.isNotEmpty ? fullName : 'Guest';
@@ -264,8 +263,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   Future<void> _pickPrintFile() async {
     final picked = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const <String>['pdf'],
+      type: FileType.any,
       allowMultiple: false,
       withData: true,
     );
@@ -278,14 +276,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     }
     if (bytes == null || bytes.isEmpty) {
       if (mounted) showAppSnackBar(context, _snackFileReadFailed);
-      return;
-    }
-
-    final format = _detectRawPrintFormat(file.name, bytes);
-    if (format == _RawPrintFormat.unknown) {
-      if (mounted) {
-        showAppSnackBar(context, _snackUnsupportedFile);
-      }
       return;
     }
 
@@ -315,11 +305,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       showAppSnackBar(context, _snackChooseFile);
       return;
     }
-    final format = _detectRawPrintFormat(_fileName, bytes);
-    if (format == _RawPrintFormat.unknown) {
-      showAppSnackBar(context, _snackUnsupportedFile);
-      return;
-    }
     if (clientName.isEmpty || studentId.isEmpty) {
       showAppSnackBar(context, _snackIdentityRequired);
       return;
@@ -334,11 +319,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       orientation: _orientation,
       copies: _copies,
     );
-    if (format == _RawPrintFormat.pdf && _hasAdvancedPdfOptionsSelected) {
-      showAppSnackBar(context, _snackAdvancedNeedsPs);
-      return;
-    }
-
     setState(() {
       _busy = true;
     });
@@ -353,8 +333,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         fileName: _fileName,
         user: user,
         clientName: clientName,
+        email: _studentEmail,
         preferences: ticket,
-        format: format,
       );
       if (!mounted) return;
       await _addHistory(
@@ -469,6 +449,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   name: _studentName,
                   shortCode: _studentShortCode,
                   studentId: _studentId,
+                  email: _studentEmail,
                 ),
                 const SizedBox(height: 12),
                 if (showIdentityFields) ...[
@@ -587,11 +568,13 @@ class _StudentPrintDetails extends StatelessWidget {
     required this.name,
     required this.shortCode,
     required this.studentId,
+    required this.email,
   });
 
   final String name;
   final String shortCode;
   final String studentId;
+  final String email;
 
   @override
   Widget build(BuildContext context) {
@@ -625,30 +608,37 @@ class _StudentDetailLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 82,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: BracuPalette.textSecondary(context),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+    final isEmail = label.trim().toLowerCase() == 'email';
+    return InkWell(
+      onTap: isEmail && value.trim().isNotEmpty
+          ? () => openMailComposer(context, value)
+          : null,
+      borderRadius: BorderRadius.circular(8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 82,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: BracuPalette.textSecondary(context),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              color: BracuPalette.textPrimary(context),
-              fontWeight: FontWeight.w700,
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: BracuPalette.textPrimary(context),
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -824,8 +814,8 @@ class _LprPrintClient {
     required String fileName,
     required String user,
     required String clientName,
+    required String email,
     required _PrintTicket preferences,
-    required _RawPrintFormat format,
   }) async {
     final printerHost = host.trim();
     if (printerHost.isEmpty) {
@@ -833,28 +823,18 @@ class _LprPrintClient {
     }
 
     final printerQueue = queue;
-    final owner = _sanitizeLprText(user, fallback: 'guest');
-    final client = _sanitizeLprText(
-      clientName.trim().isEmpty ? user : clientName.trim(),
-      fallback: owner,
-    );
-    final localHost = _sanitizeLprToken(
-      Platform.localHostname,
-      fallback: 'app',
-    );
-    final safeFileName = _sanitizeLprText(
-      fileName.trim(),
-      fallback: 'print-job',
-    );
+    final owner = user;
+    final localHost = _truncateLprField(Platform.localHostname, 31, 'app');
+    final safeFileName = fileName.trim();
     final printableJobName = safeFileName.toLowerCase().endsWith('.pdf')
         ? safeFileName.substring(0, safeFileName.length - 4)
         : safeFileName;
     final copies = preferences.copies.clamp(1, 999);
-    final sequence = (DateTime.now().microsecondsSinceEpoch % 999 + 1)
+    final jobNumber = (DateTime.now().microsecondsSinceEpoch % 999 + 1)
         .toString()
         .padLeft(3, '0');
-    final controlFileName = 'cfA$sequence$localHost';
-    final dataFileName = 'dfA$sequence$localHost';
+    final controlFileName = 'cfA$jobNumber$localHost';
+    final dataFileName = 'dfA$jobNumber$localHost';
 
     Socket? socket;
     _LprAckReader? ackReader;
@@ -866,8 +846,7 @@ class _LprPrintClient {
           'P$owner',
           'J$printableJobName',
           'C$localHost',
-          'L$client',
-          'M${preferences.summary}',
+          if (email.trim().isNotEmpty) 'M${email.trim()}',
           for (var i = 0; i < copies; i++) 'l$dataFileName',
           'U$dataFileName',
           'N$safeFileName',
@@ -1409,42 +1388,6 @@ class _WifiPrinterDiscovery {
   }
 }
 
-enum _RawPrintFormat { pdf, unknown }
-
-_RawPrintFormat _detectRawPrintFormat(String fileName, Uint8List bytes) {
-  final lower = fileName.trim().toLowerCase();
-  if (lower.endsWith('.pdf')) {
-    return _RawPrintFormat.pdf;
-  }
-
-  if (bytes.length >= 4 &&
-      bytes[0] == 0x25 &&
-      bytes[1] == 0x50 &&
-      bytes[2] == 0x44 &&
-      bytes[3] == 0x46) {
-    return _RawPrintFormat.pdf;
-  }
-
-  return _RawPrintFormat.unknown;
-}
-
-String _sanitizeLprToken(String value, {required String fallback}) {
-  final sanitized = value
-      .toLowerCase()
-      .replaceAll(RegExp(r'[^a-z0-9]'), '')
-      .trim();
-  if (sanitized.isEmpty) return fallback;
-  return sanitized.length <= 31 ? sanitized : sanitized.substring(0, 31);
-}
-
-String _sanitizeLprText(String value, {required String fallback}) {
-  final collapsed = value
-      .replaceAll(RegExp(r'[\r\n\x00]'), ' ')
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
-  return collapsed.isEmpty ? fallback : collapsed;
-}
-
 class _Ipv4Subnet {
   const _Ipv4Subnet({
     required this.prefix,
@@ -1467,6 +1410,14 @@ bool _sameHistoryEntry(_PrintHistoryEntry a, _PrintHistoryEntry b) {
 
 List<int> _ascii(String value) {
   return value.codeUnits.map((unit) => unit <= 0x7F ? unit : 0x3F).toList();
+}
+
+String _truncateLprField(String value, int maxLength, String fallback) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return fallback;
+  return trimmed.length <= maxLength
+      ? trimmed
+      : trimmed.substring(0, maxLength);
 }
 
 String _formatHistoryTime(DateTime value) {

@@ -20,8 +20,8 @@ import 'package:http/http.dart' as http;
 import 'package:preconnect/tools/app_storage.dart';
 
 @pragma('vm:entry-point')
-void backgroundFetchHeadlessTask(HeadlessTask task) async {
-  String taskId = task.taskId;
+void backgroundFetchHeadlessTask(HeadlessEvent event) async {
+  String taskId = event.taskId;
 
   try {
     final service = PushNotificationsService();

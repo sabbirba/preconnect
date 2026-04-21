@@ -166,12 +166,12 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
     final personalSchedulesFuture = cardVisibility.showExamCountdownCard
         ? (forceRefresh
-                  ? PersonalSchedulesService().getItems(forceRefresh: true)
-                  : PersonalSchedulesService().getItems())
+                  ? CustomSchedulesService().getItems(forceRefresh: true)
+                  : CustomSchedulesService().getItems())
               .catchError((e) {
-                return const <PersonalSchedule>[];
+                return const <CustomSchedule>[];
               })
-        : Future<List<PersonalSchedule>>.value(const <PersonalSchedule>[]);
+        : Future<List<CustomSchedule>>.value(const <CustomSchedule>[]);
 
     final ramadanFuture = needsRamadan
         ? RamadanTiming.getRamadanStatus(forceRefresh: forceRefresh).catchError(
@@ -199,7 +199,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
     Map<String, String?>? profile = results[0] as Map<String, String?>?;
     String? scheduleJson = results[1] as String?;
-    final personalSchedules = results[2] as List<PersonalSchedule>;
+    final personalSchedules = results[2] as List<CustomSchedule>;
     final ramadan = results[3] as RamadanStatus;
     final isRamadan = ramadan.isRamadan;
     final holidayStatus = results[4] as HolidayStatus;
@@ -519,7 +519,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     return upcoming.first;
   }
 
-  _CountdownCardData? _nextMyCountdown(List<PersonalSchedule> items) {
+  _CountdownCardData? _nextMyCountdown(List<CustomSchedule> items) {
     final now = DateTime.now();
     final upcoming =
         items
@@ -540,7 +540,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   _CountdownCardData? _nextDeadlineCountdown(
     List<section.Section> sections,
     Map<String, ExamScheduleOverride> overrides,
-    List<PersonalSchedule> personalSchedules,
+    List<CustomSchedule> personalSchedules,
   ) {
     final nextExam = _nextExamCountdown(sections, overrides);
     final nextMy = _nextMyCountdown(personalSchedules);

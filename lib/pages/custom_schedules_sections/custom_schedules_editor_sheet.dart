@@ -2,18 +2,18 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:preconnect/model/personal_schedule.dart';
+import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/pages/personal_schedules_sections/personal_schedules_shared.dart';
+import 'package:preconnect/pages/custom_schedules_sections/custom_schedules_shared.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 
-Future<PersonalSchedulesDraft?> showPersonalSchedulesEditorSheet(
+Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
   BuildContext context, {
-  required PersonalSchedule? item,
-  required List<PersonalSchedulesCourseOption> courseOptions,
-  PersonalSchedulesSetAlarmCallback? onSetAlarm,
-  PersonalSchedulesDeleteCallback? onDelete,
-  PersonalSchedulesToggleDoneCallback? onToggleDone,
+  required CustomSchedule? item,
+  required List<CustomSchedulesCourseOption> courseOptions,
+  CustomSchedulesSetAlarmCallback? onSetAlarm,
+  CustomSchedulesDeleteCallback? onDelete,
+  CustomSchedulesToggleDoneCallback? onToggleDone,
 }) async {
   final isRamadan = await RamadanTiming.isRamadan();
   var titleValue = item?.title.trim().isNotEmpty == true
@@ -44,7 +44,7 @@ Future<PersonalSchedulesDraft?> showPersonalSchedulesEditorSheet(
   );
   final initialCourseCode = item?.courseCode.trim().toUpperCase();
   final initialSectionName = item?.sectionName.trim() ?? '';
-  PersonalSchedulesCourseOption? selectedCourseOption =
+  CustomSchedulesCourseOption? selectedCourseOption =
       initialCourseCode != null && initialCourseCode.isNotEmpty
       ? personalSchedulesFindCourseOption(
           availableCourseOptions,
@@ -163,7 +163,7 @@ Future<PersonalSchedulesDraft?> showPersonalSchedulesEditorSheet(
         : 'Edit ${personalSchedulesKindLabel(kind)}';
   }
 
-  final result = await showBracuBottomSheet<PersonalSchedulesDraft>(
+  final result = await showBracuBottomSheet<CustomSchedulesDraft>(
     context,
     title: item == null
         ? 'Add ${personalSchedulesKindLabel(kind)}'
@@ -249,7 +249,7 @@ Future<PersonalSchedulesDraft?> showPersonalSchedulesEditorSheet(
 
           Future<void> pickTitleTemplate() async {
             final template =
-                await showBracuSelectSheet<PersonalSchedulesTitleTemplate>(
+                await showBracuSelectSheet<CustomSchedulesTitleTemplate>(
                   context,
                   title: 'Title Template',
                   options:
@@ -260,7 +260,7 @@ Future<PersonalSchedulesDraft?> showPersonalSchedulesEditorSheet(
                           .map(
                             (template) =>
                                 BracuSelectOption<
-                                  PersonalSchedulesTitleTemplate
+                                  CustomSchedulesTitleTemplate
                                 >(
                                   value: template,
                                   label: personalSchedulesTitleTemplateLabel(

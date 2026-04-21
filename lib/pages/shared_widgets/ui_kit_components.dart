@@ -74,7 +74,7 @@ Future<T?> showBracuBottomSheet<T>(
       return SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 16),
           child: Column(
             mainAxisSize: MainAxisSize.max,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,7 +89,7 @@ Future<T?> showBracuBottomSheet<T>(
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
@@ -101,7 +101,7 @@ Future<T?> showBracuBottomSheet<T>(
                             title,
                             style: TextStyle(
                               color: textPrimary,
-                              fontSize: 18,
+                              fontSize: 17,
                               fontWeight: FontWeight.w800,
                             ),
                           )
@@ -113,7 +113,7 @@ Future<T?> showBracuBottomSheet<T>(
                                 value,
                                 style: TextStyle(
                                   color: textPrimary,
-                                  fontSize: 18,
+                                  fontSize: 17,
                                   fontWeight: FontWeight.w800,
                                 ),
                               );
@@ -130,7 +130,7 @@ Future<T?> showBracuBottomSheet<T>(
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Expanded(
                 child: builder(sheetContext, textPrimary, textSecondary),
               ),

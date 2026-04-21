@@ -1,5 +1,5 @@
-class PersonalSchedule {
-  const PersonalSchedule({
+class CustomSchedule {
+  const CustomSchedule({
     required this.itemId,
     required this.kind,
     required this.title,
@@ -27,8 +27,8 @@ class PersonalSchedule {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  factory PersonalSchedule.fromJson(Map<String, dynamic> json) {
-    return PersonalSchedule(
+  factory CustomSchedule.fromJson(Map<String, dynamic> json) {
+    return CustomSchedule(
       itemId: (json['itemId'] as num?)?.toInt() ?? 0,
       kind: (json['kind'] as String? ?? '').trim().toLowerCase(),
       title: (json['title'] as String? ?? '').trim(),
@@ -69,7 +69,7 @@ class PersonalSchedule {
     };
   }
 
-  PersonalSchedule copyWith({
+  CustomSchedule copyWith({
     String? kind,
     String? title,
     String? courseCode,
@@ -82,7 +82,7 @@ class PersonalSchedule {
     String? notes,
     bool? isDone,
   }) {
-    return PersonalSchedule(
+    return CustomSchedule(
       itemId: itemId,
       kind: kind ?? this.kind,
       title: title ?? this.title,

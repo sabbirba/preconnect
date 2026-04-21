@@ -9,41 +9,41 @@ import 'package:flutter/services.dart';
 import 'package:flutter_alarmkit/flutter_alarmkit.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/schedule_service.dart';
-import 'package:preconnect/api/personal_schedules_service.dart';
-import 'package:preconnect/model/personal_schedule.dart';
+import 'package:preconnect/api/custom_schedules_service.dart';
+import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/pages/personal_schedules_sections/personal_schedules_editor_sheet.dart'
-    show showPersonalSchedulesEditorSheet;
-import 'package:preconnect/pages/personal_schedules_sections/personal_schedules_shared.dart';
+import 'package:preconnect/pages/custom_schedules_sections/custom_schedules_editor_sheet.dart'
+    show showCustomSchedulesEditorSheet;
+import 'package:preconnect/pages/custom_schedules_sections/custom_schedules_shared.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
-class PersonalSchedulesPage extends StatefulWidget {
-  const PersonalSchedulesPage({super.key});
+class CustomSchedulesPage extends StatefulWidget {
+  const CustomSchedulesPage({super.key});
 
   static Future<void> preload() async {
-    await _PersonalSchedulesPageState.preloadData();
+    await _CustomSchedulesPageState.preloadData();
   }
 
   @override
-  State<PersonalSchedulesPage> createState() => _PersonalSchedulesPageState();
+  State<CustomSchedulesPage> createState() => _CustomSchedulesPageState();
 }
 
-class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
+class _CustomSchedulesPageState extends State<CustomSchedulesPage>
     with RefreshBusState, WidgetsBindingObserver {
   static const MethodChannel _androidAlarmChannel = MethodChannel(
     'preconnect/android_alarm',
   );
   static const Duration _autoRefreshInterval = Duration(seconds: 20);
-  static List<PersonalSchedule>? _cachedItems;
-  static List<PersonalSchedulesCourseOption>? _cachedCourseOptions;
+  static List<CustomSchedule>? _cachedItems;
+  static List<CustomSchedulesCourseOption>? _cachedCourseOptions;
   static Future<void>? _preloadFuture;
 
-  late Future<List<PersonalSchedule>> _future;
-  List<PersonalSchedule>? _latestItems;
-  List<PersonalSchedulesCourseOption> _latestCourseOptions =
-      const <PersonalSchedulesCourseOption>[];
-  Future<List<PersonalSchedulesCourseOption>>? _courseOptionsLoadInFlight;
+  late Future<List<CustomSchedule>> _future;
+  List<CustomSchedule>? _latestItems;
+  List<CustomSchedulesCourseOption> _latestCourseOptions =
+      const <CustomSchedulesCourseOption>[];
+  Future<List<CustomSchedulesCourseOption>>? _courseOptionsLoadInFlight;
   bool _isBusy = false;
   Timer? _autoRefreshTimer;
 
@@ -53,7 +53,7 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
     WidgetsBinding.instance.addObserver(this);
     _future = _cachedItems == null
         ? _loadItems()
-        : Future<List<PersonalSchedule>>.value(_cachedItems!);
+        : Future<List<CustomSchedule>>.value(_cachedItems!);
     if (_cachedCourseOptions != null && _cachedCourseOptions!.isNotEmpty) {
       _latestCourseOptions = _cachedCourseOptions!;
     }
@@ -70,8 +70,8 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
     await preloadData();
     if (!mounted) return;
     setState(() {
-      _future = Future<List<PersonalSchedule>>.value(
-        _cachedItems ?? const <PersonalSchedule>[],
+      _future = Future<List<CustomSchedule>>.value(
+        _cachedItems ?? const <CustomSchedule>[],
       );
       if (_cachedItems != null) {
         _latestItems = _cachedItems;
@@ -109,13 +109,13 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
   }
 
   static Future<void> _loadPreloadData({bool forceRefresh = false}) async {
-    final service = PersonalSchedulesService();
+    final service = CustomSchedulesService();
     try {
       final items = await service.getItems(forceRefresh: forceRefresh);
       _cachedItems = await service.autoCompleteOverdueItems(items);
     } catch (_) {
       _cachedItems =
-          await service.getCachedItems() ?? const <PersonalSchedule>[];
+          await service.getCachedItems() ?? const <CustomSchedule>[];
     }
 
     try {
@@ -128,7 +128,7 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
         jsonString,
         semesterSessionId: currentSessionSemesterId,
       );
-      final courseOptions = <PersonalSchedulesCourseOption>[];
+      final courseOptions = <CustomSchedulesCourseOption>[];
       final seen = <String>{};
       for (final sectionItem in sections) {
         final code = sectionItem.courseCode.trim().toUpperCase();
@@ -158,7 +158,7 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
       });
       _cachedCourseOptions = courseOptions;
     } catch (_) {
-      _cachedCourseOptions ??= const <PersonalSchedulesCourseOption>[];
+      _cachedCourseOptions ??= const <CustomSchedulesCourseOption>[];
     }
   }
 
@@ -183,7 +183,7 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
     if (isRefreshingFrom('cache_cleared')) {
       if (mounted) {
         setState(() {
-          _future = PersonalSchedulesService().getItems(forceRefresh: true);
+          _future = CustomSchedulesService().getItems(forceRefresh: true);
         });
       }
       return;
@@ -191,16 +191,16 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
     unawaited(_refresh(forceRefresh: false, notify: false));
   }
 
-  Future<List<PersonalSchedule>> _loadItems({bool forceRefresh = false}) async {
+  Future<List<CustomSchedule>> _loadItems({bool forceRefresh = false}) async {
     try {
-      final service = PersonalSchedulesService();
+      final service = CustomSchedulesService();
       final items = await service.getItems(forceRefresh: forceRefresh);
       final normalizedItems = await service.autoCompleteOverdueItems(items);
       _cachedItems = normalizedItems;
       return normalizedItems;
     } catch (e) {
-      final cached = await PersonalSchedulesService().getCachedItems();
-      final fallback = cached ?? const <PersonalSchedule>[];
+      final cached = await CustomSchedulesService().getCachedItems();
+      final fallback = cached ?? const <CustomSchedule>[];
       _cachedItems = fallback;
       return fallback;
     }
@@ -214,7 +214,7 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
       });
       return;
     }
-    final cached = await PersonalSchedulesService().getCachedItems();
+    final cached = await CustomSchedulesService().getCachedItems();
     if (!mounted || cached == null || cached.isEmpty) return;
     setState(() {
       _latestItems = cached;
@@ -222,7 +222,7 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
     _cachedItems = cached;
   }
 
-  Future<List<PersonalSchedulesCourseOption>> _loadCourseOptions({
+  Future<List<CustomSchedulesCourseOption>> _loadCourseOptions({
     bool forceRefresh = false,
   }) async {
     if (!forceRefresh &&
@@ -255,7 +255,7 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
           jsonString,
           semesterSessionId: currentSessionSemesterId,
         );
-        final courseOptions = <PersonalSchedulesCourseOption>[];
+        final courseOptions = <CustomSchedulesCourseOption>[];
         final seen = <String>{};
         for (final sectionItem in sections) {
           final code = sectionItem.courseCode.trim().toUpperCase();
@@ -292,7 +292,7 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
         _cachedCourseOptions = options;
         return options;
       } catch (_) {
-        return const <PersonalSchedulesCourseOption>[];
+        return const <CustomSchedulesCourseOption>[];
       } finally {
         _courseOptionsLoadInFlight = null;
       }
@@ -302,7 +302,7 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
     return loadFuture;
   }
 
-  String _courseOptionIdentity(PersonalSchedulesCourseOption option) {
+  String _courseOptionIdentity(CustomSchedulesCourseOption option) {
     return '${option.courseCode}|${option.sectionName}';
   }
 
@@ -329,10 +329,10 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
     }
   }
 
-  Future<void> _openEditor({PersonalSchedule? item}) async {
+  Future<void> _openEditor({CustomSchedule? item}) async {
     final currentContext = context;
     final courseOptions = _latestCourseOptions;
-    final draft = await showPersonalSchedulesEditorSheet(
+    final draft = await showCustomSchedulesEditorSheet(
       currentContext,
       item: item,
       courseOptions: courseOptions,
@@ -360,7 +360,7 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
     try {
       final normalizedTitle = _normalizeMyTitleForSave(draft.title);
       if (item == null) {
-        await PersonalSchedulesService().createItem(
+        await CustomSchedulesService().createItem(
           kind: draft.kind,
           title: normalizedTitle,
           startTime: draft.startTime,
@@ -373,7 +373,7 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
         );
         showAppSnackBar(currentContext, '$kindLabel added');
       } else {
-        await PersonalSchedulesService().updateItem(
+        await CustomSchedulesService().updateItem(
           itemId: item.itemId,
           kind: draft.kind,
           title: normalizedTitle,
@@ -400,7 +400,7 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
     }
   }
 
-  Future<void> _setDoneStatus(PersonalSchedule item, bool done) async {
+  Future<void> _setDoneStatus(CustomSchedule item, bool done) async {
     if (item.isDone == done) return;
     final currentContext = context;
     if (_isBusy) return;
@@ -432,7 +432,7 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
       _isBusy = true;
     });
     try {
-      final updated = await PersonalSchedulesService().updateItem(
+      final updated = await CustomSchedulesService().updateItem(
         itemId: item.itemId,
         isDone: done,
       );
@@ -482,7 +482,7 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
     }
   }
 
-  Future<void> _deleteItem(PersonalSchedule item) async {
+  Future<void> _deleteItem(CustomSchedule item) async {
     final currentContext = context;
     final kindLabel = personalSchedulesFormatKind(item.kind).toLowerCase();
 
@@ -493,7 +493,7 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
       message: 'This will remove this $kindLabel from your schedule.',
       confirmLabel: 'Delete',
       onConfirm: () async {
-        await PersonalSchedulesService().deleteItem(item.itemId);
+        await CustomSchedulesService().deleteItem(item.itemId);
       },
     );
 
@@ -590,12 +590,12 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
       icon: Icons.event_note_outlined,
       actions: [
         IconButton(
-          tooltip: 'Add personal schedule',
+          tooltip: 'Add custom schedule',
           onPressed: _openEditor,
           icon: const Icon(Icons.add_rounded),
         ),
       ],
-      body: FutureBuilder<List<PersonalSchedule>>(
+      body: FutureBuilder<List<CustomSchedule>>(
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting &&
@@ -615,14 +615,14 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
           }
 
           final items =
-              _latestItems ?? snapshot.data ?? const <PersonalSchedule>[];
+              _latestItems ?? snapshot.data ?? const <CustomSchedule>[];
           if (_latestItems == null &&
               snapshot.hasData &&
               snapshot.data != null) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted || _latestItems != null) return;
               setState(() {
-                _latestItems = List<PersonalSchedule>.from(snapshot.data!);
+                _latestItems = List<CustomSchedule>.from(snapshot.data!);
               });
             });
           }
@@ -638,7 +638,7 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
-                        'No personal schedules yet.',
+                        'No custom schedules yet.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: BracuPalette.textPrimary(context),
@@ -708,12 +708,12 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
     );
   }
 
-  List<_MyDayGroup> _groupItemsByDay(List<PersonalSchedule> items) {
-    final grouped = <DateTime, List<PersonalSchedule>>{};
+  List<_MyDayGroup> _groupItemsByDay(List<CustomSchedule> items) {
+    final grouped = <DateTime, List<CustomSchedule>>{};
     for (final item in items) {
       final localDueAt = item.startTime.toLocal();
       final date = DateTime(localDueAt.year, localDueAt.month, localDueAt.day);
-      grouped.putIfAbsent(date, () => <PersonalSchedule>[]).add(item);
+      grouped.putIfAbsent(date, () => <CustomSchedule>[]).add(item);
     }
 
     final groups =
@@ -721,7 +721,7 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
             .map(
               (entry) => _MyDayGroup(
                 date: entry.key,
-                items: List<PersonalSchedule>.from(entry.value)
+                items: List<CustomSchedule>.from(entry.value)
                   ..sort(_compareMyItems),
               ),
             )
@@ -731,7 +731,7 @@ class _PersonalSchedulesPageState extends State<PersonalSchedulesPage>
     return groups;
   }
 
-  int _compareMyItems(PersonalSchedule a, PersonalSchedule b) {
+  int _compareMyItems(CustomSchedule a, CustomSchedule b) {
     final doneCompare = a.isDone == b.isDone
         ? 0
         : a.isDone
@@ -765,7 +765,7 @@ class _MyDayGroup {
   const _MyDayGroup({required this.date, required this.items});
 
   final DateTime date;
-  final List<PersonalSchedule> items;
+  final List<CustomSchedule> items;
 }
 
 class _DayDateHeader extends StatelessWidget {
@@ -799,7 +799,7 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
     required this.onTap,
   });
 
-  final PersonalSchedule item;
+  final CustomSchedule item;
   final String sectionBadgeLabel;
   final VoidCallback onTap;
 
@@ -903,8 +903,8 @@ String _normalizeMyTitleForSave(String rawTitle) {
 }
 
 String _personalSchedulesSectionBadgeLabel(
-  PersonalSchedule item,
-  List<PersonalSchedulesCourseOption> courseOptions,
+  CustomSchedule item,
+  List<CustomSchedulesCourseOption> courseOptions,
 ) {
   return personalSchedulesSectionBadgeLabel(item, courseOptions);
 }

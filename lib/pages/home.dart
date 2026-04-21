@@ -9,7 +9,7 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/exam_map_service.dart';
 import 'package:preconnect/api/profile_service.dart';
-import 'package:preconnect/api/personal_schedules_service.dart';
+import 'package:preconnect/api/custom_schedules_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/class_schedule.dart';
@@ -26,8 +26,8 @@ import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/calendar.dart';
 import 'package:preconnect/pages/bus.dart';
 import 'package:preconnect/pages/free_labs.dart';
-import 'package:preconnect/pages/personal_schedules.dart';
-import 'package:preconnect/pages/personal_schedules_sections/personal_schedules_shared.dart';
+import 'package:preconnect/pages/custom_schedules.dart';
+import 'package:preconnect/pages/custom_schedules_sections/custom_schedules_shared.dart';
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/settings.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
@@ -37,7 +37,7 @@ import 'package:preconnect/pages/home_sections/student_overview.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
 import 'package:preconnect/model/section_info.dart' as section;
-import 'package:preconnect/model/personal_schedule.dart';
+import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/android_network_assist.dart';
@@ -113,7 +113,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
     HomeTab.friendSchedule: (_) => FriendSchedulePage(onNavigate: _setTab),
     HomeTab.campusPrinter: (_) => const CampusPrinterPage(),
     HomeTab.devs: (_) => const DevsPage(),
-    HomeTab.personalSchedules: (_) => const PersonalSchedulesPage(),
+    HomeTab.personalSchedules: (_) => const CustomSchedulesPage(),
   };
   late final List<HomeTab> _tabOrder = HomeTab.values;
   final Set<HomeTab> _builtTabs = {HomeTab.dashboard};
@@ -137,7 +137,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
     unawaited(AlarmPage.preload());
     unawaited(ClassSchedule.preload());
     unawaited(ExamSchedule.preload());
-    unawaited(PersonalSchedulesPage.preload());
+    unawaited(CustomSchedulesPage.preload());
   }
 
   @override
@@ -758,7 +758,7 @@ class _HomeData {
   final String? photoUrl;
   final List<section.Section> sections;
   final Map<String, ExamScheduleOverride> examOverrides;
-  final List<PersonalSchedule> personalSchedules;
+  final List<CustomSchedule> personalSchedules;
   final bool isRamadan;
   final RamadanStatus ramadan;
   final HolidayStatus holiday;
@@ -848,10 +848,10 @@ class _HomeData {
               .whereType<Map>()
               .map(
                 (item) =>
-                    PersonalSchedule.fromJson(Map<String, dynamic>.from(item)),
+                    CustomSchedule.fromJson(Map<String, dynamic>.from(item)),
               )
               .toList(growable: false)
-        : const <PersonalSchedule>[];
+        : const <CustomSchedule>[];
     final ramadanJson = json['ramadan'];
     final ramadan = ramadanJson is Map
         ? RamadanStatus(
@@ -997,10 +997,18 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
                   children: [
                     QuickAccessCard(
                       width: layout.itemWidth,
+                      icon: Icons.calendar_today_outlined,
+                      title: 'Events',
+                      subtitle: 'Calendar',
+                      color: const Color(0xFF00A86B),
+                      onTap: () => widget.onNavigate(HomeTab.calendar),
+                    ),
+                    QuickAccessCard(
+                      width: layout.itemWidth,
                       icon: Icons.directions_bus_rounded,
                       title: 'Bus',
                       subtitle: 'Routes',
-                      color: const Color(0xFF1E6BE3),
+                      color: const Color(0xFF00A8E8),
                       onTap: () => widget.onNavigate(HomeTab.bus),
                     ),
                     QuickAccessCard(
@@ -1026,14 +1034,6 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
                       subtitle: 'Status',
                       color: const Color(0xFF00A8E8),
                       onTap: () => widget.onNavigate(HomeTab.seatStatus),
-                    ),
-                    QuickAccessCard(
-                      width: layout.itemWidth,
-                      icon: Icons.calendar_today_outlined,
-                      title: 'Events',
-                      subtitle: 'Calendar',
-                      color: const Color(0xFF00A86B),
-                      onTap: () => widget.onNavigate(HomeTab.calendar),
                     ),
                     QuickAccessCard(
                       width: layout.itemWidth,

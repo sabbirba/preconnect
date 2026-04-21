@@ -328,13 +328,28 @@ class _CardBack extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 const Text(
-                  'Tel : +8809638464646 ext. 1653\n'
-                  'Email : idcard@bracu.ac.bd',
+                  'Tel : +8809638464646 ext. 1653',
                   style: TextStyle(
                     fontSize: 9,
                     fontFamily: 'Poppins',
                     fontWeight: FontWeight.w600,
                     color: Colors.black,
+                  ),
+                ),
+                InkWell(
+                  onTap: () => openMailComposer(context, 'idcard@bracu.ac.bd'),
+                  borderRadius: BorderRadius.circular(4),
+                  child: const Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: Text(
+                      'Email : idcard@bracu.ac.bd',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black,
+                      ),
+                    ),
                   ),
                 ),
                 Row(

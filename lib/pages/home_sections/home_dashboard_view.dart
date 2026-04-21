@@ -153,7 +153,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                         data?.sections ?? const <section.Section>[],
                         data?.examOverrides ??
                             const <String, ExamScheduleOverride>{},
-                        data?.personalSchedules ?? const <PersonalSchedule>[],
+                        data?.personalSchedules ?? const <CustomSchedule>[],
                       );
                       final todayExams = _todayExamEntries(
                         data?.sections ?? const <section.Section>[],
@@ -596,7 +596,7 @@ extension _HomeDashboardView on _HomeDashboardState {
     _DashboardQuickAccess(
       tab: HomeTab.personalSchedules,
       icon: Icons.event_note_outlined,
-      title: 'Personal',
+      title: 'Custom',
       subtitle: 'Schedules',
       color: Color(0xFF1E6BE3),
     ),

@@ -1109,6 +1109,8 @@ PopupMenuItem<T> compactPopupMenuItem<T>({
 }
 
 const String _kPreconnectSupportNumber = '01865493144';
+const String _kPreconnectSupportReference = 'PreConnect App';
+const String _kPreconnectSupportQrUrl = 'https://preconnect.app/bkash-qr.jpg';
 const String _kPreconnectWhatsAppUrl =
     'https://api.whatsapp.com/send?phone=8801865493144&text=Hi%20PreConnect%2C%20I%20want%20to%20support%20the%20app.';
 const String kPreconnectRepositoryUrl =
@@ -1153,9 +1155,80 @@ class BracuFundingSupportContent extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         const BracuSupportNumberRow(number: _kPreconnectSupportNumber),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
+        Text(
+          'Send money with reference',
+          style: TextStyle(
+            color: BracuPalette.textSecondary(context),
+            fontSize: 11,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 2),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _kPreconnectSupportReference,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(width: 4),
+            InkWell(
+              onTap: () async {
+                await Clipboard.setData(
+                  const ClipboardData(text: _kPreconnectSupportReference),
+                );
+                if (context.mounted) {
+                  showAppSnackBar(context, 'Reference copied');
+                }
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: const Padding(
+                padding: EdgeInsets.all(2),
+                child: Icon(
+                  Icons.copy_rounded,
+                  size: 14,
+                  color: BracuPalette.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF0B0B0B)
+                : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: BracuPalette.primary.withValues(alpha: 0.12),
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final size = constraints.maxWidth;
+                return CachedImage(
+                  url: _kPreconnectSupportQrUrl,
+                  width: size,
+                  height: size,
+                  fit: qrFit,
+                  placeholder: const BracuShimmer(
+                    child: BracuSkeletonBox(height: 220, radius: 12),
+                  ),
+                  error: const Icon(Icons.qr_code_2_rounded),
+                );
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
         Text(
           'Your support helps cover server costs, ongoing development, and app releases so PreConnect can stay reliable.',
           style: TextStyle(
