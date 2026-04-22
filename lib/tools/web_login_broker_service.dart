@@ -66,7 +66,7 @@ class WebLoginBrokerService {
     try {
       final decoded = jsonDecode(response.body);
       if (decoded is! Map<String, dynamic>) {
-        throw FormatException('Expected Map from login session response');
+        throw const FormatException('Expected Map from login session response');
       }
       final json = decoded;
       return WebLoginBrokerSession(
@@ -101,7 +101,7 @@ class WebLoginBrokerService {
     try {
       final decoded = jsonDecode(response.body);
       if (decoded is! Map<String, dynamic>) {
-        throw FormatException('Expected Map from login status response');
+        throw const FormatException('Expected Map from login status response');
       }
       final json = decoded;
       return WebLoginBrokerStatus(
@@ -157,7 +157,7 @@ class WebLoginBrokerService {
     try {
       final decoded = jsonDecode(response.body);
       if (decoded is! Map<String, dynamic>) {
-        throw FormatException('Expected Map from web login response');
+        throw const FormatException('Expected Map from web login response');
       }
       return WebLoginApprovePayload.fromJson(decoded);
     } catch (e) {

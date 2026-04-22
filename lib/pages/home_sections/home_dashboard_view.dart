@@ -46,12 +46,12 @@ extension _HomeDashboardView on _HomeDashboardState {
                           onRefresh: _handleRefresh,
                           showScrollTopButton: false,
                           padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-                          child: Column(
+                          child: const Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const _HomeDashboardSkeletonHeader(),
-                              const SizedBox(height: 12),
-                              const _HomeDashboardSkeletonCard(
+                              _HomeDashboardSkeletonHeader(),
+                              SizedBox(height: 12),
+                              _HomeDashboardSkeletonCard(
                                 height: 168,
                                 children: [
                                   _HomeDashboardSkeletonLine(
@@ -72,8 +72,8 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   _HomeDashboardSkeletonPillRow(),
                                 ],
                               ),
-                              const SizedBox(height: 12),
-                              const _HomeDashboardSkeletonCard(
+                              SizedBox(height: 12),
+                              _HomeDashboardSkeletonCard(
                                 height: 136,
                                 children: [
                                   _HomeDashboardSkeletonLine(
@@ -97,11 +97,11 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 12),
-                              const _HomeDashboardSkeletonQuickAccess(),
-                              const SizedBox(height: 12),
-                              const _HomeDashboardSkeletonActionCard(),
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
+                              _HomeDashboardSkeletonQuickAccess(),
+                              SizedBox(height: 12),
+                              _HomeDashboardSkeletonActionCard(),
+                              SizedBox(height: 12),
                             ],
                           ),
                         );
@@ -565,56 +565,56 @@ extension _HomeDashboardView on _HomeDashboardState {
   }
 
   List<_DashboardQuickAccess> get _quickAccessItems => <_DashboardQuickAccess>[
-    _DashboardQuickAccess(
+    const _DashboardQuickAccess(
       tab: HomeTab.profile,
       icon: Icons.person_outline,
       title: 'Profile',
       subtitle: 'Info & ID',
       color: _HomeDashboardState._primary,
     ),
-    _DashboardQuickAccess(
+    const _DashboardQuickAccess(
       tab: HomeTab.studentSchedule,
       icon: Icons.schedule_outlined,
       title: 'Class',
       subtitle: 'Schedules',
       color: _HomeDashboardState._accent,
     ),
-    _DashboardQuickAccess(
+    const _DashboardQuickAccess(
       tab: HomeTab.alarms,
       icon: Icons.alarm_outlined,
       title: 'Alarm',
       subtitle: 'Reminders',
       color: Color(0xFFFF8A34),
     ),
-    _DashboardQuickAccess(
+    const _DashboardQuickAccess(
       tab: HomeTab.examSchedule,
       icon: Icons.event_note_outlined,
       title: 'Exam',
       subtitle: 'Schedules',
       color: Color(0xFF7C56FF),
     ),
-    _DashboardQuickAccess(
+    const _DashboardQuickAccess(
       tab: HomeTab.personalSchedules,
       icon: Icons.event_note_outlined,
       title: 'Custom',
       subtitle: 'Schedules',
       color: Color(0xFF1E6BE3),
     ),
-    _DashboardQuickAccess(
+    const _DashboardQuickAccess(
       tab: HomeTab.friendSchedule,
       icon: Icons.people_outline_rounded,
       title: 'Friends',
       subtitle: 'Schedules',
       color: Color(0xFF5B8DEF),
     ),
-    _DashboardQuickAccess(
+    const _DashboardQuickAccess(
       tab: HomeTab.degreeProgress,
       icon: Icons.trending_up_rounded,
       title: 'Degree',
       subtitle: 'Progress',
       color: Color(0xFF2C9DFF),
     ),
-    _DashboardQuickAccess(
+    const _DashboardQuickAccess(
       tab: HomeTab.moreQuickAccess,
       icon: Icons.more_horiz_rounded,
       title: 'More',
@@ -808,8 +808,8 @@ class _HomeDashboardSkeletonPillRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: const [
+    return const Row(
+      children: [
         BracuSkeletonBox(width: 56, height: 28, radius: 10),
         SizedBox(width: 8),
         BracuSkeletonBox(width: 78, height: 28, radius: 10),

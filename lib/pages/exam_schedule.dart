@@ -191,7 +191,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
     }
 
     final examService = ExamScheduleService();
-    var overrides = await examService.getOverridesForSections(
+    final overrides = await examService.getOverridesForSections(
       sections,
       forceRefresh: forceRefresh,
       forcedSemesterSessionId: forcedSemesterSessionId,

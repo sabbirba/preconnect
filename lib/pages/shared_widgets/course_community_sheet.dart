@@ -1680,10 +1680,10 @@ class _CourseCommunityLoadingState extends StatelessWidget {
         children: [
           for (var index = 0; index < cardCount; index++) ...[
             if (index != 0) const SizedBox(height: 10),
-            BracuCard(
+            const BracuCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   BracuSkeletonBox(width: 180, height: 14, radius: 7),
                   SizedBox(height: 8),
                   BracuSkeletonBox(

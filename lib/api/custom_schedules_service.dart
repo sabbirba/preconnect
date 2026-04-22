@@ -146,8 +146,7 @@ class CustomSchedulesService {
       return items
           .whereType<Map>()
           .map(
-            (item) =>
-                CustomSchedule.fromJson(Map<String, dynamic>.from(item)),
+            (item) => CustomSchedule.fromJson(Map<String, dynamic>.from(item)),
           )
           .toList(growable: false);
     } catch (_) {

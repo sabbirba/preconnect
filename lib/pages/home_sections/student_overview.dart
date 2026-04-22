@@ -176,7 +176,7 @@ class _SupportButtonState extends State<_SupportButton> {
                 gap: 6,
                 fontSize: 12,
               )
-            : Row(
+            : const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
@@ -184,7 +184,7 @@ class _SupportButtonState extends State<_SupportButton> {
                     size: 16,
                     color: BracuPalette.primary,
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: 6),
                   Text(
                     'Support',
                     style: TextStyle(

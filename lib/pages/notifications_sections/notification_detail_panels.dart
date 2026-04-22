@@ -80,7 +80,7 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
                     child: SelectableText(
                       displayLinkLabel(link),
                       textAlign: TextAlign.left,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: BracuPalette.primary,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -262,9 +262,9 @@ class _ConnectNotificationDetailPanelState
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Padding(
-            padding: const EdgeInsets.all(18),
-            child: const BracuLoading(itemCount: 2),
+          return const Padding(
+            padding: EdgeInsets.all(18),
+            child: BracuLoading(itemCount: 2),
           );
         }
 
@@ -351,7 +351,7 @@ class _ConnectNotificationDetailPanelState
                         child: SelectableText(
                           displayLinkLabel(link),
                           textAlign: TextAlign.left,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: BracuPalette.primary,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,

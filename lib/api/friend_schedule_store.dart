@@ -83,7 +83,7 @@ class FriendScheduleStore {
   String? _extractFriendId(String base64Data) {
     try {
       final decodedBase64 = base64.decode(base64Data);
-      final decodedGzip = GZipDecoder().decodeBytes(decodedBase64);
+      final decodedGzip = const GZipDecoder().decodeBytes(decodedBase64);
       final originalJson = utf8.decode(decodedGzip);
       final parsed = jsonDecode(originalJson);
       if (parsed is Map<String, dynamic>) {

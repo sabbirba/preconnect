@@ -238,9 +238,14 @@ class ProfileService {
           }
         }
       },
-      readCache: ({required bool fromFetch}) =>
-          getProfile(fromFetch: fromFetch),
+      readCache: _readProfileCache,
     );
+  }
+
+  Future<Map<String, String?>?> _readProfileCache({
+    required bool fromFetch,
+  }) async {
+    return getProfile(fromFetch: fromFetch);
   }
 
   Future<Map<String, String?>?> getProfile({bool fromFetch = false}) async {
@@ -396,9 +401,14 @@ class AdvisingService {
           });
         } catch (_) {}
       },
-      readCache: ({required bool fromFetch}) =>
-          getAdvisingInfo(fromFetch: fromFetch),
+      readCache: _readAdvisingCache,
     );
+  }
+
+  Future<Map<String, String?>?> _readAdvisingCache({
+    required bool fromFetch,
+  }) async {
+    return getAdvisingInfo(fromFetch: fromFetch);
   }
 
   Future<Map<String, String?>?> getAdvisingInfo({
@@ -427,11 +437,15 @@ class AttendanceService {
 
   static const String _attendanceKey = 'attendance';
 
+  Future<void> _refreshProfile() async {
+    await ProfileService().fetchProfile(fromGet: true);
+  }
+
   Future<String?> fetchAttendanceInfo({bool fromGet = false}) async {
     final asyncPrefs = AppStorage.instance;
     final id = await resolvePortfolioId(
       prefs: asyncPrefs,
-      refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
+      refreshProfile: _refreshProfile,
     );
     if (id == null || id.isEmpty) {
       if (fromGet) return null;
@@ -446,9 +460,12 @@ class AttendanceService {
       cacheResponse: (response) async {
         await AppPreferencesStore().setString(_attendanceKey, response.body);
       },
-      readCache: ({required bool fromFetch}) =>
-          getAttendanceInfo(fromFetch: fromFetch),
+      readCache: _readAttendanceCache,
     );
+  }
+
+  Future<String?> _readAttendanceCache({required bool fromFetch}) async {
+    return getAttendanceInfo(fromFetch: fromFetch);
   }
 
   Future<String?> getAttendanceInfo({bool fromFetch = false}) async {
@@ -468,11 +485,15 @@ class PaymentService {
 
   static const String _paymentInfoKey = 'SemesterPaymentInfo';
 
+  Future<void> _refreshProfile() async {
+    await ProfileService().fetchProfile(fromGet: true);
+  }
+
   Future<String?> fetchPaymentInfo({bool fromGet = false}) async {
     final asyncPrefs = AppStorage.instance;
     final id = await resolvePortfolioId(
       prefs: asyncPrefs,
-      refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
+      refreshProfile: _refreshProfile,
     );
     if (id == null || id.isEmpty) {
       if (fromGet) return null;
@@ -487,9 +508,12 @@ class PaymentService {
       cacheResponse: (response) async {
         await AppPreferencesStore().setString(_paymentInfoKey, response.body);
       },
-      readCache: ({required bool fromFetch}) =>
-          getPaymentInfo(fromFetch: fromFetch),
+      readCache: _readPaymentCache,
     );
+  }
+
+  Future<String?> _readPaymentCache({required bool fromFetch}) async {
+    return getPaymentInfo(fromFetch: fromFetch);
   }
 
   Future<String?> getPaymentInfo({bool fromFetch = false}) async {

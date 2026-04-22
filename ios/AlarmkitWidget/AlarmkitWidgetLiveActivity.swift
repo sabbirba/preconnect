@@ -175,10 +175,6 @@ struct AlarmControls: View {
             default:
                 EmptyView()
             }
-            // Always show the stop button
-            ButtonView(config: presentation.alert.stopButton,
-                       intent: PreconnectStopIntent(alarmID: state.alarmID.uuidString),
-                       tint: .red)
         }
     }
 }

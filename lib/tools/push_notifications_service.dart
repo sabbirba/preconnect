@@ -62,7 +62,7 @@ class PushNotificationsService {
       _initialized = true;
     } catch (e) {
       if (kDebugMode) {
-        print('Error initializing push notifications: $e');
+        debugPrint('Error initializing push notifications: $e');
       }
     }
   }
@@ -142,7 +142,7 @@ class PushNotificationsService {
       await SeatAlertSyncService().syncAllSeatAlertConfigs(configs);
     } catch (e) {
       if (kDebugMode) {
-        print('Error syncing device: $e');
+        debugPrint('Error syncing device: $e');
       }
     }
   }
@@ -188,11 +188,11 @@ class PushNotificationsService {
 
       _isConnected = true;
       if (kDebugMode) {
-        print('Seat status SSE stream connected');
+        debugPrint('Seat status SSE stream connected');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('SSE stream connection error: $e');
+        debugPrint('SSE stream connection error: $e');
       }
       _isConnected = false;
       _scheduleStreamReconnect();
@@ -253,14 +253,14 @@ class PushNotificationsService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error handling SSE stream message: $e');
+        debugPrint('Error handling SSE stream message: $e');
       }
     }
   }
 
   void _handleStreamError(dynamic error) {
     if (kDebugMode) {
-      print('SSE stream error: $error');
+      debugPrint('SSE stream error: $error');
     }
     _isConnected = false;
     _pendingSseDataLines.clear();
@@ -271,7 +271,7 @@ class PushNotificationsService {
 
   void _handleStreamDone() {
     if (kDebugMode) {
-      print('SSE stream closed');
+      debugPrint('SSE stream closed');
     }
     _isConnected = false;
     _pendingSseDataLines.clear();
@@ -328,7 +328,7 @@ class PushNotificationsService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error polling server push alerts: $e');
+        debugPrint('Error polling server push alerts: $e');
       }
     } finally {
       _serverPollInFlight = false;
@@ -351,7 +351,7 @@ class PushNotificationsService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error processing seat update: $e');
+        debugPrint('Error processing seat update: $e');
       }
     }
   }
@@ -382,7 +382,7 @@ class PushNotificationsService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error checking seat alerts: $e');
+        debugPrint('Error checking seat alerts: $e');
       }
     }
   }
@@ -510,7 +510,7 @@ class PushNotificationsService {
       });
     } catch (e) {
       if (kDebugMode) {
-        print('Error showing notification: $e');
+        debugPrint('Error showing notification: $e');
       }
     }
   }

@@ -140,7 +140,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          _InfoCard(
+                          const _InfoCard(
                             icon: Icons.info_outline_rounded,
                             title: 'About the App',
                             body:
@@ -148,7 +148,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             color: BracuPalette.primary,
                           ),
                           const SizedBox(height: 10),
-                          _InfoCard(
+                          const _InfoCard(
                             icon: Icons.privacy_tip_outlined,
                             title: 'Privacy First',
                             body:
@@ -156,28 +156,28 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             color: BracuPalette.accent,
                           ),
                           const SizedBox(height: 10),
-                          _InfoCard(
+                          const _InfoCard(
                             icon: Icons.auto_awesome_rounded,
                             title: 'Built for Daily Use',
                             body:
                                 'Quickly check class schedules, notifications, exams, reminders, free labs, and more from one student-friendly app.',
-                            color: const Color(0xFF7C4DFF),
+                            color: Color(0xFF7C4DFF),
                           ),
                           const SizedBox(height: 10),
-                          _InfoCard(
+                          const _InfoCard(
                             icon: Icons.groups_rounded,
                             title: 'Student Maintained',
                             body:
                                 'PreConnect is actively improved by students with open-source contributions, feedback, and community support.',
-                            color: const Color(0xFF0EA5A4),
+                            color: Color(0xFF0EA5A4),
                           ),
                           const SizedBox(height: 10),
                           InkWell(
                             onTap: () =>
                                 _openLink(context, 'https://preconnect.app'),
                             borderRadius: BorderRadius.circular(14),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
                                 horizontal: 4,
                                 vertical: 6,
                               ),
@@ -189,7 +189,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                     size: 16,
                                     color: BracuPalette.accent,
                                   ),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                   Text(
                                     'Open PreConnect Web',
                                     style: TextStyle(
@@ -207,8 +207,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               'https://github.com/sabbirba/preconnect',
                             ),
                             borderRadius: BorderRadius.circular(14),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
                                 horizontal: 4,
                                 vertical: 6,
                               ),
@@ -220,7 +220,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                     size: 16,
                                     color: BracuPalette.primary,
                                   ),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                   Text(
                                     'Open GitHub Repository',
                                     style: TextStyle(

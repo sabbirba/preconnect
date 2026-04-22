@@ -89,29 +89,7 @@ class _CardFront extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
-              child: Row(
-                children: [
-                  const _BracuLogo(width: 34, height: 34),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        'BRAC University',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontSize: 21,
-                          color: Colors.black,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            const _CardFrontHeader(),
             const Divider(
               color: Colors.black,
               thickness: 0.9,
@@ -247,6 +225,37 @@ class _CardFront extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CardFrontHeader extends StatelessWidget {
+  const _CardFrontHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(12, 8, 12, 6),
+      child: Row(
+        children: [
+          _BracuLogo(width: 34, height: 34),
+          SizedBox(width: 8),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                'BRAC University',
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  fontSize: 21,
+                  color: Colors.black,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

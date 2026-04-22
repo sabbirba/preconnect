@@ -312,7 +312,7 @@ class _WebLoginSetupPageState extends State<WebLoginSetupPage>
                                 : Center(
                                     child: TextButton(
                                       onPressed: _ensurePermission,
-                                      child: Text(
+                                      child: const Text(
                                         'Tap to enable camera',
                                         style: TextStyle(
                                           color: BracuPalette.primary,
@@ -551,10 +551,10 @@ class _WebLoginLoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BracuShimmer(
+    return const BracuShimmer(
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: const [
+        children: [
           BracuSkeletonBox(width: 180, height: 16, radius: 7),
           SizedBox(height: 10),
           BracuSkeletonBox(width: 220, height: 12, radius: 6),

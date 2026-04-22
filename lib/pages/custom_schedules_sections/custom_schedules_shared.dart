@@ -25,8 +25,7 @@ typedef CustomSchedulesSetAlarmCallback =
     });
 
 typedef CustomSchedulesDeleteCallback = Future<void> Function();
-typedef CustomSchedulesToggleDoneCallback =
-    Future<void> Function(bool isDone);
+typedef CustomSchedulesToggleDoneCallback = Future<void> Function(bool isDone);
 
 typedef CustomSchedulesClassSchedule = ({
   String day,

@@ -171,29 +171,29 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
 
       final courses = sections.map((section) {
         final schedules = section.sectionSchedule.classSchedules.map((c) {
-          return {"day": c.day, "startTime": c.startTime, "endTime": c.endTime};
+          return {'day': c.day, 'startTime': c.startTime, 'endTime': c.endTime};
         }).toList();
 
         return {
-          "courseCode": section.courseCode,
-          "sectionName": section.sectionName,
-          "roomNumber": section.roomNumber,
-          "roomName": section.roomName,
-          "faculties": section.faculties,
-          "schedule": schedules,
+          'courseCode': section.courseCode,
+          'sectionName': section.sectionName,
+          'roomNumber': section.roomNumber,
+          'roomName': section.roomName,
+          'faculties': section.faculties,
+          'schedule': schedules,
         };
       }).toList();
 
       final finalJson = {
-        "name": fullName,
-        "id": studentId,
-        "photoFilePath": photoFilePath,
-        "courses": courses,
+        'name': fullName,
+        'id': studentId,
+        'photoFilePath': photoFilePath,
+        'courses': courses,
       };
 
       final jsonStr = jsonEncode(finalJson);
       final utf8Bytes = utf8.encode(jsonStr);
-      final gzipBytes = GZipEncoder().encode(utf8Bytes);
+      final gzipBytes = const GZipEncoder().encode(utf8Bytes);
       final base64Str = base64.encode(gzipBytes);
 
       await AppStorage.instance.setString('qr_base64', base64Str);
@@ -305,7 +305,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
               onRefresh: _handleRefresh,
               children: [
                 if (errorMessage != null)
-                  BracuEmptyState(message: "Error: $errorMessage")
+                  BracuEmptyState(message: 'Error: $errorMessage')
                 else ...[
                   const BracuSectionTitle(title: 'Your QR Code'),
                   const SizedBox(height: 10),
@@ -459,21 +459,26 @@ class _ShareScheduleLoadingState extends StatelessWidget {
         children: [
           for (var index = 0; index < 4; index++) ...[
             if (index != 0) const SizedBox(height: 12),
-            BracuCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  BracuSkeletonBox(width: 140, height: 14, radius: 7),
-                  SizedBox(height: 10),
-                  BracuSkeletonBox(
-                    width: double.infinity,
-                    height: 220,
-                    radius: 14,
-                  ),
-                ],
-              ),
-            ),
+            const _ShareScheduleSkeletonCard(),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ShareScheduleSkeletonCard extends StatelessWidget {
+  const _ShareScheduleSkeletonCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return const BracuCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          BracuSkeletonBox(width: 140, height: 14, radius: 7),
+          SizedBox(height: 10),
+          BracuSkeletonBox(width: double.infinity, height: 220, radius: 14),
         ],
       ),
     );

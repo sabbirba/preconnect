@@ -425,20 +425,14 @@ void showAppSnackBar(
       action: SnackBarAction(
         label: actionLabel,
         textColor: Colors.white,
-        onPressed: () {
-          if (onAction != null) {
-            onAction();
-            messenger.hideCurrentSnackBar();
-            return;
-          }
-          messenger.hideCurrentSnackBar();
-        },
+        onPressed: onAction ?? messenger.hideCurrentSnackBar,
       ),
     ),
   );
-  _snackAutoTimer = Timer(const Duration(seconds: 3), () {
-    messenger.hideCurrentSnackBar();
-  });
+  _snackAutoTimer = Timer(
+    const Duration(seconds: 3),
+    messenger.hideCurrentSnackBar,
+  );
 }
 
 Future<void> openGradeSheet(BuildContext context) async {
@@ -1137,7 +1131,7 @@ class BracuFundingSupportContent extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Icon(
+              const Icon(
                 Icons.volunteer_activism_rounded,
                 color: BracuPalette.primary,
                 size: 34,
@@ -1171,9 +1165,9 @@ class BracuFundingSupportContent extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
+            const Text(
               _kPreconnectSupportReference,
-              style: const TextStyle(fontWeight: FontWeight.w700),
+              style: TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(width: 4),
             InkWell(

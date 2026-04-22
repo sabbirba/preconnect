@@ -810,10 +810,10 @@ class _SeatStatusLoadingState extends StatelessWidget {
         children: [
           for (var index = 0; index < 4; index++) ...[
             if (index != 0) const SizedBox(height: 12),
-            BracuCard(
+            const BracuCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   BracuSkeletonBox(width: 128, height: 15, radius: 7),
                   SizedBox(height: 8),
                   BracuSkeletonBox(width: 176, height: 12, radius: 6),

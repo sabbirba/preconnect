@@ -160,12 +160,12 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                                                     }
                                                     openAppSettings();
                                                   },
-                                                  child: Text(
+                                                  child: const Text(
                                                     kIsWeb
                                                         ? 'Camera permission denied. Tap to retry camera.'
                                                         : 'Camera permission denied. Tap to open system settings.',
                                                     textAlign: TextAlign.center,
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                       color: Colors.white,
                                                       fontWeight:
                                                           FontWeight.w600,
@@ -228,7 +228,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                                                   openSettingsOnDeny: true,
                                                 );
                                               },
-                                              child: Text(
+                                              child: const Text(
                                                 'Tap to enable camera',
                                                 style: TextStyle(
                                                   color: BracuPalette.primary,
@@ -400,10 +400,10 @@ class _ScanScheduleLoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BracuShimmer(
+    return const BracuShimmer(
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: const [
+        children: [
           BracuSkeletonBox(width: 176, height: 16, radius: 7),
           SizedBox(height: 10),
           BracuSkeletonBox(width: 220, height: 12, radius: 6),

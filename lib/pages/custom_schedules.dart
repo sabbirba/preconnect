@@ -114,8 +114,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
       final items = await service.getItems(forceRefresh: forceRefresh);
       _cachedItems = await service.autoCompleteOverdueItems(items);
     } catch (_) {
-      _cachedItems =
-          await service.getCachedItems() ?? const <CustomSchedule>[];
+      _cachedItems = await service.getCachedItems() ?? const <CustomSchedule>[];
     }
 
     try {

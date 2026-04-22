@@ -433,7 +433,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                     TextButton.icon(
                       onPressed: _busy || _discovering
                           ? null
-                          : () => _discoverPrinter(),
+                          : _discoverPrinter,
                       style: bracuNoSplashTextButtonStyle(),
                       icon: _discovering
                           ? const SizedBox.shrink()

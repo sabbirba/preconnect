@@ -65,7 +65,7 @@ class LoginPage extends StatefulWidget {
     final platform = controller.platform;
     if (platform is AndroidWebViewController) {
       final cookieManager = AndroidWebViewCookieManager(
-        PlatformWebViewCookieManagerCreationParams(),
+        const PlatformWebViewCookieManagerCreationParams(),
       );
       await cookieManager.setAcceptThirdPartyCookies(platform, true);
     }
@@ -144,7 +144,7 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
     final Uri uri = Uri.parse(url);
-    final String? authCode = uri.queryParameters["code"];
+    final String? authCode = uri.queryParameters['code'];
 
     if (authCode == null || authCode.isEmpty) {
       return;
@@ -186,13 +186,13 @@ class _LoginPageState extends State<LoginPage> {
       final response = await http
           .post(
             Uri.parse(ApiConfig.tokenEndpoint),
-            headers: {"Content-Type": "application/x-www-form-urlencoded"},
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: {
-              "grant_type": "authorization_code",
-              "client_id": ApiConfig.clientId,
-              "code": code,
-              "redirect_uri": ApiConfig.redirectUri,
-              "code_verifier": verifier,
+              'grant_type': 'authorization_code',
+              'client_id': ApiConfig.clientId,
+              'code': code,
+              'redirect_uri': ApiConfig.redirectUri,
+              'code_verifier': verifier,
             },
           )
           .timeout(_loginRequestTimeout);
@@ -204,8 +204,8 @@ class _LoginPageState extends State<LoginPage> {
         return false;
       }
 
-      final accessToken = data["access_token"] as String?;
-      final refreshToken = data["refresh_token"] as String?;
+      final accessToken = data['access_token'] as String?;
+      final refreshToken = data['refresh_token'] as String?;
       if (accessToken == null ||
           accessToken.isEmpty ||
           refreshToken == null ||

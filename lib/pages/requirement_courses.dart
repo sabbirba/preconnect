@@ -237,7 +237,7 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
                             ),
                             if (done && gradeLabel == null) ...[
                               const SizedBox(height: 2),
-                              Text(
+                              const Text(
                                 'Completed',
                                 style: TextStyle(
                                   color: BracuPalette.accent,
@@ -247,7 +247,7 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
                               ),
                             ] else if (takingNow) ...[
                               const SizedBox(height: 2),
-                              Text(
+                              const Text(
                                 'This semester',
                                 style: TextStyle(
                                   color: BracuPalette.primary,

@@ -63,13 +63,13 @@ class CampusMapData {
     final offices = officeRows is List
         ? officeRows
               .whereType<Map>()
-              .map((item) => CampusOfficeContact.fromJson(item))
+              .map(CampusOfficeContact.fromJson)
               .toList(growable: false)
         : const <CampusOfficeContact>[];
     final emergencies = emergencyRows is List
         ? emergencyRows
               .whereType<Map>()
-              .map((item) => CampusEmergencyContact.fromJson(item))
+              .map(CampusEmergencyContact.fromJson)
               .toList(growable: false)
         : const <CampusEmergencyContact>[];
 
@@ -272,9 +272,9 @@ Future<void> showCampusMapBottomSheet(
         ]),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Padding(
-              padding: const EdgeInsets.all(18),
-              child: const BracuLoading(itemCount: 2),
+            return const Padding(
+              padding: EdgeInsets.all(18),
+              child: BracuLoading(itemCount: 2),
             );
           }
           final values = snapshot.data;
@@ -500,8 +500,8 @@ Future<void> showCampusMapBottomSheet(
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 6),
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 6),
                                   child: Icon(
                                     Icons.circle,
                                     size: 6,

@@ -349,15 +349,15 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       for (final classSchedule in section.sectionSchedule.classSchedules) {
         grouped.putIfAbsent(classSchedule.day, () => []);
         grouped[classSchedule.day]!.add({
-          "schedule": classSchedule,
-          "courseCode": section.courseCode,
-          "sectionName": section.sectionName,
-          "roomNumber": section.roomNumber,
-          "faculties": section.faculties,
-          "consumedSeat": section.consumedSeat,
-          "capacity": section.capacity,
-          "courseType": section.courseType,
-          "semesterSessionId": section.semesterSessionId,
+          'schedule': classSchedule,
+          'courseCode': section.courseCode,
+          'sectionName': section.sectionName,
+          'roomNumber': section.roomNumber,
+          'faculties': section.faculties,
+          'consumedSeat': section.consumedSeat,
+          'capacity': section.capacity,
+          'courseType': section.courseType,
+          'semesterSessionId': section.semesterSessionId,
         });
 
         if (shouldHighlightCurrentSemester) {
@@ -380,8 +380,8 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
 
     for (final entries in grouped.values) {
       entries.sort((a, b) {
-        final aSchedule = a["schedule"] as section.ClassSchedule;
-        final bSchedule = b["schedule"] as section.ClassSchedule;
+        final aSchedule = a['schedule'] as section.ClassSchedule;
+        final bSchedule = b['schedule'] as section.ClassSchedule;
         final aStart = RamadanTiming.effectiveStartMinutes(
           aSchedule.startTime,
           aSchedule.endTime,
@@ -615,15 +615,15 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
                   ),
                   const SizedBox(height: 10),
                   ...schedules.map((entry) {
-                    final s = entry["schedule"] as section.ClassSchedule;
-                    final code = entry["courseCode"];
-                    final sectionName = entry["sectionName"];
-                    final room = entry["roomNumber"];
-                    final faculties = entry["faculties"] as String?;
-                    final consumedSeat = entry["consumedSeat"] as int?;
-                    final courseType = (entry["courseType"] as String?)?.trim();
+                    final s = entry['schedule'] as section.ClassSchedule;
+                    final code = entry['courseCode'];
+                    final sectionName = entry['sectionName'];
+                    final room = entry['roomNumber'];
+                    final faculties = entry['faculties'] as String?;
+                    final consumedSeat = entry['consumedSeat'] as int?;
+                    final courseType = (entry['courseType'] as String?)?.trim();
                     final semesterSessionId =
-                        entry["semesterSessionId"] as int?;
+                        entry['semesterSessionId'] as int?;
                     final isScrollTarget =
                         shouldHighlightCurrentSemester &&
                         scrollSchedule == s &&

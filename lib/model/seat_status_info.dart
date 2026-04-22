@@ -59,9 +59,9 @@ class SeatStatusSection {
   factory SeatStatusSection.fromJson(Map<String, dynamic> json) {
     final rawSchedule = json['sectionSchedule'];
     final scheduleJson = switch (rawSchedule) {
-      String s when s.trim().isNotEmpty =>
+      final String s when s.trim().isNotEmpty =>
         _asStringDynamicMap(jsonDecode(s)) ?? const <String, dynamic>{},
-      Map m => m.cast<String, dynamic>(),
+      final Map m => m.cast<String, dynamic>(),
       _ => const <String, dynamic>{},
     };
 

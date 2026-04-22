@@ -113,7 +113,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       for (final base64Json in encodedList) {
         try {
           final Uint8List decodeBase64Json = base64.decode(base64Json);
-          final List<int> decodeGzipJson = GZipDecoder().decodeBytes(
+          final List<int> decodeGzipJson = const GZipDecoder().decodeBytes(
             decodeBase64Json,
           );
           final String originalJson = utf8.decode(decodeGzipJson);
@@ -594,7 +594,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
             const SizedBox(height: 12),
           ],
           if (_filteredSchedules.isEmpty && decodedSchedules.isEmpty)
-            const BracuEmptyState(message: "No schedules found")
+            const BracuEmptyState(message: 'No schedules found')
           else if (_filteredSchedules.isEmpty && _searchQuery.isNotEmpty)
             BracuCard(
               child: Center(

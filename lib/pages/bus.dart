@@ -195,9 +195,9 @@ class _TransportRouteCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 onTap: onToggle,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  padding: const EdgeInsets.symmetric(vertical: 1),
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
                         child: Text(
@@ -213,7 +213,7 @@ class _TransportRouteCard extends StatelessWidget {
                         expanded
                             ? Icons.expand_less_rounded
                             : Icons.expand_more_rounded,
-                        size: 18,
+                        size: 14,
                         color: BracuPalette.primary,
                       ),
                     ],
@@ -249,7 +249,7 @@ class _TransportRouteCard extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.call_rounded,
                               size: 16,
                               color: BracuPalette.primary,
@@ -257,7 +257,7 @@ class _TransportRouteCard extends StatelessWidget {
                             const SizedBox(width: 6),
                             Text(
                               'Call Attendant (${route.attendantPhone})',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: BracuPalette.primary,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
@@ -288,91 +288,59 @@ class _RouteStopTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final textPrimary = BracuPalette.textPrimary(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 22,
-            child: Column(
-              children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: BracuPalette.primary,
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                ),
-                if (!isLast)
-                  Container(
-                    width: 2,
-                    height: 44,
-                    margin: const EdgeInsets.only(top: 2),
-                    color: BracuPalette.primary.withValues(alpha: 0.35),
-                  ),
-              ],
+          Text(
+            stop.name,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: textPrimary,
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  stop.name,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: textPrimary,
-                  ),
-                ),
-                if (stop.times.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: stop.times
-                          .map(
-                            (time) => Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: BracuPalette.primary.withValues(
-                                  alpha: 0.1,
-                                ),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.schedule_rounded,
-                                    size: 12,
-                                    color: BracuPalette.primary,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    time,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: BracuPalette.primary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
+          if (stop.times.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: stop.times
+                    .map(
+                      (time) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: BracuPalette.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.schedule_rounded,
+                              size: 12,
+                              color: BracuPalette.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              time,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: BracuPalette.primary,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
-                          )
-                          .toList(growable: false),
-                    ),
-                  ),
-              ],
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -391,7 +359,7 @@ class _OutboundTripsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionHeader(
+          const _SectionHeader(
             icon: Icons.directions_bus_filled_rounded,
             title: 'Outbound Drop-offs',
           ),
@@ -526,7 +494,7 @@ class _ContactsCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                     ),
                     alignment: Alignment.center,
-                    child: Icon(
+                    child: const Icon(
                       Icons.person_rounded,
                       size: 16,
                       color: BracuPalette.primary,
@@ -623,7 +591,7 @@ class _GeneralInstructionsCard extends StatelessWidget {
                       ),
                       child: Text(
                         '${entry.key + 1}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: BracuPalette.primary,
                           fontWeight: FontWeight.w800,
                           fontSize: 12,
@@ -777,7 +745,7 @@ class _InfoChip extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             text,
-            style: TextStyle(
+            style: const TextStyle(
               color: BracuPalette.primary,
               fontSize: 11,
               fontWeight: FontWeight.w700,

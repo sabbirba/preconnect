@@ -700,9 +700,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
         action: SnackBarAction(
           label: 'Close',
           textColor: Colors.white,
-          onPressed: () {
-            messenger.hideCurrentSnackBar();
-          },
+          onPressed: messenger.hideCurrentSnackBar,
         ),
       ),
     );
@@ -792,7 +790,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Auto Extend Session'),
-                      subtitle: Text(
+                      subtitle: const Text(
                         'Extend when time is <= ${_autoExtendThresholdSeconds}s',
                       ),
                       value: _autoExtendEnabled,

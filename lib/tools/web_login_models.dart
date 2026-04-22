@@ -36,13 +36,13 @@ class WebLoginRequestPayload {
   String toQrData() {
     final raw = jsonEncode(toJson());
     final encoded = utf8.encode(raw);
-    final gzip = GZipEncoder().encode(encoded);
+    final gzip = const GZipEncoder().encode(encoded);
     return base64Url.encode(gzip);
   }
 
   static WebLoginRequestPayload fromQrData(String data) {
     final bytes = base64Url.decode(base64Url.normalize(data.trim()));
-    final jsonStr = utf8.decode(GZipDecoder().decodeBytes(bytes));
+    final jsonStr = utf8.decode(const GZipDecoder().decodeBytes(bytes));
     final json = jsonDecode(jsonStr) as Map<String, dynamic>;
     return WebLoginRequestPayload(
       version: (json['v'] as num?)?.toInt() ?? 1,

@@ -755,7 +755,7 @@ Future<T?> showBracuSelectDropdown<T>(
                               ),
                               if (selected) ...[
                                 const SizedBox(width: 8),
-                                Icon(
+                                const Icon(
                                   Icons.check_rounded,
                                   size: 18,
                                   color: BracuPalette.primary,
@@ -1898,7 +1898,7 @@ class BracuSkeletonList extends StatelessWidget {
           ],
           if (showLabel) ...[
             const SizedBox(height: 12),
-            FractionallySizedBox(
+            const FractionallySizedBox(
               widthFactor: 0.38,
               child: BracuSkeletonBox(height: 12, radius: 6),
             ),
@@ -2003,9 +2003,9 @@ class BracuSkeletonGrid extends StatelessWidget {
                 SizedBox(
                   width: itemWidth.isFinite ? itemWidth : 96,
                   height: itemHeight,
-                  child: Column(
+                  child: const Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
+                    children: [
                       BracuSkeletonBox(width: 40, height: 40, radius: 20),
                       SizedBox(height: 8),
                       BracuSkeletonBox(width: 54, height: 9, radius: 5),
@@ -2081,7 +2081,7 @@ class _BracuSkeletonCard extends StatelessWidget {
                 ),
                 if (!compact) ...[
                   const SizedBox(height: 9),
-                  FractionallySizedBox(
+                  const FractionallySizedBox(
                     widthFactor: 0.32,
                     child: BracuSkeletonBox(height: 9, radius: 5),
                   ),

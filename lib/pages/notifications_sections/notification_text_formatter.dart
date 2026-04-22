@@ -26,7 +26,7 @@ String cleanNotificationBodyText(String raw, {String? title}) {
   if (raw.trim().isEmpty) return '';
 
   final protectedUrls = <String>[];
-  var protectedRaw = raw.replaceAllMapped(
+  final protectedRaw = raw.replaceAllMapped(
     RegExp("(https?://|www\\.)[^\\s<>\"'\\)]+", caseSensitive: false),
     (match) {
       final token = '__PC_URL_${protectedUrls.length}__';

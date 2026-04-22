@@ -498,13 +498,13 @@ class _AdSenseLogoImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CachedImage(
+    return const CachedImage(
       url: _logoUrl,
       width: 24,
       height: 24,
       fit: BoxFit.contain,
-      placeholder: const SizedBox.shrink(),
-      error: const SizedBox.shrink(),
+      placeholder: SizedBox.shrink(),
+      error: SizedBox.shrink(),
     );
   }
 }
@@ -519,11 +519,11 @@ class _ContributorLoadingList extends StatelessWidget {
         children: [
           for (var index = 0; index < 5; index++) ...[
             if (index != 0) const SizedBox(height: 12),
-            Row(
+            const Row(
               children: [
-                const BracuSkeletonBox(width: 62, height: 62, radius: 31),
-                const SizedBox(width: 14),
-                const Expanded(
+                BracuSkeletonBox(width: 62, height: 62, radius: 31),
+                SizedBox(width: 14),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -533,8 +533,8 @@ class _ContributorLoadingList extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 14),
-                const BracuSkeletonBox(width: 60, height: 30, radius: 10),
+                SizedBox(width: 14),
+                BracuSkeletonBox(width: 60, height: 30, radius: 10),
               ],
             ),
           ],

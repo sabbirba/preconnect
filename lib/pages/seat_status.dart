@@ -176,7 +176,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     Map<int, SeatStatusDetailsResponse> detailsMap,
   ) {
     final sectionIds = _visibleSectionIdsFromDetails(detailsMap).toList()
-      ..sort((a, b) => _compareSectionIdsByNaming(a, b));
+      ..sort(_compareSectionIdsByNaming);
     return sectionIds.map((sectionId) {
       final cached = detailsMap[sectionId];
       if (cached == null) {
