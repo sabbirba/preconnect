@@ -1,14 +1,24 @@
 import Flutter
 import GoogleMobileAds
 import UIKit
+import WidgetKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+  private static let appGroupIdentifier = "group.com.sabbirba.preconnect"
   private let pendingShortcutKey = "flutter.pending_shortcut_action"
+  private let widgetSnapshotKey = "widget_alarm_snapshot"
   private let adsBridge = PreconnectAdsBridge()
 
   private func cacheShortcutAction(_ type: String) {
-    UserDefaults.standard.set(type, forKey: pendingShortcutKey)
+    guard let defaults = UserDefaults(suiteName: Self.appGroupIdentifier) else {
+      UserDefaults.standard.set(type, forKey: pendingShortcutKey)
+      return
+    }
+    defaults.set(type, forKey: pendingShortcutKey)
+    if #available(iOS 14.0, *) {
+      WidgetCenter.shared.reloadAllTimelines()
+    }
   }
 
   override func application(
@@ -21,6 +31,7 @@ import UIKit
     if let controller = window?.rootViewController as? FlutterViewController {
       registerBuildInfoChannel(binaryMessenger: controller.binaryMessenger)
       registerNativePrintChannel(binaryMessenger: controller.binaryMessenger)
+      registerWidgetSnapshotChannel(binaryMessenger: controller.binaryMessenger)
     }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
@@ -92,6 +103,64 @@ import UIKit
       default:
         result(FlutterMethodNotImplemented)
       }
+    }
+  }
+
+  private func registerWidgetSnapshotChannel(binaryMessenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(
+      name: "preconnect/widget_snapshot",
+      binaryMessenger: binaryMessenger
+    )
+    channel.setMethodCallHandler { [weak self] call, result in
+      guard let self else {
+        result(
+          FlutterError(
+            code: "WIDGET_SNAPSHOT_CONTEXT",
+            message: "App context unavailable",
+            details: nil
+          )
+        )
+        return
+      }
+      switch call.method {
+      case "setAlarmSnapshot":
+        let args = call.arguments as? [String: Any] ?? [:]
+        self.storeWidgetAlarmSnapshot(
+          label: args["label"] as? String,
+          fireDateMillis: args["fireDateMillis"] as? Double
+        )
+        result(true)
+      case "clearAlarmSnapshot":
+        self.clearWidgetAlarmSnapshot()
+        result(true)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+
+  private func storeWidgetAlarmSnapshot(label: String?, fireDateMillis: Double?) {
+    guard let defaults = UserDefaults(suiteName: Self.appGroupIdentifier) else { return }
+    defaults.set(
+      label?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
+      forKey: widgetSnapshotKey
+    )
+    if let fireDateMillis {
+      defaults.set(Int64(fireDateMillis), forKey: "\(widgetSnapshotKey)_fire_date")
+    } else {
+      defaults.removeObject(forKey: "\(widgetSnapshotKey)_fire_date")
+    }
+    if #available(iOS 14.0, *) {
+      WidgetCenter.shared.reloadAllTimelines()
+    }
+  }
+
+  private func clearWidgetAlarmSnapshot() {
+    guard let defaults = UserDefaults(suiteName: Self.appGroupIdentifier) else { return }
+    defaults.removeObject(forKey: widgetSnapshotKey)
+    defaults.removeObject(forKey: "\(widgetSnapshotKey)_fire_date")
+    if #available(iOS 14.0, *) {
+      WidgetCenter.shared.reloadAllTimelines()
     }
   }
 

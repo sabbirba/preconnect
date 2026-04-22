@@ -6,6 +6,7 @@ import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/custom_schedules_sections/custom_schedules_shared.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
+import 'package:preconnect/tools/widget_snapshot_bridge.dart';
 
 Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
   BuildContext context, {
@@ -349,6 +350,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
           Future<void> deleteItem() async {
             if (onDelete == null) return;
             Navigator.of(context).pop();
+            await WidgetSnapshotBridge.clearAlarmSnapshot();
             await onDelete();
           }
 
@@ -359,6 +361,9 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
               isDone = nextDone;
             });
             Navigator.of(context).pop();
+            if (nextDone) {
+              await WidgetSnapshotBridge.clearAlarmSnapshot();
+            }
             await onToggleDone(nextDone);
           }
 

@@ -15,6 +15,7 @@ import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/exam_sorting.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/time_utils.dart';
+import 'package:preconnect/tools/widget_snapshot_bridge.dart';
 
 class AlarmPage extends StatefulWidget {
   const AlarmPage({super.key});
@@ -272,6 +273,10 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           minute: minute,
           label: '$courseCode Class Reminder ($minutesBefore min before)',
           tintColor: '#1E6BE3',
+        );
+        await WidgetSnapshotBridge.setAlarmSnapshot(
+          label: '$courseCode Class Reminder',
+          fireDate: adjusted,
         );
         if (!context.mounted) return;
         showAppSnackBar(context, 'Alarm scheduled on iOS.');

@@ -17,6 +17,7 @@ import 'package:preconnect/pages/custom_schedules_sections/custom_schedules_edit
 import 'package:preconnect/pages/custom_schedules_sections/custom_schedules_shared.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/widget_snapshot_bridge.dart';
 
 class CustomSchedulesPage extends StatefulWidget {
   const CustomSchedulesPage({super.key});
@@ -499,6 +500,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
     if (!deleted || !mounted) return;
 
     try {
+      await WidgetSnapshotBridge.clearAlarmSnapshot();
       showAppSnackBar(
         currentContext,
         '${personalSchedulesFormatKind(item.kind)} deleted',
@@ -547,6 +549,10 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
           label: message,
           tintColor: '#1E6BE3',
         );
+        await WidgetSnapshotBridge.setAlarmSnapshot(
+          label: message,
+          fireDate: reminderAt,
+        );
         if (!context.mounted) return;
         showAppSnackBar(context, 'Alarm scheduled on iOS.');
       } on PlatformException catch (e) {
@@ -574,6 +580,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
         throw Exception('Unable to open alarm on Android.');
       }
       if (!context.mounted) return;
+      await WidgetSnapshotBridge.clearAlarmSnapshot();
       showAppSnackBar(context, 'Alarm opened in Clock app.');
     } catch (_) {
       if (!context.mounted) return;

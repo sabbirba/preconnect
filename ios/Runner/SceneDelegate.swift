@@ -1,11 +1,20 @@
 import Flutter
 import UIKit
+import WidgetKit
 
 class SceneDelegate: FlutterSceneDelegate {
+  private static let appGroupIdentifier = "group.com.sabbirba.preconnect"
   private let pendingShortcutKey = "flutter.pending_shortcut_action"
 
   private func cacheShortcutAction(_ type: String) {
-    UserDefaults.standard.set(type, forKey: pendingShortcutKey)
+    guard let defaults = UserDefaults(suiteName: Self.appGroupIdentifier) else {
+      UserDefaults.standard.set(type, forKey: pendingShortcutKey)
+      return
+    }
+    defaults.set(type, forKey: pendingShortcutKey)
+    if #available(iOS 14.0, *) {
+      WidgetCenter.shared.reloadAllTimelines()
+    }
   }
 
   override func scene(
