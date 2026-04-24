@@ -3,7 +3,7 @@
   "name": "PreConnect",
   "short_name": "PreConnect",
   "description": "PreConnect as a Chrome extension for BRACU students.",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "action": {
     "default_title": "Open PreConnect",
     "default_icon": {
@@ -17,16 +17,25 @@
     "service_worker": "background.dart.js"
   },
   "permissions": [
+    "alarms",
     "storage",
     "tabs",
     "webNavigation"
   ],
   "host_permissions": [
-    "https://sso.bracu.ac.bd/*",
+    "https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect/*",
     "https://connect.bracu.ac.bd/*",
+    "https://api.finder-lbs.com/*",
+    "https://www.google.com/*",
+    "https://api.whatsapp.com/*",
+    "https://www.linkedin.com/*",
+    "https://media.licdn.com/*",
+    "https://github.com/*",
+    "https://api.github.com/*",
+    "https://www.bracu.ac.bd/*",
     "https://api.preconnect.app/*",
     "https://files.preconnect.app/*",
-    "https://api.github.com/*"
+    "https://preconnect.app/*"
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"

@@ -4,6 +4,7 @@ import 'package:chrome_extension/runtime.dart';
 // ignore: implementation_imports
 import 'package:chrome_extension/src/internal_helpers.dart';
 import 'package:flutter/material.dart';
+import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
@@ -35,7 +36,9 @@ class _WebExtensionLoginPageState extends State<WebExtensionLoginPage> {
   Future<void> _bootstrap() async {
     final hasToken = await TokenStorage.instance.hasAccessToken();
     if (!mounted) return;
-    if (hasToken) {
+    final sessionReady = hasToken && await AuthService().ensureSignedIn();
+    if (!mounted) return;
+    if (sessionReady) {
       Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
       return;
     }
