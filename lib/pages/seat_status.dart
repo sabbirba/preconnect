@@ -173,7 +173,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     Map<int, SeatStatusDetailsResponse> detailsMap,
   ) async {
     if (!mounted || detailsMap.isEmpty) return;
-    final previousCards = List<_SeatStatusCardData>.from(_cards);
     _detailsCache
       ..clear()
       ..addAll(detailsMap);
@@ -232,10 +231,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
 }
 
 class _SeatStatusCard extends StatelessWidget {
-  const _SeatStatusCard({
-    required this.item,
-    this.onTap,
-  });
+  const _SeatStatusCard({required this.item, this.onTap});
 
   final _SeatStatusCardData item;
   final VoidCallback? onTap;

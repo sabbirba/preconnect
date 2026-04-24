@@ -18,7 +18,6 @@ import 'package:preconnect/tools/play_install_referrer.dart';
 import 'package:preconnect/tools/reward_support_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
-import 'package:preconnect/tools/web_shared.dart';
 
 class AppBootstrapState {
   const AppBootstrapState({
@@ -596,7 +595,10 @@ class _MyAppState extends State<MyApp>
                     const mobileShellWidth = 390.0;
                     if (!kIsWeb && constraints.maxWidth >= 900) {
                       const shellWidth = 420.0;
-                      final shellSize = Size(shellWidth, mediaQuery.size.height);
+                      final shellSize = Size(
+                        shellWidth,
+                        mediaQuery.size.height,
+                      );
                       final shellMediaQuery = mediaQuery.copyWith(
                         size: shellSize,
                       );
@@ -619,7 +621,9 @@ class _MyAppState extends State<MyApp>
                         : mobileShellWidth;
                     final shellHeight = mediaQuery.size.height;
                     final shellSize = Size(shellWidth, shellHeight);
-                    final shellMediaQuery = mediaQuery.copyWith(size: shellSize);
+                    final shellMediaQuery = mediaQuery.copyWith(
+                      size: shellSize,
+                    );
                     return Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -644,7 +648,9 @@ class _MyAppState extends State<MyApp>
                             boxShadow: kIsWeb
                                 ? [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.16),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.16,
+                                      ),
                                       blurRadius: 30,
                                       offset: const Offset(0, 16),
                                     ),
