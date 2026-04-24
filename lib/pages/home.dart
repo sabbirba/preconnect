@@ -209,7 +209,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
     if (!mounted) return;
 
     if (shouldLogout) {
-      await AuthService().logout(instant: true);
+      await AuthService().logout(instant: true, force: true);
       if (!mounted) return;
       themeNotifier.value = ThemeMode.system;
       RefreshBus.instance.notify(reason: 'auth');

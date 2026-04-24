@@ -19,6 +19,7 @@ import 'package:preconnect/tools/reward_support_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/push_notifications_service.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/web_extension_session_flow.dart';
 
 class AppBootstrapState {
   const AppBootstrapState({
@@ -56,7 +57,7 @@ class MyApp extends StatefulWidget {
         CustomSchedulesService.cacheKey,
       };
       await AppPreferencesStore().clearAllExcept(keepKeys);
-    } else {}
+    }
 
     final canOpenOffline = hasToken && await _hasOfflineSnapshot();
 
@@ -107,6 +108,8 @@ class _MyAppState extends State<MyApp>
   bool _appLockEnabled = false;
   bool _isUnlocked = true;
   bool _isUnlocking = false;
+  WebExtensionSessionFlow? _webExtensionSessionFlow;
+  StreamSubscription<WebExtensionSessionEvent>? _webSessionSub;
 
   @override
   void initState() {
@@ -120,6 +123,12 @@ class _MyAppState extends State<MyApp>
     WidgetsBinding.instance.addObserver(this);
     if (_resolvedBootstrapState == null) {
       unawaited(_bootstrapInBackground());
+    }
+    if (kIsWeb) {
+      _webExtensionSessionFlow = WebExtensionSessionFlow();
+      _webSessionSub = _webExtensionSessionFlow!.events.listen(
+        _handleWebExtensionSessionEvent,
+      );
     }
     unawaited(_initializeAppLock());
     bindRefreshBus(_onRefreshSignal);
@@ -203,9 +212,24 @@ class _MyAppState extends State<MyApp>
 
   @override
   void dispose() {
+    _webSessionSub?.cancel();
+    _webExtensionSessionFlow?.dispose();
     unbindRefreshBus(_onRefreshSignal);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _handleWebExtensionSessionEvent(WebExtensionSessionEvent event) {
+    if (!mounted) return;
+    if (event.type != WebExtensionSessionEventKind.logoutComplete) return;
+    setState(() {
+      _initialLoggedIn = false;
+      _canOpenOffline = false;
+    });
+    _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+      '/onboarding',
+      (route) => false,
+    );
   }
 
   void _onRefreshSignal() {
@@ -593,23 +617,69 @@ class _MyAppState extends State<MyApp>
                 value: overlayStyle,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    if (kIsWeb || constraints.maxWidth < 900) {
-                      return content;
+                    const mobileShellWidth = 390.0;
+                    if (!kIsWeb && constraints.maxWidth >= 900) {
+                      const shellWidth = 420.0;
+                      final shellSize = Size(shellWidth, mediaQuery.size.height);
+                      final shellMediaQuery = mediaQuery.copyWith(
+                        size: shellSize,
+                      );
+                      return Container(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        alignment: Alignment.center,
+                        child: SizedBox(
+                          width: shellWidth,
+                          height: mediaQuery.size.height,
+                          child: MediaQuery(
+                            data: shellMediaQuery,
+                            child: content,
+                          ),
+                        ),
+                      );
                     }
-                    const shellWidth = 420.0;
-                    final shellSize = Size(shellWidth, mediaQuery.size.height);
-                    final shellMediaQuery = mediaQuery.copyWith(
-                      size: shellSize,
-                    );
+
+                    final shellWidth = constraints.maxWidth < mobileShellWidth
+                        ? constraints.maxWidth
+                        : mobileShellWidth;
+                    final shellHeight = mediaQuery.size.height;
+                    final shellSize = Size(shellWidth, shellHeight);
+                    final shellMediaQuery = mediaQuery.copyWith(size: shellSize);
                     return Container(
-                      color: Theme.of(context).scaffoldBackgroundColor,
-                      alignment: Alignment.center,
-                      child: SizedBox(
-                        width: shellWidth,
-                        height: mediaQuery.size.height,
-                        child: MediaQuery(
-                          data: shellMediaQuery,
-                          child: content,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            BracuPalette.bgTop(context),
+                            BracuPalette.bgBottom(context),
+                          ],
+                        ),
+                      ),
+                      child: Center(
+                        child: Container(
+                          width: shellWidth,
+                          height: shellHeight,
+                          margin: const EdgeInsets.symmetric(vertical: 0),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).scaffoldBackgroundColor,
+                            borderRadius: BorderRadius.circular(
+                              kIsWeb ? 32 : 0,
+                            ),
+                            boxShadow: kIsWeb
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.16),
+                                      blurRadius: 30,
+                                      offset: const Offset(0, 16),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: MediaQuery(
+                            data: shellMediaQuery,
+                            child: content,
+                          ),
                         ),
                       ),
                     );
@@ -641,8 +711,56 @@ class _StartupFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: const SizedBox.expand(),
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              BracuPalette.bgTop(context),
+              BracuPalette.bgBottom(context),
+            ],
+          ),
+        ),
+        child: Center(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.all(24),
+            constraints: const BoxConstraints(maxWidth: 320),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  blurRadius: 28,
+                  offset: const Offset(0, 16),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Starting PreConnect...',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: BracuPalette.textSecondary(context),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

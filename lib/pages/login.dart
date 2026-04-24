@@ -1,19 +1,20 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:crypto/crypto.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
+import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/pages/web_extension_login_stub.dart'
+    if (dart.library.html) 'package:preconnect/pages/web_extension_login_web.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -22,25 +23,13 @@ class LoginPage extends StatefulWidget {
   static bool _isPreloadingWebView = false;
   static String? _pkceVerifier;
 
-  static String _generatePkceVerifier() {
-    const chars =
-        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
-    final random = Random.secure();
-    return List.generate(64, (_) => chars[random.nextInt(chars.length)]).join();
-  }
-
-  static String _codeChallengeS256(String verifier) {
-    final bytes = sha256.convert(utf8.encode(verifier)).bytes;
-    return base64UrlEncode(bytes).replaceAll('=', '');
-  }
-
   static Future<void> preloadNextPage() async {
     if (kIsWeb) return;
     if (_preloadedWebViewController != null || _isPreloadingWebView) return;
     _isPreloadingWebView = true;
     try {
-      _pkceVerifier = _generatePkceVerifier();
-      final codeChallenge = _codeChallengeS256(_pkceVerifier!);
+      _pkceVerifier = generatePkceVerifier();
+      final codeChallenge = codeChallengeS256(_pkceVerifier!);
       final controller = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setUserAgent(kPreconnectUserAgent)
@@ -101,8 +90,8 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   WebViewController _buildMobileWebView() {
-    LoginPage._pkceVerifier ??= LoginPage._generatePkceVerifier();
-    final codeChallenge = LoginPage._codeChallengeS256(
+    LoginPage._pkceVerifier ??= generatePkceVerifier();
+    final codeChallenge = codeChallengeS256(
       LoginPage._pkceVerifier!,
     );
     final controller = WebViewController()
@@ -268,7 +257,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     if (kIsWeb) {
-      return const _MobileAppOnlyLoginPage();
+      return const WebExtensionLoginPage();
     }
 
     return Scaffold(
@@ -322,54 +311,5 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void dispose() {
     super.dispose();
-  }
-}
-
-class _MobileAppOnlyLoginPage extends StatelessWidget {
-  const _MobileAppOnlyLoginPage();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.public_off_rounded,
-                    size: 56,
-                    color: BracuPalette.primary,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Sign in on mobile',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: BracuPalette.textPrimary(context),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Use the mobile app to sign in with BRACU SSO.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: BracuPalette.textSecondary(context),
-                      height: 1.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

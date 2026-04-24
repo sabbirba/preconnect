@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/image_url_utils.dart';
+import 'package:preconnect/widgets/web_safe_network_image.dart';
 
 class CachedImage extends StatefulWidget {
   const CachedImage({
@@ -79,15 +80,10 @@ class _CachedImageState extends State<CachedImage> {
     Object? lastError;
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        final response = await http.get(
-          uri,
-          headers: const {
-            'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-                '(KHTML, like Gecko) Chrome/125.0 Safari/537.36',
-            'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-          },
-        );
+        final headers = <String, String>{
+          'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+        };
+        final response = await http.get(uri, headers: headers);
         if (response.statusCode >= 200 && response.statusCode < 300) {
           return response.bodyBytes;
         }
@@ -327,25 +323,13 @@ class _CachedImageState extends State<CachedImage> {
     final remoteUrl = normalizedRemoteUrl;
     final isRemoteHttp = remoteUrl != null;
     if (remoteUrl != null && kIsWeb) {
-      return Image.network(
-        remoteUrl,
+      return WebSafeNetworkImage(
+        url: remoteUrl,
         fit: widget.fit,
         alignment: widget.alignment,
         width: widget.width,
         height: widget.height,
         filterQuality: widget.filterQuality,
-        headers: const {
-          'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-              '(KHTML, like Gecko) Chrome/125.0 Safari/537.36',
-          'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-        },
-        loadingBuilder: (context, child, progress) {
-          if (progress == null) return child;
-          return widget.placeholder ??
-              _CachedImageShimmer(width: widget.width, height: widget.height);
-        },
-        errorBuilder: (_, _, _) => widget.error ?? _defaultErrorWidget(),
       );
     }
     if (_bytes != null) {
@@ -360,25 +344,13 @@ class _CachedImageState extends State<CachedImage> {
     }
     if (_error != null) {
       if (isRemoteHttp) {
-        return Image.network(
-          remoteUrl,
+        return WebSafeNetworkImage(
+          url: remoteUrl,
           fit: widget.fit,
           alignment: widget.alignment,
           width: widget.width,
           height: widget.height,
           filterQuality: widget.filterQuality,
-          headers: const {
-            'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-                '(KHTML, like Gecko) Chrome/125.0 Safari/537.36',
-            'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-          },
-          loadingBuilder: (context, child, progress) {
-            if (progress == null) return child;
-            return widget.placeholder ??
-                _CachedImageShimmer(width: widget.width, height: widget.height);
-          },
-          errorBuilder: (_, _, _) => widget.error ?? _defaultErrorWidget(),
         );
       }
       return widget.error ?? _defaultErrorWidget();

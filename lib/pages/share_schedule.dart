@@ -83,6 +83,11 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       errorMessage = null;
     });
 
+    if (kIsWeb) {
+      await _fetchAndConvertSchedule();
+      return;
+    }
+
     final cachedBase64 = await AppStorage.instance.getString('qr_base64');
     final cachedHash = await AppStorage.instance.getString('qr_hash');
     final cachedVersion = await AppStorage.instance.getInt(
@@ -196,9 +201,14 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       final gzipBytes = GZipEncoder().encode(utf8Bytes);
       final base64Str = base64.encode(gzipBytes);
 
-      await AppStorage.instance.setString('qr_base64', base64Str);
-      await AppStorage.instance.setString('qr_hash', fingerprint);
-      await AppStorage.instance.setInt('qr_payload_version', _qrPayloadVersion);
+      if (!kIsWeb) {
+        await AppStorage.instance.setString('qr_base64', base64Str);
+        await AppStorage.instance.setString('qr_hash', fingerprint);
+        await AppStorage.instance.setInt(
+          'qr_payload_version',
+          _qrPayloadVersion,
+        );
+      }
 
       _safeSetState(() {
         _base64Data = base64Str;
@@ -230,9 +240,11 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
     if (!await ensureOnline(context)) {
       return;
     }
-    await AppStorage.instance.remove('qr_base64');
-    await AppStorage.instance.remove('qr_hash');
-    await AppStorage.instance.remove('qr_payload_version');
+    if (!kIsWeb) {
+      await AppStorage.instance.remove('qr_base64');
+      await AppStorage.instance.remove('qr_hash');
+      await AppStorage.instance.remove('qr_payload_version');
+    }
     await _fetchAndConvertSchedule(forceRefresh: true);
     RefreshBus.instance.notify(reason: 'share_schedule');
   }
@@ -274,7 +286,8 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
             files: [
               XFile.fromData(bytes, mimeType: 'image/png', name: fileName),
             ],
-            text: shareText,
+            title: 'PreConnect Schedule QR',
+            downloadFallbackEnabled: false,
           ),
         );
         return;

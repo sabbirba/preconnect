@@ -12,8 +12,8 @@ import 'package:local_auth/local_auth.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/web_kv_store_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/web_kv_store_web.dart';
+import 'package:preconnect/tools/web_extension_storage_stub.dart'
+    if (dart.library.html) 'package:preconnect/tools/web_extension_storage_web.dart';
 
 class TokenPersistenceException implements Exception {
   TokenPersistenceException(this.message);
@@ -80,11 +80,7 @@ class TokenStorage {
 
   Future<String?> read({required String key}) async {
     if (kIsWeb) {
-      final value = webKvGet(key);
-      if (value != null && value.isNotEmpty) {
-        return value;
-      }
-      return await AppStorage.instance.getString(key);
+      return await webExtensionStorageGet(key);
     }
 
     try {
@@ -107,6 +103,11 @@ class TokenStorage {
     return null;
   }
 
+  Future<bool> hasAccessToken() async {
+    final value = await read(key: 'access_token');
+    return value != null && value.isNotEmpty;
+  }
+
   Future<bool?> readCachedHasSession() {
     return AppStorage.instance.getBool(_cachedHasSessionKey);
   }
@@ -116,7 +117,8 @@ class TokenStorage {
       unawaited(_runDiagnostics());
     }
 
-    if (kIsWeb && webKvSet(key, value)) {
+    if (kIsWeb) {
+      await webExtensionStorageSet(key, value);
       await _updateCachedSessionFlagForKey(key, value);
       return;
     }
@@ -177,7 +179,7 @@ class TokenStorage {
     await AppStorage.instance.setBool(_cachedHasSessionKey, false);
 
     if (kIsWeb) {
-      webKvClearKeys(const ['access_token', 'refresh_token']);
+      await webExtensionStorageRemoveKeys(const ['access_token', 'refresh_token']);
     } else if (_useSecure) {
       try {
         await _secure.deleteAll();

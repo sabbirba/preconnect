@@ -194,7 +194,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
   Future<void> _runOneTapConnect() async {
     if (!mounted || _isConnecting) return;
     if (!_validateRequiredInputs()) {
-      _showLocalSnackBar('Student ID missing in app cache or password empty.');
+      _showLocalSnackBar('Password is empty.');
       return;
     }
 

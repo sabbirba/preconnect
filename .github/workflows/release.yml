@@ -166,8 +166,8 @@ jobs:
             --title "PreConnect ${{ steps.meta.outputs.release_tag }}" \
             --notes-file release-notes.md
 
-  build-web:
-    name: Build Web
+  build-chrome-extension:
+    name: Build Chrome Extension
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
     needs: [detect-pending, prepare-version, create-release]
     runs-on: ubuntu-latest
@@ -214,11 +214,11 @@ jobs:
           path: |
             build
             .dart_tool
-          key: ${{ runner.os }}-web-flutter-build-${{ hashFiles('pubspec.lock') }}
+          key: ${{ runner.os }}-chrome-extension-flutter-build-${{ hashFiles('pubspec.lock', 'tool/build_chrome_extension.sh', 'web/**', 'lib/**') }}
           restore-keys: |
-            ${{ runner.os }}-web-flutter-build-
+            ${{ runner.os }}-chrome-extension-flutter-build-
 
-      - name: Create Web Build Env
+      - name: Create Chrome Extension Build Env
         shell: bash
         run: |
           cat > .env <<'EOF'
@@ -227,38 +227,35 @@ jobs:
           INTERSTITIAL_AD_UNIT_ID=${{ secrets.INTERSTITIAL_AD_UNIT_ID }}
           EOF
 
-      - name: Build Web
+      - name: Build Chrome Extension
         shell: bash
         run: |
           attempt=1
           until [ $attempt -gt 3 ]; do
-            flutter build web --release --dart-define-from-file=.env && break
-            echo "flutter build web failed (attempt $attempt)."
+            ./tool/build_chrome_extension.sh && break
+            echo "Chrome extension build failed (attempt $attempt)."
             attempt=$((attempt+1))
             sleep $((10 * attempt))
           done
           if [ $attempt -gt 3 ]; then
-            echo "flutter build web failed after 3 attempts."
+            echo "Chrome extension build failed after 3 attempts."
             exit 1
           fi
 
-      - name: Remove Embedded Server Files From Web Build
-        run: rm -rf build/web/server
-
-      - name: Package Web Release
+      - name: Package Chrome Extension Release
         run: |
           mkdir -p artifacts
-          cd build/web
-          zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-web-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
+          cd build/chrome-extension
+          zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-chrome-extension-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
 
-      - name: Upload Web Artifact
+      - name: Upload Chrome Extension Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: web-artifacts
+          name: chrome-extension-artifacts
           path: artifacts/*
           if-no-files-found: error
 
-      - name: Upload Web Release Asset
+      - name: Upload Chrome Extension Release Asset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -266,12 +263,12 @@ jobs:
           attempt=1
           until [ $attempt -gt 3 ]; do
             gh release upload "${{ needs.create-release.outputs.release_tag }}" artifacts/* --clobber && break
-            echo "GitHub release upload failed (attempt $attempt)."
+            echo "GitHub release upload failed for the Chrome extension (attempt $attempt)."
             attempt=$((attempt+1))
             sleep $((8 * attempt))
           done
           if [ $attempt -gt 3 ]; then
-            echo "GitHub release upload failed after 3 attempts."
+            echo "GitHub release upload failed for the Chrome extension after 3 attempts."
             exit 1
           fi
 

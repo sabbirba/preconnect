@@ -231,7 +231,6 @@ class _TransportRouteCard extends StatelessWidget {
                   ...route.stops.asMap().entries.map(
                     (entry) => _RouteStopTile(
                       stop: entry.value,
-                      isLast: entry.key == route.stops.length - 1,
                     ),
                   ),
                 if (route.attendantPhone.isNotEmpty) ...[
@@ -279,10 +278,9 @@ class _TransportRouteCard extends StatelessWidget {
 }
 
 class _RouteStopTile extends StatelessWidget {
-  const _RouteStopTile({required this.stop, required this.isLast});
+  const _RouteStopTile({required this.stop});
 
   final _TransportStop stop;
-  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
@@ -292,29 +290,6 @@ class _RouteStopTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 22,
-            child: Column(
-              children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: BracuPalette.primary,
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                ),
-                if (!isLast)
-                  Container(
-                    width: 2,
-                    height: 44,
-                    margin: const EdgeInsets.only(top: 2),
-                    color: BracuPalette.primary.withValues(alpha: 0.35),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

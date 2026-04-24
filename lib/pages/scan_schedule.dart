@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/api/friend_schedule_store.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/mobile_scanner_stub.dart'
+    if (dart.library.io) 'package:mobile_scanner/mobile_scanner.dart';
 
 class ScanSchedulePage extends StatefulWidget {
   const ScanSchedulePage({super.key});

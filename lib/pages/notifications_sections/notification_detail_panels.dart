@@ -4,6 +4,7 @@ import 'package:preconnect/api/notification_service.dart';
 import 'package:preconnect/pages/notifications_sections/notification_list_widgets.dart';
 import 'package:preconnect/pages/notifications_sections/notification_text_formatter.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/cached_image.dart';
 
 class ScraperNotificationDetailPanel extends StatelessWidget {
   const ScraperNotificationDetailPanel({super.key, required this.item});
@@ -151,12 +152,9 @@ class _DirectNotificationImageGalleryState
           fit: StackFit.expand,
           children: [
             if (widget.imageUrls.length == 1)
-              Image.network(
-                widget.imageUrls.first,
+              CachedImage(
+                url: widget.imageUrls.first,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return const _DirectImageErrorFallback();
-                },
               )
             else
               PageView.builder(
@@ -169,12 +167,9 @@ class _DirectNotificationImageGalleryState
                   });
                 },
                 itemBuilder: (context, idx) {
-                  return Image.network(
-                    widget.imageUrls[idx],
+                  return CachedImage(
+                    url: widget.imageUrls[idx],
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const _DirectImageErrorFallback();
-                    },
                   );
                 },
               ),
@@ -208,23 +203,6 @@ class _DirectNotificationImageGalleryState
               ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _DirectImageErrorFallback extends StatelessWidget {
-  const _DirectImageErrorFallback();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: BracuPalette.primary.withValues(alpha: 0.08),
-      alignment: Alignment.center,
-      child: Icon(
-        Icons.broken_image_outlined,
-        color: BracuPalette.primary.withValues(alpha: 0.7),
-        size: 34,
       ),
     );
   }

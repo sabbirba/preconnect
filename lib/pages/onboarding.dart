@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:preconnect/pages/devs.dart';
@@ -12,6 +13,7 @@ import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/web_extension_login_flow.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key, this.isLoggedIn = false});
@@ -26,6 +28,10 @@ class OnboardingPage extends StatefulWidget {
 class _OnboardingPageState extends State<OnboardingPage> {
   Future<CampusMapData?>? _campusMapFuture;
   Future<String?>? _transportScheduleUrlFuture;
+  WebExtensionLoginFlow? _webExtensionLoginFlow;
+  StreamSubscription<WebExtensionLoginState>? _webLoginSub;
+  bool _isStartingWebLogin = false;
+  String? _webLoginStatus;
 
   @override
   void initState() {
@@ -33,12 +39,32 @@ class _OnboardingPageState extends State<OnboardingPage> {
     if (!widget.isLoggedIn) {
       unawaited(LoginPage.preloadNextPage());
     }
+    if (kIsWeb && !widget.isLoggedIn) {
+      _webExtensionLoginFlow = WebExtensionLoginFlow();
+      _webLoginSub = _webExtensionLoginFlow!.events.listen(_handleWebLogin);
+    }
+  }
+
+  @override
+  void dispose() {
+    _webLoginSub?.cancel();
+    _webExtensionLoginFlow?.dispose();
+    super.dispose();
   }
 
   Future<void> _completeOnboarding(BuildContext context) async {
     final prefs = AppStorage.instance;
     await prefs.setBool(OnboardingPage.seenKey, true);
     if (!context.mounted) return;
+    if (kIsWeb && !widget.isLoggedIn) {
+      if (_isStartingWebLogin) return;
+      setState(() {
+        _isStartingWebLogin = true;
+        _webLoginStatus = 'Opening BRACU SSO...';
+      });
+      await _webExtensionLoginFlow?.start();
+      return;
+    }
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: Duration.zero,
@@ -71,6 +97,33 @@ class _OnboardingPageState extends State<OnboardingPage> {
     await Navigator.of(
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => page));
+  }
+
+  void _handleWebLogin(WebExtensionLoginState state) {
+    if (!mounted) return;
+    if (state.isStarted) {
+      setState(() {
+        _isStartingWebLogin = true;
+        _webLoginStatus = 'Opening BRACU SSO...';
+      });
+      return;
+    }
+    if (state.isComplete) {
+      setState(() {
+        _isStartingWebLogin = false;
+        _webLoginStatus = 'Login complete. Opening the app...';
+      });
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+      return;
+    }
+    if (state.isFailed) {
+      setState(() {
+        _isStartingWebLogin = false;
+        _webLoginStatus = state.message?.isNotEmpty == true
+            ? state.message
+            : 'Unable to sign in.';
+      });
+    }
   }
 
   @override
@@ -237,6 +290,44 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
+                  if (_webLoginStatus != null) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: BracuCard(
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
+                            children: [
+                              if (_isStartingWebLogin)
+                                const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                  ),
+                                )
+                              else
+                                Icon(
+                                  Icons.info_outline_rounded,
+                                  size: 18,
+                                  color: BracuPalette.primary,
+                                ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _webLoginStatus!,
+                                  style: TextStyle(
+                                    color: bodyColor,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final layout = quickAccessGridLayout(
@@ -315,11 +406,15 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: () => _completeOnboarding(context),
+                      onPressed: _isStartingWebLogin
+                          ? null
+                          : () => _completeOnboarding(context),
                       icon: const Icon(Icons.arrow_forward_rounded),
-                      label: const Text(
-                        'Continue',
-                        style: TextStyle(fontSize: 17),
+                      label: Text(
+                        _isStartingWebLogin && kIsWeb
+                            ? 'Signing in...'
+                            : 'Continue',
+                        style: const TextStyle(fontSize: 17),
                       ),
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(54),

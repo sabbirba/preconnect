@@ -81,7 +81,7 @@ class ApiClient {
           }
 
           if (refreshStatus == TokenRefreshStatus.invalidSession) {
-            await AuthService().logout();
+            await AuthService().logout(force: true);
             throw const SessionExpiredException();
           }
         } catch (_) {}
@@ -172,7 +172,7 @@ class ApiClient {
         }
 
         if (refreshStatus == TokenRefreshStatus.invalidSession) {
-          await AuthService().logout();
+          await AuthService().logout(force: true);
           throw const SessionExpiredException();
         }
       }

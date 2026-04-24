@@ -83,8 +83,6 @@ class _DevsPageState extends State<DevsPage> {
         uri,
         headers: const {
           'Accept': 'application/vnd.github+json',
-          'User-Agent':
-              'PreConnectApp/1.0 (+https://github.com/sabbirba/preconnect)',
           'X-GitHub-Api-Version': '2022-11-28',
         },
       );

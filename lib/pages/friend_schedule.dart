@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:file_picker/file_picker.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:preconnect/api/friend_schedule_store.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:archive/archive.dart';
@@ -15,6 +14,8 @@ import 'package:preconnect/pages/friend_schedule_sections/friend_detail.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
+import 'package:preconnect/tools/mobile_scanner_stub.dart'
+    if (dart.library.io) 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:preconnect/tools/web_qr_image_picker_stub.dart'
     if (dart.library.html) 'package:preconnect/tools/web_qr_image_picker_web.dart';
 

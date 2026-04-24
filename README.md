@@ -14,6 +14,7 @@ An initiative run by [BRAC University](https://bracu.ac.bd) students.
 ## Overview
 
 A Flutter app for BRAC University students with SSO login and Connect API integration.
+The supported browser experience is the Chrome extension build.
 
 ### Key features
 
@@ -64,7 +65,7 @@ lib/
 android/             Android configuration (Kotlin)
 ios/                 iOS configuration (Swift)
 macos/               macOS shell
-web/                 Web shell
+web/                 Chrome extension shell
 assets/              Icons & SVGs
 ```
 
@@ -74,7 +75,13 @@ assets/              Icons & SVGs
 
 - Flutter stable
 - Android Studio with Android SDK
-- Java 17
+- Java 21
+
+Recommended JDK for Android/Flutter:
+
+```bash
+/Applications/Android Studio.app/Contents/jbr/Contents/Home
+```
 
 Check your setup:
 
@@ -130,9 +137,36 @@ Update the values to match your keystore. The Android release build will fail if
 flutter run --dart-define-from-file=.env
 ```
 
+### Build the Chrome extension
+
+Build the extension bundle:
+
 ```bash
-cp .env.example .env
+./tool/build_chrome_extension.sh
 ```
+
+Output:
+
+```bash
+build/chrome-extension/
+```
+
+Load `build/chrome-extension` as an unpacked extension in Chrome:
+
+1. Open `chrome://extensions`
+2. Turn on `Developer mode`
+3. Click `Load unpacked`
+4. Select `build/chrome-extension`
+
+The extension build uses:
+- `web/index.html` as the extension app shell
+- `web/manifest.json` as the MV3 extension manifest
+- `web/extension_app.dart` as the Flutter extension entrypoint
+- `web/background.dart` compiled to `background.dart.js`
+- `lib/app.dart` and `lib/pages/web_extension_login_web.dart` for the extension UI
+
+Notes:
+- Reload the unpacked extension after every rebuild
 
 ### Build Android APK
 
@@ -176,18 +210,19 @@ build/ios/ipa/
 
 ## Download
 
-- Latest release assets (APK / AAB / Web zip / iOS / macOS): [GitHub Releases](https://github.com/sabbirba/preconnect/releases/latest)
-- Web app: built from this repo with Flutter web
+- Latest release assets (APK / AAB / Chrome extension / iOS / macOS): [GitHub Releases](https://github.com/sabbirba/preconnect/releases/latest)
+- Chrome extension: build locally with `./tool/build_chrome_extension.sh`
 - Release feed: [All releases](https://github.com/sabbirba/preconnect/releases)
 
 ## Platform Support
 
-| Platform | Status | Notes                                                                                 |
-| -------- | ------ | ------------------------------------------------------------------------------------- |
-| Android  | Stable | Signed APK/AAB are generated in release workflow when signing secrets are configured. |
-| Web      | Stable | Built by CI and deployed via containerized web service on VPS.                        |
-| iOS      | Beta   | CI builds are enabled, but signing/export depends on Apple certificates/profiles.     |
-| macOS    | Beta   | CI builds and packages a DMG artifact from release workflow.                          |
+| Platform         | Status | Notes                                                                                 |
+| ---------------- | ------ | ------------------------------------------------------------------------------------- |
+| Android          | Stable | Signed APK/AAB are generated in release workflow when signing secrets are configured. |
+| Chrome Extension | Stable | Build locally with `./tool/build_chrome_extension.sh` or download the release artifact. |
+| Web              | Not targeted | Use the Chrome extension build instead of a hosted Flutter web app.               |
+| iOS              | Beta   | CI builds are enabled, but signing/export depends on Apple certificates/profiles.     |
+| macOS            | Beta   | CI builds and packages a DMG artifact from release workflow.                          |
 
 ## CI/CD
 
@@ -197,8 +232,8 @@ Main flow on push to `main`:
 
 1. Auto-bumps `pubspec.yaml` build number (`x.y.z+NNN`)
 2. Creates/updates a GitHub release tag like `v1.2.3+456`
-3. Builds and uploads platform artifacts (Android, iOS, macOS, Web)
-4. Uploads web release artifact for deployment
+3. Builds and uploads platform artifacts (Android, iOS, macOS)
+4. Builds and uploads the Chrome extension artifact for deployment
 5. Publishes Android AAB to Google Play Internal and Beta testing tracks when required secrets are available
 
 ## Architecture
@@ -207,7 +242,7 @@ High-level request/data flow:
 
 ```mermaid
 flowchart LR
-  A[PreConnect Client\nAndroid/iOS/macOS/Web] --> B[PreConnect Hosted API\napi.preconnect.app]
+  A[PreConnect Client\nAndroid/iOS/macOS/Chrome Extension] --> B[PreConnect Hosted API\napi.preconnect.app]
   B --> C[BRACU Connect APIs]
   B --> D[Seat Status Cache + Stream]
   B --> E[VPS Alert Queue]
@@ -257,7 +292,7 @@ Optional local release smoke checks:
 
 ```bash
 flutter build apk --release --dart-define-from-file=.env
-flutter build web
+./tool/build_chrome_extension.sh
 ```
 
 ## Seat Status Proxy
@@ -277,7 +312,7 @@ The app does not call BRACU Connect seat-status endpoints directly. It uses the 
 
 Current client flow:
 
-- Load full section data from `/sections/details`
+- Load full section data from `/sections/:sectionId/details`
 - Cache locally on device
 - Listen to `/seat-status/stream` and refresh details on updates
 
@@ -297,7 +332,7 @@ Why this reduces Connect API calls:
 - Environment Example: [.env.example](.env.example)
 - Workflows: [.github/workflows/release.yml](.github/workflows/release.yml)
 - Hosted Seat Status API Server: [api.preconnect.app](https://api.preconnect.app)
-- Web App: Flutter web build
+- Chrome Extension: `./tool/build_chrome_extension.sh`
 - Status Page: [status.preconnect.app](https://status.preconnect.app)
 
 ## Support PreConnect
@@ -333,6 +368,10 @@ Sensitive tokens are stored using `flutter_secure_storage` (on-device-backed sec
 ### Does the app work with poor internet?
 
 Yes. The app uses cache-first patterns in several flows so students can still access key information with limited connectivity.
+
+### How do I use the browser version?
+
+Build the Chrome extension locally and load `build/chrome-extension` as an unpacked extension in Chrome.
 
 ### Where do seat-status updates come from?
 

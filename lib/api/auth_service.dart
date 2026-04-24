@@ -14,6 +14,7 @@ import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/push_notifications_service.dart';
+import 'package:preconnect/tools/web_logout_flow.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
 enum TokenRefreshStatus { refreshed, invalidSession, retryableFailure }
@@ -50,7 +51,7 @@ class AuthService {
     _isLoggingOut = true;
 
     try {
-      if (!force && _bootstrapStartTime != null) {
+      if (!force && !instant && _bootstrapStartTime != null) {
         final timeSinceBootstrap = DateTime.now().difference(
           _bootstrapStartTime!,
         );
@@ -65,25 +66,57 @@ class AuthService {
         return;
       }
 
+      if (kIsWeb) {
+        unawaited(WebLogoutFlow.openConnectLogoutPage());
+      }
+
       await _clearAuthSessionData();
       if (instant) {
-        unawaited(_finishLogout(refreshToken));
+        unawaited(
+          _finishLogout(
+            refreshToken,
+            accessToken: accessToken,
+          ),
+        );
         return;
       }
-      await _finishLogout(refreshToken);
+      await _finishLogout(
+        refreshToken,
+        accessToken: accessToken,
+      );
     } finally {
       _isLoggingOut = false;
     }
   }
 
-  Future<void> _finishLogout(String? refreshToken) async {
-    await _revokeServerSession(refreshToken);
+  Future<void> _finishLogout(
+    String? refreshToken, {
+    String? accessToken,
+  }) async {
+    await _revokeServerSession(
+      refreshToken,
+      accessToken: accessToken,
+    );
     await _clearLocalCaches();
   }
 
-  Future<void> _revokeServerSession(String? refreshToken) async {
+  Future<void> _revokeServerSession(
+    String? refreshToken, {
+    String? accessToken,
+  }) async {
     try {
-      if (!kIsWeb && refreshToken != null && refreshToken.isNotEmpty) {
+      if (kIsWeb) {
+        await http
+            .delete(
+              Uri.parse(
+                '${ApiConfig.connectWebApiBase}${ApiConfig.connectMercureLogoutPath}',
+              ),
+            )
+            .timeout(_authRequestTimeout);
+        return;
+      }
+
+      if (refreshToken != null && refreshToken.isNotEmpty) {
         await http
             .post(
               Uri.parse(ApiConfig.logoutEndpoint),
@@ -237,7 +270,7 @@ class AuthService {
         return false;
       }
     }
-    await logout();
+    await logout(force: true);
     return false;
   }
 

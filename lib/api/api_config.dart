@@ -14,6 +14,8 @@ class ApiConfig {
   static String get connectApiBase => kIsWeb
       ? '$seatStatusProxyBase/connect'
       : 'https://connect.bracu.ac.bd/api';
+  static const String connectWebApiBase = 'https://connect.bracu.ac.bd/api';
+  static const String connectMercureLogoutPath = '/ns/mercure/logout';
   static const String cdnBase = 'https://connect.bracu.ac.bd/cdn';
   static const String filesBase = 'https://files.preconnect.app';
   static const String facultyReviewsBearer = String.fromEnvironment(

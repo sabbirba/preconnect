@@ -1198,35 +1198,23 @@ class BracuFundingSupportContent extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFF0B0B0B)
-                : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: BracuPalette.primary.withValues(alpha: 0.12),
-            ),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final size = constraints.maxWidth;
-                return CachedImage(
-                  url: _kPreconnectSupportQrUrl,
-                  width: size,
-                  height: size,
-                  fit: qrFit,
-                  placeholder: const BracuShimmer(
-                    child: BracuSkeletonBox(height: 220, radius: 12),
-                  ),
-                  error: const Icon(Icons.qr_code_2_rounded),
-                );
-              },
-            ),
-          ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final size = constraints.maxWidth;
+            return SizedBox(
+              width: double.infinity,
+              child: CachedImage(
+                url: _kPreconnectSupportQrUrl,
+                width: size,
+                height: size,
+                fit: qrFit,
+                placeholder: const BracuShimmer(
+                  child: BracuSkeletonBox(height: 220, radius: 0),
+                ),
+                error: const Icon(Icons.qr_code_2_rounded),
+              ),
+            );
+          },
         ),
         const SizedBox(height: 8),
         Text(
