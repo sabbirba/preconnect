@@ -102,10 +102,7 @@ class _DevsPageState extends State<DevsPage> {
           .where((item) => item.name.isNotEmpty && item.avatarUrl.isNotEmpty)
           .where((item) => !item.key.endsWith('[bot]'))
           .toList();
-      return _dedupeContributors([
-        ...contributors,
-        ..._pinnedGitHubContributors,
-      ]);
+      return _dedupeContributors(contributors);
     } catch (_) {
       return const <_ContributorProfile>[];
     }
@@ -127,9 +124,9 @@ class _DevsPageState extends State<DevsPage> {
     List<_ContributorProfile> items,
   ) {
     return _dedupeContributors([
-      ...items,
       ..._pinnedGitHubContributors,
       ..._manualContributors,
+      ...items,
     ]);
   }
 
@@ -162,7 +159,7 @@ class _DevsPageState extends State<DevsPage> {
               children: [
                 const _IntroCard(),
                 const SizedBox(height: 14),
-                const BracuSectionTitle(title: 'Contributors'),
+                const BracuSectionTitle(title: 'People Behind It'),
                 const SizedBox(height: 10),
                 if (!_contributorsLoaded)
                   const Padding(
@@ -209,7 +206,11 @@ const _pinnedGitHubContributors = <_ContributorProfile>[
     handle: 'NaiveInvestigator',
     role: 'Lead Developer',
   ),
-  _ContributorProfile.github(handle: 'sabbirba', role: 'Developer & UI/UX'),
+  _ContributorProfile.github(
+    handle: 'sabbirba',
+    name: 'Sabbir Bin Abbas',
+    role: 'Developer & UI/UX',
+  ),
 ];
 
 const _manualContributors = <_ContributorProfile>[
@@ -221,6 +222,19 @@ const _manualContributors = <_ContributorProfile>[
         'https://media.licdn.com/dms/image/v2/D5603AQHtYo7APsdwwQ/profile-displayphoto-shrink_800_800/B56ZcH6GpoH4Ag-/0/1748184362516?e=1776902400&v=beta&t=lAxMqND2jjkT4ybK2z9zvePqMtMkCr3zEcZ4w_vfxDw',
     linkLabel: 'LinkedIn',
     url: 'https://www.linkedin.com/in/mueen-ahmmed-b337b8231/',
+  ),
+  _ContributorProfile.github(
+    handle: 'Zamiul-rashid',
+    name: 'Zamiul-rashid',
+    role: 'Friends Schedule',
+  ),
+  _ContributorProfile(
+    name: 'Shakil Ahmed',
+    handle: 'shakilofficial0',
+    role: 'Live Bus Data',
+    avatarUrl: 'https://github.com/shakilofficial0.png',
+    linkLabel: 'GitHub',
+    url: 'https://github.com/shakilofficial0',
   ),
 ];
 
@@ -234,18 +248,18 @@ class _IntroCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'PreConnect App Runs by Students',
+          'Built by BRACU Students',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 16),
         Text(
-          'Community driven and free for every student.',
+          'Made by the community and free for every student.',
           style: TextStyle(color: textSecondary),
         ),
         const SizedBox(height: 6),
         Text(
-          'Bug reports, feature requests, and ideas are welcome. '
-          'Please create issues in our GitHub repo.',
+          'If you have an idea, spot a bug, or want to help, '
+          'we would love to hear from you on GitHub.',
           style: TextStyle(color: textSecondary),
         ),
         const SizedBox(height: 12),
@@ -554,10 +568,20 @@ List<_ContributorProfile> _dedupeContributors(List<_ContributorProfile> items) {
 List<_ContributorProfile> _orderContributors(List<_ContributorProfile> items) {
   final naive = _findByHandle(items, 'naiveinvestigator', 'naivelnvestigator');
   final sabbir = _findByHandle(items, 'sabbirba');
+  final zamiul = _findByHandle(items, 'zamiul-rashid');
   final mueen = _findByHandle(items, 'mueen-ahmmed');
-  final reserved = <_ContributorProfile>{?naive, ?sabbir, ?mueen};
+  final shakil = _findByHandle(items, 'shakilofficial0');
+  final rez1 = _findByHandle(items, 'rez1-dev');
+  final reserved = <_ContributorProfile>{?naive, ?sabbir, ?zamiul, ?mueen, ?shakil, ?rez1};
   final others = items.where((item) => !reserved.contains(item)).toList();
-  final ordered = <_ContributorProfile>[?naive, ?sabbir, ?mueen];
+  final ordered = <_ContributorProfile>[
+    ?naive,
+    ?sabbir,
+    ?zamiul,
+    ?mueen,
+    ?shakil,
+    ?rez1,
+  ];
 
   for (final item in others) {
     if (ordered.length >= _collapsedContributorCount) break;

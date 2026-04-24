@@ -21,8 +21,21 @@ class ApiConfig {
   static const String facultyReviewsBearer = String.fromEnvironment(
     'FACULTY_REVIEWS_BEARER',
   );
+  static const String finderLbsAssetId = String.fromEnvironment(
+    'FINDER_LBS_ASSET_ID',
+  );
+  static const String finderLbsAccessToken = String.fromEnvironment(
+    'FINDER_LBS_ACCESS_TOKEN',
+  );
   static const String webLoginBrokerBase = seatStatusProxyBase;
   static const String pushAlertsBase = 'https://api.preconnect.app';
+
+  static String get busTrackerLastDataUrl {
+    final assetId = finderLbsAssetId.trim();
+    final accessToken = finderLbsAccessToken.trim();
+    if (assetId.isEmpty || accessToken.isEmpty) return '';
+    return 'https://api.finder-lbs.com/v1/assets/$assetId/last_data?access_token=$accessToken';
+  }
 
   static const String clientId = 'slm';
   static const String redirectUri =

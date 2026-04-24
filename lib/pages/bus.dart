@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:preconnect/api/bus_tracker_service.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
@@ -54,10 +55,14 @@ class _BusPageState extends State<BusPage> {
     }
 
     try {
-      final jsonText = await rootBundle.loadString(
+      final jsonTextFuture = rootBundle.loadString(
         'assets/data/bus_routes.json',
       );
+      final liveAssetFuture = BusTrackerService().fetchLastData();
+
+      final jsonText = await jsonTextFuture;
       final decoded = jsonDecode(jsonText);
+      final liveAssetJson = await liveAssetFuture;
       final package = decoded is Map<String, dynamic>
           ? _BusDataPackage.fromJson(decoded)
           : decoded is Map
@@ -65,7 +70,11 @@ class _BusPageState extends State<BusPage> {
           : const _BusDataPackage.empty();
       if (!mounted) return;
       setState(() {
-        _data = package;
+        _data = liveAssetJson == null
+            ? package
+            : package.copyWith(
+                liveAsset: _BusLiveAsset.fromJson(liveAssetJson),
+              );
         _loading = false;
         _expandedRouteIds.clear();
       });
@@ -82,10 +91,13 @@ class _BusPageState extends State<BusPage> {
   @override
   Widget build(BuildContext context) {
     final routes = _data?.routes ?? const <_TransportRoute>[];
+    final routeVehicles =
+        _data?.routeVehicles ?? const <String, _RouteVehicle>{};
     final outbound = _data?.outbound;
     final fares = _data?.fares ?? const <_BusFare>[];
     final contacts = _data?.contacts ?? const <_BusContact>[];
     final instructions = _data?.instructions ?? const <String>[];
+    final liveAsset = _data?.liveAsset;
     final schedulePdfUrl = _schedulePdfUrl;
 
     return BracuPageScaffold(
@@ -126,13 +138,18 @@ class _BusPageState extends State<BusPage> {
                   ),
                 ],
               ),
-            )
-          else if (routes.isEmpty)
+            ),
+          if (!_loading) ...[
+            const SizedBox(height: 2),
+            _LiveAssetCard(asset: liveAsset),
+          ],
+          if (!_loading && routes.isEmpty)
             const BracuEmptyState(message: 'No bus route data available')
-          else
+          else if (!_loading)
             ...routes.map(
               (route) => _TransportRouteCard(
                 route: route,
+                vehicle: routeVehicles[route.id],
                 expanded: _expandedRouteIds.contains(route.id),
                 onToggle: () {
                   setState(() {
@@ -170,11 +187,13 @@ class _BusPageState extends State<BusPage> {
 class _TransportRouteCard extends StatelessWidget {
   const _TransportRouteCard({
     required this.route,
+    required this.vehicle,
     required this.expanded,
     required this.onToggle,
   });
 
   final _TransportRoute route;
+  final _RouteVehicle? vehicle;
   final bool expanded;
   final VoidCallback onToggle;
 
@@ -229,9 +248,7 @@ class _TransportRouteCard extends StatelessWidget {
                   )
                 else
                   ...route.stops.asMap().entries.map(
-                    (entry) => _RouteStopTile(
-                      stop: entry.value,
-                    ),
+                    (entry) => _RouteStopTile(stop: entry.value),
                   ),
                 if (route.attendantPhone.isNotEmpty) ...[
                   const SizedBox(height: 10),
@@ -769,6 +786,27 @@ String fareLabel(String value) {
   return normalized.isEmpty ? 'Fare Group' : normalized;
 }
 
+class _RouteVehicle {
+  const _RouteVehicle({required this.name, required this.code});
+
+  final String name;
+  final String code;
+
+  String get displayLabel {
+    final parts = <String>[];
+    if (code.isNotEmpty) parts.add(code);
+    if (name.isNotEmpty) parts.add(name);
+    return parts.join(' • ');
+  }
+
+  factory _RouteVehicle.fromJson(Map<String, dynamic> json) {
+    return _RouteVehicle(
+      name: _pick(json, <String>['name', 'vehicle_name']),
+      code: _pick(json, <String>['code', 'vehicle_code']),
+    );
+  }
+}
+
 class _TransportRoute {
   const _TransportRoute({
     required this.id,
@@ -825,6 +863,103 @@ class _TransportRoute {
   }
 }
 
+class _BusLiveAsset {
+  const _BusLiveAsset({
+    required this.name,
+    required this.assetId,
+    required this.status,
+    required this.time,
+    required this.statusTime,
+    required this.ignition,
+    required this.gpsPositioned,
+    required this.engineSensor,
+    required this.charging,
+    required this.gsmSignal,
+    required this.speed,
+    required this.bearing,
+    required this.heading,
+    required this.locationDescription,
+    required this.latitude,
+    required this.longitude,
+    required this.deviceType,
+    required this.speedLimit,
+    required this.validTill,
+    required this.validTillCredit,
+    required this.powercutAlert,
+    required this.engineAlert,
+    required this.nearestLandmarks,
+  });
+
+  final String name;
+  final String assetId;
+  final String status;
+  final String time;
+  final String statusTime;
+  final String ignition;
+  final String gpsPositioned;
+  final String engineSensor;
+  final String charging;
+  final String gsmSignal;
+  final String speed;
+  final String bearing;
+  final String heading;
+  final String locationDescription;
+  final String latitude;
+  final String longitude;
+  final String deviceType;
+  final String speedLimit;
+  final String validTill;
+  final String validTillCredit;
+  final String powercutAlert;
+  final String engineAlert;
+  final List<String> nearestLandmarks;
+
+  factory _BusLiveAsset.fromJson(Map<String, dynamic> json) {
+    final loc = json['loc'];
+    final coordinates = loc is Map ? loc['coordinates'] : null;
+    final latitude = coordinates is List && coordinates.length > 1
+        ? '${coordinates[1]}'.trim()
+        : '';
+    final longitude = coordinates is List && coordinates.isNotEmpty
+        ? '${coordinates[0]}'.trim()
+        : '';
+
+    final landmarksRaw = json['nearest_landmarks'];
+    final nearestLandmarks = landmarksRaw is List
+        ? landmarksRaw
+              .map((item) => '$item'.trim())
+              .where((item) => item.isNotEmpty)
+              .toList(growable: false)
+        : const <String>[];
+
+    return _BusLiveAsset(
+      name: _pick(json, <String>['name']),
+      assetId: _pick(json, <String>['asset_id', '_id']),
+      status: _pick(json, <String>['status']),
+      time: _pick(json, <String>['time']),
+      statusTime: _pick(json, <String>['status_time']),
+      ignition: _pick(json, <String>['ignition']),
+      gpsPositioned: _pick(json, <String>['gps_positioned']),
+      engineSensor: _pick(json, <String>['engine_sensor']),
+      charging: _pick(json, <String>['charging']),
+      gsmSignal: _pick(json, <String>['gsm_signal']),
+      speed: _pick(json, <String>['speed']),
+      bearing: _pick(json, <String>['bearing']),
+      heading: _pick(json, <String>['heading']),
+      locationDescription: _pick(json, <String>['location']),
+      latitude: latitude,
+      longitude: longitude,
+      deviceType: _pick(json, <String>['device_type']),
+      speedLimit: _pick(json, <String>['speed_limit']),
+      validTill: _pick(json, <String>['valid_till']),
+      validTillCredit: _pick(json, <String>['valid_till_credit']),
+      powercutAlert: _pick(json, <String>['powercut_alert']),
+      engineAlert: _pick(json, <String>['engine_alert']),
+      nearestLandmarks: nearestLandmarks,
+    );
+  }
+}
+
 class _TransportStop {
   const _TransportStop({required this.name, required this.times});
 
@@ -852,6 +987,8 @@ class _TransportStop {
 class _BusDataPackage {
   const _BusDataPackage({
     required this.title,
+    required this.liveAsset,
+    required this.routeVehicles,
     required this.routes,
     required this.outbound,
     required this.fares,
@@ -861,6 +998,8 @@ class _BusDataPackage {
 
   const _BusDataPackage.empty()
     : title = '',
+      liveAsset = null,
+      routeVehicles = const <String, _RouteVehicle>{},
       routes = const <_TransportRoute>[],
       outbound = null,
       fares = const <_BusFare>[],
@@ -868,13 +1007,39 @@ class _BusDataPackage {
       instructions = const <String>[];
 
   final String title;
+  final _BusLiveAsset? liveAsset;
+  final Map<String, _RouteVehicle> routeVehicles;
   final List<_TransportRoute> routes;
   final _BusOutbound? outbound;
   final List<_BusFare> fares;
   final List<_BusContact> contacts;
   final List<String> instructions;
 
+  _BusDataPackage copyWith({
+    String? title,
+    _BusLiveAsset? liveAsset,
+    Map<String, _RouteVehicle>? routeVehicles,
+    List<_TransportRoute>? routes,
+    _BusOutbound? outbound,
+    List<_BusFare>? fares,
+    List<_BusContact>? contacts,
+    List<String>? instructions,
+  }) {
+    return _BusDataPackage(
+      title: title ?? this.title,
+      liveAsset: liveAsset ?? this.liveAsset,
+      routeVehicles: routeVehicles ?? this.routeVehicles,
+      routes: routes ?? this.routes,
+      outbound: outbound ?? this.outbound,
+      fares: fares ?? this.fares,
+      contacts: contacts ?? this.contacts,
+      instructions: instructions ?? this.instructions,
+    );
+  }
+
   factory _BusDataPackage.fromJson(Map<String, dynamic> json) {
+    final liveAssetRaw = json['live_asset'];
+    final routeVehiclesRaw = json['route_vehicles'];
     final routesRaw = json['routes'];
     final faresRaw = json['fares'];
     final contactsRaw = json['contacts'];
@@ -883,6 +1048,20 @@ class _BusDataPackage {
 
     return _BusDataPackage(
       title: _pick(json, <String>['title']),
+      liveAsset: liveAssetRaw is Map
+          ? _BusLiveAsset.fromJson(liveAssetRaw.cast<String, dynamic>())
+          : null,
+      routeVehicles: routeVehiclesRaw is Map
+          ? routeVehiclesRaw.map((key, value) {
+              final vehicleJson = value is Map
+                  ? value.cast<String, dynamic>()
+                  : <String, dynamic>{};
+              return MapEntry(
+                key.toString(),
+                _RouteVehicle.fromJson(vehicleJson),
+              );
+            })
+          : const <String, _RouteVehicle>{},
       routes: routesRaw is List
           ? routesRaw
                 .whereType<Map>()
@@ -915,6 +1094,200 @@ class _BusDataPackage {
                 .where((item) => item.isNotEmpty)
                 .toList(growable: false)
           : const <String>[],
+    );
+  }
+}
+
+class _LiveAssetCard extends StatelessWidget {
+  const _LiveAssetCard({required this.asset});
+
+  final _BusLiveAsset? asset;
+
+  @override
+  Widget build(BuildContext context) {
+    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = BracuPalette.textSecondary(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionHeader(
+            icon: Icons.location_on_rounded,
+            title: 'Live Bus Status',
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: BracuPalette.primary.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (asset == null) ...[
+                  Text(
+                    'Offline.',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Live data is currently unavailable.',
+                    style: TextStyle(color: textSecondary),
+                  ),
+                ] else ...[
+                  Text(
+                    asset!.name.isNotEmpty ? asset!.name : 'Current Bus Asset',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  if (asset!.assetId.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Asset ID: ${asset!.assetId}',
+                      style: TextStyle(color: textSecondary),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _InfoChip(
+                        icon: Icons.flag_rounded,
+                        text: 'Status ${asset!.status}',
+                      ),
+                      _InfoChip(
+                        icon: Icons.speed_rounded,
+                        text: 'Speed ${asset!.speed}',
+                      ),
+                      _InfoChip(
+                        icon: Icons.explore_rounded,
+                        text: 'Bearing ${asset!.bearing}',
+                      ),
+                      _InfoChip(
+                        icon: Icons.power_rounded,
+                        text: 'Ignition ${asset!.ignition}',
+                      ),
+                      _InfoChip(
+                        icon: Icons.battery_charging_full_rounded,
+                        text: 'Charging ${asset!.charging}',
+                      ),
+                      _InfoChip(
+                        icon: Icons.satellite_alt_rounded,
+                        text: 'GPS ${asset!.gpsPositioned}',
+                      ),
+                      _InfoChip(
+                        icon: Icons.settings_input_component_rounded,
+                        text: 'Engine ${asset!.engineSensor}',
+                      ),
+                      _InfoChip(
+                        icon: Icons.network_cell_rounded,
+                        text: 'Signal ${asset!.gsmSignal}',
+                      ),
+                      _InfoChip(
+                        icon: Icons.bus_alert_rounded,
+                        text: 'Engine alert ${asset!.engineAlert}',
+                      ),
+                      _InfoChip(
+                        icon: Icons.warning_amber_rounded,
+                        text: 'Powercut ${asset!.powercutAlert}',
+                      ),
+                      _InfoChip(
+                        icon: Icons.speed_rounded,
+                        text: 'Limit ${asset!.speedLimit}',
+                      ),
+                    ],
+                  ),
+                  if (asset!.latitude.isNotEmpty &&
+                      asset!.longitude.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      'Location: ${asset!.latitude}, ${asset!.longitude}',
+                      style: TextStyle(color: textSecondary),
+                    ),
+                  ],
+                  if (asset!.locationDescription.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Raw location: ${asset!.locationDescription}',
+                      style: TextStyle(color: textSecondary),
+                    ),
+                  ],
+                  if (asset!.deviceType.isNotEmpty ||
+                      asset!.heading.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      [
+                        if (asset!.deviceType.isNotEmpty)
+                          'Device ${asset!.deviceType}',
+                        if (asset!.heading.isNotEmpty)
+                          'Heading ${asset!.heading}',
+                      ].join(' • '),
+                      style: TextStyle(color: textSecondary),
+                    ),
+                  ],
+                  if (asset!.statusTime.isNotEmpty ||
+                      asset!.time.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      [
+                        if (asset!.statusTime.isNotEmpty)
+                          'Status time ${asset!.statusTime}',
+                        if (asset!.time.isNotEmpty) 'Updated ${asset!.time}',
+                      ].join(' • '),
+                      style: TextStyle(color: textSecondary),
+                    ),
+                  ],
+                  if (asset!.validTill.isNotEmpty ||
+                      asset!.validTillCredit.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      [
+                        if (asset!.validTill.isNotEmpty)
+                          'Valid till ${asset!.validTill}',
+                        if (asset!.validTillCredit.isNotEmpty)
+                          'Credit until ${asset!.validTillCredit}',
+                      ].join(' • '),
+                      style: TextStyle(color: textSecondary),
+                    ),
+                  ],
+                  if (asset!.nearestLandmarks.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      'Nearest landmarks',
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    ...asset!.nearestLandmarks.map(
+                      (landmark) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          '• $landmark',
+                          style: TextStyle(color: textSecondary),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

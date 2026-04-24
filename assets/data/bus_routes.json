@@ -1,6 +1,20 @@
 {
   "updated_at": "2026-01-31",
   "title": "BRAC University Students' Transport",
+  "route_vehicles": {
+    "route-01-a": {"vehicle_name": "Route 1 - Abdullahpur", "code": "BS0620"},
+    "route-01-b": {"vehicle_name": "Route 1 - Abdullahpur", "code": "BS0620"},
+    "route-02-a": {"vehicle_name": "Route 2 - Mirpur A", "code": "BS0619"},
+    "route-02-b": {"vehicle_name": "Route 2 - Mirpur B", "code": "BS0759"},
+    "route-03-a": {"vehicle_name": "Route 3 - Jigatola", "code": "BS0621"},
+    "route-03-b": {"vehicle_name": "Route 3 - Jigatola", "code": "BS0621"},
+    "route-04": {"vehicle_name": "Route 4 - Azimpur", "code": "BS0617"},
+    "route-05": {"vehicle_name": "Route 6 - Baldha Garden", "code": "BS0646"},
+    "route-06-a": {"vehicle_name": "Route 7 - Mohammadpur A", "code": "BS0618"},
+    "route-06-b": {"vehicle_name": "Route 7 - Mohammadpur B", "code": "BS0923"},
+    "route-07": {"vehicle_name": "Route 8 - Narayanganj", "code": "BS1623"},
+    "route-08": {"vehicle_name": "Route 5 - Jatrabari", "code": "BS1621"}
+  },
 
   "routes": [
     {

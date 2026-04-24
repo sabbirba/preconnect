@@ -411,6 +411,8 @@ jobs:
         run: |
           cat > .env <<'EOF'
           FACULTY_REVIEWS_BEARER=${{ secrets.FACULTY_REVIEWS_BEARER }}
+          FINDER_LBS_ASSET_ID=62947edd1d41c8225011190f
+          FINDER_LBS_ACCESS_TOKEN=${{ secrets.FINDER_LBS_ACCESS_TOKEN }}
           REWARDED_AD_UNIT_ID=${{ secrets.REWARDED_AD_UNIT_ID }}
           ADS_APP_ID_IOS=${{ secrets.ADS_APP_ID_IOS }}
           BANNER_AD_UNIT_ID=${{ secrets.BANNER_AD_UNIT_ID }}
@@ -543,7 +545,7 @@ jobs:
         run: |
           attempt=1
           until [ $attempt -gt 3 ]; do
-            flutter build macos --release && break
+            flutter build macos --release --dart-define-from-file=.env && break
             echo "macOS build failed (attempt $attempt)."
             attempt=$((attempt+1))
             sleep $((10 * attempt))

@@ -651,7 +651,7 @@ Future<void> showBracuFundingSupportSheet(BuildContext context) async {
         controller: sheetScroll,
         children: [
           Text(
-            'PreConnect is built by students for BRACU students. We keep it free, maintain the app, and add new features from community feedback. Your support helps keep it running.',
+            'PreConnect is built by BRACU students. We keep it free, maintain the app, and add new features from community feedback. Your support helps keep it running.',
             style: TextStyle(
               color: textSecondary,
               fontSize: 13,
