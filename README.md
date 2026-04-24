@@ -177,7 +177,7 @@ build/ios/ipa/
 ## Download
 
 - Latest release assets (APK / AAB / Web zip / iOS / macOS): [GitHub Releases](https://github.com/sabbirba/preconnect/releases/latest)
-- Web app: [web.preconnect.app](https://web.preconnect.app)
+- Web app: built from this repo with Flutter web
 - Release feed: [All releases](https://github.com/sabbirba/preconnect/releases)
 
 ## Platform Support
@@ -297,7 +297,7 @@ Why this reduces Connect API calls:
 - Environment Example: [.env.example](.env.example)
 - Workflows: [.github/workflows/release.yml](.github/workflows/release.yml)
 - Hosted Seat Status API Server: [api.preconnect.app](https://api.preconnect.app)
-- Web App: [web.preconnect.app](https://web.preconnect.app)
+- Web App: Flutter web build
 - Status Page: [status.preconnect.app](https://status.preconnect.app)
 
 ## Support PreConnect

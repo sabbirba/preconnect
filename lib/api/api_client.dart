@@ -2,14 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/tools/play_install_referrer.dart';
 import 'package:preconnect/tools/token_storage.dart';
-import 'package:preconnect/tools/web_login_broker_service.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -17,13 +15,8 @@ class ApiClient {
   ApiClient._internal();
 
   final TokenStorage _storage = TokenStorage.instance;
-  final WebLoginBrokerService _webLoginBroker = WebLoginBrokerService();
   static const Duration _requestTimeout = Duration(seconds: 12);
   static const Duration _connectivityProbeTimeout = Duration(seconds: 3);
-
-  static bool? _cachedWebSessionActive;
-  static DateTime? _cachedWebSessionCheckTime;
-  static const Duration _webSessionCacheTtl = Duration(minutes: 5);
 
   Future<bool> hasConnection({bool forceRefresh = false}) async {
     try {
@@ -62,11 +55,6 @@ class ApiClient {
     Map<String, String> additionalHeaders = const <String, String>{},
     Set<int> acceptedStatusCodes = const <int>{200},
   }) async {
-    if (!await _ensureWebSessionActive()) {
-      await AuthService().logout();
-      throw const SessionExpiredException();
-    }
-
     final token = await getAccessToken();
     if (token == null || token.isEmpty) {
       unawaited(AuthService().logout(force: true));
@@ -152,11 +140,6 @@ class ApiClient {
         acceptedStatusCodes: acceptedStatusCodes,
       );
     }
-    if (!await _ensureWebSessionActive()) {
-      await AuthService().logout();
-      throw const SessionExpiredException();
-    }
-
     final token = await getAccessToken();
     if (token == null || token.isEmpty) {
       throw const UnauthenticatedException();
@@ -227,38 +210,6 @@ class ApiClient {
     }
 
     throw ApiException(response.statusCode, response.body);
-  }
-
-  Future<bool> _ensureWebSessionActive() async {
-    if (!kIsWeb) return true;
-
-    if (_cachedWebSessionActive != null && _cachedWebSessionCheckTime != null) {
-      final age = DateTime.now().difference(_cachedWebSessionCheckTime!);
-      if (age < _webSessionCacheTtl) {
-        return _cachedWebSessionActive!;
-      }
-    }
-
-    final sessionId = await WebLoginSessionStore.getWebSessionId();
-    final sessionToken = await WebLoginSessionStore.getWebSessionToken();
-    if ((sessionId ?? '').isEmpty || (sessionToken ?? '').isEmpty) {
-      _cachedWebSessionActive = false;
-      _cachedWebSessionCheckTime = DateTime.now();
-      return false;
-    }
-    try {
-      final isActive = await _webLoginBroker.isActiveWebSession(
-        webSessionId: sessionId!,
-        webSessionToken: sessionToken!,
-      );
-      _cachedWebSessionActive = isActive;
-      _cachedWebSessionCheckTime = DateTime.now();
-      return isActive;
-    } catch (e) {
-      _cachedWebSessionActive = false;
-      _cachedWebSessionCheckTime = DateTime.now();
-      return false;
-    }
   }
 
   Future<http.Response> publicGet(

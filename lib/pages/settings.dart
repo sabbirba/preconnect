@@ -4,7 +4,6 @@ import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/custom_schedules_service.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/pages/web_login_setup.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
@@ -140,9 +139,6 @@ class _SettingsPageState extends State<SettingsPage> {
           'access_token',
           'refresh_token',
           'cached_has_auth_session',
-          'web_login_student_email',
-          'web_login_session_id',
-          'web_login_session_token',
           'currentSessionSemesterId',
           CustomSchedulesService.cacheKey,
         };
@@ -215,33 +211,6 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           const SizedBox(height: _sectionGap),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const WebLoginSetupPage()),
-                );
-              },
-              child: Ink(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: BracuPalette.textSecondary(
-                      context,
-                    ).withValues(alpha: 0.18),
-                  ),
-                ),
-                child: const ListTile(
-                  leading: Icon(Icons.language_rounded, size: 20),
-                  title: Text('Login to Web'),
-                  trailing: Icon(Icons.chevron_right_rounded, size: 20),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
           Material(
             color: Colors.transparent,
             child: InkWell(

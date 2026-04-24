@@ -191,7 +191,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    'Open PreConnect Web',
+                                    'Open PreConnect Website',
                                     style: TextStyle(
                                       color: BracuPalette.accent,
                                       fontWeight: FontWeight.w600,

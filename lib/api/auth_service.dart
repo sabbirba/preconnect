@@ -100,7 +100,6 @@ class AuthService {
 
   Future<void> _clearAuthSessionData() async {
     await _storage.deleteAll();
-    await WebLoginSessionStore.clear();
     await LoginPage.clearSessionArtifacts();
   }
 
@@ -113,9 +112,6 @@ class AuthService {
       'access_token',
       'refresh_token',
       'cached_has_auth_session',
-      'web_login_student_email',
-      'web_login_session_id',
-      'web_login_session_token',
       CustomSchedulesService.cacheKey,
     };
     keepKeys.addAll(ProfileService.profileFields);

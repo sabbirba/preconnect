@@ -14,7 +14,6 @@ import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/pages/web_login.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -269,7 +268,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     if (kIsWeb) {
-      return const WebLoginPage();
+      return const _MobileAppOnlyLoginPage();
     }
 
     return Scaffold(
@@ -323,5 +322,54 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void dispose() {
     super.dispose();
+  }
+}
+
+class _MobileAppOnlyLoginPage extends StatelessWidget {
+  const _MobileAppOnlyLoginPage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.public_off_rounded,
+                    size: 56,
+                    color: BracuPalette.primary,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Sign in on mobile',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: BracuPalette.textPrimary(context),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Use the mobile app to sign in with BRACU SSO.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: BracuPalette.textSecondary(context),
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
