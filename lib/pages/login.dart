@@ -13,8 +13,6 @@ import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/pages/web_extension_login_stub.dart'
-    if (dart.library.html) 'package:preconnect/pages/web_extension_login_web.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});

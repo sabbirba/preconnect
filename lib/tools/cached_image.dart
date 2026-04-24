@@ -11,7 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/image_url_utils.dart';
-import 'package:preconnect/widgets/web_safe_network_image.dart';
+import 'package:preconnect/tools/web_shared.dart';
 
 class CachedImage extends StatefulWidget {
   const CachedImage({

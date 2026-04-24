@@ -17,9 +17,8 @@ import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/play_install_referrer.dart';
 import 'package:preconnect/tools/reward_support_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
-import 'package:preconnect/tools/push_notifications_service.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
-import 'package:preconnect/tools/web_extension_session_flow.dart';
+import 'package:preconnect/tools/web_shared.dart';
 
 class AppBootstrapState {
   const AppBootstrapState({
@@ -136,13 +135,10 @@ class _MyAppState extends State<MyApp>
       unawaited(AdsPreferences.instance.load());
       unawaited(AdsBridge.initialize());
       unawaited(RewardSupportController.instance.load());
-      PushNotificationsService().initialize().catchError((_) {});
-      SeatAlertSyncService().initialize().catchError((_) {});
       PlayIntegrity.prepare().catchError((_) {});
       PlayInstallReferrer.prefetch().catchError((_) {});
       unawaited(_setupQuickAccessShortcuts());
       unawaited(_runStartupChecks());
-      unawaited(_consumePendingSeatAlertLaunch());
       if (_initialLoggedIn) {
         _validateSessionInBackground();
       }
@@ -174,30 +170,10 @@ class _MyAppState extends State<MyApp>
     _handleShortcutAction(pendingAction);
   }
 
-  Future<void> _consumePendingSeatAlertLaunch() async {
-    final pendingSectionId = await SeatAlertSyncService()
-        .consumePendingSectionId();
-    if (pendingSectionId == null) return;
-    if (!_initialLoggedIn && !_canOpenOffline) return;
-    HomePage.requestShortcutTab(HomeTab.seatStatus);
-    final navigator = _navigatorKey.currentState;
-    if (navigator != null) {
-      navigator.pushNamedAndRemoveUntil('/home', (route) => false);
-      return;
-    }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _navigatorKey.currentState?.pushNamedAndRemoveUntil(
-        '/home',
-        (route) => false,
-      );
-    });
-  }
-
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(_consumePendingShortcutAction());
-      unawaited(_consumePendingSeatAlertLaunch());
       unawaited(_refreshAndUnlockIfNeeded());
     }
     if (state == AppLifecycleState.inactive ||

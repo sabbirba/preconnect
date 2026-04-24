@@ -269,7 +269,6 @@ Key packages related to user data safety/privacy are listed below.
 | `shared_preferences`         | Stores non-sensitive app settings and flags (for example onboarding and UI preferences). Not used for secret credentials.           |
 | `sembast`                    | Provides structured local database caching so app data can stay on-device and support offline usage with controlled reads/writes.   |
 | `local_auth`                 | Enables optional biometric/PIN app lock so only the device owner can open protected screens.                                        |
-| `push_notifications_service` | Polls the VPS backend for queued seat alerts using a local installation ID, without Firebase.                                       |
 | `permission_handler`         | Ensures runtime permissions (camera/notifications) are requested explicitly and can be denied by the user.                          |
 | `crypto`                     | Used for cryptographic hashing in integrity/security flows to strengthen request validation.                                        |
 

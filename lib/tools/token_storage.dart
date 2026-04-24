@@ -12,7 +12,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/web_extension_storage_stub.dart'
+import 'package:preconnect/tools/web_platform_stub.dart'
     if (dart.library.html) 'package:preconnect/tools/web_extension_storage_web.dart';
 
 class TokenPersistenceException implements Exception {

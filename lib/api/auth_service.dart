@@ -13,8 +13,7 @@ import 'package:preconnect/api/seat_status_service.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/tools/cached_image.dart';
-import 'package:preconnect/tools/push_notifications_service.dart';
-import 'package:preconnect/tools/web_logout_flow.dart';
+import 'package:preconnect/tools/web_shared.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
 enum TokenRefreshStatus { refreshed, invalidSession, retryableFailure }
@@ -137,10 +136,6 @@ class AuthService {
   }
 
   Future<void> _clearLocalCaches() async {
-    try {
-      await SeatAlertSyncService().clearAll();
-    } catch (_) {}
-
     final keepKeys = <String>{
       'access_token',
       'refresh_token',

@@ -10,7 +10,6 @@ import 'package:preconnect/model/seat_status_info.dart';
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/shared_widgets/course_community_sheet.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/push_notifications_service.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/time_utils.dart';
@@ -35,14 +34,12 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   ];
 
   final SeatStatusService _service = SeatStatusService();
-  final SeatAlertSyncService _pushService = SeatAlertSyncService();
   final List<_SeatStatusCardData> _cards = <_SeatStatusCardData>[];
   final List<_SeatStatusCardData> _visibleCards = <_SeatStatusCardData>[];
   final Map<int, SeatStatusDetailsResponse> _detailsCache =
       <int, SeatStatusDetailsResponse>{};
   final Map<String, SeatStatusStaffInfo> _staffInfoByInitial =
       <String, SeatStatusStaffInfo>{};
-  final Map<int, SeatAlertConfig> _seatAlerts = <int, SeatAlertConfig>{};
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounce;
   bool _isInitialLoading = true;
@@ -53,7 +50,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   bool _isStreamConnecting = false;
   bool _isSavingCache = false;
   bool _availableOnly = false;
-  bool _alertsOnly = false;
   String _selectedDayFilter = '';
   final Set<String> _pendingInitials = <String>{};
   http.Client? _streamClient;
@@ -72,7 +68,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       });
     });
     unawaited(_reloadAll());
-    unawaited(_loadSeatAlerts());
     _isSavingCache = _service.isSavingDetailsCache.value;
     _service.isSavingDetailsCache.addListener(_onCacheSaveStateChanged);
     WidgetsBinding.instance.addObserver(this);
@@ -160,18 +155,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     }
   }
 
-  Future<void> _loadSeatAlerts() async {
-    final loaded = await _service.loadSeatAlertConfigs();
-    try {
-      await _pushService.syncAllSeatAlertConfigs(loaded);
-    } catch (_) {}
-    if (!mounted) return;
-    _seatAlerts
-      ..clear()
-      ..addAll(loaded);
-    _refreshVisibleCards();
-  }
-
   List<_SeatStatusCardData> _buildCardsFromDetailsMap(
     Map<int, SeatStatusDetailsResponse> detailsMap,
   ) {
@@ -203,231 +186,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
         _isInitialLoading = false;
       });
     }
-    await _processSeatAlerts(previousCards, updated);
     _queueStaffInfoResolve(detailsMap.values);
-  }
-
-  Future<void> _processSeatAlerts(
-    List<_SeatStatusCardData> previous,
-    List<_SeatStatusCardData> next,
-  ) async {
-    if (_seatAlerts.isEmpty) return;
-    final previousById = {for (final item in previous) item.sectionId: item};
-    final nextById = {for (final item in next) item.sectionId: item};
-    final triggeredMessages = <String>[];
-    var changedConfig = false;
-    final now = DateTime.now();
-
-    for (final entry in _seatAlerts.entries.toList()) {
-      final sectionId = entry.key;
-      var config = entry.value;
-      final oldItem = previousById[sectionId];
-      final newItem = nextById[sectionId];
-      if (newItem == null) continue;
-      final oldRemaining = oldItem?.remaining;
-      final newRemaining = newItem.remaining;
-
-      if (config.notifyOnAvailable &&
-          (oldRemaining == null || oldRemaining <= 0) &&
-          newRemaining > 0) {
-        triggeredMessages.add(
-          '${newItem.courseCode}-${newItem.sectionName} now has $newRemaining seat${newRemaining == 1 ? '' : 's'} available',
-        );
-        if (config.availableOneTime) {
-          config = config.copyWith(notifyOnAvailable: false);
-          changedConfig = true;
-        }
-      }
-
-      final threshold = config.thresholdSeats;
-      if (threshold != null &&
-          (oldRemaining == null || oldRemaining < threshold) &&
-          newRemaining >= threshold) {
-        triggeredMessages.add(
-          '${newItem.courseCode}-${newItem.sectionName} reached $newRemaining available seat${newRemaining == 1 ? '' : 's'}',
-        );
-        if (config.thresholdOneTime) {
-          config = config.copyWith(thresholdSeats: null);
-          changedConfig = true;
-        }
-      }
-
-      if (config.notifyOnAnyChange &&
-          oldRemaining != null &&
-          oldRemaining != newRemaining) {
-        final diff = newRemaining - oldRemaining;
-        final direction = diff > 0 ? 'up' : 'down';
-        triggeredMessages.add(
-          '${newItem.courseCode}-${newItem.sectionName} changed $direction to $newRemaining seats',
-        );
-        config = config.copyWith(
-          lastChangeNotifiedAtMs: now.millisecondsSinceEpoch,
-        );
-        changedConfig = true;
-      }
-
-      if (!config.hasAnyRule) {
-        _seatAlerts.remove(sectionId);
-        await _service.removeSeatAlertConfig(sectionId);
-        try {
-          await _pushService.removeSeatAlertConfig(sectionId);
-        } catch (_) {}
-        changedConfig = true;
-        continue;
-      }
-      if (config != entry.value) {
-        _seatAlerts[sectionId] = config;
-        await _service.saveSeatAlertConfig(config);
-        try {
-          await _pushService.syncSeatAlertConfig(config);
-        } catch (_) {}
-      }
-    }
-
-    if (changedConfig && mounted) {
-      _refreshVisibleCards();
-    }
-    if (triggeredMessages.isEmpty || !mounted) return;
-    final first = triggeredMessages.first;
-    final suffix = triggeredMessages.length > 1
-        ? ' • +${triggeredMessages.length - 1} more'
-        : '';
-    showAppSnackBar(context, '$first$suffix');
-  }
-
-  Future<void> _openSeatAlertSheet(_SeatStatusCardData item) async {
-    final existing =
-        _seatAlerts[item.sectionId] ??
-        SeatAlertConfig(sectionId: item.sectionId);
-    var temp = existing;
-    const thresholdOptions = <int>[1, 2, 3, 5, 10];
-    final updated = await showBracuBottomSheet<SeatAlertConfig?>(
-      context,
-      title: '${item.courseCode} - ${item.sectionName}',
-      subtitle:
-          '${item.remaining} seat${item.remaining == 1 ? '' : 's'} remaining',
-      builder: (sheetContext, textPrimary, textSecondary) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return ListView(
-              shrinkWrap: true,
-              children: [
-                _buildSeatAlertRuleCard(
-                  context,
-                  label: 'When seats become available',
-                  subtitle: 'Alert when a seat becomes available',
-                  value: temp.notifyOnAvailable,
-                  onChanged: (value) {
-                    setSheetState(() {
-                      temp = temp.copyWith(notifyOnAvailable: value);
-                    });
-                  },
-                ),
-                const SizedBox(height: 10),
-                _buildSeatAlertRuleCard(
-                  context,
-                  label: 'When seats reach your limit',
-                  subtitle: 'Alert when seats reach your selected',
-                  value: temp.thresholdSeats != null,
-                  onChanged: (value) {
-                    setSheetState(() {
-                      temp = temp.copyWith(
-                        thresholdSeats: value
-                            ? (temp.thresholdSeats ?? 1)
-                            : null,
-                      );
-                    });
-                  },
-                ),
-                if (temp.thresholdSeats != null) ...[
-                  const SizedBox(height: 10),
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: thresholdOptions.map((threshold) {
-                      final selected = temp.thresholdSeats == threshold;
-                      return ChoiceChip(
-                        label: Text('$threshold+'),
-                        selected: selected,
-                        onSelected: (_) {
-                          setSheetState(() {
-                            temp = temp.copyWith(thresholdSeats: threshold);
-                          });
-                        },
-                      );
-                    }).toList(),
-                  ),
-                ],
-                const SizedBox(height: 10),
-                _buildSeatAlertRuleCard(
-                  context,
-                  label: 'When seat count changes',
-                  subtitle: 'Alert when the seat count changes',
-                  value: temp.notifyOnAnyChange,
-                  onChanged: (value) {
-                    setSheetState(() {
-                      temp = temp.copyWith(
-                        notifyOnAnyChange: value,
-                        changeCooldownMinutes: value
-                            ? 0
-                            : temp.changeCooldownMinutes,
-                      );
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(sheetContext).pop(),
-                        child: const Text('Cancel'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: () => Navigator.of(sheetContext).pop(temp),
-                        child: const Text('Save'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-    if (!mounted || updated == null) return;
-    final normalizedUpdated = updated.notifyOnAnyChange
-        ? updated.copyWith(changeCooldownMinutes: 0)
-        : updated;
-    if (!normalizedUpdated.hasAnyRule) {
-      await _service.removeSeatAlertConfig(item.sectionId);
-      try {
-        await _pushService.removeSeatAlertConfig(item.sectionId);
-      } catch (_) {}
-      if (!mounted) return;
-      _seatAlerts.remove(item.sectionId);
-      _refreshVisibleCards();
-      showAppSnackBar(context, 'Seat alert removed');
-      return;
-    }
-    await PushNotificationsService().ensureNotificationPermission();
-    await _service.saveSeatAlertConfig(normalizedUpdated);
-    try {
-      await _pushService.syncSeatAlertConfig(normalizedUpdated);
-    } catch (_) {}
-    if (!mounted) return;
-    _seatAlerts[item.sectionId] = normalizedUpdated;
-    _refreshVisibleCards();
-    showAppSnackBar(context, 'Seat alert saved');
-  }
-
-  Future<void> _handleSeatAlertTap(_SeatStatusCardData item) async {
-    await _openSeatAlertSheet(item);
   }
 
   Future<void> _openCourseCommunitySheet(_SeatStatusCardData item) async {
@@ -475,14 +234,10 @@ class _SeatStatusPageState extends State<SeatStatusPage>
 class _SeatStatusCard extends StatelessWidget {
   const _SeatStatusCard({
     required this.item,
-    required this.hasAlert,
-    required this.onAlertTap,
     this.onTap,
   });
 
   final _SeatStatusCardData item;
-  final bool hasAlert;
-  final VoidCallback onAlertTap;
   final VoidCallback? onTap;
 
   Future<void> _openFacultyEmail(BuildContext context) async {
@@ -575,31 +330,6 @@ class _SeatStatusCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              Row(
-                children: [
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: onAlertTap,
-                      child: Container(
-                        width: 38,
-                        height: 38,
-                        alignment: Alignment.center,
-                        child: Icon(
-                          hasAlert
-                              ? Icons.notifications_active_rounded
-                              : Icons.notifications_outlined,
-                          color: hasAlert
-                              ? BracuPalette.primary
-                              : BracuPalette.textPrimary(context),
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
           const SizedBox(height: 14),

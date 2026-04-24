@@ -35,7 +35,6 @@ dependencies:
   synchronized: ^3.4.0
   sembast: ^3.8.6
   shimmer: ^3.0.0
-  flutter_local_notifications: ^21.0.0
   connectivity_plus: ^7.1.1
   chrome_extension: ^0.4.0
   web: ^1.1.1

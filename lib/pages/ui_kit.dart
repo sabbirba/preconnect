@@ -20,10 +20,12 @@ import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/time_utils.dart';
-import 'package:preconnect/tools/web_pdf_opener.dart';
+import 'package:preconnect/tools/web_shared.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+export 'package:preconnect/tools/web_shared.dart';
 
 part 'shared_widgets/ui_kit_components.dart';
 

@@ -13,7 +13,7 @@ import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/web_extension_login_flow.dart';
+import 'package:preconnect/tools/web_shared.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key, this.isLoggedIn = false});

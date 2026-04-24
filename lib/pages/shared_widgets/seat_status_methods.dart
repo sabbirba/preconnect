@@ -3,51 +3,6 @@
 part of 'package:preconnect/pages/seat_status.dart';
 
 extension _SeatStatusPageStateMethods on _SeatStatusPageState {
-  Widget _buildSeatAlertRuleCard(
-    BuildContext context, {
-    required String label,
-    required String subtitle,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
-    return BracuCard(
-      isHighlighted: value,
-      highlightColor: BracuPalette.primary,
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Switch.adaptive(value: value, onChanged: onChanged),
-        ],
-      ),
-    );
-  }
-
   _SeatStatusCardData _buildFallbackCard({
     required int sectionId,
     required int remaining,
@@ -260,8 +215,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _SeatStatusCard(
                   item: item,
-                  hasAlert: _seatAlerts[item.sectionId]?.hasAnyRule == true,
-                  onAlertTap: () => _handleSeatAlertTap(item),
                   onTap: () => _openCourseCommunitySheet(item),
                 ),
               );
@@ -304,7 +257,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         runSpacing: 8,
         children: [
           _buildAvailabilityFilterAction(),
-          _buildAlertsFilterAction(),
           _buildDayFilterAction(context),
         ],
       ),
@@ -354,24 +306,9 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     );
   }
 
-  Widget _buildAlertsFilterAction() {
-    return _FilterChip(
-      icon: Icons.notifications_active_outlined,
-      label: 'Alerts',
-      selected: _alertsOnly,
-      onTap: () => _setAlertsFilter(!_alertsOnly),
-      showArrow: false,
-    );
-  }
-
   void _setAvailableFilter(bool next) {
     if (next == _availableOnly) return;
     _refreshVisibleCards(availableOnly: next);
-  }
-
-  void _setAlertsFilter(bool next) {
-    if (next == _alertsOnly) return;
-    _refreshVisibleCards(alertsOnly: next);
   }
 
   void _setDayFilter(String next) {
@@ -381,24 +318,20 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
 
   void _refreshVisibleCards({
     bool? availableOnly,
-    bool? alertsOnly,
     String? dayFilter,
     String? query,
   }) {
     final resolvedAvailableOnly = availableOnly ?? _availableOnly;
-    final resolvedAlertsOnly = alertsOnly ?? _alertsOnly;
     final resolvedDayFilter = dayFilter ?? _selectedDayFilter;
     final resolvedQuery = query ?? _searchQuery;
     final nextVisible = _filterCards(
       _cards,
       resolvedQuery,
       availableOnly: resolvedAvailableOnly,
-      alertsOnly: resolvedAlertsOnly,
       dayFilter: resolvedDayFilter,
     );
     final filtersChanged =
         resolvedAvailableOnly != _availableOnly ||
-        resolvedAlertsOnly != _alertsOnly ||
         resolvedDayFilter != _selectedDayFilter ||
         resolvedQuery != _searchQuery;
     if (!filtersChanged &&
@@ -407,7 +340,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     }
     setState(() {
       _availableOnly = resolvedAvailableOnly;
-      _alertsOnly = resolvedAlertsOnly;
       _selectedDayFilter = resolvedDayFilter;
       _searchQuery = resolvedQuery;
       _visibleCards
@@ -421,17 +353,12 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     List<_SeatStatusCardData> source,
     String query, {
     required bool availableOnly,
-    required bool alertsOnly,
     required String dayFilter,
   }) {
     final q = query.trim().toLowerCase();
     return source.where((card) {
       if (q.isNotEmpty && !card.searchToken.contains(q)) return false;
       if (availableOnly && card.remaining <= 0) return false;
-      if (alertsOnly && _seatAlerts[card.sectionId]?.hasAnyRule != true) {
-        return false;
-      }
-
       if (dayFilter.isNotEmpty) {
         final schedules = <SeatStatusClassSchedule>[
           ...card.classSchedule,
@@ -459,7 +386,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       nextCards,
       _searchQuery,
       availableOnly: _availableOnly,
-      alertsOnly: _alertsOnly,
       dayFilter: _selectedDayFilter,
     );
     if (!mounted) return;

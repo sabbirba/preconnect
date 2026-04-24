@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ApiConfig {
   ApiConfig._();
@@ -11,9 +10,7 @@ class ApiConfig {
   static const String authEndpoint = '$ssoBase/auth';
 
   static const String seatStatusProxyBase = 'https://api.preconnect.app';
-  static String get connectApiBase => kIsWeb
-      ? '$seatStatusProxyBase/connect'
-      : 'https://connect.bracu.ac.bd/api';
+  static const String connectApiBase = 'https://connect.bracu.ac.bd/api';
   static const String connectWebApiBase = 'https://connect.bracu.ac.bd/api';
   static const String connectMercureLogoutPath = '/ns/mercure/logout';
   static const String cdnBase = 'https://connect.bracu.ac.bd/cdn';
@@ -37,9 +34,6 @@ class ApiConfig {
       'https://api.finder-lbs.com/v1/auth/refresh_token';
   static const String finderLbsAssetInfoEndpoint =
       'https://api.finder-lbs.com/v1/assets/asset_info';
-  static const String webLoginBrokerBase = seatStatusProxyBase;
-  static const String pushAlertsBase = 'https://api.preconnect.app';
-
   static String busTrackerAssetInfoUrl(String assetCode) {
     final normalizedAssetCode = assetCode.trim().isNotEmpty
         ? assetCode.trim()
@@ -102,12 +96,6 @@ class ApiConfig {
 
   static String notificationViewPath(int id) => '/ns/notifications/view/$id';
 
-  static const String pushDeviceRegisterPath = '/push/device/register';
-  static const String pushDeviceUnregisterPath = '/push/device/unregister';
-  static const String seatAlertSubscriptionsPath = '/push/seat-alerts';
-
-  static String seatAlertSubscriptionPath(int sectionId) =>
-      '$seatAlertSubscriptionsPath/$sectionId';
 
   static const Map<String, String> apiHeaders = {
     'X-REALM': 'bracu',

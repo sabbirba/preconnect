@@ -130,10 +130,6 @@
 		<string>PreConnect needs photo access to scan QR codes from your gallery.</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>PreConnect needs permission to save QR codes to your gallery.</string>
-		<key>UIBackgroundModes</key>
-		<array>
-			<string>remote-notification</string>
-		</array>
 		<key>GADApplicationIdentifier</key>
 		<string>$(ADS_APP_ID_IOS)</string>
 		<key>REWARDED_AD_UNIT_ID</key>

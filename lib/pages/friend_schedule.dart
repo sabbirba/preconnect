@@ -16,8 +16,6 @@ import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/mobile_scanner_stub.dart'
     if (dart.library.io) 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:preconnect/tools/web_qr_image_picker_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/web_qr_image_picker_web.dart';
 
 class FriendSchedulePage extends StatefulWidget {
   const FriendSchedulePage({super.key, required this.onNavigate});

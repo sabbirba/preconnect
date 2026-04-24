@@ -15,7 +15,6 @@ class SeatStatusService {
   static const String _detailsTsKey = 'seat_status_details_ts_v1';
   static const String _freeLabsKey = 'free_labs_slots_v1';
   static const String _freeLabsDateKey = 'free_labs_slots_date_v1';
-  static const String _alertsKey = 'seat_alert_configs_v1';
 
   final ApiClient _client = ApiClient();
   Map<int, SeatStatusDetailsResponse>? _detailsSnapshot;
@@ -118,47 +117,6 @@ class SeatStatusService {
     return details;
   }
 
-  Future<Map<int, SeatAlertConfig>> loadSeatAlertConfigs() async {
-    try {
-      final raw = await AppStorage.instance.getString(_alertsKey);
-      if (raw == null || raw.trim().isEmpty) {
-        return const <int, SeatAlertConfig>{};
-      }
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map) return const <int, SeatAlertConfig>{};
-      final output = <int, SeatAlertConfig>{};
-      for (final entry in decoded.entries) {
-        final sectionId = int.tryParse('${entry.key}');
-        if (sectionId == null) continue;
-        try {
-          output[sectionId] = SeatAlertConfig.fromJson(
-            sectionId,
-            Map<String, dynamic>.from(entry.value as Map),
-          );
-        } catch (_) {}
-      }
-      return output;
-    } catch (_) {
-      return const <int, SeatAlertConfig>{};
-    }
-  }
-
-  Future<void> saveSeatAlertConfig(SeatAlertConfig config) async {
-    final current = await loadSeatAlertConfigs();
-    if (!config.hasAnyRule) {
-      current.remove(config.sectionId);
-    } else {
-      current[config.sectionId] = config;
-    }
-    await _persistSeatAlertConfigs(current);
-  }
-
-  Future<void> removeSeatAlertConfig(int sectionId) async {
-    final current = await loadSeatAlertConfigs();
-    current.remove(sectionId);
-    await _persistSeatAlertConfigs(current);
-  }
-
   Future<void> preloadSeatStatusCache({int detailConcurrency = 8}) async {}
 
   Future<void> clearAll() async {
@@ -166,7 +124,6 @@ class SeatStatusService {
     await AppStorage.instance.remove(_detailsTsKey);
     await AppStorage.instance.remove(_freeLabsKey);
     await AppStorage.instance.remove(_freeLabsDateKey);
-    await AppStorage.instance.remove(_alertsKey);
     _detailsSnapshot = null;
     _detailsSnapshotTs = null;
     _staffInfoByInitialCache.clear();
@@ -218,15 +175,6 @@ class SeatStatusService {
       if (info != null) output[key] = info;
     }
     return output;
-  }
-
-  Future<void> _persistSeatAlertConfigs(
-    Map<int, SeatAlertConfig> configs,
-  ) async {
-    final payload = configs.map(
-      (key, value) => MapEntry(key.toString(), value.toJson()),
-    );
-    await AppStorage.instance.setString(_alertsKey, jsonEncode(payload));
   }
 
   Future<dynamic> _fetchJson(String url) async {

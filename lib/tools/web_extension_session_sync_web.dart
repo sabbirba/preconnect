@@ -1,15 +1,15 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/tools/token_storage.dart';
+import 'package:preconnect/tools/web_extension_api_config.dart';
+import 'package:preconnect/tools/web_extension_token_storage.dart';
 
 const Duration _refreshLeadTime = Duration(minutes: 5);
 
 Future<bool> ensureFreshWebExtensionSession({
   bool forceRefresh = false,
 }) async {
-  final storage = TokenStorage.instance;
+  final storage = WebExtensionTokenStorage.instance;
   final accessToken = await storage.read(key: 'access_token');
   final refreshToken = await storage.read(key: 'refresh_token');
   if (refreshToken == null || refreshToken.trim().isEmpty) {
@@ -25,12 +25,12 @@ Future<bool> ensureFreshWebExtensionSession({
   }
 
   final response = await http.post(
-    Uri.parse(ApiConfig.tokenEndpoint),
+    Uri.parse(WebExtensionApiConfig.tokenEndpoint),
     headers: const {'Content-Type': 'application/x-www-form-urlencoded'},
     body: {
       'grant_type': 'refresh_token',
       'refresh_token': refreshToken,
-      'client_id': ApiConfig.clientId,
+      'client_id': WebExtensionApiConfig.clientId,
     },
   );
 
