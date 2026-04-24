@@ -113,6 +113,9 @@ Update [`.env.example`](.env.example) values in your local [`.env`](.env):
 - `REWARDED_AD_UNIT_ID`
 - `BANNER_AD_UNIT_ID`
 - `ADS_APP_ID_IOS`
+- `FINDER_LBS_ASSET_CODE`
+- `FINDER_LBS_ACCESS_TOKEN`
+- `FINDER_LBS_REFRESH_TOKEN`
 
 ### Android Signing Setup
 

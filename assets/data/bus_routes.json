@@ -1,306 +1,1063 @@
 {
   "updated_at": "2026-01-31",
   "title": "BRAC University Students' Transport",
-  "route_vehicles": {
-    "route-01-a": {"vehicle_name": "Route 1 - Abdullahpur", "code": "BS0620"},
-    "route-01-b": {"vehicle_name": "Route 1 - Abdullahpur", "code": "BS0620"},
-    "route-02-a": {"vehicle_name": "Route 2 - Mirpur A", "code": "BS0619"},
-    "route-02-b": {"vehicle_name": "Route 2 - Mirpur B", "code": "BS0759"},
-    "route-03-a": {"vehicle_name": "Route 3 - Jigatola", "code": "BS0621"},
-    "route-03-b": {"vehicle_name": "Route 3 - Jigatola", "code": "BS0621"},
-    "route-04": {"vehicle_name": "Route 4 - Azimpur", "code": "BS0617"},
-    "route-05": {"vehicle_name": "Route 6 - Baldha Garden", "code": "BS0646"},
-    "route-06-a": {"vehicle_name": "Route 7 - Mohammadpur A", "code": "BS0618"},
-    "route-06-b": {"vehicle_name": "Route 7 - Mohammadpur B", "code": "BS0923"},
-    "route-07": {"vehicle_name": "Route 8 - Narayanganj", "code": "BS1623"},
-    "route-08": {"vehicle_name": "Route 5 - Jatrabari", "code": "BS1621"}
-  },
-
   "routes": [
     {
       "id": "route-01-a",
-      "name": "Route-01: Abdullahpur-A to BRAC University",
-      "code": "Route No-01",
       "from": "Abdullahpur-A",
       "to": "BRAC University",
       "attendant_phone": "01312-467316",
       "stops": [
-        {"name": "Abdullahpur (Polwel Carnation Shopping Centre)", "times": ["6:40 AM", "8:30 AM"]},
-        {"name": "House Building (LabAid Diagnostic)", "times": ["6:43 AM", "8:33 AM"]},
-        {"name": "Azampur (In front of Uttara East Police Station)", "times": ["6:46 AM", "8:36 AM"]},
-        {"name": "Jasimuddin (Popular Diagnostic Centre)", "times": ["6:49 AM", "8:39 AM"]},
-        {"name": "Airport (In front of passenger shed situated 50 yards back)", "times": ["6:51 AM", "8:43 AM"]},
-        {"name": "Kawla (near foot over-bridge)", "times": ["6:52 AM", "8:44 AM"]},
-        {"name": "Khilkhet (first foot over-bridge)", "times": ["6:56 AM", "8:47 AM"]},
-        {"name": "Biswa Road (near foot over-bridge)", "times": ["6:59 AM", "8:49 AM"]},
-        {"name": "BRAC University (arrival time)", "times": ["7:30 AM", "10:40 AM"]}
-      ]
+        {
+          "name": "Abdullahpur (Polwel Carnation Shopping Centre)",
+          "times": [
+            "6:40 AM",
+            "8:30 AM"
+          ]
+        },
+        {
+          "name": "House Building (LabAid Diagnostic)",
+          "times": [
+            "6:43 AM",
+            "8:33 AM"
+          ]
+        },
+        {
+          "name": "Azampur (In front of Uttara East Police Station)",
+          "times": [
+            "6:46 AM",
+            "8:36 AM"
+          ]
+        },
+        {
+          "name": "Jasimuddin (Popular Diagnostic Centre)",
+          "times": [
+            "6:49 AM",
+            "8:39 AM"
+          ]
+        },
+        {
+          "name": "Airport (In front of passenger shed situated 50 yards back)",
+          "times": [
+            "6:51 AM",
+            "8:43 AM"
+          ]
+        },
+        {
+          "name": "Kawla (near foot over-bridge)",
+          "times": [
+            "6:52 AM",
+            "8:44 AM"
+          ]
+        },
+        {
+          "name": "Khilkhet (first foot over-bridge)",
+          "times": [
+            "6:56 AM",
+            "8:47 AM"
+          ]
+        },
+        {
+          "name": "Biswa Road (near foot over-bridge)",
+          "times": [
+            "6:59 AM",
+            "8:49 AM"
+          ]
+        },
+        {
+          "name": "BRAC University (arrival time)",
+          "times": [
+            "7:30 AM",
+            "10:40 AM"
+          ]
+        }
+      ],
+      "name": "Abdullahpur-A",
+      "route_vehicles": {
+        "code": "BS0620"
+      }
     },
     {
       "id": "route-01-b",
-      "name": "Route-01: Abdullahpur-B to BRAC University",
-      "code": "Route No-01",
       "from": "Abdullahpur-B",
       "to": "BRAC University",
       "attendant_phone": "01322-821524",
       "stops": [
-        {"name": "Jashimuddin (Opposite to RAK Shopping Complex, Uttara Sector #01, Road #14)", "times": ["6:30 AM"]},
-        {"name": "Korotoa Courier Point (Opposite to Korotoa Courier Service, Uttara Sector #03, Road #18)", "times": ["6:33 AM"]},
-        {"name": "Shahid Mugdho Corner (In front of Shahid Mugdho Corner, Robindro Sorobor)", "times": ["6:36 AM"]},
-        {"name": "Lake Drive Road (Uttara Model Town, opposite to Brac Bank, Sector #07)", "times": ["6:39 AM"]},
-        {"name": "Zam Zam Tower (In front of Zam Zam Tower, Sector #13, Uttara)", "times": ["6:41 AM"]},
-        {"name": "Tagore University Point (In front of Tagore University of Creative Arts, Sector #12)", "times": ["6:44 AM"]},
-        {"name": "Khalpar Mor (In front of Police Box)", "times": ["6:46 AM"]},
-        {"name": "Diabari Gol Chattar (In front of Fresh Ceramics, Uttara)", "times": ["6:47 AM"]},
-        {"name": "Uttara Centre (MRT Station, under Metro Rail Station)", "times": ["6:49 AM"]},
-        {"name": "BRAC University (arrival time)", "times": ["7:35 AM"]}
-      ]
+        {
+          "name": "Jashimuddin (Opposite to RAK Shopping Complex, Uttara Sector #01, Road #14)",
+          "times": [
+            "6:30 AM"
+          ]
+        },
+        {
+          "name": "Korotoa Courier Point (Opposite to Korotoa Courier Service, Uttara Sector #03, Road #18)",
+          "times": [
+            "6:33 AM"
+          ]
+        },
+        {
+          "name": "Shahid Mugdho Corner (In front of Shahid Mugdho Corner, Robindro Sorobor)",
+          "times": [
+            "6:36 AM"
+          ]
+        },
+        {
+          "name": "Lake Drive Road (Uttara Model Town, opposite to Brac Bank, Sector #07)",
+          "times": [
+            "6:39 AM"
+          ]
+        },
+        {
+          "name": "Zam Zam Tower (In front of Zam Zam Tower, Sector #13, Uttara)",
+          "times": [
+            "6:41 AM"
+          ]
+        },
+        {
+          "name": "Tagore University Point (In front of Tagore University of Creative Arts, Sector #12)",
+          "times": [
+            "6:44 AM"
+          ]
+        },
+        {
+          "name": "Khalpar Mor (In front of Police Box)",
+          "times": [
+            "6:46 AM"
+          ]
+        },
+        {
+          "name": "Diabari Gol Chattar (In front of Fresh Ceramics, Uttara)",
+          "times": [
+            "6:47 AM"
+          ]
+        },
+        {
+          "name": "Uttara Centre (MRT Station, under Metro Rail Station)",
+          "times": [
+            "6:49 AM"
+          ]
+        },
+        {
+          "name": "BRAC University (arrival time)",
+          "times": [
+            "7:35 AM"
+          ]
+        }
+      ],
+      "name": "Abdullahpur-B",
+      "route_vehicles": {
+        "code": "BS0620"
+      }
     },
     {
       "id": "route-02-a",
-      "name": "Route-02: Mirpur-A to BRAC University",
-      "code": "Route No-02",
       "from": "Mirpur-A",
       "to": "BRAC University",
       "attendant_phone": "01324-281505",
       "stops": [
-        {"name": "Mirpur Bangla College", "times": ["6:20 AM", "8:20 AM"]},
-        {"name": "Dhaka Laboratory School and College (In front of Taffi Quarter)", "times": ["6:22 AM", "8:22 AM"]},
-        {"name": "Sony Cinema Hall (near KFC)", "times": ["6:24 AM", "8:25 AM"]},
-        {"name": "Mirpur College Gate (Mirpur 2)", "times": ["6:26 AM", "8:27 AM"]},
-        {"name": "Swimming Federation Gate (Mirpur stadium)", "times": ["6:28 AM", "8:29 AM"]},
-        {"name": "Popular Diagnostic Centre (Mirpur 6)", "times": ["6:31 AM", "8:33 AM"]},
-        {"name": "Pallabi Post Office (near Purobi Cinema Hall)", "times": ["6:34 AM", "8:37 AM"]},
-        {"name": "Mirpur 11.5 (Banalata Sweets)", "times": ["6:35 AM", "8:38 AM"]},
-        {"name": "Mirpur Ceramics (near CNG Filling Station)", "times": ["6:36 AM", "8:40 AM"]},
-        {"name": "Mirpur DOHS Gate (near Trust Bus Stop)", "times": ["6:40 AM", "8:45 AM"]},
-        {"name": "Pallabi Thana (Shagufta mour)", "times": ["6:43 AM", "8:47 AM"]},
-        {"name": "Kalshi Bus Stand", "times": ["6:45 AM", "8:49 AM"]},
-        {"name": "ECB Chattar", "times": ["6:48 AM", "8:52 AM"]},
-        {"name": "BRAC University (arrival time)", "times": ["7:30 AM", "10:20 AM"]}
-      ]
+        {
+          "name": "Mirpur Bangla College",
+          "times": [
+            "6:20 AM",
+            "8:20 AM"
+          ]
+        },
+        {
+          "name": "Dhaka Laboratory School and College (In front of Taffi Quarter)",
+          "times": [
+            "6:22 AM",
+            "8:22 AM"
+          ]
+        },
+        {
+          "name": "Sony Cinema Hall (near KFC)",
+          "times": [
+            "6:24 AM",
+            "8:25 AM"
+          ]
+        },
+        {
+          "name": "Mirpur College Gate (Mirpur 2)",
+          "times": [
+            "6:26 AM",
+            "8:27 AM"
+          ]
+        },
+        {
+          "name": "Swimming Federation Gate (Mirpur stadium)",
+          "times": [
+            "6:28 AM",
+            "8:29 AM"
+          ]
+        },
+        {
+          "name": "Popular Diagnostic Centre (Mirpur 6)",
+          "times": [
+            "6:31 AM",
+            "8:33 AM"
+          ]
+        },
+        {
+          "name": "Pallabi Post Office (near Purobi Cinema Hall)",
+          "times": [
+            "6:34 AM",
+            "8:37 AM"
+          ]
+        },
+        {
+          "name": "Mirpur 11.5 (Banalata Sweets)",
+          "times": [
+            "6:35 AM",
+            "8:38 AM"
+          ]
+        },
+        {
+          "name": "Mirpur Ceramics (near CNG Filling Station)",
+          "times": [
+            "6:36 AM",
+            "8:40 AM"
+          ]
+        },
+        {
+          "name": "Mirpur DOHS Gate (near Trust Bus Stop)",
+          "times": [
+            "6:40 AM",
+            "8:45 AM"
+          ]
+        },
+        {
+          "name": "Pallabi Thana (Shagufta mour)",
+          "times": [
+            "6:43 AM",
+            "8:47 AM"
+          ]
+        },
+        {
+          "name": "Kalshi Bus Stand",
+          "times": [
+            "6:45 AM",
+            "8:49 AM"
+          ]
+        },
+        {
+          "name": "ECB Chattar",
+          "times": [
+            "6:48 AM",
+            "8:52 AM"
+          ]
+        },
+        {
+          "name": "BRAC University (arrival time)",
+          "times": [
+            "7:30 AM",
+            "10:20 AM"
+          ]
+        }
+      ],
+      "name": "Mirpur-A",
+      "route_vehicles": {
+        "code": "BS0619"
+      }
     },
     {
       "id": "route-02-b",
-      "name": "Route-02: Mirpur-B to BRAC University",
-      "code": "Route No-02",
       "from": "Mirpur-B",
       "to": "BRAC University",
       "attendant_phone": "01322-821505",
       "stops": [
-        {"name": "Mirpur 14 Bus Stand (opposite to Marks Medical College Hospital)", "times": ["6:35 AM", "8:35 AM"]},
-        {"name": "In front of NAM Garden Officers Quarter, Mirpur 13 (near BRTA 2nd Gate)", "times": ["6:37 AM", "8:37 AM"]},
-        {"name": "Opposite to Water Tank (Mirpur 10)", "times": ["6:39 AM", "8:40 AM"]},
-        {"name": "Al Helal Specialized Hospital (Mirpur 10)", "times": ["6:43 AM", "8:44 AM"]},
-        {"name": "In front of BRAC Healthcare, Kazipara", "times": ["6:46 AM", "8:46 AM"]},
-        {"name": "Shewrapara (near Jamuna Plaza and Metro Rail Station)", "times": ["6:48 AM", "8:48 AM"]},
-        {"name": "Taltola Bus Stand (opposite to Glory School and College)", "times": ["6:51 AM", "8:50 AM"]},
-        {"name": "BRAC University (arrival time)", "times": ["7:30 AM", "10:30 AM"]}
-      ]
+        {
+          "name": "Mirpur 14 Bus Stand (opposite to Marks Medical College Hospital)",
+          "times": [
+            "6:35 AM",
+            "8:35 AM"
+          ]
+        },
+        {
+          "name": "In front of NAM Garden Officers Quarter, Mirpur 13 (near BRTA 2nd Gate)",
+          "times": [
+            "6:37 AM",
+            "8:37 AM"
+          ]
+        },
+        {
+          "name": "Opposite to Water Tank (Mirpur 10)",
+          "times": [
+            "6:39 AM",
+            "8:40 AM"
+          ]
+        },
+        {
+          "name": "Al Helal Specialized Hospital (Mirpur 10)",
+          "times": [
+            "6:43 AM",
+            "8:44 AM"
+          ]
+        },
+        {
+          "name": "In front of BRAC Healthcare, Kazipara",
+          "times": [
+            "6:46 AM",
+            "8:46 AM"
+          ]
+        },
+        {
+          "name": "Shewrapara (near Jamuna Plaza and Metro Rail Station)",
+          "times": [
+            "6:48 AM",
+            "8:48 AM"
+          ]
+        },
+        {
+          "name": "Taltola Bus Stand (opposite to Glory School and College)",
+          "times": [
+            "6:51 AM",
+            "8:50 AM"
+          ]
+        },
+        {
+          "name": "BRAC University (arrival time)",
+          "times": [
+            "7:30 AM",
+            "10:30 AM"
+          ]
+        }
+      ],
+      "name": "Mirpur-B",
+      "route_vehicles": {
+        "code": "BS0759"
+      }
     },
     {
       "id": "route-03-a",
-      "name": "Route-03: Jigatola-A to BRAC University",
-      "code": "Route No-03",
       "from": "Jigatola-A",
       "to": "BRAC University",
       "attendant_phone": "01322-821572",
       "stops": [
-        {"name": "Jigatola Bus Stand (in front of Japan-Bangladesh Friendship Hospital)", "times": ["6:35 AM", "8:40 AM"]},
-        {"name": "Keari Plaza, Dhanmondi 15 Bus Stand", "times": ["6:37 AM", "8:42 AM"]},
-        {"name": "Shankar Bus Stand", "times": ["6:40 AM", "8:45 AM"]},
-        {"name": "Meena Bazar (Dhanmondi 27)", "times": ["6:42 AM", "8:47 AM"]},
-        {"name": "In front of Lalmatia Mother Care Hospital", "times": ["6:45 AM", "8:50 AM"]},
-        {"name": "BRAC University (arrival time)", "times": ["7:30 AM", "10:30 AM"]}
-      ]
+        {
+          "name": "Jigatola Bus Stand (in front of Japan-Bangladesh Friendship Hospital)",
+          "times": [
+            "6:35 AM",
+            "8:40 AM"
+          ]
+        },
+        {
+          "name": "Keari Plaza, Dhanmondi 15 Bus Stand",
+          "times": [
+            "6:37 AM",
+            "8:42 AM"
+          ]
+        },
+        {
+          "name": "Shankar Bus Stand",
+          "times": [
+            "6:40 AM",
+            "8:45 AM"
+          ]
+        },
+        {
+          "name": "Meena Bazar (Dhanmondi 27)",
+          "times": [
+            "6:42 AM",
+            "8:47 AM"
+          ]
+        },
+        {
+          "name": "In front of Lalmatia Mother Care Hospital",
+          "times": [
+            "6:45 AM",
+            "8:50 AM"
+          ]
+        },
+        {
+          "name": "BRAC University (arrival time)",
+          "times": [
+            "7:30 AM",
+            "10:30 AM"
+          ]
+        }
+      ],
+      "name": "Jigatola-A",
+      "route_vehicles": {
+        "code": "BS0621"
+      }
     },
     {
       "id": "route-03-b",
-      "name": "Route-03: Jigatola-B to BRAC University",
-      "code": "Route No-03",
       "from": "Jigatola-B",
       "to": "BRAC University",
       "attendant_phone": "01322-821572",
       "stops": [
-        {"name": "Jigatola Bus Stand (in front of Japan-Bangladesh Friendship Hospital)", "times": ["8:45 AM"]},
-        {"name": "Keari Plaza, Dhanmondi 15 Bus Stand", "times": ["8:47 AM"]},
-        {"name": "Shankar Bus Stand", "times": ["8:50 AM"]},
-        {"name": "Meena Bazar (Dhanmondi 27)", "times": ["8:52 AM"]},
-        {"name": "In front of Lalmatia Mother Care Hospital", "times": ["8:55 AM"]},
-        {"name": "BRAC University (arrival time)", "times": ["10:30 AM"]}
-      ]
+        {
+          "name": "Jigatola Bus Stand (in front of Japan-Bangladesh Friendship Hospital)",
+          "times": [
+            "8:45 AM"
+          ]
+        },
+        {
+          "name": "Keari Plaza, Dhanmondi 15 Bus Stand",
+          "times": [
+            "8:47 AM"
+          ]
+        },
+        {
+          "name": "Shankar Bus Stand",
+          "times": [
+            "8:50 AM"
+          ]
+        },
+        {
+          "name": "Meena Bazar (Dhanmondi 27)",
+          "times": [
+            "8:52 AM"
+          ]
+        },
+        {
+          "name": "In front of Lalmatia Mother Care Hospital",
+          "times": [
+            "8:55 AM"
+          ]
+        },
+        {
+          "name": "BRAC University (arrival time)",
+          "times": [
+            "10:30 AM"
+          ]
+        }
+      ],
+      "name": "Jigatola-B",
+      "route_vehicles": {
+        "code": "BS0621"
+      }
     },
     {
       "id": "route-04",
-      "name": "Route-04: Azimpur to BRAC University",
-      "code": "Route No-04",
       "from": "Azimpur",
       "to": "BRAC University",
       "attendant_phone": "01700-597095",
       "stops": [
-        {"name": "Azimpur Etimkhana Mour", "times": ["6:25 AM", "8:30 AM"]},
-        {"name": "Azimpur Chowrasta", "times": ["6:27 AM", "8:33 AM"]},
-        {"name": "New Market (gate no 2, Janata Bank)", "times": ["6:29 AM", "8:36 AM"]},
-        {"name": "Happy Arcade Shopping Mall (beside City College)", "times": ["6:31 AM", "8:39 AM"]},
-        {"name": "Dhanmondi, Road No 7 (ARA Center Shopping Mall)", "times": ["6:33 AM", "8:42 AM"]},
-        {"name": "Kalabagan Krira Chokro (near foot over-bridge)", "times": ["6:35 AM", "8:44 AM"]},
-        {"name": "Sobhanbag (near foot over-bridge)", "times": ["6:37 AM", "8:47 AM"]},
-        {"name": "West End of Manik Mia Avenue (opposite Aarong)", "times": ["6:39 AM", "8:51 AM"]},
-        {"name": "Khejur Bagan Mour (Manik Mia Avenue)", "times": ["6:41 AM", "8:53 AM"]},
-        {"name": "BRAC University (arrival time)", "times": ["7:30 AM", "10:45 AM"]}
-      ]
+        {
+          "name": "Azimpur Etimkhana Mour",
+          "times": [
+            "6:25 AM",
+            "8:30 AM"
+          ]
+        },
+        {
+          "name": "Azimpur Chowrasta",
+          "times": [
+            "6:27 AM",
+            "8:33 AM"
+          ]
+        },
+        {
+          "name": "New Market (gate no 2, Janata Bank)",
+          "times": [
+            "6:29 AM",
+            "8:36 AM"
+          ]
+        },
+        {
+          "name": "Happy Arcade Shopping Mall (beside City College)",
+          "times": [
+            "6:31 AM",
+            "8:39 AM"
+          ]
+        },
+        {
+          "name": "Dhanmondi, Road No 7 (ARA Center Shopping Mall)",
+          "times": [
+            "6:33 AM",
+            "8:42 AM"
+          ]
+        },
+        {
+          "name": "Kalabagan Krira Chokro (near foot over-bridge)",
+          "times": [
+            "6:35 AM",
+            "8:44 AM"
+          ]
+        },
+        {
+          "name": "Sobhanbag (near foot over-bridge)",
+          "times": [
+            "6:37 AM",
+            "8:47 AM"
+          ]
+        },
+        {
+          "name": "West End of Manik Mia Avenue (opposite Aarong)",
+          "times": [
+            "6:39 AM",
+            "8:51 AM"
+          ]
+        },
+        {
+          "name": "Khejur Bagan Mour (Manik Mia Avenue)",
+          "times": [
+            "6:41 AM",
+            "8:53 AM"
+          ]
+        },
+        {
+          "name": "BRAC University (arrival time)",
+          "times": [
+            "7:30 AM",
+            "10:45 AM"
+          ]
+        }
+      ],
+      "name": "Azimpur",
+      "route_vehicles": {
+        "code": "BS0617"
+      }
     },
     {
       "id": "route-05",
-      "name": "Route-05: Baldha Garden to BRAC University",
-      "code": "Route No-05",
       "from": "Baldha Garden",
       "to": "BRAC University",
       "attendant_phone": "01307-462100",
       "stops": [
-        {"name": "Doyaganj Mour (near mandir)", "times": ["6:30 AM", "8:30 AM"]},
-        {"name": "Baldha Garden", "times": ["6:35 AM", "8:35 AM"]},
-        {"name": "Ittefaq Mour", "times": ["6:38 AM", "8:38 AM"]},
-        {"name": "Motijheel (foot over-bridge)", "times": ["6:40 AM", "8:40 AM"]},
-        {"name": "Arambag (near Janata Bank)", "times": ["6:41 AM", "8:42 AM"]},
-        {"name": "Fakirapool Mour (Apex showroom)", "times": ["6:43 AM", "8:44 AM"]},
-        {"name": "Purana Paltan (Hatil showroom)", "times": ["6:44 AM", "8:45 AM"]},
-        {"name": "Kakrail Mour (near Eastern Bank)", "times": ["6:46 AM", "8:48 AM"]},
-        {"name": "Shantinagar Mour (One Bank)", "times": ["6:48 AM", "8:50 AM"]},
-        {"name": "Moghbazar T&T Office", "times": ["6:51 AM", "8:54 AM"]},
-        {"name": "Moghbazar Mour (NCC Bank)", "times": ["6:55 AM", "9:00 AM"]},
-        {"name": "BRAC University (arrival time)", "times": ["7:40 AM", "10:30 AM"]}
-      ]
+        {
+          "name": "Doyaganj Mour (near mandir)",
+          "times": [
+            "6:30 AM",
+            "8:30 AM"
+          ]
+        },
+        {
+          "name": "Baldha Garden",
+          "times": [
+            "6:35 AM",
+            "8:35 AM"
+          ]
+        },
+        {
+          "name": "Ittefaq Mour",
+          "times": [
+            "6:38 AM",
+            "8:38 AM"
+          ]
+        },
+        {
+          "name": "Motijheel (foot over-bridge)",
+          "times": [
+            "6:40 AM",
+            "8:40 AM"
+          ]
+        },
+        {
+          "name": "Arambag (near Janata Bank)",
+          "times": [
+            "6:41 AM",
+            "8:42 AM"
+          ]
+        },
+        {
+          "name": "Fakirapool Mour (Apex showroom)",
+          "times": [
+            "6:43 AM",
+            "8:44 AM"
+          ]
+        },
+        {
+          "name": "Purana Paltan (Hatil showroom)",
+          "times": [
+            "6:44 AM",
+            "8:45 AM"
+          ]
+        },
+        {
+          "name": "Kakrail Mour (near Eastern Bank)",
+          "times": [
+            "6:46 AM",
+            "8:48 AM"
+          ]
+        },
+        {
+          "name": "Shantinagar Mour (One Bank)",
+          "times": [
+            "6:48 AM",
+            "8:50 AM"
+          ]
+        },
+        {
+          "name": "Moghbazar T&T Office",
+          "times": [
+            "6:51 AM",
+            "8:54 AM"
+          ]
+        },
+        {
+          "name": "Moghbazar Mour (NCC Bank)",
+          "times": [
+            "6:55 AM",
+            "9:00 AM"
+          ]
+        },
+        {
+          "name": "BRAC University (arrival time)",
+          "times": [
+            "7:40 AM",
+            "10:30 AM"
+          ]
+        }
+      ],
+      "name": "Baldha Garden",
+      "route_vehicles": {
+        "code": "BS0646"
+      }
     },
     {
       "id": "route-06-a",
-      "name": "Route-06: Mohammadpur-A to BRAC University",
-      "code": "Route No-06",
       "from": "Mohammadpur-A",
       "to": "BRAC University",
       "attendant_phone": "01322-825121",
       "stops": [
-        {"name": "Shiya Masjid (near Top Ten shop)", "times": ["6:30 AM", "8:40 AM"]},
-        {"name": "Opposite to Suchona Community Center", "times": ["6:32 AM", "8:42 AM"]},
-        {"name": "Shampa Market", "times": ["6:34 AM", "8:45 AM"]},
-        {"name": "Shyamoli (Bata mour)", "times": ["6:37 AM", "8:48 AM"]},
-        {"name": "Opposite to Shyamoli Cinema Hall", "times": ["6:39 AM", "8:51 AM"]},
-        {"name": "Agargaon Radio Office", "times": ["6:42 AM", "8:53 AM"]},
-        {"name": "Opposite to Agargaon flower shops", "times": ["6:44 AM", "8:55 AM"]},
-        {"name": "BRAC University (arrival time)", "times": ["7:35 AM", "10:45 AM"]}
-      ]
+        {
+          "name": "Shiya Masjid (near Top Ten shop)",
+          "times": [
+            "6:30 AM",
+            "8:40 AM"
+          ]
+        },
+        {
+          "name": "Opposite to Suchona Community Center",
+          "times": [
+            "6:32 AM",
+            "8:42 AM"
+          ]
+        },
+        {
+          "name": "Shampa Market",
+          "times": [
+            "6:34 AM",
+            "8:45 AM"
+          ]
+        },
+        {
+          "name": "Shyamoli (Bata mour)",
+          "times": [
+            "6:37 AM",
+            "8:48 AM"
+          ]
+        },
+        {
+          "name": "Opposite to Shyamoli Cinema Hall",
+          "times": [
+            "6:39 AM",
+            "8:51 AM"
+          ]
+        },
+        {
+          "name": "Agargaon Radio Office",
+          "times": [
+            "6:42 AM",
+            "8:53 AM"
+          ]
+        },
+        {
+          "name": "Opposite to Agargaon flower shops",
+          "times": [
+            "6:44 AM",
+            "8:55 AM"
+          ]
+        },
+        {
+          "name": "BRAC University (arrival time)",
+          "times": [
+            "7:35 AM",
+            "10:45 AM"
+          ]
+        }
+      ],
+      "name": "Mohammadpur-A",
+      "route_vehicles": {
+        "code": "BS0618"
+      }
     },
     {
       "id": "route-06-b",
-      "name": "Route-06: Mohammadpur-B to BRAC University",
-      "code": "Route No-06",
       "from": "Mohammadpur-B",
       "to": "BRAC University",
       "attendant_phone": "01322-821521",
       "stops": [
-        {"name": "In front of Bata Showroom (opposite to Japan Garden City's mosque)", "times": ["6:35 AM", "8:30 AM"]},
-        {"name": "In front of Baitus Sujud Jame Mosque (near Mohammadpur Bus Stand/Nurjahan Road)", "times": ["6:40 AM", "8:36 AM"]},
-        {"name": "Town Hall Market (in front of Bikrampur Mistanna Bhandar)", "times": ["6:42 AM", "8:38 AM"]},
-        {"name": "West end of Manik Mia Avenue (opposite to Aarong)", "times": ["6:45 AM", "8:43 AM"]},
-        {"name": "New Model Multilateral High School (opposite to Kalabagan bus counters)", "times": ["6:50 AM", "8:48 AM"]},
-        {"name": "Water Bhaban (near Panthapath Mour)", "times": ["6:53 AM", "8:53 AM"]},
-        {"name": "BRAC University (arrival time)", "times": ["7:30 AM", "10:30 AM"]}
-      ]
+        {
+          "name": "In front of Bata Showroom (opposite to Japan Garden City's mosque)",
+          "times": [
+            "6:35 AM",
+            "8:30 AM"
+          ]
+        },
+        {
+          "name": "In front of Baitus Sujud Jame Mosque (near Mohammadpur Bus Stand/Nurjahan Road)",
+          "times": [
+            "6:40 AM",
+            "8:36 AM"
+          ]
+        },
+        {
+          "name": "Town Hall Market (in front of Bikrampur Mistanna Bhandar)",
+          "times": [
+            "6:42 AM",
+            "8:38 AM"
+          ]
+        },
+        {
+          "name": "West end of Manik Mia Avenue (opposite to Aarong)",
+          "times": [
+            "6:45 AM",
+            "8:43 AM"
+          ]
+        },
+        {
+          "name": "New Model Multilateral High School (opposite to Kalabagan bus counters)",
+          "times": [
+            "6:50 AM",
+            "8:48 AM"
+          ]
+        },
+        {
+          "name": "Water Bhaban (near Panthapath Mour)",
+          "times": [
+            "6:53 AM",
+            "8:53 AM"
+          ]
+        },
+        {
+          "name": "BRAC University (arrival time)",
+          "times": [
+            "7:30 AM",
+            "10:30 AM"
+          ]
+        }
+      ],
+      "name": "Mohammadpur-B",
+      "route_vehicles": {
+        "code": "BS0923"
+      }
     },
     {
       "id": "route-07",
-      "name": "Route-07: Narayanganj to BRAC University",
-      "code": "Route No-07",
       "from": "Narayanganj",
       "to": "BRAC University",
       "attendant_phone": "01322-821541",
       "stops": [
-        {"name": "Narayanganj Central Shahid Minar (Chashara)", "times": ["6:30 AM"]},
-        {"name": "Himaloy Chinese and Community Centre (opposite to Narayanganj Zila Parishad)", "times": ["6:34 AM"]},
-        {"name": "Shibu Market (in front of Dutch Bangla Bank)", "times": ["6:37 AM"]},
-        {"name": "Jalkuri Bus Stand, Fatullah (in front of Security Islami Bank)", "times": ["6:40 AM"]},
-        {"name": "Bhuighar (near Darussunnah Islamiya Kamil Madrasah)", "times": ["6:43 AM"]},
-        {"name": "Signboard (near Islamia Eye Hospital)", "times": ["6:48 AM"]},
-        {"name": "Shamsul Hoque School and College (under foot over-bridge)", "times": ["6:51 AM"]},
-        {"name": "Sanarpar Bus Stand, Siddhirganj", "times": ["6:54 AM"]},
-        {"name": "Madaninagar Fazil Madrasah, Siddhirganj (near foot over-bridge)", "times": ["6:57 AM"]},
-        {"name": "Khankhey Jame Masjid, Narayanganj (near foot over-bridge)", "times": ["7:02 AM"]},
-        {"name": "Opposite of Rani Mahal Cinema Hall, Demra", "times": ["7:04 AM"]},
-        {"name": "IFIC Bank Ltd (opposite to Sarulia Bazar)", "times": ["7:05 AM"]},
-        {"name": "In front of Demra Ideal College", "times": ["7:11 AM"]},
-        {"name": "BRAC University (arrival time)", "times": ["7:35 AM"]}
-      ]
+        {
+          "name": "Narayanganj Central Shahid Minar (Chashara)",
+          "times": [
+            "6:30 AM"
+          ]
+        },
+        {
+          "name": "Himaloy Chinese and Community Centre (opposite to Narayanganj Zila Parishad)",
+          "times": [
+            "6:34 AM"
+          ]
+        },
+        {
+          "name": "Shibu Market (in front of Dutch Bangla Bank)",
+          "times": [
+            "6:37 AM"
+          ]
+        },
+        {
+          "name": "Jalkuri Bus Stand, Fatullah (in front of Security Islami Bank)",
+          "times": [
+            "6:40 AM"
+          ]
+        },
+        {
+          "name": "Bhuighar (near Darussunnah Islamiya Kamil Madrasah)",
+          "times": [
+            "6:43 AM"
+          ]
+        },
+        {
+          "name": "Signboard (near Islamia Eye Hospital)",
+          "times": [
+            "6:48 AM"
+          ]
+        },
+        {
+          "name": "Shamsul Hoque School and College (under foot over-bridge)",
+          "times": [
+            "6:51 AM"
+          ]
+        },
+        {
+          "name": "Sanarpar Bus Stand, Siddhirganj",
+          "times": [
+            "6:54 AM"
+          ]
+        },
+        {
+          "name": "Madaninagar Fazil Madrasah, Siddhirganj (near foot over-bridge)",
+          "times": [
+            "6:57 AM"
+          ]
+        },
+        {
+          "name": "Khankhey Jame Masjid, Narayanganj (near foot over-bridge)",
+          "times": [
+            "7:02 AM"
+          ]
+        },
+        {
+          "name": "Opposite of Rani Mahal Cinema Hall, Demra",
+          "times": [
+            "7:04 AM"
+          ]
+        },
+        {
+          "name": "IFIC Bank Ltd (opposite to Sarulia Bazar)",
+          "times": [
+            "7:05 AM"
+          ]
+        },
+        {
+          "name": "In front of Demra Ideal College",
+          "times": [
+            "7:11 AM"
+          ]
+        },
+        {
+          "name": "BRAC University (arrival time)",
+          "times": [
+            "7:35 AM"
+          ]
+        }
+      ],
+      "name": "Narayanganj",
+      "route_vehicles": {
+        "code": "BS1623"
+      }
     },
     {
       "id": "route-08",
-      "name": "Route-08: Jatrabari to BRAC University",
-      "code": "Route No-08",
       "from": "Jatrabari",
       "to": "BRAC University",
       "attendant_phone": "01700-877297",
       "stops": [
-        {"name": "Mugda Foot Over-bridge", "times": ["6:50 AM", "8:55 AM"]},
-        {"name": "Boudhha Mandir", "times": ["6:51 AM", "8:56 AM"]},
-        {"name": "Bashabo (opposite to Didi Care Kindergarten)", "times": ["6:52 AM", "8:57 AM"]},
-        {"name": "Khilgaon Police Fari", "times": ["6:55 AM", "9:00 AM"]},
-        {"name": "Ansar Camp Khilgaon", "times": ["6:57 AM", "9:02 AM"]},
-        {"name": "BRAC University (arrival time)", "times": ["7:30 AM", "10:30 AM"]}
-      ]
+        {
+          "name": "Mugda Foot Over-bridge",
+          "times": [
+            "6:50 AM",
+            "8:55 AM"
+          ]
+        },
+        {
+          "name": "Boudhha Mandir",
+          "times": [
+            "6:51 AM",
+            "8:56 AM"
+          ]
+        },
+        {
+          "name": "Bashabo (opposite to Didi Care Kindergarten)",
+          "times": [
+            "6:52 AM",
+            "8:57 AM"
+          ]
+        },
+        {
+          "name": "Khilgaon Police Fari",
+          "times": [
+            "6:55 AM",
+            "9:00 AM"
+          ]
+        },
+        {
+          "name": "Ansar Camp Khilgaon",
+          "times": [
+            "6:57 AM",
+            "9:02 AM"
+          ]
+        },
+        {
+          "name": "BRAC University (arrival time)",
+          "times": [
+            "7:30 AM",
+            "10:30 AM"
+          ]
+        }
+      ],
+      "name": "Jatrabari",
+      "route_vehicles": {
+        "code": "BS1621"
+      }
     },
     {
       "id": "route-09",
-      "name": "Route-09: Bashundhara Residential Area to BRAC University",
-      "code": "Route No-09",
-      "from": "Bashundhara Residential Area",
+      "from": "Bashundhara R/A",
       "to": "BRAC University",
       "attendant_phone": "01789-720482",
       "stops": [
-        {"name": "Ebenezer International School, Bashundhara R/A", "times": ["7:00 AM", "9:10 AM"]},
-        {"name": "Block-F, Road No: 08, Bashundhara R/A (opposite to IFIC Bank)", "times": ["7:05 AM", "9:13 AM"]},
-        {"name": "In front of Aga Khan Academy, Bashundhara R/A", "times": ["7:10 AM", "9:16 AM"]},
-        {"name": "Jamuna Future Park (under foot over-bridge)", "times": ["7:20 AM", "9:26 AM"]},
-        {"name": "BRAC University (arrival time)", "times": ["7:40 AM", "10:35 AM"]}
-      ]
+        {
+          "name": "Ebenezer International School, Bashundhara R/A",
+          "times": [
+            "7:00 AM",
+            "9:10 AM"
+          ]
+        },
+        {
+          "name": "Block-F, Road No: 08, Bashundhara R/A (opposite to IFIC Bank)",
+          "times": [
+            "7:05 AM",
+            "9:13 AM"
+          ]
+        },
+        {
+          "name": "In front of Aga Khan Academy, Bashundhara R/A",
+          "times": [
+            "7:10 AM",
+            "9:16 AM"
+          ]
+        },
+        {
+          "name": "Jamuna Future Park (under foot over-bridge)",
+          "times": [
+            "7:20 AM",
+            "9:26 AM"
+          ]
+        },
+        {
+          "name": "BRAC University (arrival time)",
+          "times": [
+            "7:40 AM",
+            "10:35 AM"
+          ]
+        }
+      ],
+      "name": "Bashundhara R/A"
     }
   ],
   "outbound_dropoffs": {
     "from": "Basement 01",
     "first_outbound": [
-      {"route": "Abdullahpur-A", "code": "Route No-01", "time": "2:05 PM"},
-      {"route": "Mirpur-A", "code": "Route No-02", "time": "2:10 PM"},
-      {"route": "Mirpur-B", "code": "Route No-02", "time": "2:05 PM"},
-      {"route": "Jigatola-A", "code": "Route No-03", "time": "2:05 PM"},
-      {"route": "Azimpur", "code": "Route No-04", "time": "2:05 PM"},
-      {"route": "Jatrabari", "code": "Route No-08", "time": "2:05 PM"},
-      {"route": "Baldha Garden", "code": "Route No-05", "time": "2:10 PM"},
-      {"route": "Mohammadpur-A", "code": "Route No-06", "time": "2:10 PM"},
-      {"route": "Mohammadpur-B", "code": "Route No-06", "time": "2:05 PM"},
-      {"route": "Bashundhara", "code": "Route No-09", "time": "2:05 PM"}
+      {
+        "route": "Abdullahpur-A",
+        "time": "2:05 PM"
+      },
+      {
+        "route": "Mirpur-A",
+        "time": "2:10 PM"
+      },
+      {
+        "route": "Mirpur-B",
+        "time": "2:05 PM"
+      },
+      {
+        "route": "Jigatola-A",
+        "time": "2:05 PM"
+      },
+      {
+        "route": "Azimpur",
+        "time": "2:05 PM"
+      },
+      {
+        "route": "Jatrabari",
+        "time": "2:05 PM"
+      },
+      {
+        "route": "Baldha Garden",
+        "time": "2:10 PM"
+      },
+      {
+        "route": "Mohammadpur-A",
+        "time": "2:10 PM"
+      },
+      {
+        "route": "Mohammadpur-B",
+        "time": "2:05 PM"
+      },
+      {
+        "route": "Bashundhara",
+        "time": "2:05 PM"
+      }
     ],
     "second_outbound": [
-      {"route": "Abdullahpur-A", "code": "Route No-01", "time": "5:10 PM"},
-      {"route": "Abdullahpur-B", "code": "Route No-01", "time": "5:15 PM"},
-      {"route": "Mirpur-A", "code": "Route No-02", "time": "5:10 PM"},
-      {"route": "Mirpur-B", "code": "Route No-02", "time": "5:10 PM"},
-      {"route": "Jigatola-A", "code": "Route No-03", "time": "5:10 PM"},
-      {"route": "Jigatola-B", "code": "Route No-03", "time": "5:15 PM"},
-      {"route": "Azimpur", "code": "Route No-04", "time": "5:10 PM"},
-      {"route": "Baldha Garden", "code": "Route No-05", "time": "5:15 PM"},
-      {"route": "Mohammadpur-A", "code": "Route No-06", "time": "5:10 PM"},
-      {"route": "Mohammadpur-B", "code": "Route No-06", "time": "5:15 PM"},
-      {"route": "Narayanganj", "code": "Route No-07", "time": "5:15 PM"},
-      {"route": "Jatrabari", "code": "Route No-08", "time": "5:10 PM"},
-      {"route": "Bashundhara", "code": "Route No-09", "time": "5:10 PM"}
+      {
+        "route": "Abdullahpur-A",
+        "time": "5:10 PM"
+      },
+      {
+        "route": "Abdullahpur-B",
+        "time": "5:15 PM"
+      },
+      {
+        "route": "Mirpur-A",
+        "time": "5:10 PM"
+      },
+      {
+        "route": "Mirpur-B",
+        "time": "5:10 PM"
+      },
+      {
+        "route": "Jigatola-A",
+        "time": "5:10 PM"
+      },
+      {
+        "route": "Jigatola-B",
+        "time": "5:15 PM"
+      },
+      {
+        "route": "Azimpur",
+        "time": "5:10 PM"
+      },
+      {
+        "route": "Baldha Garden",
+        "time": "5:15 PM"
+      },
+      {
+        "route": "Mohammadpur-A",
+        "time": "5:10 PM"
+      },
+      {
+        "route": "Mohammadpur-B",
+        "time": "5:15 PM"
+      },
+      {
+        "route": "Narayanganj",
+        "time": "5:15 PM"
+      },
+      {
+        "route": "Jatrabari",
+        "time": "5:10 PM"
+      },
+      {
+        "route": "Bashundhara",
+        "time": "5:10 PM"
+      }
     ]
   },
   "fares": [
-    {"route_group": "General routes (except Narayanganj and Bashundhara)", "amount_per_trip": "BDT 100", "round_trip": "BDT 200"},
-    {"route_group": "Narayanganj", "amount_per_trip": "BDT 150", "round_trip": "BDT 300"},
-    {"route_group": "Bashundhara", "amount_per_trip": "BDT 50", "round_trip": "BDT 100"}
+    {
+      "route_group": "General routes (except Narayanganj and Bashundhara)",
+      "amount_per_trip": "BDT 100",
+      "round_trip": "BDT 200"
+    },
+    {
+      "route_group": "Narayanganj",
+      "amount_per_trip": "BDT 150",
+      "round_trip": "BDT 300"
+    },
+    {
+      "route_group": "Bashundhara",
+      "amount_per_trip": "BDT 50",
+      "round_trip": "BDT 100"
+    }
   ],
   "contacts": [
-    {"name": "Md. Lutfur Rahman", "role": "Assistant Director, Operations, Transport Office", "email": "rahman@bracu.ac.bd"},
-    {"name": "Mijan Hosen", "role": "Assistant Manager, Operations, Transport Office", "email": "mijan.hosen@bracu.ac.bd"}
+    {
+      "name": "Md. Lutfur Rahman",
+      "role": "Assistant Director, Operations, Transport Office",
+      "email": "rahman@bracu.ac.bd"
+    },
+    {
+      "name": "Mijan Hosen",
+      "role": "Assistant Manager, Operations, Transport Office",
+      "email": "mijan.hosen@bracu.ac.bd"
+    }
   ],
   "general_instructions": [
     "Be present at designated stoppage at least 5 minutes before schedule.",

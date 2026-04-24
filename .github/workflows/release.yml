@@ -411,8 +411,9 @@ jobs:
         run: |
           cat > .env <<'EOF'
           FACULTY_REVIEWS_BEARER=${{ secrets.FACULTY_REVIEWS_BEARER }}
-          FINDER_LBS_ASSET_ID=62947edd1d41c8225011190f
+          FINDER_LBS_ASSET_CODE=${{ secrets.FINDER_LBS_ASSET_CODE }}
           FINDER_LBS_ACCESS_TOKEN=${{ secrets.FINDER_LBS_ACCESS_TOKEN }}
+          FINDER_LBS_REFRESH_TOKEN=${{ secrets.FINDER_LBS_REFRESH_TOKEN }}
           REWARDED_AD_UNIT_ID=${{ secrets.REWARDED_AD_UNIT_ID }}
           ADS_APP_ID_IOS=${{ secrets.ADS_APP_ID_IOS }}
           BANNER_AD_UNIT_ID=${{ secrets.BANNER_AD_UNIT_ID }}

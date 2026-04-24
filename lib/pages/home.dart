@@ -14,7 +14,6 @@ import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/class_schedule.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
-import 'package:preconnect/pages/seat_status.dart';
 import 'package:preconnect/pages/degree_progress.dart';
 import 'package:preconnect/pages/alarms.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
@@ -25,7 +24,6 @@ import 'package:preconnect/pages/friend_schedule.dart';
 import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/calendar.dart';
 import 'package:preconnect/pages/bus.dart';
-import 'package:preconnect/pages/free_labs.dart';
 import 'package:preconnect/pages/custom_schedules.dart';
 import 'package:preconnect/pages/custom_schedules_sections/custom_schedules_shared.dart';
 import 'package:preconnect/pages/notifications.dart';
@@ -100,12 +98,10 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
     ),
     HomeTab.moreQuickAccess: (_) => MoreQuickAccessPage(onNavigate: _setTab),
     HomeTab.bus: (_) => const BusPage(),
-    HomeTab.freeLabs: (_) => const FreeLabsPage(),
     HomeTab.calendar: (_) => const CalendarPage(),
     HomeTab.profile: (_) => const StudentProfile(),
     HomeTab.studentSchedule: (_) => const ClassSchedule(),
     HomeTab.examSchedule: (_) => const ExamSchedule(),
-    HomeTab.seatStatus: (_) => const SeatStatusPage(),
     HomeTab.degreeProgress: (_) => const DegreeProgressPage(),
     HomeTab.alarms: (_) => const AlarmPage(),
     HomeTab.shareSchedule: (_) => const ShareSchedulePage(),
@@ -1018,22 +1014,6 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
                       subtitle: 'Campus',
                       color: const Color(0xFF22B573),
                       onTap: () => widget.onNavigate(HomeTab.campusPrinter),
-                    ),
-                    QuickAccessCard(
-                      width: layout.itemWidth,
-                      icon: Icons.computer_outlined,
-                      title: 'Free',
-                      subtitle: 'Labs',
-                      color: const Color(0xFF00A8E8),
-                      onTap: () => widget.onNavigate(HomeTab.freeLabs),
-                    ),
-                    QuickAccessCard(
-                      width: layout.itemWidth,
-                      icon: Icons.insights_outlined,
-                      title: 'Seat',
-                      subtitle: 'Status',
-                      color: const Color(0xFF00A8E8),
-                      onTap: () => widget.onNavigate(HomeTab.seatStatus),
                     ),
                     QuickAccessCard(
                       width: layout.itemWidth,

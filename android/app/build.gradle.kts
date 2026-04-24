@@ -45,12 +45,18 @@ android {
     fun keystoreValue(key: String): String? =
         keystoreProperties.getProperty(key) ?: envOrProp(key)
 
+    val releaseKeystorePath = keystoreValue("storeFile")?.trim().orEmpty()
+    val releaseKeystoreFile = if (releaseKeystorePath.isNotEmpty()) {
+        rootProject.file(releaseKeystorePath)
+    } else {
+        null
+    }
     val hasReleaseSigningConfig = listOf(
         "storeFile",
         "storePassword",
         "keyAlias",
         "keyPassword",
-    ).all { !keystoreValue(it).isNullOrBlank() }
+    ).all { !keystoreValue(it).isNullOrBlank() } && releaseKeystoreFile?.exists() == true
 
     namespace = "com.sabbirba.preconnect"
     compileSdk = flutter.compileSdkVersion
@@ -91,9 +97,8 @@ android {
     signingConfigs {
         if (hasReleaseSigningConfig) {
             create("release") {
-                val storeFilePath = keystoreValue("storeFile")
-                if (!storeFilePath.isNullOrBlank()) {
-                    storeFile = rootProject.file(storeFilePath)
+                if (releaseKeystoreFile != null) {
+                    storeFile = releaseKeystoreFile
                 }
                 storePassword = keystoreValue("storePassword")
                 keyAlias = keystoreValue("keyAlias")
@@ -106,6 +111,8 @@ android {
         release {
             if (hasReleaseSigningConfig) {
                 signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
             }
             isMinifyEnabled = true
             isShrinkResources = true

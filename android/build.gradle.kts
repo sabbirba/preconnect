@@ -12,24 +12,6 @@ allprojects {
 val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
 rootProject.layout.buildDirectory.value(newBuildDir)
 
-
-// Load .env into project properties (org.gradle.project.*) when enabled
-if (providers.gradleProperty("dotenv").orNull == "true") {
-    val envFile = rootProject.file(".env")
-    if (envFile.exists()) {
-        envFile.forEachLine { line ->
-            val trimmed = line.trim()
-            if (trimmed.isEmpty() || trimmed.startsWith("#") || !trimmed.contains("=")) return@forEachLine
-            val idx = trimmed.indexOf('=')
-            val key = trimmed.substring(0, idx).trim()
-            val value = trimmed.substring(idx + 1).trim()
-            if (key.isNotEmpty() && !project.hasProperty(key)) {
-                project.extensions.extraProperties[key] = value
-            }
-        }
-    }
-}
-
 subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)

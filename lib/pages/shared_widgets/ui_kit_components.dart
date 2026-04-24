@@ -2020,6 +2020,90 @@ class BracuSkeletonGrid extends StatelessWidget {
   }
 }
 
+class BracuMetricGridData {
+  const BracuMetricGridData({
+    required this.icon,
+    required this.title,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+}
+
+class BracuMetricGrid extends StatelessWidget {
+  const BracuMetricGrid({
+    super.key,
+    required this.items,
+  });
+
+  final List<BracuMetricGridData> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = items.length;
+    if (count == 0) return const SizedBox.shrink();
+    return Row(
+      children: [
+        for (var index = 0; index < count; index++) ...[
+          Expanded(child: _BracuMetricTile(data: items[index])),
+        ],
+      ],
+    );
+  }
+}
+
+class _BracuMetricTile extends StatelessWidget {
+  const _BracuMetricTile({required this.data});
+
+  final BracuMetricGridData data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(data.icon, color: BracuPalette.primary, size: 15),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  data.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: BracuPalette.textSecondary(context),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            data.value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: BracuPalette.textPrimary(context),
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              height: 1.15,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class BracuSkeletonBox extends StatelessWidget {
   const BracuSkeletonBox({
     super.key,
