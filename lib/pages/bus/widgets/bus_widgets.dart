@@ -7,6 +7,7 @@ class BusFleetMapView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) return const SizedBox.shrink();
     final validMarkers = markers
         .where((marker) => marker.hasPosition)
         .toList(growable: false);
@@ -103,6 +104,7 @@ class _BusLiveMapWebViewState extends State<_BusLiveMapWebView> {
   <style>
     html, body {
       margin: 0;
+      padding: 0;
       width: 100%;
       height: 100%;
       overflow: hidden;
@@ -116,9 +118,13 @@ class _BusLiveMapWebViewState extends State<_BusLiveMapWebView> {
       background: #eef5ff;
     }
     iframe {
+      display: block;
       width: 100%;
       height: 100%;
       border: 0;
+      margin: 0;
+      padding: 0;
+      background: #eef5ff;
     }
   </style>
 </head>

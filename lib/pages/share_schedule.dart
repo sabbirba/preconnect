@@ -11,8 +11,8 @@ import 'package:preconnect/api/schedule_service.dart';
 import 'package:archive/archive.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/app_paths.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
@@ -293,7 +293,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
         return;
       }
 
-      final tempDir = await getTemporaryDirectory();
+      final tempDir = await AppPaths.temporaryDirectory();
       final file = File('${tempDir.path}/$fileName');
       await file.writeAsBytes(bytes, flush: true);
 
@@ -466,28 +466,31 @@ class _ShareScheduleLoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BracuShimmer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (var index = 0; index < 4; index++) ...[
-            if (index != 0) const SizedBox(height: 12),
-            BracuCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  BracuSkeletonBox(width: 140, height: 14, radius: 7),
-                  SizedBox(height: 10),
-                  BracuSkeletonBox(
-                    width: double.infinity,
-                    height: 220,
-                    radius: 14,
-                  ),
-                ],
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: BracuShimmer(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var index = 0; index < 4; index++) ...[
+              if (index != 0) const SizedBox(height: 12),
+              BracuCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    BracuSkeletonBox(width: 140, height: 14, radius: 7),
+                    SizedBox(height: 10),
+                    BracuSkeletonBox(
+                      width: double.infinity,
+                      height: 220,
+                      radius: 14,
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

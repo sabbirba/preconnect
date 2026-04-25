@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:path_provider/path_provider.dart';
 import 'package:sembast/sembast_io.dart';
+import 'package:preconnect/tools/app_paths.dart';
 
 class SembastCache {
   SembastCache._internal();
@@ -18,7 +18,7 @@ class SembastCache {
   Future<Database> _openDb() async {
     final existing = _db;
     if (existing != null) return existing;
-    final dir = await getApplicationDocumentsDirectory();
+    final dir = await AppPaths.documentsDirectory();
     final dbPath = '${dir.path}/$_dbName';
     final db = await databaseFactoryIo.openDatabase(dbPath);
     _db = db;

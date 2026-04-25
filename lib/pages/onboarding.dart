@@ -10,7 +10,6 @@ import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
@@ -64,12 +63,16 @@ class _OnboardingPageState extends State<OnboardingPage> {
       await _webExtensionLoginFlow?.start();
       return;
     }
+    if (widget.isLoggedIn) {
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+      return;
+    }
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
         pageBuilder: (context, animation, secondaryAnimation) =>
-            widget.isLoggedIn ? const HomePage() : const LoginPage(),
+            const LoginPage(),
       ),
     );
   }

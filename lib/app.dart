@@ -24,11 +24,13 @@ class AppBootstrapState {
     required this.themeMode,
     required this.isLoggedIn,
     required this.canOpenOffline,
+    required this.initialHomeTab,
   });
 
   final ThemeMode themeMode;
   final bool isLoggedIn;
   final bool canOpenOffline;
+  final HomeTab initialHomeTab;
 }
 
 class MyApp extends StatefulWidget {
@@ -39,6 +41,9 @@ class MyApp extends StatefulWidget {
   static Future<AppBootstrapState> bootstrap() async {
     final prefs = AppStorage.instance;
     final savedTheme = await prefs.getString('themeMode') ?? 'system';
+    final initialHomeTab = _decodeHomeTab(
+      await prefs.getString(_homeTabPrefsKey),
+    );
 
     final token = await TokenStorage.instance.read(key: 'access_token');
     final refreshToken = await TokenStorage.instance.read(key: 'refresh_token');
@@ -63,6 +68,7 @@ class MyApp extends StatefulWidget {
       themeMode: _decodeTheme(savedTheme),
       isLoggedIn: hasToken,
       canOpenOffline: canOpenOffline,
+      initialHomeTab: initialHomeTab,
     );
   }
 
@@ -83,6 +89,18 @@ class MyApp extends StatefulWidget {
         return ThemeMode.dark;
       default:
         return ThemeMode.system;
+    }
+  }
+
+  static const String _homeTabPrefsKey = 'home_tab';
+
+  static HomeTab _decodeHomeTab(String? raw) {
+    final value = (raw ?? '').trim();
+    if (value.isEmpty) return HomeTab.dashboard;
+    try {
+      return HomeTab.values.byName(value);
+    } catch (_) {
+      return HomeTab.dashboard;
     }
   }
 
@@ -128,16 +146,24 @@ class _MyAppState extends State<MyApp>
         _handleWebExtensionSessionEvent,
       );
     }
-    unawaited(_initializeAppLock());
-    bindRefreshBus(_onRefreshSignal);
+    if (!kIsWeb) {
+      unawaited(_initializeAppLock());
+    }
+    if (!kIsWeb) {
+      bindRefreshBus(_onRefreshSignal);
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(AdsPreferences.instance.load());
-      unawaited(AdsBridge.initialize());
-      unawaited(RewardSupportController.instance.load());
-      PlayIntegrity.prepare().catchError((_) {});
-      PlayInstallReferrer.prefetch().catchError((_) {});
+      if (!kIsWeb) {
+        unawaited(AdsPreferences.instance.load());
+        unawaited(AdsBridge.initialize());
+        unawaited(RewardSupportController.instance.load());
+        PlayIntegrity.prepare().catchError((_) {});
+        PlayInstallReferrer.prefetch().catchError((_) {});
+      }
       unawaited(_setupQuickAccessShortcuts());
-      unawaited(_runStartupChecks());
+      if (!kIsWeb) {
+        unawaited(_runStartupChecks());
+      }
       if (_initialLoggedIn) {
         _validateSessionInBackground();
       }
@@ -189,7 +215,9 @@ class _MyAppState extends State<MyApp>
   void dispose() {
     _webSessionSub?.cancel();
     _webExtensionSessionFlow?.dispose();
-    unbindRefreshBus(_onRefreshSignal);
+    if (!kIsWeb) {
+      unbindRefreshBus(_onRefreshSignal);
+    }
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -672,13 +700,19 @@ class _MyAppState extends State<MyApp>
             navigatorKey: _navigatorKey,
             routes: {
               '/login': (context) => const LoginPage(),
-              '/home': (context) => const HomePage(),
+              '/home': (context) => HomePage(
+                initialTab: _resolvedBootstrapState?.initialHomeTab ??
+                    HomeTab.dashboard,
+              ),
               '/onboarding': (context) => const OnboardingPage(),
             },
             home: _resolvedBootstrapState == null
                 ? const _StartupFrame()
                 : (_initialLoggedIn || _canOpenOffline)
-                ? const HomePage()
+                ? HomePage(
+                    initialTab: _resolvedBootstrapState?.initialHomeTab ??
+                        HomeTab.dashboard,
+                  )
                 : const OnboardingPage(),
           ),
         );

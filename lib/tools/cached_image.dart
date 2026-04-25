@@ -7,9 +7,9 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/image_url_utils.dart';
 import 'package:preconnect/tools/web_shared.dart';
 
@@ -112,7 +112,7 @@ class _CachedImageState extends State<CachedImage> {
   }
 
   Future<Directory> _cacheDirectory() async {
-    final base = await getApplicationSupportDirectory();
+    final base = await AppPaths.supportDirectory();
     final dir = Directory('${base.path}/cached_images');
     if (!await dir.exists()) {
       await dir.create(recursive: true);

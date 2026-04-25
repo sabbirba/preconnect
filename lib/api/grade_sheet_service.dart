@@ -3,12 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:path_provider/path_provider.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/app_paths.dart';
 
 class GradeSheetFile {
   const GradeSheetFile({required this.file, required this.fromCache});
@@ -135,7 +135,7 @@ class GradeSheetService {
   }
 
   Future<File> _gradeSheetFile(String profileId) async {
-    final dir = await getApplicationSupportDirectory();
+    final dir = await AppPaths.supportDirectory();
     final fileName = await gradeSheetFileName(profileId: profileId);
     return File('${dir.path}/$fileName.pdf');
   }

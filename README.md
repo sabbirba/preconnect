@@ -149,6 +149,7 @@ Output:
 
 ```bash
 build/chrome-extension/
+build/chrome-extension.zip
 ```
 
 Load `build/chrome-extension` as an unpacked extension in Chrome:
@@ -169,6 +170,7 @@ The extension build uses:
 Notes:
 
 - Reload the unpacked extension after every rebuild
+- The zip artifact is convenient for sharing or release uploads
 
 ### Build Android APK
 

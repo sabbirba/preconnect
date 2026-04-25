@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/notification_service.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -354,7 +355,7 @@ Future<void> showCampusMapBottomSheet(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (mapData.mapImageUrl.isNotEmpty) ...[
+                    if (!kIsWeb && mapData.mapImageUrl.isNotEmpty) ...[
                       BracuImageCarousel(
                         imageUrls: <String>[mapData.mapImageUrl],
                         borderRadius: 10,
@@ -401,7 +402,7 @@ Future<void> showCampusMapBottomSheet(
                         child: actionButton(
                           icon: Icons.directions_rounded,
                           label: 'Open Map',
-                          onPressed: mapData.googleMapsUrl.isEmpty
+                          onPressed: kIsWeb || mapData.googleMapsUrl.isEmpty
                               ? null
                               : () => openExternalUrl(
                                   sheetContext,

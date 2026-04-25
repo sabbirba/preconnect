@@ -5,7 +5,6 @@ import 'dart:developer' as developer;
 import 'package:chrome_extension/src/internal_helpers.dart';
 
 import 'package:chrome_extension/chrome.dart';
-import 'package:chrome_extension/alarms.dart';
 import 'package:chrome_extension/tabs.dart';
 import 'package:chrome_extension/web_navigation.dart';
 import 'package:web/web.dart' show Headers, RequestInit, Response;
@@ -15,7 +14,6 @@ import 'package:preconnect/tools/pkce.dart';
 
 const String _pendingLoginKey = 'preconnect.pendingLogin';
 const String _pendingLogoutKey = 'preconnect.pendingLogout';
-const String _sessionRefreshAlarmName = 'preconnect.sessionRefresh';
 const String _loginStartedType = 'preconnect.loginStarted';
 const String _loginCompleteType = 'preconnect.loginComplete';
 const String _loginFailedType = 'preconnect.loginFailed';
@@ -29,18 +27,16 @@ external JSPromise<Response> _fetch(String input, [RequestInit? init]);
 
 Future<void> main() async {
   chrome.runtime.onStartup.listen((_) {
-    unawaited(_guarded(_bootstrapSessionSync));
+    unawaited(
+      _guarded(() async {
+        await _bootstrapSessionSync();
+        await _restoreAppTabAfterStartup();
+      }),
+    );
   });
   chrome.runtime.onInstalled.listen((_) {
     unawaited(_guarded(_bootstrapSessionSync));
   });
-
-  if (chrome.alarms.isAvailable) {
-    chrome.alarms.onAlarm.listen((alarm) {
-      if (alarm.name != _sessionRefreshAlarmName) return;
-      unawaited(_guarded(_syncLatestSession));
-    });
-  }
 
   chrome.action.onClicked.listen((tab) {
     unawaited(_guarded(_openOrFocusAppTab));
@@ -109,22 +105,27 @@ Future<void> _openOrFocusAppTab() async {
 }
 
 Future<void> _bootstrapSessionSync() async {
-  await _ensureSessionRefreshAlarm();
   await _syncLatestSession();
-}
-
-Future<void> _ensureSessionRefreshAlarm() async {
-  if (!chrome.alarms.isAvailable) return;
-  final alarm = await chrome.alarms.get(_sessionRefreshAlarmName);
-  if (alarm != null) return;
-  await chrome.alarms.create(
-    _sessionRefreshAlarmName,
-    AlarmCreateInfo(periodInMinutes: 30),
-  );
 }
 
 Future<void> _syncLatestSession() async {
   await ensureFreshWebExtensionSession();
+}
+
+Future<void> _restoreAppTabAfterStartup() async {
+  final hasSession = await _hasStoredAuthSession();
+  if (!hasSession) return;
+  await _openOrFocusAppTab();
+}
+
+Future<bool> _hasStoredAuthSession() async {
+  final values = await chrome.storage.local.get([
+    'access_token',
+    'refresh_token',
+  ]);
+  final accessToken = '${values['access_token'] ?? ''}'.trim();
+  final refreshToken = '${values['refresh_token'] ?? ''}'.trim();
+  return accessToken.isNotEmpty && refreshToken.isNotEmpty;
 }
 
 class _PendingLogin {

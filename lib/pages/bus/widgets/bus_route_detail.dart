@@ -121,10 +121,12 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
                   ],
                 ),
               ),
-            _RouteLiveMapCard(route: route, vehicle: vehicle),
-            const SizedBox(height: 2),
-            _LiveTrackingCard(route: route),
-            const SizedBox(height: 2),
+            if (!_shouldHideLiveMapAndStats(route) && !kIsWeb) ...[
+              _RouteLiveMapCard(route: route, vehicle: vehicle),
+              const SizedBox(height: 2),
+              _LiveTrackingCard(route: route),
+              const SizedBox(height: 2),
+            ],
             _RouteStopsCard(route: route),
             if (route.attendantPhone.trim().isNotEmpty) ...[
               const SizedBox(height: 2),
@@ -138,6 +140,15 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
       ),
     );
   }
+}
+
+bool _shouldHideLiveMapAndStats(BusTransportRoute route) {
+  final title = route.displayTitle.trim().toLowerCase();
+  final from = route.from.trim().toLowerCase();
+  final to = route.to.trim().toLowerCase();
+  return title.contains('bashundhara') ||
+      from.contains('bashundhara') ||
+      to.contains('bashundhara');
 }
 
 class _RouteLiveMapCard extends StatelessWidget {

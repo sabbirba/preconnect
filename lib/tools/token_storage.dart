@@ -9,9 +9,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:in_app_review/in_app_review.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/web_platform_stub.dart'
     if (dart.library.html) 'package:preconnect/tools/web_extension_storage_web.dart';
 
@@ -513,7 +513,7 @@ class ProfileImageCache {
       return _cachedFile;
     }
 
-    final dir = await getApplicationSupportDirectory();
+    final dir = await AppPaths.supportDirectory();
     final file = File('${dir.path}/profile_photo.jpg');
 
     final cachedUrl = await AppStorage.instance.getString(_cachedUrlKey);
@@ -545,7 +545,7 @@ class ProfileImageCache {
 
   Future<void> clear() async {
     try {
-      final dir = await getApplicationSupportDirectory();
+      final dir = await AppPaths.supportDirectory();
       final file = File('${dir.path}/profile_photo.jpg');
       if (await file.exists()) {
         await file.delete();

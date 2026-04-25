@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
@@ -68,7 +69,9 @@ class ApiClient {
     final response = await http
         .get(Uri.parse(url), headers: headers)
         .timeout(_requestTimeout);
-    if (acceptedStatusCodes.contains(response.statusCode)) return response;
+    if (acceptedStatusCodes.contains(response.statusCode)) {
+      return response;
+    }
 
     if (response.statusCode == 401) {
       TokenRefreshStatus refreshStatus = TokenRefreshStatus.retryableFailure;
@@ -107,7 +110,6 @@ class ApiClient {
       final retryResponse = await http
           .get(Uri.parse(url), headers: retryHeaders)
           .timeout(_requestTimeout);
-
       if (acceptedStatusCodes.contains(retryResponse.statusCode)) {
         return retryResponse;
       }
@@ -160,7 +162,9 @@ class ApiClient {
       headers: headers,
       body: body,
     );
-    if (acceptedStatusCodes.contains(response.statusCode)) return response;
+    if (acceptedStatusCodes.contains(response.statusCode)) {
+      return response;
+    }
 
     if (response.statusCode == 401) {
       TokenRefreshStatus refreshStatus = TokenRefreshStatus.retryableFailure;
@@ -221,10 +225,13 @@ class ApiClient {
       'Accept': 'application/json',
       ...headers,
     };
+    _addCompressionHeaders(mergedHeaders);
     final response = await http
         .get(Uri.parse(url), headers: mergedHeaders)
         .timeout(_requestTimeout);
-    if (acceptedStatusCodes.contains(response.statusCode)) return response;
+    if (acceptedStatusCodes.contains(response.statusCode)) {
+      return response;
+    }
     throw ApiException(response.statusCode, response.body);
   }
 
@@ -281,6 +288,7 @@ class ApiClient {
       'Authorization': 'Bearer $token',
       ...ApiConfig.apiHeaders,
     };
+    _addCompressionHeaders(headers);
 
     final uri = Uri.tryParse(url);
     if (uri != null && uri.host == 'connect.bracu.ac.bd') {
@@ -309,6 +317,11 @@ class ApiClient {
     } catch (_) {}
 
     return headers;
+  }
+
+  void _addCompressionHeaders(Map<String, String> headers) {
+    if (kIsWeb) return;
+    headers['Accept-Encoding'] = 'gzip';
   }
 
   Future<http.Response> _sendAuthenticatedRequest(

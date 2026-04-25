@@ -14,8 +14,7 @@ import 'package:preconnect/pages/friend_schedule_sections/friend_detail.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
-import 'package:preconnect/tools/mobile_scanner_stub.dart'
-    if (dart.library.io) 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 class FriendSchedulePage extends StatefulWidget {
   const FriendSchedulePage({super.key, required this.onNavigate});

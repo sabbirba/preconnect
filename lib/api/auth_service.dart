@@ -3,13 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:synchronized/synchronized.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/friend_schedule_store.dart';
 import 'package:preconnect/api/custom_schedules_service.dart';
-import 'package:preconnect/api/seat_status_service.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/tools/cached_image.dart';
@@ -27,8 +25,7 @@ class AuthService {
 
   final TokenStorage _storage = TokenStorage.instance;
   static const Duration _authRequestTimeout = Duration(seconds: 12);
-
-  static final _tokenRefreshLock = Lock();
+  static Future<TokenRefreshStatus>? _tokenRefreshInFlight;
 
   static TokenRefreshStatus? _lastRefreshStatus;
   static DateTime? _lastRefreshTime;
@@ -147,22 +144,32 @@ class AuthService {
     await AppPreferencesStore().clearAllExcept(keepKeys);
 
     await FriendScheduleStore().clearAll();
-    await SeatStatusService().clearAll();
     await ProfileImageCache.instance.clear();
     CachedImage.clearMemoryCache();
   }
 
   Future<TokenRefreshStatus> refreshTokenStatus() async {
-    return _tokenRefreshLock.synchronized(() async {
-      if (_lastRefreshStatus != null && _lastRefreshTime != null) {
-        final age = DateTime.now().difference(_lastRefreshTime!);
-        if (age < _refreshResultTtl) {
-          return _lastRefreshStatus!;
-        }
+    if (_lastRefreshStatus != null && _lastRefreshTime != null) {
+      final age = DateTime.now().difference(_lastRefreshTime!);
+      if (age < _refreshResultTtl) {
+        return _lastRefreshStatus!;
       }
+    }
 
-      return _performTokenRefresh();
-    });
+    final inFlight = _tokenRefreshInFlight;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    final request = _performTokenRefresh();
+    _tokenRefreshInFlight = request;
+    try {
+      return await request;
+    } finally {
+      if (identical(_tokenRefreshInFlight, request)) {
+        _tokenRefreshInFlight = null;
+      }
+    }
   }
 
   Future<TokenRefreshStatus> _performTokenRefresh() async {

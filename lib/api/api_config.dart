@@ -10,6 +10,7 @@ class ApiConfig {
   static const String authEndpoint = '$ssoBase/auth';
 
   static const String seatStatusProxyBase = 'https://api.preconnect.app';
+  static const String seatStatusDataUrl = '$seatStatusProxyBase/connect.json';
   static const String busDataUrl = 'https://api.preconnect.app/data/bus';
   static const String connectApiBase = 'https://connect.bracu.ac.bd/api';
   static const String connectWebApiBase = 'https://connect.bracu.ac.bd/api';

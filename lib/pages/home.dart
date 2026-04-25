@@ -17,6 +17,7 @@ import 'package:preconnect/pages/exam_schedule.dart';
 import 'package:preconnect/pages/degree_progress.dart';
 import 'package:preconnect/pages/alarms.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
+import 'package:preconnect/pages/free_labs.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/share_schedule.dart';
 import 'package:preconnect/pages/scan_schedule.dart';
@@ -24,6 +25,7 @@ import 'package:preconnect/pages/friend_schedule.dart';
 import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/calendar.dart';
 import 'package:preconnect/pages/bus.dart';
+import 'package:preconnect/pages/seat_status.dart';
 import 'package:preconnect/pages/custom_schedules.dart';
 import 'package:preconnect/pages/custom_schedules_sections/custom_schedules_shared.dart';
 import 'package:preconnect/pages/notifications.dart';
@@ -63,7 +65,9 @@ class CaptiveWifiStatus {
 }
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({super.key, this.initialTab = HomeTab.dashboard});
+
+  final HomeTab initialTab;
 
   static final StreamController<HomeTab> _shortcutTabController =
       StreamController<HomeTab>.broadcast();
@@ -88,6 +92,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
   HomeTab selectedTab = HomeTab.dashboard;
   StreamSubscription<HomeTab>? _shortcutTabSubscription;
   final Set<HomeTab> _returnToMoreTabs = <HomeTab>{};
+  static const String _lastHomeTabPrefsKey = 'home_tab';
 
   late final Map<HomeTab, WidgetBuilder> pages = {
     HomeTab.settings: (_) => const SettingsPage(),
@@ -98,10 +103,12 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
     ),
     HomeTab.moreQuickAccess: (_) => MoreQuickAccessPage(onNavigate: _setTab),
     HomeTab.bus: (_) => const BusPage(),
+    HomeTab.freeLabs: (_) => const FreeLabsPage(),
     HomeTab.calendar: (_) => const CalendarPage(),
     HomeTab.profile: (_) => const StudentProfile(),
     HomeTab.studentSchedule: (_) => const ClassSchedule(),
     HomeTab.examSchedule: (_) => const ExamSchedule(),
+    HomeTab.seatStatus: (_) => const SeatStatusPage(),
     HomeTab.degreeProgress: (_) => const DegreeProgressPage(),
     HomeTab.alarms: (_) => const AlarmPage(),
     HomeTab.shareSchedule: (_) => const ShareSchedulePage(),
@@ -117,10 +124,13 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
   @override
   void initState() {
     super.initState();
+    selectedTab = widget.initialTab;
     final pendingShortcutTab = HomePage.takePendingShortcutTab();
     if (pendingShortcutTab != null) {
       selectedTab = pendingShortcutTab;
       _builtTabs.add(pendingShortcutTab);
+    } else {
+      _builtTabs.add(selectedTab);
     }
     HomeTabRegistry.setActive(selectedTab);
     HomeTabRegistry.activeTab.addListener(_onRegistryTabChanged);
@@ -130,10 +140,13 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
       if (!mounted) return;
       _setTab(tab);
     });
-    unawaited(AlarmPage.preload());
-    unawaited(ClassSchedule.preload());
-    unawaited(ExamSchedule.preload());
-    unawaited(CustomSchedulesPage.preload());
+    unawaited(_persistSelectedTab(selectedTab));
+    if (!kIsWeb) {
+      unawaited(AlarmPage.preload());
+      unawaited(ClassSchedule.preload());
+      unawaited(ExamSchedule.preload());
+      unawaited(CustomSchedulesPage.preload());
+    }
   }
 
   @override
@@ -153,6 +166,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
   void _setTab(HomeTab tab) {
     if (selectedTab == tab) {
       HomeTabRegistry.setActive(tab);
+      unawaited(_persistSelectedTab(tab));
       return;
     }
     if (selectedTab == HomeTab.moreQuickAccess &&
@@ -165,6 +179,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
       selectedTab = tab;
     });
     HomeTabRegistry.setActive(tab);
+    unawaited(_persistSelectedTab(tab));
     if (shouldJumpClass || shouldJumpExam) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || selectedTab != tab) return;
@@ -175,6 +190,12 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
         }
       });
     }
+  }
+
+  Future<void> _persistSelectedTab(HomeTab tab) async {
+    try {
+      await AppStorage.instance.setString(_lastHomeTabPrefsKey, tab.name);
+    } catch (_) {}
   }
 
   void _handleBack() {
@@ -1006,6 +1027,22 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
                       subtitle: 'Routes',
                       color: const Color(0xFF00A8E8),
                       onTap: () => widget.onNavigate(HomeTab.bus),
+                    ),
+                    QuickAccessCard(
+                      width: layout.itemWidth,
+                      icon: Icons.computer_outlined,
+                      title: 'Free',
+                      subtitle: 'Labs',
+                      color: const Color(0xFF00A8E8),
+                      onTap: () => widget.onNavigate(HomeTab.freeLabs),
+                    ),
+                    QuickAccessCard(
+                      width: layout.itemWidth,
+                      icon: Icons.insights_outlined,
+                      title: 'Seat',
+                      subtitle: 'Status',
+                      color: const Color(0xFF00A8E8),
+                      onTap: () => widget.onNavigate(HomeTab.seatStatus),
                     ),
                     QuickAccessCard(
                       width: layout.itemWidth,

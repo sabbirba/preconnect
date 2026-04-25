@@ -3,106 +3,70 @@
 part of 'package:preconnect/pages/seat_status.dart';
 
 extension _SeatStatusPageStateMethods on _SeatStatusPageState {
-  _SeatStatusCardData _buildFallbackCard({
-    required int sectionId,
-    required int remaining,
-  }) {
-    return _SeatStatusCardData(
-      sectionId: sectionId,
-      courseCode: 'SEC$sectionId',
-      sectionName: '--',
-      courseName: 'Loading...',
-      facultyInitial: 'TBA',
-      facultyName: '',
-      facultyEmail: '',
-      facultyMeta: '',
-      credits: 0,
-      room: '',
-      classSchedule: const <SeatStatusClassSchedule>[],
-      labSchedule: const <SeatStatusClassSchedule>[],
-      labRoom: '',
-      midExamDate: null,
-      midExamStartTime: null,
-      midExamEndTime: null,
-      finalExamDate: null,
-      finalExamStartTime: null,
-      finalExamEndTime: null,
-      remaining: remaining,
-      consumed: 0,
-      total: 0,
-      searchToken: 'sec$sectionId loading tba $remaining',
-    );
-  }
-
-  Set<int> _visibleSectionIdsFromDetails(
-    Map<int, SeatStatusDetailsResponse> detailsMap,
-  ) {
-    final childIds = <int>{};
-    for (final details in detailsMap.values) {
-      final childId = details.childSection?.sectionId ?? 0;
-      if (childId > 0) childIds.add(childId);
-    }
-    return detailsMap.keys.where((id) => !childIds.contains(id)).toSet();
-  }
-
   _SeatStatusCardData _buildCardFromDetails({
     required int sectionId,
     required SeatStatusDetailsResponse details,
   }) {
-    final main = details.section;
-    final lab = details.childSection;
-    final total = main.capacity;
-    final resolvedRemaining = total - main.consumedSeat;
-    final resolvedConsumed = main.consumedSeat;
+    final total = details.capacity;
+    final resolvedRemaining = total - details.consumedSeat;
+    final resolvedConsumed = details.consumedSeat;
     return _SeatStatusCardData(
       sectionId: sectionId,
-      courseCode: _pickNonEmpty(main.courseCode, 'SEC$sectionId'),
-      sectionName: _pickNonEmpty(main.sectionName, '--'),
-      courseName: _pickNonEmpty(main.name, 'Section $sectionId'),
-      facultyInitial: _pickNonEmpty(main.faculties, 'TBA'),
-      facultyName: _facultyNameForInitial(main.faculties),
-      facultyEmail: _facultyEmailForInitial(main.faculties),
-      facultyMeta: _facultyMetaForInitial(main.faculties),
-      credits: main.courseCredit,
-      room: _pickNonEmpty(main.roomNumber, ''),
-      classSchedule: main.sectionSchedule.classSchedules,
-      labSchedule:
-          lab?.sectionSchedule.classSchedules ??
-          const <SeatStatusClassSchedule>[],
-      labRoom: _pickNonEmpty(lab?.roomNumber, ''),
-      midExamDate: main.sectionSchedule.midExamDate,
-      midExamStartTime: main.sectionSchedule.midExamStartTime,
-      midExamEndTime: main.sectionSchedule.midExamEndTime,
-      finalExamDate: main.sectionSchedule.finalExamDate,
-      finalExamStartTime: main.sectionSchedule.finalExamStartTime,
-      finalExamEndTime: main.sectionSchedule.finalExamEndTime,
+      courseCode: details.courseCode,
+      sectionName: details.sectionName,
+      courseName: details.courseName,
+      facultyInitial: details.faculties,
+      facultyMeta: _facultyMetaForInitial(details.faculties),
+      credits: details.courseCredit,
+      room: details.roomNumber,
+      courseType: details.courseType,
+      classSchedule: details.sectionSchedule.classSchedules,
+      labSchedule: details.labSchedules,
+      labRoom: details.labRoomName ?? '',
+      labCourseCode: details.labCourseCode ?? '',
+      labName: details.labName ?? '',
+      labFaculties: details.labFaculties ?? '',
+      labSectionId: details.labSectionId,
+      midExamDate: details.sectionSchedule.midExamDate,
+      midExamStartTime: details.sectionSchedule.midExamStartTime,
+      midExamEndTime: details.sectionSchedule.midExamEndTime,
+      finalExamDate: details.sectionSchedule.finalExamDate,
+      finalExamStartTime: details.sectionSchedule.finalExamStartTime,
+      finalExamEndTime: details.sectionSchedule.finalExamEndTime,
       remaining: resolvedRemaining,
       consumed: resolvedConsumed,
       total: total,
       searchToken: _buildSearchToken(
         sectionId: sectionId,
-        courseCode: _pickNonEmpty(main.courseCode, 'SEC$sectionId'),
-        sectionName: _pickNonEmpty(main.sectionName, '--'),
-        courseName: _pickNonEmpty(main.name, 'Section $sectionId'),
-        facultyInitial: _pickNonEmpty(main.faculties, 'TBA'),
-        facultyName: _facultyNameForInitial(main.faculties),
-        facultyEmail: _facultyEmailForInitial(main.faculties),
-        facultyMeta: _facultyMetaForInitial(main.faculties),
-        room: _pickNonEmpty(main.roomNumber, ''),
-        labRoom: _pickNonEmpty(lab?.roomNumber, ''),
-        classSchedule: main.sectionSchedule.classSchedules,
-        labSchedule:
-            lab?.sectionSchedule.classSchedules ??
-            const <SeatStatusClassSchedule>[],
-        midExamDate: main.sectionSchedule.midExamDate,
-        midExamStartTime: main.sectionSchedule.midExamStartTime,
-        midExamEndTime: main.sectionSchedule.midExamEndTime,
-        finalExamDate: main.sectionSchedule.finalExamDate,
-        finalExamStartTime: main.sectionSchedule.finalExamStartTime,
-        finalExamEndTime: main.sectionSchedule.finalExamEndTime,
+        courseCode: details.courseCode,
+        sectionName: details.sectionName,
+        courseName: details.courseName,
+        facultyInitial: details.faculties,
+        facultyMeta: _facultyMetaForInitial(details.faculties),
+        room: details.roomNumber,
+        courseType: details.courseType,
+        labRoom: details.labRoomName ?? '',
+        classSchedule: details.sectionSchedule.classSchedules,
+        labSchedule: details.labSchedules,
+        midExamDate: details.sectionSchedule.midExamDate,
+        midExamStartTime: details.sectionSchedule.midExamStartTime,
+        midExamEndTime: details.sectionSchedule.midExamEndTime,
+        finalExamDate: details.sectionSchedule.finalExamDate,
+        finalExamStartTime: details.sectionSchedule.finalExamStartTime,
+        finalExamEndTime: details.sectionSchedule.finalExamEndTime,
         total: total,
         consumed: resolvedConsumed,
         remaining: resolvedRemaining,
+        sectionType: details.sectionType,
+        academicDegree: details.academicDegree,
+        semesterSessionId: details.semesterSessionId,
+        parentSectionId: details.parentSectionId,
+        courseId: details.courseId,
+        roomName: details.roomName,
+        labCourseCode: details.labCourseCode ?? '',
+        labName: details.labName ?? '',
+        labFaculties: details.labFaculties ?? '',
+        labSectionId: details.labSectionId,
       ),
     );
   }
@@ -113,11 +77,20 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     required String sectionName,
     required String courseName,
     required String facultyInitial,
-    required String facultyName,
-    required String facultyEmail,
     required String facultyMeta,
     required String room,
+    required String courseType,
     required String labRoom,
+    required String sectionType,
+    required String academicDegree,
+    required int semesterSessionId,
+    required int? parentSectionId,
+    required int courseId,
+    required String roomName,
+    required String labCourseCode,
+    required String labName,
+    required String labFaculties,
+    required int? labSectionId,
     required List<SeatStatusClassSchedule> classSchedule,
     required List<SeatStatusClassSchedule> labSchedule,
     required String? midExamDate,
@@ -135,8 +108,11 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         '${midExamDate ?? ''} ${midExamStartTime ?? ''} ${midExamEndTime ?? ''} '
         '${finalExamDate ?? ''} ${finalExamStartTime ?? ''} ${finalExamEndTime ?? ''}';
     return '$courseCode $sectionName $courseName '
-            '$facultyInitial $facultyName $facultyEmail $facultyMeta '
-            '$room $labRoom $sectionId $total $consumed $remaining '
+            '$facultyInitial $facultyMeta '
+            '$room $roomName $labRoom $labCourseCode $labName $labFaculties '
+            '$sectionId $courseId $semesterSessionId $parentSectionId $labSectionId '
+            '$courseType $sectionType $academicDegree '
+            '$total $consumed $remaining '
             '$scheduleToken $examToken'
         .toLowerCase();
   }
@@ -164,11 +140,11 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         _isInitialLoading || (_cards.isEmpty && _isDetailsRefreshing);
     final hasCards = _cards.isNotEmpty;
     final hasVisibleCards = _visibleCards.isNotEmpty;
-    final itemCount = hasVisibleCards ? _visibleCards.length + 1 : 2;
+    final itemCount = hasVisibleCards ? _visibleCards.length + 1 : 1;
 
     return BracuPageScaffold(
-      title: 'Seat Status',
-      subtitle: 'Live Sections',
+      title: 'Seat',
+      subtitle: 'Status',
       icon: Icons.insights_outlined,
       actions: [
         BracuNotificationsIconButton(
@@ -186,7 +162,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       body: Stack(
         children: [
           BracuRefreshListBuilder(
-            onRefresh: _handleRefresh,
+            onRefresh: _refreshDetailsFromApi,
             itemCount: itemCount,
             itemBuilder: (context, index) {
               if (index == 0) {
@@ -198,17 +174,8 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
                   child: _SeatStatusLoadingState(),
                 );
               }
-              if (!hasCards) {
-                return const Padding(
-                  padding: EdgeInsets.only(top: 12),
-                  child: BracuEmptyState(message: 'No section data available'),
-                );
-              }
-              if (!hasVisibleCards) {
-                return const Padding(
-                  padding: EdgeInsets.only(top: 12),
-                  child: BracuEmptyState(message: 'No matching section found'),
-                );
+              if (!hasCards || !hasVisibleCards) {
+                return const SizedBox.shrink();
               }
               final item = _visibleCards[index - 1];
               return Padding(
@@ -216,6 +183,8 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
                 child: _SeatStatusCard(
                   item: item,
                   onTap: () => _openCourseCommunitySheet(item),
+                  onPinTap: () => _togglePin(item.sectionId),
+                  pinned: _isPinnedSection(item.sectionId),
                 ),
               );
             },
@@ -412,6 +381,9 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
 
   void _sortCardsByCourseAndSection(List<_SeatStatusCardData> cards) {
     cards.sort((a, b) {
+      final ap = _isPinnedSection(a.sectionId) ? 0 : 1;
+      final bp = _isPinnedSection(b.sectionId) ? 0 : 1;
+      if (ap != bp) return ap.compareTo(bp);
       final codeCmp = a.courseCode.compareTo(b.courseCode);
       if (codeCmp != 0) return codeCmp;
       final sectionCmp = _sectionOrder(
@@ -420,22 +392,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       if (sectionCmp != 0) return sectionCmp;
       return a.sectionName.compareTo(b.sectionName);
     });
-  }
-
-  int _compareSectionIdsByNaming(int a, int b) {
-    final aDetails = _detailsCache[a]?.section;
-    final bDetails = _detailsCache[b]?.section;
-    final aCode = _pickNonEmpty(aDetails?.courseCode, 'SEC$a');
-    final bCode = _pickNonEmpty(bDetails?.courseCode, 'SEC$b');
-    final codeCmp = aCode.compareTo(bCode);
-    if (codeCmp != 0) return codeCmp;
-    final aSection = _pickNonEmpty(aDetails?.sectionName, '$a');
-    final bSection = _pickNonEmpty(bDetails?.sectionName, '$b');
-    final sectionCmp = _sectionOrder(
-      aSection,
-    ).compareTo(_sectionOrder(bSection));
-    if (sectionCmp != 0) return sectionCmp;
-    return aSection.compareTo(bSection);
   }
 
   bool _areCardListsDifferent(
@@ -456,12 +412,15 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     if (x.sectionName != y.sectionName) return false;
     if (x.courseName != y.courseName) return false;
     if (x.facultyInitial != y.facultyInitial) return false;
-    if (x.facultyName != y.facultyName) return false;
-    if (x.facultyEmail != y.facultyEmail) return false;
     if (x.facultyMeta != y.facultyMeta) return false;
     if (x.credits != y.credits) return false;
     if (x.room != y.room) return false;
+    if (x.courseType != y.courseType) return false;
     if (x.labRoom != y.labRoom) return false;
+    if (x.labCourseCode != y.labCourseCode) return false;
+    if (x.labName != y.labName) return false;
+    if (x.labFaculties != y.labFaculties) return false;
+    if (x.labSectionId != y.labSectionId) return false;
     if (x.midExamDate != y.midExamDate) return false;
     if (x.midExamStartTime != y.midExamStartTime) return false;
     if (x.midExamEndTime != y.midExamEndTime) return false;
@@ -491,61 +450,27 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     return true;
   }
 
-  void _updatePollingStrategy() {
-    final shouldRun =
-        _isAppForeground &&
-        HomeTabRegistry.activeTab.value == HomeTab.seatStatus;
-    if (!shouldRun) {
-      _stopSeatStatusStream();
-      return;
-    }
-    if (!_shouldUseLiveSeatStream()) {
-      _stopSeatStatusStream();
-    } else {
-      _startSeatStatusStream();
-    }
-    if (_cards.isEmpty) {
-      unawaited(_refreshDetailsFromApi());
-    }
+  int _sectionOrder(String sectionName) {
+    final number = RegExp(r'\d+').firstMatch(sectionName)?.group(0);
+    if (number == null) return 9999;
+    return int.tryParse(number) ?? 9999;
   }
 
-  bool _shouldUseLiveSeatStream() {
-    final source = _visibleCards.isNotEmpty ? _visibleCards : _cards;
-    if (source.isEmpty) return false;
-
-    final now = DateTime.now();
-    final today = normalizeWeekday(DateFormat('EEEE').format(now));
-    final nowMinutes = now.hour * 60 + now.minute;
-
-    for (final card in source) {
-      for (final entry in <SeatStatusClassSchedule>[
-        ...card.classSchedule,
-        ...card.labSchedule,
-      ]) {
-        if (normalizeWeekday(entry.day) != today) continue;
-
-        final startMinutes = BracuTime.toMinutes(entry.startTime);
-        if (startMinutes == null) continue;
-        final endMinutes = BracuTime.toMinutes(entry.endTime);
-
-        final startsWithinOneHour =
-            startMinutes >= nowMinutes && startMinutes - nowMinutes <= 60;
-        final isOngoing =
-            endMinutes != null &&
-            nowMinutes >= startMinutes &&
-            nowMinutes <= endMinutes;
-
-        if (startsWithinOneHour || isOngoing) {
-          return true;
-        }
-      }
+  void _updatePollingStrategy() {
+    final shouldPoll = mounted &&
+        HomeTabRegistry.activeTab.value == HomeTab.seatStatus &&
+        WidgetsBinding.instance.lifecycleState != AppLifecycleState.paused &&
+        WidgetsBinding.instance.lifecycleState != AppLifecycleState.detached;
+    if (shouldPoll) {
+      _startPolling();
+    } else {
+      _stopPolling();
     }
-
-    return false;
   }
 
   Future<void> _refreshDetailsFromApi() async {
-    if (_isDetailsRefreshing) return;
+    if (_pollInFlight || _isDetailsRefreshing) return;
+    _pollInFlight = true;
     if (mounted && _cards.isEmpty) {
       setState(() {
         _isDetailsRefreshing = true;
@@ -565,6 +490,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         });
       }
     } finally {
+      _pollInFlight = false;
       if (mounted && _cards.isEmpty) {
         setState(() {
           _isDetailsRefreshing = false;
@@ -575,153 +501,27 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     }
   }
 
-  void _startSeatStatusStream() {
-    if (_streamSubscription != null || _isStreamConnecting) return;
-    unawaited(_connectSeatStatusStream());
-  }
-
-  void _stopSeatStatusStream() {
-    _streamReconnectTimer?.cancel();
-    _streamReconnectTimer = null;
-    _streamRefreshDebounce?.cancel();
-    _streamRefreshDebounce = null;
-    unawaited(_streamSubscription?.cancel());
-    _streamSubscription = null;
-    _streamClient?.close();
-    _streamClient = null;
-    _isStreamConnecting = false;
-  }
-
-  Future<void> _connectSeatStatusStream() async {
-    if (!_isAppForeground ||
-        HomeTabRegistry.activeTab.value != HomeTab.seatStatus) {
-      return;
-    }
-    if (_streamSubscription != null || _isStreamConnecting) return;
-    _isStreamConnecting = true;
-    _streamClient?.close();
-    _streamClient = http.Client();
-    try {
-      final request = http.Request(
-        'GET',
-        Uri.parse(_service.seatStatusStreamUrl),
-      )..headers['Accept'] = 'text/event-stream';
-      final response = await _streamClient!
-          .send(request)
-          .timeout(const Duration(seconds: 12));
-      if (response.statusCode != 200) {
-        throw StateError('SSE returned ${response.statusCode}');
-      }
-      _streamSubscription = response.stream
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen(
-            _onStreamLine,
-            onError: (_) => _scheduleStreamReconnect(),
-            onDone: _scheduleStreamReconnect,
-            cancelOnError: true,
-          );
-    } catch (_) {
-      _scheduleStreamReconnect();
-    } finally {
-      _isStreamConnecting = false;
-    }
-  }
-
-  void _onStreamLine(String line) {
-    if (!line.startsWith('data:')) return;
-    if (!_isAppForeground ||
-        HomeTabRegistry.activeTab.value != HomeTab.seatStatus) {
-      return;
-    }
-    _streamRefreshDebounce?.cancel();
-    _streamRefreshDebounce = Timer(const Duration(milliseconds: 450), () {
+  void _startPolling() {
+    if (_pollTimer != null) return;
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (!mounted) return;
+      if (HomeTabRegistry.activeTab.value != HomeTab.seatStatus) return;
       unawaited(_refreshDetailsFromApi());
     });
+    unawaited(_refreshDetailsFromApi());
   }
 
-  void _scheduleStreamReconnect() {
-    unawaited(_streamSubscription?.cancel());
-    _streamSubscription = null;
-    _streamClient?.close();
-    _streamClient = null;
-    _streamReconnectTimer?.cancel();
-    final shouldRun =
-        _isAppForeground &&
-        HomeTabRegistry.activeTab.value == HomeTab.seatStatus;
-    if (!shouldRun) return;
-    _streamReconnectTimer = Timer(const Duration(seconds: 3), () {
-      if (!mounted) return;
-      _startSeatStatusStream();
-    });
-  }
-
-  void _queueStaffInfoResolve(
-    Iterable<SeatStatusDetailsResponse> detailsValues,
-  ) {
-    for (final details in detailsValues) {
-      final main = details.section.faculties.trim().toUpperCase();
-      if (main.isNotEmpty) _pendingInitials.add(main);
-      final child = (details.childSection?.faculties ?? '')
-          .trim()
-          .toUpperCase();
-      if (child.isNotEmpty) _pendingInitials.add(child);
-    }
-    if (_pendingInitials.isEmpty) return;
-    if (_isResolvingStaffInfo) return;
-    unawaited(_resolvePendingStaffInfo());
-  }
-
-  Future<void> _resolvePendingStaffInfo() async {
-    if (_isResolvingStaffInfo) return;
-    if (_pendingInitials.isEmpty) return;
-    _isResolvingStaffInfo = true;
-    try {
-      while (_pendingInitials.isNotEmpty) {
-        final batch = _pendingInitials.take(20).toList();
-        _pendingInitials.removeAll(batch);
-        final changed = await _resolveStaffInfoForInitials(batch.toSet());
-        if (changed && mounted && _detailsCache.isNotEmpty) {
-          final refreshed = _buildCardsFromDetailsMap(_detailsCache);
-          _sortCardsByCourseAndSection(refreshed);
-          _applyCardsSnapshot(refreshed, isInitialLoading: false);
-        }
-      }
-    } finally {
-      _isResolvingStaffInfo = false;
-    }
-  }
-
-  Future<bool> _resolveStaffInfoForInitials(Set<String> initials) async {
-    if (initials.isEmpty) return false;
-    final missing = initials
-        .where((key) => !_staffInfoByInitial.containsKey(key))
-        .toSet();
-    if (missing.isEmpty) return false;
-    final resolved = await _service.resolveStaffInfoByInitials(missing);
-    if (resolved.isEmpty) return false;
-    var changed = false;
-    for (final entry in resolved.entries) {
-      if (_staffInfoByInitial.containsKey(entry.key)) continue;
-      _staffInfoByInitial[entry.key] = entry.value;
-      changed = true;
-    }
-    return changed;
-  }
-
-  String _facultyNameForInitial(String facultyInitial) {
-    final key = facultyInitial.trim().toUpperCase();
-    return (_staffInfoByInitial[key]?.staffName ?? '').trim();
-  }
-
-  String _facultyEmailForInitial(String facultyInitial) {
-    final key = facultyInitial.trim().toUpperCase();
-    return (_staffInfoByInitial[key]?.email ?? '').trim();
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
   }
 
   String _facultyMetaForInitial(String facultyInitial) {
-    return '';
+    return facultyInitial.trim().toUpperCase();
+  }
+
+  bool _isPinnedSection(int sectionId) {
+    return _pinnedSections.contains(sectionId.toString());
   }
 }
 

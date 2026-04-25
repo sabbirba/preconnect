@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart' show ValueListenable, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:native_file_preview/native_file_preview.dart';
 import 'package:preconnect/api/notification_service.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/progress_service.dart';
@@ -393,7 +392,6 @@ class _BracuImageErrorFallback extends StatelessWidget {
 DateTime? _lastSnackAt;
 String? _lastSnackMessage;
 Timer? _snackAutoTimer;
-final NativeFilePreview _nativeFilePreview = NativeFilePreview();
 
 void showAppSnackBar(
   BuildContext context,
@@ -465,7 +463,14 @@ Future<void> openGradeSheet(BuildContext context) async {
       showAppSnackBar(context, 'Could not fetch the latest grade sheet');
       return;
     }
-    await _nativeFilePreview.previewFile(gradeSheet.file.path);
+    final opened = await launchUrl(
+      Uri.file(gradeSheet.file.path),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!context.mounted) return;
+    if (!opened) {
+      showAppSnackBar(context, 'No app found to open this PDF.');
+    }
   } on PlatformException catch (error) {
     if (!context.mounted) return;
     final message = switch (error.code) {

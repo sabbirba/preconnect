@@ -1,9 +1,6 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/seat_status_service.dart';
-import 'package:preconnect/model/seat_status_info.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/time_utils.dart';
@@ -17,8 +14,6 @@ class FreeLabsPage extends StatefulWidget {
 
 class _FreeLabsPageState extends State<FreeLabsPage> {
   late Future<List<_FreeRoomSlot>> _future;
-  List<_FreeRoomSlot> _lastSlots = const <_FreeRoomSlot>[];
-  List<_FreeRoomSlot> _lastAllSlots = const <_FreeRoomSlot>[];
   final ScrollController _scrollController = ScrollController();
   GlobalKey? _highlightKey;
   String? _lastHighlightToken;
@@ -30,7 +25,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   @override
   void initState() {
     super.initState();
-    unawaited(_primeCachedSlots());
     _future = _loadSlots();
     HomeTabRegistry.activeTab.addListener(_onActiveTabChanged);
   }
@@ -52,12 +46,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
       _future = next;
       _didScroll = false;
       _scrollRetry = false;
-    });
-    next.then((slots) {
-      if (!mounted) return;
-      setState(() {
-        _lastSlots = slots;
-      });
     });
   }
 
@@ -110,55 +98,27 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     return _nextSupportedDate(tomorrow);
   }
 
-  Future<List<_FreeRoomSlot>> _loadSlots({bool forceRefresh = false}) async {
-    final allSlots = await _loadAllSlots(forceRefresh: forceRefresh);
-    _lastAllSlots = allSlots;
+  Future<List<_FreeRoomSlot>> _loadSlots() async {
+    final allSlots = await _loadAllSlots();
     return _applySelectedFilter(allSlots);
   }
 
-  Future<List<_FreeRoomSlot>> _loadAllSlots({bool forceRefresh = false}) async {
-    if (!forceRefresh) {
-      final cachedSlots = await _readCachedSlots();
-      if (cachedSlots.isNotEmpty) return cachedSlots;
-    }
-
+  Future<List<_FreeRoomSlot>> _loadAllSlots() async {
     final service = SeatStatusService();
-    final details = forceRefresh
-        ? await service.fetchAllSectionsDetailsFromApi()
-        : await service
-              .loadCachedDetails(maxAge: const Duration(days: 30))
-              .then((cached) async {
-                if (cached.isNotEmpty) return cached;
-                return service.fetchAllSectionsDetailsFromApi();
-              });
+    final details = await service.fetchAllSectionsDetailsFromApi();
     final allSlots = _buildFreeRoomSlots(
       details.values.toList(),
       _activeDayName,
     );
-    await _writeCachedSlots(allSlots);
     return allSlots;
   }
 
-  Future<void> _primeCachedSlots() async {
-    final cached = await _readCachedSlots();
-    if (!mounted || cached.isEmpty) return;
-    setState(() {
-      _lastSlots = cached;
-      _lastAllSlots = cached;
-    });
-  }
-
   Future<void> _refresh() async {
-    final next = _loadSlots(forceRefresh: true);
+    final next = _loadSlots();
     setState(() {
       _future = next;
       _didScroll = false;
       _scrollRetry = false;
-    });
-    final slots = await next;
-    if (!mounted) return;
-    setState(() {
-      _lastSlots = slots;
     });
   }
 
@@ -181,21 +141,12 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
 
   Future<void> _changeFilter(_RoomFilter selected) async {
     if (selected == _selectedFilter) return;
-    final next = _lastAllSlots.isNotEmpty
-        ? Future<List<_FreeRoomSlot>>.value(
-            _applyFilter(_lastAllSlots, selected),
-          )
-        : _loadSlots();
+    final next = _loadSlots();
     setState(() {
       _selectedFilter = selected;
       _future = next;
       _didScroll = false;
       _scrollRetry = false;
-    });
-    final slots = await next;
-    if (!mounted) return;
-    setState(() {
-      _lastSlots = slots;
     });
   }
 
@@ -251,15 +202,14 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
       body: FutureBuilder<List<_FreeRoomSlot>>(
         future: _future,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting &&
-              _lastSlots.isEmpty) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return buildRefreshLoadingState(
               onRefresh: _refresh,
               label: 'Loading...',
             );
           }
 
-          final slots = snapshot.data ?? _lastSlots;
+          final slots = snapshot.data ?? const <_FreeRoomSlot>[];
           final visibleSlots = _visibleRoomSlots(slots);
           if (visibleSlots.isEmpty) {
             if (_shouldOfferNextDayLabs()) {
@@ -467,50 +417,28 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     final seenBusyKeys = <String>{};
 
     for (final detailsEntry in details) {
-      for (final section in _extractRoomSections(detailsEntry)) {
-        final roomNumber = section.roomNumber.trim();
-        if (roomNumber.isEmpty) continue;
-        final room = grouped.putIfAbsent(
-          roomNumber,
-          () => _RoomSeed(
-            roomNumber: roomNumber,
-            roomName: section.roomName.trim(),
-          ),
+      _seedRoomOccupancy(
+        grouped: grouped,
+        seenBusyKeys: seenBusyKeys,
+        roomNumber: detailsEntry.roomNumber,
+        roomName: detailsEntry.roomName,
+        courseCode: detailsEntry.courseCode,
+        courseTitle: detailsEntry.courseName,
+        schedules: detailsEntry.sectionSchedule.classSchedules,
+        day: day,
+      );
+      if (detailsEntry.labRoomName != null &&
+          detailsEntry.labRoomName!.trim().isNotEmpty) {
+        _seedRoomOccupancy(
+          grouped: grouped,
+          seenBusyKeys: seenBusyKeys,
+          roomNumber: detailsEntry.labRoomName!,
+          roomName: detailsEntry.labName ?? detailsEntry.labRoomName!,
+          courseCode: detailsEntry.labCourseCode ?? '',
+          courseTitle: detailsEntry.labName ?? detailsEntry.labCourseCode ?? '',
+          schedules: detailsEntry.labSchedules,
+          day: day,
         );
-        final courseCode = section.courseCode.trim().toUpperCase();
-        if (courseCode.isNotEmpty) {
-          final program = _courseProgramCode(courseCode);
-          if (program.isNotEmpty) {
-            room.programCounts[program] =
-                (room.programCounts[program] ?? 0) + 1;
-          }
-        }
-        final courseTitle = section.name.trim();
-        if (courseTitle.isNotEmpty && courseCode.isNotEmpty) {
-          room.courseTitles.add('$courseTitle ($courseCode)');
-        } else if (courseTitle.isNotEmpty) {
-          room.courseTitles.add(courseTitle);
-        } else {
-          final sectionName = section.sectionName.trim();
-          final fallback = sectionName.isEmpty
-              ? courseCode
-              : '$courseCode - $sectionName';
-          if (fallback.trim().isNotEmpty) {
-            room.courseTitles.add(fallback.trim());
-          }
-        }
-        for (final slot in section.sectionSchedule.classSchedules) {
-          if (_normalizeDay(slot.day) != day) continue;
-          final key =
-              '$roomNumber|${slot.day}|${slot.startTime}|${slot.endTime}';
-          if (!seenBusyKeys.add(key)) continue;
-          room.busySlots.add(
-            _TimeSlot.fromStrings(
-              startTime: slot.startTime,
-              endTime: slot.endTime,
-            ),
-          );
-        }
       }
     }
 
@@ -542,6 +470,51 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     return slots;
   }
 
+  void _seedRoomOccupancy({
+    required Map<String, _RoomSeed> grouped,
+    required Set<String> seenBusyKeys,
+    required String roomNumber,
+    required String roomName,
+    required String courseCode,
+    required String courseTitle,
+    required List<SeatStatusClassSchedule> schedules,
+    required String day,
+  }) {
+    final normalizedRoomNumber = roomNumber.trim();
+    if (normalizedRoomNumber.isEmpty || schedules.isEmpty) return;
+    final room = grouped.putIfAbsent(
+      normalizedRoomNumber,
+      () => _RoomSeed(
+        roomNumber: normalizedRoomNumber,
+        roomName: roomName.trim(),
+      ),
+    );
+    final normalizedCourseCode = courseCode.trim().toUpperCase();
+    if (normalizedCourseCode.isNotEmpty) {
+      final program = _courseProgramCode(normalizedCourseCode);
+      if (program.isNotEmpty) {
+        room.programCounts[program] = (room.programCounts[program] ?? 0) + 1;
+      }
+    }
+    final normalizedCourseTitle = courseTitle.trim();
+    if (normalizedCourseTitle.isNotEmpty && normalizedCourseCode.isNotEmpty) {
+      room.courseTitles.add('$normalizedCourseTitle ($normalizedCourseCode)');
+    } else if (normalizedCourseTitle.isNotEmpty) {
+      room.courseTitles.add(normalizedCourseTitle);
+    } else if (normalizedCourseCode.isNotEmpty) {
+      room.courseTitles.add(normalizedCourseCode);
+    }
+    for (final slot in schedules) {
+      if (_normalizeDay(slot.day) != day) continue;
+      final key =
+          '$normalizedRoomNumber|${slot.day}|${slot.startTime}|${slot.endTime}';
+      if (!seenBusyKeys.add(key)) continue;
+      room.busySlots.add(
+        _TimeSlot.fromStrings(startTime: slot.startTime, endTime: slot.endTime),
+      );
+    }
+  }
+
   List<_FreeRoomSlot> _applySelectedFilter(List<_FreeRoomSlot> slots) {
     return _applyFilter(slots, _selectedFilter);
   }
@@ -553,26 +526,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     return slots
         .where((slot) => _matchesFilter(slot.roomNumber, filter))
         .toList();
-  }
-
-  List<SeatStatusSection> _extractRoomSections(
-    SeatStatusDetailsResponse details,
-  ) {
-    final sections = <SeatStatusSection>[];
-    final child = details.childSection;
-    if (child != null && _looksLikeRoomSection(child)) {
-      sections.add(child);
-    }
-    final main = details.section;
-    if (_looksLikeRoomSection(main)) {
-      sections.add(main);
-    }
-    return sections;
-  }
-
-  bool _looksLikeRoomSection(SeatStatusSection section) {
-    return section.roomNumber.trim().isNotEmpty ||
-        section.roomName.trim().isNotEmpty;
   }
 
   String _normalizeDay(String value) {
@@ -651,31 +604,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
 
   int? _minutesFromString(String value) => BracuTime.toMinutes(value);
 
-  String _todayCacheLabel() {
-    final display = _activeDate;
-    return '${display.year}-${display.month.toString().padLeft(2, '0')}-${display.day.toString().padLeft(2, '0')}';
-  }
-
-  Future<List<_FreeRoomSlot>> _readCachedSlots() async {
-    try {
-      final cached = await SeatStatusService().loadCachedFreeLabsSlots(
-        dateKey: _todayCacheLabel(),
-      );
-      return cached.map(_FreeRoomSlot.fromJson).toList();
-    } catch (_) {
-      return const <_FreeRoomSlot>[];
-    }
-  }
-
-  Future<void> _writeCachedSlots(List<_FreeRoomSlot> slots) async {
-    try {
-      await SeatStatusService().saveFreeLabsSlotsCacheIfChanged(
-        dateKey: _todayCacheLabel(),
-        slots: slots.map((slot) => slot.toJson()).toList(),
-      );
-    } catch (_) {}
-  }
-
   String _headerDayLabel() {
     final display = _activeDate;
     return '${formatWeekdayTitle(_activeDayName)}, ${display.day} ${_monthLabel(display.month)}';
@@ -707,11 +635,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
       _future = next;
       _didScroll = false;
       _scrollRetry = false;
-    });
-    final slots = await next;
-    if (!mounted) return;
-    setState(() {
-      _lastSlots = slots;
     });
   }
 
@@ -963,19 +886,6 @@ class _FreeRoomSlot {
     required this.statusLabel,
   });
 
-  factory _FreeRoomSlot.fromJson(Map<String, dynamic> json) {
-    return _FreeRoomSlot(
-      roomNumber: (json['roomNumber'] as String? ?? '').trim(),
-      roomName: (json['roomName'] as String? ?? '').trim(),
-      courseTitlesLabel: (json['courseTitlesLabel'] as String? ?? '').trim(),
-      dominantProgramCode: (json['dominantProgramCode'] as String? ?? '')
-          .trim(),
-      startTime: (json['startTime'] as String? ?? '').trim(),
-      endTime: (json['endTime'] as String? ?? '').trim(),
-      statusLabel: (json['statusLabel'] as String? ?? '').trim(),
-    );
-  }
-
   final String roomNumber;
   final String roomName;
   final String courseTitlesLabel;
@@ -983,18 +893,6 @@ class _FreeRoomSlot {
   final String startTime;
   final String endTime;
   final String statusLabel;
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'roomNumber': roomNumber,
-      'roomName': roomName,
-      'courseTitlesLabel': courseTitlesLabel,
-      'dominantProgramCode': dominantProgramCode,
-      'startTime': startTime,
-      'endTime': endTime,
-      'statusLabel': statusLabel,
-    };
-  }
 }
 
 class _RoomSeed {

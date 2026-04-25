@@ -17,7 +17,6 @@
     "service_worker": "background.dart.js"
   },
   "permissions": [
-    "alarms",
     "storage",
     "tabs",
     "webNavigation"
@@ -25,7 +24,6 @@
   "host_permissions": [
     "https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect/*",
     "https://connect.bracu.ac.bd/*",
-    "https://api.finder-lbs.com/*",
     "https://www.google.com/*",
     "https://api.whatsapp.com/*",
     "https://www.linkedin.com/*",

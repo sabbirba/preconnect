@@ -1,180 +1,19 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/model/seat_status_info.dart';
-import 'package:preconnect/tools/app_storage.dart';
 
 class SeatStatusService {
   SeatStatusService._internal();
   static final SeatStatusService _instance = SeatStatusService._internal();
   factory SeatStatusService() => _instance;
 
-  static const String _detailsKey = 'seat_status_details_json_v1';
-  static const String _detailsTsKey = 'seat_status_details_ts_v1';
-  static const String _freeLabsKey = 'free_labs_slots_v1';
-  static const String _freeLabsDateKey = 'free_labs_slots_date_v1';
-
   final ApiClient _client = ApiClient();
-  Map<int, SeatStatusDetailsResponse>? _detailsSnapshot;
-  int? _detailsSnapshotTs;
-  final Map<String, SeatStatusStaffInfo> _staffInfoByInitialCache =
-      <String, SeatStatusStaffInfo>{};
-  final Map<String, Future<SeatStatusStaffInfo?>> _staffInfoInFlight =
-      <String, Future<SeatStatusStaffInfo?>>{};
-  final ValueNotifier<bool> isSavingDetailsCache = ValueNotifier<bool>(false);
-
-  String get seatStatusStreamUrl =>
-      '${ApiConfig.seatStatusProxyBase}/seat-status/stream';
-
-  Future<Map<int, SeatStatusDetailsResponse>> loadCachedDetails({
-    Duration maxAge = const Duration(hours: 1),
-  }) async {
-    try {
-      final ts = await AppStorage.instance.getInt(_detailsTsKey);
-      final raw = await AppStorage.instance.getString(_detailsKey);
-      if (ts == null || raw == null || raw.trim().isEmpty) {
-        return const <int, SeatStatusDetailsResponse>{};
-      }
-      final age = DateTime.now().difference(
-        DateTime.fromMillisecondsSinceEpoch(ts),
-      );
-      if (age > maxAge) return const <int, SeatStatusDetailsResponse>{};
-      if (_detailsSnapshotTs == ts && _detailsSnapshot != null) {
-        return Map<int, SeatStatusDetailsResponse>.from(_detailsSnapshot!);
-      }
-      final decoded = jsonDecode(raw);
-      final snapshot = _parseCachedDetailsFromMap(decoded);
-      _detailsSnapshotTs = ts;
-      _detailsSnapshot = Map<int, SeatStatusDetailsResponse>.from(snapshot);
-      return snapshot;
-    } catch (e) {
-      return const <int, SeatStatusDetailsResponse>{};
-    }
-  }
-
-  Future<void> saveDetailsCache(
-    Map<int, SeatStatusDetailsResponse> detailsBySection,
-  ) async {
-    if (detailsBySection.isEmpty) return;
-    isSavingDetailsCache.value = true;
-    try {
-      final payload = detailsBySection.map(
-        (key, value) => MapEntry(key.toString(), value.toJson()),
-      );
-      await AppStorage.instance.setString(_detailsKey, jsonEncode(payload));
-      await AppStorage.instance.setInt(
-        _detailsTsKey,
-        DateTime.now().millisecondsSinceEpoch,
-      );
-      _detailsSnapshot = null;
-      _detailsSnapshotTs = null;
-    } finally {
-      isSavingDetailsCache.value = false;
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> loadCachedFreeLabsSlots({
-    required String dateKey,
-  }) async {
-    try {
-      final cachedDate = await AppStorage.instance.getString(_freeLabsDateKey);
-      final raw = await AppStorage.instance.getString(_freeLabsKey);
-      if (cachedDate != dateKey || raw == null || raw.trim().isEmpty) {
-        return const <Map<String, dynamic>>[];
-      }
-      final decoded = jsonDecode(raw);
-      if (decoded is! List) return const <Map<String, dynamic>>[];
-      return decoded
-          .whereType<Map>()
-          .map((item) => item.cast<String, dynamic>())
-          .toList();
-    } catch (e) {
-      return const <Map<String, dynamic>>[];
-    }
-  }
-
-  Future<void> saveFreeLabsSlotsCacheIfChanged({
-    required String dateKey,
-    required List<Map<String, dynamic>> slots,
-  }) async {
-    await AppStorage.instance.setString(_freeLabsKey, jsonEncode(slots));
-    await AppStorage.instance.setString(_freeLabsDateKey, dateKey);
-  }
 
   Future<Map<int, SeatStatusDetailsResponse>>
   fetchAllSectionsDetailsFromApi() async {
-    final raw = await _fetchJson(
-      '${ApiConfig.seatStatusProxyBase}/seat-status',
-    );
-    final parsed = _parseSeatMapResponse(raw);
-    if (parsed.isEmpty) return const <int, SeatStatusDetailsResponse>{};
-    final details = await _fetchSectionDetailsDirect(parsed.keys.toList());
-    if (details.isNotEmpty) {
-      await saveDetailsCache(details);
-    }
-    return details;
-  }
-
-  Future<void> preloadSeatStatusCache({int detailConcurrency = 8}) async {}
-
-  Future<void> clearAll() async {
-    await AppStorage.instance.remove(_detailsKey);
-    await AppStorage.instance.remove(_detailsTsKey);
-    await AppStorage.instance.remove(_freeLabsKey);
-    await AppStorage.instance.remove(_freeLabsDateKey);
-    _detailsSnapshot = null;
-    _detailsSnapshotTs = null;
-    _staffInfoByInitialCache.clear();
-  }
-
-  Future<SeatStatusStaffInfo?> getStaffInfoForInitial(String initial) async {
-    final key = initial.trim().toUpperCase();
-    if (key.isEmpty) return null;
-    final cached = _staffInfoByInitialCache[key];
-    if (cached != null) return cached;
-    final inFlight = _staffInfoInFlight[key];
-    if (inFlight != null) return inFlight;
-    final request = _fetchStaffInfoForInitial(key);
-    _staffInfoInFlight[key] = request;
-    try {
-      return await request;
-    } finally {
-      _staffInfoInFlight.remove(key);
-    }
-  }
-
-  Future<SeatStatusStaffInfo?> _fetchStaffInfoForInitial(String initial) async {
-    try {
-      final response = await _client.publicGet(
-        '${ApiConfig.seatStatusProxyBase}/staff/${Uri.encodeComponent(initial)}',
-      );
-      final decoded = jsonDecode(response.body);
-      if (decoded is Map<String, dynamic>) {
-        final info = SeatStatusStaffInfo.fromJson(decoded);
-        _staffInfoByInitialCache[initial] = info;
-        return info;
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  Future<Map<String, SeatStatusStaffInfo>> resolveStaffInfoByInitials(
-    Iterable<String> initials, {
-    int concurrency = 6,
-  }) async {
-    final requested = initials
-        .map((value) => value.trim().toUpperCase())
-        .where((value) => value.isNotEmpty)
-        .toSet()
-        .toList();
-    final output = <String, SeatStatusStaffInfo>{};
-    for (final key in requested) {
-      final info = await getStaffInfoForInitial(key);
-      if (info != null) output[key] = info;
-    }
-    return output;
+    final raw = await _fetchJson(ApiConfig.seatStatusDataUrl);
+    return _parseConnectJson(raw);
   }
 
   Future<dynamic> _fetchJson(String url) async {
@@ -189,49 +28,251 @@ class SeatStatusService {
     }
   }
 
-  Map<int, int> _parseSeatMapResponse(dynamic raw) {
-    if (raw is! Map) return const <int, int>{};
-    final data = raw['data'];
-    if (data is! List) return const <int, int>{};
-    final result = <int, int>{};
-    for (final item in data.whereType<Map>()) {
-      final map = item.cast<String, dynamic>();
-      final sectionId = int.tryParse('${map['sectionId'] ?? ''}');
-      if (sectionId == null) continue;
-      result[sectionId] = sectionId;
-    }
-    return result;
-  }
-
-  Future<Map<int, SeatStatusDetailsResponse>> _fetchSectionDetailsDirect(
-    List<int> sectionIds,
-  ) async {
+  Map<int, SeatStatusDetailsResponse> _parseConnectJson(dynamic raw) {
+    if (raw is! List) return const <int, SeatStatusDetailsResponse>{};
     final result = <int, SeatStatusDetailsResponse>{};
-    for (final sectionId in sectionIds) {
+    for (final item in raw.whereType<Map>()) {
+      final map = item.cast<String, dynamic>();
       try {
-        final raw = await _fetchJson(
-          '${ApiConfig.seatStatusProxyBase}/sections/$sectionId/details',
-        );
-        if (raw is Map<String, dynamic>) {
-          result[sectionId] = SeatStatusDetailsResponse.fromJson(raw);
-        }
+        final parsed = SeatStatusDetailsResponse.fromJson(map);
+        result[parsed.sectionId] = parsed;
       } catch (_) {}
     }
     return result;
   }
 }
 
-Map<int, SeatStatusDetailsResponse> _parseCachedDetailsFromMap(dynamic raw) {
-  if (raw is! Map) return const <int, SeatStatusDetailsResponse>{};
-  final out = <int, SeatStatusDetailsResponse>{};
-  for (final entry in raw.entries) {
-    final id = int.tryParse('${entry.key}');
-    if (id == null || entry.value is! Map) continue;
-    try {
-      out[id] = SeatStatusDetailsResponse.fromJson(
-        Map<String, dynamic>.from(entry.value as Map),
-      );
-    } catch (_) {}
+class SeatStatusDetailsResponse {
+  SeatStatusDetailsResponse({
+    required this.sectionId,
+    required this.courseId,
+    required this.courseCode,
+    required this.sectionName,
+    required this.courseCredit,
+    required this.capacity,
+    required this.consumedSeat,
+    required this.semesterSessionId,
+    required this.parentSectionId,
+    required this.faculties,
+    required this.roomName,
+    required this.roomNumber,
+    required this.courseType,
+    required this.academicDegree,
+    required this.sectionType,
+    required this.courseName,
+    required this.prerequisiteCourses,
+    required this.sectionSchedule,
+    required this.labSectionId,
+    required this.labCourseCode,
+    required this.labFaculties,
+    required this.labName,
+    required this.labRoomName,
+    required this.labSchedules,
+  });
+
+  final int sectionId;
+  final int courseId;
+  final String courseCode;
+  final String sectionName;
+  final int courseCredit;
+  final int capacity;
+  final int consumedSeat;
+  final int semesterSessionId;
+  final int? parentSectionId;
+  final String faculties;
+  final String roomName;
+  final String roomNumber;
+  final String courseType;
+  final String academicDegree;
+  final String sectionType;
+  final String courseName;
+  final String? prerequisiteCourses;
+  final SeatStatusSchedule sectionSchedule;
+  final int? labSectionId;
+  final String? labCourseCode;
+  final String? labFaculties;
+  final String? labName;
+  final String? labRoomName;
+  final List<SeatStatusClassSchedule> labSchedules;
+
+  factory SeatStatusDetailsResponse.fromJson(Map<String, dynamic> json) {
+    final rawSchedule = json['sectionSchedule'];
+    final scheduleJson = switch (rawSchedule) {
+      Map m => m.cast<String, dynamic>(),
+      _ => const <String, dynamic>{},
+    };
+    final rawLabSchedules = json['labSchedules'];
+    final labSchedules = rawLabSchedules is List
+        ? rawLabSchedules
+              .whereType<Map>()
+              .map(
+                (item) => SeatStatusClassSchedule.fromJson(
+                  item.cast<String, dynamic>(),
+                ),
+              )
+              .toList()
+        : const <SeatStatusClassSchedule>[];
+
+    return SeatStatusDetailsResponse(
+      sectionId: _toInt(json['sectionId']),
+      courseId: _toInt(json['courseId']),
+      courseCode: _toString(json['courseCode']),
+      sectionName: _toString(json['sectionName']),
+      courseCredit: _toInt(json['courseCredit']),
+      capacity: _toInt(json['capacity']),
+      consumedSeat: _toInt(json['consumedSeat']),
+      semesterSessionId: _toInt(json['semesterSessionId']),
+      parentSectionId: _toNullableInt(json['parentSectionId']),
+      faculties: _toString(json['faculties']),
+      roomName: _toString(json['roomName']),
+      roomNumber: _toString(json['roomNumber']),
+      courseType: _toString(json['courseType']),
+      academicDegree: _toString(json['academicDegree']),
+      sectionType: _toString(json['sectionType']),
+      courseName: _toString(json['courseName']),
+      prerequisiteCourses: _toNullableString(json['prerequisiteCourses']),
+      sectionSchedule: SeatStatusSchedule.fromJson(scheduleJson),
+      labSectionId: _toNullableInt(json['labSectionId']),
+      labCourseCode: _toNullableString(json['labCourseCode']),
+      labFaculties: _toNullableString(json['labFaculties']),
+      labName: _toNullableString(json['labName']),
+      labRoomName: _toNullableString(json['labRoomName']),
+      labSchedules: labSchedules,
+    );
   }
-  return out;
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'sectionId': sectionId,
+      'courseId': courseId,
+      'courseCode': courseCode,
+      'sectionName': sectionName,
+      'courseCredit': courseCredit,
+      'capacity': capacity,
+      'consumedSeat': consumedSeat,
+      'semesterSessionId': semesterSessionId,
+      'parentSectionId': parentSectionId,
+      'faculties': faculties,
+      'roomName': roomName,
+      'roomNumber': roomNumber,
+      'courseType': courseType,
+      'academicDegree': academicDegree,
+      'sectionType': sectionType,
+      'courseName': courseName,
+      'prerequisiteCourses': prerequisiteCourses,
+      'sectionSchedule': sectionSchedule.toJson(),
+      'labSectionId': labSectionId,
+      'labCourseCode': labCourseCode,
+      'labFaculties': labFaculties,
+      'labName': labName,
+      'labRoomName': labRoomName,
+      'labSchedules': labSchedules.map((e) => e.toJson()).toList(),
+    };
+  }
+}
+
+class SeatStatusSchedule {
+  SeatStatusSchedule({
+    required this.classSchedules,
+    this.midExamDate,
+    this.midExamStartTime,
+    this.midExamEndTime,
+    this.finalExamDate,
+    this.finalExamStartTime,
+    this.finalExamEndTime,
+  });
+
+  final List<SeatStatusClassSchedule> classSchedules;
+  final String? midExamDate;
+  final String? midExamStartTime;
+  final String? midExamEndTime;
+  final String? finalExamDate;
+  final String? finalExamStartTime;
+  final String? finalExamEndTime;
+
+  factory SeatStatusSchedule.fromJson(Map<String, dynamic> json) {
+    final rawSchedules = json['classSchedules'];
+    final classSchedules = rawSchedules is List
+        ? rawSchedules
+              .whereType<Map>()
+              .map(
+                (item) => SeatStatusClassSchedule.fromJson(
+                  item.cast<String, dynamic>(),
+                ),
+              )
+              .toList()
+        : const <SeatStatusClassSchedule>[];
+
+    return SeatStatusSchedule(
+      classSchedules: classSchedules,
+      midExamDate: _toNullableString(json['midExamDate']),
+      midExamStartTime: _toNullableString(json['midExamStartTime']),
+      midExamEndTime: _toNullableString(json['midExamEndTime']),
+      finalExamDate: _toNullableString(json['finalExamDate']),
+      finalExamStartTime: _toNullableString(json['finalExamStartTime']),
+      finalExamEndTime: _toNullableString(json['finalExamEndTime']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'classSchedules': classSchedules.map((e) => e.toJson()).toList(),
+      'midExamDate': midExamDate,
+      'midExamStartTime': midExamStartTime,
+      'midExamEndTime': midExamEndTime,
+      'finalExamDate': finalExamDate,
+      'finalExamStartTime': finalExamStartTime,
+      'finalExamEndTime': finalExamEndTime,
+    };
+  }
+}
+
+class SeatStatusClassSchedule {
+  SeatStatusClassSchedule({
+    required this.day,
+    required this.startTime,
+    required this.endTime,
+  });
+
+  final String day;
+  final String startTime;
+  final String endTime;
+
+  factory SeatStatusClassSchedule.fromJson(Map<String, dynamic> json) {
+    return SeatStatusClassSchedule(
+      day: _toString(json['day']),
+      startTime: _toString(json['startTime']),
+      endTime: _toString(json['endTime']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'day': day,
+      'startTime': startTime,
+      'endTime': endTime,
+    };
+  }
+}
+
+int _toInt(dynamic value) {
+  if (value is int) return value;
+  return int.tryParse('$value') ?? 0;
+}
+
+int? _toNullableInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  return int.tryParse('$value');
+}
+
+String _toString(dynamic value) {
+  if (value == null) return '';
+  return '$value'.trim();
+}
+
+String? _toNullableString(dynamic value) {
+  final parsed = _toString(value);
+  if (parsed.isEmpty || parsed.toUpperCase() == 'NULL') return null;
+  return parsed;
 }
