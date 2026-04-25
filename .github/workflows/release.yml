@@ -213,7 +213,6 @@ jobs:
         with:
           path: |
             build
-            .dart_tool
           key: ${{ runner.os }}-chrome-extension-flutter-build-${{ hashFiles('pubspec.lock', 'tool/build_chrome_extension.sh', 'web/**', 'lib/**') }}
           restore-keys: |
             ${{ runner.os }}-chrome-extension-flutter-build-

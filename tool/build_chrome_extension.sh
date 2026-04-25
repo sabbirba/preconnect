@@ -6,6 +6,7 @@ OUT_DIR="${1:-${ROOT_DIR}/build/chrome-extension}"
 ZIP_OUT="${ZIP_OUT:-${ROOT_DIR}/build/chrome-extension.zip}"
 
 mkdir -p "${OUT_DIR}"
+rm -rf "${ROOT_DIR}/.dart_tool/flutter_build"
 
 flutter build web \
   --release \
