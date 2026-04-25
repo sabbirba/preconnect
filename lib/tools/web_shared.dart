@@ -5,5 +5,6 @@ export 'web_extension_session_flow_shared.dart';
 export 'web_logout_flow_shared.dart';
 export 'web_pdf_opener_shared.dart';
 export 'web_qr_image_picker_shared.dart';
+export 'web_image_export_shared.dart';
 export 'web_safe_network_image_shared.dart';
 export 'web_extension_login_page_shared.dart';

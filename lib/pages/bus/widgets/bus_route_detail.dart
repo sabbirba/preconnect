@@ -127,6 +127,12 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
               _LiveTrackingCard(route: route),
               const SizedBox(height: 2),
             ],
+            if (!_shouldHideLiveMapAndStats(route) &&
+                kIsWeb &&
+                route.live.hasPosition) ...[
+              _RouteGoogleMapsLink(route: route),
+              const SizedBox(height: 2),
+            ],
             _RouteStopsCard(route: route),
             if (route.attendantPhone.trim().isNotEmpty) ...[
               const SizedBox(height: 2),
@@ -140,6 +146,47 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
       ),
     );
   }
+
+}
+
+class _RouteGoogleMapsLink extends StatelessWidget {
+  const _RouteGoogleMapsLink({required this.route});
+
+  final BusTransportRoute route;
+
+  @override
+  Widget build(BuildContext context) {
+    final live = route.live;
+    final latitude = live.latitudeValue;
+    final longitude = live.longitudeValue;
+    if (latitude == null || longitude == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+      child: _RouteActionButton(
+        label: 'Open in Google Maps',
+        onPressed: () => _openRouteInGoogleMaps(context, latitude, longitude),
+      ),
+    );
+  }
+}
+
+Future<void> _openRouteInGoogleMaps(
+  BuildContext context,
+  double latitude,
+  double longitude,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final uri = Uri.parse(
+    'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude',
+  );
+  final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  if (opened || !context.mounted) return;
+  messenger.showSnackBar(
+    const SnackBar(content: Text('Unable to open Google Maps.')),
+  );
 }
 
 bool _shouldHideLiveMapAndStats(BusTransportRoute route) {
@@ -200,29 +247,16 @@ class _RouteLiveMapCard extends StatelessWidget {
             const SizedBox(height: 10),
             _RouteActionButton(
               label: 'Open in Google Maps',
-              onPressed: () => _openInGoogleMaps(context, live),
+              onPressed: () {
+                final latitude = live.latitudeValue;
+                final longitude = live.longitudeValue;
+                if (latitude == null || longitude == null) return;
+                _openRouteInGoogleMaps(context, latitude, longitude);
+              },
             ),
           ],
         ],
       ),
-    );
-  }
-
-  Future<void> _openInGoogleMaps(
-    BuildContext context,
-    BusRouteLiveSnapshot live,
-  ) async {
-    final latitude = live.latitudeValue;
-    final longitude = live.longitudeValue;
-    if (latitude == null || longitude == null) return;
-    final messenger = ScaffoldMessenger.of(context);
-    final uri = Uri.parse(
-      'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude',
-    );
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (opened || !context.mounted) return;
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Unable to open Google Maps.')),
     );
   }
 }

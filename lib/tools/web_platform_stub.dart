@@ -117,3 +117,8 @@ Future<void> openPdfInBrowser({
   required Uint8List bytes,
   required String fileName,
 }) async {}
+
+Future<void> openImageInBrowser({
+  required Uint8List bytes,
+  required String fileName,
+}) async {}

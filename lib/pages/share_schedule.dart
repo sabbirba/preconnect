@@ -281,15 +281,9 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
           'App link: https://play.google.com/store/apps/details?id=com.sabbirba.preconnect';
 
       if (kIsWeb) {
-        await SharePlus.instance.share(
-          ShareParams(
-            files: [
-              XFile.fromData(bytes, mimeType: 'image/png', name: fileName),
-            ],
-            title: 'PreConnect Schedule QR',
-            downloadFallbackEnabled: false,
-          ),
-        );
+        await openImageInBrowser(bytes: bytes, fileName: fileName);
+        if (!mounted) return;
+        showAppSnackBar(context, 'Share sheet opened');
         return;
       }
 

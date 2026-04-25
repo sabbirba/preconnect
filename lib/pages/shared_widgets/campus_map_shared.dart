@@ -402,7 +402,7 @@ Future<void> showCampusMapBottomSheet(
                         child: actionButton(
                           icon: Icons.directions_rounded,
                           label: 'Open Map',
-                          onPressed: kIsWeb || mapData.googleMapsUrl.isEmpty
+                          onPressed: mapData.googleMapsUrl.isEmpty
                               ? null
                               : () => openExternalUrl(
                                   sheetContext,
