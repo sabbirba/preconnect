@@ -1,90 +1,30 @@
 part of 'package:preconnect/pages/bus.dart';
 
 class BusRouteDetailPage extends StatefulWidget {
-  const BusRouteDetailPage({
-    super.key,
-    required this.route,
-    this.vehicle,
-    this.initialSnapshot,
-  });
+  const BusRouteDetailPage({super.key, required this.route, this.vehicle});
 
   final BusTransportRoute route;
   final BusRouteVehicle? vehicle;
-  final BusTrackerRouteSnapshot? initialSnapshot;
 
   @override
   State<BusRouteDetailPage> createState() => _BusRouteDetailPageState();
 }
 
 class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
-  BusTrackerRouteSnapshot? _snapshot;
-  StreamSubscription<BusTrackerRouteSnapshot?>? _snapshotSubscription;
+  late BusTransportRoute _route;
   bool _refreshing = false;
   String? _error;
-
-  bool get _liveTrackingEnabled {
-    final routeId = widget.route.id.trim().toLowerCase();
-    final routeName = widget.route.displayTitle.trim().toLowerCase();
-    if (routeId == 'route-09') return false;
-    return !routeName.contains('bashundhara');
-  }
 
   @override
   void initState() {
     super.initState();
-    _snapshot = widget.initialSnapshot;
-    if (_liveTrackingEnabled) {
-      _refreshLiveData();
-    }
+    _route = widget.route;
+    unawaited(_refreshRouteData());
   }
 
   @override
   void dispose() {
-    unawaited(_snapshotSubscription?.cancel());
     super.dispose();
-  }
-
-  String get _routeCode {
-    final fromVehicle = widget.vehicle?.code.trim() ?? '';
-    if (fromVehicle.isNotEmpty) return fromVehicle;
-    if (widget.route.code.trim().isNotEmpty) return widget.route.code.trim();
-    return widget.route.displayTitle;
-  }
-
-  Future<void> _startLiveStream({bool refreshing = false}) async {
-    if (!_liveTrackingEnabled) return;
-    await _snapshotSubscription?.cancel();
-    if (!mounted) return;
-    setState(() {
-      _refreshing = refreshing;
-      _error = null;
-    });
-
-    _snapshotSubscription = BusTrackerService()
-        .watchFleetSnapshot(_routeCode)
-        .listen(
-          (snapshot) {
-            if (!mounted) return;
-            setState(() {
-              if (snapshot != null) {
-                _snapshot = snapshot;
-              }
-              _refreshing = false;
-              _error = null;
-            });
-          },
-          onError: (_) {
-            if (!mounted) return;
-            setState(() {
-              _refreshing = false;
-              _error = 'Unable to load.';
-            });
-          },
-        );
-  }
-
-  void _refreshLiveData() {
-    unawaited(_startLiveStream(refreshing: true));
   }
 
   Future<void> _callAttendant(String phone) async {
@@ -99,11 +39,38 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
     );
   }
 
+  Future<void> _refreshRouteData() async {
+    if (_refreshing) return;
+    if (!mounted) return;
+    setState(() {
+      _refreshing = true;
+      _error = null;
+    });
+
+    try {
+      final package = await _fetchBusDataPackage();
+      final refreshedRoute = _findUpdatedRoute(package, _route);
+      if (!mounted) return;
+      setState(() {
+        if (refreshedRoute != null) {
+          _route = refreshedRoute;
+        }
+        _refreshing = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _refreshing = false;
+        _error = 'Unable to load bus data right now.';
+      });
+      debugPrint('Bus route refresh failed: $error');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final route = widget.route;
+    final route = _route;
     final vehicle = widget.vehicle;
-    final snapshot = _snapshot;
     final title = route.displayTitle;
     final subtitle = route.to.isNotEmpty
         ? route.to
@@ -116,27 +83,23 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
         title: title,
         subtitle: subtitle,
         icon: Icons.directions_bus_filled_rounded,
-        actions: _liveTrackingEnabled
-            ? [
-                IconButton(
-                  tooltip: 'Refresh live bus data',
-                  onPressed: _refreshing ? null : _refreshLiveData,
-                  icon: _refreshing
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.refresh_rounded),
-                ),
-              ]
-            : const <Widget>[],
+        actions: [
+          IconButton(
+            tooltip: 'Refresh bus data',
+            onPressed: _refreshing ? null : _refreshRouteData,
+            icon: _refreshing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh_rounded),
+          ),
+        ],
         body: BracuRefreshList(
-          onRefresh: _liveTrackingEnabled
-              ? () async => _refreshLiveData()
-              : () async {},
+          onRefresh: _refreshRouteData,
           children: [
-            if (_liveTrackingEnabled && _error != null)
+            if (_error != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
                 child: Column(
@@ -151,23 +114,17 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
                     ),
                     const SizedBox(height: 10),
                     OutlinedButton.icon(
-                      onPressed: _refreshLiveData,
+                      onPressed: _refreshRouteData,
                       icon: const Icon(Icons.refresh_rounded),
                       label: const Text('Retry'),
                     ),
                   ],
                 ),
               ),
-            if (_liveTrackingEnabled) ...[
-              _RouteLiveMapCard(
-                route: route,
-                vehicle: vehicle,
-                snapshot: snapshot,
-              ),
-              const SizedBox(height: 2),
-              _LiveTrackingCard(snapshot: snapshot),
-              const SizedBox(height: 2),
-            ],
+            _RouteLiveMapCard(route: route, vehicle: vehicle),
+            const SizedBox(height: 2),
+            _LiveTrackingCard(route: route),
+            const SizedBox(height: 2),
             _RouteStopsCard(route: route),
             if (route.attendantPhone.trim().isNotEmpty) ...[
               const SizedBox(height: 2),
@@ -184,32 +141,28 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
 }
 
 class _RouteLiveMapCard extends StatelessWidget {
-  const _RouteLiveMapCard({
-    required this.route,
-    required this.vehicle,
-    required this.snapshot,
-  });
+  const _RouteLiveMapCard({required this.route, required this.vehicle});
 
   final BusTransportRoute route;
   final BusRouteVehicle? vehicle;
-  final BusTrackerRouteSnapshot? snapshot;
 
   @override
   Widget build(BuildContext context) {
-    final hasLocation = snapshot?.hasPosition == true;
-    final marker = snapshot == null || !snapshot!.hasPosition
+    final live = route.live;
+    final hasLocation = live.hasPosition;
+    final marker = !hasLocation
         ? null
         : BusFleetMarker(
-            code: snapshot!.code,
+            code: route.code.isNotEmpty ? route.code : route.id,
             title: route.displayTitle,
             subtitle: vehicle?.displayLabel.isNotEmpty == true
                 ? vehicle!.displayLabel
-                : snapshot!.assetName,
-            status: snapshot!.status,
-            speed: snapshot!.speed,
-            updatedAt: snapshot!.updatedAt,
-            latitude: snapshot!.latitudeValue ?? 0,
-            longitude: snapshot!.longitudeValue ?? 0,
+                : route.routeVehicle.displayLabel,
+            status: live.status,
+            speed: live.speed,
+            updatedAt: live.time,
+            latitude: live.latitudeValue ?? 0,
+            longitude: live.longitudeValue ?? 0,
           );
 
     return Padding(
@@ -236,7 +189,7 @@ class _RouteLiveMapCard extends StatelessWidget {
             const SizedBox(height: 10),
             _RouteActionButton(
               label: 'Open in Google Maps',
-              onPressed: () => _openInGoogleMaps(context, snapshot!),
+              onPressed: () => _openInGoogleMaps(context, live),
             ),
           ],
         ],
@@ -246,10 +199,10 @@ class _RouteLiveMapCard extends StatelessWidget {
 
   Future<void> _openInGoogleMaps(
     BuildContext context,
-    BusTrackerRouteSnapshot snapshot,
+    BusRouteLiveSnapshot live,
   ) async {
-    final latitude = snapshot.latitudeValue;
-    final longitude = snapshot.longitudeValue;
+    final latitude = live.latitudeValue;
+    final longitude = live.longitudeValue;
     if (latitude == null || longitude == null) return;
     final messenger = ScaffoldMessenger.of(context);
     final uri = Uri.parse(
@@ -357,33 +310,30 @@ class _BusMapShimmerPlaceholder extends StatelessWidget {
 }
 
 class _LiveTrackingCard extends StatelessWidget {
-  const _LiveTrackingCard({required this.snapshot});
+  const _LiveTrackingCard({required this.route});
 
-  final BusTrackerRouteSnapshot? snapshot;
+  final BusTransportRoute route;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
-      child: snapshot != null
-          ? _LiveTrackerDetailsCard(snapshot: snapshot)
-          : const SizedBox.shrink(),
+      child: _LiveTrackerDetailsCard(route: route),
     );
   }
 }
 
 class _LiveTrackerDetailsCard extends StatelessWidget {
-  const _LiveTrackerDetailsCard({required this.snapshot});
+  const _LiveTrackerDetailsCard({required this.route});
 
-  final BusTrackerRouteSnapshot? snapshot;
+  final BusTransportRoute route;
 
   @override
   Widget build(BuildContext context) {
-    final liveSnapshot = snapshot;
-    if (liveSnapshot == null) {
+    final live = route.live;
+    if (live.status.isEmpty && live.time.isEmpty && !live.hasPosition) {
       return const SizedBox.shrink();
     }
-    final data = _mergedLiveSnapshotData(liveSnapshot);
     return Center(
       child: FittedBox(
         fit: BoxFit.scaleDown,
@@ -400,7 +350,7 @@ class _LiveTrackerDetailsCard extends StatelessWidget {
                 ),
               ),
               TextSpan(
-                text: _speedLabel(data),
+                text: _speedLabel(live),
                 style: TextStyle(
                   color: BracuPalette.textPrimary(context),
                   fontSize: 13,
@@ -418,7 +368,7 @@ class _LiveTrackerDetailsCard extends StatelessWidget {
                 ),
               ),
               TextSpan(
-                text: _updatedLabel(data),
+                text: _updatedLabel(live),
                 style: TextStyle(
                   color: BracuPalette.textPrimary(context),
                   fontSize: 13,
@@ -437,14 +387,14 @@ class _LiveTrackerDetailsCard extends StatelessWidget {
   }
 }
 
-String _speedLabel(Map<String, dynamic> data) {
-  final speed = _parseDouble(data['speed']);
+String _speedLabel(BusRouteLiveSnapshot data) {
+  final speed = _parseDouble(data.speed);
   if (speed <= 0) return '0 km/h';
   return '${speed.toStringAsFixed(speed.truncateToDouble() == speed ? 0 : 1)} km/h';
 }
 
-String _updatedLabel(Map<String, dynamic> data) {
-  final raw = '${data['time'] ?? ''}'.trim();
+String _updatedLabel(BusRouteLiveSnapshot data) {
+  final raw = data.time.trim();
   if (raw.isEmpty) return 'Unknown';
   try {
     final parsed = DateTime.parse(raw).toLocal();
@@ -454,22 +404,38 @@ String _updatedLabel(Map<String, dynamic> data) {
   }
 }
 
-double _parseDouble(dynamic value) {
-  return double.tryParse('${value ?? ''}'.trim()) ?? 0;
+double _parseDouble(String value) {
+  return double.tryParse(value.trim()) ?? 0;
 }
 
-Map<String, dynamic> _mergedLiveSnapshotData(BusTrackerRouteSnapshot snapshot) {
-  final merged = <String, dynamic>{};
-  final assetInfo = snapshot.assetInfo;
-  final lastData = snapshot.lastData;
-  if (assetInfo != null) {
-    merged.addAll(assetInfo);
+BusTransportRoute? _findUpdatedRoute(
+  _BusDataPackage package,
+  BusTransportRoute currentRoute,
+) {
+  final routeKeys = <String>{
+    _routeMatchKey(currentRoute.id),
+    _routeMatchKey(currentRoute.code),
+    _routeMatchKey(currentRoute.routeVehicle.code),
+    _routeMatchKey(currentRoute.displayTitle),
+  }.where((key) => key.isNotEmpty).toSet();
+
+  for (final route in package.routes) {
+    final candidateKeys = <String>{
+      _routeMatchKey(route.id),
+      _routeMatchKey(route.code),
+      _routeMatchKey(route.routeVehicle.code),
+      _routeMatchKey(route.displayTitle),
+    };
+    if (candidateKeys.any(routeKeys.contains)) {
+      return route;
+    }
   }
-  if (lastData != null) {
-    merged.addAll(lastData);
-  }
-  merged['code'] = snapshot.code;
-  return merged;
+
+  return null;
+}
+
+String _routeMatchKey(String value) {
+  return value.trim().toLowerCase();
 }
 
 class _RouteStopsCard extends StatelessWidget {

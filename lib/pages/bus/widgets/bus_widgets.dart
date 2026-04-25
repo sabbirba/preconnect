@@ -216,53 +216,6 @@ class BusFleetMarker {
   };
 }
 
-BusTrackerRouteSnapshot? snapshotForRoute(
-  BusTransportRoute route,
-  Map<String, BusTrackerRouteSnapshot> snapshotsByCode,
-) {
-  final routeVehicle = route.routeVehicle;
-  final code = normalizeRouteCode(
-    routeVehicle.code.isNotEmpty ? routeVehicle.code : route.code,
-  );
-  return snapshotsByCode[code];
-}
-
-List<BusFleetMarker> buildFleetMarkers(
-  List<BusTransportRoute> routes,
-  Map<String, BusTrackerRouteSnapshot> snapshotsByCode,
-) {
-  final seen = <String>{};
-  final markers = <BusFleetMarker>[];
-
-  for (final route in routes) {
-    final routeVehicle = route.routeVehicle;
-    final code = normalizeRouteCode(
-      routeVehicle.code.isNotEmpty ? routeVehicle.code : route.code,
-    );
-    if (code.isEmpty || !seen.add(code)) continue;
-    final snapshot = snapshotsByCode[code];
-    if (snapshot == null || !snapshot.hasPosition) continue;
-
-    markers.add(
-      BusFleetMarker(
-        code: code,
-        title: route.displayTitle,
-        subtitle: (() {
-          final vehicleLabel = routeVehicle.displayLabel;
-          return vehicleLabel.isNotEmpty ? vehicleLabel : snapshot.assetName;
-        })(),
-        status: snapshot.status,
-        speed: snapshot.speed,
-        updatedAt: snapshot.updatedAt,
-        latitude: snapshot.latitudeValue ?? 0,
-        longitude: snapshot.longitudeValue ?? 0,
-      ),
-    );
-  }
-
-  return markers;
-}
-
 String normalizeRouteCode(String value) {
   return value.trim().toUpperCase();
 }

@@ -30,6 +30,7 @@ class BusTransportRoute {
     required this.to,
     required this.attendantPhone,
     required this.stops,
+    required this.live,
   });
 
   final String id;
@@ -40,6 +41,7 @@ class BusTransportRoute {
   final String to;
   final String attendantPhone;
   final List<BusTransportStop> stops;
+  final BusRouteLiveSnapshot live;
 
   String get displayTitle {
     if (name.isNotEmpty) return _cleanRouteName(name);
@@ -77,6 +79,7 @@ class BusTransportRoute {
       to: _pick(json, <String>['to', 'destination', 'end']),
       attendantPhone: normalizeCampusPhoneValue(rawPhone),
       stops: stops,
+      live: BusRouteLiveSnapshot.fromJson(json),
     );
   }
 }
@@ -94,9 +97,8 @@ String _cleanRouteName(String value) {
   return cleaned.trim();
 }
 
-class _BusLiveAsset {
-  const _BusLiveAsset({
-    required this.name,
+class BusRouteLiveSnapshot {
+  const BusRouteLiveSnapshot({
     required this.assetId,
     required this.status,
     required this.time,
@@ -121,7 +123,6 @@ class _BusLiveAsset {
     required this.nearestLandmarks,
   });
 
-  final String name;
   final String assetId;
   final String status;
   final String time;
@@ -145,7 +146,7 @@ class _BusLiveAsset {
   final String engineAlert;
   final List<String> nearestLandmarks;
 
-  factory _BusLiveAsset.fromJson(Map<String, dynamic> json) {
+  factory BusRouteLiveSnapshot.fromJson(Map<String, dynamic> json) {
     final loc = json['loc'];
     final coordinates = loc is Map ? loc['coordinates'] : null;
     final latitude = coordinates is List && coordinates.length > 1
@@ -163,8 +164,7 @@ class _BusLiveAsset {
               .toList(growable: false)
         : const <String>[];
 
-    return _BusLiveAsset(
-      name: _pick(json, <String>['name']),
+    return BusRouteLiveSnapshot(
       assetId: _pick(json, <String>['asset_id', '_id']),
       status: _pick(json, <String>['status']),
       time: _pick(json, <String>['time']),
@@ -189,6 +189,10 @@ class _BusLiveAsset {
       nearestLandmarks: nearestLandmarks,
     );
   }
+
+  bool get hasPosition => latitude.isNotEmpty && longitude.isNotEmpty;
+  double? get latitudeValue => double.tryParse(latitude);
+  double? get longitudeValue => double.tryParse(longitude);
 }
 
 class BusTransportStop {
@@ -217,8 +221,6 @@ class BusTransportStop {
 
 class _BusDataPackage {
   const _BusDataPackage({
-    required this.title,
-    required this.liveAsset,
     required this.routes,
     required this.outbound,
     required this.fares,
@@ -227,44 +229,19 @@ class _BusDataPackage {
   });
 
   const _BusDataPackage.empty()
-    : title = '',
-      liveAsset = null,
-      routes = const <BusTransportRoute>[],
+    : routes = const <BusTransportRoute>[],
       outbound = null,
       fares = const <_BusFare>[],
       contacts = const <_BusContact>[],
       instructions = const <String>[];
 
-  final String title;
-  final _BusLiveAsset? liveAsset;
   final List<BusTransportRoute> routes;
   final _BusOutbound? outbound;
   final List<_BusFare> fares;
   final List<_BusContact> contacts;
   final List<String> instructions;
 
-  _BusDataPackage copyWith({
-    String? title,
-    _BusLiveAsset? liveAsset,
-    List<BusTransportRoute>? routes,
-    _BusOutbound? outbound,
-    List<_BusFare>? fares,
-    List<_BusContact>? contacts,
-    List<String>? instructions,
-  }) {
-    return _BusDataPackage(
-      title: title ?? this.title,
-      liveAsset: liveAsset ?? this.liveAsset,
-      routes: routes ?? this.routes,
-      outbound: outbound ?? this.outbound,
-      fares: fares ?? this.fares,
-      contacts: contacts ?? this.contacts,
-      instructions: instructions ?? this.instructions,
-    );
-  }
-
   factory _BusDataPackage.fromJson(Map<String, dynamic> json) {
-    final liveAssetRaw = json['live_asset'];
     final routesRaw = json['routes'];
     final faresRaw = json['fares'];
     final contactsRaw = json['contacts'];
@@ -281,10 +258,6 @@ class _BusDataPackage {
         : const <BusTransportRoute>[];
 
     return _BusDataPackage(
-      title: _pick(json, <String>['title']),
-      liveAsset: liveAssetRaw is Map
-          ? _BusLiveAsset.fromJson(liveAssetRaw.cast<String, dynamic>())
-          : null,
       routes: routes,
       outbound: outboundRaw is Map
           ? _BusOutbound.fromJson(outboundRaw.cast<String, dynamic>())

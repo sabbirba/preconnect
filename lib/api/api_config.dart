@@ -10,6 +10,7 @@ class ApiConfig {
   static const String authEndpoint = '$ssoBase/auth';
 
   static const String seatStatusProxyBase = 'https://api.preconnect.app';
+  static const String busDataUrl = 'https://api.preconnect.app/data/bus';
   static const String connectApiBase = 'https://connect.bracu.ac.bd/api';
   static const String connectWebApiBase = 'https://connect.bracu.ac.bd/api';
   static const String connectMercureLogoutPath = '/ns/mercure/logout';
@@ -18,37 +19,9 @@ class ApiConfig {
   static const String facultyReviewsBearer = String.fromEnvironment(
     'FACULTY_REVIEWS_BEARER',
   );
-  static const String finderLbsAssetCode = String.fromEnvironment(
-    'FINDER_LBS_ASSET_CODE',
-  );
-  static const String finderLbsAccessToken = String.fromEnvironment(
-    'FINDER_LBS_ACCESS_TOKEN',
-  );
-  static const String finderLbsRefreshToken = String.fromEnvironment(
-    'FINDER_LBS_REFRESH_TOKEN',
-  );
   static const String playIntegrityCloudProjectNumber = String.fromEnvironment(
     'PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER',
   );
-  static const String finderLbsRefreshEndpoint =
-      'https://api.finder-lbs.com/v1/auth/refresh_token';
-  static const String finderLbsAssetInfoEndpoint =
-      'https://api.finder-lbs.com/v1/assets/asset_info';
-  static String busTrackerAssetInfoUrl(String assetCode) {
-    final normalizedAssetCode = assetCode.trim().isNotEmpty
-        ? assetCode.trim()
-        : finderLbsAssetCode.trim();
-    final accessToken = finderLbsAccessToken.trim();
-    if (normalizedAssetCode.isEmpty || accessToken.isEmpty) return '';
-    return '$finderLbsAssetInfoEndpoint?code=$normalizedAssetCode&access_token=$accessToken';
-  }
-
-  static String busTrackerLastDataUrl(String assetId) {
-    final normalizedAssetId = assetId.trim();
-    final accessToken = finderLbsAccessToken.trim();
-    if (normalizedAssetId.isEmpty || accessToken.isEmpty) return '';
-    return 'https://api.finder-lbs.com/v1/assets/$normalizedAssetId/last_data?access_token=$accessToken';
-  }
 
   static const String clientId = 'slm';
   static const String redirectUri =
@@ -95,7 +68,6 @@ class ApiConfig {
   }) => '/reg/v1/calendar/$calendarId?startDate=$startDate&endDate=$endDate';
 
   static String notificationViewPath(int id) => '/ns/notifications/view/$id';
-
 
   static const Map<String, String> apiHeaders = {
     'X-REALM': 'bracu',

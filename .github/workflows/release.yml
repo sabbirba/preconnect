@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
   schedule:
     # Promotion to Production releases every Friday at 10:00 PM (Bangladesh Time)
-    - cron: '00 16 * * 5'
+    - cron: "00 16 * * 5"
 
 permissions:
   contents: write
@@ -180,7 +180,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: "stable"
           cache: true
 
       - name: Cache Flutter Pub
@@ -316,13 +316,13 @@ jobs:
         if: matrix.platform == 'android'
         uses: actions/setup-java@v5
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: "temurin"
+          java-version: "17"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: "stable"
           cache: true
 
       - name: Flutter Version
@@ -332,7 +332,7 @@ jobs:
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: 'latest'
+          xcode-version: "latest"
 
       - name: Show Xcode & SDKs
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
@@ -411,9 +411,6 @@ jobs:
         run: |
           cat > .env <<'EOF'
           FACULTY_REVIEWS_BEARER=${{ secrets.FACULTY_REVIEWS_BEARER }}
-          FINDER_LBS_ASSET_CODE=${{ secrets.FINDER_LBS_ASSET_CODE }}
-          FINDER_LBS_ACCESS_TOKEN=${{ secrets.FINDER_LBS_ACCESS_TOKEN }}
-          FINDER_LBS_REFRESH_TOKEN=${{ secrets.FINDER_LBS_REFRESH_TOKEN }}
           REWARDED_AD_UNIT_ID=${{ secrets.REWARDED_AD_UNIT_ID }}
           ADS_APP_ID_IOS=${{ secrets.ADS_APP_ID_IOS }}
           BANNER_AD_UNIT_ID=${{ secrets.BANNER_AD_UNIT_ID }}
@@ -738,7 +735,7 @@ jobs:
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2'
+          ruby-version: "3.2"
 
       - name: Install Fastlane
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
@@ -821,7 +818,7 @@ jobs:
         if: steps.play_auth.outputs.enabled == 'true'
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2'
+          ruby-version: "3.2"
 
       - name: Install Fastlane
         if: steps.play_auth.outputs.enabled == 'true'

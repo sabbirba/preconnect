@@ -113,9 +113,6 @@ Update [`.env.example`](.env.example) values in your local [`.env`](.env):
 - `REWARDED_AD_UNIT_ID`
 - `BANNER_AD_UNIT_ID`
 - `ADS_APP_ID_IOS`
-- `FINDER_LBS_ASSET_CODE`
-- `FINDER_LBS_ACCESS_TOKEN`
-- `FINDER_LBS_REFRESH_TOKEN`
 
 ### Android Signing Setup
 
@@ -162,6 +159,7 @@ Load `build/chrome-extension` as an unpacked extension in Chrome:
 4. Select `build/chrome-extension`
 
 The extension build uses:
+
 - `web/index.html` as the extension app shell
 - `web/manifest.json` as the MV3 extension manifest
 - `web/extension_app.dart` as the Flutter extension entrypoint
@@ -169,6 +167,7 @@ The extension build uses:
 - `lib/app.dart` and `lib/pages/web_extension_login_web.dart` for the extension UI
 
 Notes:
+
 - Reload the unpacked extension after every rebuild
 
 ### Build Android APK
@@ -219,13 +218,13 @@ build/ios/ipa/
 
 ## Platform Support
 
-| Platform         | Status | Notes                                                                                 |
-| ---------------- | ------ | ------------------------------------------------------------------------------------- |
-| Android          | Stable | Signed APK/AAB are generated in release workflow when signing secrets are configured. |
-| Chrome Extension | Stable | Build locally with `./tool/build_chrome_extension.sh` or download the release artifact. |
-| Web              | Not targeted | Use the Chrome extension build instead of a hosted Flutter web app.               |
-| iOS              | Beta   | CI builds are enabled, but signing/export depends on Apple certificates/profiles.     |
-| macOS            | Beta   | CI builds and packages a DMG artifact from release workflow.                          |
+| Platform         | Status       | Notes                                                                                   |
+| ---------------- | ------------ | --------------------------------------------------------------------------------------- |
+| Android          | Stable       | Signed APK/AAB are generated in release workflow when signing secrets are configured.   |
+| Chrome Extension | Stable       | Build locally with `./tool/build_chrome_extension.sh` or download the release artifact. |
+| Web              | Not targeted | Use the Chrome extension build instead of a hosted Flutter web app.                     |
+| iOS              | Beta         | CI builds are enabled, but signing/export depends on Apple certificates/profiles.       |
+| macOS            | Beta         | CI builds and packages a DMG artifact from release workflow.                            |
 
 ## CI/CD
 
@@ -263,14 +262,14 @@ Why this architecture:
 
 Key packages related to user data safety/privacy are listed below.
 
-| Package                      | What it does for privacy/safety                                                                                                     |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `flutter_secure_storage`     | Stores sensitive auth/session tokens in encrypted device-backed secure storage (Keychain/Keystore), instead of plain local storage. |
-| `shared_preferences`         | Stores non-sensitive app settings and flags (for example onboarding and UI preferences). Not used for secret credentials.           |
-| `sembast`                    | Provides structured local database caching so app data can stay on-device and support offline usage with controlled reads/writes.   |
-| `local_auth`                 | Enables optional biometric/PIN app lock so only the device owner can open protected screens.                                        |
-| `permission_handler`         | Ensures runtime permissions (camera/notifications) are requested explicitly and can be denied by the user.                          |
-| `crypto`                     | Used for cryptographic hashing in integrity/security flows to strengthen request validation.                                        |
+| Package                  | What it does for privacy/safety                                                                                                     |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `flutter_secure_storage` | Stores sensitive auth/session tokens in encrypted device-backed secure storage (Keychain/Keystore), instead of plain local storage. |
+| `shared_preferences`     | Stores non-sensitive app settings and flags (for example onboarding and UI preferences). Not used for secret credentials.           |
+| `sembast`                | Provides structured local database caching so app data can stay on-device and support offline usage with controlled reads/writes.   |
+| `local_auth`             | Enables optional biometric/PIN app lock so only the device owner can open protected screens.                                        |
+| `permission_handler`     | Ensures runtime permissions (camera/notifications) are requested explicitly and can be denied by the user.                          |
+| `crypto`                 | Used for cryptographic hashing in integrity/security flows to strengthen request validation.                                        |
 
 Privacy notes:
 

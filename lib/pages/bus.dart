@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:intl/intl.dart';
-import 'package:preconnect/api/bus_tracker_service.dart';
+import 'package:preconnect/api/api_client.dart';
+import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -26,8 +26,6 @@ class _BusPageState extends State<BusPage> {
   bool _loading = true;
   String? _error;
   _BusDataPackage? _data;
-  Map<String, BusTrackerRouteSnapshot> _routeSnapshots =
-      <String, BusTrackerRouteSnapshot>{};
   String _schedulePdfUrl = '';
 
   @override
@@ -64,29 +62,12 @@ class _BusPageState extends State<BusPage> {
     }
 
     try {
-      final jsonTextFuture = rootBundle.loadString(
-        'assets/data/bus_routes.json',
-      );
-      final liveAssetFuture = BusTrackerService().fetchLastData();
-
-      final jsonText = await jsonTextFuture;
-      final decoded = jsonDecode(jsonText);
-      final liveAssetJson = await liveAssetFuture;
-      final package = decoded is Map<String, dynamic>
-          ? _BusDataPackage.fromJson(decoded)
-          : decoded is Map
-          ? _BusDataPackage.fromJson(decoded.cast<String, dynamic>())
-          : const _BusDataPackage.empty();
+      final package = await _fetchBusDataPackage();
       if (!mounted) return;
       setState(() {
-        _data = liveAssetJson == null
-            ? package
-            : package.copyWith(
-                liveAsset: _BusLiveAsset.fromJson(liveAssetJson),
-              );
+        _data = package;
         _loading = false;
       });
-      unawaited(_preloadRouteSnapshots(package.routes));
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -151,7 +132,6 @@ class _BusPageState extends State<BusPage> {
             ...routes.asMap().entries.expand((entry) {
               final route = entry.value;
               final isLast = entry.key == routes.length - 1;
-              final initialSnapshot = _routeSnapshots[_snapshotKey(route)];
               return [
                 _TransportRouteCard(
                   route: route,
@@ -163,7 +143,6 @@ class _BusPageState extends State<BusPage> {
                           vehicle: route.routeVehicle.code.isNotEmpty
                               ? route.routeVehicle
                               : null,
-                          initialSnapshot: initialSnapshot,
                         ),
                       ),
                     );
@@ -192,42 +171,21 @@ class _BusPageState extends State<BusPage> {
       ),
     );
   }
+}
 
-  Future<void> _preloadRouteSnapshots(List<BusTransportRoute> routes) async {
-    final codes = <String>{
-      for (final route in routes)
-        if (route.routeVehicle.code.trim().isNotEmpty)
-          route.routeVehicle.code.trim(),
-      for (final route in routes)
-        if (route.code.trim().isNotEmpty) route.code.trim(),
-    }.toList(growable: false);
-
-    if (codes.isEmpty) return;
-
-    try {
-      final snapshots = await BusTrackerService().fetchFleetSnapshots(codes);
-      if (!mounted) return;
-
-      final nextSnapshots = <String, BusTrackerRouteSnapshot>{};
-      for (final snapshot in snapshots) {
-        nextSnapshots[_snapshotKeyForCode(snapshot.code)] = snapshot;
-      }
-
-      setState(() {
-        _routeSnapshots = nextSnapshots;
-      });
-    } catch (_) {}
+Future<_BusDataPackage> _fetchBusDataPackage() async {
+  final response = await ApiClient().publicGet(
+    ApiConfig.busDataUrl,
+    acceptedStatusCodes: <int>{200},
+  );
+  final decoded = jsonDecode(response.body);
+  if (decoded is Map<String, dynamic>) {
+    return _BusDataPackage.fromJson(decoded);
   }
-
-  String _snapshotKey(BusTransportRoute route) {
-    final vehicleCode = route.routeVehicle.code.trim();
-    if (vehicleCode.isNotEmpty) return _snapshotKeyForCode(vehicleCode);
-    return _snapshotKeyForCode(route.code);
+  if (decoded is Map) {
+    return _BusDataPackage.fromJson(decoded.cast<String, dynamic>());
   }
-
-  String _snapshotKeyForCode(String code) {
-    return code.trim().toUpperCase();
-  }
+  return const _BusDataPackage.empty();
 }
 
 class _TransportRouteCard extends StatelessWidget {
