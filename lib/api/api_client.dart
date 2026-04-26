@@ -8,6 +8,8 @@ import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/tools/play_install_referrer.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
+import 'package:preconnect/tools/token_refresh_flow.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
 class ApiClient {
@@ -33,7 +35,9 @@ class ApiClient {
   Future<String?> getAccessToken({int retries = 3}) async {
     for (int i = 0; i < retries; i++) {
       try {
-        final token = await _storage.read(key: 'access_token');
+        final token = await _storage.read(
+          key: PreconnectStorageKeys.accessToken,
+        );
         if (token != null && token.isNotEmpty) {
           return token;
         }

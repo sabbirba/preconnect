@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
-import 'package:preconnect/tools/web_extension_api_config.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
+import 'package:preconnect/tools/token_refresh_flow.dart';
 import 'package:preconnect/tools/web_extension_token_storage.dart';
 
 const Duration _refreshLeadTime = Duration(minutes: 5);
@@ -10,8 +10,8 @@ Future<bool> ensureFreshWebExtensionSession({
   bool forceRefresh = false,
 }) async {
   final storage = WebExtensionTokenStorage.instance;
-  final accessToken = await storage.read(key: 'access_token');
-  final refreshToken = await storage.read(key: 'refresh_token');
+  final accessToken = await storage.read(key: PreconnectStorageKeys.accessToken);
+  final refreshToken = await storage.read(key: PreconnectStorageKeys.refreshToken);
   if (refreshToken == null || refreshToken.trim().isEmpty) {
     return false;
   }
@@ -24,37 +24,23 @@ Future<bool> ensureFreshWebExtensionSession({
     }
   }
 
-  final response = await http.post(
-    Uri.parse(WebExtensionApiConfig.tokenEndpoint),
-    headers: const {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: {
-      'grant_type': 'refresh_token',
-      'refresh_token': refreshToken,
-      'client_id': WebExtensionApiConfig.clientId,
+  final status = await refreshBracuSessionTokens(
+    refreshToken: refreshToken,
+    persistTokens: (accessToken, refreshToken) async {
+      await storage.write(
+        key: PreconnectStorageKeys.accessToken,
+        value: accessToken,
+      );
+      await storage.write(
+        key: PreconnectStorageKeys.refreshToken,
+        value: refreshToken,
+      );
+    },
+    clearTokens: () async {
+      await storage.deleteAll();
     },
   );
-
-  if (response.statusCode != 200) {
-    if (response.statusCode == 400 || response.statusCode == 401) {
-      await storage.deleteAll();
-    }
-    return false;
-  }
-
-  final decoded = jsonDecode(response.body);
-  if (decoded is! Map<String, dynamic>) {
-    return false;
-  }
-
-  final newAccessToken = '${decoded['access_token'] ?? ''}'.trim();
-  final newRefreshToken = '${decoded['refresh_token'] ?? ''}'.trim();
-  if (newAccessToken.isEmpty || newRefreshToken.isEmpty) {
-    return false;
-  }
-
-  await storage.write(key: 'access_token', value: newAccessToken);
-  await storage.write(key: 'refresh_token', value: newRefreshToken);
-  return true;
+  return status == TokenRefreshStatus.refreshed;
 }
 
 DateTime? _jwtExpiry(String token) {

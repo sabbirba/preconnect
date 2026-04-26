@@ -11,10 +11,10 @@ import 'package:preconnect/api/custom_schedules_service.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/tools/cached_image.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
+import 'package:preconnect/tools/token_refresh_flow.dart';
 import 'package:preconnect/tools/web_shared.dart';
 import 'package:preconnect/tools/token_storage.dart';
-
-enum TokenRefreshStatus { refreshed, invalidSession, retryableFailure }
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
@@ -56,8 +56,10 @@ class AuthService {
         }
       }
 
-      final refreshToken = await _storage.read(key: 'refresh_token');
-      final accessToken = await _storage.read(key: 'access_token');
+      final refreshToken =
+          await _storage.read(key: PreconnectStorageKeys.refreshToken);
+      final accessToken =
+          await _storage.read(key: PreconnectStorageKeys.accessToken);
       if (accessToken == null && refreshToken == null) {
         return;
       }
@@ -134,9 +136,9 @@ class AuthService {
 
   Future<void> _clearLocalCaches() async {
     final keepKeys = <String>{
-      'access_token',
-      'refresh_token',
-      'cached_has_auth_session',
+      PreconnectStorageKeys.accessToken,
+      PreconnectStorageKeys.refreshToken,
+      PreconnectStorageKeys.cachedHasAuthSession,
       CustomSchedulesService.cacheKey,
     };
     keepKeys.addAll(ProfileService.profileFields);
@@ -174,48 +176,32 @@ class AuthService {
 
   Future<TokenRefreshStatus> _performTokenRefresh() async {
     try {
-      final refreshToken = await _storage.read(key: 'refresh_token');
+      final refreshToken =
+          await _storage.read(key: PreconnectStorageKeys.refreshToken);
       if (refreshToken == null || refreshToken.isEmpty) {
         _cacheRefreshResult(TokenRefreshStatus.invalidSession);
         return TokenRefreshStatus.invalidSession;
       }
 
-      final response = await http
-          .post(
-            Uri.parse(ApiConfig.tokenEndpoint),
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: {
-              'grant_type': 'refresh_token',
-              'refresh_token': refreshToken,
-              'client_id': ApiConfig.clientId,
-            },
-          )
-          .timeout(_authRequestTimeout);
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body) as Map<String, dynamic>;
-        final accessToken = data['access_token'] as String?;
-        final newRefreshToken = data['refresh_token'] as String?;
-        if (accessToken == null ||
-            accessToken.isEmpty ||
-            newRefreshToken == null ||
-            newRefreshToken.isEmpty) {
-          _cacheRefreshResult(TokenRefreshStatus.invalidSession);
-          return TokenRefreshStatus.invalidSession;
-        }
-        await _storage.write(key: 'access_token', value: accessToken);
-        await _storage.write(key: 'refresh_token', value: newRefreshToken);
-        _cacheRefreshResult(TokenRefreshStatus.refreshed);
-        return TokenRefreshStatus.refreshed;
-      }
-
-      if (response.statusCode == 400 || response.statusCode == 401) {
-        _cacheRefreshResult(TokenRefreshStatus.invalidSession);
-        return TokenRefreshStatus.invalidSession;
-      }
-
-      _cacheRefreshResult(TokenRefreshStatus.retryableFailure);
-      return TokenRefreshStatus.retryableFailure;
+      final status = await refreshBracuSessionTokens(
+        refreshToken: refreshToken,
+        timeout: _authRequestTimeout,
+        persistTokens: (accessToken, refreshToken) async {
+          await _storage.write(
+            key: PreconnectStorageKeys.accessToken,
+            value: accessToken,
+          );
+          await _storage.write(
+            key: PreconnectStorageKeys.refreshToken,
+            value: refreshToken,
+          );
+        },
+        clearTokens: () async {
+          await _storage.deleteAll();
+        },
+      );
+      _cacheRefreshResult(status);
+      return status;
     } catch (e) {
       _cacheRefreshResult(TokenRefreshStatus.retryableFailure);
       return TokenRefreshStatus.retryableFailure;
@@ -232,12 +218,12 @@ class AuthService {
   }
 
   Future<bool> isLoggedIn() async {
-    final token = await _storage.read(key: 'access_token');
+    final token = await _storage.read(key: PreconnectStorageKeys.accessToken);
     return token != null && token.isNotEmpty;
   }
 
   Future<bool> ensureSignedIn() async {
-    final accessToken = await _storage.read(key: 'access_token');
+    final accessToken = await _storage.read(key: PreconnectStorageKeys.accessToken);
     if (accessToken == null || accessToken.isEmpty) {
       return false;
     }
@@ -319,7 +305,7 @@ class AuthService {
   }
 
   Future<DateTime> getTokenExpiryTime() async {
-    final token = await _storage.read(key: 'access_token');
+    final token = await _storage.read(key: PreconnectStorageKeys.accessToken);
     if (token == null || token.isEmpty) {
       return DateTime.fromMillisecondsSinceEpoch(0);
     }

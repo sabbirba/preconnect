@@ -3,14 +3,15 @@ import GoogleMobileAds
 import QuickLook
 import UIKit
 
+let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
+
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
-  private let pendingShortcutKey = "flutter.pending_shortcut_action"
   private let adsBridge = PreconnectAdsBridge()
   private var previewedPDFURL: URL?
 
   private func cacheShortcutAction(_ type: String) {
-    UserDefaults.standard.set(type, forKey: pendingShortcutKey)
+    UserDefaults.standard.set(type, forKey: preconnectPendingShortcutActionKey)
   }
 
   override func application(

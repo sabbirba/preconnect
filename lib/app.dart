@@ -14,6 +14,7 @@ import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ads_bridge.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/play_install_referrer.dart';
 import 'package:preconnect/tools/reward_support_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -48,17 +49,24 @@ class MyApp extends StatefulWidget {
       await prefs.getString(_homeTabPrefsKey),
     );
 
-    final token = await TokenStorage.instance.read(key: 'access_token');
-    final refreshToken = await TokenStorage.instance.read(key: 'refresh_token');
+    final token = await TokenStorage.instance.read(
+      key: PreconnectStorageKeys.accessToken,
+    );
+    final refreshToken = await TokenStorage.instance.read(
+      key: PreconnectStorageKeys.refreshToken,
+    );
     final tokenPresent = token != null && token.isNotEmpty;
     final refreshTokenPresent = refreshToken != null && refreshToken.isNotEmpty;
     final hasToken = tokenPresent && refreshTokenPresent;
 
     if (!hasToken) {
-      await prefs.setBool('cached_has_auth_session', false);
+      await prefs.setBool(
+        PreconnectStorageKeys.cachedHasAuthSession,
+        false,
+      );
       final keepKeys = <String>{
-        'access_token',
-        'refresh_token',
+        PreconnectStorageKeys.accessToken,
+        PreconnectStorageKeys.refreshToken,
         'themeMode',
         CustomSchedulesService.cacheKey,
       };
@@ -113,16 +121,6 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp>
     with WidgetsBindingObserver, RefreshBusState {
-  static const String _pendingShortcutPrefsKey = 'pending_shortcut_action';
-  static const String _shortcutCustomSchedule = 'quick.customSchedule';
-  static const String _shortcutProfile = 'quick.profile';
-  static const String _shortcutClasses = 'quick.classes';
-  static const String _shortcutExams = 'quick.exams';
-  static const String _shortcutFriends = 'quick.friends';
-  static const String _shortcutShare = 'quick.share';
-  static const String _shortcutScan = 'quick.scan';
-  static const String _shortcutSeatStatus = 'quick.seatStatus';
-
   late final ValueNotifier<ThemeMode> _themeMode;
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   late bool _initialLoggedIn;
@@ -201,8 +199,12 @@ class _MyAppState extends State<MyApp>
 
   Future<void> _consumePendingShortcutAction() async {
     final pendingAction = kIsWeb
-        ? await TokenStorage.instance.read(key: _pendingShortcutPrefsKey)
-        : await AppStorage.instance.getString(_pendingShortcutPrefsKey);
+        ? await TokenStorage.instance.read(
+            key: PreconnectStorageKeys.pendingShortcutAction,
+          )
+        : await AppStorage.instance.getString(
+            PreconnectStorageKeys.pendingShortcutAction,
+          );
     if (pendingAction == null || pendingAction.isEmpty) return;
     await _clearPendingShortcutAction();
     _handleShortcutAction(pendingAction);
@@ -266,12 +268,14 @@ class _MyAppState extends State<MyApp>
   Future<void> _clearPendingShortcutAction() async {
     if (kIsWeb) {
       await TokenStorage.instance.write(
-        key: _pendingShortcutPrefsKey,
+        key: PreconnectStorageKeys.pendingShortcutAction,
         value: null,
       );
       return;
     }
-    await AppStorage.instance.remove(_pendingShortcutPrefsKey);
+    await AppStorage.instance.remove(
+      PreconnectStorageKeys.pendingShortcutAction,
+    );
   }
 
   void _openHomeTab(HomeTab tab) {
@@ -292,29 +296,29 @@ class _MyAppState extends State<MyApp>
 
   HomeTab? _tabFromShortcutAction(String action) {
     switch (action) {
-      case _shortcutCustomSchedule:
+      case PreconnectBrowserActionIds.shortcutCustomSchedule:
       case 'customSchedule':
       case 'custom_schedule':
         return HomeTab.personalSchedules;
-      case _shortcutProfile:
+      case PreconnectBrowserActionIds.shortcutProfile:
       case 'profile':
         return HomeTab.profile;
-      case _shortcutClasses:
+      case PreconnectBrowserActionIds.shortcutClasses:
       case 'classes':
         return HomeTab.studentSchedule;
-      case _shortcutExams:
+      case PreconnectBrowserActionIds.shortcutExams:
       case 'exams':
         return HomeTab.examSchedule;
-      case _shortcutFriends:
+      case PreconnectBrowserActionIds.shortcutFriends:
       case 'friends':
         return HomeTab.friendSchedule;
-      case _shortcutShare:
+      case PreconnectBrowserActionIds.shortcutShare:
       case 'share':
         return HomeTab.shareSchedule;
-      case _shortcutScan:
+      case PreconnectBrowserActionIds.shortcutScan:
       case 'scan':
         return HomeTab.scanSchedule;
-      case _shortcutSeatStatus:
+      case PreconnectBrowserActionIds.shortcutSeatStatus:
       case 'seatStatus':
       case 'seat_status':
         return HomeTab.seatStatus;

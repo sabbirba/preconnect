@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
+import 'package:preconnect/tools/token_refresh_flow.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
 class ApiTestPage extends StatefulWidget {
@@ -53,7 +55,9 @@ class _ApiTestPageState extends State<ApiTestPage> {
     final method = _method;
 
     try {
-      var accessToken = await TokenStorage.instance.read(key: 'access_token');
+      var accessToken = await TokenStorage.instance.read(
+        key: PreconnectStorageKeys.accessToken,
+      );
       if (accessToken == null || accessToken.isEmpty) {
         throw Exception('No access token found. Login first.');
       }
@@ -68,7 +72,9 @@ class _ApiTestPageState extends State<ApiTestPage> {
       if (response.statusCode == 401) {
         final refreshStatus = await AuthService().refreshTokenStatus();
         if (refreshStatus == TokenRefreshStatus.refreshed) {
-          accessToken = await TokenStorage.instance.read(key: 'access_token');
+          accessToken = await TokenStorage.instance.read(
+            key: PreconnectStorageKeys.accessToken,
+          );
           if (accessToken != null && accessToken.isNotEmpty) {
             response = await _perform(
               uri: uri,

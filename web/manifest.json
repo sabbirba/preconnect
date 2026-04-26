@@ -17,6 +17,7 @@
     "service_worker": "background.dart.js"
   },
   "permissions": [
+    "cookies",
     "sidePanel",
     "commands",
     "contextMenus",

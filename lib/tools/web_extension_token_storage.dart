@@ -1,4 +1,5 @@
 import 'package:chrome_extension/storage.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
 
 class WebExtensionTokenStorage {
   WebExtensionTokenStorage._();
@@ -26,6 +27,9 @@ class WebExtensionTokenStorage {
 
   Future<void> deleteAll() async {
     if (!chrome.storage.isAvailable) return;
-    await chrome.storage.local.remove(const ['access_token', 'refresh_token']);
+    await chrome.storage.local.remove(const [
+      PreconnectStorageKeys.accessToken,
+      PreconnectStorageKeys.refreshToken,
+    ]);
   }
 }

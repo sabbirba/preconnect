@@ -4,6 +4,7 @@ import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/custom_schedules_service.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
@@ -136,9 +137,9 @@ class _SettingsPageState extends State<SettingsPage> {
       confirmColor: BracuPalette.danger,
       onConfirm: () async {
         final keepKeys = <String>{
-          'access_token',
-          'refresh_token',
-          'cached_has_auth_session',
+          PreconnectStorageKeys.accessToken,
+          PreconnectStorageKeys.refreshToken,
+          PreconnectStorageKeys.cachedHasAuthSession,
           'currentSessionSemesterId',
           CustomSchedulesService.cacheKey,
         };

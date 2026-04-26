@@ -3,6 +3,7 @@ import 'dart:convert';
 // ignore: implementation_imports
 import 'package:chrome_extension/src/internal_helpers.dart';
 
+import 'package:chrome_extension/cookies.dart' as ck;
 import 'package:chrome_extension/context_menus.dart' as cm;
 import 'package:chrome_extension/chrome.dart';
 import 'package:chrome_extension/tabs.dart';
@@ -10,6 +11,7 @@ import 'package:chrome_extension/side_panel.dart';
 import 'package:chrome_extension/web_navigation.dart';
 import 'package:web/web.dart' show Headers, RequestInit, Response;
 import 'package:preconnect/tools/web_extension_api_config.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/web_extension_session_sync.dart';
 import 'package:preconnect/tools/pkce.dart';
 
@@ -22,41 +24,67 @@ const String _logoutCompleteType = 'preconnect.logoutComplete';
 const String _startLoginType = 'preconnect.startLogin';
 const String _startLogoutType = 'preconnect.startLogout';
 const String _browserShortcutType = 'preconnect.browserShortcut';
-const String _pendingShortcutPrefsKey = 'pending_shortcut_action';
 const String _appEntryPoint = 'index.html';
-const String _openSidePanelCommand = 'open_side_panel';
-const String _openCustomScheduleCommand = 'open_custom_schedule';
-const String _openProfileCommand = 'open_profile';
-const String _openClassesCommand = 'open_classes';
-const String _openExamsCommand = 'open_exams';
-const String _openFriendsScheduleCommand = 'open_friends_schedule';
-const String _openShareScheduleCommand = 'open_share_schedule';
-const String _openScanScheduleCommand = 'open_scan_schedule';
-const String _openSeatStatusCommand = 'open_seat_status';
-const String _menuRootId = 'preconnect.menu.root';
-const String _menuSidePanelId = 'preconnect.menu.sidePanel';
-const String _menuDashboardId = 'preconnect.menu.dashboard';
-const String _menuProfileId = 'preconnect.menu.profile';
-const String _menuClassesId = 'preconnect.menu.classes';
-const String _menuExamsId = 'preconnect.menu.exams';
-const String _menuFriendsId = 'preconnect.menu.friends';
-const String _menuShareId = 'preconnect.menu.share';
-const String _menuScanId = 'preconnect.menu.scan';
-const String _menuSeatStatusId = 'preconnect.menu.seatStatus';
-const String _shortcutCustomSchedule = 'quick.customSchedule';
-const String _shortcutProfile = 'quick.profile';
-const String _shortcutClasses = 'quick.classes';
-const String _shortcutExams = 'quick.exams';
-const String _shortcutFriends = 'quick.friends';
-const String _shortcutShare = 'quick.share';
-const String _shortcutScan = 'quick.scan';
-const String _shortcutSeatStatus = 'quick.seatStatus';
+const String _openSidePanelCommand =
+    PreconnectBrowserActionIds.openSidePanelCommand;
+const String _openCustomScheduleCommand =
+    PreconnectBrowserActionIds.openCustomScheduleCommand;
+const String _openProfileCommand = PreconnectBrowserActionIds.openProfileCommand;
+const String _openClassesCommand = PreconnectBrowserActionIds.openClassesCommand;
+const String _openExamsCommand = PreconnectBrowserActionIds.openExamsCommand;
+const String _openFriendsScheduleCommand =
+    PreconnectBrowserActionIds.openFriendsScheduleCommand;
+const String _openShareScheduleCommand =
+    PreconnectBrowserActionIds.openShareScheduleCommand;
+const String _openScanScheduleCommand =
+    PreconnectBrowserActionIds.openScanScheduleCommand;
+const String _openSeatStatusCommand =
+    PreconnectBrowserActionIds.openSeatStatusCommand;
+const String _menuRootId = PreconnectBrowserActionIds.menuRootId;
+const String _menuSidePanelId = PreconnectBrowserActionIds.menuSidePanelId;
+const String _menuDashboardId = PreconnectBrowserActionIds.menuDashboardId;
+const String _menuProfileId = PreconnectBrowserActionIds.menuProfileId;
+const String _menuClassesId = PreconnectBrowserActionIds.menuClassesId;
+const String _menuExamsId = PreconnectBrowserActionIds.menuExamsId;
+const String _menuFriendsId = PreconnectBrowserActionIds.menuFriendsId;
+const String _menuShareId = PreconnectBrowserActionIds.menuShareId;
+const String _menuScanId = PreconnectBrowserActionIds.menuScanId;
+const String _menuSeatStatusId = PreconnectBrowserActionIds.menuSeatStatusId;
+const String _shortcutCustomSchedule =
+    PreconnectBrowserActionIds.shortcutCustomSchedule;
+const String _shortcutProfile = PreconnectBrowserActionIds.shortcutProfile;
+const String _shortcutClasses = PreconnectBrowserActionIds.shortcutClasses;
+const String _shortcutExams = PreconnectBrowserActionIds.shortcutExams;
+const String _shortcutFriends = PreconnectBrowserActionIds.shortcutFriends;
+const String _shortcutShare = PreconnectBrowserActionIds.shortcutShare;
+const String _shortcutScan = PreconnectBrowserActionIds.shortcutScan;
+const String _shortcutSeatStatus = PreconnectBrowserActionIds.shortcutSeatStatus;
+const String _cookieSnapshotConnectKey = 'preconnect.cookies.connect';
+const String _cookieSnapshotSsoKey = 'preconnect.cookies.sso';
+const String _cookieSnapshotUpdatedAtKey = 'preconnect.cookies.updatedAt';
+const String _connectCookieUrl = 'https://connect.bracu.ac.bd/';
+const String _ssoCookieUrl =
+    'https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect/';
 
 @JS('fetch')
 external JSPromise<Response> _fetch(String input, [RequestInit? init]);
 
 Future<void> main() async {
   await _guarded(_configureBrowserSurfaces);
+  await _guarded(_syncBracuCookieSnapshot);
+
+  if (chrome.cookies.isAvailable) {
+    chrome.cookies.onChanged.listen((changeInfo) {
+      final cookie = changeInfo.cookie;
+      final domain = cookie.domain.toLowerCase();
+      if (!domain.contains('bracu.ac.bd')) return;
+      if (!domain.contains('connect.bracu.ac.bd') &&
+          !domain.contains('sso.bracu.ac.bd')) {
+        return;
+      }
+      unawaited(_guarded(_syncBracuCookieSnapshot));
+    });
+  }
 
   chrome.runtime.onStartup.listen((_) {
     unawaited(
@@ -133,6 +161,48 @@ Future<void> _guarded(Future<void> Function() task) async {
     await task();
   } catch (_) {
   }
+}
+
+Future<void> _syncBracuCookieSnapshot() async {
+  if (!chrome.cookies.isAvailable) return;
+
+  final connectCookies = await chrome.cookies.getAll(
+    ck.GetAllDetails(url: _connectCookieUrl),
+  );
+  final ssoCookies = await chrome.cookies.getAll(
+    ck.GetAllDetails(url: _ssoCookieUrl),
+  );
+
+  await chrome.storage.local.set({
+    _cookieSnapshotConnectKey: jsonEncode(
+      connectCookies.map(_cookieToJson).toList(),
+    ),
+    _cookieSnapshotSsoKey: jsonEncode(
+      ssoCookies.map(_cookieToJson).toList(),
+    ),
+    _cookieSnapshotUpdatedAtKey: DateTime.now().toIso8601String(),
+  });
+}
+
+Map<String, Object?> _cookieToJson(ck.Cookie cookie) {
+  return <String, Object?>{
+    'name': cookie.name,
+    'value': cookie.value,
+    'domain': cookie.domain,
+    'path': cookie.path,
+    'secure': cookie.secure,
+    'httpOnly': cookie.httpOnly,
+    'sameSite': cookie.sameSite.value,
+    'session': cookie.session,
+    'expirationDate': cookie.expirationDate,
+    'storeId': cookie.storeId,
+    'hostOnly': cookie.hostOnly,
+    if (cookie.partitionKey != null)
+      'partitionKey': <String, Object?>{
+        if (cookie.partitionKey!.topLevelSite != null)
+          'topLevelSite': cookie.partitionKey!.topLevelSite,
+      },
+  };
 }
 
 Future<void> _openOrFocusAppTab() async {
@@ -355,7 +425,7 @@ Future<void> _activateBrowserShortcut(
 
 Future<void> _persistPendingShortcutAction(String shortcut) async {
   await chrome.storage.local.set({
-    _pendingShortcutPrefsKey: shortcut,
+    PreconnectStorageKeys.pendingShortcutAction: shortcut,
   });
 }
 
@@ -394,11 +464,12 @@ Future<void> _restoreAppTabAfterStartup() async {
 
 Future<bool> _hasStoredAuthSession() async {
   final values = await chrome.storage.local.get([
-    'access_token',
-    'refresh_token',
+    PreconnectStorageKeys.accessToken,
+    PreconnectStorageKeys.refreshToken,
   ]);
-  final accessToken = '${values['access_token'] ?? ''}'.trim();
-  final refreshToken = '${values['refresh_token'] ?? ''}'.trim();
+  final accessToken = '${values[PreconnectStorageKeys.accessToken] ?? ''}'.trim();
+  final refreshToken =
+      '${values[PreconnectStorageKeys.refreshToken] ?? ''}'.trim();
   return accessToken.isNotEmpty && refreshToken.isNotEmpty;
 }
 
@@ -540,10 +611,11 @@ Future<void> _handleNavigation(OnCommittedDetails details) async {
       verifier: pending.verifier,
     );
     await chrome.storage.local.set({
-      'access_token': tokens.accessToken,
-      'refresh_token': tokens.refreshToken,
-      'cached_has_auth_session': 'true',
+      PreconnectStorageKeys.accessToken: tokens.accessToken,
+      PreconnectStorageKeys.refreshToken: tokens.refreshToken,
+      PreconnectStorageKeys.cachedHasAuthSession: 'true',
     });
+    await _syncBracuCookieSnapshot();
     await _clearPendingLogin();
     if (!chrome.sidePanel.isAvailable) {
       unawaited(_openOrFocusAppTab());
@@ -609,6 +681,11 @@ Future<bool> _handleLogoutNavigation(OnCommittedDetails details) async {
   if (!uri.path.contains('/student/profile/overview')) return false;
 
   await _clearPendingLogout();
+  await chrome.storage.local.remove([
+    _cookieSnapshotConnectKey,
+    _cookieSnapshotSsoKey,
+    _cookieSnapshotUpdatedAtKey,
+  ]);
   try {
     await chrome.tabs.remove(details.tabId);
   } catch (_) {}

@@ -12,6 +12,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_paths.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/web_platform_stub.dart'
     if (dart.library.html) 'package:preconnect/tools/web_extension_storage_web.dart';
 
@@ -53,7 +54,8 @@ class TokenStorage {
   TokenStorage._();
 
   static final TokenStorage instance = TokenStorage._();
-  static const String _cachedHasSessionKey = 'cached_has_auth_session';
+  static const String _cachedHasSessionKey =
+      PreconnectStorageKeys.cachedHasAuthSession;
   static bool _diagnosticsRun = false;
 
   final FlutterSecureStorage _secure = const FlutterSecureStorage();
@@ -104,7 +106,7 @@ class TokenStorage {
   }
 
   Future<bool> hasAccessToken() async {
-    final value = await read(key: 'access_token');
+    final value = await read(key: PreconnectStorageKeys.accessToken);
     return value != null && value.isNotEmpty;
   }
 
@@ -141,7 +143,8 @@ class TokenStorage {
       try {
         await _secure.write(key: key, value: value);
 
-        if (key == 'refresh_token' || key == 'access_token') {
+        if (key == PreconnectStorageKeys.refreshToken ||
+            key == PreconnectStorageKeys.accessToken) {
           final verified = await _secure.read(key: key);
           if (verified != value) {
             try {
@@ -174,12 +177,15 @@ class TokenStorage {
   }
 
   Future<void> deleteAll() async {
-    await AppStorage.instance.remove('access_token');
-    await AppStorage.instance.remove('refresh_token');
+    await AppStorage.instance.remove(PreconnectStorageKeys.accessToken);
+    await AppStorage.instance.remove(PreconnectStorageKeys.refreshToken);
     await AppStorage.instance.setBool(_cachedHasSessionKey, false);
 
     if (kIsWeb) {
-      await webExtensionStorageRemoveKeys(const ['access_token', 'refresh_token']);
+      await webExtensionStorageRemoveKeys(const [
+        PreconnectStorageKeys.accessToken,
+        PreconnectStorageKeys.refreshToken,
+      ]);
     } else if (_useSecure) {
       try {
         await _secure.deleteAll();
@@ -188,7 +194,7 @@ class TokenStorage {
   }
 
   Future<void> _updateCachedSessionFlagForKey(String key, String? value) async {
-    if (key != 'access_token') return;
+    if (key != PreconnectStorageKeys.accessToken) return;
     final hasValue = value != null && value.isNotEmpty;
     await AppStorage.instance.setBool(_cachedHasSessionKey, hasValue);
   }

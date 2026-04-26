@@ -9,6 +9,7 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/tools/pkce.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
@@ -201,11 +202,11 @@ class _LoginPageState extends State<LoginPage> {
 
       try {
         await TokenStorage.instance.write(
-          key: 'access_token',
+          key: PreconnectStorageKeys.accessToken,
           value: accessToken,
         );
         await TokenStorage.instance.write(
-          key: 'refresh_token',
+          key: PreconnectStorageKeys.refreshToken,
           value: refreshToken,
         );
       } on TokenPersistenceException {
@@ -213,10 +214,10 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       final persistedAccessToken = await TokenStorage.instance.read(
-        key: 'access_token',
+        key: PreconnectStorageKeys.accessToken,
       );
       final persistedRefreshToken = await TokenStorage.instance.read(
-        key: 'refresh_token',
+        key: PreconnectStorageKeys.refreshToken,
       );
       if (persistedAccessToken == null ||
           persistedAccessToken.isEmpty ||

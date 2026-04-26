@@ -2,10 +2,8 @@ import Flutter
 import UIKit
 
 class SceneDelegate: FlutterSceneDelegate {
-  private let pendingShortcutKey = "flutter.pending_shortcut_action"
-
   private func cacheShortcutAction(_ type: String) {
-    UserDefaults.standard.set(type, forKey: pendingShortcutKey)
+    UserDefaults.standard.set(type, forKey: preconnectPendingShortcutActionKey)
   }
 
   override func scene(
