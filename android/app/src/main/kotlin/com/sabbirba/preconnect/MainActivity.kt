@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
+import androidx.core.content.FileProvider
 import java.util.ArrayList
 import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
@@ -108,6 +109,7 @@ class MainActivity : FlutterFragmentActivity() {
         configureAndroidAlarmChannel(flutterEngine)
         configureNetworkAssistChannels(flutterEngine)
         configureNativePrintChannel(flutterEngine)
+        configurePdfOpenChannel(flutterEngine)
     }
 
     private fun configureBuildInfoChannel(flutterEngine: FlutterEngine) {
@@ -360,6 +362,53 @@ class MainActivity : FlutterFragmentActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    private fun configurePdfOpenChannel(flutterEngine: FlutterEngine) {
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "preconnect/open_pdf")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "openPdf" -> openPdf(call, result)
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    private fun openPdf(call: MethodCall, result: MethodChannel.Result) {
+        val filePath = call.argument<String>("filePath")?.trim().orEmpty()
+        if (filePath.isBlank()) {
+            result.error("INVALID_PATH", "Missing file path", null)
+            return
+        }
+
+        val source = File(filePath)
+        if (!source.exists() || !source.isFile) {
+            result.error("FILE_NOT_FOUND", "Selected PDF file was not found", null)
+            return
+        }
+
+        try {
+            val contentUri = FileProvider.getUriForFile(
+                this,
+                "${packageName}.fileprovider",
+                source,
+            )
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(contentUri, "application/pdf")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            if (intent.resolveActivity(packageManager) == null) {
+                result.success(false)
+                return
+            }
+            startActivity(intent)
+            result.success(true)
+        } catch (_: ActivityNotFoundException) {
+            result.success(false)
+        } catch (e: Exception) {
+            result.error("OPEN_ERROR", e.message ?: "Failed to open PDF", null)
+        }
     }
 
     private fun printPdf(call: MethodCall, result: MethodChannel.Result) {

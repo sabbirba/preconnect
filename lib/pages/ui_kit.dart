@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'package:flutter/foundation.dart' show ValueListenable, kIsWeb;
+import 'package:flutter/foundation.dart'
+    show ValueListenable, TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -27,6 +28,8 @@ import 'package:url_launcher/url_launcher.dart';
 export 'package:preconnect/tools/web_shared.dart';
 
 part 'shared_widgets/ui_kit_components.dart';
+
+const MethodChannel _pdfOpenChannel = MethodChannel('preconnect/open_pdf');
 
 String formatDate(String? input) {
   if (input == null || input.trim().isEmpty) return '';
@@ -463,10 +466,7 @@ Future<void> openGradeSheet(BuildContext context) async {
       showAppSnackBar(context, 'Could not fetch the latest grade sheet');
       return;
     }
-    final opened = await launchUrl(
-      Uri.file(gradeSheet.file.path),
-      mode: LaunchMode.externalApplication,
-    );
+    final opened = await _openPdfOnAndroidOrFallback(gradeSheet.file.path);
     if (!context.mounted) return;
     if (!opened) {
       showAppSnackBar(context, 'No app found to open this PDF.');
@@ -483,6 +483,26 @@ Future<void> openGradeSheet(BuildContext context) async {
     if (!context.mounted) return;
     showAppSnackBar(context, 'Could not open the PDF.');
   }
+}
+
+Future<bool> _openPdfOnAndroidOrFallback(String filePath) async {
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    try {
+      return await _pdfOpenChannel.invokeMethod<bool>(
+            'openPdf',
+            <String, Object?>{'filePath': filePath},
+          ) ??
+          false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  final opened = await launchUrl(
+    Uri.file(filePath),
+    mode: LaunchMode.externalApplication,
+  );
+  return opened;
 }
 
 List<section.Section> buildCurrentSectionsForCalculator(
