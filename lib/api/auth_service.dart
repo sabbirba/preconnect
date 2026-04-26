@@ -320,7 +320,9 @@ class AuthService {
       );
       final exp = payload['exp'];
       if (exp == null) return DateTime.fromMillisecondsSinceEpoch(0);
-      return DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+      final seconds = int.tryParse('$exp');
+      if (seconds == null) return DateTime.fromMillisecondsSinceEpoch(0);
+      return DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
     } catch (e) {
       return DateTime.fromMillisecondsSinceEpoch(0);
     }

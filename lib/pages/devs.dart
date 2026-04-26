@@ -147,7 +147,7 @@ class _DevsPageState extends State<DevsPage> {
       builder: (context, snapshot) {
         final subtitle = snapshot.data ?? 'App Version';
         return BracuPageScaffold(
-          title: 'Devs',
+          title: 'Devs & Support',
           subtitle: subtitle,
           icon: Icons.developer_mode_outlined,
           onHeaderTap: _onHeaderSecretTap,

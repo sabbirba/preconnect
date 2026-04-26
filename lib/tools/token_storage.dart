@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:in_app_review/in_app_review.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
@@ -428,6 +429,13 @@ class InAppReviewPrompt {
 
   static Future<bool> openStoreListing({String? iosAppStoreId}) async {
     try {
+      if (kIsWeb) {
+        final uri = Uri.parse(
+          'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
+        );
+        return await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+
       final inAppReview = InAppReview.instance;
       if (Platform.isIOS) {
         final appStoreId = (iosAppStoreId ?? '').trim();

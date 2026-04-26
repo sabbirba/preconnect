@@ -166,6 +166,7 @@ The extension build uses:
 - `web/extension_app.dart` as the Flutter extension entrypoint
 - `web/background.dart` compiled to `background.dart.js`
 - `lib/app.dart` and `lib/pages/web_extension_login_web.dart` for the extension UI
+- `tool/build_chrome_extension.sh` injects the extension version from `pubspec.yaml` so the Devs page shows the app version inside Chrome
 
 Notes:
 

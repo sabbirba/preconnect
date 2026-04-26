@@ -72,8 +72,10 @@ class _GradeSheetCardState extends State<GradeSheetCard> {
             ElevatedButton.icon(
               onPressed: _isOpening ? null : _openGradeSheet,
               icon: _isOpening
-                  ? const BracuShimmer(
-                      child: BracuSkeletonBox(width: 16, height: 16, radius: 8),
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2.2),
                     )
                   : const Icon(Icons.picture_as_pdf_outlined, size: 16),
               label: Text(_isOpening ? 'Opening' : 'Open'),
