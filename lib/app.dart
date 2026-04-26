@@ -18,6 +18,9 @@ import 'package:preconnect/tools/play_install_referrer.dart';
 import 'package:preconnect/tools/reward_support_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/web_extension_shortcut_bridge_stub.dart'
+    if (dart.library.html)
+        'package:preconnect/tools/web_extension_shortcut_bridge_web.dart';
 
 class AppBootstrapState {
   const AppBootstrapState({
@@ -111,10 +114,14 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp>
     with WidgetsBindingObserver, RefreshBusState {
   static const String _pendingShortcutPrefsKey = 'pending_shortcut_action';
+  static const String _shortcutCustomSchedule = 'quick.customSchedule';
   static const String _shortcutProfile = 'quick.profile';
   static const String _shortcutClasses = 'quick.classes';
   static const String _shortcutExams = 'quick.exams';
   static const String _shortcutFriends = 'quick.friends';
+  static const String _shortcutShare = 'quick.share';
+  static const String _shortcutScan = 'quick.scan';
+  static const String _shortcutSeatStatus = 'quick.seatStatus';
 
   late final ValueNotifier<ThemeMode> _themeMode;
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
@@ -126,6 +133,7 @@ class _MyAppState extends State<MyApp>
   bool _isUnlocking = false;
   WebExtensionSessionFlow? _webExtensionSessionFlow;
   StreamSubscription<WebExtensionSessionEvent>? _webSessionSub;
+  WebExtensionShortcutBridge? _webShortcutBridge;
 
   @override
   void initState() {
@@ -144,6 +152,9 @@ class _MyAppState extends State<MyApp>
       _webExtensionSessionFlow = WebExtensionSessionFlow();
       _webSessionSub = _webExtensionSessionFlow!.events.listen(
         _handleWebExtensionSessionEvent,
+      );
+      _webShortcutBridge = WebExtensionShortcutBridge(
+        onShortcut: _handleShortcutAction,
       );
     }
     if (!kIsWeb) {
@@ -171,27 +182,29 @@ class _MyAppState extends State<MyApp>
   }
 
   Future<void> _bootstrapInBackground() async {
-    final next = await MyApp.bootstrap();
-    if (!mounted) return;
-    _resolvedBootstrapState = next;
-    _initialLoggedIn = next.isLoggedIn;
-    _canOpenOffline = next.canOpenOffline;
-    _themeMode.value = next.themeMode;
-    setState(() {});
+    try {
+      final next = await MyApp.bootstrap();
+      if (!mounted) return;
+      _resolvedBootstrapState = next;
+      _initialLoggedIn = next.isLoggedIn;
+      _canOpenOffline = next.canOpenOffline;
+      _themeMode.value = next.themeMode;
+      setState(() {});
+    } catch (_) {}
   }
 
   Future<void> _setupQuickAccessShortcuts() async {
-    if (kIsWeb) return;
     try {
       await _consumePendingShortcutAction();
     } catch (_) {}
   }
 
   Future<void> _consumePendingShortcutAction() async {
-    final prefs = AppStorage.instance;
-    final pendingAction = await prefs.getString(_pendingShortcutPrefsKey);
+    final pendingAction = kIsWeb
+        ? await TokenStorage.instance.read(key: _pendingShortcutPrefsKey)
+        : await AppStorage.instance.getString(_pendingShortcutPrefsKey);
     if (pendingAction == null || pendingAction.isEmpty) return;
-    await prefs.remove(_pendingShortcutPrefsKey);
+    await _clearPendingShortcutAction();
     _handleShortcutAction(pendingAction);
   }
 
@@ -215,6 +228,7 @@ class _MyAppState extends State<MyApp>
   void dispose() {
     _webSessionSub?.cancel();
     _webExtensionSessionFlow?.dispose();
+    unawaited(_webShortcutBridge?.dispose());
     if (!kIsWeb) {
       unbindRefreshBus(_onRefreshSignal);
     }
@@ -246,6 +260,18 @@ class _MyAppState extends State<MyApp>
     final tab = _tabFromShortcutAction(action);
     if (tab == null) return;
     _openHomeTab(tab);
+    unawaited(_clearPendingShortcutAction());
+  }
+
+  Future<void> _clearPendingShortcutAction() async {
+    if (kIsWeb) {
+      await TokenStorage.instance.write(
+        key: _pendingShortcutPrefsKey,
+        value: null,
+      );
+      return;
+    }
+    await AppStorage.instance.remove(_pendingShortcutPrefsKey);
   }
 
   void _openHomeTab(HomeTab tab) {
@@ -266,6 +292,10 @@ class _MyAppState extends State<MyApp>
 
   HomeTab? _tabFromShortcutAction(String action) {
     switch (action) {
+      case _shortcutCustomSchedule:
+      case 'customSchedule':
+      case 'custom_schedule':
+        return HomeTab.personalSchedules;
       case _shortcutProfile:
       case 'profile':
         return HomeTab.profile;
@@ -278,6 +308,16 @@ class _MyAppState extends State<MyApp>
       case _shortcutFriends:
       case 'friends':
         return HomeTab.friendSchedule;
+      case _shortcutShare:
+      case 'share':
+        return HomeTab.shareSchedule;
+      case _shortcutScan:
+      case 'scan':
+        return HomeTab.scanSchedule;
+      case _shortcutSeatStatus:
+      case 'seatStatus':
+      case 'seat_status':
+        return HomeTab.seatStatus;
       default:
         return null;
     }
@@ -410,17 +450,19 @@ class _MyAppState extends State<MyApp>
   }
 
   Future<void> _validateSessionInBackground() async {
-    final signedIn = await AuthService().ensureSignedIn().timeout(
-      const Duration(seconds: 10),
-      onTimeout: () => true,
-    );
-    if (!signedIn && mounted) {
-      _themeMode.value = ThemeMode.system;
-      _navigatorKey.currentState?.pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const OnboardingPage()),
-        (route) => false,
+    try {
+      final signedIn = await AuthService().ensureSignedIn().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => true,
       );
-    }
+      if (!signedIn && mounted) {
+        _themeMode.value = ThemeMode.system;
+        _navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const OnboardingPage()),
+          (route) => false,
+        );
+      }
+    } catch (_) {}
   }
 
   Future<bool> _maybeCheckForUpdates() async {

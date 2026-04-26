@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer' as developer;
 // ignore: implementation_imports
 import 'package:chrome_extension/src/internal_helpers.dart';
 
+import 'package:chrome_extension/context_menus.dart' as cm;
 import 'package:chrome_extension/chrome.dart';
 import 'package:chrome_extension/tabs.dart';
+import 'package:chrome_extension/side_panel.dart';
 import 'package:chrome_extension/web_navigation.dart';
 import 'package:web/web.dart' show Headers, RequestInit, Response;
 import 'package:preconnect/tools/web_extension_api_config.dart';
@@ -20,12 +21,43 @@ const String _loginFailedType = 'preconnect.loginFailed';
 const String _logoutCompleteType = 'preconnect.logoutComplete';
 const String _startLoginType = 'preconnect.startLogin';
 const String _startLogoutType = 'preconnect.startLogout';
+const String _browserShortcutType = 'preconnect.browserShortcut';
+const String _pendingShortcutPrefsKey = 'pending_shortcut_action';
 const String _appEntryPoint = 'index.html';
+const String _openSidePanelCommand = 'open_side_panel';
+const String _openCustomScheduleCommand = 'open_custom_schedule';
+const String _openProfileCommand = 'open_profile';
+const String _openClassesCommand = 'open_classes';
+const String _openExamsCommand = 'open_exams';
+const String _openFriendsScheduleCommand = 'open_friends_schedule';
+const String _openShareScheduleCommand = 'open_share_schedule';
+const String _openScanScheduleCommand = 'open_scan_schedule';
+const String _openSeatStatusCommand = 'open_seat_status';
+const String _menuRootId = 'preconnect.menu.root';
+const String _menuSidePanelId = 'preconnect.menu.sidePanel';
+const String _menuDashboardId = 'preconnect.menu.dashboard';
+const String _menuProfileId = 'preconnect.menu.profile';
+const String _menuClassesId = 'preconnect.menu.classes';
+const String _menuExamsId = 'preconnect.menu.exams';
+const String _menuFriendsId = 'preconnect.menu.friends';
+const String _menuShareId = 'preconnect.menu.share';
+const String _menuScanId = 'preconnect.menu.scan';
+const String _menuSeatStatusId = 'preconnect.menu.seatStatus';
+const String _shortcutCustomSchedule = 'quick.customSchedule';
+const String _shortcutProfile = 'quick.profile';
+const String _shortcutClasses = 'quick.classes';
+const String _shortcutExams = 'quick.exams';
+const String _shortcutFriends = 'quick.friends';
+const String _shortcutShare = 'quick.share';
+const String _shortcutScan = 'quick.scan';
+const String _shortcutSeatStatus = 'quick.seatStatus';
 
 @JS('fetch')
 external JSPromise<Response> _fetch(String input, [RequestInit? init]);
 
 Future<void> main() async {
+  await _guarded(_configureBrowserSurfaces);
+
   chrome.runtime.onStartup.listen((_) {
     unawaited(
       _guarded(() async {
@@ -35,11 +67,32 @@ Future<void> main() async {
     );
   });
   chrome.runtime.onInstalled.listen((_) {
-    unawaited(_guarded(_bootstrapSessionSync));
+    unawaited(
+      _guarded(() async {
+        await _bootstrapSessionSync();
+      }),
+    );
   });
 
   chrome.action.onClicked.listen((tab) {
+    if (chrome.sidePanel.isAvailable) return;
     unawaited(_guarded(_openOrFocusAppTab));
+  });
+
+  chrome.commands.onCommand.listen((event) {
+    unawaited(
+      _guarded(() async {
+        await _handleCommand(event.command, event.tab);
+      }),
+    );
+  });
+
+  chrome.contextMenus.onClicked.listen((event) {
+    unawaited(
+      _guarded(() async {
+        await _handleContextMenu(event.info, event.tab);
+      }),
+    );
   });
 
   chrome.runtime.onMessage.listen((event) {
@@ -78,14 +131,7 @@ Future<void> main() async {
 Future<void> _guarded(Future<void> Function() task) async {
   try {
     await task();
-  } catch (error, stackTrace) {
-    // Keep the service worker alive and surface the real failure in logs.
-    developer.log(
-      'PreConnect background error: $error',
-      name: 'PreConnect',
-      error: error,
-      stackTrace: stackTrace,
-    );
+  } catch (_) {
   }
 }
 
@@ -104,6 +150,231 @@ Future<void> _openOrFocusAppTab() async {
   await chrome.tabs.create(CreateProperties(url: appUrl, active: true));
 }
 
+Future<void> _configureBrowserSurfaces() async {
+  if (chrome.sidePanel.isAvailable) {
+    await chrome.sidePanel.setOptions(
+      PanelOptions(path: _appEntryPoint, enabled: true),
+    );
+    await chrome.sidePanel.setPanelBehavior(
+      PanelBehavior(openPanelOnActionClick: true),
+    );
+  }
+
+  if (!chrome.contextMenus.isAvailable) return;
+  await chrome.contextMenus.removeAll();
+  chrome.contextMenus.create(
+    cm.CreateProperties(
+      id: _menuRootId,
+      title: 'PreConnect',
+      contexts: [cm.ContextType.action],
+    ),
+    null,
+  );
+  chrome.contextMenus.create(
+    cm.CreateProperties(
+      id: _menuSidePanelId,
+      parentId: _menuRootId,
+      title: 'Open side panel',
+      contexts: [cm.ContextType.action],
+    ),
+    null,
+  );
+  chrome.contextMenus.create(
+    cm.CreateProperties(
+      id: _menuDashboardId,
+      parentId: _menuRootId,
+      title: 'Custom Schedule',
+      contexts: [cm.ContextType.action],
+    ),
+    null,
+  );
+  chrome.contextMenus.create(
+    cm.CreateProperties(
+      id: _menuProfileId,
+      parentId: _menuRootId,
+      title: 'Profile',
+      contexts: [cm.ContextType.action],
+    ),
+    null,
+  );
+  chrome.contextMenus.create(
+    cm.CreateProperties(
+      id: _menuClassesId,
+      parentId: _menuRootId,
+      title: 'Class Schedule',
+      contexts: [cm.ContextType.action],
+    ),
+    null,
+  );
+  chrome.contextMenus.create(
+    cm.CreateProperties(
+      id: _menuExamsId,
+      parentId: _menuRootId,
+      title: 'Exam Schedule',
+      contexts: [cm.ContextType.action],
+    ),
+    null,
+  );
+  chrome.contextMenus.create(
+    cm.CreateProperties(
+      id: _menuFriendsId,
+      parentId: _menuRootId,
+      title: 'Friend Schedule',
+      contexts: [cm.ContextType.action],
+    ),
+    null,
+  );
+  chrome.contextMenus.create(
+    cm.CreateProperties(
+      id: _menuShareId,
+      parentId: _menuRootId,
+      title: 'Share Schedule',
+      contexts: [cm.ContextType.action],
+    ),
+    null,
+  );
+  chrome.contextMenus.create(
+    cm.CreateProperties(
+      id: _menuScanId,
+      parentId: _menuRootId,
+      title: 'Scan Schedule',
+      contexts: [cm.ContextType.action],
+    ),
+    null,
+  );
+  chrome.contextMenus.create(
+    cm.CreateProperties(
+      id: _menuSeatStatusId,
+      parentId: _menuRootId,
+      title: 'Seat Status',
+      contexts: [cm.ContextType.action],
+    ),
+    null,
+  );
+}
+
+Future<void> _handleCommand(String command, Tab? tab) async {
+  switch (command) {
+    case _openSidePanelCommand:
+      await _openSidePanel(tab: tab);
+      return;
+    case _openCustomScheduleCommand:
+      await _activateBrowserShortcut(_shortcutCustomSchedule, tab: tab);
+      return;
+    case _openProfileCommand:
+      await _activateBrowserShortcut(_shortcutProfile, tab: tab);
+      return;
+    case _openClassesCommand:
+      await _activateBrowserShortcut(_shortcutClasses, tab: tab);
+      return;
+    case _openExamsCommand:
+      await _activateBrowserShortcut(_shortcutExams, tab: tab);
+      return;
+    case _openFriendsScheduleCommand:
+      await _activateBrowserShortcut(_shortcutFriends, tab: tab);
+      return;
+    case _openShareScheduleCommand:
+      await _activateBrowserShortcut(_shortcutShare, tab: tab);
+      return;
+    case _openScanScheduleCommand:
+      await _activateBrowserShortcut(_shortcutScan, tab: tab);
+      return;
+    case _openSeatStatusCommand:
+      await _activateBrowserShortcut(_shortcutSeatStatus, tab: tab);
+      return;
+  }
+}
+
+Future<void> _handleContextMenu(cm.OnClickData info, Tab? tab) async {
+  final menuItemId = '${info.menuItemId}';
+  switch (menuItemId) {
+    case _menuSidePanelId:
+      await _openSidePanel(tab: tab);
+      return;
+    case _menuDashboardId:
+      await _activateBrowserShortcut(_shortcutCustomSchedule, tab: tab);
+      return;
+    case _menuProfileId:
+      await _activateBrowserShortcut(_shortcutProfile, tab: tab);
+      return;
+    case _menuClassesId:
+      await _activateBrowserShortcut(_shortcutClasses, tab: tab);
+      return;
+    case _menuExamsId:
+      await _activateBrowserShortcut(_shortcutExams, tab: tab);
+      return;
+    case _menuFriendsId:
+      await _activateBrowserShortcut(_shortcutFriends, tab: tab);
+      return;
+    case _menuShareId:
+      await _activateBrowserShortcut(_shortcutShare, tab: tab);
+      return;
+    case _menuScanId:
+      await _activateBrowserShortcut(_shortcutScan, tab: tab);
+      return;
+    case _menuSeatStatusId:
+      await _activateBrowserShortcut(_shortcutSeatStatus, tab: tab);
+      return;
+  }
+}
+
+Future<void> _openSidePanel({Tab? tab}) async {
+  if (!chrome.sidePanel.isAvailable) {
+    await _openOrFocusAppTab();
+    return;
+  }
+
+  final resolvedTab = tab ?? await _activeTab();
+  if (resolvedTab?.windowId != null) {
+    await chrome.sidePanel.open(OpenOptions(windowId: resolvedTab!.windowId));
+    return;
+  }
+  if (resolvedTab?.id != null) {
+    await chrome.sidePanel.open(OpenOptions(tabId: resolvedTab!.id));
+    return;
+  }
+  final activeWindowId = await _activeWindowId();
+  if (activeWindowId != null) {
+    await chrome.sidePanel.open(OpenOptions(windowId: activeWindowId));
+    return;
+  }
+  await _openOrFocusAppTab();
+}
+
+Future<void> _activateBrowserShortcut(
+  String shortcut, {
+  Tab? tab,
+}) async {
+  await _persistPendingShortcutAction(shortcut);
+  unawaited(_broadcastRuntimeMessage({
+    'type': _browserShortcutType,
+    'shortcut': shortcut,
+  }));
+  await _openSidePanel(tab: tab);
+}
+
+Future<void> _persistPendingShortcutAction(String shortcut) async {
+  await chrome.storage.local.set({
+    _pendingShortcutPrefsKey: shortcut,
+  });
+}
+
+Future<Tab?> _activeTab() async {
+  final tabs = await chrome.tabs.query(
+    QueryInfo(active: true, currentWindow: true),
+  );
+  if (tabs.isNotEmpty) return tabs.first;
+  final fallbackTabs = await chrome.tabs.query(QueryInfo(active: true));
+  if (fallbackTabs.isNotEmpty) return fallbackTabs.first;
+  return null;
+}
+
+Future<int?> _activeWindowId() async {
+  final tab = await _activeTab();
+  if (tab?.windowId != null) return tab!.windowId;
+  return null;
+}
+
 Future<void> _bootstrapSessionSync() async {
   await _syncLatestSession();
 }
@@ -113,6 +384,9 @@ Future<void> _syncLatestSession() async {
 }
 
 Future<void> _restoreAppTabAfterStartup() async {
+  if (chrome.sidePanel.isAvailable) {
+    return;
+  }
   final hasSession = await _hasStoredAuthSession();
   if (!hasSession) return;
   await _openOrFocusAppTab();
@@ -271,7 +545,9 @@ Future<void> _handleNavigation(OnCommittedDetails details) async {
       'cached_has_auth_session': 'true',
     });
     await _clearPendingLogin();
-    unawaited(_openOrFocusAppTab());
+    if (!chrome.sidePanel.isAvailable) {
+      unawaited(_openOrFocusAppTab());
+    }
     await chrome.runtime.sendMessage(
       null,
       {
@@ -378,13 +654,7 @@ Future<void> _broadcastFailure(String error) async {
 Future<void> _broadcastRuntimeMessage(Map<String, Object?> message) async {
   try {
     await chrome.runtime.sendMessage(null, message, null);
-  } catch (error, stackTrace) {
-    developer.log(
-      'PreConnect runtime message failed: $error',
-      name: 'PreConnect',
-      error: error,
-      stackTrace: stackTrace,
-    );
+  } catch (_) {
   }
 }
 

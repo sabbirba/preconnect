@@ -134,144 +134,164 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   }
 
   Future<_HomeData> _loadData({bool forceRefresh = false}) async {
-    final cardVisibility = await HomeCardPreferences.load();
-    final needsSchedule =
-        cardVisibility.showTodaySchedule ||
-        cardVisibility.showExamCountdownCard;
-    final needsRamadan =
-        cardVisibility.showRamadanCard || cardVisibility.showTodaySchedule;
-    final needsHoliday = cardVisibility.showTodaySchedule;
+    try {
+      final cardVisibility = await HomeCardPreferences.load();
+      final needsSchedule =
+          cardVisibility.showTodaySchedule ||
+          cardVisibility.showExamCountdownCard;
+      final needsRamadan =
+          cardVisibility.showRamadanCard || cardVisibility.showTodaySchedule;
+      final needsHoliday = cardVisibility.showTodaySchedule;
 
-    final profileFuture =
-        (forceRefresh
-                ? ProfileService().fetchProfile()
-                : ProfileService().getProfile())
-            .catchError((e) {
-              return null;
-            });
-
-    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
-    final scheduleFuture = needsSchedule
-        ? (forceRefresh
-                  ? ScheduleService().fetchStudentScheduleForSemester(
-                      semesterSessionId: currentSessionSemesterId,
-                    )
-                  : ScheduleService().getStudentScheduleForSemester(
-                      semesterSessionId: currentSessionSemesterId,
-                    ))
+      final profileFuture =
+          (forceRefresh
+                  ? ProfileService().fetchProfile()
+                  : ProfileService().getProfile())
               .catchError((e) {
                 return null;
-              })
-        : Future<String?>.value(null);
+              });
 
-    final personalSchedulesFuture = cardVisibility.showExamCountdownCard
-        ? (forceRefresh
-                  ? CustomSchedulesService().getItems(forceRefresh: true)
-                  : CustomSchedulesService().getItems())
+      final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+      final scheduleFuture = needsSchedule
+          ? (forceRefresh
+                    ? ScheduleService().fetchStudentScheduleForSemester(
+                        semesterSessionId: currentSessionSemesterId,
+                      )
+                    : ScheduleService().getStudentScheduleForSemester(
+                        semesterSessionId: currentSessionSemesterId,
+                      ))
+                .catchError((e) {
+                  return null;
+                })
+          : Future<String?>.value(null);
+
+      final personalSchedulesFuture = cardVisibility.showExamCountdownCard
+          ? (forceRefresh
+                    ? CustomSchedulesService().getItems(forceRefresh: true)
+                    : CustomSchedulesService().getItems())
+                .catchError((e) {
+                  return const <CustomSchedule>[];
+                })
+          : Future<List<CustomSchedule>>.value(const <CustomSchedule>[]);
+
+      final ramadanFuture = needsRamadan
+          ? RamadanTiming.getRamadanStatus(forceRefresh: forceRefresh)
               .catchError((e) {
-                return const <CustomSchedule>[];
+                return const RamadanStatus(isRamadan: false);
               })
-        : Future<List<CustomSchedule>>.value(const <CustomSchedule>[]);
+          : Future<RamadanStatus>.value(const RamadanStatus(isRamadan: false));
 
-    final ramadanFuture = needsRamadan
-        ? RamadanTiming.getRamadanStatus(forceRefresh: forceRefresh).catchError(
-            (e) {
-              return const RamadanStatus(isRamadan: false);
-            },
-          )
-        : Future<RamadanStatus>.value(const RamadanStatus(isRamadan: false));
+      final holidayFuture = needsHoliday
+          ? HolidayTiming.getTodayStatus(forceRefresh: forceRefresh).catchError((
+              e,
+            ) {
+              return HolidayStatus.empty;
+            })
+          : Future<HolidayStatus>.value(HolidayStatus.empty);
 
-    final holidayFuture = needsHoliday
-        ? HolidayTiming.getTodayStatus(forceRefresh: forceRefresh).catchError((
-            e,
-          ) {
-            return HolidayStatus.empty;
-          })
-        : Future<HolidayStatus>.value(HolidayStatus.empty);
-
-    final results = await Future.wait<dynamic>([
-      profileFuture,
-      scheduleFuture,
-      personalSchedulesFuture,
-      ramadanFuture,
-      holidayFuture,
-    ]);
-
-    Map<String, String?>? profile = results[0] as Map<String, String?>?;
-    String? scheduleJson = results[1] as String?;
-    final personalSchedules = results[2] as List<CustomSchedule>;
-    final ramadan = results[3] as RamadanStatus;
-    final isRamadan = ramadan.isRamadan;
-    final holidayStatus = results[4] as HolidayStatus;
-
-    if (!forceRefresh &&
-        (profile == null || (needsSchedule && scheduleJson == null))) {
-      final fallbackResults = await Future.wait<dynamic>([
-        profile == null
-            ? ProfileService().fetchProfile()
-            : Future.value(profile),
-        scheduleJson == null && needsSchedule
-            ? ScheduleService().fetchStudentScheduleForSemester(
-                semesterSessionId: currentSessionSemesterId,
-              )
-            : Future.value(scheduleJson),
+      final results = await Future.wait<dynamic>([
+        profileFuture,
+        scheduleFuture,
+        personalSchedulesFuture,
+        ramadanFuture,
+        holidayFuture,
       ]);
-      profile = fallbackResults[0] as Map<String, String?>?;
-      scheduleJson = fallbackResults[1] as String?;
-    }
 
-    final photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
-    final List<_ScheduleEntry> entries = [];
-    final List<section.Section> sections = [];
-    Map<String, ExamScheduleOverride> examOverrides =
-        const <String, ExamScheduleOverride>{};
-    if (scheduleJson != null && scheduleJson.trim().isNotEmpty) {
-      final decoded = ScheduleService().parseStudentSections(
-        scheduleJson,
-        semesterSessionId: currentSessionSemesterId,
-      );
-      sections.addAll(decoded);
-      for (final section in decoded) {
-        for (final s in section.sectionSchedule.classSchedules) {
-          final adjusted = RamadanTiming.adjustRange(
-            s.startTime,
-            s.endTime,
-            isRamadan: isRamadan,
-          );
-          entries.add(
-            _ScheduleEntry(
-              day: s.day,
-              startTime: adjusted.startTime,
-              endTime: adjusted.endTime,
-              courseCode: section.courseCode,
-              sectionName: section.sectionName,
-              roomNumber: section.roomNumber,
-              faculties: section.faculties,
-            ),
+      Map<String, String?>? profile = results[0] as Map<String, String?>?;
+      String? scheduleJson = results[1] as String?;
+      final personalSchedules = results[2] as List<CustomSchedule>;
+      final ramadan = results[3] as RamadanStatus;
+      final isRamadan = ramadan.isRamadan;
+      final holidayStatus = results[4] as HolidayStatus;
+
+      if (!forceRefresh &&
+          (profile == null || (needsSchedule && scheduleJson == null))) {
+        final fallbackResults = await Future.wait<dynamic>([
+          profile == null
+              ? ProfileService().fetchProfile()
+              : Future.value(profile),
+          scheduleJson == null && needsSchedule
+              ? ScheduleService().fetchStudentScheduleForSemester(
+                  semesterSessionId: currentSessionSemesterId,
+                )
+              : Future.value(scheduleJson),
+        ]);
+        profile = fallbackResults[0] as Map<String, String?>?;
+        scheduleJson = fallbackResults[1] as String?;
+      }
+
+      final photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
+      final List<_ScheduleEntry> entries = [];
+      final List<section.Section> sections = [];
+      Map<String, ExamScheduleOverride> examOverrides =
+          const <String, ExamScheduleOverride>{};
+      if (scheduleJson != null && scheduleJson.trim().isNotEmpty) {
+        final decoded = ScheduleService().parseStudentSections(
+          scheduleJson,
+          semesterSessionId: currentSessionSemesterId,
+        );
+        sections.addAll(decoded);
+        for (final section in decoded) {
+          for (final s in section.sectionSchedule.classSchedules) {
+            final adjusted = RamadanTiming.adjustRange(
+              s.startTime,
+              s.endTime,
+              isRamadan: isRamadan,
+            );
+            entries.add(
+              _ScheduleEntry(
+                day: s.day,
+                startTime: adjusted.startTime,
+                endTime: adjusted.endTime,
+                courseCode: section.courseCode,
+                sectionName: section.sectionName,
+                roomNumber: section.roomNumber,
+                faculties: section.faculties,
+              ),
+            );
+          }
+        }
+
+        if (cardVisibility.showExamCountdownCard && sections.isNotEmpty) {
+          examOverrides = await ExamScheduleService().getOverridesForSections(
+            sections,
+            forceRefresh: forceRefresh,
           );
         }
       }
-
-      if (cardVisibility.showExamCountdownCard && sections.isNotEmpty) {
-        examOverrides = await ExamScheduleService().getOverridesForSections(
-          sections,
-          forceRefresh: forceRefresh,
-        );
-      }
+      return _HomeData(
+        profile: profile,
+        entries: entries,
+        photoUrl: photoUrl,
+        sections: sections,
+        examOverrides: examOverrides,
+        personalSchedules: personalSchedules,
+        isRamadan: isRamadan,
+        ramadan: ramadan,
+        holiday: holidayStatus,
+        cardVisibility: cardVisibility,
+        scheduleJson: scheduleJson,
+      );
+    } catch (error) {
+      final fallbackVisibility = await HomeCardPreferences.load().catchError((
+        _,
+      ) {
+        return HomeCardPreferences.defaults;
+      });
+      return _HomeData(
+        profile: const <String, String?>{},
+        entries: const <_ScheduleEntry>[],
+        photoUrl: null,
+        sections: const <section.Section>[],
+        examOverrides: const <String, ExamScheduleOverride>{},
+        personalSchedules: const <CustomSchedule>[],
+        isRamadan: false,
+        ramadan: const RamadanStatus(isRamadan: false),
+        holiday: HolidayStatus.empty,
+        cardVisibility: fallbackVisibility,
+        scheduleJson: null,
+      );
     }
-    return _HomeData(
-      profile: profile,
-      entries: entries,
-      photoUrl: photoUrl,
-      sections: sections,
-      examOverrides: examOverrides,
-      personalSchedules: personalSchedules,
-      isRamadan: isRamadan,
-      ramadan: ramadan,
-      holiday: holidayStatus,
-      cardVisibility: cardVisibility,
-      scheduleJson: scheduleJson,
-    );
   }
 
   Future<void> _handleRefresh({bool notify = true}) async {

@@ -17,23 +17,48 @@
     "service_worker": "background.dart.js"
   },
   "permissions": [
+    "sidePanel",
+    "commands",
+    "contextMenus",
     "storage",
     "tabs",
     "webNavigation"
   ],
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "commands": {
+    "open_side_panel": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+P",
+        "mac": "Command+Shift+P"
+      },
+      "description": "Open PreConnect"
+    },
+    "open_custom_schedule": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+1",
+        "mac": "Command+Shift+1"
+      },
+      "description": "Open Custom Schedule"
+    },
+    "open_friends_schedule": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+2",
+        "mac": "Command+Shift+2"
+      },
+      "description": "Open Friend's Schedule"
+    },
+    "open_share_schedule": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+3",
+        "mac": "Command+Shift+3"
+      },
+      "description": "Open Share Schedule"
+    }
+  },
   "host_permissions": [
-    "https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect/*",
-    "https://connect.bracu.ac.bd/*",
-    "https://www.google.com/*",
-    "https://api.whatsapp.com/*",
-    "https://www.linkedin.com/*",
-    "https://media.licdn.com/*",
-    "https://github.com/*",
-    "https://api.github.com/*",
-    "https://www.bracu.ac.bd/*",
-    "https://api.preconnect.app/*",
-    "https://files.preconnect.app/*",
-    "https://preconnect.app/*"
+    "<all_urls>"
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"

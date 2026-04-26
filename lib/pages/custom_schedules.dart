@@ -121,7 +121,11 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
     try {
       final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
       final scheduleService = ScheduleService();
-      final jsonString = await scheduleService.getStudentScheduleForSemester(
+      if (currentSessionSemesterId == null) {
+        _cachedCourseOptions = const <CustomSchedulesCourseOption>[];
+        return;
+      }
+      final jsonString = await scheduleService.fetchStudentScheduleForSemester(
         semesterSessionId: currentSessionSemesterId,
       );
       final sections = scheduleService.parseStudentSections(
@@ -247,10 +251,13 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
         final currentSessionSemesterId =
             await resolveCurrentSessionSemesterId();
         final scheduleService = ScheduleService();
-        // Use only existing cached schedule data (no BRACU fetching)
-        final jsonString = await scheduleService.getStudentScheduleForSemester(
-          semesterSessionId: currentSessionSemesterId,
-        );
+        if (currentSessionSemesterId == null) {
+          return const <CustomSchedulesCourseOption>[];
+        }
+        final jsonString =
+            await scheduleService.fetchStudentScheduleForSemester(
+              semesterSessionId: currentSessionSemesterId,
+            );
         final sections = scheduleService.parseStudentSections(
           jsonString,
           semesterSessionId: currentSessionSemesterId,

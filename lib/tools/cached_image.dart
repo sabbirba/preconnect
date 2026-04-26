@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
@@ -11,7 +10,6 @@ import 'package:shimmer/shimmer.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/image_url_utils.dart';
-import 'package:preconnect/tools/web_shared.dart';
 
 class CachedImage extends StatefulWidget {
   const CachedImage({
@@ -308,11 +306,6 @@ class _CachedImageState extends State<CachedImage> {
         _error = e;
         _loading = false;
       });
-      developer.log(
-        'CachedImage fetch failed for $url after retries',
-        name: 'CachedImage',
-        error: e,
-      );
     }
   }
 
@@ -323,13 +316,23 @@ class _CachedImageState extends State<CachedImage> {
     final remoteUrl = normalizedRemoteUrl;
     final isRemoteHttp = remoteUrl != null;
     if (remoteUrl != null && kIsWeb) {
-      return WebSafeNetworkImage(
-        url: remoteUrl,
+      return Image.network(
+        remoteUrl,
         fit: widget.fit,
         alignment: widget.alignment,
         width: widget.width,
         height: widget.height,
         filterQuality: widget.filterQuality,
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (wasSynchronouslyLoaded || frame != null) {
+            return child;
+          }
+          return widget.placeholder ??
+              _CachedImageShimmer(width: widget.width, height: widget.height);
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return widget.error ?? _defaultErrorWidget();
+        },
       );
     }
     if (_bytes != null) {
@@ -344,14 +347,7 @@ class _CachedImageState extends State<CachedImage> {
     }
     if (_error != null) {
       if (isRemoteHttp) {
-        return WebSafeNetworkImage(
-          url: remoteUrl,
-          fit: widget.fit,
-          alignment: widget.alignment,
-          width: widget.width,
-          height: widget.height,
-          filterQuality: widget.filterQuality,
-        );
+        return widget.error ?? _defaultErrorWidget();
       }
       return widget.error ?? _defaultErrorWidget();
     }

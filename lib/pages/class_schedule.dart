@@ -421,6 +421,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     setState(() {
       _currentSessionSemesterId = currentSessionSemesterId;
     });
+    unawaited(_handleRefresh(notify: false));
   }
 
   Future<void> _handleRefresh({bool notify = true}) async {

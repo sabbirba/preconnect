@@ -29,7 +29,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
   WebExtensionLoginFlow? _webExtensionLoginFlow;
   StreamSubscription<WebExtensionLoginState>? _webLoginSub;
   bool _isStartingWebLogin = false;
-  String? _webLoginStatus;
 
   @override
   void initState() {
@@ -58,9 +57,15 @@ class _OnboardingPageState extends State<OnboardingPage> {
       if (_isStartingWebLogin) return;
       setState(() {
         _isStartingWebLogin = true;
-        _webLoginStatus = 'Opening BRACU SSO...';
       });
-      await _webExtensionLoginFlow?.start();
+      try {
+        await _webExtensionLoginFlow?.start();
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _isStartingWebLogin = false;
+        });
+      }
       return;
     }
     if (widget.isLoggedIn) {
@@ -106,14 +111,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
     if (state.isStarted) {
       setState(() {
         _isStartingWebLogin = true;
-        _webLoginStatus = 'Opening BRACU SSO...';
       });
       return;
     }
     if (state.isComplete) {
       setState(() {
         _isStartingWebLogin = false;
-        _webLoginStatus = 'Login complete. Opening the app...';
       });
       Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
       return;
@@ -121,9 +124,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
     if (state.isFailed) {
       setState(() {
         _isStartingWebLogin = false;
-        _webLoginStatus = state.message?.isNotEmpty == true
-            ? state.message
-            : 'Unable to sign in.';
       });
     }
   }
@@ -292,44 +292,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  if (_webLoginStatus != null) ...[
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: BracuCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Row(
-                            children: [
-                              if (_isStartingWebLogin)
-                                const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.2,
-                                  ),
-                                )
-                              else
-                                Icon(
-                                  Icons.info_outline_rounded,
-                                  size: 18,
-                                  color: BracuPalette.primary,
-                                ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  _webLoginStatus!,
-                                  style: TextStyle(
-                                    color: bodyColor,
-                                    height: 1.35,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final layout = quickAccessGridLayout(
@@ -411,10 +373,21 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       onPressed: _isStartingWebLogin
                           ? null
                           : () => _completeOnboarding(context),
-                      icon: const Icon(Icons.arrow_forward_rounded),
+                      icon: _isStartingWebLogin
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : const Icon(Icons.arrow_forward_rounded),
                       label: Text(
-                        _isStartingWebLogin && kIsWeb
-                            ? 'Signing in...'
+                        _isStartingWebLogin
+                            ? 'Opening SSO...'
                             : 'Continue',
                         style: const TextStyle(fontSize: 17),
                       ),

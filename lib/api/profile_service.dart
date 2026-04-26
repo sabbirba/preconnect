@@ -325,15 +325,28 @@ class PaymentInfo {
 
   factory PaymentInfo.fromJson(Map<String, dynamic> json) {
     return PaymentInfo(
-      paymentStatus: json['paymentStatus'],
-      payslipNumber: json['payslipNumber'],
-      paymentType: json['paymentType'],
-      requestDate: DateTime.parse(json['requestDate']),
-      dueDate: DateTime.parse(json['dueDate']),
-      totalAmount: json['totalAmount'].toDouble(),
-      semesterSessionId: json['semesterSessionId'],
+      paymentStatus: '${json['paymentStatus'] ?? ''}',
+      payslipNumber: '${json['payslipNumber'] ?? ''}',
+      paymentType: '${json['paymentType'] ?? ''}',
+      requestDate: DateTime.tryParse('${json['requestDate'] ?? ''}') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      dueDate: DateTime.tryParse('${json['dueDate'] ?? ''}') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      totalAmount: _toDouble(json['totalAmount']),
+      semesterSessionId: _toInt(json['semesterSessionId']),
     );
   }
+}
+
+double _toDouble(dynamic value) {
+  if (value is num) return value.toDouble();
+  return double.tryParse('$value') ?? 0.0;
+}
+
+int _toInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse('$value') ?? 0;
 }
 
 class AdvisingService {

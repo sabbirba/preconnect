@@ -34,15 +34,26 @@ class _WebExtensionLoginPageState extends State<WebExtensionLoginPage> {
   }
 
   Future<void> _bootstrap() async {
-    final hasToken = await TokenStorage.instance.hasAccessToken();
-    if (!mounted) return;
-    final sessionReady = hasToken && await AuthService().ensureSignedIn();
-    if (!mounted) return;
-    if (sessionReady) {
-      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
-      return;
+    try {
+      final hasToken = await TokenStorage.instance.hasAccessToken();
+      if (!mounted) return;
+      final sessionReady = hasToken && await AuthService().ensureSignedIn();
+      if (!mounted) return;
+      if (sessionReady) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/home',
+          (route) => false,
+        );
+        return;
+      }
+      await _startLogin();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _status = 'Unable to start login: $e';
+      });
     }
-    await _startLogin();
   }
 
   void _handleMessage(OnMessageEvent event) {

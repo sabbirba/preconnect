@@ -1,15 +1,40 @@
+import 'dart:async';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'app.dart';
 import 'tools/app_storage.dart';
+import 'pages/home_tab.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  await AppStorage.initialize();
-  PaintingBinding.instance.imageCache.maximumSize = 1 << 30;
-  PaintingBinding.instance.imageCache.maximumSizeBytes = 1 << 62;
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  final bootstrapState = await MyApp.bootstrap();
-  runApp(MyApp(bootstrapState: bootstrapState));
+    FlutterError.onError = (details) {
+      FlutterError.presentError(details);
+    };
+    PlatformDispatcher.instance.onError = (error, stackTrace) {
+      return true;
+    };
+
+    await AppStorage.initialize();
+    PaintingBinding.instance.imageCache.maximumSize = 1 << 30;
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 1 << 62;
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+    AppBootstrapState bootstrapState;
+    try {
+      bootstrapState = await MyApp.bootstrap();
+    } catch (_) {
+      bootstrapState = const AppBootstrapState(
+        themeMode: ThemeMode.system,
+        isLoggedIn: false,
+        canOpenOffline: false,
+        initialHomeTab: HomeTab.dashboard,
+      );
+    }
+
+    runApp(MyApp(bootstrapState: bootstrapState));
+  }, (error, stackTrace) {});
 }
