@@ -19,8 +19,22 @@ class GradeSheetCard extends StatefulWidget {
 }
 
 class _GradeSheetCardState extends State<GradeSheetCard> {
+  bool _isOpening = false;
+
   Future<void> _openGradeSheet() async {
-    await openGradeSheet(context);
+    if (_isOpening) return;
+    setState(() {
+      _isOpening = true;
+    });
+    try {
+      await openGradeSheet(context);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isOpening = false;
+        });
+      }
+    }
   }
 
   @override
@@ -55,10 +69,20 @@ class _GradeSheetCardState extends State<GradeSheetCard> {
               ),
             ),
             const SizedBox(width: 12),
-            ElevatedButton.icon(
-              onPressed: _openGradeSheet,
-              icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
+            OutlinedButton.icon(
+              onPressed: _isOpening ? null : _openGradeSheet,
+              icon: _isOpening
+                  ? const BracuShimmer(
+                      child: BracuSkeletonBox(width: 16, height: 16, radius: 4),
+                    )
+                  : const Icon(Icons.picture_as_pdf_rounded, size: 16),
               label: const Text('Open'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: BracuPalette.primary,
+                side: BorderSide(
+                  color: BracuPalette.primary.withValues(alpha: 0.28),
+                ),
+              ),
             ),
           ],
         ),
