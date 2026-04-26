@@ -247,13 +247,8 @@ class _IntroCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Built by BRACU Students',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 16),
         Text(
-          'Made by the community and free for every student.',
+          'Made by the BRACU student community and free for every student.',
           style: TextStyle(color: textSecondary),
         ),
         const SizedBox(height: 6),
