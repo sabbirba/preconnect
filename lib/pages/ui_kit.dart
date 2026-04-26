@@ -466,7 +466,7 @@ Future<void> openGradeSheet(BuildContext context) async {
       showAppSnackBar(context, 'Could not fetch the latest grade sheet');
       return;
     }
-    final opened = await _openPdfOnAndroidOrFallback(gradeSheet.file.path);
+    final opened = await _openPdfNativelyOrFallback(gradeSheet.file.path);
     if (!context.mounted) return;
     if (!opened) {
       showAppSnackBar(context, 'No app found to open this PDF.');
@@ -485,8 +485,9 @@ Future<void> openGradeSheet(BuildContext context) async {
   }
 }
 
-Future<bool> _openPdfOnAndroidOrFallback(String filePath) async {
-  if (defaultTargetPlatform == TargetPlatform.android) {
+Future<bool> _openPdfNativelyOrFallback(String filePath) async {
+  if (defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS) {
     try {
       return await _pdfOpenChannel.invokeMethod<bool>(
             'openPdf',
