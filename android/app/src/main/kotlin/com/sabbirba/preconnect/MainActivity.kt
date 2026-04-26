@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.provider.AlarmClock
 import androidx.core.content.FileProvider
 import java.util.ArrayList
 import android.graphics.Bitmap
@@ -137,26 +138,19 @@ class MainActivity : FlutterFragmentActivity() {
                         }
                         val message = call.argument<String>("message") ?: ""
                         val days = call.argument<List<Int>>("days") ?: emptyList()
-                        val alarmIntent = Intent("android.intent.action.SET_ALARM").apply {
-                            putExtra("android.intent.extra.alarm.HOUR", hour)
-                            putExtra("android.intent.extra.alarm.MINUTES", minute)
-                            putExtra("android.intent.extra.alarm.MESSAGE", message)
-                            putExtra("android.intent.extra.alarm.SKIP_UI", false)
+                        val alarmIntent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
+                            putExtra(AlarmClock.EXTRA_HOUR, hour)
+                            putExtra(AlarmClock.EXTRA_MINUTES, minute)
+                            putExtra(AlarmClock.EXTRA_MESSAGE, message)
+                            putExtra(AlarmClock.EXTRA_SKIP_UI, false)
                             if (days.isNotEmpty()) {
-                                putIntegerArrayListExtra(
-                                    "android.intent.extra.alarm.DAYS",
-                                    ArrayList(days),
-                                )
+                                putIntegerArrayListExtra(AlarmClock.EXTRA_DAYS, ArrayList(days))
                             }
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
                         try {
-                            if (alarmIntent.resolveActivity(packageManager) == null) {
-                                result.success(false)
-                            } else {
-                                startActivity(alarmIntent)
-                                result.success(true)
-                            }
+                            startActivity(alarmIntent)
+                            result.success(true)
                         } catch (_: ActivityNotFoundException) {
                             result.success(false)
                         } catch (_: Exception) {
@@ -397,10 +391,6 @@ class MainActivity : FlutterFragmentActivity() {
                 setDataAndType(contentUri, "application/pdf")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            if (intent.resolveActivity(packageManager) == null) {
-                result.success(false)
-                return
             }
             startActivity(intent)
             result.success(true)

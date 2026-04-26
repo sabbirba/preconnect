@@ -36,7 +36,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _studentId = '';
   String _studentName = '';
   String _studentShortCode = '';
-  String _studentEmail = '';
   String _guestName = '';
   String _guestId = '';
   String _clientName = '';
@@ -94,13 +93,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         .trim();
     var shortCode = (await AppStorage.instance.getString('shortCode') ?? '')
         .trim();
-    var email = (await AppStorage.instance.getString('studentEmail') ?? '')
-        .trim();
 
     if (studentId.isEmpty ||
         fullName.isEmpty ||
-        shortCode.isEmpty ||
-        email.isEmpty) {
+        shortCode.isEmpty) {
       final profile = await ProfileService().getProfile(fromFetch: true);
       studentId = studentId.isEmpty
           ? (profile?['studentId'] ?? '').trim()
@@ -111,16 +107,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       shortCode = shortCode.isEmpty
           ? (profile?['shortCode'] ?? '').trim()
           : shortCode;
-      email = email.isEmpty
-          ? (profile?['studentEmail'] ?? profile?['email'] ?? '').trim()
-          : email;
     }
     if (!mounted) return;
     setState(() {
       _studentId = studentId;
       _studentName = fullName;
       _studentShortCode = shortCode;
-      _studentEmail = email;
       _clientName = _clientName.trim().isEmpty ? studentId : _clientName;
       if (_guestName.trim().isEmpty) {
         _guestName = fullName.isNotEmpty ? fullName : 'Guest';
@@ -144,10 +136,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               .trim();
       final printers = await _WifiPrinterDiscovery.findLprPrinters(
         port: _printerPort,
-        timeout: const Duration(milliseconds: 220),
-        concurrency: 24,
-        limit: 1,
-        maxSubnets: 1,
         preferredHosts: savedHost.isEmpty
             ? const <String>[]
             : <String>[savedHost],
@@ -282,13 +270,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         port: _printerPort,
         queue: _printerQueue,
       );
+      final preferences = _PrintTicket(copies: _copies);
       await client.sendFile(
         bytes: bytes,
         fileName: _fileName,
         user: user,
         clientName: clientName,
-        email: _studentEmail,
-        copies: _copies,
+        preferences: preferences,
       );
       if (!mounted) return;
       await _addHistory(
@@ -750,8 +738,7 @@ class _LprPrintClient {
     required String fileName,
     required String user,
     required String clientName,
-    required String email,
-    required int copies,
+    required _PrintTicket preferences,
   }) async {
     final printerHost = host.trim();
     if (printerHost.isEmpty) {
@@ -760,33 +747,34 @@ class _LprPrintClient {
 
     final printerQueue = queue;
     final owner = user;
-    final localHost = _truncateLprField(Platform.localHostname, 31, 'app');
-    final className = _truncateLprField(clientName, 31, 'guest');
+    final client = clientName.trim().isEmpty ? user : clientName.trim();
     final safeFileName = fileName.trim();
     final printableJobName = safeFileName.toLowerCase().endsWith('.pdf')
         ? safeFileName.substring(0, safeFileName.length - 4)
         : safeFileName;
-    final copyCount = copies.clamp(1, 999);
-
-    final jobNumber = (DateTime.now().microsecondsSinceEpoch % 999 + 1)
-        .toString()
-        .padLeft(3, '0');
-    final controlFileName = 'cfA$jobNumber$localHost';
-    final dataFileName = 'dfA$jobNumber$localHost';
+    final isPostScript = _looksLikePostScript(safeFileName, bytes);
+    final dataCommand = isPostScript ? 'o' : 'l';
+    final jobToken =
+        'dfA${(DateTime.now().microsecondsSinceEpoch % 999 + 1).toString().padLeft(3, '0')}$client';
 
     Socket? socket;
     _LprAckReader? ackReader;
     try {
-      final sendBytes = bytes;
+      final sendBytes = isPostScript
+          ? Uint8List.fromList([
+              ..._ascii(preferences.postScriptPreamble),
+              ...bytes,
+            ])
+          : bytes;
       final control = _ascii(
         [
-          'H$localHost',
-          'C$className',
+          'H$client',
           'P$owner',
           'J$printableJobName',
-          if (email.trim().isNotEmpty) 'M${email.trim()}',
-          for (var i = 0; i < copyCount; i++) 'l$dataFileName',
-          'U$dataFileName',
+          'C$printableJobName',
+          'M${preferences.summary}',
+          '$dataCommand$jobToken',
+          'U$jobToken',
           'N$safeFileName',
           '',
         ].join('\n'),
@@ -804,7 +792,7 @@ class _LprPrintClient {
         ackReader,
         Uint8List.fromList([
           0x02,
-          ..._ascii('${control.length} $controlFileName'),
+          ..._ascii('${control.length} $jobToken'),
           0x0A,
         ]),
       );
@@ -818,7 +806,7 @@ class _LprPrintClient {
         ackReader,
         Uint8List.fromList([
           0x03,
-          ..._ascii('${sendBytes.length} $dataFileName'),
+          ..._ascii('${sendBytes.length} $jobToken'),
           0x0A,
         ]),
       );
@@ -851,6 +839,7 @@ class _LprPrintClient {
       throw const _LprPrintException(_errPrinterRejectedJob);
     }
   }
+
 }
 
 class _PrinterPreferencesPanel extends StatelessWidget {
@@ -883,6 +872,36 @@ class _PrinterPreferencesPanel extends StatelessWidget {
       ],
     );
   }
+}
+
+class _PrintTicket {
+  const _PrintTicket({
+    required this.copies,
+  });
+
+  final String paperSize = 'A4';
+  final String margins = 'Default';
+  final bool colorPrinting = false;
+  final String duplexMode = 'No';
+  final String resolution = 'Medium';
+  final String orientation = 'Portrait';
+  final int copies;
+
+  String get summary {
+    final color = colorPrinting ? 'Color' : 'Mono';
+    final duplex = duplexMode == 'No' ? 'Simplex' : duplexMode;
+    return [
+      paperSize,
+      '$margins margins',
+      color,
+      duplex,
+      resolution,
+      orientation,
+      '$copies copies',
+    ].join(' | ');
+  }
+
+  String get postScriptPreamble => '%!PS-Adobe-3.0';
 }
 
 class _PrinterIdentityPanel extends StatelessWidget {
@@ -1102,12 +1121,11 @@ List<int> _ascii(String value) {
   return value.codeUnits.map((unit) => unit <= 0x7F ? unit : 0x3F).toList();
 }
 
-String _truncateLprField(String value, int maxLength, String fallback) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return fallback;
-  return trimmed.length <= maxLength
-      ? trimmed
-      : trimmed.substring(0, maxLength);
+bool _looksLikePostScript(String fileName, Uint8List bytes) {
+  final lower = fileName.toLowerCase();
+  if (lower.endsWith('.ps') || lower.endsWith('.eps')) return true;
+  if (bytes.length >= 2 && bytes[0] == 0x25 && bytes[1] == 0x21) return true;
+  return false;
 }
 
 String _formatHistoryTime(DateTime value) {
