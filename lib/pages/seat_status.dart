@@ -429,40 +429,25 @@ class _SeatStatusCard extends StatelessWidget {
               if (onPinTap != null)
                 Padding(
                   padding: const EdgeInsets.only(left: 8, top: 2),
-                  child: IconButton(
-                    onPressed: onPinTap,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 32,
-                      height: 32,
-                    ),
-                    visualDensity: VisualDensity.compact,
-                    splashRadius: 18,
-                    tooltip: pinned ? 'Unpin section' : 'Pin section',
-                    icon: Icon(
-                      pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
-                      size: 18,
-                      color: pinned ? BracuPalette.primary : textSecondary,
-                    ),
-                  ),
+                  child: _PinIconButton(pinned: pinned, onTap: onPinTap!),
                 ),
             ],
           ),
           if (classLines.isNotEmpty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 14),
             _SeatScheduleBlock(title: 'Class', lines: classLines),
           ],
           if (item.room.isNotEmpty || item.labRoom.isNotEmpty) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 12),
             _RoomBlock(
               theoryLabel: theoryLabel,
               theoryRoom: item.room,
               labRoom: item.labRoom,
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 12),
           ],
           if (hasMidExam || hasFinalExam) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -484,6 +469,38 @@ class _SeatStatusCard extends StatelessWidget {
                     end: item.finalExamEndTime,
                     textPrimary: textPrimary,
                     textSecondary: textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (item.remaining >= 0 || item.consumed >= 0 || item.total >= 0) ...[
+            const SizedBox(height: 12),
+            Divider(color: textSecondary.withValues(alpha: 0.2), height: 1),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _SeatMetric(
+                    value: item.remaining,
+                    label: 'Remaining',
+                    color: item.remaining <= 0
+                        ? BracuPalette.danger
+                        : textPrimary,
+                  ),
+                ),
+                Expanded(
+                  child: _SeatMetric(
+                    value: item.consumed,
+                    label: 'Booked',
+                    color: textPrimary,
+                  ),
+                ),
+                Expanded(
+                  child: _SeatMetric(
+                    value: item.total,
+                    label: 'Total',
+                    color: textPrimary,
                   ),
                 ),
               ],
@@ -693,6 +710,31 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
+class _PinIconButton extends StatelessWidget {
+  const _PinIconButton({required this.pinned, required this.onTap});
+
+  final bool pinned;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onTap,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+      visualDensity: VisualDensity.compact,
+      splashRadius: 18,
+      icon: Icon(
+        pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
+        size: 18,
+        color: pinned
+            ? BracuPalette.primary
+            : BracuPalette.textSecondary(context),
+      ),
+    );
+  }
+}
+
 class _SeatStatusCardData {
   const _SeatStatusCardData({
     required this.sectionId,
@@ -781,6 +823,45 @@ class _SeatStatusCardData {
       consumed: consumed ?? this.consumed,
       total: total ?? this.total,
       searchToken: searchToken,
+    );
+  }
+}
+
+class _SeatMetric extends StatelessWidget {
+  const _SeatMetric({
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  final int value;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          '$value',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: BracuPalette.textSecondary(context),
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -463,7 +463,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     }
   }
 
-  Future<void> _refreshDetailsFromApi({bool forceRefresh = false}) async {
+  Future<void> _refreshDetailsFromApi({bool forceRefresh = true}) async {
     if (_pollInFlight || _isDetailsRefreshing) return;
     _pollInFlight = true;
     if (mounted && _cards.isEmpty) {
@@ -500,7 +500,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
 
   void _startPolling() {
     if (_pollTimer != null) return;
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+    _pollTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       if (HomeTabRegistry.activeTab.value != HomeTab.seatStatus) return;
       unawaited(_refreshDetailsFromApi(forceRefresh: true));

@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/model/section_info.dart' show SectionFaculty;
 
 class SeatStatusService {
@@ -11,9 +10,7 @@ class SeatStatusService {
   factory SeatStatusService() => _instance;
 
   final ApiClient _client = ApiClient();
-  final AppPreferencesStore _store = AppPreferencesStore();
 
-  static const String _cacheKey = 'seat_status_details_v1';
   static Map<int, SeatStatusDetailsResponse>? _cachedDetails;
   static Future<Map<int, SeatStatusDetailsResponse>>? _preloadFuture;
 
@@ -58,23 +55,11 @@ class SeatStatusService {
   Future<Map<int, SeatStatusDetailsResponse>> _loadDetails({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh) {
-      final cached = await _readCachedDetails();
-      if (cached != null) {
-        return cached;
-      }
-    }
-
     try {
       final raw = await _fetchJson(ApiConfig.seatStatusDataUrl);
-      final parsed = _parseConnectJson(raw);
-      if (parsed.isNotEmpty) {
-        await _writeCachedDetails(parsed);
-      }
-      return parsed;
+      return _parseConnectJson(raw);
     } catch (_) {
-      final cached = await _readCachedDetails();
-      return cached ?? const <int, SeatStatusDetailsResponse>{};
+      return const <int, SeatStatusDetailsResponse>{};
     }
   }
 
@@ -88,32 +73,6 @@ class SeatStatusService {
     } catch (e) {
       throw FormatException('Invalid JSON response from $url: $e');
     }
-  }
-
-  Future<Map<int, SeatStatusDetailsResponse>?> _readCachedDetails() async {
-    final raw = await _store.getJsonMap(_cacheKey);
-    if (raw == null) return null;
-    final data = raw['data'];
-    if (data is! List) return null;
-    final result = <int, SeatStatusDetailsResponse>{};
-    for (final item in data.whereType<Map>()) {
-      try {
-        final parsed = SeatStatusDetailsResponse.fromJson(
-          item.cast<String, dynamic>(),
-        );
-        result[parsed.sectionId] = parsed;
-      } catch (_) {}
-    }
-    return result;
-  }
-
-  Future<void> _writeCachedDetails(
-    Map<int, SeatStatusDetailsResponse> details,
-  ) async {
-    await _store.setJson(_cacheKey, <String, dynamic>{
-      'ts': DateTime.now().millisecondsSinceEpoch,
-      'data': details.values.map((entry) => entry.toJson()).toList(),
-    });
   }
 
   Map<int, SeatStatusDetailsResponse> _parseConnectJson(dynamic raw) {

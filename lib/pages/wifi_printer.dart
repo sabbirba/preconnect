@@ -377,8 +377,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                       onPressed: _busy || _discovering
                           ? null
                           : () => _discoverPrinter(),
-                      icon: Icons.wifi_find_outlined,
-                      label: _discovering ? 'Scanning...' : 'Scan',
+                      label: 'Scan',
+                      outlined: false,
                     ),
                   ],
                 ),

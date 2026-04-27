@@ -317,7 +317,6 @@ The app does not call BRACU Connect seat-status endpoints directly. It uses the 
 Current client flow:
 
 - Load full section data from `/sections/:sectionId/details`
-- Cache locally on device
 - Listen to `/seat-status/stream` and refresh details on updates
 
 Why this reduces Connect API calls:
