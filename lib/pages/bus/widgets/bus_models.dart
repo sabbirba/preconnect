@@ -9,13 +9,13 @@ class BusRouteVehicle {
   String get displayLabel {
     if (code.isNotEmpty) return code;
     if (name.isNotEmpty) return name;
-    return 'Bus';
+    return '';
   }
 
   factory BusRouteVehicle.fromJson(Map<String, dynamic> json) {
     return BusRouteVehicle(
-      name: _pick(json, <String>['name', 'vehicle_name']),
-      code: _pick(json, <String>['code', 'vehicle_code']),
+      name: _stringValue(json, 'name'),
+      code: _stringValue(json, 'code'),
     );
   }
 }
@@ -44,57 +44,37 @@ class BusTransportRoute {
   final BusRouteLiveSnapshot live;
 
   String get displayTitle {
-    if (name.isNotEmpty) return _cleanRouteName(name);
-    if (from.isNotEmpty) return _cleanRouteName(from);
-    if (id.isNotEmpty) return _cleanRouteName(id);
-    return 'Bus Route';
+    if (name.isNotEmpty) return name;
+    if (from.isNotEmpty) return from;
+    if (id.isNotEmpty) return id;
+    return '';
   }
 
   factory BusTransportRoute.fromJson(Map<String, dynamic> json) {
-    final stopsRaw = json['stops'];
     final stops = <BusTransportStop>[];
+    final stopsRaw = json['stops'];
     if (stopsRaw is List) {
       for (final rawStop in stopsRaw.whereType<Map>()) {
-        final stop = BusTransportStop.fromJson(rawStop.cast<String, dynamic>());
-        if (stop.name.isNotEmpty) stops.add(stop);
+        stops.add(BusTransportStop.fromJson(rawStop.cast<String, dynamic>()));
       }
     }
 
-    final rawPhone = _pick(json, <String>[
-      'service_attendant',
-      'attendant_phone',
-      'phone',
-      'contact',
-    ]);
     final routeVehicleRaw = json['route_vehicles'];
 
     return BusTransportRoute(
-      id: _pick(json, <String>['id', 'name', 'route_name', 'title']),
-      name: _pick(json, <String>['name', 'route_name', 'title']),
-      code: _pick(json, <String>['code', 'tracking_code']),
+      id: _stringValue(json, 'id'),
+      name: _stringValue(json, 'name'),
+      code: _stringValue(json, 'code'),
       routeVehicle: routeVehicleRaw is Map
           ? BusRouteVehicle.fromJson(routeVehicleRaw.cast<String, dynamic>())
           : const BusRouteVehicle(name: '', code: ''),
-      from: _pick(json, <String>['from', 'start', 'origin']),
-      to: _pick(json, <String>['to', 'destination', 'end']),
-      attendantPhone: normalizeCampusPhoneValue(rawPhone),
+      from: _stringValue(json, 'from'),
+      to: _stringValue(json, 'to'),
+      attendantPhone: _stringValue(json, 'attendant_phone'),
       stops: stops,
       live: BusRouteLiveSnapshot.fromJson(json),
     );
   }
-}
-
-String _cleanRouteName(String value) {
-  var cleaned = value.trim();
-  cleaned = cleaned.replaceAll(
-    RegExp(r'^\s*Route\s*[-:]?\s*\d+\s*[:\-]?\s*', caseSensitive: false),
-    '',
-  );
-  cleaned = cleaned.replaceAll(
-    RegExp(r'\s+to\s+BRAC University\s*$', caseSensitive: false),
-    '',
-  );
-  return cleaned.trim();
 }
 
 class BusRouteLiveSnapshot {
@@ -165,27 +145,27 @@ class BusRouteLiveSnapshot {
         : const <String>[];
 
     return BusRouteLiveSnapshot(
-      assetId: _pick(json, <String>['asset_id', '_id']),
-      status: _pick(json, <String>['status']),
-      time: _pick(json, <String>['time']),
-      statusTime: _pick(json, <String>['status_time']),
-      ignition: _pick(json, <String>['ignition']),
-      gpsPositioned: _pick(json, <String>['gps_positioned']),
-      engineSensor: _pick(json, <String>['engine_sensor']),
-      charging: _pick(json, <String>['charging']),
-      gsmSignal: _pick(json, <String>['gsm_signal']),
-      speed: _pick(json, <String>['speed']),
-      bearing: _pick(json, <String>['bearing']),
-      heading: _pick(json, <String>['heading']),
-      locationDescription: _pick(json, <String>['location']),
+      assetId: _stringValue(json, 'asset_id'),
+      status: _stringValue(json, 'status'),
+      time: _stringValue(json, 'time'),
+      statusTime: _stringValue(json, 'status_time'),
+      ignition: _stringValue(json, 'ignition'),
+      gpsPositioned: _stringValue(json, 'gps_positioned'),
+      engineSensor: _stringValue(json, 'engine_sensor'),
+      charging: _stringValue(json, 'charging'),
+      gsmSignal: _stringValue(json, 'gsm_signal'),
+      speed: _stringValue(json, 'speed'),
+      bearing: _stringValue(json, 'bearing'),
+      heading: _stringValue(json, 'heading'),
+      locationDescription: _stringValue(json, 'location'),
       latitude: latitude,
       longitude: longitude,
-      deviceType: _pick(json, <String>['device_type']),
-      speedLimit: _pick(json, <String>['speed_limit']),
-      validTill: _pick(json, <String>['valid_till']),
-      validTillCredit: _pick(json, <String>['valid_till_credit']),
-      powercutAlert: _pick(json, <String>['powercut_alert']),
-      engineAlert: _pick(json, <String>['engine_alert']),
+      deviceType: _stringValue(json, 'device_type'),
+      speedLimit: _stringValue(json, 'speed_limit'),
+      validTill: _stringValue(json, 'valid_till'),
+      validTillCredit: _stringValue(json, 'valid_till_credit'),
+      powercutAlert: _stringValue(json, 'powercut_alert'),
+      engineAlert: _stringValue(json, 'engine_alert'),
       nearestLandmarks: nearestLandmarks,
     );
   }
@@ -202,20 +182,15 @@ class BusTransportStop {
   final List<String> times;
 
   factory BusTransportStop.fromJson(Map<String, dynamic> json) {
-    final timesRaw = json['time'];
-    final altTimesRaw = json['times'];
-    final listRaw = timesRaw is List ? timesRaw : altTimesRaw;
-    final times = listRaw is List
-        ? listRaw
+    final timesRaw = json['times'];
+    final times = timesRaw is List
+        ? timesRaw
               .map((item) => '$item'.trim())
               .where((item) => item.isNotEmpty)
               .toList(growable: false)
         : <String>[];
 
-    return BusTransportStop(
-      name: _pick(json, <String>['name', 'stop', 'location']),
-      times: times,
-    );
+    return BusTransportStop(name: _stringValue(json, 'name'), times: times);
   }
 }
 
@@ -301,7 +276,7 @@ class _BusOutbound {
     final firstRaw = json['first_outbound'];
     final secondRaw = json['second_outbound'];
     return _BusOutbound(
-      from: _pick(json, <String>['from']),
+      from: _stringValue(json, 'from'),
       firstOutbound: firstRaw is List
           ? firstRaw
                 .whereType<Map>()
@@ -337,9 +312,9 @@ class _BusDropoffEntry {
 
   factory _BusDropoffEntry.fromJson(Map<String, dynamic> json) {
     return _BusDropoffEntry(
-      route: _pick(json, <String>['route', 'name']),
-      code: _pick(json, <String>['code']),
-      time: _pick(json, <String>['time']),
+      route: _stringValue(json, 'route'),
+      code: _stringValue(json, 'code'),
+      time: _stringValue(json, 'time'),
     );
   }
 }
@@ -357,9 +332,9 @@ class _BusFare {
 
   factory _BusFare.fromJson(Map<String, dynamic> json) {
     return _BusFare(
-      routeGroup: _pick(json, <String>['route_group']),
-      amountPerTrip: _pick(json, <String>['amount_per_trip']),
-      roundTrip: _pick(json, <String>['round_trip']),
+      routeGroup: _stringValue(json, 'route_group'),
+      amountPerTrip: _stringValue(json, 'amount_per_trip'),
+      roundTrip: _stringValue(json, 'round_trip'),
     );
   }
 }
@@ -377,19 +352,13 @@ class _BusContact {
 
   factory _BusContact.fromJson(Map<String, dynamic> json) {
     return _BusContact(
-      name: _pick(json, <String>['name']),
-      role: _pick(json, <String>['role']),
-      email: _pick(json, <String>['email']),
+      name: _stringValue(json, 'name'),
+      role: _stringValue(json, 'role'),
+      email: _stringValue(json, 'email'),
     );
   }
 }
 
-String _pick(Map<String, dynamic> json, List<String> keys) {
-  for (final key in keys) {
-    final value = '${json[key] ?? ''}'.trim();
-    if (value.isNotEmpty) {
-      return value;
-    }
-  }
-  return '';
+String _stringValue(Map<String, dynamic> json, String key) {
+  return '${json[key] ?? ''}'.trim();
 }

@@ -43,6 +43,7 @@ import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/android_network_assist.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/cached_image.dart';
+import 'package:preconnect/tools/quiet_mode_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/captive_wifi_http_service.dart';
 import 'package:preconnect/tools/exam_sorting.dart';
@@ -142,10 +143,16 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
     });
     unawaited(_persistSelectedTab(selectedTab));
     if (!kIsWeb) {
-      unawaited(AlarmPage.preload());
-      unawaited(ClassSchedule.preload());
-      unawaited(ExamSchedule.preload());
-      unawaited(CustomSchedulesPage.preload());
+      unawaited(
+        Future.wait(<Future<void>>[
+          AlarmPage.preload().catchError((_) {}),
+          ClassSchedule.preload().catchError((_) {}),
+          ExamSchedule.preload().catchError((_) {}),
+          CustomSchedulesPage.preload().catchError((_) {}),
+        ]).then((_) async {
+          await QuietModeController.instance.refresh();
+        }),
+      );
     }
   }
 

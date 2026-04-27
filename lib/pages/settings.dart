@@ -5,6 +5,7 @@ import 'package:preconnect/api/custom_schedules_service.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
+import 'package:preconnect/tools/quiet_mode_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
@@ -15,7 +16,8 @@ class SettingsPage extends StatefulWidget {
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends State<SettingsPage>
+    with WidgetsBindingObserver {
   static const double _sectionGap = 14;
 
   bool _showQuickAccessSection = true;
@@ -24,17 +26,37 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _showTodaySchedule = true;
   bool _appLockEnabled = false;
   bool _showSupport = true;
+  bool _quietModeEnabled = false;
+  bool _quietModeNeedsSetup = false;
+  String? _quietModeSetupPermission;
+  String _quietModeStatusMessage = '';
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _load();
+    }
   }
 
   Future<void> _load() async {
     final visibility = await HomeCardPreferences.load();
     await AdsPreferences.instance.load();
     final appLockEnabled = await AppLockService().isEnabled();
+    await QuietModeController.instance.load();
+    final quietModeResult = await QuietModeController.instance.refresh();
     if (!mounted) return;
     setState(() {
       _showQuickAccessSection = visibility.showQuickAccessSection;
@@ -43,6 +65,12 @@ class _SettingsPageState extends State<SettingsPage> {
       _showTodaySchedule = visibility.showTodaySchedule;
       _appLockEnabled = appLockEnabled;
       _showSupport = AdsPreferences.instance.isVisible;
+      _quietModeEnabled = QuietModeController.instance.isEnabled;
+      _quietModeNeedsSetup = quietModeResult.status == 'permission_required';
+      _quietModeSetupPermission = quietModeResult.permission;
+      _quietModeStatusMessage = _quietModeNeedsSetup
+          ? (quietModeResult.message ?? '')
+          : '';
     });
   }
 
@@ -125,6 +153,52 @@ class _SettingsPageState extends State<SettingsPage> {
     });
     RefreshBus.instance.notify(reason: 'app_lock_settings_changed');
     showAppSnackBar(context, value ? 'App lock enabled' : 'App lock disabled');
+  }
+
+  Future<void> _setQuietModeEnabled(bool value) async {
+    final result = await QuietModeController.instance.setEnabled(
+      value,
+      promptForPermission: value,
+    );
+    if (!mounted) return;
+    setState(() {
+      _quietModeEnabled = QuietModeController.instance.isEnabled;
+      _quietModeNeedsSetup = result.status == 'permission_required';
+      _quietModeSetupPermission = result.permission;
+      _quietModeStatusMessage = _quietModeNeedsSetup
+          ? (result.message ?? '')
+          : '';
+    });
+    RefreshBus.instance.notify(reason: 'quiet_mode_settings_changed');
+
+    if (result.status == 'permission_required') {
+      return;
+    }
+
+    if (result.message != null && result.message!.trim().isNotEmpty) {
+      showAppSnackBar(context, result.message!);
+      return;
+    }
+
+    if (value) {
+      showAppSnackBar(context, 'Quiet Mode synced with your schedules.');
+    } else {
+      showAppSnackBar(context, 'Quiet Mode disabled.');
+    }
+  }
+
+  Future<void> _fixQuietModeSetup() async {
+    final result = await QuietModeController.instance.requestSetup();
+    if (!mounted) return;
+    setState(() {
+      _quietModeEnabled = QuietModeController.instance.isEnabled;
+      _quietModeNeedsSetup = result.status == 'permission_required';
+      _quietModeSetupPermission = result.permission;
+      _quietModeStatusMessage = _quietModeNeedsSetup
+          ? (result.message ?? '')
+          : '';
+    });
+    RefreshBus.instance.notify(reason: 'quiet_mode_settings_changed');
   }
 
   Future<void> _clearCacheKeepingLoginData() async {
@@ -309,9 +383,54 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: _sectionGap),
           BracuCard(
+            child: Column(
+              children: [
+                _ToggleRow(
+                  title: 'Quiet Mode',
+                  subtitle: 'Auto DND for your schedules',
+                  value: _quietModeEnabled,
+                  onChanged: _setQuietModeEnabled,
+                ),
+                if (_quietModeNeedsSetup) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: BracuPalette.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: BracuPalette.primary.withValues(alpha: 0.22),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _quietModeSetupMessage(context),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: BracuPalette.textSecondary(context),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        TextButton(
+                          onPressed: _fixQuietModeSetup,
+                          child: const Text('Fix setup'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: _sectionGap),
+          BracuCard(
             child: _ToggleRow(
               title: 'App Lock',
-              subtitle: 'Use system lock for the app',
+              subtitle: 'System lock security for the app',
               value: _appLockEnabled,
               onChanged: _setAppLockEnabled,
             ),
@@ -320,6 +439,19 @@ class _SettingsPageState extends State<SettingsPage> {
         ],
       ),
     );
+  }
+
+  String _quietModeSetupMessage(BuildContext context) {
+    switch (_quietModeSetupPermission) {
+      case 'notification_policy':
+        return 'Needs DND access to automate Quiet Mode.';
+      case 'exact_alarms':
+        return 'Needs device alarm access to keep schedule timing precise.';
+      default:
+        return _quietModeStatusMessage.isNotEmpty
+            ? _quietModeStatusMessage
+            : 'Quiet Mode needs system access to automate schedules.';
+    }
   }
 }
 

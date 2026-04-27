@@ -17,11 +17,11 @@ import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/play_install_referrer.dart';
 import 'package:preconnect/tools/reward_support_controller.dart';
+import 'package:preconnect/tools/quiet_mode_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/web_extension_shortcut_bridge_stub.dart'
-    if (dart.library.html)
-        'package:preconnect/tools/web_extension_shortcut_bridge_web.dart';
+    if (dart.library.html) 'package:preconnect/tools/web_extension_shortcut_bridge_web.dart';
 
 class AppBootstrapState {
   const AppBootstrapState({
@@ -60,10 +60,7 @@ class MyApp extends StatefulWidget {
     final hasToken = tokenPresent && refreshTokenPresent;
 
     if (!hasToken) {
-      await prefs.setBool(
-        PreconnectStorageKeys.cachedHasAuthSession,
-        false,
-      );
+      await prefs.setBool(PreconnectStorageKeys.cachedHasAuthSession, false);
       final keepKeys = <String>{
         PreconnectStorageKeys.accessToken,
         PreconnectStorageKeys.refreshToken,
@@ -215,6 +212,7 @@ class _MyAppState extends State<MyApp>
     if (state == AppLifecycleState.resumed) {
       unawaited(_consumePendingShortcutAction());
       unawaited(_refreshAndUnlockIfNeeded());
+      unawaited(QuietModeController.instance.refresh());
     }
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
@@ -255,6 +253,17 @@ class _MyAppState extends State<MyApp>
     if (!mounted) return;
     if (isRefreshingFrom('app_lock_settings_changed')) {
       unawaited(_refreshAndUnlockIfNeeded());
+    }
+    if (isRefreshingFromAny(<String>{
+      'auth',
+      'cache_cleared',
+      'schedule',
+      'class_schedule',
+      'exam_schedule',
+      'custom_schedules',
+      'quiet_mode_settings_changed',
+    })) {
+      unawaited(QuietModeController.instance.refresh());
     }
   }
 
@@ -667,8 +676,8 @@ class _MyAppState extends State<MyApp>
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     const mobileShellWidth = 390.0;
-                    if (!kIsWeb && constraints.maxWidth >= 900) {
-                      const shellWidth = 420.0;
+                    if (!kIsWeb && constraints.maxWidth >= 700) {
+                      const shellWidth = 700.0;
                       final shellSize = Size(
                         shellWidth,
                         mediaQuery.size.height,
@@ -747,7 +756,8 @@ class _MyAppState extends State<MyApp>
             routes: {
               '/login': (context) => const LoginPage(),
               '/home': (context) => HomePage(
-                initialTab: _resolvedBootstrapState?.initialHomeTab ??
+                initialTab:
+                    _resolvedBootstrapState?.initialHomeTab ??
                     HomeTab.dashboard,
               ),
               '/onboarding': (context) => const OnboardingPage(),
@@ -756,7 +766,8 @@ class _MyAppState extends State<MyApp>
                 ? const _StartupFrame()
                 : (_initialLoggedIn || _canOpenOffline)
                 ? HomePage(
-                    initialTab: _resolvedBootstrapState?.initialHomeTab ??
+                    initialTab:
+                        _resolvedBootstrapState?.initialHomeTab ??
                         HomeTab.dashboard,
                   )
                 : const OnboardingPage(),

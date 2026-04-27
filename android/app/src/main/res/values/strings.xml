@@ -8,4 +8,5 @@
     <string name="shortcut_exams_long">Open Exams</string>
     <string name="shortcut_friends_short">Friends</string>
     <string name="shortcut_friends_long">Open Friends</string>
+    <string name="quiet_mode_rule_type">Quiet Mode during class</string>
 </resources>

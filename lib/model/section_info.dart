@@ -1,5 +1,32 @@
 import 'dart:convert';
+
 import 'package:preconnect/model/progress_info.dart';
+
+class SectionFaculty {
+  final String id;
+  final String staffName;
+  final String shortName;
+  final String email;
+  final String? imgUrl;
+
+  const SectionFaculty({
+    required this.id,
+    required this.staffName,
+    required this.shortName,
+    required this.email,
+    required this.imgUrl,
+  });
+
+  factory SectionFaculty.fromJson(Map<String, dynamic> json) {
+    return SectionFaculty(
+      id: _stringValue(json, 'id'),
+      staffName: _stringValue(json, 'staffName'),
+      shortName: _stringValue(json, 'shortName'),
+      email: _stringValue(json, 'email'),
+      imgUrl: _nullableStringValue(json, 'imgUrl'),
+    );
+  }
+}
 
 class Section {
   final int sectionId;
@@ -15,6 +42,7 @@ class Section {
   final int capacity;
   final int consumedSeat;
   final SectionSchedule sectionSchedule;
+  final SectionFaculty? faculty;
   final String faculties;
   final String roomName;
   final String roomNumber;
@@ -38,6 +66,7 @@ class Section {
     required this.capacity,
     required this.consumedSeat,
     required this.sectionSchedule,
+    this.faculty,
     required this.faculties,
     required this.roomName,
     required this.roomNumber,
@@ -54,25 +83,29 @@ class Section {
       advisingSectionId: json['advisingSectionId'],
       parentSectionId: json['parentSectionId'],
       courseId: json['courseId'],
-      courseCode: json['courseCode'],
-      name: json['name'],
-      sectionName: json['sectionName'],
+      courseCode: _stringValue(json, 'courseCode'),
+      name: _stringValue(json, 'name'),
+      sectionName: _stringValue(json, 'sectionName'),
       semesterSessionId: json['semesterSessionId'],
       courseCredit: json['courseCredit'],
       studentPortfolioId: json['studentPortfolioId'],
       capacity: json['capacity'],
       consumedSeat: json['consumedSeat'],
       sectionSchedule: SectionSchedule.fromJson(
-        jsonDecode(json['sectionSchedule']),
+        (json['sectionSchedule'] as Map<dynamic, dynamic>)
+            .cast<String, dynamic>(),
       ),
-      faculties: json['faculties'],
-      roomName: json['roomName'],
-      roomNumber: json['roomNumber'],
-      prerequisiteCourses: json['prerequisiteCourses'],
+      faculty: _facultyFromJson(json['faculties']),
+      faculties: _facultyLabel(json['faculties']),
+      roomName: _stringValue(json, 'roomName'),
+      roomNumber: _stringValue(json, 'roomNumber'),
+      prerequisiteCourses: json['prerequisiteCourses']?.toString(),
       isReserve: json['isReserve'],
-      courseType: json['courseType'],
-      prerequisiteIncompleteGrade: json['prerequisiteIncompleteGrade'],
-      prerequisiteResultPublished: json['prerequisiteResultPublished'],
+      courseType: _stringValue(json, 'courseType'),
+      prerequisiteIncompleteGrade: json['prerequisiteIncompleteGrade']
+          ?.toString(),
+      prerequisiteResultPublished: json['prerequisiteResultPublished']
+          ?.toString(),
     );
   }
 }
@@ -106,19 +139,17 @@ class SectionSchedule {
 
   factory SectionSchedule.fromJson(Map<String, dynamic> json) {
     return SectionSchedule(
-      finalExamDate: json['finalExamDate'],
-      finalExamStartTime: json['finalExamStartTime'],
-      finalExamEndTime: json['finalExamEndTime'],
-      midExamDate: json['midExamDate'],
-      midExamStartTime: json['midExamStartTime'],
-      midExamEndTime: json['midExamEndTime'],
-      finalExamDetail: json['finalExamDetail'],
-      midExamDetail: json['midExamDetail'],
-      classStartDate: json['classStartDate'],
-      classEndDate: json['classEndDate'],
-      classSchedules: (json['classSchedules'] as List)
-          .map((e) => ClassSchedule.fromJson(e))
-          .toList(),
+      finalExamDate: json['finalExamDate']?.toString(),
+      finalExamStartTime: json['finalExamStartTime']?.toString(),
+      finalExamEndTime: json['finalExamEndTime']?.toString(),
+      midExamDate: json['midExamDate']?.toString(),
+      midExamStartTime: json['midExamStartTime']?.toString(),
+      midExamEndTime: json['midExamEndTime']?.toString(),
+      finalExamDetail: json['finalExamDetail']?.toString(),
+      midExamDetail: json['midExamDetail']?.toString(),
+      classStartDate: _stringValue(json, 'classStartDate'),
+      classEndDate: _stringValue(json, 'classEndDate'),
+      classSchedules: _classSchedulesFromJson(json['classSchedules']),
     );
   }
 }
@@ -141,6 +172,42 @@ class ClassSchedule {
       day: json['day'],
     );
   }
+}
+
+List<ClassSchedule> _classSchedulesFromJson(dynamic value) {
+  if (value is! List) return const <ClassSchedule>[];
+  return value
+      .whereType<Map>()
+      .map((e) => ClassSchedule.fromJson(e.cast<String, dynamic>()))
+      .toList(growable: false);
+}
+
+String _stringValue(Map<String, dynamic> json, String key) {
+  return '${json[key] ?? ''}'.trim();
+}
+
+String _nullableStringValue(Map<String, dynamic> json, String key) {
+  final value = json[key];
+  if (value == null) return '';
+  return value.toString().trim();
+}
+
+SectionFaculty? _facultyFromJson(dynamic value) {
+  if (value is! Map) return null;
+  final map = value.cast<String, dynamic>();
+  return SectionFaculty.fromJson(map);
+}
+
+String _facultyLabel(dynamic value) {
+  if (value is Map) {
+    final map = value.cast<String, dynamic>();
+    final shortName = '${map['shortName'] ?? ''}'.trim();
+    if (shortName.isNotEmpty) return shortName;
+    final staffName = '${map['staffName'] ?? ''}'.trim();
+    if (staffName.isNotEmpty) return staffName;
+    return '';
+  }
+  return '$value'.trim();
 }
 
 List<Section> parseSectionsFromScheduleJson(String? scheduleJson) {

@@ -1,16 +1,51 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:preconnect/api/seat_status_service.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/notifications.dart';
+import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
 import 'package:preconnect/pages/shared_widgets/course_community_sheet.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/token_storage.dart';
-import 'package:preconnect/tools/time_utils.dart';
 part 'shared_widgets/seat_status_methods.dart';
+
+String seatStatusFacultySummaryLabel(section.SectionFaculty? faculty) {
+  final staffName = faculty?.staffName.trim() ?? '';
+  if (staffName.isEmpty || staffName.toUpperCase() == 'TBA') {
+    return 'TBA';
+  }
+  final shortName = faculty?.shortName.trim() ?? '';
+  if (shortName.isNotEmpty) return shortName;
+  return '';
+}
+
+String seatStatusFacultyDetailLabel(section.SectionFaculty? faculty) {
+  final staffName = faculty?.staffName.trim() ?? '';
+  if (staffName.isEmpty || staffName.toUpperCase() == 'TBA') return '';
+  final pieces = <String>[
+    faculty?.staffName.trim() ?? '',
+    faculty?.email.trim() ?? '',
+  ];
+  return pieces.where((value) => value.trim().isNotEmpty).join(' ').trim();
+}
+
+String seatStatusFacultySearchText(section.SectionFaculty? faculty) {
+  final pieces = <String>[
+    seatStatusFacultySummaryLabel(faculty),
+    seatStatusFacultyDetailLabel(faculty),
+  ];
+  return pieces.where((value) => value.trim().isNotEmpty).join(' ').trim();
+}
+
+bool seatStatusFacultyHasVisuals(section.SectionFaculty? faculty) {
+  final staffName = faculty?.staffName.trim() ?? '';
+  if (staffName.isEmpty || staffName.toUpperCase() == 'TBA') return false;
+  return staffName.isNotEmpty ||
+      (faculty?.email.trim().isNotEmpty == true) ||
+      (faculty?.imgUrl?.trim().isNotEmpty == true);
+}
 
 class SeatStatusPage extends StatefulWidget {
   const SeatStatusPage({super.key});
@@ -43,6 +78,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   String _searchQuery = '';
   bool _isDetailsRefreshing = false;
   bool _availableOnly = false;
+  bool _pinnedOnly = false;
   String _selectedDayFilter = '';
   @override
   void initState() {
@@ -221,6 +257,26 @@ class _SeatStatusCard extends StatelessWidget {
     final textPrimary = BracuPalette.textPrimary(context);
     final textSecondary = BracuPalette.textSecondary(context);
     final theoryLabel = _titleCaseText(item.courseType);
+    final courseHeader = _headerLine(item.courseCode, item.sectionName);
+    final faculty = item.faculty;
+    final facultySummaryLabel = seatStatusFacultySummaryLabel(faculty);
+    final facultyDisplayName = faculty?.staffName.trim() ?? '';
+    final facultyEmail = faculty?.email.trim() ?? '';
+    final showTbaFacultyState = facultySummaryLabel == 'TBA';
+    final classLines = _scheduleLines(item.classSchedule);
+    final hasMidExam = _hasExam(
+      item.midExamDate,
+      item.midExamStartTime,
+      item.midExamEndTime,
+    );
+    final hasFinalExam = _hasExam(
+      item.finalExamDate,
+      item.finalExamStartTime,
+      item.finalExamEndTime,
+    );
+    final hasFacultyVisuals = seatStatusFacultyHasVisuals(faculty);
+    final showFacultySummary =
+        facultySummaryLabel.isNotEmpty || item.credits > 0;
 
     final card = BracuCard(
       child: Column(
@@ -233,63 +289,23 @@ class _SeatStatusCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (_headerLine(item.courseCode, item.sectionName)
-                        .isNotEmpty)
+                    if (courseHeader.isNotEmpty)
                       Text(
-                        _headerLine(item.courseCode, item.sectionName),
+                        courseHeader,
                         style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
                           color: textPrimary,
                         ),
                       ),
                     if (item.courseName.trim().isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        item.courseName,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: textSecondary,
-                        ),
-                      ),
-                    ],
-                    if (item.facultyInitial.trim().isNotEmpty ||
-                        item.credits > 0) ...[
                       const SizedBox(height: 4),
-                      RichText(
-                        text: TextSpan(
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: textSecondary,
-                          ),
-                          children: [
-                            if (item.facultyInitial.trim().isNotEmpty)
-                              TextSpan(
-                                text: item.facultyInitial,
-                                style: TextStyle(
-                                  color: textPrimary,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            if (item.facultyInitial.trim().isNotEmpty &&
-                                item.credits > 0)
-                              TextSpan(
-                                text: ' • ',
-                                style: TextStyle(
-                                  color: textSecondary,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            if (item.credits > 0)
-                              TextSpan(
-                                text: '${item.credits} credits',
-                                style: TextStyle(
-                                  color: textSecondary,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                          ],
+                      Text(
+                        item.courseName.trim(),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: textSecondary,
                         ),
                       ),
                     ],
@@ -302,8 +318,10 @@ class _SeatStatusCard extends StatelessWidget {
                   child: IconButton(
                     onPressed: onPinTap,
                     padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints.tightFor(width: 32, height: 32),
+                    constraints: const BoxConstraints.tightFor(
+                      width: 32,
+                      height: 32,
+                    ),
                     visualDensity: VisualDensity.compact,
                     splashRadius: 18,
                     tooltip: pinned ? 'Unpin section' : 'Pin section',
@@ -316,42 +334,106 @@ class _SeatStatusCard extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 14),
-          if (item.classSchedule.isNotEmpty) ...[
-            _SeatScheduleBlock(
-              title: 'Class',
-              lines: _scheduleLines(item.classSchedule),
+          if (showFacultySummary) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                if (showTbaFacultyState)
+                  Text(
+                    facultySummaryLabel,
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  )
+                else if (facultySummaryLabel.isNotEmpty)
+                  Text(
+                    facultySummaryLabel,
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                if (item.credits > 0 &&
+                    (showTbaFacultyState || facultySummaryLabel.isNotEmpty))
+                  Text(
+                    ' • ',
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                if (item.credits > 0)
+                  Text(
+                    '${item.credits} credits',
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+              ],
             ),
           ],
-          if (item.labSchedule.isNotEmpty ||
-              item.labRoom.isNotEmpty ||
-              item.labFaculties.isNotEmpty ||
-              item.labSectionId != null) ...[
-            if (item.labSchedule.isNotEmpty) ...[
-              _SeatScheduleBlock(
-                title: 'Lab',
-                lines: _scheduleLines(item.labSchedule),
-              ),
-            ],
-            if (_shouldShowLabMeta(item.labFaculties))
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  [
-                    if (item.labFaculties.trim().isNotEmpty)
-                      'Lab: ${item.labFaculties}',
-                    if (item.labSectionId != null) 'ID: ${item.labSectionId}',
-                  ].join(' • '),
-                  style: TextStyle(
-                    color: textSecondary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
+          if (hasFacultyVisuals) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                FriendAvatar(
+                  name: facultyDisplayName.isNotEmpty
+                      ? facultyDisplayName
+                      : facultySummaryLabel,
+                  photoUrl: faculty?.imgUrl,
+                  size: 44,
+                  radius: 22,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (facultyDisplayName.isNotEmpty)
+                        Text(
+                          facultyDisplayName,
+                          style: TextStyle(
+                            color: textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      if (facultyEmail.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        InkWell(
+                          borderRadius: BorderRadius.circular(6),
+                          onTap: () => openMailComposer(context, facultyEmail),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Text(
+                              facultyEmail,
+                              style: TextStyle(
+                                color: textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-              ),
+              ],
+            ),
+          ],
+          if (classLines.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _SeatScheduleBlock(title: 'Class', lines: classLines),
           ],
           if (item.room.isNotEmpty || item.labRoom.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 18),
             _RoomBlock(
               theoryLabel: theoryLabel,
               theoryRoom: item.room,
@@ -359,70 +441,45 @@ class _SeatStatusCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
           ],
-          if (item.midExamDate != null ||
-              item.midExamStartTime != null ||
-              item.midExamEndTime != null ||
-              item.finalExamDate != null ||
-              item.finalExamStartTime != null ||
-              item.finalExamEndTime != null)
+          if (hasMidExam || hasFinalExam) ...[
+            const SizedBox(height: 20),
             Row(
               children: [
                 Expanded(
-                  child: _ExamInfo(
+                  child: _ExamBlock(
                     label: 'Mid',
                     date: item.midExamDate,
                     start: item.midExamStartTime,
                     end: item.midExamEndTime,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: _ExamInfo(
+                  child: _ExamBlock(
                     label: 'Final',
                     date: item.finalExamDate,
                     start: item.finalExamStartTime,
                     end: item.finalExamEndTime,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
                   ),
                 ),
               ],
             ),
-          if (item.midExamDate != null ||
-              item.midExamStartTime != null ||
-              item.midExamEndTime != null ||
-              item.finalExamDate != null ||
-              item.finalExamStartTime != null ||
-              item.finalExamEndTime != null) ...[
-            const SizedBox(height: 12),
-            Divider(color: textSecondary.withValues(alpha: 0.2), height: 1),
-            const SizedBox(height: 12),
-          ],
-          Row(
-            children: [
-              Expanded(
-                child: _SeatMetric(
-                  value: item.remaining,
-                  label: 'Remaining',
-                  color: item.remaining <= 0
-                      ? BracuPalette.danger
-                      : textPrimary,
-                ),
-              ),
-              Expanded(
-                child: _SeatMetric(
-                  value: item.consumed,
-                  label: 'Booked',
-                  color: textPrimary,
-                ),
-              ),
-              Expanded(
-                child: _SeatMetric(
-                  value: item.total,
-                  label: 'Total Seats',
-                  color: textPrimary,
+            if (showTbaFacultyState) ...[
+              const SizedBox(height: 8),
+              Text(
+                'TBA',
+                style: TextStyle(
+                  color: textSecondary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
-          ),
+          ],
         ],
       ),
     );
@@ -437,9 +494,13 @@ class _SeatStatusCard extends StatelessWidget {
     );
   }
 
-  List<String> _scheduleLines(
-    List<SeatStatusClassSchedule> schedules,
-  ) {
+  bool _hasExam(String? date, String? start, String? end) {
+    return (date ?? '').trim().isNotEmpty ||
+        (start ?? '').trim().isNotEmpty ||
+        (end ?? '').trim().isNotEmpty;
+  }
+
+  List<String> _scheduleLines(List<SeatStatusClassSchedule> schedules) {
     if (schedules.isEmpty) return const <String>[];
     final lines = schedules.map((entry) {
       final day = formatWeekdayTitle(entry.day);
@@ -456,12 +517,6 @@ class _SeatStatusCard extends StatelessWidget {
     if (code.isEmpty) return section;
     if (section.isEmpty) return code;
     return '$code - $section';
-  }
-
-  bool _shouldShowLabMeta(String labFaculties) {
-    final cleaned = labFaculties.trim();
-    if (cleaned.isEmpty) return false;
-    return cleaned.toLowerCase() != 'tba';
   }
 }
 
@@ -500,11 +555,7 @@ class _RoomBlock extends StatelessWidget {
       );
     }
     if (theoryRoom.trim().isNotEmpty && labRoom.trim().isNotEmpty) {
-      lines.add(
-        const TextSpan(
-          text: '\n',
-        ),
-      );
+      lines.add(const TextSpan(text: '\n'));
     }
     if (labRoom.trim().isNotEmpty) {
       lines.add(
@@ -556,6 +607,40 @@ class _RoomBlock extends StatelessWidget {
   }
 }
 
+class _SeatScheduleBlock extends StatelessWidget {
+  const _SeatScheduleBlock({required this.title, required this.lines});
+
+  final String title;
+  final List<String> lines;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$title:',
+          style: TextStyle(
+            color: BracuPalette.textSecondary(context),
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 3),
+        for (final line in lines)
+          Text(
+            line,
+            style: TextStyle(
+              color: BracuPalette.textPrimary(context),
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 String _titleCaseText(String value) {
   final cleaned = value
       .replaceAll(RegExp(r'[^a-z0-9]+', caseSensitive: false), ' ')
@@ -599,154 +684,13 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-class _SeatScheduleBlock extends StatelessWidget {
-  const _SeatScheduleBlock({required this.title, required this.lines});
-
-  final String title;
-  final List<String> lines;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '$title:',
-          style: TextStyle(
-            color: BracuPalette.textSecondary(context),
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 3),
-        for (final line in lines)
-          Text(
-            line,
-            style: TextStyle(
-              color: BracuPalette.textPrimary(context),
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _ExamInfo extends StatelessWidget {
-  const _ExamInfo({
-    required this.label,
-    required this.date,
-    required this.start,
-    required this.end,
-  });
-
-  final String label;
-  final String? date;
-  final String? start;
-  final String? end;
-
-  @override
-  Widget build(BuildContext context) {
-    final dateValue = _formatExamDate(date);
-    final timeValue = _formatExamTime(start, end);
-    final hasDate = dateValue.isNotEmpty;
-    final hasTime = timeValue.isNotEmpty;
-    if (!hasDate && !hasTime) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '$label:',
-          style: TextStyle(
-            color: BracuPalette.textSecondary(context),
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 3),
-        if (hasDate)
-          Text(
-            dateValue,
-            style: TextStyle(
-              color: BracuPalette.textPrimary(context),
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        if (hasDate && hasTime) const SizedBox(height: 1),
-        if (hasTime)
-          Text(
-            timeValue,
-            style: TextStyle(
-              color: BracuPalette.textSecondary(context),
-              fontSize: 11.5,
-            ),
-          ),
-      ],
-    );
-  }
-
-  String _formatExamDate(String? raw) {
-    if (raw == null || raw.trim().isEmpty) return '';
-    final parsed = BracuTime.parseDate(raw);
-    if (parsed == null) return raw.trim();
-    return DateFormat('MMM d, y').format(parsed);
-  }
-
-  String _formatExamTime(String? start, String? end) {
-    final range = formatTimeRange(start, end);
-    if (range.isEmpty) return '';
-    return range;
-  }
-}
-
-class _SeatMetric extends StatelessWidget {
-  const _SeatMetric({
-    required this.value,
-    required this.label,
-    required this.color,
-  });
-
-  final int value;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          '$value',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: color,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: BracuPalette.textSecondary(context),
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _SeatStatusCardData {
   const _SeatStatusCardData({
     required this.sectionId,
     required this.courseCode,
     required this.sectionName,
     required this.courseName,
+    required this.faculty,
     required this.facultyInitial,
     required this.facultyMeta,
     required this.credits,
@@ -775,6 +719,7 @@ class _SeatStatusCardData {
   final String courseCode;
   final String sectionName;
   final String courseName;
+  final section.SectionFaculty? faculty;
   final String facultyInitial;
   final String facultyMeta;
   final int credits;
@@ -804,6 +749,7 @@ class _SeatStatusCardData {
       courseCode: courseCode,
       sectionName: sectionName,
       courseName: courseName,
+      faculty: faculty,
       facultyInitial: facultyInitial,
       facultyMeta: facultyMeta,
       credits: credits,
@@ -826,6 +772,64 @@ class _SeatStatusCardData {
       consumed: consumed ?? this.consumed,
       total: total ?? this.total,
       searchToken: searchToken,
+    );
+  }
+}
+
+class _ExamBlock extends StatelessWidget {
+  const _ExamBlock({
+    required this.label,
+    required this.date,
+    required this.start,
+    required this.end,
+    required this.textPrimary,
+    required this.textSecondary,
+  });
+
+  final String label;
+  final String? date;
+  final String? start;
+  final String? end;
+  final Color textPrimary;
+  final Color textSecondary;
+
+  @override
+  Widget build(BuildContext context) {
+    final dateLabel = formatDate(date);
+    final timeLabel = formatTimeRange(start, end);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$label:',
+          style: TextStyle(
+            color: textSecondary,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (dateLabel.isNotEmpty)
+          Text(
+            dateLabel,
+            style: TextStyle(
+              color: textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        if (timeLabel.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Text(
+            timeLabel,
+            style: TextStyle(
+              color: textSecondary,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

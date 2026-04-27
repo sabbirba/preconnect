@@ -10,13 +10,17 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     final total = details.capacity;
     final resolvedRemaining = total - details.consumedSeat;
     final resolvedConsumed = details.consumedSeat;
+    final facultySummaryLabel = seatStatusFacultySummaryLabel(details.faculty);
+    final facultyDetailLabel = seatStatusFacultyDetailLabel(details.faculty);
+    final facultySearchText = seatStatusFacultySearchText(details.faculty);
     return _SeatStatusCardData(
       sectionId: sectionId,
       courseCode: details.courseCode,
       sectionName: details.sectionName,
       courseName: details.courseName,
-      facultyInitial: details.faculties,
-      facultyMeta: _facultyMetaForInitial(details.faculties),
+      faculty: details.faculty,
+      facultyInitial: facultySummaryLabel,
+      facultyMeta: facultyDetailLabel,
       credits: details.courseCredit,
       room: details.roomNumber,
       courseType: details.courseType,
@@ -41,8 +45,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         courseCode: details.courseCode,
         sectionName: details.sectionName,
         courseName: details.courseName,
-        facultyInitial: details.faculties,
-        facultyMeta: _facultyMetaForInitial(details.faculties),
+        facultySearchText: facultySearchText,
         room: details.roomNumber,
         courseType: details.courseType,
         labRoom: details.labRoomName ?? '',
@@ -76,8 +79,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     required String courseCode,
     required String sectionName,
     required String courseName,
-    required String facultyInitial,
-    required String facultyMeta,
+    required String facultySearchText,
     required String room,
     required String courseType,
     required String labRoom,
@@ -108,7 +110,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         '${midExamDate ?? ''} ${midExamStartTime ?? ''} ${midExamEndTime ?? ''} '
         '${finalExamDate ?? ''} ${finalExamStartTime ?? ''} ${finalExamEndTime ?? ''}';
     return '$courseCode $sectionName $courseName '
-            '$facultyInitial $facultyMeta '
+            '$facultySearchText '
             '$room $roomName $labRoom $labCourseCode $labName $labFaculties '
             '$sectionId $courseId $semesterSessionId $parentSectionId $labSectionId '
             '$courseType $sectionType $academicDegree '
@@ -226,6 +228,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         runSpacing: 8,
         children: [
           _buildAvailabilityFilterAction(),
+          _buildPinnedFilterAction(),
           _buildDayFilterAction(context),
         ],
       ),
@@ -238,6 +241,16 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       label: 'Available',
       selected: _availableOnly,
       onTap: () => _setAvailableFilter(!_availableOnly),
+      showArrow: false,
+    );
+  }
+
+  Widget _buildPinnedFilterAction() {
+    return _FilterChip(
+      icon: Icons.push_pin_outlined,
+      label: 'Pinned',
+      selected: _pinnedOnly,
+      onTap: () => _setPinnedFilter(!_pinnedOnly),
       showArrow: false,
     );
   }
@@ -285,22 +298,31 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     _refreshVisibleCards(dayFilter: next);
   }
 
+  void _setPinnedFilter(bool next) {
+    if (next == _pinnedOnly) return;
+    _refreshVisibleCards(pinnedOnly: next);
+  }
+
   void _refreshVisibleCards({
     bool? availableOnly,
+    bool? pinnedOnly,
     String? dayFilter,
     String? query,
   }) {
     final resolvedAvailableOnly = availableOnly ?? _availableOnly;
+    final resolvedPinnedOnly = pinnedOnly ?? _pinnedOnly;
     final resolvedDayFilter = dayFilter ?? _selectedDayFilter;
     final resolvedQuery = query ?? _searchQuery;
     final nextVisible = _filterCards(
       _cards,
       resolvedQuery,
       availableOnly: resolvedAvailableOnly,
+      pinnedOnly: resolvedPinnedOnly,
       dayFilter: resolvedDayFilter,
     );
     final filtersChanged =
         resolvedAvailableOnly != _availableOnly ||
+        resolvedPinnedOnly != _pinnedOnly ||
         resolvedDayFilter != _selectedDayFilter ||
         resolvedQuery != _searchQuery;
     if (!filtersChanged &&
@@ -309,6 +331,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     }
     setState(() {
       _availableOnly = resolvedAvailableOnly;
+      _pinnedOnly = resolvedPinnedOnly;
       _selectedDayFilter = resolvedDayFilter;
       _searchQuery = resolvedQuery;
       _visibleCards
@@ -322,12 +345,14 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     List<_SeatStatusCardData> source,
     String query, {
     required bool availableOnly,
+    required bool pinnedOnly,
     required String dayFilter,
   }) {
     final q = query.trim().toLowerCase();
     return source.where((card) {
       if (q.isNotEmpty && !card.searchToken.contains(q)) return false;
       if (availableOnly && card.remaining <= 0) return false;
+      if (pinnedOnly && !_isPinnedSection(card.sectionId)) return false;
       if (dayFilter.isNotEmpty) {
         final schedules = <SeatStatusClassSchedule>[
           ...card.classSchedule,
@@ -355,6 +380,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       nextCards,
       _searchQuery,
       availableOnly: _availableOnly,
+      pinnedOnly: _pinnedOnly,
       dayFilter: _selectedDayFilter,
     );
     if (!mounted) return;
@@ -457,7 +483,8 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   }
 
   void _updatePollingStrategy() {
-    final shouldPoll = mounted &&
+    final shouldPoll =
+        mounted &&
         HomeTabRegistry.activeTab.value == HomeTab.seatStatus &&
         WidgetsBinding.instance.lifecycleState != AppLifecycleState.paused &&
         WidgetsBinding.instance.lifecycleState != AppLifecycleState.detached;
@@ -503,7 +530,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
 
   void _startPolling() {
     if (_pollTimer != null) return;
-    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (!mounted) return;
       if (HomeTabRegistry.activeTab.value != HomeTab.seatStatus) return;
       unawaited(_refreshDetailsFromApi());
@@ -514,10 +541,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   void _stopPolling() {
     _pollTimer?.cancel();
     _pollTimer = null;
-  }
-
-  String _facultyMetaForInitial(String facultyInitial) {
-    return facultyInitial.trim().toUpperCase();
   }
 
   bool _isPinnedSection(int sectionId) {

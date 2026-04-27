@@ -12,14 +12,7 @@ class BusFleetMapView extends StatelessWidget {
         .where((marker) => marker.hasPosition)
         .toList(growable: false);
     if (validMarkers.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text(
-          'No live bus positions available.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: BracuPalette.textSecondary(context)),
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
     return _BusLiveMapWebView(markers: validMarkers);

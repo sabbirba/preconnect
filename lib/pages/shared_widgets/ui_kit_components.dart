@@ -171,6 +171,15 @@ Future<T?> showBracuCustomBottomSheet<T>({
       }
 
       final bottomInset = MediaQuery.viewInsetsOf(sheetContext).bottom;
+      final screenHeight = MediaQuery.sizeOf(sheetContext).height;
+      final minVisibleSheetHeight = switch (defaultTargetPlatform) {
+        TargetPlatform.macOS => 112.0,
+        TargetPlatform.linux => 112.0,
+        TargetPlatform.windows => 112.0,
+        _ => 88.0,
+      };
+      final platformMinSize = (minVisibleSheetHeight / screenHeight)
+          .clamp(0.10, 0.40);
       return AnimatedPadding(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
@@ -178,7 +187,8 @@ Future<T?> showBracuCustomBottomSheet<T>({
         child: Builder(
           builder: (_) {
             final maxSize = maxChildSize.clamp(0.40, 0.99);
-            final minSize = minChildSize.clamp(0.10, maxSize);
+            final minSize = math.max(minChildSize, platformMinSize)
+                .clamp(0.10, maxSize);
             final initialSize = initialChildSize.clamp(minSize, maxSize);
             var dismissed = false;
             return NotificationListener<DraggableScrollableNotification>(

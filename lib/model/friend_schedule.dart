@@ -102,7 +102,7 @@ class Course {
       courseCode: json['courseCode'] ?? '',
       sectionName: json['sectionName']?.toString(),
       roomNumber: roomNumber?.isEmpty == true ? null : roomNumber,
-      faculties: json['faculties']?.toString(),
+      faculties: _facultyLabel(json['faculties']),
       schedule: schedules,
     );
   }
@@ -169,4 +169,18 @@ class FriendMetadata {
       isFavorite: isFavorite ?? this.isFavorite,
     );
   }
+}
+
+String? _facultyLabel(dynamic value) {
+  if (value == null) return null;
+  if (value is Map) {
+    final map = value.cast<String, dynamic>();
+    final staffName = '${map['staffName'] ?? ''}'.trim();
+    if (staffName.isNotEmpty) return staffName;
+    final shortName = '${map['shortName'] ?? ''}'.trim();
+    if (shortName.isNotEmpty) return shortName;
+    return null;
+  }
+  final label = value.toString().trim();
+  return label.isEmpty ? null : label;
 }

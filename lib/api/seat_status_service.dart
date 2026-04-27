@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/model/section_info.dart' show SectionFaculty;
 
 class SeatStatusService {
   SeatStatusService._internal();
@@ -53,6 +54,7 @@ class SeatStatusDetailsResponse {
     required this.consumedSeat,
     required this.semesterSessionId,
     required this.parentSectionId,
+    required this.faculty,
     required this.faculties,
     required this.roomName,
     required this.roomNumber,
@@ -79,6 +81,7 @@ class SeatStatusDetailsResponse {
   final int consumedSeat;
   final int semesterSessionId;
   final int? parentSectionId;
+  final SectionFaculty? faculty;
   final String faculties;
   final String roomName;
   final String roomNumber;
@@ -123,7 +126,8 @@ class SeatStatusDetailsResponse {
       consumedSeat: _toInt(json['consumedSeat']),
       semesterSessionId: _toInt(json['semesterSessionId']),
       parentSectionId: _toNullableInt(json['parentSectionId']),
-      faculties: _toString(json['faculties']),
+      faculty: _facultyFromJson(json['faculties']),
+      faculties: _facultyLabel(json['faculties']),
       roomName: _toString(json['roomName']),
       roomNumber: _toString(json['roomNumber']),
       courseType: _toString(json['courseType']),
@@ -152,6 +156,15 @@ class SeatStatusDetailsResponse {
       'consumedSeat': consumedSeat,
       'semesterSessionId': semesterSessionId,
       'parentSectionId': parentSectionId,
+      'faculty': faculty == null
+          ? null
+          : <String, dynamic>{
+              'id': faculty!.id,
+              'staffName': faculty!.staffName,
+              'shortName': faculty!.shortName,
+              'email': faculty!.email,
+              'imgUrl': faculty!.imgUrl,
+            },
       'faculties': faculties,
       'roomName': roomName,
       'roomNumber': roomNumber,
@@ -269,6 +282,23 @@ int? _toNullableInt(dynamic value) {
 String _toString(dynamic value) {
   if (value == null) return '';
   return '$value'.trim();
+}
+
+String _facultyLabel(dynamic value) {
+  if (value is Map) {
+    final map = value.cast<String, dynamic>();
+    final shortName = _toString(map['shortName']);
+    if (shortName.isNotEmpty) return shortName;
+    final staffName = _toString(map['staffName']);
+    if (staffName.isNotEmpty) return staffName;
+    return '';
+  }
+  return _toString(value);
+}
+
+SectionFaculty? _facultyFromJson(dynamic value) {
+  if (value is! Map) return null;
+  return SectionFaculty.fromJson(value.cast<String, dynamic>());
 }
 
 String? _toNullableString(dynamic value) {

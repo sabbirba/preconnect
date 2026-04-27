@@ -1,26 +1,26 @@
 package com.sabbirba.preconnect
 
-import android.content.Context
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.provider.AlarmClock
-import androidx.core.content.FileProvider
-import java.util.ArrayList
 import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.net.Uri
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSuggestion
 import android.os.Build
 import android.os.Bundle
 import android.os.CancellationSignal
-import android.os.ParcelFileDescriptor
 import android.os.Looper
+import android.os.ParcelFileDescriptor
+import android.provider.AlarmClock
+import android.provider.Settings
 import com.android.installreferrer.api.InstallReferrerClient
 import com.android.installreferrer.api.InstallReferrerStateListener
 import com.google.android.play.core.integrity.IntegrityManagerFactory
@@ -38,6 +38,8 @@ import android.print.PrintManager
 import android.graphics.pdf.PdfDocument
 import java.io.File
 import java.io.FileOutputStream
+import androidx.core.content.FileProvider
+import java.util.ArrayList
 
 class MainActivity : FlutterFragmentActivity() {
     private val shortcutExtraKey = "flutter_shortcut"
@@ -109,6 +111,7 @@ class MainActivity : FlutterFragmentActivity() {
         configureBuildInfoChannel(flutterEngine)
         configureAndroidAlarmChannel(flutterEngine)
         configureNetworkAssistChannels(flutterEngine)
+        configureQuietModeChannel(flutterEngine)
         configureNativePrintChannel(flutterEngine)
         configurePdfOpenChannel(flutterEngine)
     }
@@ -356,6 +359,62 @@ class MainActivity : FlutterFragmentActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    private fun configureQuietModeChannel(flutterEngine: FlutterEngine) {
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "preconnect/quiet_mode")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "setQuietMode" -> setQuietMode(call, result)
+                    "openQuietModeSettings" -> openQuietModeSettings(result)
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    private fun setQuietMode(call: MethodCall, result: MethodChannel.Result) {
+        val enabled = call.argument<Boolean>("enabled") == true
+        val source = call.argument<String>("source")?.trim().orEmpty().ifBlank { "sync" }
+        val windows = parseQuietModeWindows(call.argument<List<*>>("windows"))
+        result.success(
+            QuietModeAutomation.handleSetQuietMode(
+                context = this,
+                enabled = enabled,
+                source = source,
+                windows = windows,
+            ),
+        )
+    }
+
+    private fun parseQuietModeWindows(rawWindows: List<*>?): List<QuietModeWindow> {
+        if (rawWindows.isNullOrEmpty()) return emptyList()
+        return rawWindows.mapNotNull { item ->
+            val rawMap = item as? Map<*, *> ?: return@mapNotNull null
+            val startAt = (rawMap["startAt"] as? Number)?.toLong()
+                ?: (rawMap["startAt"] as? String)?.toLongOrNull()
+                ?: return@mapNotNull null
+            val endAt = (rawMap["endAt"] as? Number)?.toLong()
+                ?: (rawMap["endAt"] as? String)?.toLongOrNull()
+                ?: return@mapNotNull null
+            QuietModeWindow(
+                startAtMillis = startAt,
+                endAtMillis = endAt,
+                source = rawMap["source"]?.toString().orEmpty(),
+                label = rawMap["label"]?.toString().orEmpty(),
+            )
+        }
+    }
+
+    private fun openQuietModeSettings(result: MethodChannel.Result) {
+        try {
+            val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+            result.success(true)
+        } catch (e: Exception) {
+            result.success(false)
+        }
     }
 
     private fun configurePdfOpenChannel(flutterEngine: FlutterEngine) {

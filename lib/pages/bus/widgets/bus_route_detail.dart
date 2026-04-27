@@ -71,6 +71,11 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
   Widget build(BuildContext context) {
     final route = _route;
     final vehicle = widget.vehicle;
+    final hasLivePosition = route.live.hasPosition;
+    final hasLiveStats =
+        route.live.speed.trim().isNotEmpty ||
+        route.live.time.trim().isNotEmpty ||
+        route.live.status.trim().isNotEmpty;
     final title = route.displayTitle;
     final subtitle = route.to.isNotEmpty
         ? route.to
@@ -121,15 +126,13 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
                   ],
                 ),
               ),
-            if (!_shouldHideLiveMapAndStats(route) && !kIsWeb) ...[
+            if (hasLivePosition && !kIsWeb) ...[
               _RouteLiveMapCard(route: route, vehicle: vehicle),
               const SizedBox(height: 2),
-              _LiveTrackingCard(route: route),
+              if (hasLiveStats) _LiveTrackingCard(route: route),
               const SizedBox(height: 2),
             ],
-            if (!_shouldHideLiveMapAndStats(route) &&
-                kIsWeb &&
-                route.live.hasPosition) ...[
+            if (hasLivePosition && kIsWeb) ...[
               _RouteGoogleMapsLink(route: route),
               const SizedBox(height: 2),
             ],
@@ -146,7 +149,6 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
       ),
     );
   }
-
 }
 
 class _RouteGoogleMapsLink extends StatelessWidget {
@@ -187,15 +189,6 @@ Future<void> _openRouteInGoogleMaps(
   messenger.showSnackBar(
     const SnackBar(content: Text('Unable to open Google Maps.')),
   );
-}
-
-bool _shouldHideLiveMapAndStats(BusTransportRoute route) {
-  final title = route.displayTitle.trim().toLowerCase();
-  final from = route.from.trim().toLowerCase();
-  final to = route.to.trim().toLowerCase();
-  return title.contains('bashundhara') ||
-      from.contains('bashundhara') ||
-      to.contains('bashundhara');
 }
 
 class _RouteLiveMapCard extends StatelessWidget {
@@ -376,51 +369,70 @@ class _LiveTrackerDetailsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final live = route.live;
-    if (live.status.isEmpty && live.time.isEmpty && !live.hasPosition) {
+    final speedLabel = _speedLabel(live);
+    final updatedLabel = _updatedLabel(live);
+
+    if (speedLabel == null && updatedLabel == null) {
       return const SizedBox.shrink();
     }
+
     return Center(
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: Text.rich(
           TextSpan(
             children: [
-              TextSpan(
-                text: 'Speed: ',
-                style: TextStyle(
-                  color: BracuPalette.textSecondary(context),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  height: 1.15,
+              if (speedLabel != null) ...[
+                TextSpan(
+                  text: 'Speed: ',
+                  style: TextStyle(
+                    color: BracuPalette.textSecondary(context),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    height: 1.15,
+                  ),
                 ),
-              ),
-              TextSpan(
-                text: _speedLabel(live),
-                style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  height: 1.15,
+                TextSpan(
+                  text: speedLabel,
+                  style: TextStyle(
+                    color: BracuPalette.textPrimary(context),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    height: 1.15,
+                  ),
                 ),
-              ),
-              TextSpan(
-                text: '   Updated: ',
-                style: TextStyle(
-                  color: BracuPalette.textSecondary(context),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  height: 1.15,
+              ],
+              if (speedLabel != null && updatedLabel != null) ...[
+                TextSpan(
+                  text: '   ',
+                  style: TextStyle(
+                    color: BracuPalette.textSecondary(context),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    height: 1.15,
+                  ),
                 ),
-              ),
-              TextSpan(
-                text: _updatedLabel(live),
-                style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  height: 1.15,
+              ],
+              if (updatedLabel != null) ...[
+                TextSpan(
+                  text: 'Updated: ',
+                  style: TextStyle(
+                    color: BracuPalette.textSecondary(context),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    height: 1.15,
+                  ),
                 ),
-              ),
+                TextSpan(
+                  text: updatedLabel,
+                  style: TextStyle(
+                    color: BracuPalette.textPrimary(context),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    height: 1.15,
+                  ),
+                ),
+              ],
             ],
           ),
           maxLines: 1,
@@ -432,20 +444,22 @@ class _LiveTrackerDetailsCard extends StatelessWidget {
   }
 }
 
-String _speedLabel(BusRouteLiveSnapshot data) {
-  final speed = _parseDouble(data.speed);
+String? _speedLabel(BusRouteLiveSnapshot data) {
+  final raw = data.speed.trim();
+  if (raw.isEmpty) return null;
+  final speed = _parseDouble(raw);
   if (speed <= 0) return '0 km/h';
   return '${speed.toStringAsFixed(speed.truncateToDouble() == speed ? 0 : 1)} km/h';
 }
 
-String _updatedLabel(BusRouteLiveSnapshot data) {
+String? _updatedLabel(BusRouteLiveSnapshot data) {
   final raw = data.time.trim();
-  if (raw.isEmpty) return 'Unknown';
+  if (raw.isEmpty) return null;
   try {
     final parsed = DateTime.parse(raw).toLocal();
     return DateFormat('d MMMM, h:mm a').format(parsed);
   } catch (_) {
-    return raw;
+    return null;
   }
 }
 
