@@ -1406,7 +1406,7 @@ Widget buildRefreshLoadingState({
 }) {
   return BracuRefreshPlaceholder(
     onRefresh: onRefresh,
-    topSpacing: math.min(topSpacing, 24),
+    topSpacing: topSpacing,
     child: const BracuLoading(),
   );
 }
