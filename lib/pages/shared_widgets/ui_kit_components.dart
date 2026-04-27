@@ -178,8 +178,10 @@ Future<T?> showBracuCustomBottomSheet<T>({
         TargetPlatform.windows => 112.0,
         _ => 88.0,
       };
-      final platformMinSize = (minVisibleSheetHeight / screenHeight)
-          .clamp(0.10, 0.40);
+      final platformMinSize = (minVisibleSheetHeight / screenHeight).clamp(
+        0.10,
+        0.40,
+      );
       return AnimatedPadding(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
@@ -187,7 +189,8 @@ Future<T?> showBracuCustomBottomSheet<T>({
         child: Builder(
           builder: (_) {
             final maxSize = maxChildSize.clamp(0.40, 0.99);
-            final minSize = math.max(minChildSize, platformMinSize)
+            final minSize = math
+                .max(minChildSize, platformMinSize)
                 .clamp(0.10, maxSize);
             final initialSize = initialChildSize.clamp(minSize, maxSize);
             var dismissed = false;
@@ -2043,10 +2046,7 @@ class BracuMetricGridData {
 }
 
 class BracuMetricGrid extends StatelessWidget {
-  const BracuMetricGrid({
-    super.key,
-    required this.items,
-  });
+  const BracuMetricGrid({super.key, required this.items});
 
   final List<BracuMetricGridData> items;
 

@@ -26,7 +26,7 @@ class BusRouteMap extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                OutlinedButton.icon(
+                ElevatedButton.icon(
                   onPressed: () {
                     Navigator.of(
                       context,

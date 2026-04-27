@@ -94,9 +94,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     var shortCode = (await AppStorage.instance.getString('shortCode') ?? '')
         .trim();
 
-    if (studentId.isEmpty ||
-        fullName.isEmpty ||
-        shortCode.isEmpty) {
+    if (studentId.isEmpty || fullName.isEmpty || shortCode.isEmpty) {
       final profile = await ProfileService().getProfile(fromFetch: true);
       studentId = studentId.isEmpty
           ? (profile?['studentId'] ?? '').trim()
@@ -424,18 +422,20 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: double.infinity,
-                  child: Text(
-                    selected,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: BracuPalette.textPrimary(context),
-                      fontWeight: FontWeight.w700,
+                if (_fileName.isNotEmpty) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: Text(
+                      selected,
+                      textAlign: TextAlign.left,
+                      style: TextStyle(
+                        color: BracuPalette.textPrimary(context),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
+                  const SizedBox(height: 12),
+                ],
                 Row(
                   children: [
                     Expanded(
@@ -632,9 +632,7 @@ class _PrintHistoryRow extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                entry.copies == 1
-                    ? '1 copy'
-                    : '${entry.copies} copies',
+                entry.copies == 1 ? '1 copy' : '${entry.copies} copies',
                 style: TextStyle(
                   color: BracuPalette.textSecondary(context),
                   fontSize: 11,
@@ -839,7 +837,6 @@ class _LprPrintClient {
       throw const _LprPrintException(_errPrinterRejectedJob);
     }
   }
-
 }
 
 class _PrinterPreferencesPanel extends StatelessWidget {
@@ -875,9 +872,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
 }
 
 class _PrintTicket {
-  const _PrintTicket({
-    required this.copies,
-  });
+  const _PrintTicket({required this.copies});
 
   final String paperSize = 'A4';
   final String margins = 'Default';

@@ -336,7 +336,7 @@ Future<void> showCampusMapBottomSheet(
             required String label,
             required VoidCallback? onPressed,
           }) {
-            return OutlinedButton.icon(
+            return ElevatedButton.icon(
               onPressed: onPressed,
               icon: Icon(icon, size: 18),
               label: Text(label),

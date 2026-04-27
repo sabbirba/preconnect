@@ -386,9 +386,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             )
                           : const Icon(Icons.arrow_forward_rounded),
                       label: Text(
-                        _isStartingWebLogin
-                            ? 'Opening SSO...'
-                            : 'Continue',
+                        _isStartingWebLogin ? 'Opening SSO...' : 'Continue',
                         style: const TextStyle(fontSize: 17),
                       ),
                       style: FilledButton.styleFrom(

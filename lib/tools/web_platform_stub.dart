@@ -90,9 +90,7 @@ class WebExtensionSessionEvent {
 
 enum WebExtensionSessionEventKind { logoutComplete }
 
-Future<bool> ensureFreshWebExtensionSession({
-  bool forceRefresh = false,
-}) async {
+Future<bool> ensureFreshWebExtensionSession({bool forceRefresh = false}) async {
   final _ = forceRefresh;
   return false;
 }

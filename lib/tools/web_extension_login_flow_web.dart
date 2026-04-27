@@ -29,9 +29,7 @@ class WebExtensionLoginFlow {
       return;
     }
     if (type == 'preconnect.loginFailed') {
-      _events.add(
-        WebExtensionLoginState.failed('${message['error'] ?? ''}'),
-      );
+      _events.add(WebExtensionLoginState.failed('${message['error'] ?? ''}'));
       _ack(event);
     }
   }
@@ -43,11 +41,9 @@ class WebExtensionLoginFlow {
   }
 
   Future<void> start() async {
-    await chrome.runtime.sendMessage(
-      null,
-      {'type': 'preconnect.startLogin'},
-      null,
-    );
+    await chrome.runtime.sendMessage(null, {
+      'type': 'preconnect.startLogin',
+    }, null);
   }
 
   Future<void> dispose() async {

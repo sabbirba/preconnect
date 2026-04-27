@@ -11,7 +11,9 @@ import 'package:web/web.dart' as web;
 extension type BarcodeDetector._(JSObject _) implements JSObject {
   external factory BarcodeDetector(BarcodeDetectorInit init);
 
-  external JSPromise<JSArray<DetectedBarcode>> detect(web.HTMLImageElement image);
+  external JSPromise<JSArray<DetectedBarcode>> detect(
+    web.HTMLImageElement image,
+  );
 }
 
 extension type BarcodeDetectorInit._(JSObject _) implements JSObject {
@@ -37,9 +39,7 @@ Future<String?> pickQrFromSystemImage() async {
   }
 
   final detector = BarcodeDetector(
-    BarcodeDetectorInit(
-      formats: ['qr_code'.toJS].toJS,
-    ),
+    BarcodeDetectorInit(formats: ['qr_code'.toJS].toJS),
   );
 
   final image = web.HTMLImageElement();

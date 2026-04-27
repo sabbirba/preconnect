@@ -56,10 +56,12 @@ class AuthService {
         }
       }
 
-      final refreshToken =
-          await _storage.read(key: PreconnectStorageKeys.refreshToken);
-      final accessToken =
-          await _storage.read(key: PreconnectStorageKeys.accessToken);
+      final refreshToken = await _storage.read(
+        key: PreconnectStorageKeys.refreshToken,
+      );
+      final accessToken = await _storage.read(
+        key: PreconnectStorageKeys.accessToken,
+      );
       if (accessToken == null && refreshToken == null) {
         return;
       }
@@ -70,18 +72,10 @@ class AuthService {
 
       await _clearAuthSessionData();
       if (instant) {
-        unawaited(
-          _finishLogout(
-            refreshToken,
-            accessToken: accessToken,
-          ),
-        );
+        unawaited(_finishLogout(refreshToken, accessToken: accessToken));
         return;
       }
-      await _finishLogout(
-        refreshToken,
-        accessToken: accessToken,
-      );
+      await _finishLogout(refreshToken, accessToken: accessToken);
     } finally {
       _isLoggingOut = false;
     }
@@ -91,10 +85,7 @@ class AuthService {
     String? refreshToken, {
     String? accessToken,
   }) async {
-    await _revokeServerSession(
-      refreshToken,
-      accessToken: accessToken,
-    );
+    await _revokeServerSession(refreshToken, accessToken: accessToken);
     await _clearLocalCaches();
   }
 
@@ -176,8 +167,9 @@ class AuthService {
 
   Future<TokenRefreshStatus> _performTokenRefresh() async {
     try {
-      final refreshToken =
-          await _storage.read(key: PreconnectStorageKeys.refreshToken);
+      final refreshToken = await _storage.read(
+        key: PreconnectStorageKeys.refreshToken,
+      );
       if (refreshToken == null || refreshToken.isEmpty) {
         _cacheRefreshResult(TokenRefreshStatus.invalidSession);
         return TokenRefreshStatus.invalidSession;
@@ -223,7 +215,9 @@ class AuthService {
   }
 
   Future<bool> ensureSignedIn() async {
-    final accessToken = await _storage.read(key: PreconnectStorageKeys.accessToken);
+    final accessToken = await _storage.read(
+      key: PreconnectStorageKeys.accessToken,
+    );
     if (accessToken == null || accessToken.isEmpty) {
       return false;
     }

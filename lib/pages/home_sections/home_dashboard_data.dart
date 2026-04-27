@@ -175,18 +175,19 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
           : Future<List<CustomSchedule>>.value(const <CustomSchedule>[]);
 
       final ramadanFuture = needsRamadan
-          ? RamadanTiming.getRamadanStatus(forceRefresh: forceRefresh)
-              .catchError((e) {
-                return const RamadanStatus(isRamadan: false);
-              })
+          ? RamadanTiming.getRamadanStatus(
+              forceRefresh: forceRefresh,
+            ).catchError((e) {
+              return const RamadanStatus(isRamadan: false);
+            })
           : Future<RamadanStatus>.value(const RamadanStatus(isRamadan: false));
 
       final holidayFuture = needsHoliday
-          ? HolidayTiming.getTodayStatus(forceRefresh: forceRefresh).catchError((
-              e,
-            ) {
-              return HolidayStatus.empty;
-            })
+          ? HolidayTiming.getTodayStatus(forceRefresh: forceRefresh).catchError(
+              (e) {
+                return HolidayStatus.empty;
+              },
+            )
           : Future<HolidayStatus>.value(HolidayStatus.empty);
 
       final results = await Future.wait<dynamic>([

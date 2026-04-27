@@ -114,7 +114,8 @@ class QuietModeController {
               windows: <QuietModeScheduleWindow>[],
               activeNow: false,
             );
-      final response = await _channel.invokeMapMethod<String, dynamic>(
+      final response =
+          await _channel.invokeMapMethod<String, dynamic>(
             'setQuietMode',
             <String, Object?>{
               'enabled': enabled,

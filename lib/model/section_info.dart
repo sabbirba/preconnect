@@ -92,8 +92,7 @@ class Section {
       capacity: json['capacity'],
       consumedSeat: json['consumedSeat'],
       sectionSchedule: SectionSchedule.fromJson(
-        (json['sectionSchedule'] as Map<dynamic, dynamic>)
-            .cast<String, dynamic>(),
+        _scheduleMapFromJson(json['sectionSchedule']),
       ),
       faculty: _facultyFromJson(json['faculties']),
       faculties: _facultyLabel(json['faculties']),
@@ -175,11 +174,33 @@ class ClassSchedule {
 }
 
 List<ClassSchedule> _classSchedulesFromJson(dynamic value) {
-  if (value is! List) return const <ClassSchedule>[];
-  return value
+  final parsed = _jsonValue(value);
+  if (parsed is! List) return const <ClassSchedule>[];
+  return parsed
       .whereType<Map>()
       .map((e) => ClassSchedule.fromJson(e.cast<String, dynamic>()))
       .toList(growable: false);
+}
+
+dynamic _jsonValue(dynamic value) {
+  if (value is String) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return const <String, dynamic>{};
+    try {
+      return jsonDecode(trimmed);
+    } catch (_) {
+      return value;
+    }
+  }
+  return value;
+}
+
+Map<String, dynamic> _scheduleMapFromJson(dynamic value) {
+  final parsed = _jsonValue(value);
+  if (parsed is Map) {
+    return parsed.cast<String, dynamic>();
+  }
+  return const <String, dynamic>{};
 }
 
 String _stringValue(Map<String, dynamic> json, String key) {

@@ -6,12 +6,14 @@ import 'package:preconnect/tools/web_extension_token_storage.dart';
 
 const Duration _refreshLeadTime = Duration(minutes: 5);
 
-Future<bool> ensureFreshWebExtensionSession({
-  bool forceRefresh = false,
-}) async {
+Future<bool> ensureFreshWebExtensionSession({bool forceRefresh = false}) async {
   final storage = WebExtensionTokenStorage.instance;
-  final accessToken = await storage.read(key: PreconnectStorageKeys.accessToken);
-  final refreshToken = await storage.read(key: PreconnectStorageKeys.refreshToken);
+  final accessToken = await storage.read(
+    key: PreconnectStorageKeys.accessToken,
+  );
+  final refreshToken = await storage.read(
+    key: PreconnectStorageKeys.refreshToken,
+  );
   if (refreshToken == null || refreshToken.trim().isEmpty) {
     return false;
   }

@@ -4,8 +4,7 @@ import 'package:preconnect/tools/preconnect_constants.dart';
 class WebExtensionTokenStorage {
   WebExtensionTokenStorage._();
 
-  static final WebExtensionTokenStorage instance =
-      WebExtensionTokenStorage._();
+  static final WebExtensionTokenStorage instance = WebExtensionTokenStorage._();
 
   Future<String?> read({required String key}) async {
     if (!chrome.storage.isAvailable) return null;

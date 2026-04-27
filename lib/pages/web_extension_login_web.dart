@@ -40,10 +40,9 @@ class _WebExtensionLoginPageState extends State<WebExtensionLoginPage> {
       final sessionReady = hasToken && await AuthService().ensureSignedIn();
       if (!mounted) return;
       if (sessionReady) {
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          '/home',
-          (route) => false,
-        );
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/home', (route) => false);
         return;
       }
       await _startLogin();
@@ -105,11 +104,9 @@ class _WebExtensionLoginPageState extends State<WebExtensionLoginPage> {
       _status = 'Opening BRACU SSO...';
     });
     try {
-      await chrome.runtime.sendMessage(
-        null,
-        {'type': 'preconnect.startLogin'},
-        null,
-      );
+      await chrome.runtime.sendMessage(null, {
+        'type': 'preconnect.startLogin',
+      }, null);
       if (!mounted) return;
       setState(() {
         _status = 'Waiting for BRACU SSO approval...';

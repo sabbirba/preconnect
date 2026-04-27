@@ -567,7 +567,14 @@ List<_ContributorProfile> _orderContributors(List<_ContributorProfile> items) {
   final mueen = _findByHandle(items, 'mueen-ahmmed');
   final shakil = _findByHandle(items, 'shakilofficial0');
   final rez1 = _findByHandle(items, 'rez1-dev');
-  final reserved = <_ContributorProfile>{?naive, ?sabbir, ?zamiul, ?mueen, ?shakil, ?rez1};
+  final reserved = <_ContributorProfile>{
+    ?naive,
+    ?sabbir,
+    ?zamiul,
+    ?mueen,
+    ?shakil,
+    ?rez1,
+  };
   final others = items.where((item) => !reserved.contains(item)).toList();
   final ordered = <_ContributorProfile>[
     ?naive,

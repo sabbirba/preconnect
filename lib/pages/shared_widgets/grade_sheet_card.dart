@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
 const kGradeSheetTitle = 'Grade Sheet';
-const kGradeSheetCardSubtitle = 'Open your latest grade sheet PDF';
+const kGradeSheetCardSubtitle = 'Latest grade sheet PDF';
 
 class GradeSheetCard extends StatefulWidget {
   const GradeSheetCard({
@@ -69,7 +69,7 @@ class _GradeSheetCardState extends State<GradeSheetCard> {
               ),
             ),
             const SizedBox(width: 12),
-            OutlinedButton.icon(
+            ElevatedButton.icon(
               onPressed: _isOpening ? null : _openGradeSheet,
               icon: _isOpening
                   ? const BracuShimmer(
@@ -77,12 +77,6 @@ class _GradeSheetCardState extends State<GradeSheetCard> {
                     )
                   : const Icon(Icons.picture_as_pdf_rounded, size: 16),
               label: const Text('Open'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: BracuPalette.primary,
-                side: BorderSide(
-                  color: BracuPalette.primary.withValues(alpha: 0.28),
-                ),
-              ),
             ),
           ],
         ),

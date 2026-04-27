@@ -99,11 +99,7 @@ class SeatStatusDetailsResponse {
   final List<SeatStatusClassSchedule> labSchedules;
 
   factory SeatStatusDetailsResponse.fromJson(Map<String, dynamic> json) {
-    final rawSchedule = json['sectionSchedule'];
-    final scheduleJson = switch (rawSchedule) {
-      Map m => m.cast<String, dynamic>(),
-      _ => const <String, dynamic>{},
-    };
+    final scheduleJson = _sectionScheduleMapFromJson(json['sectionSchedule']);
     final rawLabSchedules = json['labSchedules'];
     final labSchedules = rawLabSchedules is List
         ? rawLabSchedules
@@ -204,17 +200,7 @@ class SeatStatusSchedule {
   final String? finalExamEndTime;
 
   factory SeatStatusSchedule.fromJson(Map<String, dynamic> json) {
-    final rawSchedules = json['classSchedules'];
-    final classSchedules = rawSchedules is List
-        ? rawSchedules
-              .whereType<Map>()
-              .map(
-                (item) => SeatStatusClassSchedule.fromJson(
-                  item.cast<String, dynamic>(),
-                ),
-              )
-              .toList()
-        : const <SeatStatusClassSchedule>[];
+    final classSchedules = _classSchedulesFromJson(json['classSchedules']);
 
     return SeatStatusSchedule(
       classSchedules: classSchedules,
@@ -238,6 +224,18 @@ class SeatStatusSchedule {
       'finalExamEndTime': finalExamEndTime,
     };
   }
+}
+
+List<SeatStatusClassSchedule> _classSchedulesFromJson(dynamic value) {
+  final parsed = _jsonValue(value);
+  if (parsed is! List) return const <SeatStatusClassSchedule>[];
+  return parsed
+      .whereType<Map>()
+      .map(
+        (item) =>
+            SeatStatusClassSchedule.fromJson(item.cast<String, dynamic>()),
+      )
+      .toList(growable: false);
 }
 
 class SeatStatusClassSchedule {
@@ -282,6 +280,27 @@ int? _toNullableInt(dynamic value) {
 String _toString(dynamic value) {
   if (value == null) return '';
   return '$value'.trim();
+}
+
+Map<String, dynamic> _sectionScheduleMapFromJson(dynamic value) {
+  final parsed = _jsonValue(value);
+  if (parsed is Map) {
+    return parsed.cast<String, dynamic>();
+  }
+  return const <String, dynamic>{};
+}
+
+dynamic _jsonValue(dynamic value) {
+  if (value is String) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return const <String, dynamic>{};
+    try {
+      return jsonDecode(trimmed);
+    } catch (_) {
+      return value;
+    }
+  }
+  return value;
 }
 
 String _facultyLabel(dynamic value) {

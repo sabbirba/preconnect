@@ -671,7 +671,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
               ),
             ),
             const SizedBox(height: 14),
-            OutlinedButton.icon(
+            ElevatedButton.icon(
               onPressed: _showNextDayLabs,
               icon: const Icon(Icons.arrow_forward_rounded, size: 16),
               label: const Text('Show Next Day Labs'),

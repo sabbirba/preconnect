@@ -90,9 +90,7 @@ class _LoginPageState extends State<LoginPage> {
 
   WebViewController _buildMobileWebView() {
     LoginPage._pkceVerifier ??= generatePkceVerifier();
-    final codeChallenge = codeChallengeS256(
-      LoginPage._pkceVerifier!,
-    );
+    final codeChallenge = codeChallengeS256(LoginPage._pkceVerifier!);
     final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setUserAgent(kPreconnectUserAgent)

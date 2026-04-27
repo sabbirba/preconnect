@@ -152,10 +152,7 @@ class _DirectNotificationImageGalleryState
           fit: StackFit.expand,
           children: [
             if (widget.imageUrls.length == 1)
-              CachedImage(
-                url: widget.imageUrls.first,
-                fit: BoxFit.cover,
-              )
+              CachedImage(url: widget.imageUrls.first, fit: BoxFit.cover)
             else
               PageView.builder(
                 controller: _controller,

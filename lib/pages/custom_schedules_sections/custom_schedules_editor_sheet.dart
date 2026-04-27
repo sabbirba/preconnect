@@ -259,9 +259,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                           )
                           .map(
                             (template) =>
-                                BracuSelectOption<
-                                  CustomSchedulesTitleTemplate
-                                >(
+                                BracuSelectOption<CustomSchedulesTitleTemplate>(
                                   value: template,
                                   label: personalSchedulesTitleTemplateLabel(
                                     template,
@@ -573,7 +571,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
               const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton.icon(
+                child: ElevatedButton.icon(
                   onPressed: () async {
                     final reminderAt = startTime.subtract(
                       Duration(minutes: reminderMinutesBefore),

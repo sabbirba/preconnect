@@ -328,9 +328,11 @@ class PaymentInfo {
       paymentStatus: '${json['paymentStatus'] ?? ''}',
       payslipNumber: '${json['payslipNumber'] ?? ''}',
       paymentType: '${json['paymentType'] ?? ''}',
-      requestDate: DateTime.tryParse('${json['requestDate'] ?? ''}') ??
+      requestDate:
+          DateTime.tryParse('${json['requestDate'] ?? ''}') ??
           DateTime.fromMillisecondsSinceEpoch(0),
-      dueDate: DateTime.tryParse('${json['dueDate'] ?? ''}') ??
+      dueDate:
+          DateTime.tryParse('${json['dueDate'] ?? ''}') ??
           DateTime.fromMillisecondsSinceEpoch(0),
       totalAmount: _toDouble(json['totalAmount']),
       semesterSessionId: _toInt(json['semesterSessionId']),

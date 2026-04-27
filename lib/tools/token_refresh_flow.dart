@@ -8,7 +8,7 @@ enum TokenRefreshStatus { refreshed, invalidSession, retryableFailure }
 Future<TokenRefreshStatus> refreshBracuSessionTokens({
   required String refreshToken,
   required Future<void> Function(String accessToken, String refreshToken)
-      persistTokens,
+  persistTokens,
   required Future<void> Function() clearTokens,
   Duration timeout = const Duration(seconds: 12),
 }) async {

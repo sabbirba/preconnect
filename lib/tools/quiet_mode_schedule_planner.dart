@@ -33,10 +33,7 @@ class QuietModeScheduleWindow {
 }
 
 class QuietModeSchedulePlan {
-  const QuietModeSchedulePlan({
-    required this.windows,
-    required this.activeNow,
-  });
+  const QuietModeSchedulePlan({required this.windows, required this.activeNow});
 
   final List<QuietModeScheduleWindow> windows;
   final bool activeNow;
@@ -74,18 +71,10 @@ class QuietModeSchedulePlanner {
         );
         final isRamadan = await RamadanTiming.isRamadan();
         rawWindows.addAll(
-          _buildClassWindows(
-            sections,
-            isRamadan: isRamadan,
-            now: now,
-          ),
+          _buildClassWindows(sections, isRamadan: isRamadan, now: now),
         );
         rawWindows.addAll(
-          _buildExamWindows(
-            sections,
-            overrides: overrides,
-            now: now,
-          ),
+          _buildExamWindows(sections, overrides: overrides, now: now),
         );
       }
     } catch (_) {}
@@ -93,12 +82,7 @@ class QuietModeSchedulePlanner {
     try {
       final customItems = await CustomSchedulesService().getCachedItems();
       if (customItems != null && customItems.isNotEmpty) {
-        rawWindows.addAll(
-          _buildCustomWindows(
-            customItems,
-            now: now,
-          ),
-        );
+        rawWindows.addAll(_buildCustomWindows(customItems, now: now));
       }
     } catch (_) {}
 
@@ -133,11 +117,7 @@ class QuietModeSchedulePlanner {
         startDate.month,
         startDate.day,
       );
-      final normalizedEnd = DateTime(
-        endDate.year,
-        endDate.month,
-        endDate.day,
-      );
+      final normalizedEnd = DateTime(endDate.year, endDate.month, endDate.day);
       if (normalizedEnd.isBefore(normalizedStart)) continue;
 
       for (
@@ -251,19 +231,23 @@ class QuietModeSchedulePlanner {
     List<CustomSchedule> items, {
     required DateTime now,
   }) {
-    return items.where((item) {
-      return !item.isDone && item.endTime != null;
-    }).map((item) {
-      final endTime = item.endTime!;
-      return QuietModeScheduleWindow(
-        startAt: item.startTime,
-        endAt: endTime,
-        source: 'custom',
-        label: item.title.trim().isEmpty ? item.kind : item.title.trim(),
-      );
-    }).where((window) {
-      return window.isValid && window.endAt.isAfter(now);
-    }).toList(growable: false);
+    return items
+        .where((item) {
+          return !item.isDone && item.endTime != null;
+        })
+        .map((item) {
+          final endTime = item.endTime!;
+          return QuietModeScheduleWindow(
+            startAt: item.startTime,
+            endAt: endTime,
+            source: 'custom',
+            label: item.title.trim().isEmpty ? item.kind : item.title.trim(),
+          );
+        })
+        .where((window) {
+          return window.isValid && window.endAt.isAfter(now);
+        })
+        .toList(growable: false);
   }
 
   List<QuietModeScheduleWindow> _mergeWindows(

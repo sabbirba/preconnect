@@ -178,7 +178,8 @@ class _ApiTestPageState extends State<ApiTestPage> {
                 TextField(
                   controller: _urlController,
                   decoration: const InputDecoration(
-                    hintText: 'https://connect.bracu.ac.bd/api/adp/v1/staffs/7487',
+                    hintText:
+                        'https://connect.bracu.ac.bd/api/adp/v1/staffs/7487',
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),

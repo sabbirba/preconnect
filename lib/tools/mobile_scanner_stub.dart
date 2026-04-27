@@ -56,10 +56,7 @@ class MobileScannerErrorCode {
 }
 
 class MobileScannerException implements Exception {
-  const MobileScannerException({
-    required this.errorCode,
-    this.errorDetails,
-  });
+  const MobileScannerException({required this.errorCode, this.errorDetails});
 
   final MobileScannerErrorCode errorCode;
   final MobileScannerErrorDetails? errorDetails;

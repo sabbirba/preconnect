@@ -259,10 +259,11 @@ class _SeatStatusCard extends StatelessWidget {
     final theoryLabel = _titleCaseText(item.courseType);
     final courseHeader = _headerLine(item.courseCode, item.sectionName);
     final faculty = item.faculty;
-    final facultySummaryLabel = seatStatusFacultySummaryLabel(faculty);
-    final facultyDisplayName = faculty?.staffName.trim() ?? '';
+    final facultyName = faculty?.staffName.trim() ?? '';
     final facultyEmail = faculty?.email.trim() ?? '';
-    final showTbaFacultyState = facultySummaryLabel == 'TBA';
+    final facultyAvatarName = facultyName.isNotEmpty
+        ? facultyName
+        : item.facultyInitial.trim();
     final classLines = _scheduleLines(item.classSchedule);
     final hasMidExam = _hasExam(
       item.midExamDate,
@@ -274,9 +275,6 @@ class _SeatStatusCard extends StatelessWidget {
       item.finalExamStartTime,
       item.finalExamEndTime,
     );
-    final hasFacultyVisuals = seatStatusFacultyHasVisuals(faculty);
-    final showFacultySummary =
-        facultySummaryLabel.isNotEmpty || item.credits > 0;
 
     final card = BracuCard(
       child: Column(
@@ -293,20 +291,109 @@ class _SeatStatusCard extends StatelessWidget {
                       Text(
                         courseHeader,
                         style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
                           color: textPrimary,
                         ),
                       ),
                     if (item.courseName.trim().isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         item.courseName.trim(),
                         style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
                           color: textSecondary,
                         ),
+                      ),
+                    ],
+                    if (item.facultyInitial.trim().isNotEmpty ||
+                        item.credits > 0) ...[
+                      const SizedBox(height: 4),
+                      RichText(
+                        text: TextSpan(
+                          style: TextStyle(fontSize: 13, color: textSecondary),
+                          children: [
+                            if (item.facultyInitial.trim().isNotEmpty)
+                              TextSpan(
+                                text: item.facultyInitial,
+                                style: TextStyle(
+                                  color: textPrimary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            if (item.facultyInitial.trim().isNotEmpty &&
+                                item.credits > 0)
+                              TextSpan(
+                                text: ' • ',
+                                style: TextStyle(
+                                  color: textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            if (item.credits > 0)
+                              TextSpan(
+                                text: '${item.credits} credits',
+                                style: TextStyle(
+                                  color: textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (seatStatusFacultyHasVisuals(faculty)) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          FriendAvatar(
+                            name: facultyAvatarName.isNotEmpty
+                                ? facultyAvatarName
+                                : courseHeader,
+                            photoUrl: faculty?.imgUrl,
+                            size: 40,
+                            radius: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (facultyName.isNotEmpty)
+                                  Text(
+                                    facultyName,
+                                    style: TextStyle(
+                                      color: textPrimary,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                if (facultyEmail.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  InkWell(
+                                    borderRadius: BorderRadius.circular(6),
+                                    onTap: () =>
+                                        openMailComposer(context, facultyEmail),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 2,
+                                      ),
+                                      child: Text(
+                                        facultyEmail,
+                                        style: TextStyle(
+                                          color: textSecondary,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ],
@@ -334,100 +421,6 @@ class _SeatStatusCard extends StatelessWidget {
                 ),
             ],
           ),
-          if (showFacultySummary) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                if (showTbaFacultyState)
-                  Text(
-                    facultySummaryLabel,
-                    style: TextStyle(
-                      color: textSecondary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  )
-                else if (facultySummaryLabel.isNotEmpty)
-                  Text(
-                    facultySummaryLabel,
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                if (item.credits > 0 &&
-                    (showTbaFacultyState || facultySummaryLabel.isNotEmpty))
-                  Text(
-                    ' • ',
-                    style: TextStyle(
-                      color: textSecondary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                if (item.credits > 0)
-                  Text(
-                    '${item.credits} credits',
-                    style: TextStyle(
-                      color: textSecondary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-              ],
-            ),
-          ],
-          if (hasFacultyVisuals) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                FriendAvatar(
-                  name: facultyDisplayName.isNotEmpty
-                      ? facultyDisplayName
-                      : facultySummaryLabel,
-                  photoUrl: faculty?.imgUrl,
-                  size: 44,
-                  radius: 22,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (facultyDisplayName.isNotEmpty)
-                        Text(
-                          facultyDisplayName,
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      if (facultyEmail.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        InkWell(
-                          borderRadius: BorderRadius.circular(6),
-                          onTap: () => openMailComposer(context, facultyEmail),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: Text(
-                              facultyEmail,
-                              style: TextStyle(
-                                color: textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
           if (classLines.isNotEmpty) ...[
             const SizedBox(height: 14),
             _SeatScheduleBlock(title: 'Class', lines: classLines),
@@ -468,17 +461,6 @@ class _SeatStatusCard extends StatelessWidget {
                 ),
               ],
             ),
-            if (showTbaFacultyState) ...[
-              const SizedBox(height: 8),
-              Text(
-                'TBA',
-                style: TextStyle(
-                  color: textSecondary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
           ],
         ],
       ),
@@ -797,6 +779,9 @@ class _ExamBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final dateLabel = formatDate(date);
     final timeLabel = formatTimeRange(start, end);
+    final hasDate = dateLabel.isNotEmpty;
+    final hasTime = timeLabel.isNotEmpty;
+    if (!hasDate && !hasTime) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -804,31 +789,26 @@ class _ExamBlock extends StatelessWidget {
           '$label:',
           style: TextStyle(
             color: textSecondary,
-            fontSize: 15,
+            fontSize: 12,
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 8),
-        if (dateLabel.isNotEmpty)
+        const SizedBox(height: 3),
+        if (hasDate)
           Text(
             dateLabel,
             style: TextStyle(
               color: textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
             ),
           ),
-        if (timeLabel.isNotEmpty) ...[
-          const SizedBox(height: 2),
+        if (hasDate && hasTime) const SizedBox(height: 1),
+        if (hasTime)
           Text(
             timeLabel,
-            style: TextStyle(
-              color: textSecondary,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: textSecondary, fontSize: 11.5),
           ),
-        ],
       ],
     );
   }
