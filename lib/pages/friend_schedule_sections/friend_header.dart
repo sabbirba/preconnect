@@ -183,13 +183,7 @@ class FriendAvatar extends StatelessWidget {
               child: CachedImage(
                 url: resolvedPhotoUrl,
                 fit: BoxFit.cover,
-                placeholder: BracuShimmer(
-                  child: BracuSkeletonBox(
-                    width: size,
-                    height: size,
-                    radius: radius,
-                  ),
-                ),
+                placeholder: _avatarFallback(fontSize),
                 error: Center(
                   child: Text(
                     _initials(),
@@ -202,6 +196,19 @@ class FriendAvatar extends StatelessWidget {
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _avatarFallback(double fontSize) {
+    return Center(
+      child: Text(
+        _initials(),
+        style: TextStyle(
+          color: BracuPalette.primary,
+          fontWeight: FontWeight.w700,
+          fontSize: fontSize,
+        ),
+      ),
     );
   }
 }

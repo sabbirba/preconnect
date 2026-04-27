@@ -33,6 +33,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   static Future<_ExamScheduleData>? _preloadFuture;
 
   late Future<_ExamScheduleData> _future;
+  _ExamScheduleData? _latestData;
   final ScrollController _scrollController = ScrollController();
   int? _currentSessionSemesterId;
   GlobalKey? _highlightKey;
@@ -43,6 +44,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   @override
   void initState() {
     super.initState();
+    _latestData = _cachedData;
     _future = _cachedData == null
         ? _initializeExamSchedule()
         : Future<_ExamScheduleData>.value(_cachedData!);
@@ -55,11 +57,10 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   Future<void> _warmAndBind() async {
     final data = await preloadData();
     if (!mounted) return;
-    if (!identical(_future, _preloadFuture)) {
-      setState(() {
-        _future = Future<_ExamScheduleData>.value(data);
-      });
-    }
+    setState(() {
+      _latestData = data;
+      _future = Future<_ExamScheduleData>.value(data);
+    });
   }
 
   static Future<_ExamScheduleData> preloadData({
@@ -175,6 +176,11 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
       forcedSemesterSessionId: currentSessionSemesterId,
     );
     _cachedData = data;
+    if (mounted) {
+      setState(() {
+        _latestData = data;
+      });
+    }
     return data;
   }
 
@@ -285,24 +291,28 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
       body: FutureBuilder<_ExamScheduleData>(
         future: _future,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return buildRefreshLoadingState(
-              onRefresh: _handleRefresh,
-              label: 'Loading...',
-            );
-          } else if (snapshot.hasError) {
+          if (snapshot.hasError && _latestData == null) {
             return buildRefreshErrorState(
               onRefresh: _handleRefresh,
               error: snapshot.error,
             );
-          } else if (!snapshot.hasData || snapshot.data!.sections.isEmpty) {
+          }
+
+          final examData = _latestData ?? snapshot.data;
+          if (examData == null) {
             return buildRefreshEmptyState(
               onRefresh: _handleRefresh,
               message: 'No exam data available',
             );
           }
 
-          final examData = snapshot.data!;
+          if (examData.sections.isEmpty) {
+            return buildRefreshEmptyState(
+              onRefresh: _handleRefresh,
+              message: 'No exam data available',
+            );
+          }
+
           final sections = examData.sections;
           final overrides = examData.overrides;
           final examService = ExamScheduleService();

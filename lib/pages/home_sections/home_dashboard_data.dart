@@ -41,16 +41,17 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   static const int _autoSessionExtendThresholdSeconds = 21600;
   static const String _homeDashboardSnapshotCacheKey =
       'home_dashboard_snapshot_v1';
+  static _HomeData? _cachedData;
+  static Future<_HomeData>? _preloadFuture;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_loadHomeDashboardSnapshot());
-    _future = _loadData().then((data) {
-      _latestData = data;
-      unawaited(_saveHomeDashboardSnapshot(data));
-      return data;
-    });
+    _latestData = _cachedData;
+    _future = _cachedData == null
+        ? _initializeHomeData()
+        : Future<_HomeData>.value(_cachedData!);
+    unawaited(_warmAndBind());
     if (AndroidNetworkAssist.isSupported) {
       _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen(
         _applyAndroidNetworkStatus,
@@ -93,8 +94,18 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       if (cached == null || !mounted) return;
       setState(() {
         _latestData = cached;
+        _cachedData = cached;
       });
     } catch (_) {}
+  }
+
+  Future<void> _warmAndBind() async {
+    final data = await preloadData();
+    if (!mounted) return;
+    setState(() {
+      _latestData = data;
+      _future = Future<_HomeData>.value(data);
+    });
   }
 
   Future<void> _saveHomeDashboardSnapshot(_HomeData data) async {
@@ -104,6 +115,18 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         jsonEncode(data.toCacheJson()),
       );
     } catch (_) {}
+  }
+
+  Future<_HomeData> _initializeHomeData() async {
+    await _loadHomeDashboardSnapshot();
+    if (_cachedData != null) {
+      return _cachedData!;
+    }
+    return _preloadHomeDashboardData();
+  }
+
+  static Future<_HomeData> preloadData({bool forceRefresh = false}) async {
+    return _preloadHomeDashboardData(forceRefresh: forceRefresh);
   }
 
   void _onRefreshSignal() {
@@ -772,6 +795,39 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   @override
   Widget build(BuildContext context) {
     return _buildHomeDashboardView(context);
+  }
+}
+
+Future<void> preloadHomeDashboardData({
+  bool forceRefresh = false,
+}) async {
+  await _preloadHomeDashboardData(forceRefresh: forceRefresh);
+}
+
+Future<_HomeData> _preloadHomeDashboardData({
+  bool forceRefresh = false,
+}) async {
+  if (!forceRefresh && _HomeDashboardState._cachedData != null) {
+    return _HomeDashboardState._cachedData!;
+  }
+  if (!forceRefresh) {
+    final inFlight = _HomeDashboardState._preloadFuture;
+    if (inFlight != null) {
+      return inFlight;
+    }
+  }
+
+  final state = _HomeDashboardState();
+  final future = state._loadData(forceRefresh: forceRefresh);
+  _HomeDashboardState._preloadFuture = future;
+  try {
+    final data = await future;
+    _HomeDashboardState._cachedData = data;
+    return data;
+  } finally {
+    if (identical(_HomeDashboardState._preloadFuture, future)) {
+      _HomeDashboardState._preloadFuture = null;
+    }
   }
 }
 

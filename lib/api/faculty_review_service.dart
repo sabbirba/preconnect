@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/app_preferences_store.dart';
 
 class FacultyRatingStats {
   const FacultyRatingStats({
@@ -96,6 +98,29 @@ class FacultySummary {
           0,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'facultyId': facultyId,
+      'initial': initial,
+      'name': name,
+      'email': email,
+      'courses': courses,
+      'stats': <String, dynamic>{
+        'reviewsTotal': stats.reviewsTotal,
+        'overall': stats.overall,
+        'teaching': stats.teaching,
+        'fairness': stats.fairness,
+        'behavior': stats.behavior,
+      },
+      'reviewSummary': reviewSummary,
+      'reviewInsights': reviewInsights,
+      'sourceLabel': sourceLabel,
+      'voteScore': voteScore,
+      'upvotes': upvotes,
+      'downvotes': downvotes,
+    };
+  }
 }
 
 class FacultyReviewItem {
@@ -164,6 +189,24 @@ class FacultyReviewItem {
       ),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'reviewId': reviewId,
+      'facultyInitial': facultyInitial,
+      'facultyName': facultyName,
+      'overall': overall,
+      'teaching': teaching,
+      'fairness': fairness,
+      'behavior': behavior,
+      'comment': comment,
+      'isApproved': isApproved,
+      'canDelete': canDelete,
+      'canReport': canReport,
+      'createdAt': createdAt?.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
+    };
+  }
 }
 
 class FacultyReviewFeed {
@@ -195,6 +238,15 @@ class FacultyReviewFeed {
       limit: (json['limit'] as num?)?.toInt() ?? 20,
       offset: (json['offset'] as num?)?.toInt() ?? 0,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'faculty': faculty.toJson(),
+      'reviews': reviews.map((item) => item.toJson()).toList(),
+      'limit': limit,
+      'offset': offset,
+    };
   }
 }
 
@@ -234,6 +286,13 @@ class FacultyReviewService {
   factory FacultyReviewService() => _instance;
 
   final ApiClient _client = ApiClient();
+  final AppPreferencesStore _store = AppPreferencesStore();
+  static final Map<String, FacultyReviewFeed> _feedCache =
+      <String, FacultyReviewFeed>{};
+  static final Map<String, FacultySummary> _summaryCache =
+      <String, FacultySummary>{};
+  static const String _feedCachePrefix = 'faculty_reviews_feed_v1';
+  static const String _summaryCachePrefix = 'faculty_reviews_summary_v1';
 
   String get _base => ApiConfig.seatStatusProxyBase;
 
@@ -249,6 +308,10 @@ class FacultyReviewService {
     int offset = 0,
   }) async {
     final initial = facultyInitial.trim().toUpperCase();
+    final cached = await _readCachedFeed(initial);
+    if (cached != null) {
+      return _sliceFeed(cached, limit: limit, offset: offset);
+    }
     final apiBundle = await _fetchApiBundle(initial);
     final dbFeed = await _fetchDatabaseFeed(
       initial,
@@ -292,17 +355,27 @@ class FacultyReviewService {
     final safeOffset = offset < 0 ? 0 : offset;
     final safeLimit = limit <= 0 ? unique.length : limit;
     final paged = unique.skip(safeOffset).take(safeLimit).toList();
-    return FacultyReviewFeed(
+    final feed = FacultyReviewFeed(
       faculty: summary,
       reviews: paged,
       limit: safeLimit,
       offset: safeOffset,
     );
+    _feedCache[initial] = feed;
+    _summaryCache[initial] = summary;
+    unawaited(_writeCachedFeed(initial, feed));
+    return feed;
   }
 
   Future<FacultySummary?> getFacultyByInitial(String facultyInitial) async {
     final initial = facultyInitial.trim().toUpperCase();
     if (initial.isEmpty) return null;
+    final cachedSummary = _summaryCache[initial];
+    if (cachedSummary != null) return cachedSummary;
+    final cachedFeed = await _readCachedFeed(initial);
+    if (cachedFeed != null) {
+      return cachedFeed.faculty;
+    }
     try {
       final response = await _client.publicGet(
         '$_base/data/facultyreviews',
@@ -311,10 +384,52 @@ class FacultyReviewService {
       final root = _decodeMap(response.body);
       final scoped = _scopedFacultyData(root, initial);
       if (scoped == null || scoped.isEmpty) return null;
-      return _summaryFromDataScoped(scoped, initial);
+      final summary = _summaryFromDataScoped(scoped, initial);
+      _summaryCache[initial] = summary;
+      return summary;
     } catch (_) {
       return null;
     }
+  }
+
+  Future<FacultyReviewFeed?> _readCachedFeed(String initial) async {
+    final cached = _feedCache[initial];
+    if (cached != null) return cached;
+    final raw = await _store.getJsonMap('${_feedCachePrefix}_$initial');
+    if (raw == null) return null;
+    try {
+      final feed = FacultyReviewFeed.fromJson(raw);
+      _feedCache[initial] = feed;
+      _summaryCache[initial] = feed.faculty;
+      return feed;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _writeCachedFeed(String initial, FacultyReviewFeed feed) async {
+    try {
+      await _store.setJson('${_feedCachePrefix}_$initial', feed.toJson());
+      await _store.setJson(
+        '${_summaryCachePrefix}_$initial',
+        feed.faculty.toJson(),
+      );
+    } catch (_) {}
+  }
+
+  FacultyReviewFeed _sliceFeed(
+    FacultyReviewFeed feed, {
+    required int limit,
+    required int offset,
+  }) {
+    final safeOffset = offset < 0 ? 0 : offset;
+    final safeLimit = limit <= 0 ? feed.reviews.length : limit;
+    return FacultyReviewFeed(
+      faculty: feed.faculty,
+      reviews: feed.reviews.skip(safeOffset).take(safeLimit).toList(),
+      limit: safeLimit,
+      offset: safeOffset,
+    );
   }
 
   Future<FacultyReviewItem> upsertReview(FacultyReviewUpsertInput input) async {

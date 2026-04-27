@@ -187,19 +187,12 @@ class _ApiTestPageState extends State<ApiTestPage> {
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _isLoading ? null : _sendRequest,
-                    icon: _isLoading
-                        ? const BracuShimmer(
-                            child: BracuSkeletonBox(
-                              width: 16,
-                              height: 16,
-                              radius: 8,
-                            ),
-                          )
-                        : const Icon(Icons.play_arrow_rounded),
-                    label: Text(_isLoading ? 'Sending...' : 'Send'),
-                  ),
+                child: BracuActionButton(
+                  onPressed: _isLoading ? null : _sendRequest,
+                  filled: true,
+                  icon: Icons.play_arrow_rounded,
+                  label: 'Send',
+                ),
                 ),
               ],
             ),

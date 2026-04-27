@@ -35,11 +35,13 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   static Future<_AlarmData>? _preloadFuture;
 
   late Future<_AlarmData> _futureData;
+  _AlarmData? _latestData;
   final Map<String, int> _minutesBefore = {};
 
   @override
   void initState() {
     super.initState();
+    _latestData = _cachedData;
     _futureData = _cachedData == null
         ? _fetchSchedule()
         : Future<_AlarmData>.value(_cachedData);
@@ -77,11 +79,10 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   Future<void> _warmAndBind() async {
     final data = await preloadData();
     if (!mounted) return;
-    if (!identical(_futureData, _preloadFuture)) {
-      setState(() {
-        _futureData = Future<_AlarmData>.value(data);
-      });
-    }
+    setState(() {
+      _latestData = data;
+      _futureData = Future<_AlarmData>.value(data);
+    });
   }
 
   static Future<_AlarmData> preloadData({bool forceRefresh = false}) async {
@@ -223,9 +224,15 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       return;
     }
     setState(() {
+      _latestData = _latestData ?? _cachedData;
       _futureData = preloadData(forceRefresh: true);
     });
-    await _futureData;
+    final data = await _futureData;
+    if (mounted) {
+      setState(() {
+        _latestData = data;
+      });
+    }
   }
 
   Future<void> _setAlarm(
@@ -461,22 +468,17 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       body: FutureBuilder<_AlarmData>(
         future: _futureData,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return buildRefreshLoadingState(
-              onRefresh: _handleRefresh,
-              topSpacing: 180,
-            );
-          }
-          if (snapshot.hasError) {
+          if (snapshot.hasError && _latestData == null) {
             return buildRefreshErrorState(
               onRefresh: _handleRefresh,
               error: snapshot.error,
             );
           }
 
-          final sections = snapshot.data?.sections ?? const <Section>[];
-          final exams = snapshot.data?.examEntries ?? const <_ExamAlarmEntry>[];
-          final isRamadan = snapshot.data?.isRamadan ?? false;
+          final data = _latestData ?? snapshot.data;
+          final sections = data?.sections ?? const <Section>[];
+          final exams = data?.examEntries ?? const <_ExamAlarmEntry>[];
+          final isRamadan = data?.isRamadan ?? false;
           if (sections.isEmpty && exams.isEmpty) {
             return buildRefreshEmptyState(
               onRefresh: _handleRefresh,
@@ -770,18 +772,18 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             const SizedBox(height: 12),
                             SizedBox(
                               width: double.infinity,
-                              child: ElevatedButton.icon(
-                                style: bracuCompactPrimaryButtonStyle(),
-                                onPressed: () async {
-                                  await _setExamAlarm(
-                                    context,
-                                    exam,
-                                    _minutesBefore[alarmKey]!,
-                                  );
-                                },
-                                icon: const Icon(Icons.notifications_active),
-                                label: const Text('Set Alarm'),
-                              ),
+                            child: BracuActionButton(
+                              onPressed: () async {
+                                await _setExamAlarm(
+                                  context,
+                                  exam,
+                                  _minutesBefore[alarmKey]!,
+                                );
+                              },
+                              filled: true,
+                              icon: Icons.notifications_active,
+                              label: 'Set Alarm',
+                            ),
                             ),
                           ],
                         ),
@@ -930,18 +932,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                       Row(
                         children: [
                           Expanded(
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: BracuPalette.primary,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                              ),
+                            child: BracuActionButton(
                               onPressed: () async {
                                 final days = schedules
                                     .map((s) => s.day)
@@ -964,8 +955,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                   );
                                 }
                               },
-                              icon: const Icon(Icons.notifications_active),
-                              label: const Text('Set Alarm'),
+                              filled: true,
+                              icon: Icons.notifications_active,
+                              label: 'Set Alarm',
                             ),
                           ),
                         ],

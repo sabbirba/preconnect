@@ -322,10 +322,11 @@ class _CaptiveWifiBanner extends StatelessWidget {
           const SizedBox(height: 10),
           SizedBox(
             height: 34,
-            child: ElevatedButton.icon(
+            child: BracuActionButton(
               onPressed: onOpenLogin,
-              icon: const Icon(Icons.login_rounded, size: 16),
-              label: const Text('One-Tap Captive Wi-Fi'),
+              filled: true,
+              icon: Icons.login_rounded,
+              label: 'One-Tap Captive Wi-Fi',
             ),
           ),
         ],
@@ -385,11 +386,18 @@ class _TopBar extends StatelessWidget {
                             width: 42,
                             height: 42,
                             filterQuality: FilterQuality.low,
-                            placeholder: const BracuShimmer(
-                              child: BracuSkeletonBox(
-                                width: 42,
-                                height: 42,
-                                radius: 14,
+                            placeholder: Container(
+                              width: 42,
+                              height: 42,
+                              color: const Color(0xFF1E6BE3),
+                              alignment: Alignment.center,
+                              child: Text(
+                                initial.toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                             error: Center(

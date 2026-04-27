@@ -26,14 +26,15 @@ class BusRouteMap extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                ElevatedButton.icon(
+                BracuActionButton(
                   onPressed: () {
                     Navigator.of(
                       context,
                     ).push(MaterialPageRoute(builder: (_) => const BusPage()));
                   },
-                  icon: const Icon(Icons.directions_bus_rounded),
-                  label: const Text('Open Bus'),
+                  filled: true,
+                  icon: Icons.directions_bus_rounded,
+                  label: 'Open Bus',
                 ),
               ],
             ),

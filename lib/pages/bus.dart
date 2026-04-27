@@ -19,12 +19,18 @@ part 'package:preconnect/pages/bus/widgets/bus_widgets.dart';
 class BusPage extends StatefulWidget {
   const BusPage({super.key});
 
+  static Future<void> preload() async {
+    await _BusPageState.preloadData();
+  }
+
   @override
   State<BusPage> createState() => _BusPageState();
 }
 
 class _BusPageState extends State<BusPage> {
-  bool _loading = true;
+  static _BusDataPackage? _cachedData;
+  static Future<_BusDataPackage>? _preloadFuture;
+
   String? _error;
   _BusDataPackage? _data;
   String _schedulePdfUrl = '';
@@ -32,8 +38,42 @@ class _BusPageState extends State<BusPage> {
   @override
   void initState() {
     super.initState();
+    _data = _cachedData;
     _load();
     _fetchSchedulePdfUrl();
+    unawaited(_warmAndBind());
+  }
+
+  static Future<_BusDataPackage> preloadData({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedData != null) {
+      return _cachedData!;
+    }
+    if (!forceRefresh) {
+      final inFlight = _preloadFuture;
+      if (inFlight != null) {
+        return inFlight;
+      }
+    }
+
+    final future = _fetchBusDataPackage();
+    _preloadFuture = future;
+    try {
+      final data = await future;
+      _cachedData = data;
+      return data;
+    } finally {
+      if (identical(_preloadFuture, future)) {
+        _preloadFuture = null;
+      }
+    }
+  }
+
+  Future<void> _warmAndBind() async {
+    final package = await preloadData();
+    if (!mounted) return;
+    setState(() {
+      _data = package;
+    });
   }
 
   Future<void> _fetchSchedulePdfUrl() async {
@@ -54,25 +94,22 @@ class _BusPageState extends State<BusPage> {
   }
 
   Future<void> _load({bool forceRefresh = false}) async {
-    final _ = forceRefresh;
     if (mounted) {
       setState(() {
-        _loading = true;
         _error = null;
       });
     }
 
     try {
-      final package = await _fetchBusDataPackage();
+      final package = await preloadData(forceRefresh: forceRefresh);
       if (!mounted) return;
       setState(() {
         _data = package;
-        _loading = false;
+        _cachedData = package;
       });
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _loading = false;
         _error = 'Unable to load bus route data right now.';
       });
       debugPrint('Bus data load failed: $error');
@@ -104,9 +141,7 @@ class _BusPageState extends State<BusPage> {
       body: BracuRefreshList(
         onRefresh: () => _load(forceRefresh: true),
         children: [
-          if (_loading)
-            const BracuLoading(itemCount: 2)
-          else if (_error != null)
+          if (_error != null && _data == null)
             BracuCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,17 +154,17 @@ class _BusPageState extends State<BusPage> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  OutlinedButton.icon(
+                  BracuActionButton(
                     onPressed: () => _load(forceRefresh: true),
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('Retry'),
+                    icon: Icons.refresh_rounded,
+                    label: 'Retry',
                   ),
                 ],
               ),
             ),
-          if (!_loading && routes.isEmpty)
+          if (routes.isEmpty)
             const BracuEmptyState(message: 'No bus route data available')
-          else if (!_loading)
+          else
             ...routes.asMap().entries.expand((entry) {
               final route = entry.value;
               final isLast = entry.key == routes.length - 1;
@@ -152,19 +187,19 @@ class _BusPageState extends State<BusPage> {
                 if (!isLast) const SizedBox(height: 10),
               ];
             }),
-          if (!_loading && outbound != null) ...[
+          if (outbound != null) ...[
             const SizedBox(height: 2),
             _OutboundTripsCard(outbound: outbound),
           ],
-          if (!_loading && fares.isNotEmpty) ...[
+          if (fares.isNotEmpty) ...[
             const SizedBox(height: 2),
             _FareCard(fares: fares),
           ],
-          if (!_loading && contacts.isNotEmpty) ...[
+          if (contacts.isNotEmpty) ...[
             const SizedBox(height: 2),
             _ContactsCard(contacts: contacts),
           ],
-          if (!_loading && instructions.isNotEmpty) ...[
+          if (instructions.isNotEmpty) ...[
             const SizedBox(height: 2),
             _GeneralInstructionsCard(instructions: instructions),
           ],

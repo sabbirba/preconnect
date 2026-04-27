@@ -77,8 +77,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
 
   FacultyReviewFeed? _reviewFeed;
   List<CourseMaterialItem> _materials = const <CourseMaterialItem>[];
-  bool _reviewsLoading = true;
-  bool _materialsLoading = true;
   bool _busyWriteAction = false;
   bool _showAllReviews = false;
   bool _showAllMaterials = false;
@@ -129,13 +127,11 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
 
   Future<void> _loadReviews() async {
     setState(() {
-      _reviewsLoading = true;
       _reviewsError = null;
     });
     final initial = _facultyInitial;
     if (initial.isEmpty) {
       setState(() {
-        _reviewsLoading = false;
         _reviewsError = 'Not available';
       });
       return;
@@ -157,7 +153,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
       if (!mounted) return;
       setState(() {
         _reviewFeed = mergedFeed;
-        _reviewsLoading = false;
       });
     } catch (_) {
       try {
@@ -173,7 +168,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
               limit: 20,
               offset: 0,
             );
-            _reviewsLoading = false;
             _reviewsError = null;
           });
           return;
@@ -181,7 +175,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
       } catch (_) {}
       if (!mounted) return;
       setState(() {
-        _reviewsLoading = false;
         _reviewsError = 'Not available';
       });
     }
@@ -228,7 +221,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
 
   Future<void> _loadMaterials() async {
     setState(() {
-      _materialsLoading = true;
       _materialsError = null;
     });
     try {
@@ -240,12 +232,10 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
       if (!mounted) return;
       setState(() {
         _materials = list;
-        _materialsLoading = false;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _materialsLoading = false;
         _materialsError = 'Not available';
       });
     }
@@ -350,21 +340,20 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton(
+                        child: BracuActionButton(
                           onPressed: () =>
                               Navigator.of(sheetContext).pop(false),
-                          child: const Text('Cancel'),
+                          label: 'Cancel',
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: FilledButton(
+                        child: BracuActionButton(
                           onPressed: canSubmit
                               ? () => Navigator.of(sheetContext).pop(true)
                               : null,
-                          child: Text(
-                            myOwnedReview == null ? 'Submit' : 'Save',
-                          ),
+                          filled: true,
+                          label: myOwnedReview == null ? 'Submit' : 'Save',
                         ),
                       ),
                     ],
@@ -608,10 +597,10 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                         const SizedBox(height: 10),
                         SizedBox(
                           width: double.infinity,
-                          child: FilledButton.icon(
-                            onPressed: (pickingFile || submitting)
-                                ? null
-                                : () async {
+                        child: BracuActionButton(
+                          onPressed: (pickingFile || submitting)
+                              ? null
+                              : () async {
                                     setSheetState(() {
                                       pickingFile = true;
                                     });
@@ -645,18 +634,9 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                                       selectedFileBytes = bytes;
                                     });
                                   },
-                            icon: pickingFile
-                                ? const BracuShimmer(
-                                    child: BracuSkeletonBox(
-                                      width: 16,
-                                      height: 16,
-                                      radius: 8,
-                                    ),
-                                  )
-                                : const Icon(Icons.upload_file_rounded),
-                            label: Text(
-                              pickingFile ? 'Choosing file...' : 'Choose File',
-                            ),
+                            filled: true,
+                            icon: Icons.upload_file_rounded,
+                            label: 'Choose File',
                           ),
                         ),
                       ] else ...[
@@ -710,16 +690,16 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton(
+                      child: BracuActionButton(
                         onPressed: (pickingFile || submitting)
                             ? null
                             : () => Navigator.of(sheetContext).pop(),
-                        child: const Text('Cancel'),
+                        label: 'Cancel',
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: FilledButton.icon(
+                      child: BracuActionButton(
                         onPressed: (pickingFile || submitting)
                             ? null
                             : () async {
@@ -790,20 +770,11 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                                   linkUrl: url,
                                 );
                               },
-                        icon: submitting
-                            ? const BracuShimmer(
-                                child: BracuSkeletonBox(
-                                  width: 16,
-                                  height: 16,
-                                  radius: 8,
-                                ),
-                              )
-                            : Icon(
-                                activeTab == _AddMaterialTab.file
-                                    ? Icons.check_circle_outline
-                                    : Icons.link_rounded,
-                              ),
-                        label: Text(submitting ? 'Submitting...' : 'Submit'),
+                        filled: true,
+                        icon: activeTab == _AddMaterialTab.file
+                            ? Icons.check_circle_outline
+                            : Icons.link_rounded,
+                        label: 'Submit',
                       ),
                     ),
                   ],
@@ -1314,12 +1285,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
               ? _writeReview
               : null,
         ),
-        if (_reviewsLoading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 14),
-            child: _CourseCommunityLoadingState(cardCount: 2),
-          )
-        else if (_reviewsError != null)
+        if (_reviewsError != null)
           BracuCard(
             child: Text(
               'No reviews yet for ${_facultyInitial.isEmpty ? 'this faculty' : _facultyInitial}.',
@@ -1393,12 +1359,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
               ),
           ],
         ),
-        if (_materialsLoading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 14),
-            child: _CourseCommunityLoadingState(cardCount: 3),
-          )
-        else if (_materialsError != null)
+        if (_materialsError != null)
           BracuCard(
             child: Text(
               _materialsError!,
@@ -1664,42 +1625,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
       return '${(bytes / 1024).toStringAsFixed(1)} KB';
     }
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
-}
-
-class _CourseCommunityLoadingState extends StatelessWidget {
-  const _CourseCommunityLoadingState({required this.cardCount});
-
-  final int cardCount;
-
-  @override
-  Widget build(BuildContext context) {
-    return BracuShimmer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (var index = 0; index < cardCount; index++) ...[
-            if (index != 0) const SizedBox(height: 10),
-            BracuCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  BracuSkeletonBox(width: 180, height: 14, radius: 7),
-                  SizedBox(height: 8),
-                  BracuSkeletonBox(
-                    width: double.infinity,
-                    height: 12,
-                    radius: 6,
-                  ),
-                  SizedBox(height: 8),
-                  BracuSkeletonBox(width: 96, height: 12, radius: 6),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
   }
 }
 

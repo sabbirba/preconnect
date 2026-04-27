@@ -138,8 +138,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   }
 
   Widget _buildPageContent(BuildContext context) {
-    final showLoadingState =
-        _isInitialLoading || (_cards.isEmpty && _isDetailsRefreshing);
     final hasCards = _cards.isNotEmpty;
     final hasVisibleCards = _visibleCards.isNotEmpty;
     final itemCount = hasVisibleCards ? _visibleCards.length + 1 : 1;
@@ -169,12 +167,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
             itemBuilder: (context, index) {
               if (index == 0) {
                 return _buildFilterHeader(context);
-              }
-              if (showLoadingState) {
-                return const Padding(
-                  padding: EdgeInsets.only(top: 28),
-                  child: _SeatStatusLoadingState(),
-                );
               }
               if (!hasCards || !hasVisibleCards) {
                 return const SizedBox.shrink();
@@ -228,7 +220,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         runSpacing: 8,
         children: [
           _buildAvailabilityFilterAction(),
-          _buildPinnedFilterAction(),
           _buildDayFilterAction(context),
         ],
       ),
@@ -241,16 +232,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       label: 'Available',
       selected: _availableOnly,
       onTap: () => _setAvailableFilter(!_availableOnly),
-      showArrow: false,
-    );
-  }
-
-  Widget _buildPinnedFilterAction() {
-    return _FilterChip(
-      icon: Icons.push_pin_outlined,
-      label: 'Pinned',
-      selected: _pinnedOnly,
-      onTap: () => _setPinnedFilter(!_pinnedOnly),
       showArrow: false,
     );
   }
@@ -298,31 +279,22 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     _refreshVisibleCards(dayFilter: next);
   }
 
-  void _setPinnedFilter(bool next) {
-    if (next == _pinnedOnly) return;
-    _refreshVisibleCards(pinnedOnly: next);
-  }
-
   void _refreshVisibleCards({
     bool? availableOnly,
-    bool? pinnedOnly,
     String? dayFilter,
     String? query,
   }) {
     final resolvedAvailableOnly = availableOnly ?? _availableOnly;
-    final resolvedPinnedOnly = pinnedOnly ?? _pinnedOnly;
     final resolvedDayFilter = dayFilter ?? _selectedDayFilter;
     final resolvedQuery = query ?? _searchQuery;
     final nextVisible = _filterCards(
       _cards,
       resolvedQuery,
       availableOnly: resolvedAvailableOnly,
-      pinnedOnly: resolvedPinnedOnly,
       dayFilter: resolvedDayFilter,
     );
     final filtersChanged =
         resolvedAvailableOnly != _availableOnly ||
-        resolvedPinnedOnly != _pinnedOnly ||
         resolvedDayFilter != _selectedDayFilter ||
         resolvedQuery != _searchQuery;
     if (!filtersChanged &&
@@ -331,7 +303,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     }
     setState(() {
       _availableOnly = resolvedAvailableOnly;
-      _pinnedOnly = resolvedPinnedOnly;
       _selectedDayFilter = resolvedDayFilter;
       _searchQuery = resolvedQuery;
       _visibleCards
@@ -345,14 +316,12 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     List<_SeatStatusCardData> source,
     String query, {
     required bool availableOnly,
-    required bool pinnedOnly,
     required String dayFilter,
   }) {
     final q = query.trim().toLowerCase();
     return source.where((card) {
       if (q.isNotEmpty && !card.searchToken.contains(q)) return false;
       if (availableOnly && card.remaining <= 0) return false;
-      if (pinnedOnly && !_isPinnedSection(card.sectionId)) return false;
       if (dayFilter.isNotEmpty) {
         final schedules = <SeatStatusClassSchedule>[
           ...card.classSchedule,
@@ -380,7 +349,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       nextCards,
       _searchQuery,
       availableOnly: _availableOnly,
-      pinnedOnly: _pinnedOnly,
       dayFilter: _selectedDayFilter,
     );
     if (!mounted) return;
@@ -495,7 +463,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     }
   }
 
-  Future<void> _refreshDetailsFromApi() async {
+  Future<void> _refreshDetailsFromApi({bool forceRefresh = false}) async {
     if (_pollInFlight || _isDetailsRefreshing) return;
     _pollInFlight = true;
     if (mounted && _cards.isEmpty) {
@@ -506,7 +474,9 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       _isDetailsRefreshing = true;
     }
     try {
-      final details = await _service.fetchAllSectionsDetailsFromApi();
+      final details = await _service.fetchAllSectionsDetailsFromApi(
+        forceRefresh: forceRefresh,
+      );
       if (details.isNotEmpty) {
         await _applyDetailsUpdate(details);
       }
@@ -533,9 +503,9 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (!mounted) return;
       if (HomeTabRegistry.activeTab.value != HomeTab.seatStatus) return;
-      unawaited(_refreshDetailsFromApi());
+      unawaited(_refreshDetailsFromApi(forceRefresh: true));
     });
-    unawaited(_refreshDetailsFromApi());
+    unawaited(_refreshDetailsFromApi(forceRefresh: true));
   }
 
   void _stopPolling() {
@@ -545,39 +515,5 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
 
   bool _isPinnedSection(int sectionId) {
     return _pinnedSections.contains(sectionId.toString());
-  }
-}
-
-class _SeatStatusLoadingState extends StatelessWidget {
-  const _SeatStatusLoadingState();
-
-  @override
-  Widget build(BuildContext context) {
-    return BracuShimmer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (var index = 0; index < 4; index++) ...[
-            if (index != 0) const SizedBox(height: 12),
-            BracuCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  BracuSkeletonBox(width: 128, height: 15, radius: 7),
-                  SizedBox(height: 8),
-                  BracuSkeletonBox(width: 176, height: 12, radius: 6),
-                  SizedBox(height: 8),
-                  BracuSkeletonBox(
-                    width: double.infinity,
-                    height: 10,
-                    radius: 5,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
   }
 }

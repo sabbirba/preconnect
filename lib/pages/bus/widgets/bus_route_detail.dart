@@ -92,13 +92,7 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
           IconButton(
             tooltip: 'Refresh bus data',
             onPressed: _refreshing ? null : _refreshRouteData,
-            icon: _refreshing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.refresh_rounded),
+            icon: const Icon(Icons.refresh_rounded),
           ),
         ],
         body: BracuRefreshList(
@@ -118,10 +112,10 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    OutlinedButton.icon(
+                    BracuActionButton(
                       onPressed: _refreshRouteData,
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('Retry'),
+                      icon: Icons.refresh_rounded,
+                      label: 'Retry',
                     ),
                   ],
                 ),
@@ -288,14 +282,11 @@ class _RouteActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      child: OutlinedButton(
+      child: BracuActionButton(
         onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          side: BorderSide(color: BracuPalette.primary.withValues(alpha: 0.35)),
-          foregroundColor: BracuPalette.primary,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-        ),
-        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+        label: label,
+        borderRadius: 14,
+        padding: const EdgeInsets.symmetric(vertical: 14),
       ),
     );
   }
@@ -306,42 +297,40 @@ class _BusMapShimmerPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BracuShimmer(
-      child: Container(
-        color: BracuPalette.primary.withValues(alpha: 0.05),
-        padding: const EdgeInsets.all(16),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                ),
+    return Container(
+      color: BracuPalette.primary.withValues(alpha: 0.05),
+      padding: const EdgeInsets.all(16),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
-            Positioned(
-              top: 18,
-              left: 18,
-              child: BracuSkeletonBox(width: 110, height: 28, radius: 14),
-            ),
-            Positioned(
-              right: 18,
-              top: 18,
-              child: BracuSkeletonBox(width: 44, height: 44, radius: 14),
-            ),
-            Positioned(
-              right: 18,
-              bottom: 18,
-              child: BracuSkeletonBox(width: 86, height: 86, radius: 24),
-            ),
-            Positioned(
-              left: 18,
-              bottom: 18,
-              child: BracuSkeletonBox(width: 120, height: 20, radius: 10),
-            ),
-          ],
-        ),
+          ),
+          Positioned(
+            top: 18,
+            left: 18,
+            child: BracuSkeletonBox(width: 110, height: 28, radius: 14),
+          ),
+          Positioned(
+            right: 18,
+            top: 18,
+            child: BracuSkeletonBox(width: 44, height: 44, radius: 14),
+          ),
+          Positioned(
+            right: 18,
+            bottom: 18,
+            child: BracuSkeletonBox(width: 86, height: 86, radius: 24),
+          ),
+          Positioned(
+            left: 18,
+            bottom: 18,
+            child: BracuSkeletonBox(width: 120, height: 20, radius: 10),
+          ),
+        ],
       ),
     );
   }

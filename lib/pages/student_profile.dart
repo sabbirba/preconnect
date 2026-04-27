@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile_service.dart';
@@ -20,15 +19,20 @@ import 'package:preconnect/tools/refresh_bus.dart';
 class StudentProfile extends StatefulWidget {
   const StudentProfile({super.key});
 
+  static Future<void> preload() async {
+    await _StudentProfileState.preloadData();
+  }
+
   @override
   State<StudentProfile> createState() => _StudentProfileState();
 }
 
 class _StudentProfileState extends State<StudentProfile>
     with SingleTickerProviderStateMixin, RefreshBusState {
+  static _StudentProfileSnapshot? _cachedSnapshot;
+  static Future<_StudentProfileSnapshot>? _preloadFuture;
   Map<String, String?>? _profile;
   String? _photoUrl;
-  File? _cachedImageFile;
   List<PaymentInfo> _payments = [];
   List<AttendanceInfo> _attendances = [];
   Map<String, String?> _advising = {};
@@ -43,9 +47,46 @@ class _StudentProfileState extends State<StudentProfile>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
-    unawaited(_preloadDegreeProgress());
-    unawaited(_loadProfile());
+    _seedCachedSnapshot();
+    unawaited(_warmAndBind());
     bindRefreshBus(_onRefreshSignal);
+  }
+
+  void _seedCachedSnapshot() {
+    final snapshot = _cachedSnapshot;
+    if (snapshot == null) return;
+    _profile = snapshot.profile;
+    _photoUrl = snapshot.photoUrl;
+    _payments = snapshot.payments;
+    _attendances = snapshot.attendances;
+    _advising = snapshot.advising;
+    _progressSummary = snapshot.progressSummary;
+  }
+
+  static Future<_StudentProfileSnapshot> preloadData({
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh && _cachedSnapshot != null) {
+      return _cachedSnapshot!;
+    }
+    if (!forceRefresh) {
+      final inFlight = _preloadFuture;
+      if (inFlight != null) {
+        return inFlight;
+      }
+    }
+
+    final future = _loadProfileSnapshot(forceRefresh: forceRefresh);
+    _preloadFuture = future;
+    try {
+      final snapshot = await future;
+      _cachedSnapshot = snapshot;
+      return snapshot;
+    } finally {
+      if (identical(_preloadFuture, future)) {
+        _preloadFuture = null;
+      }
+    }
   }
 
   @override
@@ -66,7 +107,7 @@ class _StudentProfileState extends State<StudentProfile>
     }
   }
 
-  List<dynamic> _decodeList(String? raw) {
+  static List<dynamic> _decodeListStatic(String? raw) {
     if (raw == null || raw.trim().isEmpty) return const [];
     try {
       final decoded = jsonDecode(raw);
@@ -83,11 +124,11 @@ class _StudentProfileState extends State<StudentProfile>
     }
   }
 
-  int _payslipSortValue(PaymentInfo p) {
+  static int _payslipSortValue(PaymentInfo p) {
     return int.tryParse(p.payslipNumber) ?? 0;
   }
 
-  int _comparePayments(PaymentInfo a, PaymentInfo b) {
+  static int _comparePayments(PaymentInfo a, PaymentInfo b) {
     final aPaid = a.paymentStatus == 'PAID';
     final bPaid = b.paymentStatus == 'PAID';
     if (aPaid != bPaid) {
@@ -101,24 +142,42 @@ class _StudentProfileState extends State<StudentProfile>
     return _payslipSortValue(b).compareTo(_payslipSortValue(a));
   }
 
-  Future<void> _loadProfile() async {
-    Map<String, String?>? profile = _profile;
-    String? photoUrl = _photoUrl;
-    File? cachedImage = _cachedImageFile;
-    List<PaymentInfo> payments = _payments;
-    List<AttendanceInfo> attendances = _attendances;
-    Map<String, String?> advising = _advising;
-    ProgressSummary? progressSummary = _progressSummary;
+  Future<void> _warmAndBind() async {
+    final snapshot = await preloadData();
+    if (!mounted) return;
+    setState(() {
+      _profile = snapshot.profile;
+      _photoUrl = snapshot.photoUrl;
+      _payments = snapshot.payments;
+      _attendances = snapshot.attendances;
+      _advising = snapshot.advising;
+      _progressSummary = snapshot.progressSummary;
+    });
+  }
+
+  static Future<_StudentProfileSnapshot> _loadProfileSnapshot({
+    bool forceRefresh = false,
+  }) async {
+    Map<String, String?>? profile;
+    String? photoUrl;
+    List<PaymentInfo> payments = const <PaymentInfo>[];
+    List<AttendanceInfo> attendances = const <AttendanceInfo>[];
+    Map<String, String?> advising = <String, String?>{};
+    ProgressSummary? progressSummary;
 
     try {
-      profile = await ProfileService().getProfile();
+      profile = forceRefresh
+          ? await ProfileService().fetchProfile()
+          : await ProfileService().getProfile();
       photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
-      cachedImage = await ProfileImageCache.instance.getProfileImage(photoUrl);
+      await ProfileImageCache.instance.getProfileImage(photoUrl);
     } catch (_) {}
 
     try {
-      final List<dynamic> paymentsJson = _decodeList(
-        await PaymentService().getPaymentInfo(),
+      final List<dynamic> paymentsJson = _decodeListStatic(
+        forceRefresh
+            ? await PaymentService().fetchPaymentInfo()
+            : await PaymentService().getPaymentInfo(),
       );
       payments =
           paymentsJson
@@ -135,8 +194,10 @@ class _StudentProfileState extends State<StudentProfile>
     } catch (_) {}
 
     try {
-      final List<dynamic> attendanceJson = _decodeList(
-        await AttendanceService().getAttendanceInfo(),
+      final List<dynamic> attendanceJson = _decodeListStatic(
+        forceRefresh
+            ? await AttendanceService().fetchAttendanceInfo()
+            : await AttendanceService().getAttendanceInfo(),
       );
       attendances = attendanceJson
           .map<AttendanceInfo?>((e) {
@@ -151,25 +212,32 @@ class _StudentProfileState extends State<StudentProfile>
     } catch (_) {}
 
     try {
-      advising = await AdvisingService().getAdvisingInfo() ?? advising;
+      advising =
+          (forceRefresh
+                  ? await AdvisingService().fetchAdvisingInfo()
+                  : await AdvisingService().getAdvisingInfo()) ??
+              advising;
     } catch (_) {}
 
     try {
+      final progress =
+          forceRefresh
+          ? await ProgressService().fetchProgress()
+          : await ProgressService().getProgress();
       progressSummary =
-          await ProgressService().getProgressSummary(fromFetch: true) ??
-          progressSummary;
+          progress == null
+              ? progressSummary
+              : ProgressSummary.fromProgressInfo(progress);
     } catch (_) {}
 
-    if (!mounted) return;
-    setState(() {
-      _profile = profile;
-      _photoUrl = photoUrl;
-      _cachedImageFile = cachedImage;
-      _payments = payments;
-      _attendances = attendances;
-      _advising = advising;
-      _progressSummary = progressSummary;
-    });
+    return _StudentProfileSnapshot(
+      profile: profile,
+      photoUrl: photoUrl,
+      payments: payments,
+      attendances: attendances,
+      advising: advising,
+      progressSummary: progressSummary,
+    );
   }
 
   Future<void> _refreshProfile({bool notify = true}) async {
@@ -181,111 +249,33 @@ class _StudentProfileState extends State<StudentProfile>
       _isRefreshing = true;
     });
     _refreshController.repeat();
-    unawaited(_preloadDegreeProgress(forceRefresh: true));
-    Map<String, String?>? profile = _profile;
-    String? photoUrl = _photoUrl;
-    File? cachedImage = _cachedImageFile;
-    List<PaymentInfo> payments = _payments;
-    List<AttendanceInfo> attendances = _attendances;
-    Map<String, String?> advising = _advising;
-    ProgressSummary? progressSummary = _progressSummary;
-
     try {
-      profile = await ProfileService().fetchProfile();
-      photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
-      ProfileImageCache.instance.invalidate();
-      cachedImage = await ProfileImageCache.instance.getProfileImage(photoUrl);
-    } catch (_) {}
-
-    try {
-      final List<dynamic> paymentsJson = _decodeList(
-        await PaymentService().fetchPaymentInfo(),
-      );
-      payments =
-          paymentsJson
-              .map<PaymentInfo?>((item) {
-                try {
-                  return PaymentInfo.fromJson(item as Map<String, dynamic>);
-                } catch (e) {
-                  return null;
-                }
-              })
-              .whereType<PaymentInfo>()
-              .toList()
-            ..sort(_comparePayments);
-    } catch (_) {}
-
-    try {
-      final List<dynamic> attendanceJson = _decodeList(
-        await AttendanceService().fetchAttendanceInfo(),
-      );
-      attendances = attendanceJson
-          .map<AttendanceInfo?>((e) {
-            try {
-              return AttendanceInfo.fromJson(e as Map<String, dynamic>);
-            } catch (e) {
-              return null;
-            }
-          })
-          .whereType<AttendanceInfo>()
-          .toList();
-    } catch (_) {}
-
-    try {
-      advising = await AdvisingService().fetchAdvisingInfo() ?? advising;
-    } catch (_) {}
-
-    try {
-      progressSummary =
-          await ProgressService().getProgressSummary(fromFetch: true) ??
-          progressSummary;
-    } catch (_) {}
-
-    if (!mounted) return;
-    setState(() {
-      _profile = profile;
-      _photoUrl = photoUrl;
-      _cachedImageFile = cachedImage;
-      _payments = payments;
-      _attendances = attendances;
-      _advising = advising;
-      _progressSummary = progressSummary;
-    });
-    if (mounted) {
+      final snapshot = await preloadData(forceRefresh: true);
+      if (!mounted) return;
       setState(() {
-        _isRefreshing = false;
+        _profile = snapshot.profile;
+        _photoUrl = snapshot.photoUrl;
+        _payments = snapshot.payments;
+        _attendances = snapshot.attendances;
+        _advising = snapshot.advising;
+        _progressSummary = snapshot.progressSummary;
       });
-      _refreshController
-        ..stop()
-        ..reset();
-    }
-    if (notify) {
+      _cachedSnapshot = snapshot;
       RefreshBus.instance.notify(reason: 'student_profile');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+        _refreshController
+          ..stop()
+          ..reset();
+      }
     }
-  }
-
-  Future<void> _preloadDegreeProgress({bool forceRefresh = false}) async {
-    if (forceRefresh) {
-      await ProgressService().fetchProgress();
-      return;
-    }
-    await ProgressService().getProgress();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = _profile == null;
-    if (isLoading) {
-      return BracuPageScaffold(
-        title: 'Student Profile',
-        subtitle: 'Academic & Finance',
-        icon: Icons.person_outline,
-        body: buildRefreshLoadingState(
-          onRefresh: _refreshProfile,
-          topSpacing: 180,
-        ),
-      );
-    }
     return BracuPageScaffold(
       title: 'Student Profile',
       subtitle: 'Academic & Finance',
@@ -319,16 +309,34 @@ class _StudentProfileState extends State<StudentProfile>
           const BracuSectionTitle(title: 'Payments'),
           const SizedBox(height: 10),
           _payments.isEmpty
-              ? const SizedBox.shrink()
+              ? (_profile == null
+                    ? const SizedBox.shrink()
+                    : const BracuEmptyState(message: 'No payments found'))
               : PaymentGraph(payments: _payments),
           if (_payments.isNotEmpty) const SizedBox(height: 12),
-          if (_payments.isEmpty)
-            const BracuEmptyState(message: 'No payments found')
-          else
+          if (_payments.isNotEmpty)
             PaymentList(payments: _payments),
           const SizedBox(height: 12),
         ],
       ),
     );
   }
+}
+
+class _StudentProfileSnapshot {
+  const _StudentProfileSnapshot({
+    required this.profile,
+    required this.photoUrl,
+    required this.payments,
+    required this.attendances,
+    required this.advising,
+    required this.progressSummary,
+  });
+
+  final Map<String, String?>? profile;
+  final String? photoUrl;
+  final List<PaymentInfo> payments;
+  final List<AttendanceInfo> attendances;
+  final Map<String, String?> advising;
+  final ProgressSummary? progressSummary;
 }

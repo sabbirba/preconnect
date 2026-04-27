@@ -357,40 +357,31 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
-                    child: OutlinedButton.icon(
+                    child: BracuActionButton(
                       onPressed: _openCampusMapBottomSheet,
-                      icon: const Icon(Icons.map_rounded),
-                      label: const Text('Campus Map'),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(42),
+                      icon: Icons.map_rounded,
+                      label: 'Campus Map',
+                      borderRadius: 12,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
                       ),
                     ),
                   ),
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
-                    child: FilledButton.icon(
+                    child: BracuActionButton(
                       onPressed: _isStartingWebLogin
                           ? null
                           : () => _completeOnboarding(context),
-                      icon: _isStartingWebLogin
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
-                                ),
-                              ),
-                            )
-                          : const Icon(Icons.arrow_forward_rounded),
-                      label: Text(
-                        _isStartingWebLogin ? 'Opening SSO...' : 'Continue',
-                        style: const TextStyle(fontSize: 17),
-                      ),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(54),
+                      filled: true,
+                      icon: Icons.arrow_forward_rounded,
+                      label: 'Continue',
+                      borderRadius: 12,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
                       ),
                     ),
                   ),

@@ -69,14 +69,11 @@ class _GradeSheetCardState extends State<GradeSheetCard> {
               ),
             ),
             const SizedBox(width: 12),
-            ElevatedButton.icon(
+            BracuActionButton(
               onPressed: _isOpening ? null : _openGradeSheet,
-              icon: _isOpening
-                  ? const BracuShimmer(
-                      child: BracuSkeletonBox(width: 14, height: 14, radius: 7),
-                    )
-                  : const Icon(Icons.picture_as_pdf_rounded, size: 16),
-              label: const Text('Open'),
+              filled: true,
+              icon: Icons.picture_as_pdf_rounded,
+              label: 'Open',
             ),
           ],
         ),

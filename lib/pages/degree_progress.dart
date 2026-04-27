@@ -19,6 +19,10 @@ part 'student_profile_sections/degree_progress_helpers.dart';
 class DegreeProgressPage extends StatefulWidget {
   const DegreeProgressPage({super.key});
 
+  static Future<void> preload() async {
+    await _DegreeProgressPageState.preloadData();
+  }
+
   @override
   State<DegreeProgressPage> createState() => _DegreeProgressPageState();
 }
@@ -26,6 +30,8 @@ class DegreeProgressPage extends StatefulWidget {
 class _DegreeProgressPageState extends State<DegreeProgressPage>
     with RefreshBusState {
   static const int _coursesChunkSize = 7;
+  static ProgressInfo? _cachedInfo;
+  static Future<ProgressInfo?>? _preloadFuture;
 
   late Future<ProgressInfo?> _future;
   ProgressInfo? _latestInfo;
@@ -41,17 +47,56 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
   @override
   void initState() {
     super.initState();
-    _future = _load().then((info) {
-      _latestInfo = info;
-      if (info != null) {
-        unawaited(_refreshFromNetworkSilent());
-      }
-      return info;
-    });
+    _latestInfo = _cachedInfo;
+    _future = _cachedInfo == null
+        ? preloadData().then((info) {
+            _latestInfo = info;
+            if (info != null) {
+              unawaited(_refreshFromNetworkSilent());
+            }
+            return info;
+          })
+        : Future<ProgressInfo?>.value(_cachedInfo);
+    unawaited(_warmAndBind());
     unawaited(_loadCgpa());
     unawaited(_loadSummary());
     unawaited(_loadCurrentSemesterCourses());
     bindRefreshBus(_onRefreshSignal);
+  }
+
+  static Future<ProgressInfo?> preloadData({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedInfo != null) {
+      return _cachedInfo!;
+    }
+    if (!forceRefresh) {
+      final inFlight = _preloadFuture;
+      if (inFlight != null) {
+        return inFlight;
+      }
+    }
+
+    final future = ProgressService().getProgress();
+    _preloadFuture = future;
+    try {
+      final info = await future;
+      if (info != null) {
+        _cachedInfo = info;
+      }
+      return info;
+    } finally {
+      if (identical(_preloadFuture, future)) {
+        _preloadFuture = null;
+      }
+    }
+  }
+
+  Future<void> _warmAndBind() async {
+    final info = await preloadData();
+    if (!mounted || info == null) return;
+    setState(() {
+      _latestInfo = info;
+      _future = Future<ProgressInfo?>.value(info);
+    });
   }
 
   @override
@@ -70,10 +115,6 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
       return;
     }
     unawaited(_refresh(notify: false));
-  }
-
-  Future<ProgressInfo?> _load() {
-    return ProgressService().getProgress();
   }
 
   Future<void> _loadCgpa() async {
@@ -114,6 +155,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
     setState(() {
       if (shouldUpdateInfo) {
         _latestInfo = freshInfo;
+        _cachedInfo = freshInfo;
       }
       if (shouldUpdateSummary) {
         _summary = freshSummary;
@@ -160,6 +202,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
         setState(() {
           if (shouldUpdateInfo) {
             _latestInfo = freshInfo;
+            _cachedInfo = freshInfo;
           }
           if (shouldUpdateSummary) {
             _summary = freshSummary;
@@ -182,19 +225,11 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
     return BracuPageScaffold(
       title: 'Degree Progress',
       subtitle: 'Curriculum Based',
-      icon: Icons.school_outlined,
+      icon: Icons.trending_up_rounded,
       body: FutureBuilder<ProgressInfo?>(
         future: _future,
         builder: (context, snapshot) {
           final info = _latestInfo ?? snapshot.data;
-          if (snapshot.connectionState == ConnectionState.waiting &&
-              info == null) {
-            return buildRefreshLoadingState(
-              onRefresh: _refresh,
-              topSpacing: 180,
-            );
-          }
-
           if (snapshot.hasError && info == null) {
             return buildRefreshErrorState(
               onRefresh: _refresh,
@@ -389,7 +424,8 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                         ),
                       ),
                       const SizedBox(width: 12),
-                      ElevatedButton.icon(
+                      BracuActionButton(
+                        filled: true,
                         onPressed: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
@@ -397,8 +433,8 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                             ),
                           );
                         },
-                        icon: const Icon(Icons.tune, size: 16),
-                        label: const Text('Open'),
+                        icon: Icons.tune,
+                        label: 'Open',
                       ),
                     ],
                   ),
@@ -435,7 +471,8 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                         ),
                       ),
                       const SizedBox(width: 12),
-                      ElevatedButton.icon(
+                      BracuActionButton(
+                        filled: true,
                         onPressed: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
@@ -447,8 +484,8 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                             ),
                           );
                         },
-                        icon: const Icon(Icons.calculate_outlined, size: 16),
-                        label: const Text('Open'),
+                        icon: Icons.calculate_outlined,
+                        label: 'Open',
                       ),
                     ],
                   ),

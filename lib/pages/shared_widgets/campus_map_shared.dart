@@ -273,10 +273,7 @@ Future<void> showCampusMapBottomSheet(
         ]),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Padding(
-              padding: const EdgeInsets.all(18),
-              child: const BracuLoading(itemCount: 2),
-            );
+            return const SizedBox.shrink();
           }
           final values = snapshot.data;
           final mapData = values != null && values.isNotEmpty
@@ -328,18 +325,6 @@ Future<void> showCampusMapBottomSheet(
                 ),
               ),
               child: child,
-            );
-          }
-
-          Widget actionButton({
-            required IconData icon,
-            required String label,
-            required VoidCallback? onPressed,
-          }) {
-            return ElevatedButton.icon(
-              onPressed: onPressed,
-              icon: Icon(icon, size: 18),
-              label: Text(label),
             );
           }
 
@@ -399,7 +384,7 @@ Future<void> showCampusMapBottomSheet(
                     children: [
                       SizedBox(
                         width: buttonWidth,
-                        child: actionButton(
+                        child: BracuActionButton(
                           icon: Icons.directions_rounded,
                           label: 'Open Map',
                           onPressed: mapData.googleMapsUrl.isEmpty
@@ -412,7 +397,7 @@ Future<void> showCampusMapBottomSheet(
                       ),
                       SizedBox(
                         width: buttonWidth,
-                        child: actionButton(
+                        child: BracuActionButton(
                           icon: Icons.open_in_new_rounded,
                           label: 'Campus Life',
                           onPressed: mapData.sourceUrl.isEmpty
@@ -425,7 +410,7 @@ Future<void> showCampusMapBottomSheet(
                       ),
                       SizedBox(
                         width: buttonWidth,
-                        child: actionButton(
+                        child: BracuActionButton(
                           icon: Icons.alternate_email_rounded,
                           label: 'Email',
                           onPressed: mapData.primaryEmail.isEmpty
@@ -438,7 +423,7 @@ Future<void> showCampusMapBottomSheet(
                       ),
                       SizedBox(
                         width: buttonWidth,
-                        child: actionButton(
+                        child: BracuActionButton(
                           icon: Icons.directions_bus_rounded,
                           label: 'Transport',
                           onPressed: resolvedTransportUrl.isEmpty
@@ -452,7 +437,7 @@ Future<void> showCampusMapBottomSheet(
                       if (showCallAction)
                         SizedBox(
                           width: constraints.maxWidth,
-                          child: actionButton(
+                          child: BracuActionButton(
                             icon: Icons.call_outlined,
                             label: mapData.primaryPhoneRaw.isEmpty
                                 ? 'Call'

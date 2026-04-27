@@ -11,6 +11,10 @@ import 'package:preconnect/tools/cached_image.dart';
 class DevsPage extends StatefulWidget {
   const DevsPage({super.key});
 
+  static Future<void> preload() async {
+    await _DevsPageState.preloadData();
+  }
+
   @override
   State<DevsPage> createState() => _DevsPageState();
 }
@@ -18,16 +22,46 @@ class DevsPage extends StatefulWidget {
 class _DevsPageState extends State<DevsPage> {
   late Future<String> _subtitleFuture;
   List<_ContributorProfile> _contributors = const <_ContributorProfile>[];
-  bool _contributorsLoaded = false;
   bool _contributorsLoading = false;
   int _secretTapCount = 0;
   bool _showAllContributors = false;
+  static List<_ContributorProfile>? _cachedContributors;
+  static Future<List<_ContributorProfile>>? _preloadFuture;
 
   @override
   void initState() {
     super.initState();
     _subtitleFuture = _buildVersionSubtitle();
+    if (_cachedContributors != null) {
+      _contributors = _cachedContributors!;
+    }
     _loadContributors();
+  }
+
+  static Future<List<_ContributorProfile>> preloadData({
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh && _cachedContributors != null) {
+      return _cachedContributors!;
+    }
+    if (!forceRefresh) {
+      final inFlight = _preloadFuture;
+      if (inFlight != null) {
+        return inFlight;
+      }
+    }
+
+    final future = _loadContributorsStatic(forceRefresh: forceRefresh);
+    _preloadFuture = future;
+    try {
+      final contributors = await future;
+      _cachedContributors = contributors;
+      return contributors;
+    } finally {
+      if (identical(_preloadFuture, future)) {
+        _preloadFuture = null;
+      }
+    }
   }
 
   Future<String> _buildVersionSubtitle() async {
@@ -38,33 +72,11 @@ class _DevsPageState extends State<DevsPage> {
     if (_contributorsLoading) return;
     _contributorsLoading = true;
     try {
-      final cache = SembastCache();
-      if (!forceRefresh) {
-        final cached = await _readCachedContributors(cache);
-        if (cached.isNotEmpty) {
-          if (!mounted) return;
-          setState(() {
-            _contributors = _withPinnedAndManualContributors(cached);
-            _contributorsLoaded = true;
-          });
-          return;
-        }
-      }
-
-      final fresh = await _fetchContributors();
+      final fresh = await preloadData(forceRefresh: forceRefresh);
       if (!mounted) return;
       setState(() {
-        _contributors = fresh.isNotEmpty
-            ? _withPinnedAndManualContributors(fresh)
-            : _withPinnedAndManualContributors(const <_ContributorProfile>[]);
-        _contributorsLoaded = true;
+        _contributors = fresh;
       });
-      if (fresh.isNotEmpty) {
-        await cache.setJson(
-          _contributorsCacheKey,
-          fresh.map((item) => item.toJson()).toList(),
-        );
-      }
     } finally {
       _contributorsLoading = false;
     }
@@ -74,8 +86,18 @@ class _DevsPageState extends State<DevsPage> {
     await _loadContributors(forceRefresh: true);
   }
 
-  Future<List<_ContributorProfile>> _fetchContributors() async {
+  static Future<List<_ContributorProfile>> _loadContributorsStatic({
+    bool forceRefresh = false,
+  }) async {
     try {
+      final cache = SembastCache();
+      if (!forceRefresh) {
+        final cached = await _readCachedContributorsStatic(cache);
+        if (cached.isNotEmpty) {
+          return _withPinnedAndManualContributorsStatic(cached);
+        }
+      }
+
       final uri = Uri.parse(
         'https://api.github.com/repos/sabbirba/preconnect/contributors',
       );
@@ -87,10 +109,12 @@ class _DevsPageState extends State<DevsPage> {
         },
       );
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        return const <_ContributorProfile>[];
+        return _withPinnedAndManualContributorsStatic(const <_ContributorProfile>[]);
       }
       final decoded = jsonDecode(response.body);
-      if (decoded is! List) return const <_ContributorProfile>[];
+      if (decoded is! List) {
+        return _withPinnedAndManualContributorsStatic(const <_ContributorProfile>[]);
+      }
       final contributors = decoded
           .whereType<Map>()
           .map((raw) {
@@ -102,13 +126,20 @@ class _DevsPageState extends State<DevsPage> {
           .where((item) => item.name.isNotEmpty && item.avatarUrl.isNotEmpty)
           .where((item) => !item.key.endsWith('[bot]'))
           .toList();
-      return _dedupeContributors(contributors);
+      final merged = _withPinnedAndManualContributorsStatic(contributors);
+      if (contributors.isNotEmpty) {
+        await cache.setJson(
+          _contributorsCacheKey,
+          contributors.map((item) => item.toJson()).toList(),
+        );
+      }
+      return merged;
     } catch (_) {
-      return const <_ContributorProfile>[];
+      return _withPinnedAndManualContributorsStatic(const <_ContributorProfile>[]);
     }
   }
 
-  Future<List<_ContributorProfile>> _readCachedContributors(
+  static Future<List<_ContributorProfile>> _readCachedContributorsStatic(
     SembastCache cache,
   ) async {
     final raw = await cache.getJsonList(_contributorsCacheKey);
@@ -120,7 +151,7 @@ class _DevsPageState extends State<DevsPage> {
         .toList();
   }
 
-  List<_ContributorProfile> _withPinnedAndManualContributors(
+  static List<_ContributorProfile> _withPinnedAndManualContributorsStatic(
     List<_ContributorProfile> items,
   ) {
     return _dedupeContributors([
@@ -161,19 +192,13 @@ class _DevsPageState extends State<DevsPage> {
                 const SizedBox(height: 14),
                 const BracuSectionTitle(title: 'People Behind It'),
                 const SizedBox(height: 10),
-                if (!_contributorsLoaded)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 10),
-                    child: _ContributorLoadingList(),
-                  )
-                else
-                  _ContributorsGrid(
-                    contributors: _contributors,
-                    showAll: _showAllContributors,
-                    onToggle: () => setState(
-                      () => _showAllContributors = !_showAllContributors,
-                    ),
+                _ContributorsGrid(
+                  contributors: _contributors,
+                  showAll: _showAllContributors,
+                  onToggle: () => setState(
+                    () => _showAllContributors = !_showAllContributors,
                   ),
+                ),
                 const Padding(
                   padding: EdgeInsets.only(top: 14),
                   child: Column(
@@ -516,41 +541,6 @@ class _AdSenseLogoImage extends StatelessWidget {
   }
 }
 
-class _ContributorLoadingList extends StatelessWidget {
-  const _ContributorLoadingList();
-
-  @override
-  Widget build(BuildContext context) {
-    return BracuShimmer(
-      child: Column(
-        children: [
-          for (var index = 0; index < 5; index++) ...[
-            if (index != 0) const SizedBox(height: 12),
-            Row(
-              children: [
-                const BracuSkeletonBox(width: 62, height: 62, radius: 31),
-                const SizedBox(width: 14),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      BracuSkeletonBox(width: 170, height: 15, radius: 7),
-                      SizedBox(height: 8),
-                      BracuSkeletonBox(width: 120, height: 11, radius: 6),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 14),
-                const BracuSkeletonBox(width: 60, height: 30, radius: 10),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
 List<_ContributorProfile> _dedupeContributors(List<_ContributorProfile> items) {
   final seen = <String>{};
   final output = <_ContributorProfile>[];
@@ -647,13 +637,7 @@ class _DevGridTile extends StatelessWidget {
                   child: CachedImage(
                     url: contributor.avatarUrl,
                     fit: BoxFit.cover,
-                    placeholder: BracuShimmer(
-                      child: BracuSkeletonBox(
-                        width: avatarSize,
-                        height: avatarSize,
-                        radius: avatarSize / 2,
-                      ),
-                    ),
+                    placeholder: _avatarPlaceholder(context),
                     error: _avatarPlaceholder(context),
                   ),
                 ),

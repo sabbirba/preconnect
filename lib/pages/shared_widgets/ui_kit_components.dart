@@ -16,11 +16,25 @@ class BracuSelectOption<T> {
   final bool showLeadingIcon;
 }
 
-ButtonStyle bracuNoSplashTextButtonStyle() {
-  return const ButtonStyle(
+ButtonStyle bracuFilledButtonStyle({
+  Color backgroundColor = BracuPalette.primary,
+  Color foregroundColor = Colors.white,
+  EdgeInsetsGeometry padding = const EdgeInsets.symmetric(
+    horizontal: 16,
+    vertical: 12,
+  ),
+  double borderRadius = 12,
+}) {
+  return ElevatedButton.styleFrom(
+    backgroundColor: backgroundColor,
+    foregroundColor: foregroundColor,
     splashFactory: NoSplash.splashFactory,
-    overlayColor: WidgetStatePropertyAll(Colors.transparent),
+    overlayColor: Colors.transparent,
     enableFeedback: false,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(borderRadius),
+    ),
+    padding: padding,
   );
 }
 
@@ -31,9 +45,29 @@ ButtonStyle bracuCompactPrimaryButtonStyle({
   ),
   double borderRadius = 12,
 }) {
-  return ElevatedButton.styleFrom(
-    backgroundColor: BracuPalette.primary,
-    foregroundColor: Colors.white,
+  return bracuFilledButtonStyle(
+    padding: padding,
+    borderRadius: borderRadius,
+  );
+}
+
+ButtonStyle bracuOutlinedButtonStyle(
+  BuildContext context, {
+  Color? foregroundColor,
+  Color? borderColor,
+  EdgeInsetsGeometry padding = const EdgeInsets.symmetric(
+    horizontal: 14,
+    vertical: 12,
+  ),
+  double borderRadius = 18,
+}) {
+  return OutlinedButton.styleFrom(
+    foregroundColor: foregroundColor ?? BracuPalette.textPrimary(context),
+    backgroundColor: Colors.transparent,
+    side: BorderSide(
+      color: borderColor ??
+          BracuPalette.textSecondary(context).withValues(alpha: 0.18),
+    ),
     splashFactory: NoSplash.splashFactory,
     overlayColor: Colors.transparent,
     enableFeedback: false,
@@ -42,6 +76,112 @@ ButtonStyle bracuCompactPrimaryButtonStyle({
     ),
     padding: padding,
   );
+}
+
+ButtonStyle bracuCompactOutlinedButtonStyle(
+  BuildContext context, {
+  Color? foregroundColor,
+  Color? borderColor,
+  EdgeInsetsGeometry padding = const EdgeInsets.symmetric(
+    horizontal: 14,
+    vertical: 12,
+  ),
+  double borderRadius = 18,
+}) {
+  return bracuOutlinedButtonStyle(
+    context,
+    foregroundColor: foregroundColor,
+    borderColor: borderColor,
+    padding: padding,
+    borderRadius: borderRadius,
+  );
+}
+
+ButtonStyle bracuCompactIconButtonStyle({
+  Color? foregroundColor,
+  Color? borderColor,
+  EdgeInsetsGeometry padding = EdgeInsets.zero,
+  double borderRadius = 12,
+}) {
+  return IconButton.styleFrom(
+    foregroundColor: foregroundColor ?? BracuPalette.primary,
+    side: BorderSide(
+      color: borderColor ?? BracuPalette.primary.withValues(alpha: 0.18),
+    ),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(borderRadius),
+    ),
+    padding: padding,
+  );
+}
+
+class BracuActionButton extends StatelessWidget {
+  const BracuActionButton({
+    super.key,
+    this.icon,
+    required this.label,
+    required this.onPressed,
+    this.filled = false,
+    this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    this.borderRadius = 18,
+    this.iconSize = 18,
+  });
+
+  final IconData? icon;
+  final String label;
+  final VoidCallback? onPressed;
+  final bool filled;
+  final EdgeInsetsGeometry padding;
+  final double borderRadius;
+  final double iconSize;
+
+  @override
+  Widget build(BuildContext context) {
+    if (filled) {
+      if (icon != null) {
+        return ElevatedButton.icon(
+          onPressed: onPressed,
+          icon: Icon(icon, size: iconSize),
+          label: Text(label),
+          style: bracuCompactPrimaryButtonStyle(
+            padding: padding,
+            borderRadius: borderRadius,
+          ),
+        );
+      }
+      return ElevatedButton(
+        onPressed: onPressed,
+        style: bracuCompactPrimaryButtonStyle(
+          padding: padding,
+          borderRadius: borderRadius,
+        ),
+        child: Text(label),
+      );
+    }
+
+    if (icon != null) {
+      return OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: iconSize),
+        label: Text(label),
+        style: bracuCompactOutlinedButtonStyle(
+          context,
+          padding: padding,
+          borderRadius: borderRadius,
+        ),
+      );
+    }
+
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: bracuCompactOutlinedButtonStyle(
+        context,
+        padding: padding,
+        borderRadius: borderRadius,
+      ),
+      child: Text(label),
+    );
+  }
 }
 
 Future<T?> showBracuBottomSheet<T>(
@@ -338,14 +478,11 @@ Future<bool> showBracuConfirmationDialog(
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(dialogContext).pop(false),
-                      style: OutlinedButton.styleFrom(
+                      style: bracuOutlinedButtonStyle(
+                        dialogContext,
                         foregroundColor: confirmColor,
-                        side: BorderSide(
-                          color: confirmColor.withValues(alpha: 0.6),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                        borderColor: confirmColor.withValues(alpha: 0.6),
+                        borderRadius: 14,
                       ),
                       child: Text(cancelLabel),
                     ),
@@ -354,13 +491,10 @@ Future<bool> showBracuConfirmationDialog(
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () => Navigator.of(dialogContext).pop(true),
-                      style: ElevatedButton.styleFrom(
+                      style: bracuFilledButtonStyle(
                         backgroundColor: confirmColor,
                         foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                        borderRadius: 14,
                       ),
                       child: Text(confirmLabel),
                     ),
@@ -507,14 +641,14 @@ class _BracuConfirmationActionDialogState
                       onPressed: _isLoading
                           ? null
                           : () => Navigator.of(context).pop(false),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: widget.confirmColor,
-                        side: BorderSide(
-                          color: widget.confirmColor.withValues(alpha: 0.6),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                      style: bracuOutlinedButtonStyle(
+                        context,
+                        foregroundColor: BracuPalette.textPrimary(context),
+                        borderColor:
+                            BracuPalette.textSecondary(context).withValues(
+                              alpha: 0.18,
+                            ),
+                        borderRadius: 14,
                       ),
                       child: Text(widget.cancelLabel),
                     ),
@@ -523,29 +657,12 @@ class _BracuConfirmationActionDialogState
                   Expanded(
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _handleConfirm,
-                      style: ElevatedButton.styleFrom(
+                      style: bracuFilledButtonStyle(
                         backgroundColor: widget.confirmColor,
                         foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        disabledBackgroundColor: widget.confirmColor.withValues(
-                          alpha: 0.5,
-                        ),
+                        borderRadius: 14,
                       ),
-                      child: _isLoading
-                          ? SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white.withValues(alpha: 0.8),
-                                ),
-                              ),
-                            )
-                          : Text(widget.confirmLabel),
+                      child: Text(widget.confirmLabel),
                     ),
                   ),
                 ],
@@ -1401,13 +1518,13 @@ class BracuRefreshPlaceholder extends StatelessWidget {
 
 Widget buildRefreshLoadingState({
   required RefreshCallback onRefresh,
-  String label = 'Loading...',
+  String label = '',
   double topSpacing = 160,
 }) {
   return BracuRefreshPlaceholder(
     onRefresh: onRefresh,
     topSpacing: topSpacing,
-    child: const BracuLoading(),
+    child: const SizedBox.shrink(),
   );
 }
 
@@ -1853,7 +1970,7 @@ class BracuSectionTitle extends StatelessWidget {
 class BracuLoading extends StatelessWidget {
   const BracuLoading({
     super.key,
-    this.label = 'Loading...',
+    this.label = '',
     this.itemCount = 3,
     this.compact,
   });
@@ -1864,23 +1981,7 @@ class BracuLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isCompact = compact ?? constraints.maxHeight < 120;
-        final count = isCompact ? 1 : itemCount.clamp(1, 6);
-        return Center(
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: isCompact ? 6 : 20),
-            child: BracuSkeletonList(
-              itemCount: count,
-              compact: isCompact,
-              showLabel: !isCompact && label.trim().isNotEmpty,
-              label: label,
-            ),
-          ),
-        );
-      },
-    );
+    return const SizedBox.shrink();
   }
 }
 
@@ -1890,7 +1991,7 @@ class BracuSkeletonList extends StatelessWidget {
     this.itemCount = 3,
     this.compact = false,
     this.showLabel = false,
-    this.label = 'Loading...',
+    this.label = '',
   });
 
   final int itemCount;
@@ -1900,88 +2001,7 @@ class BracuSkeletonList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final count = itemCount.clamp(1, 8);
-    return BracuShimmer(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var index = 0; index < count; index++) ...[
-            _BracuSkeletonCard(compact: compact, index: index),
-            if (index != count - 1) SizedBox(height: compact ? 8 : 10),
-          ],
-          if (showLabel) ...[
-            const SizedBox(height: 12),
-            FractionallySizedBox(
-              widthFactor: 0.38,
-              child: BracuSkeletonBox(height: 12, radius: 6),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class BracuShimmer extends StatelessWidget {
-  const BracuShimmer({super.key, required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Shimmer.fromColors(
-      baseColor: isDark ? const Color(0xFF1C1C1C) : const Color(0xFFE7EDF5),
-      highlightColor: isDark
-          ? const Color(0xFF343434)
-          : const Color(0xFFF8FBFF),
-      period: const Duration(milliseconds: 600),
-      child: child,
-    );
-  }
-}
-
-class BracuShimmerLabel extends StatelessWidget {
-  const BracuShimmerLabel({
-    super.key,
-    required this.label,
-    this.color,
-    this.dotSize = 14,
-    this.gap = 10,
-    this.fontSize = 14,
-  });
-
-  final String label;
-  final Color? color;
-  final double dotSize;
-  final double gap;
-  final double fontSize;
-
-  @override
-  Widget build(BuildContext context) {
-    final textColor = color ?? BracuPalette.primary;
-    return BracuShimmer(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          BracuSkeletonBox(
-            width: dotSize,
-            height: dotSize,
-            radius: dotSize / 2,
-          ),
-          SizedBox(width: gap),
-          Text(
-            label,
-            style: TextStyle(
-              color: textColor,
-              fontSize: fontSize,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
+    return const SizedBox.shrink();
   }
 }
 
@@ -2001,35 +2021,7 @@ class BracuSkeletonGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final count = itemCount.clamp(1, 12);
-    return BracuShimmer(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final columns = crossAxisCount.clamp(1, 6);
-          final itemWidth =
-              (constraints.maxWidth - (spacing * (columns - 1))) / columns;
-          return Wrap(
-            spacing: spacing,
-            runSpacing: spacing,
-            children: [
-              for (var index = 0; index < count; index++)
-                SizedBox(
-                  width: itemWidth.isFinite ? itemWidth : 96,
-                  height: itemHeight,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      BracuSkeletonBox(width: 40, height: 40, radius: 20),
-                      SizedBox(height: 8),
-                      BracuSkeletonBox(width: 54, height: 9, radius: 5),
-                    ],
-                  ),
-                ),
-            ],
-          );
-        },
-      ),
-    );
+    return const SizedBox.shrink();
   }
 }
 
@@ -2128,64 +2120,7 @@ class BracuSkeletonBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(radius),
-      ),
-    );
-  }
-}
-
-class _BracuSkeletonCard extends StatelessWidget {
-  const _BracuSkeletonCard({required this.compact, required this.index});
-
-  final bool compact;
-  final int index;
-
-  @override
-  Widget build(BuildContext context) {
-    final widths = compact
-        ? const <double>[0.70, 0.48]
-        : const <double>[0.82, 0.58, 0.68];
-    return BracuCard(
-      backgroundColor: BracuPalette.card(context),
-      child: Row(
-        children: [
-          BracuSkeletonBox(
-            width: compact ? 32 : 42,
-            height: compact ? 32 : 42,
-            radius: compact ? 8 : 12,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                FractionallySizedBox(
-                  widthFactor: widths[index % widths.length],
-                  child: BracuSkeletonBox(height: compact ? 10 : 12, radius: 6),
-                ),
-                SizedBox(height: compact ? 7 : 9),
-                FractionallySizedBox(
-                  widthFactor: compact ? 0.44 : 0.54,
-                  child: BracuSkeletonBox(height: compact ? 9 : 10, radius: 5),
-                ),
-                if (!compact) ...[
-                  const SizedBox(height: 9),
-                  FractionallySizedBox(
-                    widthFactor: 0.32,
-                    child: BracuSkeletonBox(height: 9, radius: 5),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    return SizedBox(width: width, height: height);
   }
 }
 
@@ -2382,13 +2317,7 @@ class QuickAccessCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: isLoading
-                  ? const BracuShimmer(
-                      child: BracuSkeletonBox(
-                        width: 20,
-                        height: 20,
-                        radius: 10,
-                      ),
-                    )
+                  ? Icon(icon, color: color, size: 22)
                   : Icon(icon, color: color, size: 22),
             ),
             const SizedBox(height: 12),

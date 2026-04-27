@@ -49,6 +49,11 @@ bool seatStatusFacultyHasVisuals(section.SectionFaculty? faculty) {
 
 class SeatStatusPage extends StatefulWidget {
   const SeatStatusPage({super.key});
+
+  static Future<void> preload() async {
+    await SeatStatusService.preload();
+  }
+
   @override
   State<SeatStatusPage> createState() => _SeatStatusPageState();
 }
@@ -78,11 +83,11 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   String _searchQuery = '';
   bool _isDetailsRefreshing = false;
   bool _availableOnly = false;
-  bool _pinnedOnly = false;
   String _selectedDayFilter = '';
   @override
   void initState() {
     super.initState();
+    _seedCachedCards();
     _searchController.addListener(() {
       _searchDebounce?.cancel();
       _searchDebounce = Timer(const Duration(milliseconds: 150), () {
@@ -96,6 +101,26 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     WidgetsBinding.instance.addObserver(this);
     HomeTabRegistry.activeTab.addListener(_onActiveTabChanged);
     _updatePollingStrategy();
+  }
+
+  void _seedCachedCards() {
+    final cachedDetails = _service.cachedDetails;
+    if (cachedDetails == null) return;
+    final cards = _buildCardsFromDetailsMap(cachedDetails);
+    _cards
+      ..clear()
+      ..addAll(cards);
+    _visibleCards
+      ..clear()
+      ..addAll(
+        _filterCards(
+          cards,
+          _searchQuery,
+          availableOnly: _availableOnly,
+          dayFilter: _selectedDayFilter,
+        ),
+      );
+    _isInitialLoading = false;
   }
 
   @override
@@ -156,13 +181,15 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   }
 
   Future<void> _reloadAll() async {
-    if (mounted) {
+    final hasCachedCards = _cards.isNotEmpty;
+    final hasCachedDetails = _service.cachedDetails != null;
+    if (mounted && !hasCachedCards && !hasCachedDetails) {
       setState(() {
         _isInitialLoading = true;
       });
     }
 
-    await _refreshDetailsFromApi();
+    await _refreshDetailsFromApi(forceRefresh: true);
     if (!mounted) return;
     if (_isInitialLoading) {
       setState(() {
@@ -422,20 +449,20 @@ class _SeatStatusCard extends StatelessWidget {
             ],
           ),
           if (classLines.isNotEmpty) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 4),
             _SeatScheduleBlock(title: 'Class', lines: classLines),
           ],
           if (item.room.isNotEmpty || item.labRoom.isNotEmpty) ...[
-            const SizedBox(height: 18),
+            const SizedBox(height: 6),
             _RoomBlock(
               theoryLabel: theoryLabel,
               theoryRoom: item.room,
               labRoom: item.labRoom,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
           ],
           if (hasMidExam || hasFinalExam) ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(

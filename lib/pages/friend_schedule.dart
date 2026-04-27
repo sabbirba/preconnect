@@ -296,16 +296,17 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton(
+                        child: BracuActionButton(
                           onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancel'),
+                          label: 'Cancel',
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: ElevatedButton(
+                        child: BracuActionButton(
                           onPressed: () => Navigator.pop(context, true),
-                          child: const Text('Remove'),
+                          filled: true,
+                          label: 'Remove',
                         ),
                       ),
                     ],
@@ -444,17 +445,18 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton(
+                        child: BracuActionButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
+                          label: 'Cancel',
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: ElevatedButton(
+                        child: BracuActionButton(
                           onPressed: () =>
                               Navigator.pop(context, controller.text.trim()),
-                          child: const Text('Save'),
+                          filled: true,
+                          label: 'Save',
                         ),
                       ),
                     ],

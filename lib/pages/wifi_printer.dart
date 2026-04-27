@@ -373,17 +373,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                         ),
                       ),
                     ),
-                    TextButton.icon(
+                    BracuActionButton(
                       onPressed: _busy || _discovering
                           ? null
                           : () => _discoverPrinter(),
-                      style: bracuNoSplashTextButtonStyle(),
-                      icon: _discovering
-                          ? const SizedBox.shrink()
-                          : const Icon(Icons.wifi_find_outlined),
-                      label: _discovering
-                          ? const BracuShimmerLabel(label: 'Scanning')
-                          : const Text('Scan'),
+                      icon: Icons.wifi_find_outlined,
+                      label: _discovering ? 'Scanning...' : 'Scan',
                     ),
                   ],
                 ),
@@ -439,29 +434,19 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton.icon(
+                      child: BracuActionButton(
                         onPressed: _busy ? null : _pickPrintFile,
-                        icon: const Icon(
-                          Icons.picture_as_pdf_outlined,
-                          size: 18,
-                        ),
-                        label: const Text('Choose'),
+                        icon: Icons.picture_as_pdf_outlined,
+                        label: 'Choose',
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: FilledButton.icon(
+                      child: BracuActionButton(
                         onPressed: canPrint ? _sendToPrinter : null,
-                        icon: _busy
-                            ? const BracuShimmer(
-                                child: BracuSkeletonBox(
-                                  width: 16,
-                                  height: 16,
-                                  radius: 8,
-                                ),
-                              )
-                            : const Icon(Icons.print_rounded, size: 18),
-                        label: Text(_busy ? 'Sending...' : 'Print'),
+                        filled: true,
+                        icon: Icons.print_rounded,
+                        label: 'Print',
                       ),
                     ),
                   ],

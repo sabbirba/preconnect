@@ -76,11 +76,11 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
       body: FutureBuilder<CalendarFeed?>(
         future: _future,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting &&
-              _lastFeed == null) {
-            return buildRefreshLoadingState(
+          if (snapshot.hasError && _lastFeed == null) {
+            return buildRefreshErrorState(
               onRefresh: _refresh,
               topSpacing: 180,
+              error: snapshot.error,
             );
           }
 

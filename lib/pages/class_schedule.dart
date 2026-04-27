@@ -43,6 +43,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   static Future<_ScheduleData>? _preloadFuture;
 
   late Future<_ScheduleData> _future;
+  _ScheduleData? _latestData;
   final ScrollController _scrollController = ScrollController();
   int? _currentSessionSemesterId;
   GlobalKey? _highlightKey;
@@ -54,6 +55,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   @override
   void initState() {
     super.initState();
+    _latestData = _cachedData;
     _future = _cachedData == null
         ? _initializeSchedule()
         : Future<_ScheduleData>.value(_cachedData!);
@@ -66,11 +68,10 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   Future<void> _warmAndBind() async {
     final data = await preloadData();
     if (!mounted) return;
-    if (!identical(_future, _preloadFuture)) {
-      setState(() {
-        _future = Future<_ScheduleData>.value(data);
-      });
-    }
+    setState(() {
+      _latestData = data;
+      _future = Future<_ScheduleData>.value(data);
+    });
   }
 
   static Future<_ScheduleData> preloadData({bool forceRefresh = false}) async {
@@ -196,6 +197,11 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       isRamadan: isRamadan,
     );
     _cachedData = data;
+    if (mounted) {
+      setState(() {
+        _latestData = data;
+      });
+    }
     return data;
   }
 
@@ -552,24 +558,19 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       body: FutureBuilder<_ScheduleData>(
         future: _future,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return buildRefreshLoadingState(
-              onRefresh: _handleRefresh,
-              topSpacing: 180,
-            );
-          }
-          if (snapshot.hasError) {
+          if (snapshot.hasError && _latestData == null) {
             return buildRefreshErrorState(
               onRefresh: _handleRefresh,
               error: snapshot.error,
             );
           }
 
-          final grouped = snapshot.data?.grouped ?? {};
-          final scrollSchedule = snapshot.data?.scrollSchedule;
-          final scrollDateTime = snapshot.data?.scrollDateTime;
+          final data = _latestData ?? snapshot.data;
+          final grouped = data?.grouped ?? {};
+          final scrollSchedule = data?.scrollSchedule;
+          final scrollDateTime = data?.scrollDateTime;
           const shouldHighlightCurrentSemester = true;
-          final isRamadan = snapshot.data?.isRamadan ?? false;
+          final isRamadan = data?.isRamadan ?? false;
           if (grouped.isEmpty) {
             return buildRefreshEmptyState(
               onRefresh: _handleRefresh,
@@ -683,13 +684,13 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
               Padding(
                 padding: const EdgeInsets.only(top: 2, bottom: 8),
                 child: Center(
-                  child: OutlinedButton(
+                  child: BracuActionButton(
                     onPressed: () {
                       setState(() {
                         _visibleWeekCount += 1;
                       });
                     },
-                    child: const Text('Next week'),
+                    label: 'Next week',
                   ),
                 ),
               ),

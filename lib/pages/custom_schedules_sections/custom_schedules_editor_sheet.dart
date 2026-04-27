@@ -417,34 +417,13 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                     minWidth: 0,
                     minHeight: 0,
                   ),
-                  suffixIcon: TextButton(
+                  suffixIcon: BracuActionButton(
                     onPressed: pickTitleTemplate,
-                    style: TextButton.styleFrom(
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      foregroundColor: BracuPalette.textSecondary(context),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Choose',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        SizedBox(width: 2),
-                        Padding(
-                          padding: EdgeInsets.only(top: 1),
-                          child: Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            size: 17,
-                          ),
-                        ),
-                      ],
+                    label: 'Choose',
+                    borderRadius: 10,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
                     ),
                   ),
                 ),
@@ -452,41 +431,31 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton(
+                child: BracuActionButton(
                   onPressed: pickDueDate,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(46),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: Text(
-                    DateFormat('d MMM yyyy').format(startTime),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  label: DateFormat('d MMM yyyy').format(startTime),
+                  borderRadius: 14,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
               const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: BracuActionButton(
                       onPressed: pickStartTime,
-                      child: Text(
-                        'Start ${DateFormat('hh:mm a').format(startTime)}',
-                      ),
+                      label: 'Start ${DateFormat('hh:mm a').format(startTime)}',
+                      borderRadius: 14,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: OutlinedButton(
+                    child: BracuActionButton(
                       onPressed: pickEndTime,
-                      child: Text(
-                        endTime == null
-                            ? 'End'
-                            : 'End ${DateFormat('hh:mm a').format(endTime!)}',
-                      ),
+                      label: endTime == null
+                          ? 'End'
+                          : 'End ${DateFormat('hh:mm a').format(endTime!)}',
+                      borderRadius: 14,
                     ),
                   ),
                 ],
@@ -571,7 +540,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
               const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
+                child: BracuActionButton(
                   onPressed: () async {
                     final reminderAt = startTime.subtract(
                       Duration(minutes: reminderMinutesBefore),
@@ -600,8 +569,14 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                       reminderAt: reminderAt,
                     );
                   },
-                  icon: const Icon(Icons.notifications_active),
-                  label: const Text('Set Alarm'),
+                  filled: true,
+                  icon: Icons.notifications_active,
+                  label: 'Set Alarm',
+                  borderRadius: 12,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -625,37 +600,39 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
+                child: BracuActionButton(
                   onPressed: save,
-                  icon: const Icon(Icons.save_rounded),
-                  label: const Text('Save'),
+                  filled: true,
+                  icon: Icons.save_rounded,
+                  label: 'Save',
+                  borderRadius: 12,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
               ),
               if (item != null) ...[
                 const SizedBox(height: 10),
                 SizedBox(
                   width: double.infinity,
-                  child: OutlinedButton.icon(
+                  child: BracuActionButton(
                     onPressed: toggleDoneStatus,
-                    icon: Icon(
-                      isDone
-                          ? Icons.schedule_rounded
-                          : Icons.check_circle_outline_rounded,
-                    ),
-                    label: Text(isDone ? 'Mark as Pending' : 'Mark as Done'),
+                    icon: isDone
+                        ? Icons.schedule_rounded
+                        : Icons.check_circle_outline_rounded,
+                    label: isDone ? 'Mark as Pending' : 'Mark as Done',
+                    borderRadius: 12,
                   ),
                 ),
                 const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
-                  child: OutlinedButton.icon(
+                  child: BracuActionButton(
                     onPressed: deleteItem,
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red),
-                    ),
-                    label: const Text('Delete'),
+                    icon: Icons.delete_outline_rounded,
+                    label: 'Delete',
+                    borderRadius: 12,
                   ),
                 ),
               ],

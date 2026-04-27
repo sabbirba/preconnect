@@ -236,14 +236,12 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                   if (widget.friend.courses.isNotEmpty)
                     IconButton(
                       tooltip: 'Compare schedules',
-                      style: IconButton.styleFrom(
+                      style: bracuCompactIconButtonStyle(
                         foregroundColor: BracuPalette.primary,
-                        side: BorderSide(
-                          color: BracuPalette.primary.withValues(alpha: 0.6),
+                        borderColor: BracuPalette.primary.withValues(
+                          alpha: 0.6,
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        borderRadius: 12,
                       ),
                       onPressed: _openCompare,
                       icon: const Icon(Icons.compare_arrows_rounded),

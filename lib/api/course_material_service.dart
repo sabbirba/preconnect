@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/app_preferences_store.dart';
 
 class CourseMaterialItem {
   const CourseMaterialItem({
@@ -77,6 +79,27 @@ class CourseMaterialItem {
       createdAt: DateTime.tryParse('${json['createdAt'] ?? ''}'),
       updatedAt: DateTime.tryParse('${json['updatedAt'] ?? ''}'),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'materialId': materialId,
+      'courseCode': courseCode,
+      'courseTitle': courseTitle,
+      'semester': semester,
+      'title': title,
+      'description': description,
+      'fileName': fileName,
+      'contentType': contentType,
+      'fileSize': fileSize,
+      'isApproved': isApproved,
+      'canDelete': canDelete,
+      'filePath': filePath,
+      'uploaderName': uploaderName,
+      'externalUrl': externalUrl,
+      'createdAt': createdAt?.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
+    };
   }
 
   static String _firstNonEmpty(List<dynamic> values) {
@@ -208,8 +231,11 @@ class CourseMaterialService {
   factory CourseMaterialService() => _instance;
 
   final ApiClient _client = ApiClient();
+  final AppPreferencesStore _store = AppPreferencesStore();
   static const Duration _uploadTimeout = Duration(seconds: 40);
   static final Uri _filesBaseUri = Uri.parse(ApiConfig.filesBase);
+  static final Map<String, List<CourseMaterialItem>> _cachedLists =
+      <String, List<CourseMaterialItem>>{};
 
   String get _base => ApiConfig.seatStatusProxyBase;
 
@@ -220,6 +246,17 @@ class CourseMaterialService {
     int offset = 0,
     String search = '',
   }) async {
+    final cacheKey = _cacheKey(
+      courseCode: courseCode,
+      semester: semester,
+      limit: limit,
+      offset: offset,
+      search: search,
+    );
+    final cached = await _readCachedList(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
     final code = Uri.encodeQueryComponent(courseCode.trim().toUpperCase());
     final query = StringBuffer('courseCode=$code&limit=$limit&offset=$offset');
     final semesterValue = semester.trim();
@@ -240,7 +277,48 @@ class CourseMaterialService {
             .map((e) => CourseMaterialItem.fromJson(e.cast<String, dynamic>()))
             .toList() ??
         const <CourseMaterialItem>[];
+    _cachedLists[cacheKey] = items;
+    unawaited(_writeCachedList(cacheKey, items));
     return items;
+  }
+
+  String _cacheKey({
+    required String courseCode,
+    required String semester,
+    required int limit,
+    required int offset,
+    required String search,
+  }) {
+    final code = courseCode.trim().toUpperCase();
+    final sem = semester.trim();
+    final q = search.trim();
+    return 'course_materials_v1|$code|$sem|$limit|$offset|$q';
+  }
+
+  Future<List<CourseMaterialItem>?> _readCachedList(String cacheKey) async {
+    final inMemory = _cachedLists[cacheKey];
+    if (inMemory != null) return inMemory;
+    final raw = await _store.getJsonMap(cacheKey);
+    if (raw == null) return null;
+    final itemsRaw = raw['items'];
+    if (itemsRaw is! List) return null;
+    final items = itemsRaw
+        .whereType<Map>()
+        .map((e) => CourseMaterialItem.fromJson(e.cast<String, dynamic>()))
+        .toList();
+    _cachedLists[cacheKey] = items;
+    return items;
+  }
+
+  Future<void> _writeCachedList(
+    String cacheKey,
+    List<CourseMaterialItem> items,
+  ) async {
+    try {
+      await _store.setJson(cacheKey, <String, dynamic>{
+        'items': items.map((item) => item.toJson()).toList(),
+      });
+    } catch (_) {}
   }
 
   Future<CourseMaterialDetail> get({

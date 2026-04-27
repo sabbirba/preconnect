@@ -167,35 +167,25 @@ class _SupportButtonState extends State<_SupportButton> {
 
   Widget _buildButtonTile() {
     return _buildTile(
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 180),
-        child: _isLoading
-            ? const BracuShimmerLabel(
-                label: 'Support',
-                dotSize: 12,
-                gap: 6,
-                fontSize: 12,
-              )
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.favorite_border_rounded,
-                    size: 16,
-                    color: BracuPalette.primary,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Support',
-                    style: TextStyle(
-                      color: BracuPalette.primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.1,
-                    ),
-                  ),
-                ],
-              ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.favorite_border_rounded,
+            size: 16,
+            color: BracuPalette.primary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'Support',
+            style: TextStyle(
+              color: BracuPalette.primary,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.1,
+            ),
+          ),
+        ],
       ),
     );
   }

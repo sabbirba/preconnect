@@ -6,7 +6,6 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shimmer/shimmer.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/image_url_utils.dart';
@@ -386,20 +385,12 @@ class _CachedImageShimmer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Shimmer.fromColors(
-      baseColor: isDark ? const Color(0xFF1C1C1C) : const Color(0xFFE7EDF5),
-      highlightColor: isDark
-          ? const Color(0xFF343434)
-          : const Color(0xFFF8FBFF),
-      period: const Duration(milliseconds: 1300),
-      child: Container(
-        width: width ?? double.infinity,
-        height: height ?? 120,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-        ),
+    return Container(
+      width: width ?? double.infinity,
+      height: height ?? 120,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5FB),
+        borderRadius: BorderRadius.circular(8),
       ),
     );
   }

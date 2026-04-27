@@ -99,12 +99,13 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
+              child: BracuActionButton(
                 onPressed: () async {
                   await openExternalUrl(context, item.url!);
                 },
-                icon: const Icon(Icons.open_in_new),
-                label: const Text('Open Source'),
+                filled: true,
+                icon: Icons.open_in_new,
+                label: 'Open Source',
               ),
             ),
           ],
@@ -237,10 +238,7 @@ class _ConnectNotificationDetailPanelState
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Padding(
-            padding: const EdgeInsets.all(18),
-            child: const BracuLoading(itemCount: 2),
-          );
+          return const SizedBox.shrink();
         }
 
         if (snapshot.hasError || !snapshot.hasData) {

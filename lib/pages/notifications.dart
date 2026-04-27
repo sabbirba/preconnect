@@ -11,12 +11,19 @@ import 'package:preconnect/tools/refresh_bus.dart';
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
 
+  static Future<void> preload() async {
+    await _NotificationsPageState.preloadData();
+  }
+
   @override
   State<NotificationsPage> createState() => _NotificationsPageState();
 }
 
 class _NotificationsPageState extends State<NotificationsPage> {
   static const int _pageSize = 32;
+  static NotificationsViewData? _cachedData;
+  static Future<NotificationsViewData>? _preloadFuture;
+
   late Future<NotificationsViewData> _future;
   NotificationsViewData? _lastData;
   int _visibleItemCount = _pageSize;
@@ -24,13 +31,45 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   void initState() {
     super.initState();
-    _future = _loadData(forceRefresh: true).then((data) {
-      _lastData = data;
-      return data;
-    });
+    _lastData = _cachedData;
+    _future = _cachedData == null
+        ? preloadData().then((data) {
+            _lastData = data;
+            return data;
+          })
+        : Future<NotificationsViewData>.value(_cachedData!);
+    unawaited(_warmAndBind());
   }
 
-  Future<NotificationsViewData> _loadData({bool forceRefresh = false}) async {
+  static Future<NotificationsViewData> preloadData({
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh && _cachedData != null) {
+      return _cachedData!;
+    }
+    if (!forceRefresh) {
+      final inFlight = _preloadFuture;
+      if (inFlight != null) {
+        return inFlight;
+      }
+    }
+
+    final future = _loadDataStatic(forceRefresh: forceRefresh);
+    _preloadFuture = future;
+    try {
+      final data = await future;
+      _cachedData = data;
+      return data;
+    } finally {
+      if (identical(_preloadFuture, future)) {
+        _preloadFuture = null;
+      }
+    }
+  }
+
+  static Future<NotificationsViewData> _loadDataStatic({
+    bool forceRefresh = false,
+  }) async {
     final connectFuture =
         (forceRefresh
                 ? NotificationService().fetchRecentNotifications()
@@ -60,6 +99,19 @@ class _NotificationsPageState extends State<NotificationsPage> {
     );
   }
 
+  Future<void> _warmAndBind() async {
+    final data = await preloadData();
+    if (!mounted) return;
+    setState(() {
+      _lastData = data;
+      _future = Future<NotificationsViewData>.value(data);
+    });
+  }
+
+  Future<NotificationsViewData> _loadData({bool forceRefresh = false}) async {
+    return _loadDataStatic(forceRefresh: forceRefresh);
+  }
+
   Future<void> _refresh() async {
     final next = _loadData(forceRefresh: true);
     setState(() {
@@ -70,6 +122,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     if (!mounted) return;
     setState(() {
       _lastData = refreshed;
+      _cachedData = refreshed;
     });
     RefreshBus.instance.notify(reason: 'notifications');
   }
@@ -93,6 +146,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     setState(() {
       _lastData = optimisticData;
       _future = refreshedFuture;
+      _cachedData = optimisticData;
     });
 
     unawaited(
@@ -148,6 +202,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         scraped: currentData.scraped,
         seenScraperIds: currentData.seenScraperIds,
       );
+      _cachedData = _lastData;
     });
     RefreshBus.instance.notify(reason: 'notifications');
   }
@@ -171,6 +226,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         scraped: current.scraped,
         seenScraperIds: {...current.seenScraperIds, item.id},
       );
+      _cachedData = _lastData;
     });
     RefreshBus.instance.notify(reason: 'notifications');
   }
@@ -187,11 +243,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
       body: FutureBuilder<NotificationsViewData>(
         future: _future,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting &&
-              _lastData == null) {
-            return buildRefreshLoadingState(
+          if (snapshot.hasError && _lastData == null) {
+            return buildRefreshErrorState(
               onRefresh: _refresh,
               topSpacing: 180,
+              error: snapshot.error,
             );
           }
 

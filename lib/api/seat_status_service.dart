@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/model/section_info.dart' show SectionFaculty;
 
 class SeatStatusService {
@@ -10,11 +11,71 @@ class SeatStatusService {
   factory SeatStatusService() => _instance;
 
   final ApiClient _client = ApiClient();
+  final AppPreferencesStore _store = AppPreferencesStore();
 
-  Future<Map<int, SeatStatusDetailsResponse>>
-  fetchAllSectionsDetailsFromApi() async {
-    final raw = await _fetchJson(ApiConfig.seatStatusDataUrl);
-    return _parseConnectJson(raw);
+  static const String _cacheKey = 'seat_status_details_v1';
+  static Map<int, SeatStatusDetailsResponse>? _cachedDetails;
+  static Future<Map<int, SeatStatusDetailsResponse>>? _preloadFuture;
+
+  Map<int, SeatStatusDetailsResponse>? get cachedDetails => _cachedDetails;
+
+  static Future<void> preload() async {
+    await _instance.preloadData();
+  }
+
+  Future<Map<int, SeatStatusDetailsResponse>> fetchAllSectionsDetailsFromApi({
+    bool forceRefresh = false,
+  }) async {
+    return preloadData(forceRefresh: forceRefresh);
+  }
+
+  Future<Map<int, SeatStatusDetailsResponse>> preloadData({
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh && _cachedDetails != null) {
+      return _cachedDetails!;
+    }
+    if (!forceRefresh) {
+      final inFlight = _preloadFuture;
+      if (inFlight != null) {
+        return inFlight;
+      }
+    }
+
+    final future = _loadDetails(forceRefresh: forceRefresh);
+    _preloadFuture = future;
+    try {
+      final details = await future;
+      _cachedDetails = details;
+      return details;
+    } finally {
+      if (identical(_preloadFuture, future)) {
+        _preloadFuture = null;
+      }
+    }
+  }
+
+  Future<Map<int, SeatStatusDetailsResponse>> _loadDetails({
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh) {
+      final cached = await _readCachedDetails();
+      if (cached != null) {
+        return cached;
+      }
+    }
+
+    try {
+      final raw = await _fetchJson(ApiConfig.seatStatusDataUrl);
+      final parsed = _parseConnectJson(raw);
+      if (parsed.isNotEmpty) {
+        await _writeCachedDetails(parsed);
+      }
+      return parsed;
+    } catch (_) {
+      final cached = await _readCachedDetails();
+      return cached ?? const <int, SeatStatusDetailsResponse>{};
+    }
   }
 
   Future<dynamic> _fetchJson(String url) async {
@@ -27,6 +88,32 @@ class SeatStatusService {
     } catch (e) {
       throw FormatException('Invalid JSON response from $url: $e');
     }
+  }
+
+  Future<Map<int, SeatStatusDetailsResponse>?> _readCachedDetails() async {
+    final raw = await _store.getJsonMap(_cacheKey);
+    if (raw == null) return null;
+    final data = raw['data'];
+    if (data is! List) return null;
+    final result = <int, SeatStatusDetailsResponse>{};
+    for (final item in data.whereType<Map>()) {
+      try {
+        final parsed = SeatStatusDetailsResponse.fromJson(
+          item.cast<String, dynamic>(),
+        );
+        result[parsed.sectionId] = parsed;
+      } catch (_) {}
+    }
+    return result;
+  }
+
+  Future<void> _writeCachedDetails(
+    Map<int, SeatStatusDetailsResponse> details,
+  ) async {
+    await _store.setJson(_cacheKey, <String, dynamic>{
+      'ts': DateTime.now().millisecondsSinceEpoch,
+      'data': details.values.map((entry) => entry.toJson()).toList(),
+    });
   }
 
   Map<int, SeatStatusDetailsResponse> _parseConnectJson(dynamic raw) {

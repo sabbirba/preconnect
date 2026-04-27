@@ -51,12 +51,13 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _latestItems = _cachedItems;
+    if (_cachedCourseOptions != null) {
+      _latestCourseOptions = _cachedCourseOptions!;
+    }
     _future = _cachedItems == null
         ? _loadItems()
         : Future<List<CustomSchedule>>.value(_cachedItems!);
-    if (_cachedCourseOptions != null && _cachedCourseOptions!.isNotEmpty) {
-      _latestCourseOptions = _cachedCourseOptions!;
-    }
     unawaited(_warmAndBind());
     unawaited(_primeCachedItems());
     _autoRefreshTimer = Timer.periodic(_autoRefreshInterval, (_) {
@@ -73,9 +74,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
       _future = Future<List<CustomSchedule>>.value(
         _cachedItems ?? const <CustomSchedule>[],
       );
-      if (_cachedItems != null) {
-        _latestItems = _cachedItems;
-      }
+      _latestItems = _cachedItems;
       if (_cachedCourseOptions != null) {
         _latestCourseOptions = _cachedCourseOptions!;
       }
@@ -210,7 +209,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
   }
 
   Future<void> _primeCachedItems() async {
-    if (_cachedItems != null && _cachedItems!.isNotEmpty) {
+    if (_cachedItems != null) {
       if (!mounted) return;
       setState(() {
         _latestItems = _cachedItems;
@@ -218,7 +217,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
       return;
     }
     final cached = await CustomSchedulesService().getCachedItems();
-    if (!mounted || cached == null || cached.isEmpty) return;
+    if (!mounted || cached == null) return;
     setState(() {
       _latestItems = cached;
     });
@@ -604,14 +603,6 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
       body: FutureBuilder<List<CustomSchedule>>(
         future: _future,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting &&
-              _latestItems == null) {
-            return buildRefreshLoadingState(
-              onRefresh: () => _refresh(forceRefresh: true),
-              topSpacing: 180,
-            );
-          }
-
           if (snapshot.hasError && _latestItems == null) {
             return buildRefreshErrorState(
               onRefresh: () => _refresh(forceRefresh: true),
@@ -622,16 +613,6 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
 
           final items =
               _latestItems ?? snapshot.data ?? const <CustomSchedule>[];
-          if (_latestItems == null &&
-              snapshot.hasData &&
-              snapshot.data != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!mounted || _latestItems != null) return;
-              setState(() {
-                _latestItems = List<CustomSchedule>.from(snapshot.data!);
-              });
-            });
-          }
           final dayGroups = _groupItemsByDay(items);
 
           if (items.isEmpty) {
@@ -663,10 +644,10 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
                         ),
                       ),
                       const SizedBox(height: 14),
-                      OutlinedButton.icon(
+                      BracuActionButton(
                         onPressed: _openEditor,
-                        icon: const Icon(Icons.add_rounded, size: 16),
-                        label: const Text('Add Schedule'),
+                        icon: Icons.add_rounded,
+                        label: 'Add Schedule',
                       ),
                     ],
                   ),

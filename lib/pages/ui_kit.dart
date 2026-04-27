@@ -22,7 +22,6 @@ import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/web_shared.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
-import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 export 'package:preconnect/tools/web_shared.dart';
@@ -239,7 +238,10 @@ Widget buildCenteredOutlinedActionButton({
   return Padding(
     padding: padding,
     child: Center(
-      child: OutlinedButton(onPressed: onPressed, child: Text(label)),
+      child: BracuActionButton(
+        onPressed: onPressed,
+        label: label,
+      ),
     ),
   );
 }
@@ -299,9 +301,7 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
               CachedImage(
                 url: widget.imageUrls.first,
                 fit: widget.imageFit,
-                placeholder: const BracuShimmer(
-                  child: BracuSkeletonBox(height: 220, radius: 8),
-                ),
+                placeholder: const BracuSkeletonBox(height: 220, radius: 8),
                 error: const _BracuImageErrorFallback(),
               )
             else
@@ -318,9 +318,7 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
                   return CachedImage(
                     url: widget.imageUrls[idx],
                     fit: widget.imageFit,
-                    placeholder: const BracuShimmer(
-                      child: BracuSkeletonBox(height: 220, radius: 8),
-                    ),
+                    placeholder: const BracuSkeletonBox(height: 220, radius: 8),
                     error: const _BracuImageErrorFallback(),
                   );
                 },
@@ -445,6 +443,8 @@ void showAppSnackBar(
 }
 
 Future<void> openGradeSheet(BuildContext context) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final isDark = Theme.of(context).brightness == Brightness.dark;
   try {
     if (kIsWeb) {
       final bytes = await GradeSheetService().fetchGradeSheetBytes(
@@ -452,7 +452,11 @@ Future<void> openGradeSheet(BuildContext context) async {
       );
       if (!context.mounted) return;
       if (bytes == null || bytes.isEmpty) {
-        showAppSnackBar(context, 'Could not fetch the latest grade sheet');
+        _showPdfSnackBar(
+          messenger,
+          'Could not fetch the latest grade sheet',
+          isDark: isDark,
+        );
         return;
       }
       final fileName = await GradeSheetService().gradeSheetFileName();
@@ -463,26 +467,47 @@ Future<void> openGradeSheet(BuildContext context) async {
     final gradeSheet = await GradeSheetService().fetchGradeSheet(fromGet: true);
     if (!context.mounted) return;
     if (gradeSheet == null) {
-      showAppSnackBar(context, 'Could not fetch the latest grade sheet');
+      _showPdfSnackBar(
+        messenger,
+        'Could not fetch the latest grade sheet',
+        isDark: isDark,
+      );
       return;
     }
     final opened = await _openPdfNativelyOrFallback(gradeSheet.file.path);
-    if (!context.mounted) return;
-    if (!opened) {
-      showAppSnackBar(context, 'No app found to open this PDF.');
-    }
+    if (opened) return;
+    _showPdfSnackBar(
+      messenger,
+      'No app found to open this PDF.',
+      isDark: isDark,
+    );
   } on PlatformException catch (error) {
-    if (!context.mounted) return;
     final message = switch (error.code) {
       'NO_APP_FOUND' => 'No app found to open this PDF.',
       'FILE_NOT_FOUND' => 'The PDF file was not found.',
       _ => error.message ?? 'Could not open the PDF.',
     };
-    showAppSnackBar(context, message);
+    _showPdfSnackBar(messenger, message, isDark: isDark);
   } catch (_) {
-    if (!context.mounted) return;
-    showAppSnackBar(context, 'Could not open the PDF.');
+    _showPdfSnackBar(messenger, 'Could not open the PDF.', isDark: isDark);
   }
+}
+
+void _showPdfSnackBar(
+  ScaffoldMessengerState messenger,
+  String message, {
+  required bool isDark,
+}) {
+  messenger.clearSnackBars();
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(message, style: const TextStyle(color: Colors.white)),
+      backgroundColor: isDark ? const Color(0xFF1E6BE3) : BracuPalette.primary,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+    ),
+  );
 }
 
 Future<bool> _openPdfNativelyOrFallback(String filePath) async {
@@ -537,19 +562,6 @@ List<section.Section> buildCurrentSectionsForCalculator(
 }
 
 Future<void> openCgpaCalculatorPage(BuildContext context) async {
-  final messenger = ScaffoldMessenger.of(context);
-  messenger.clearSnackBars();
-  messenger.showSnackBar(
-    SnackBar(
-      content: const Text('Loading...', style: TextStyle(color: Colors.white)),
-      backgroundColor: BracuPalette.primary,
-      duration: const Duration(seconds: 20),
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-    ),
-  );
-
   try {
     final info = await ProgressService().getProgress();
     final profile = await ProfileService().getProfile();
@@ -560,7 +572,6 @@ Future<void> openCgpaCalculatorPage(BuildContext context) async {
     if (!context.mounted) return;
 
     if (info == null) {
-      messenger.hideCurrentSnackBar();
       showAppSnackBar(
         context,
         'No progress data available for CGPA calculator',
@@ -570,7 +581,6 @@ Future<void> openCgpaCalculatorPage(BuildContext context) async {
 
     final currentCgpa = (profile?['cgpa'] ?? '').trim();
     final sections = buildCurrentSectionsForCalculator(info, scheduleJson);
-    messenger.hideCurrentSnackBar();
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => CgpaCalculatorPage(
@@ -582,7 +592,6 @@ Future<void> openCgpaCalculatorPage(BuildContext context) async {
     );
   } catch (_) {
     if (!context.mounted) return;
-    messenger.hideCurrentSnackBar();
     showAppSnackBar(context, 'Could not open CGPA calculator');
   }
 }
@@ -794,34 +803,17 @@ class _BracuRewardVideoSectionState extends State<BracuRewardVideoSection> {
                   const SizedBox(width: 12),
                   ConstrainedBox(
                     constraints: const BoxConstraints(minWidth: 118),
-                    child: OutlinedButton(
-                      onPressed: _isLoading ? null : _watchRewardAd,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: BracuPalette.primary,
-                        side: BorderSide(
-                          color: BracuPalette.primary.withValues(alpha: 0.26),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                      ),
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 180),
-                        child: _isLoading
-                            ? const BracuShimmerLabel(label: 'Loading')
-                            : Text(
-                                supportCount > 0
-                                    ? '${widget.buttonLabel} #$supportCount'
-                                    : widget.buttonLabel,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                      ),
-                    ),
+                child: BracuActionButton(
+                  onPressed: _isLoading ? null : _watchRewardAd,
+                  label: supportCount > 0
+                      ? '${widget.buttonLabel} #$supportCount'
+                      : widget.buttonLabel,
+                  borderRadius: 10,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                ),
                   ),
                 ],
               ),
@@ -906,24 +898,14 @@ class _BracuInterstitialAdSectionState
               const SizedBox(width: 12),
               ConstrainedBox(
                 constraints: const BoxConstraints(minWidth: 118),
-                child: OutlinedButton(
+                child: BracuActionButton(
                   onPressed: _isLoading ? null : _showInterstitial,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: BracuPalette.primary,
-                    side: BorderSide(
-                      color: BracuPalette.primary.withValues(alpha: 0.26),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
+                  label: 'Show',
+                  borderRadius: 10,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
                   ),
-                  child: _isLoading
-                      ? const BracuShimmerLabel(label: 'Loading')
-                      : const Text('Show'),
                 ),
               ),
             ],
@@ -1236,10 +1218,8 @@ class BracuFundingSupportContent extends StatelessWidget {
                 width: size,
                 height: size,
                 fit: qrFit,
-                placeholder: const BracuShimmer(
-                  child: BracuSkeletonBox(height: 220, radius: 0),
-                ),
-                error: const Icon(Icons.qr_code_2_rounded),
+                placeholder: const BracuSkeletonBox(height: 220, radius: 0),
+                error: const SizedBox.shrink(),
               ),
             );
           },
@@ -1299,16 +1279,12 @@ class _BracuSponsorActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton.icon(
+    return BracuActionButton(
       onPressed: onTap,
-      icon: Icon(icon, size: 15),
-      label: Text(label),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: BracuPalette.textPrimary(context),
-        side: BorderSide(color: BracuPalette.primary.withValues(alpha: 0.18)),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-      ),
+      icon: icon,
+      label: label,
+      borderRadius: 999,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     );
   }
 }

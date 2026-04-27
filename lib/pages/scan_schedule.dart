@@ -94,10 +94,39 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
         title: 'Scan Schedule',
         subtitle: 'Import From QR',
         icon: Icons.qr_code_scanner,
-        body: _cameraGranted == null
-            ? buildRefreshLoadingState(
+      body: _cameraGranted == null
+            ? BracuRefreshList(
                 onRefresh: _handleRefresh,
-                topSpacing: 180,
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                children: [
+                  const SizedBox(height: 28),
+                  BracuCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const BracuSectionTitle(title: 'Camera Access'),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Enable camera permission to scan and import a friend schedule QR code.',
+                          style: TextStyle(
+                            color: BracuPalette.textSecondary(context),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: BracuActionButton(
+                            onPressed: () => _ensureCameraPermission(
+                              openSettingsOnDeny: true,
+                            ),
+                            filled: true,
+                            label: 'Enable Camera',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               )
             : BracuRefreshList(
                 onRefresh: _handleRefresh,
@@ -400,17 +429,6 @@ class _ScanScheduleLoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BracuShimmer(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: const [
-          BracuSkeletonBox(width: 176, height: 16, radius: 7),
-          SizedBox(height: 10),
-          BracuSkeletonBox(width: 220, height: 12, radius: 6),
-          SizedBox(height: 14),
-          BracuSkeletonBox(width: 260, height: 180, radius: 18),
-        ],
-      ),
-    );
+    return const SizedBox.shrink();
   }
 }

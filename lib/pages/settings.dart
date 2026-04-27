@@ -417,7 +417,7 @@ class _SettingsPageState extends State<SettingsPage>
                         const SizedBox(width: 10),
                         TextButton(
                           onPressed: _fixQuietModeSetup,
-                          child: const Text('Fix setup'),
+                          child: const Text('Fix'),
                         ),
                       ],
                     ),

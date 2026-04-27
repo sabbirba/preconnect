@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/seat_status_service.dart';
@@ -14,6 +16,9 @@ class FreeLabsPage extends StatefulWidget {
 
 class _FreeLabsPageState extends State<FreeLabsPage> {
   late Future<List<_FreeRoomSlot>> _future;
+  Map<int, SeatStatusDetailsResponse>? _cachedDetails;
+  List<_FreeRoomSlot>? _latestSlots;
+  int _slotsRequestId = 0;
   final ScrollController _scrollController = ScrollController();
   GlobalKey? _highlightKey;
   String? _lastHighlightToken;
@@ -25,7 +30,12 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   @override
   void initState() {
     super.initState();
-    _future = _loadSlots();
+    _cachedDetails = SeatStatusService().cachedDetails;
+    _latestSlots = _buildCachedSlots();
+    _future = _latestSlots == null
+        ? _loadSlots()
+        : Future<List<_FreeRoomSlot>>.value(_latestSlots!);
+    _bindSlotsFuture(_future);
     HomeTabRegistry.activeTab.addListener(_onActiveTabChanged);
   }
 
@@ -40,13 +50,14 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     if (!mounted) return;
     if (HomeTabRegistry.activeTab.value != HomeTab.freeLabs) return;
     if (!_showNextDayAfterHours) return;
-    final next = _loadSlots();
     setState(() {
       _showNextDayAfterHours = false;
-      _future = next;
       _didScroll = false;
       _scrollRetry = false;
+      _latestSlots = _buildCachedSlots();
+      _future = _loadSlots();
     });
+    _bindSlotsFuture(_future);
   }
 
   DateTime _nextSupportedDate(DateTime source) {
@@ -98,14 +109,18 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     return _nextSupportedDate(tomorrow);
   }
 
-  Future<List<_FreeRoomSlot>> _loadSlots() async {
-    final allSlots = await _loadAllSlots();
+  Future<List<_FreeRoomSlot>> _loadSlots({bool forceRefresh = false}) async {
+    final allSlots = await _loadAllSlots(forceRefresh: forceRefresh);
     return _applySelectedFilter(allSlots);
   }
 
-  Future<List<_FreeRoomSlot>> _loadAllSlots() async {
+  Future<List<_FreeRoomSlot>> _loadAllSlots({
+    bool forceRefresh = false,
+  }) async {
     final service = SeatStatusService();
-    final details = await service.fetchAllSectionsDetailsFromApi();
+    final details = await service.fetchAllSectionsDetailsFromApi(
+      forceRefresh: forceRefresh,
+    );
     final allSlots = _buildFreeRoomSlots(
       details.values.toList(),
       _activeDayName,
@@ -114,12 +129,12 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   }
 
   Future<void> _refresh() async {
-    final next = _loadSlots();
     setState(() {
-      _future = next;
       _didScroll = false;
       _scrollRetry = false;
+      _future = _loadSlots(forceRefresh: true);
     });
+    _bindSlotsFuture(_future);
   }
 
   void _attemptScrollToHighlight() {
@@ -141,13 +156,14 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
 
   Future<void> _changeFilter(_RoomFilter selected) async {
     if (selected == _selectedFilter) return;
-    final next = _loadSlots();
     setState(() {
       _selectedFilter = selected;
-      _future = next;
       _didScroll = false;
       _scrollRetry = false;
+      _latestSlots = _buildCachedSlots();
+      _future = _loadSlots();
     });
+    _bindSlotsFuture(_future);
   }
 
   String _dynamicHeaderTitle() {
@@ -169,6 +185,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cachedSlots = _latestSlots;
     return BracuPageScaffold(
       title: _dynamicHeaderTitle(),
       subtitle: _headerDayLabel(),
@@ -202,14 +219,14 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
       body: FutureBuilder<List<_FreeRoomSlot>>(
         future: _future,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return buildRefreshLoadingState(
+          if (snapshot.hasError && cachedSlots == null) {
+            return buildRefreshErrorState(
               onRefresh: _refresh,
-              label: 'Loading...',
+              error: snapshot.error,
             );
           }
 
-          final slots = snapshot.data ?? const <_FreeRoomSlot>[];
+          final slots = cachedSlots ?? snapshot.data ?? const <_FreeRoomSlot>[];
           final visibleSlots = _visibleRoomSlots(slots);
           if (visibleSlots.isEmpty) {
             if (_shouldOfferNextDayLabs()) {
@@ -470,6 +487,29 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     return slots;
   }
 
+  List<_FreeRoomSlot>? _buildCachedSlots() {
+    final details = _cachedDetails;
+    if (details == null) return null;
+    final allSlots = _buildFreeRoomSlots(
+      details.values.toList(),
+      _activeDayName,
+    );
+    return _applySelectedFilter(allSlots);
+  }
+
+  void _bindSlotsFuture(Future<List<_FreeRoomSlot>> future) {
+    final requestId = ++_slotsRequestId;
+    unawaited(
+      future.then((slots) {
+        if (!mounted || requestId != _slotsRequestId) return;
+        setState(() {
+          _cachedDetails = SeatStatusService().cachedDetails;
+          _latestSlots = slots;
+        });
+      }),
+    );
+  }
+
   void _seedRoomOccupancy({
     required Map<String, _RoomSeed> grouped,
     required Set<String> seenBusyKeys,
@@ -629,13 +669,14 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   }
 
   Future<void> _showNextDayLabs() async {
-    final next = _loadSlots();
     setState(() {
       _showNextDayAfterHours = true;
-      _future = next;
       _didScroll = false;
       _scrollRetry = false;
+      _latestSlots = _buildCachedSlots();
+      _future = _loadSlots();
     });
+    _bindSlotsFuture(_future);
   }
 
   Widget _buildAfterHoursPromptState() {
@@ -671,10 +712,11 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
               ),
             ),
             const SizedBox(height: 14),
-            ElevatedButton.icon(
+            BracuActionButton(
               onPressed: _showNextDayLabs,
-              icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-              label: const Text('Show Next Day Labs'),
+              filled: true,
+              icon: Icons.arrow_forward_rounded,
+              label: 'Show Next Day Labs',
             ),
           ],
         ),

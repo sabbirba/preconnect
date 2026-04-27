@@ -169,23 +169,16 @@ class _WebExtensionLoginPageState extends State<WebExtensionLoginPage> {
                             color: BracuPalette.primary.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(22),
                           ),
-                          child: _busy
-                              ? const Padding(
-                                  padding: EdgeInsets.all(18),
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                  ),
-                                )
-                              : Icon(
-                                  Icons.extension_rounded,
-                                  color: BracuPalette.primary,
-                                  size: 34,
-                                ),
+                          child: Icon(
+                            Icons.extension_rounded,
+                            color: BracuPalette.primary,
+                            size: 34,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 18),
                       Text(
-                        _status ?? 'Starting sign-in...',
+                        _status ?? 'Open the browser extension to sign in.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: bodyColor,

@@ -79,7 +79,6 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
 
   Future<void> _loadCachedAndRefresh() async {
     _safeSetState(() {
-      isLoading = true;
       errorMessage = null;
     });
 
@@ -120,12 +119,9 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
   }) async {
     if (_isRefreshing) return;
     _isRefreshing = true;
-    if (_base64Data == null) {
-      _safeSetState(() {
-        isLoading = true;
-        errorMessage = null;
-      });
-    }
+    _safeSetState(() {
+      errorMessage = null;
+    });
 
     try {
       final cachedProfile = await ProfileService().getProfile();
@@ -460,32 +456,6 @@ class _ShareScheduleLoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: BracuShimmer(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (var index = 0; index < 4; index++) ...[
-              if (index != 0) const SizedBox(height: 12),
-              BracuCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    BracuSkeletonBox(width: 140, height: 14, radius: 7),
-                    SizedBox(height: 10),
-                    BracuSkeletonBox(
-                      width: double.infinity,
-                      height: 220,
-                      radius: 14,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
+    return const SizedBox.shrink();
   }
 }
