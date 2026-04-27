@@ -627,7 +627,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
       context,
       title: courseCode.isEmpty ? 'Select grade' : courseCode,
       subtitle: subtitle,
-      initialChildSize: 0.25,
+      initialChildSize: 0.40,
       actions: [
         IconButton(
           onPressed: () => Navigator.of(context).pop(resetGrade),

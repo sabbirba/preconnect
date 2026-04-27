@@ -94,7 +94,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
         title: 'Scan Schedule',
         subtitle: 'Import From QR',
         icon: Icons.qr_code_scanner,
-      body: _cameraGranted == null
+        body: _cameraGranted == null
             ? BracuRefreshList(
                 onRefresh: _handleRefresh,
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -119,7 +119,6 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                             onPressed: () => _ensureCameraPermission(
                               openSettingsOnDeny: true,
                             ),
-                            filled: true,
                             label: 'Enable Camera',
                           ),
                         ),

@@ -103,7 +103,6 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
                 onPressed: () async {
                   await openExternalUrl(context, item.url!);
                 },
-                filled: true,
                 icon: Icons.open_in_new,
                 label: 'Open Source',
               ),

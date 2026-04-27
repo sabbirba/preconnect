@@ -32,7 +32,6 @@ class BusRouteMap extends StatelessWidget {
                       context,
                     ).push(MaterialPageRoute(builder: (_) => const BusPage()));
                   },
-                  filled: true,
                   icon: Icons.directions_bus_rounded,
                   label: 'Open Bus',
                 ),

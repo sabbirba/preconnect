@@ -305,7 +305,6 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                       Expanded(
                         child: BracuActionButton(
                           onPressed: () => Navigator.pop(context, true),
-                          filled: true,
                           label: 'Remove',
                         ),
                       ),
@@ -455,7 +454,6 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                         child: BracuActionButton(
                           onPressed: () =>
                               Navigator.pop(context, controller.text.trim()),
-                          filled: true,
                           label: 'Save',
                         ),
                       ),

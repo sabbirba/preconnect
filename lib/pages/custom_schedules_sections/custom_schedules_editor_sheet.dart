@@ -420,6 +420,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                   suffixIcon: BracuActionButton(
                     onPressed: pickTitleTemplate,
                     label: 'Choose',
+                    outlined: false,
                     borderRadius: 10,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -569,7 +570,6 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                       reminderAt: reminderAt,
                     );
                   },
-                  filled: true,
                   icon: Icons.notifications_active,
                   label: 'Set Alarm',
                   borderRadius: 12,
@@ -602,7 +602,6 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                 width: double.infinity,
                 child: BracuActionButton(
                   onPressed: save,
-                  filled: true,
                   icon: Icons.save_rounded,
                   label: 'Save',
                   borderRadius: 12,

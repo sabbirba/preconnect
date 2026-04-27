@@ -437,10 +437,10 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-              Row(
-                children: [
-                  const Icon(Icons.timer_outlined, size: 18),
-                  const SizedBox(width: 8),
+          Row(
+            children: [
+              const Icon(Icons.timer_outlined, size: 18),
+              const SizedBox(width: 8),
               Text(
                 'Captive Wi-Fi Session',
                 style: TextStyle(
@@ -479,7 +479,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                 onPressed: _isCheckingSession
                     ? null
                     : () => unawaited(_openExtendSession(status!)),
-                filled: true,
                 icon: Icons.open_in_new_rounded,
                 label: 'Extend Session',
               ),
@@ -761,27 +760,26 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                     const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
-                    child: BracuActionButton(
-                      onPressed: _isConnecting
-                          ? null
-                          : () => unawaited(_runOneTapConnect()),
-                      filled: true,
-                      label: _isConnecting ? 'Connecting...' : 'Connect',
+                      child: BracuActionButton(
+                        onPressed: _isConnecting
+                            ? null
+                            : () => unawaited(_runOneTapConnect()),
+                        label: _isConnecting ? 'Connecting...' : 'Connect',
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: BracuActionButton(
-                      onPressed: (_isCheckingSession || _isConnecting)
-                          ? null
-                          : () => unawaited(_refreshSessionStatus()),
-                      icon: Icons.refresh_rounded,
-                      label: _isCheckingSession
-                          ? 'Checking...'
-                          : 'Check Session Time',
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: BracuActionButton(
+                        onPressed: (_isCheckingSession || _isConnecting)
+                            ? null
+                            : () => unawaited(_refreshSessionStatus()),
+                        icon: Icons.refresh_rounded,
+                        label: _isCheckingSession
+                            ? 'Checking...'
+                            : 'Check Session Time',
+                      ),
                     ),
-                  ),
                     const SizedBox(height: 4),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,

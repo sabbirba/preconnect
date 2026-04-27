@@ -352,7 +352,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                           onPressed: canSubmit
                               ? () => Navigator.of(sheetContext).pop(true)
                               : null,
-                          filled: true,
                           label: myOwnedReview == null ? 'Submit' : 'Save',
                         ),
                       ),
@@ -597,10 +596,10 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                         const SizedBox(height: 10),
                         SizedBox(
                           width: double.infinity,
-                        child: BracuActionButton(
-                          onPressed: (pickingFile || submitting)
-                              ? null
-                              : () async {
+                          child: BracuActionButton(
+                            onPressed: (pickingFile || submitting)
+                                ? null
+                                : () async {
                                     setSheetState(() {
                                       pickingFile = true;
                                     });
@@ -634,7 +633,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                                       selectedFileBytes = bytes;
                                     });
                                   },
-                            filled: true,
                             icon: Icons.upload_file_rounded,
                             label: 'Choose File',
                           ),
@@ -770,7 +768,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                                   linkUrl: url,
                                 );
                               },
-                        filled: true,
                         icon: activeTab == _AddMaterialTab.file
                             ? Icons.check_circle_outline
                             : Icons.link_rounded,

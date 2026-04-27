@@ -444,7 +444,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                     Expanded(
                       child: BracuActionButton(
                         onPressed: canPrint ? _sendToPrinter : null,
-                        filled: true,
                         icon: Icons.print_rounded,
                         label: 'Print',
                       ),

@@ -1120,16 +1120,13 @@ PopupMenuItem<T> compactPopupMenuItem<T>({
 
 const String _kPreconnectSupportNumber = '01865493144';
 const String _kPreconnectSupportReference = 'PreConnect App';
-const String _kPreconnectSupportQrUrl = 'https://preconnect.app/bkash-qr.jpg';
 const String _kPreconnectWhatsAppUrl =
     'https://api.whatsapp.com/send?phone=8801865493144&text=Hi%20PreConnect%2C%20I%20want%20to%20support%20the%20app.';
 const String kPreconnectRepositoryUrl =
     'https://github.com/sabbirba/preconnect';
 
 class BracuFundingSupportContent extends StatelessWidget {
-  const BracuFundingSupportContent({super.key, this.qrFit = BoxFit.contain});
-
-  final BoxFit qrFit;
+  const BracuFundingSupportContent({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -1206,23 +1203,6 @@ class BracuFundingSupportContent extends StatelessWidget {
               ),
             ),
           ],
-        ),
-        const SizedBox(height: 8),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final size = constraints.maxWidth;
-            return SizedBox(
-              width: double.infinity,
-              child: CachedImage(
-                url: _kPreconnectSupportQrUrl,
-                width: size,
-                height: size,
-                fit: qrFit,
-                placeholder: const BracuSkeletonBox(height: 220, radius: 0),
-                error: const SizedBox.shrink(),
-              ),
-            );
-          },
         ),
         const SizedBox(height: 8),
         Text(

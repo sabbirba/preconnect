@@ -16,41 +16,6 @@ class BracuSelectOption<T> {
   final bool showLeadingIcon;
 }
 
-ButtonStyle bracuFilledButtonStyle({
-  Color backgroundColor = BracuPalette.primary,
-  Color foregroundColor = Colors.white,
-  EdgeInsetsGeometry padding = const EdgeInsets.symmetric(
-    horizontal: 16,
-    vertical: 12,
-  ),
-  double borderRadius = 12,
-}) {
-  return ElevatedButton.styleFrom(
-    backgroundColor: backgroundColor,
-    foregroundColor: foregroundColor,
-    splashFactory: NoSplash.splashFactory,
-    overlayColor: Colors.transparent,
-    enableFeedback: false,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(borderRadius),
-    ),
-    padding: padding,
-  );
-}
-
-ButtonStyle bracuCompactPrimaryButtonStyle({
-  EdgeInsetsGeometry padding = const EdgeInsets.symmetric(
-    horizontal: 16,
-    vertical: 12,
-  ),
-  double borderRadius = 12,
-}) {
-  return bracuFilledButtonStyle(
-    padding: padding,
-    borderRadius: borderRadius,
-  );
-}
-
 ButtonStyle bracuOutlinedButtonStyle(
   BuildContext context, {
   Color? foregroundColor,
@@ -59,13 +24,14 @@ ButtonStyle bracuOutlinedButtonStyle(
     horizontal: 14,
     vertical: 12,
   ),
-  double borderRadius = 18,
+  double borderRadius = 12,
 }) {
   return OutlinedButton.styleFrom(
     foregroundColor: foregroundColor ?? BracuPalette.textPrimary(context),
     backgroundColor: Colors.transparent,
     side: BorderSide(
-      color: borderColor ??
+      color:
+          borderColor ??
           BracuPalette.textSecondary(context).withValues(alpha: 0.18),
     ),
     splashFactory: NoSplash.splashFactory,
@@ -86,7 +52,7 @@ ButtonStyle bracuCompactOutlinedButtonStyle(
     horizontal: 14,
     vertical: 12,
   ),
-  double borderRadius = 18,
+  double borderRadius = 12,
 }) {
   return bracuOutlinedButtonStyle(
     context,
@@ -101,7 +67,7 @@ ButtonStyle bracuCompactIconButtonStyle({
   Color? foregroundColor,
   Color? borderColor,
   EdgeInsetsGeometry padding = EdgeInsets.zero,
-  double borderRadius = 12,
+  double borderRadius = 10,
 }) {
   return IconButton.styleFrom(
     foregroundColor: foregroundColor ?? BracuPalette.primary,
@@ -121,39 +87,58 @@ class BracuActionButton extends StatelessWidget {
     this.icon,
     required this.label,
     required this.onPressed,
-    this.filled = false,
+    this.outlined = true,
     this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    this.borderRadius = 18,
+    this.borderRadius = 12,
     this.iconSize = 18,
   });
 
   final IconData? icon;
   final String label;
   final VoidCallback? onPressed;
-  final bool filled;
+  final bool outlined;
   final EdgeInsetsGeometry padding;
   final double borderRadius;
   final double iconSize;
 
   @override
   Widget build(BuildContext context) {
-    if (filled) {
+    if (!outlined) {
       if (icon != null) {
-        return ElevatedButton.icon(
+        return TextButton.icon(
           onPressed: onPressed,
           icon: Icon(icon, size: iconSize),
           label: Text(label),
-          style: bracuCompactPrimaryButtonStyle(
+          style: TextButton.styleFrom(
+            foregroundColor: BracuPalette.textPrimary(context),
+            splashFactory: NoSplash.splashFactory,
+            overlayColor: Colors.transparent,
+            enableFeedback: false,
             padding: padding,
-            borderRadius: borderRadius,
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(borderRadius),
+            ),
           ),
         );
       }
-      return ElevatedButton(
+
+      return TextButton(
         onPressed: onPressed,
-        style: bracuCompactPrimaryButtonStyle(
+        style: TextButton.styleFrom(
+          foregroundColor: BracuPalette.textPrimary(context),
+          splashFactory: NoSplash.splashFactory,
+          overlayColor: Colors.transparent,
+          enableFeedback: false,
           padding: padding,
-          borderRadius: borderRadius,
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(borderRadius),
+          ),
         ),
         child: Text(label),
       );
@@ -482,19 +467,20 @@ Future<bool> showBracuConfirmationDialog(
                         dialogContext,
                         foregroundColor: confirmColor,
                         borderColor: confirmColor.withValues(alpha: 0.6),
-                        borderRadius: 14,
+                        borderRadius: 12,
                       ),
                       child: Text(cancelLabel),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
+                    child: OutlinedButton(
                       onPressed: () => Navigator.of(dialogContext).pop(true),
-                      style: bracuFilledButtonStyle(
-                        backgroundColor: confirmColor,
-                        foregroundColor: Colors.white,
-                        borderRadius: 14,
+                      style: bracuOutlinedButtonStyle(
+                        dialogContext,
+                        foregroundColor: confirmColor,
+                        borderColor: confirmColor.withValues(alpha: 0.6),
+                        borderRadius: 12,
                       ),
                       child: Text(confirmLabel),
                     ),
@@ -644,23 +630,23 @@ class _BracuConfirmationActionDialogState
                       style: bracuOutlinedButtonStyle(
                         context,
                         foregroundColor: BracuPalette.textPrimary(context),
-                        borderColor:
-                            BracuPalette.textSecondary(context).withValues(
-                              alpha: 0.18,
-                            ),
-                        borderRadius: 14,
+                        borderColor: BracuPalette.textSecondary(
+                          context,
+                        ).withValues(alpha: 0.18),
+                        borderRadius: 12,
                       ),
                       child: Text(widget.cancelLabel),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
+                    child: OutlinedButton(
                       onPressed: _isLoading ? null : _handleConfirm,
-                      style: bracuFilledButtonStyle(
-                        backgroundColor: widget.confirmColor,
-                        foregroundColor: Colors.white,
-                        borderRadius: 14,
+                      style: bracuOutlinedButtonStyle(
+                        context,
+                        foregroundColor: widget.confirmColor,
+                        borderColor: widget.confirmColor.withValues(alpha: 0.6),
+                        borderRadius: 12,
                       ),
                       child: Text(widget.confirmLabel),
                     ),
@@ -1207,7 +1193,6 @@ class BracuSearchField extends StatelessWidget {
     this.query = '',
     this.onClear,
     this.autofocus = false,
-    this.fillAlpha = 0.92,
     this.borderRadius = 12,
     this.contentPadding,
     this.keySuffix,
@@ -1218,7 +1203,6 @@ class BracuSearchField extends StatelessWidget {
   final String query;
   final VoidCallback? onClear;
   final bool autofocus;
-  final double fillAlpha;
   final double borderRadius;
   final EdgeInsetsGeometry? contentPadding;
   final String? keySuffix;
@@ -1249,8 +1233,6 @@ class BracuSearchField extends StatelessWidget {
                 onPressed: onClear ?? controller.clear,
                 icon: Icon(Icons.close, color: hintColor),
               ),
-        filled: true,
-        fillColor: BracuPalette.card(context).withValues(alpha: fillAlpha),
         isDense: true,
         contentPadding: contentPadding,
         border: OutlineInputBorder(
@@ -1643,7 +1625,7 @@ class _BracuScrollTopButton extends StatelessWidget {
           duration: const Duration(milliseconds: 160),
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             child: SizedBox(
               width: 42,
               height: 42,

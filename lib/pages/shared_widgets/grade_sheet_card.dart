@@ -71,7 +71,6 @@ class _GradeSheetCardState extends State<GradeSheetCard> {
             const SizedBox(width: 12),
             BracuActionButton(
               onPressed: _isOpening ? null : _openGradeSheet,
-              filled: true,
               icon: Icons.picture_as_pdf_rounded,
               label: 'Open',
             ),

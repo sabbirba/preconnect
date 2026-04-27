@@ -425,7 +425,6 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                       ),
                       const SizedBox(width: 12),
                       BracuActionButton(
-                        filled: true,
                         onPressed: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
@@ -472,7 +471,6 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                       ),
                       const SizedBox(width: 12),
                       BracuActionButton(
-                        filled: true,
                         onPressed: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(

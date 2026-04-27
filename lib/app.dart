@@ -133,9 +133,7 @@ class MyApp extends StatefulWidget {
       ExamSchedule.preload(),
       CustomSchedulesPage.preload(),
     ];
-    await Future.wait(
-      tasks.map((task) => task.catchError((_) {})),
-    );
+    await Future.wait(tasks.map((task) => task.catchError((_) {})));
   }
 
   static ThemeMode _decodeTheme(String raw) {
@@ -399,36 +397,37 @@ class _MyAppState extends State<MyApp>
     if (_backgroundWarmupInFlight) return;
     final now = DateTime.now();
     if (_lastBackgroundWarmupAt != null &&
-        now.difference(_lastBackgroundWarmupAt!) <
-            const Duration(minutes: 1)) {
+        now.difference(_lastBackgroundWarmupAt!) < const Duration(minutes: 1)) {
       return;
     }
     _backgroundWarmupInFlight = true;
     _lastBackgroundWarmupAt = now;
     try {
-      await Future.wait<void>(<Future<void>>[
-        preloadHomeDashboardData().then((_) {}),
-        ProfileService().getProfile().then((_) {}),
-        AttendanceService().getAttendanceInfo().then((_) {}),
-        PaymentService().getPaymentInfo().then((_) {}),
-        ProgressService().getProgress().then((_) {}),
-        ScheduleService().getStudentSchedule().then((_) {}),
-        CustomSchedulesService().getItems().then((_) {}),
-        FriendScheduleStore().loadSnapshot().then((_) {}),
-        CalendarService().getCalendar().then((_) {}),
-        NotificationService().getRecentNotifications().then((_) {}),
-        GradeSheetService().getGradeSheet().then((_) {}),
-        SeatStatusService.preload(),
-        BusPage.preload(),
-        NotificationsPage.preload(),
-        DegreeProgressPage.preload(),
-        StudentProfile.preload(),
-        DevsPage.preload(),
-        AlarmPage.preload(),
-        ClassSchedule.preload(),
-        ExamSchedule.preload(),
-        CustomSchedulesPage.preload(),
-      ].map((task) => task.catchError((_) {})));
+      await Future.wait<void>(
+        <Future<void>>[
+          preloadHomeDashboardData().then((_) {}),
+          ProfileService().getProfile().then((_) {}),
+          AttendanceService().getAttendanceInfo().then((_) {}),
+          PaymentService().getPaymentInfo().then((_) {}),
+          ProgressService().getProgress().then((_) {}),
+          ScheduleService().getStudentSchedule().then((_) {}),
+          CustomSchedulesService().getItems().then((_) {}),
+          FriendScheduleStore().loadSnapshot().then((_) {}),
+          CalendarService().getCalendar().then((_) {}),
+          NotificationService().getRecentNotifications().then((_) {}),
+          GradeSheetService().getGradeSheet().then((_) {}),
+          SeatStatusService.preload(),
+          BusPage.preload(),
+          NotificationsPage.preload(),
+          DegreeProgressPage.preload(),
+          StudentProfile.preload(),
+          DevsPage.preload(),
+          AlarmPage.preload(),
+          ClassSchedule.preload(),
+          ExamSchedule.preload(),
+          CustomSchedulesPage.preload(),
+        ].map((task) => task.catchError((_) {})),
+      );
     } finally {
       _backgroundWarmupInFlight = false;
     }
@@ -528,7 +527,7 @@ class _MyAppState extends State<MyApp>
                     ),
                   ),
                   const SizedBox(height: 14),
-                  ElevatedButton.icon(
+                  OutlinedButton.icon(
                     onPressed: _isUnlocking
                         ? null
                         : () {
@@ -536,6 +535,30 @@ class _MyAppState extends State<MyApp>
                           },
                     icon: const Icon(Icons.fingerprint),
                     label: const Text('Unlock'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: BracuPalette.textPrimary(context),
+                      backgroundColor: Colors.transparent,
+                      splashFactory: NoSplash.splashFactory,
+                      overlayColor: Colors.transparent,
+                      enableFeedback: false,
+                      side: BorderSide(
+                        color: BracuPalette.textSecondary(
+                          context,
+                        ).withValues(alpha: 0.18),
+                      ),
+                      minimumSize: const Size(0, 44),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -655,22 +678,7 @@ class _MyAppState extends State<MyApp>
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: primary,
-          foregroundColor: Colors.white,
-          splashFactory: NoSplash.splashFactory,
-          overlayColor: Colors.transparent,
-          enableFeedback: false,
-          minimumSize: const Size(0, 44),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
       ),
@@ -685,23 +693,7 @@ class _MyAppState extends State<MyApp>
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          splashFactory: NoSplash.splashFactory,
-          overlayColor: Colors.transparent,
-          enableFeedback: false,
-          minimumSize: const Size(0, 44),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
       ),

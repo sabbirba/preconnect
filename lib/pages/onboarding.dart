@@ -375,7 +375,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       onPressed: _isStartingWebLogin
                           ? null
                           : () => _completeOnboarding(context),
-                      filled: true,
                       icon: Icons.arrow_forward_rounded,
                       label: 'Continue',
                       borderRadius: 12,

@@ -109,11 +109,15 @@ class _DevsPageState extends State<DevsPage> {
         },
       );
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        return _withPinnedAndManualContributorsStatic(const <_ContributorProfile>[]);
+        return _withPinnedAndManualContributorsStatic(
+          const <_ContributorProfile>[],
+        );
       }
       final decoded = jsonDecode(response.body);
       if (decoded is! List) {
-        return _withPinnedAndManualContributorsStatic(const <_ContributorProfile>[]);
+        return _withPinnedAndManualContributorsStatic(
+          const <_ContributorProfile>[],
+        );
       }
       final contributors = decoded
           .whereType<Map>()
@@ -135,7 +139,9 @@ class _DevsPageState extends State<DevsPage> {
       }
       return merged;
     } catch (_) {
-      return _withPinnedAndManualContributorsStatic(const <_ContributorProfile>[]);
+      return _withPinnedAndManualContributorsStatic(
+        const <_ContributorProfile>[],
+      );
     }
   }
 
@@ -243,8 +249,7 @@ const _manualContributors = <_ContributorProfile>[
     name: 'Mueen Ahmmed',
     handle: 'mueen-ahmmed',
     role: 'Faculty Reviews',
-    avatarUrl:
-        'https://media.licdn.com/dms/image/v2/D5603AQHtYo7APsdwwQ/profile-displayphoto-shrink_800_800/B56ZcH6GpoH4Ag-/0/1748184362516?e=1776902400&v=beta&t=lAxMqND2jjkT4ybK2z9zvePqMtMkCr3zEcZ4w_vfxDw',
+    avatarUrl: 'https://preconnect.app/Mueen-Ahmmed.jpeg',
     linkLabel: 'LinkedIn',
     url: 'https://www.linkedin.com/in/mueen-ahmmed-b337b8231/',
   ),
@@ -400,7 +405,7 @@ class _FundingCard extends StatelessWidget {
           style: TextStyle(color: BracuPalette.textSecondary(context)),
         ),
         const SizedBox(height: 12),
-        const BracuFundingSupportContent(qrFit: BoxFit.cover),
+        const BracuFundingSupportContent(),
       ],
     );
   }
@@ -604,17 +609,6 @@ class _DevGridTile extends StatelessWidget {
 
   final _ContributorProfile contributor;
 
-  Widget _avatarPlaceholder(BuildContext context) {
-    final initial = contributor.name.trim().isNotEmpty
-        ? contributor.name.trim().substring(0, 1).toUpperCase()
-        : '?';
-    return Container(
-      color: BracuPalette.primary.withValues(alpha: 0.12),
-      alignment: Alignment.center,
-      child: Text(initial, style: const TextStyle(fontWeight: FontWeight.w700)),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final textSecondary = BracuPalette.textSecondary(context);
@@ -630,17 +624,10 @@ class _DevGridTile extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox(
-                width: avatarSize,
-                height: avatarSize,
-                child: ClipOval(
-                  child: CachedImage(
-                    url: contributor.avatarUrl,
-                    fit: BoxFit.cover,
-                    placeholder: _avatarPlaceholder(context),
-                    error: _avatarPlaceholder(context),
-                  ),
-                ),
+              _ContributorAvatar(
+                name: contributor.name,
+                url: contributor.avatarUrl,
+                size: avatarSize,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -687,6 +674,44 @@ class _DevGridTile extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _ContributorAvatar extends StatelessWidget {
+  const _ContributorAvatar({
+    required this.name,
+    required this.url,
+    required this.size,
+  });
+
+  final String name;
+  final String url;
+  final double size;
+
+  Widget _placeholder(BuildContext context) {
+    final initial = name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : '?';
+    return Container(
+      color: BracuPalette.primary.withValues(alpha: 0.12),
+      alignment: Alignment.center,
+      child: Text(initial, style: const TextStyle(fontWeight: FontWeight.w700)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = _placeholder(context);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: ClipOval(
+        child: CachedImage(
+          url: url,
+          fit: BoxFit.cover,
+          placeholder: fallback,
+          error: fallback,
+        ),
+      ),
     );
   }
 }

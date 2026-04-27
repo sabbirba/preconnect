@@ -114,9 +114,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     return _applySelectedFilter(allSlots);
   }
 
-  Future<List<_FreeRoomSlot>> _loadAllSlots({
-    bool forceRefresh = false,
-  }) async {
+  Future<List<_FreeRoomSlot>> _loadAllSlots({bool forceRefresh = false}) async {
     final service = SeatStatusService();
     final details = await service.fetchAllSectionsDetailsFromApi(
       forceRefresh: forceRefresh,
@@ -714,7 +712,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
             const SizedBox(height: 14),
             BracuActionButton(
               onPressed: _showNextDayLabs,
-              filled: true,
               icon: Icons.arrow_forward_rounded,
               label: 'Show Next Day Labs',
             ),

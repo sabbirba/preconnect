@@ -324,7 +324,6 @@ class _CaptiveWifiBanner extends StatelessWidget {
             height: 34,
             child: BracuActionButton(
               onPressed: onOpenLogin,
-              filled: true,
               icon: Icons.login_rounded,
               label: 'One-Tap Captive Wi-Fi',
             ),

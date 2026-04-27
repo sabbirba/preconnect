@@ -772,18 +772,17 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             const SizedBox(height: 12),
                             SizedBox(
                               width: double.infinity,
-                            child: BracuActionButton(
-                              onPressed: () async {
-                                await _setExamAlarm(
-                                  context,
-                                  exam,
-                                  _minutesBefore[alarmKey]!,
-                                );
-                              },
-                              filled: true,
-                              icon: Icons.notifications_active,
-                              label: 'Set Alarm',
-                            ),
+                              child: BracuActionButton(
+                                onPressed: () async {
+                                  await _setExamAlarm(
+                                    context,
+                                    exam,
+                                    _minutesBefore[alarmKey]!,
+                                  );
+                                },
+                                icon: Icons.notifications_active,
+                                label: 'Set Alarm',
+                              ),
                             ),
                           ],
                         ),
@@ -955,7 +954,6 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                   );
                                 }
                               },
-                              filled: true,
                               icon: Icons.notifications_active,
                               label: 'Set Alarm',
                             ),
