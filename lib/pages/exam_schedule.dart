@@ -5,7 +5,6 @@ import 'package:preconnect/api/exam_map_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/shared_widgets/course_community_sheet.dart';
-import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/async_preload_cache.dart';
 import 'package:preconnect/tools/exam_sorting.dart';
@@ -36,30 +35,15 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   late Future<_ExamScheduleData> _future;
   _ExamScheduleData? _latestData;
   final ScrollController _scrollController = ScrollController();
-  int? _currentSessionSemesterId;
   final BracuHighlightScroller _highlightScroller = BracuHighlightScroller();
 
   @override
   void initState() {
     super.initState();
-    final cachedData = _preloadCache.value;
-    _latestData = cachedData;
-    _future = cachedData == null
-        ? _initializeExamSchedule()
-        : Future<_ExamScheduleData>.value(cachedData);
-    unawaited(_loadCurrentSessionSemesterId());
-    unawaited(_warmAndBind());
+    _latestData = _preloadCache.value;
+    _future = preloadData();
     ExamSchedule.jumpSignal.addListener(_onJumpRequested);
     bindRefreshBus(_onRefreshSignal);
-  }
-
-  Future<void> _warmAndBind() async {
-    final data = await preloadData();
-    if (!mounted) return;
-    setState(() {
-      _latestData = data;
-      _future = Future<_ExamScheduleData>.value(data);
-    });
   }
 
   static Future<_ExamScheduleData> preloadData({
@@ -74,19 +58,9 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   static Future<_ExamScheduleData> _loadExamData({
     bool forceRefresh = false,
   }) async {
-    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
     final service = ScheduleService();
-    final jsonString = forceRefresh
-        ? await service.fetchStudentScheduleForSemester(
-            semesterSessionId: currentSessionSemesterId,
-            fromGet: true,
-          )
-        : await service.getStudentScheduleForSemester(
-            semesterSessionId: currentSessionSemesterId,
-          );
-    final sections = service.parseStudentSections(
-      jsonString,
-      semesterSessionId: currentSessionSemesterId,
+    final sections = await service.getCurrentSemesterSections(
+      forceRefresh: forceRefresh,
     );
 
     if (sections.isEmpty) {
@@ -100,14 +74,9 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
     final overrides = await examService.getOverridesForSections(
       sections,
       forceRefresh: forceRefresh,
-      forcedSemesterSessionId: currentSessionSemesterId,
+      forcedSemesterSessionId: sections.first.semesterSessionId,
     );
     return _ExamScheduleData(sections: sections, overrides: overrides);
-  }
-
-  Future<_ExamScheduleData> _initializeExamSchedule() async {
-    await _loadCurrentSessionSemesterId();
-    return _fetchExamData();
   }
 
   @override
@@ -135,65 +104,6 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
     if (mounted) {
       setState(() {});
     }
-  }
-
-  Future<_ExamScheduleData> _fetchExamData({bool forceRefresh = false}) async {
-    final service = ScheduleService();
-    final currentSessionSemesterId = _currentSessionSemesterId;
-    final jsonString = forceRefresh
-        ? await service.fetchStudentScheduleForSemester(
-            semesterSessionId: currentSessionSemesterId,
-            fromGet: true,
-          )
-        : await service.getStudentScheduleForSemester(
-            semesterSessionId: currentSessionSemesterId,
-          );
-    final data = await _buildExamDataFromSections(
-      service.parseStudentSections(
-        jsonString,
-        semesterSessionId: currentSessionSemesterId,
-      ),
-      forceRefresh: forceRefresh,
-      forcedSemesterSessionId: currentSessionSemesterId,
-    );
-    _preloadCache.value = data;
-    if (mounted) {
-      setState(() {
-        _latestData = data;
-      });
-    }
-    return data;
-  }
-
-  Future<_ExamScheduleData> _buildExamDataFromSections(
-    List<Section> sections, {
-    required bool forceRefresh,
-    int? forcedSemesterSessionId,
-  }) async {
-    if (sections.isEmpty) {
-      return const _ExamScheduleData(
-        sections: <Section>[],
-        overrides: <String, ExamScheduleOverride>{},
-      );
-    }
-
-    final examService = ExamScheduleService();
-    var overrides = await examService.getOverridesForSections(
-      sections,
-      forceRefresh: forceRefresh,
-      forcedSemesterSessionId: forcedSemesterSessionId,
-    );
-    return _ExamScheduleData(sections: sections, overrides: overrides);
-  }
-
-  Future<void> _loadCurrentSessionSemesterId() async {
-    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
-    if (!mounted || currentSessionSemesterId == null) return;
-    if (_currentSessionSemesterId == currentSessionSemesterId) return;
-    setState(() {
-      _currentSessionSemesterId = currentSessionSemesterId;
-    });
-    unawaited(_handleRefresh(notify: false));
   }
 
   Future<void> _handleRefresh({bool notify = true}) async {

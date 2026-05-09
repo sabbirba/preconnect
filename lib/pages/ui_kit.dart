@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart'
     show ValueListenable, TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
@@ -22,7 +21,6 @@ import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/web_shared.dart';
-import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -541,9 +539,8 @@ Future<bool> _openPdfNativelyOrFallback(String filePath) async {
 
 List<section.Section> buildCurrentSectionsForCalculator(
   ProgressInfo info,
-  String? scheduleJson,
+  List<section.Section> sections,
 ) {
-  final sections = ScheduleService().parseStudentSections(scheduleJson);
   final courseTitleByCode = <String, String>{};
   for (final course in info.curriculumCourses) {
     final code = course.code.trim().toUpperCase();
@@ -571,12 +568,9 @@ List<section.Section> buildCurrentSectionsForCalculator(
 
 Future<void> openCgpaCalculatorPage(BuildContext context) async {
   try {
+    final navigator = Navigator.of(context);
     final info = await ProgressService().getProgress();
     final profile = await ProfileService().getProfile();
-    final semesterSessionId = await resolveCurrentSessionSemesterId();
-    final scheduleJson = await ScheduleService().getStudentScheduleForSemester(
-      semesterSessionId: semesterSessionId,
-    );
     if (!context.mounted) return;
 
     if (info == null) {
@@ -588,12 +582,15 @@ Future<void> openCgpaCalculatorPage(BuildContext context) async {
     }
 
     final currentCgpa = (profile?['cgpa'] ?? '').trim();
-    final sections = buildCurrentSectionsForCalculator(info, scheduleJson);
-    await Navigator.of(context).push(
+    final currentSections = buildCurrentSectionsForCalculator(
+      info,
+      await ScheduleService().getCurrentSemesterSections(),
+    );
+    await navigator.push(
       MaterialPageRoute(
         builder: (_) => CgpaCalculatorPage(
           info: info,
-          currentSections: sections,
+          currentSections: currentSections,
           currentCgpa: currentCgpa,
         ),
       ),

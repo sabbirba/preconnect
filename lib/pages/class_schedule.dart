@@ -4,7 +4,6 @@ import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/shared_widgets/course_community_sheet.dart';
 import 'package:preconnect/pages/shared_widgets/schedule_entry_card.dart';
-import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/async_preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
@@ -46,31 +45,16 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   late Future<_ScheduleData> _future;
   _ScheduleData? _latestData;
   final ScrollController _scrollController = ScrollController();
-  int? _currentSessionSemesterId;
   final BracuHighlightScroller _highlightScroller = BracuHighlightScroller();
   int _visibleWeekCount = _initialVisibleWeekCount;
 
   @override
   void initState() {
     super.initState();
-    final cachedData = _preloadCache.value;
-    _latestData = cachedData;
-    _future = cachedData == null
-        ? _initializeSchedule()
-        : Future<_ScheduleData>.value(cachedData);
-    unawaited(_loadCurrentSessionSemesterId());
-    unawaited(_warmAndBind());
+    _latestData = _preloadCache.value;
+    _future = preloadData();
     ClassSchedule.jumpSignal.addListener(_onJumpRequested);
     bindRefreshBus(_onRefreshSignal);
-  }
-
-  Future<void> _warmAndBind() async {
-    final data = await preloadData();
-    if (!mounted) return;
-    setState(() {
-      _latestData = data;
-      _future = Future<_ScheduleData>.value(data);
-    });
   }
 
   static Future<_ScheduleData> preloadData({bool forceRefresh = false}) async {
@@ -83,20 +67,10 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   static Future<_ScheduleData> _loadScheduleData({
     bool forceRefresh = false,
   }) async {
-    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+    final scheduleService = ScheduleService();
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
-    final service = ScheduleService();
-    final jsonString = forceRefresh
-        ? await service.fetchStudentScheduleForSemester(
-            semesterSessionId: currentSessionSemesterId,
-            fromGet: true,
-          )
-        : await service.getStudentScheduleForSemester(
-            semesterSessionId: currentSessionSemesterId,
-          );
-    final sections = service.parseStudentSections(
-      jsonString,
-      semesterSessionId: currentSessionSemesterId,
+    final sections = await scheduleService.getCurrentSemesterSections(
+      forceRefresh: forceRefresh,
     );
     final isRamadan = await ramadanFuture;
     return _buildScheduleDataFromSectionsStatic(
@@ -104,11 +78,6 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       shouldHighlightCurrentSemester: true,
       isRamadan: isRamadan,
     );
-  }
-
-  Future<_ScheduleData> _initializeSchedule() async {
-    await _loadCurrentSessionSemesterId();
-    return _loadSchedule();
   }
 
   @override
@@ -145,37 +114,6 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       mounted: mounted,
       rebuild: _attemptScrollToHighlight,
     );
-  }
-
-  Future<_ScheduleData> _loadSchedule({bool forceRefresh = false}) async {
-    final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
-    final service = ScheduleService();
-    final currentSessionSemesterId = _currentSessionSemesterId;
-    final jsonString = forceRefresh
-        ? await service.fetchStudentScheduleForSemester(
-            semesterSessionId: currentSessionSemesterId,
-            fromGet: true,
-          )
-        : await service.getStudentScheduleForSemester(
-            semesterSessionId: currentSessionSemesterId,
-          );
-    final sections = service.parseStudentSections(
-      jsonString,
-      semesterSessionId: currentSessionSemesterId,
-    );
-    final isRamadan = await ramadanFuture;
-    final data = _buildScheduleDataFromSections(
-      sections,
-      shouldHighlightCurrentSemester: true,
-      isRamadan: isRamadan,
-    );
-    _preloadCache.value = data;
-    if (mounted) {
-      setState(() {
-        _latestData = data;
-      });
-    }
-    return data;
   }
 
   static _ScheduleData _buildScheduleDataFromSectionsStatic(
@@ -304,115 +242,31 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     return now;
   }
 
-  _ScheduleData _buildScheduleDataFromSections(
-    List<section.Section> sections, {
-    required bool shouldHighlightCurrentSemester,
-    required bool isRamadan,
-  }) {
-    if (sections.isEmpty) {
-      return _ScheduleData(
-        grouped: {},
-        scrollSchedule: null,
-        scrollDateTime: null,
-        isRamadan: isRamadan,
-      );
-    }
-
-    final Map<String, List<Map<String, dynamic>>> grouped = {};
-    section.ClassSchedule? scrollSchedule;
-    DateTime? scrollDateTime;
-    final now = DateTime.now();
-    final nowMinutes = now.hour * 60 + now.minute;
-
-    for (final section in sections) {
-      for (final classSchedule in section.sectionSchedule.classSchedules) {
-        grouped.putIfAbsent(classSchedule.day, () => []);
-        grouped[classSchedule.day]!.add({
-          "schedule": classSchedule,
-          "courseCode": section.courseCode,
-          "sectionName": section.sectionName,
-          "roomNumber": section.roomNumber,
-          "faculties": section.faculties,
-          "consumedSeat": section.consumedSeat,
-          "capacity": section.capacity,
-          "courseType": section.courseType,
-          "semesterSessionId": section.semesterSessionId,
-        });
-
-        if (shouldHighlightCurrentSemester) {
-          final candidate = _nextOccurrence(
-            day: classSchedule.day,
-            startTime: classSchedule.startTime,
-            endTime: classSchedule.endTime,
-            isRamadan: isRamadan,
-            now: now,
-            nowMinutes: nowMinutes,
-          );
-          if (candidate != null &&
-              (scrollDateTime == null || candidate.isBefore(scrollDateTime))) {
-            scrollDateTime = candidate;
-            scrollSchedule = classSchedule;
-          }
-        }
-      }
-    }
-
-    for (final entries in grouped.values) {
-      entries.sort((a, b) {
-        final aSchedule = a["schedule"] as section.ClassSchedule;
-        final bSchedule = b["schedule"] as section.ClassSchedule;
-        final aStart = RamadanTiming.effectiveStartMinutes(
-          aSchedule.startTime,
-          aSchedule.endTime,
-          isRamadan: isRamadan,
-        );
-        final bStart = RamadanTiming.effectiveStartMinutes(
-          bSchedule.startTime,
-          bSchedule.endTime,
-          isRamadan: isRamadan,
-        );
-        if (aStart != bStart) return aStart.compareTo(bStart);
-        final aEnd = RamadanTiming.effectiveEndMinutes(
-          aSchedule.startTime,
-          aSchedule.endTime,
-          isRamadan: isRamadan,
-        );
-        final bEnd = RamadanTiming.effectiveEndMinutes(
-          bSchedule.startTime,
-          bSchedule.endTime,
-          isRamadan: isRamadan,
-        );
-        return aEnd.compareTo(bEnd);
-      });
-    }
-    return _ScheduleData(
-      grouped: grouped,
-      scrollSchedule: scrollSchedule,
-      scrollDateTime: scrollDateTime,
-      isRamadan: isRamadan,
-    );
-  }
-
-  Future<void> _loadCurrentSessionSemesterId() async {
-    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
-    if (!mounted || currentSessionSemesterId == null) return;
-    if (_currentSessionSemesterId == currentSessionSemesterId) return;
-    setState(() {
-      _currentSessionSemesterId = currentSessionSemesterId;
-    });
-    unawaited(_handleRefresh(notify: false));
-  }
-
   Future<void> _handleRefresh({bool notify = true}) async {
     if (!await ensureOnline(context, notify: notify)) {
       return;
     }
+    Future<_ScheduleData> refreshedFuture;
+    try {
+      refreshedFuture = preloadData(forceRefresh: true);
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _future = Future<_ScheduleData>.error(error);
+        });
+      }
+      rethrow;
+    }
     setState(() {
       _highlightScroller.reset();
       _visibleWeekCount = _initialVisibleWeekCount;
-      _future = preloadData(forceRefresh: true);
+      _future = refreshedFuture;
     });
-    await _future;
+    final refreshed = await refreshedFuture;
+    if (!mounted) return;
+    setState(() {
+      _latestData = refreshed;
+    });
     if (notify) {
       RefreshBus.instance.notify(reason: 'class_schedule');
     }
@@ -447,42 +301,6 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
         );
       },
     );
-  }
-
-  DateTime? _nextOccurrence({
-    required String day,
-    required String startTime,
-    required String endTime,
-    required bool isRamadan,
-    required DateTime now,
-    required int nowMinutes,
-  }) {
-    final targetWeekday = BracuTime.weekdayFromName(day);
-    if (targetWeekday == null) return null;
-
-    final adjusted = RamadanTiming.adjustRange(
-      startTime,
-      endTime,
-      isRamadan: isRamadan,
-    );
-
-    final startParsed = BracuTime.parseHourMinute(adjusted.startTime);
-    if (startParsed == null) return null;
-    final (startHour, startMinute) = startParsed;
-    final startMinutes = startHour * 60 + startMinute;
-
-    final endParsed = BracuTime.parseHourMinute(adjusted.endTime);
-    final endHour = endParsed?.$1 ?? 0;
-    final endMinute = endParsed?.$2 ?? 0;
-    final endMinutes = endHour * 60 + endMinute;
-
-    if (targetWeekday != now.weekday || nowMinutes >= endMinutes) {
-      return null;
-    }
-    if (nowMinutes <= startMinutes) {
-      return DateTime(now.year, now.month, now.day, startHour, startMinute);
-    }
-    return now;
   }
 
   List<_RenderedScheduleSection> _buildRenderedSections(

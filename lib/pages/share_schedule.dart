@@ -10,7 +10,6 @@ import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:archive/archive.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:share_plus/share_plus.dart';
@@ -64,10 +63,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
   }
 
   Future<void> _primeCurrentSemesterSchedule() async {
-    final semesterSessionId = await resolveCurrentSessionSemesterId();
-    await ScheduleService().fetchStudentScheduleForSemester(
-      semesterSessionId: semesterSessionId,
-    );
+    await ScheduleService().getCurrentSemesterSections();
   }
 
   Future<void> _refreshIfOnline({bool notify = false}) async {
@@ -132,18 +128,10 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       final studentId = profile?['studentId'] ?? '';
       final photoFilePath = profile?['photoFilePath'] ?? '';
 
-      final semesterSessionId = await resolveCurrentSessionSemesterId();
-      final cachedSchedule = await ScheduleService()
-          .getStudentScheduleForSemester(semesterSessionId: semesterSessionId);
-      final jsonString = forceRefresh
-          ? await ScheduleService().fetchStudentScheduleForSemester(
-              semesterSessionId: semesterSessionId,
-            )
-          : (cachedSchedule ??
-                await ScheduleService().fetchStudentScheduleForSemester(
-                  semesterSessionId: semesterSessionId,
-                ));
-      if (jsonString == null || jsonString.trim().isEmpty) {
+      final sections = await ScheduleService().getCurrentSemesterSections(
+        forceRefresh: forceRefresh,
+      );
+      if (sections.isEmpty) {
         if (_base64Data == null) {
           _safeSetState(() {
             errorMessage = 'No schedule data available offline.';
@@ -153,7 +141,8 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       }
 
       final fingerprint = _fastHash(
-        'v$_qrPayloadVersion|$studentId|$fullName|$photoFilePath|$jsonString',
+        'v$_qrPayloadVersion|$studentId|$fullName|$photoFilePath|'
+        '${sections.length}|${sections.first.semesterSessionId}',
       );
       if (!forceRefresh &&
           cachedBase64 != null &&
@@ -164,11 +153,6 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
         });
         return;
       }
-
-      final sections = ScheduleService().parseStudentSections(
-        jsonString,
-        semesterSessionId: semesterSessionId,
-      );
 
       final courses = sections.map((section) {
         final schedules = section.sectionSchedule.classSchedules.map((c) {

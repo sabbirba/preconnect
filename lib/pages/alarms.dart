@@ -6,7 +6,6 @@ import 'package:flutter_alarmkit/flutter_alarmkit.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/exam_map_service.dart';
-import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/shared_widgets/schedule_entry_card.dart';
@@ -69,15 +68,6 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     unawaited(_handleRefresh(notify: false));
   }
 
-  static Future<int?> _resolveCurrentSessionSemesterId() async {
-    final parsed = int.tryParse(
-      (await AppPreferencesStore().getString('currentSessionSemesterId') ?? '')
-          .trim(),
-    );
-    if (parsed != null && parsed > 0) return parsed;
-    return null;
-  }
-
   Future<void> _warmAndBind() async {
     final data = await preloadData();
     if (!mounted) return;
@@ -100,19 +90,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
 
   static Future<_AlarmData> _loadAlarmData({bool forceRefresh = false}) async {
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
-    final semesterSessionId = await _resolveCurrentSessionSemesterId();
     final scheduleService = ScheduleService();
-    final jsonString = forceRefresh
-        ? await scheduleService.fetchStudentScheduleForSemester(
-            semesterSessionId: semesterSessionId,
-            fromGet: true,
-          )
-        : await scheduleService.getStudentScheduleForSemester(
-            semesterSessionId: semesterSessionId,
-          );
-    final sections = scheduleService.parseStudentSections(
-      jsonString,
-      semesterSessionId: semesterSessionId,
+    final sections = await scheduleService.getCurrentSemesterSections(
+      forceRefresh: forceRefresh,
     );
     final overrides = await ExamScheduleService().getOverridesForSections(
       sections,

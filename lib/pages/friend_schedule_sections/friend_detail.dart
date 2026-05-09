@@ -1,12 +1,11 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/friend_schedule.dart';
+import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/friend_schedule_sections/compare_schedules.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
-import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/time_utils.dart';
@@ -53,16 +52,26 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
   }
 
   Future<List<Course>?> _loadMyCourses() async {
-    final semesterSessionId = await resolveCurrentSessionSemesterId();
-    final jsonString = await ScheduleService().getStudentScheduleForSemester(
-      semesterSessionId: semesterSessionId,
+    final sections = await ScheduleService().getCurrentSemesterSections();
+    if (sections.isEmpty) return null;
+    return sections.map(_sectionToCourse).toList();
+  }
+
+  Course _sectionToCourse(section.Section sectionItem) {
+    final schedules = sectionItem.sectionSchedule.classSchedules.map((c) {
+      return CourseSchedule(
+        day: c.day,
+        startTime: c.startTime,
+        endTime: c.endTime,
+      );
+    }).toList();
+    return Course(
+      courseCode: sectionItem.courseCode,
+      schedule: schedules,
+      sectionName: sectionItem.sectionName,
+      roomNumber: sectionItem.roomNumber,
+      faculties: sectionItem.faculties,
     );
-    if (jsonString == null || jsonString.isEmpty) return null;
-    final parsed = jsonDecode(jsonString);
-    final coursesData = parsed is Map ? parsed['courses'] : parsed;
-    return (coursesData as List<dynamic>? ?? [])
-        .map((e) => Course.fromJson(e as Map<String, dynamic>))
-        .toList();
   }
 
   Future<void> _openCompare() async {

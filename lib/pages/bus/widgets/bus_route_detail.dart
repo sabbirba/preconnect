@@ -245,22 +245,38 @@ class _RouteLiveMapCard extends StatelessWidget {
                           Positioned(
                             top: 18,
                             left: 18,
-                            child: BracuSkeletonBox(width: 110, height: 28, radius: 14),
+                            child: BracuSkeletonBox(
+                              width: 110,
+                              height: 28,
+                              radius: 14,
+                            ),
                           ),
                           Positioned(
                             right: 18,
                             top: 18,
-                            child: BracuSkeletonBox(width: 44, height: 44, radius: 14),
+                            child: BracuSkeletonBox(
+                              width: 44,
+                              height: 44,
+                              radius: 14,
+                            ),
                           ),
                           Positioned(
                             right: 18,
                             bottom: 18,
-                            child: BracuSkeletonBox(width: 86, height: 86, radius: 24),
+                            child: BracuSkeletonBox(
+                              width: 86,
+                              height: 86,
+                              radius: 24,
+                            ),
                           ),
                           Positioned(
                             left: 18,
                             bottom: 18,
-                            child: BracuSkeletonBox(width: 120, height: 20, radius: 10),
+                            child: BracuSkeletonBox(
+                              width: 120,
+                              height: 20,
+                              radius: 10,
+                            ),
                           ),
                         ],
                       ),
@@ -328,7 +344,6 @@ class _RouteActionButton extends StatelessWidget {
     );
   }
 }
-
 
 class _LiveTrackingCard extends StatelessWidget {
   const _LiveTrackingCard({required this.route});

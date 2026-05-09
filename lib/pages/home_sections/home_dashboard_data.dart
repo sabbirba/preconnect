@@ -174,19 +174,13 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
                 return null;
               });
 
-      final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
       final scheduleFuture = needsSchedule
-          ? (forceRefresh
-                    ? ScheduleService().fetchStudentScheduleForSemester(
-                        semesterSessionId: currentSessionSemesterId,
-                      )
-                    : ScheduleService().getStudentScheduleForSemester(
-                        semesterSessionId: currentSessionSemesterId,
-                      ))
+          ? ScheduleService()
+                .getCurrentSemesterSections(forceRefresh: forceRefresh)
                 .catchError((e) {
-                  return null;
+                  return const <section.Section>[];
                 })
-          : Future<String?>.value(null);
+          : Future<List<section.Section>>.value(const <section.Section>[]);
 
       final personalSchedulesFuture = cardVisibility.showExamCountdownCard
           ? (forceRefresh
@@ -222,26 +216,26 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       ]);
 
       Map<String, String?>? profile = results[0] as Map<String, String?>?;
-      String? scheduleJson = results[1] as String?;
+      var scheduleSections = results[1] as List<section.Section>;
       final personalSchedules = results[2] as List<CustomSchedule>;
       final ramadan = results[3] as RamadanStatus;
       final isRamadan = ramadan.isRamadan;
       final holidayStatus = results[4] as HolidayStatus;
 
       if (!forceRefresh &&
-          (profile == null || (needsSchedule && scheduleJson == null))) {
+          (profile == null || (needsSchedule && scheduleSections.isEmpty))) {
         final fallbackResults = await Future.wait<dynamic>([
           profile == null
               ? ProfileService().fetchProfile()
               : Future.value(profile),
-          scheduleJson == null && needsSchedule
-              ? ScheduleService().fetchStudentScheduleForSemester(
-                  semesterSessionId: currentSessionSemesterId,
+          needsSchedule
+              ? ScheduleService().getCurrentSemesterSections(
+                  forceRefresh: false,
                 )
-              : Future.value(scheduleJson),
+              : Future.value(const <section.Section>[]),
         ]);
         profile = fallbackResults[0] as Map<String, String?>?;
-        scheduleJson = fallbackResults[1] as String?;
+        scheduleSections = fallbackResults[1] as List<section.Section>;
       }
 
       final photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
@@ -249,13 +243,9 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       final List<section.Section> sections = [];
       Map<String, ExamScheduleOverride> examOverrides =
           const <String, ExamScheduleOverride>{};
-      if (scheduleJson != null && scheduleJson.trim().isNotEmpty) {
-        final decoded = ScheduleService().parseStudentSections(
-          scheduleJson,
-          semesterSessionId: currentSessionSemesterId,
-        );
-        sections.addAll(decoded);
-        for (final section in decoded) {
+      if (scheduleSections.isNotEmpty) {
+        sections.addAll(scheduleSections);
+        for (final section in scheduleSections) {
           for (final s in section.sectionSchedule.classSchedules) {
             final adjusted = RamadanTiming.adjustRange(
               s.startTime,
@@ -294,7 +284,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         ramadan: ramadan,
         holiday: holidayStatus,
         cardVisibility: cardVisibility,
-        scheduleJson: scheduleJson,
+        scheduleJson: scheduleSections.isEmpty ? null : 'shared-cache',
       );
     } catch (error) {
       final fallbackVisibility = await HomeCardPreferences.load().catchError((

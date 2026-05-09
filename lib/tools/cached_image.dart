@@ -116,4 +116,3 @@ class CachedImage extends StatelessWidget {
     );
   }
 }
-

@@ -7,7 +7,6 @@ import 'package:preconnect/api/notification_service.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/calendar_info.dart';
-import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 
 class CalendarService {
   CalendarService._internal();
@@ -80,18 +79,7 @@ class CalendarService {
   Future<({String startDate, String endDate, String sourceFingerprint})>
   _resolveRange() async {
     final scheduleService = ScheduleService();
-    final semesterSessionId = await resolveCurrentSessionSemesterId();
-    var scheduleJson = await scheduleService.getStudentScheduleForSemester(
-      semesterSessionId: semesterSessionId,
-    );
-    scheduleJson ??= await scheduleService.fetchStudentScheduleForSemester(
-      semesterSessionId: semesterSessionId,
-      fromGet: true,
-    );
-    final sections = scheduleService.parseStudentSections(
-      scheduleJson,
-      semesterSessionId: semesterSessionId,
-    );
+    final sections = await scheduleService.getCurrentSemesterSections();
 
     final dates = <DateTime>[];
     for (final section in sections) {
@@ -129,7 +117,13 @@ class CalendarService {
     return (
       startDate: formatter.format(start),
       endDate: formatter.format(end),
-      sourceFingerprint: _fingerprint(scheduleJson),
+      sourceFingerprint: _fingerprint(
+        sections
+            .map(
+              (section) => '${section.semesterSessionId}:${section.sectionId}',
+            )
+            .join('|'),
+      ),
     );
   }
 

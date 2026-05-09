@@ -3,7 +3,6 @@ import 'package:preconnect/api/exam_map_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/model/section_info.dart' as section;
-import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
@@ -51,23 +50,14 @@ class QuietModeSchedulePlanner {
     final rawWindows = <QuietModeScheduleWindow>[];
 
     try {
-      final semesterSessionId = await resolveCurrentSessionSemesterId();
       final scheduleService = ScheduleService();
-      final scheduleJson = semesterSessionId == null
-          ? await scheduleService.getStudentSchedule()
-          : await scheduleService.getStudentScheduleForSemester(
-              semesterSessionId: semesterSessionId,
-            );
-      final sections = scheduleService.parseStudentSections(
-        scheduleJson,
-        semesterSessionId: semesterSessionId,
-      );
+      final sections = await scheduleService.getCurrentSemesterSections();
 
       if (sections.isNotEmpty) {
         final examService = ExamScheduleService();
         final overrides = await examService.getOverridesForSections(
           sections,
-          forcedSemesterSessionId: semesterSessionId,
+          forcedSemesterSessionId: sections.first.semesterSessionId,
         );
         final isRamadan = await RamadanTiming.isRamadan();
         rawWindows.addAll(

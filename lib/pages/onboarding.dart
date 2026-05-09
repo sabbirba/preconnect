@@ -363,7 +363,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       borderRadius: 12,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
-                        vertical: 12,
+                        vertical: 8,
                       ),
                     ),
                   ),
@@ -375,22 +375,28 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           ? null
                           : () => _completeOnboarding(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: BracuPalette.primary,
+                        backgroundColor: kIsWeb
+                            ? const Color(0xFF1E6BE3)
+                            : BracuPalette.primary,
                         foregroundColor: Colors.white,
-                        disabledBackgroundColor: BracuPalette.primary
-                            .withValues(alpha: 0.45),
+                        disabledBackgroundColor:
+                            (kIsWeb
+                                    ? const Color(0xFF1E6BE3)
+                                    : BracuPalette.primary)
+                                .withValues(alpha: 0.45),
                         disabledForegroundColor: Colors.white70,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
-                          vertical: 16,
+                          vertical: kIsWeb ? 22 : 20,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(kIsWeb ? 16 : 14),
                         ),
                         textStyle: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
                         ),
                       ),
                       child: const Text('Continue'),

@@ -30,6 +30,8 @@ import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
+import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/play_install_referrer.dart';
@@ -116,12 +118,15 @@ class MyApp extends StatefulWidget {
       AttendanceService().getAttendanceInfo().then((_) {}),
       PaymentService().getPaymentInfo().then((_) {}),
       ProgressService().getProgress().then((_) {}),
-      ScheduleService().getStudentSchedule().then((_) {}),
+      ScheduleService().getCurrentSemesterSections().then((_) {}),
       CustomSchedulesService().getItems().then((_) {}),
       FriendScheduleStore().loadSnapshot().then((_) {}),
       CalendarService().getCalendar().then((_) {}),
       NotificationService().getRecentNotifications().then((_) {}),
       GradeSheetService().getGradeSheet().then((_) {}),
+      fetchCampusMapData().then((_) {}),
+      fetchTransportScheduleUrl().then((_) {}),
+      preloadCurrentSessionSemesterId().then((_) {}),
       SeatStatusService.preload(),
       BusPage.preload(),
       NotificationsPage.preload(),
@@ -410,7 +415,7 @@ class _MyAppState extends State<MyApp>
           AttendanceService().getAttendanceInfo().then((_) {}),
           PaymentService().getPaymentInfo().then((_) {}),
           ProgressService().getProgress().then((_) {}),
-          ScheduleService().getStudentSchedule().then((_) {}),
+          ScheduleService().getCurrentSemesterSections().then((_) {}),
           CustomSchedulesService().getItems().then((_) {}),
           FriendScheduleStore().loadSnapshot().then((_) {}),
           CalendarService().getCalendar().then((_) {}),

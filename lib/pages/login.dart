@@ -12,7 +12,6 @@ import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/token_storage.dart';
-import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
 class LoginPage extends StatefulWidget {
@@ -224,11 +223,7 @@ class _LoginPageState extends State<LoginPage> {
         return false;
       }
       unawaited(ProfileService().fetchProfile());
-      unawaited(
-        ScheduleService().fetchStudentScheduleForSemester(
-          semesterSessionId: await resolveCurrentSessionSemesterId(),
-        ),
-      );
+      unawaited(ScheduleService().getCurrentSemesterSections());
       unawaited(PaymentService().fetchPaymentInfo());
       unawaited(AttendanceService().fetchAttendanceInfo());
       unawaited(AdvisingService().fetchAdvisingInfo());

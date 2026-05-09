@@ -177,12 +177,7 @@ class BracuActionButton extends StatelessWidget {
       return TextButton(
         onPressed: effectiveOnPressed,
         style: _textButtonStyle(context),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _label(),
-          ],
-        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [_label()]),
       );
     }
 
@@ -206,12 +201,7 @@ class BracuActionButton extends StatelessWidget {
         padding: padding,
         borderRadius: borderRadius,
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _label(),
-        ],
-      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [_label()]),
     );
   }
 }
@@ -2397,14 +2387,10 @@ class BracuSkeletonCompactTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Padding(
       padding: EdgeInsets.all(10),
-      child: Center(
-        child: BracuSkeletonBox(width: 42, height: 18, radius: 10),
-      ),
+      child: Center(child: BracuSkeletonBox(width: 42, height: 18, radius: 10)),
     );
   }
 }
-
-
 
 class BracuEmptyState extends StatelessWidget {
   const BracuEmptyState({super.key, required this.message});

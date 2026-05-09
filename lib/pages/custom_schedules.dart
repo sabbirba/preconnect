@@ -15,7 +15,6 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/custom_schedules_sections/custom_schedules_editor_sheet.dart'
     show showCustomSchedulesEditorSheet;
 import 'package:preconnect/pages/custom_schedules_sections/custom_schedules_shared.dart';
-import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
 class CustomSchedulesPage extends StatefulWidget {
@@ -117,19 +116,8 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
     }
 
     try {
-      final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
       final scheduleService = ScheduleService();
-      if (currentSessionSemesterId == null) {
-        _cachedCourseOptions = const <CustomSchedulesCourseOption>[];
-        return;
-      }
-      final jsonString = await scheduleService.fetchStudentScheduleForSemester(
-        semesterSessionId: currentSessionSemesterId,
-      );
-      final sections = scheduleService.parseStudentSections(
-        jsonString,
-        semesterSessionId: currentSessionSemesterId,
-      );
+      final sections = await scheduleService.getCurrentSemesterSections();
       final courseOptions = <CustomSchedulesCourseOption>[];
       final seen = <String>{};
       for (final sectionItem in sections) {
@@ -246,20 +234,8 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
 
     final loadFuture = () async {
       try {
-        final currentSessionSemesterId =
-            await resolveCurrentSessionSemesterId();
         final scheduleService = ScheduleService();
-        if (currentSessionSemesterId == null) {
-          return const <CustomSchedulesCourseOption>[];
-        }
-        final jsonString = await scheduleService
-            .fetchStudentScheduleForSemester(
-              semesterSessionId: currentSessionSemesterId,
-            );
-        final sections = scheduleService.parseStudentSections(
-          jsonString,
-          semesterSessionId: currentSessionSemesterId,
-        );
+        final sections = await scheduleService.getCurrentSemesterSections();
         final courseOptions = <CustomSchedulesCourseOption>[];
         final seen = <String>{};
         for (final sectionItem in sections) {

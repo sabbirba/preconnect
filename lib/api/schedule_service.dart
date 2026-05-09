@@ -5,6 +5,7 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/model/section_info.dart' as section;
+import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 
 class ScheduleService {
   static final ScheduleService _instance = ScheduleService._internal();
@@ -14,6 +15,8 @@ class ScheduleService {
   final ApiClient _client = ApiClient();
   final Map<String, Future<String?>> _scheduleFetchInFlight =
       <String, Future<String?>>{};
+  Future<List<section.Section>>? _currentSemesterSectionsInFlight;
+  List<section.Section>? _currentSemesterSectionsCache;
 
   static const String _scheduleKey = 'StudentSchedule';
   String _cacheKeyForSemester(int? semesterSessionId) =>
@@ -143,6 +146,47 @@ class ScheduleService {
         semesterSessionId: semesterSessionId,
         fromGet: true,
       ),
+    );
+  }
+
+  Future<List<section.Section>> getCurrentSemesterSections({
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh) {
+      final cached = _currentSemesterSectionsCache;
+      if (cached != null) return cached;
+      final active = _currentSemesterSectionsInFlight;
+      if (active != null) return active;
+    }
+
+    final future = _loadCurrentSemesterSections(forceRefresh: forceRefresh);
+    _currentSemesterSectionsInFlight = future;
+    try {
+      final sections = await future;
+      _currentSemesterSectionsCache = sections;
+      return sections;
+    } finally {
+      if (identical(_currentSemesterSectionsInFlight, future)) {
+        _currentSemesterSectionsInFlight = null;
+      }
+    }
+  }
+
+  Future<List<section.Section>> _loadCurrentSemesterSections({
+    required bool forceRefresh,
+  }) async {
+    final semesterSessionId = await requireCurrentSessionSemesterId();
+    final jsonString = forceRefresh
+        ? await fetchStudentScheduleForSemester(
+            semesterSessionId: semesterSessionId,
+            fromGet: true,
+          )
+        : await getStudentScheduleForSemester(
+            semesterSessionId: semesterSessionId,
+          );
+    return parseStudentSections(
+      jsonString,
+      semesterSessionId: semesterSessionId,
     );
   }
 }
