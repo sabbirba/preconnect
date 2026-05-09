@@ -22,11 +22,6 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
     unawaited(_refreshRouteData());
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
   Future<void> _callAttendant(String phone) async {
     final normalizedPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
     if (normalizedPhone.isEmpty) return;
@@ -63,7 +58,9 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
         _refreshing = false;
         _error = 'Unable to load bus data right now.';
       });
-      debugPrint('Bus route refresh failed: $error');
+      if (kDebugMode) {
+        debugPrint('Bus route refresh failed: $error');
+      }
     }
   }
 
@@ -71,6 +68,7 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
   Widget build(BuildContext context) {
     final route = _route;
     final vehicle = widget.vehicle;
+    final isLoading = _refreshing && _error == null;
     final hasLivePosition = route.live.hasPosition;
     final hasLiveStats =
         route.live.speed.trim().isNotEmpty ||
@@ -98,6 +96,10 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
         body: BracuRefreshList(
           onRefresh: _refreshRouteData,
           children: [
+            if (isLoading)
+              const BracuCard(
+                child: BracuSkeletonList(itemCount: 3, compact: true),
+              ),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
@@ -362,7 +364,7 @@ class _LiveTrackerDetailsCard extends StatelessWidget {
     final updatedLabel = _updatedLabel(live);
 
     if (speedLabel == null && updatedLabel == null) {
-      return const SizedBox.shrink();
+      return const BracuSkeletonBox(height: 20, radius: 8);
     }
 
     return Center(

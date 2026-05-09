@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart'
     show ValueListenable, TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
@@ -22,6 +23,7 @@ import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/web_shared.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 export 'package:preconnect/tools/web_shared.dart';
@@ -238,10 +240,7 @@ Widget buildCenteredOutlinedActionButton({
   return Padding(
     padding: padding,
     child: Center(
-      child: BracuActionButton(
-        onPressed: onPressed,
-        label: label,
-      ),
+      child: BracuActionButton(onPressed: onPressed, label: label),
     ),
   );
 }
@@ -476,11 +475,11 @@ Future<void> openGradeSheet(BuildContext context) async {
     }
     final opened = await _openPdfNativelyOrFallback(gradeSheet.file.path);
     if (opened) return;
-    _showPdfSnackBar(
-      messenger,
-      'No app found to open this PDF.',
-      isDark: isDark,
+    await _sharePdfFallback(
+      gradeSheet.file.path,
+      title: await GradeSheetService().gradeSheetFileName(),
     );
+    if (!context.mounted) return;
   } on PlatformException catch (error) {
     final message = switch (error.code) {
       'NO_APP_FOUND' => 'No app found to open this PDF.',
@@ -491,6 +490,14 @@ Future<void> openGradeSheet(BuildContext context) async {
   } catch (_) {
     _showPdfSnackBar(messenger, 'Could not open the PDF.', isDark: isDark);
   }
+}
+
+Future<void> _sharePdfFallback(String filePath, {required String title}) async {
+  try {
+    await SharePlus.instance.share(
+      ShareParams(files: [XFile(filePath)], text: title),
+    );
+  } catch (_) {}
 }
 
 void _showPdfSnackBar(
@@ -512,7 +519,8 @@ void _showPdfSnackBar(
 
 Future<bool> _openPdfNativelyOrFallback(String filePath) async {
   if (defaultTargetPlatform == TargetPlatform.android ||
-      defaultTargetPlatform == TargetPlatform.iOS) {
+      defaultTargetPlatform == TargetPlatform.iOS ||
+      defaultTargetPlatform == TargetPlatform.macOS) {
     try {
       return await _pdfOpenChannel.invokeMethod<bool>(
             'openPdf',
@@ -535,7 +543,7 @@ List<section.Section> buildCurrentSectionsForCalculator(
   ProgressInfo info,
   String? scheduleJson,
 ) {
-  final sections = section.parseSectionsFromScheduleJson(scheduleJson);
+  final sections = ScheduleService().parseStudentSections(scheduleJson);
   final courseTitleByCode = <String, String>{};
   for (final course in info.curriculumCourses) {
     final code = course.code.trim().toUpperCase();
@@ -803,17 +811,18 @@ class _BracuRewardVideoSectionState extends State<BracuRewardVideoSection> {
                   const SizedBox(width: 12),
                   ConstrainedBox(
                     constraints: const BoxConstraints(minWidth: 118),
-                child: BracuActionButton(
-                  onPressed: _isLoading ? null : _watchRewardAd,
-                  label: supportCount > 0
-                      ? '${widget.buttonLabel} #$supportCount'
-                      : widget.buttonLabel,
-                  borderRadius: 10,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                ),
+                    child: BracuActionButton(
+                      onPressed: _isLoading ? null : _watchRewardAd,
+                      label: supportCount > 0
+                          ? '${widget.buttonLabel} #$supportCount'
+                          : widget.buttonLabel,
+                      isLoading: _isLoading,
+                      borderRadius: 10,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -901,6 +910,7 @@ class _BracuInterstitialAdSectionState
                 child: BracuActionButton(
                   onPressed: _isLoading ? null : _showInterstitial,
                   label: 'Show',
+                  isLoading: _isLoading,
                   borderRadius: 10,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,

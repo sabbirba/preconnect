@@ -10,7 +10,10 @@ extension _DegreeProgressPageStateHelpers on _DegreeProgressPageState {
       semesterSessionId: currentSessionSemesterId,
     );
     if (!mounted) return;
-    final sections = section.parseSectionsFromScheduleJson(scheduleJson);
+    final sections = scheduleService.parseStudentSections(
+      scheduleJson,
+      semesterSessionId: currentSessionSemesterId,
+    );
     if (_sameSections(_currentSemesterSections, sections)) return;
     setState(() {
       _currentSemesterSections = sections;

@@ -1,6 +1,7 @@
 package com.sabbirba.preconnect
 
 import android.content.ActivityNotFoundException
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -446,18 +447,69 @@ class MainActivity : FlutterFragmentActivity() {
                 "${packageName}.fileprovider",
                 source,
             )
-            val intent = Intent(Intent.ACTION_VIEW).apply {
+            val viewIntent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(contentUri, "application/pdf")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                clipData = ClipData.newRawUri("preconnect_pdf", contentUri)
+                putExtra(Intent.EXTRA_STREAM, contentUri)
             }
-            startActivity(intent)
+            startActivity(viewIntent)
             result.success(true)
         } catch (_: ActivityNotFoundException) {
-            result.success(false)
+            val browserOpened = openPdfInPreferredBrowser(source)
+            result.success(browserOpened)
         } catch (e: Exception) {
             result.error("OPEN_ERROR", e.message ?: "Failed to open PDF", null)
         }
+    }
+
+    private fun openPdfInPreferredBrowser(source: File): Boolean {
+        val contentUri = FileProvider.getUriForFile(
+            this,
+            "${packageName}.fileprovider",
+            source,
+        )
+        val browserPackages = listOf(
+            "com.android.chrome",
+            "com.chrome.beta",
+            "com.chrome.dev",
+            "org.mozilla.firefox",
+            "com.microsoft.emmx",
+            "com.sec.android.app.sbrowser",
+        )
+        for (packageName in browserPackages) {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(contentUri, "application/pdf")
+                setPackage(packageName)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                clipData = ClipData.newRawUri("preconnect_pdf", contentUri)
+                putExtra(Intent.EXTRA_STREAM, contentUri)
+            }
+            try {
+                grantUriPermission(
+                    packageName,
+                    contentUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                )
+                startActivity(intent)
+                return true
+            } catch (_: ActivityNotFoundException) {
+                revokeUriPermission(
+                    packageName,
+                    contentUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                )
+            } catch (_: SecurityException) {
+                revokeUriPermission(
+                    packageName,
+                    contentUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                )
+            }
+        }
+        return false
     }
 
     private fun printPdf(call: MethodCall, result: MethodChannel.Result) {

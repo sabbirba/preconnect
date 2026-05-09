@@ -40,12 +40,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _guestId = '';
   String _clientName = '';
   String _printerHost = '';
-  String _printerStatus = 'Detecting campus printer...';
+  String _printerStatus = '';
   bool _hasSignedInProfile = false;
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
   int _copies = 1;
   bool _busy = false;
   bool _discovering = false;
+  bool _historyLoaded = false;
 
   @override
   void initState() {
@@ -126,7 +127,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     setState(() {
       _discovering = true;
       _printerHost = '';
-      _printerStatus = 'Scanning...';
     });
     try {
       final savedHost =
@@ -167,10 +167,24 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   Future<void> _loadHistory() async {
     final raw = (await AppStorage.instance.getString(_historyKey) ?? '').trim();
-    if (raw.isEmpty) return;
+    if (raw.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _history = const <_PrintHistoryEntry>[];
+        _historyLoaded = true;
+      });
+      return;
+    }
     try {
       final decoded = jsonDecode(raw);
-      if (decoded is! List<dynamic>) return;
+      if (decoded is! List<dynamic>) {
+        if (!mounted) return;
+        setState(() {
+          _history = const <_PrintHistoryEntry>[];
+          _historyLoaded = true;
+        });
+        return;
+      }
       final history = decoded
           .whereType<Map<String, dynamic>>()
           .map(_PrintHistoryEntry.fromJson)
@@ -179,8 +193,15 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       if (!mounted) return;
       setState(() {
         _history = history;
+        _historyLoaded = true;
       });
-    } catch (_) {}
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _history = const <_PrintHistoryEntry>[];
+        _historyLoaded = true;
+      });
+    }
   }
 
   Future<void> _addHistory(_PrintHistoryEntry entry) async {
@@ -379,6 +400,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                           : () => _discoverPrinter(),
                       label: 'Scan',
                       outlined: false,
+                      isLoading: _discovering,
                     ),
                   ],
                 ),
@@ -438,6 +460,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                         onPressed: _busy ? null : _pickPrintFile,
                         icon: Icons.picture_as_pdf_outlined,
                         label: 'Choose',
+                        isLoading: _busy && _fileName.isEmpty,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -446,6 +469,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                         onPressed: canPrint ? _sendToPrinter : null,
                         icon: Icons.print_rounded,
                         label: 'Print',
+                        isLoading: _busy && _fileName.isNotEmpty,
                       ),
                     ),
                   ],
@@ -454,7 +478,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
             ),
           ),
           const SizedBox(height: 12),
-          _PrintHistoryCard(history: _history, onDelete: _deleteHistory),
+          _PrintHistoryCard(
+            history: _history,
+            isLoaded: _historyLoaded,
+            onDelete: _deleteHistory,
+          ),
         ],
       ),
     );
@@ -537,15 +565,46 @@ class _StudentDetailLine extends StatelessWidget {
 }
 
 class _PrintHistoryCard extends StatelessWidget {
-  const _PrintHistoryCard({required this.history, required this.onDelete});
+  const _PrintHistoryCard({
+    required this.history,
+    required this.isLoaded,
+    required this.onDelete,
+  });
 
   final List<_PrintHistoryEntry> history;
+  final bool isLoaded;
   final ValueChanged<_PrintHistoryEntry> onDelete;
 
   @override
   Widget build(BuildContext context) {
+    if (!isLoaded) {
+      return const BracuCard(
+        child: BracuSkeletonList(itemCount: 2, compact: true),
+      );
+    }
+
     if (history.isEmpty) {
-      return const SizedBox.shrink();
+      return BracuCard(
+        child: Row(
+          children: [
+            Icon(
+              Icons.history_rounded,
+              color: BracuPalette.textSecondary(context),
+              size: 22,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'No print history yet',
+                style: TextStyle(
+                  color: BracuPalette.textSecondary(context),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     return BracuCard(

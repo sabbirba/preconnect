@@ -4,7 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:preconnect/api/friend_schedule_store.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:archive/archive.dart';
@@ -31,6 +31,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
   Map<String, FriendMetadata> _metadata = {};
   final FriendScheduleStore _store = FriendScheduleStore();
   final MobileScannerController _galleryScanner = MobileScannerController();
+  final ImagePicker _imagePicker = ImagePicker();
   final TextEditingController _searchController = TextEditingController();
   bool _isPicking = false;
   String _searchQuery = '';
@@ -189,14 +190,13 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
     }
     setState(() => _isPicking = true);
     try {
-      final picked = await FilePicker.pickFiles(
-        type: FileType.image,
-        allowMultiple: false,
-        withData: true,
+      final picked = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 100,
       );
-      if (picked == null || picked.files.isEmpty) return;
+      if (picked == null) return;
 
-      final imagePath = await _ensureReadableImagePath(picked.files.first);
+      final imagePath = await _ensureReadableImagePath(picked);
       if (imagePath.isEmpty) {
         if (!mounted) return;
         showAppSnackBar(context, 'Unable to read selected image');
@@ -227,15 +227,16 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
     }
   }
 
-  Future<String> _ensureReadableImagePath(PlatformFile file) async {
-    final path = file.path?.trim() ?? '';
+  Future<String> _ensureReadableImagePath(XFile file) async {
+    final path = file.path.trim();
     if (path.isNotEmpty && (!Platform.isIOS && !Platform.isMacOS)) {
       return path;
     }
     try {
-      final bytes = file.bytes;
-      if (bytes == null || bytes.isEmpty) return path;
-      final ext = file.extension?.trim() ?? '';
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) return path;
+      final name = file.name.trim();
+      final ext = name.contains('.') ? name.split('.').last.trim() : '';
       final safeExt = ext.isEmpty ? 'png' : ext;
       final tempFile = File(
         '${Directory.systemTemp.path}/preconnect_scan_${DateTime.now().millisecondsSinceEpoch}.$safeExt',

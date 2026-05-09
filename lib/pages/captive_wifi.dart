@@ -419,7 +419,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
   Widget _sessionInfoCard(BuildContext context) {
     final status = _sessionStatus;
     if (status == null && !_isCheckingSession) {
-      return const SizedBox.shrink();
+      return const BracuCard(
+        child: BracuSkeletonList(itemCount: 2, compact: true),
+      );
     }
     final textPrimary = BracuPalette.textPrimary(context);
     final textSecondary = BracuPalette.textSecondary(context);
@@ -764,7 +766,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                         onPressed: _isConnecting
                             ? null
                             : () => unawaited(_runOneTapConnect()),
-                        label: _isConnecting ? 'Connecting...' : 'Connect',
+                        label: 'Connect',
+                        isLoading: _isConnecting,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -775,9 +778,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                             ? null
                             : () => unawaited(_refreshSessionStatus()),
                         icon: Icons.refresh_rounded,
-                        label: _isCheckingSession
-                            ? 'Checking...'
-                            : 'Check Session Time',
+                        label: 'Check Session Time',
+                        isLoading: _isCheckingSession,
                       ),
                     ),
                     const SizedBox(height: 4),

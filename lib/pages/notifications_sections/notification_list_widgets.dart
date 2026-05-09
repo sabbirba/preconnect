@@ -46,17 +46,19 @@ class HeaderActionButton extends StatelessWidget {
     super.key,
     required this.icon,
     required this.onTap,
+    this.isLoading = false,
   });
 
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(left: 10),
       child: InkWell(
-        onTap: onTap,
+        onTap: isLoading ? null : onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(8),
@@ -64,7 +66,18 @@ class HeaderActionButton extends StatelessWidget {
             color: BracuPalette.primary.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, size: 20, color: BracuPalette.primary),
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: isLoading
+                ? const CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      BracuPalette.primary,
+                    ),
+                  )
+                : Icon(icon, size: 20, color: BracuPalette.primary),
+          ),
         ),
       ),
     );

@@ -17,10 +17,7 @@ class CalendarPage extends StatefulWidget {
 class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
   late Future<CalendarFeed?> _future;
   CalendarFeed? _lastFeed;
-  GlobalKey? _highlightKey;
-  String? _lastHighlightToken;
-  bool _didScroll = false;
-  bool _scrollRetry = false;
+  final BracuHighlightScroller _highlightScroller = BracuHighlightScroller();
 
   @override
   void initState() {
@@ -53,8 +50,7 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
   Future<void> _refresh({bool notify = true}) async {
     final next = CalendarService().fetchCalendar(fallback: _lastFeed);
     setState(() {
-      _didScroll = false;
-      _scrollRetry = false;
+      _highlightScroller.reset();
       _future = next;
     });
     final refreshed = await next;
@@ -85,7 +81,13 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
           }
 
           final feed = _lastFeed ?? snapshot.data;
-          final items = feed?.items ?? const <CalendarEntry>[];
+          if (feed == null) {
+            return buildRefreshLoadingState(
+              onRefresh: _refresh,
+              topSpacing: 180,
+            );
+          }
+          final items = feed.items;
           if (items.isEmpty) {
             return buildRefreshEmptyState(
               onRefresh: _refresh,
@@ -113,12 +115,8 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
           final highlightToken = targetDate == null
               ? null
               : 'focus_${targetDate.year}_${targetDate.month}_${targetDate.day}';
-          _highlightKey = null;
-          if (highlightToken != null && highlightToken != _lastHighlightToken) {
-            _lastHighlightToken = highlightToken;
-            _didScroll = false;
-            _scrollRetry = false;
-          }
+          _highlightScroller.clearKey();
+          _highlightScroller.resetForToken(highlightToken);
           final children = <Widget>[];
           for (final entry in grouped.entries) {
             final isTargetSection =
@@ -149,12 +147,12 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
                       final isTargetCard =
                           isTargetSection && itemEntry.key == 0;
                       if (isTargetCard) {
-                        _highlightKey ??= GlobalKey();
+                        _highlightScroller.ensureKey();
                       }
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 10),
                         child: _CalendarCard(
-                          key: isTargetCard ? _highlightKey : null,
+                          key: isTargetCard ? _highlightScroller.key : null,
                           item: itemEntry.value,
                           isHighlighted: false,
                         ),
@@ -173,22 +171,10 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
               children: children,
             ),
           );
-          if (!_didScroll && _highlightKey != null) {
-            attemptScrollToHighlightedKey(
-              highlightKey: _highlightKey,
-              hasRetried: _scrollRetry,
-              alignment: 0.18,
-              retry: () {
-                _scrollRetry = true;
-                if (mounted) {
-                  setState(() {});
-                }
-              },
-              onScrolled: () {
-                _didScroll = true;
-              },
-            );
-          }
+          _highlightScroller.attempt(
+            mounted: mounted,
+            rebuild: () => setState(() {}),
+          );
           return content;
         },
       ),

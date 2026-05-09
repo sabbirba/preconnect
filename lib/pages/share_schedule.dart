@@ -456,6 +456,19 @@ class _ShareScheduleLoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox.shrink();
+    return BracuRefreshList(
+      onRefresh: () async {},
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      children: const [
+        SizedBox(height: 28),
+        BracuSkeletonBox(height: 24, radius: 10),
+        SizedBox(height: 12),
+        BracuCard(child: BracuSkeletonBox(height: 260, radius: 16)),
+        SizedBox(height: 14),
+        BracuSectionTitle(title: 'How to use'),
+        SizedBox(height: 10),
+        BracuCard(child: BracuSkeletonList(itemCount: 1, compact: true)),
+      ],
+    );
   }
 }

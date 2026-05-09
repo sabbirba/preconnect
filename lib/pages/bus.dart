@@ -8,6 +8,7 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/async_preload_cache.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -28,8 +29,8 @@ class BusPage extends StatefulWidget {
 }
 
 class _BusPageState extends State<BusPage> {
-  static _BusDataPackage? _cachedData;
-  static Future<_BusDataPackage>? _preloadFuture;
+  static final AsyncPreloadCache<_BusDataPackage> _preloadCache =
+      AsyncPreloadCache<_BusDataPackage>();
 
   String? _error;
   _BusDataPackage? _data;
@@ -38,34 +39,19 @@ class _BusPageState extends State<BusPage> {
   @override
   void initState() {
     super.initState();
-    _data = _cachedData;
+    _data = _preloadCache.value;
     _load();
     _fetchSchedulePdfUrl();
     unawaited(_warmAndBind());
   }
 
-  static Future<_BusDataPackage> preloadData({bool forceRefresh = false}) async {
-    if (!forceRefresh && _cachedData != null) {
-      return _cachedData!;
-    }
-    if (!forceRefresh) {
-      final inFlight = _preloadFuture;
-      if (inFlight != null) {
-        return inFlight;
-      }
-    }
-
-    final future = _fetchBusDataPackage();
-    _preloadFuture = future;
-    try {
-      final data = await future;
-      _cachedData = data;
-      return data;
-    } finally {
-      if (identical(_preloadFuture, future)) {
-        _preloadFuture = null;
-      }
-    }
+  static Future<_BusDataPackage> preloadData({
+    bool forceRefresh = false,
+  }) async {
+    return _preloadCache.get(
+      forceRefresh: forceRefresh,
+      loader: _fetchBusDataPackage,
+    );
   }
 
   Future<void> _warmAndBind() async {
@@ -89,7 +75,9 @@ class _BusPageState extends State<BusPage> {
         _schedulePdfUrl = resolvedUrl ?? '';
       });
     } catch (error) {
-      debugPrint('Failed to fetch schedule URL: $error');
+      if (kDebugMode) {
+        debugPrint('Failed to fetch schedule URL: $error');
+      }
     }
   }
 
@@ -105,14 +93,15 @@ class _BusPageState extends State<BusPage> {
       if (!mounted) return;
       setState(() {
         _data = package;
-        _cachedData = package;
       });
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _error = 'Unable to load bus route data right now.';
       });
-      debugPrint('Bus data load failed: $error');
+      if (kDebugMode) {
+        debugPrint('Bus data load failed: $error');
+      }
     }
   }
 

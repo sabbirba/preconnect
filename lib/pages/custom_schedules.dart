@@ -613,6 +613,13 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
 
           final items =
               _latestItems ?? snapshot.data ?? const <CustomSchedule>[];
+          if (_latestItems == null &&
+              snapshot.connectionState == ConnectionState.waiting) {
+            return buildRefreshLoadingState(
+              onRefresh: () => _refresh(forceRefresh: true),
+              topSpacing: 180,
+            );
+          }
           final dayGroups = _groupItemsByDay(items);
 
           if (items.isEmpty) {

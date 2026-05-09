@@ -69,11 +69,21 @@ class _GradeSheetCardState extends State<GradeSheetCard> {
               ),
             ),
             const SizedBox(width: 12),
-            BracuActionButton(
-              onPressed: _isOpening ? null : _openGradeSheet,
-              icon: Icons.picture_as_pdf_rounded,
-              label: 'Open',
-            ),
+            _isOpening
+                ? OutlinedButton(
+                    onPressed: null,
+                    style: bracuCompactOutlinedButtonStyle(context),
+                    child: const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : BracuActionButton(
+                    onPressed: _openGradeSheet,
+                    icon: Icons.picture_as_pdf_rounded,
+                    label: 'Open',
+                  ),
           ],
         ),
       ),

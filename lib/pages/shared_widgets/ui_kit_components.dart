@@ -91,6 +91,7 @@ class BracuActionButton extends StatelessWidget {
     this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     this.borderRadius = 12,
     this.iconSize = 18,
+    this.isLoading = false,
   });
 
   final IconData? icon;
@@ -100,55 +101,96 @@ class BracuActionButton extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final double borderRadius;
   final double iconSize;
+  final bool isLoading;
+
+  Widget _spinner(BuildContext context) {
+    final color = outlined
+        ? BracuPalette.primary
+        : BracuPalette.textPrimary(context);
+    return SizedBox(
+      width: iconSize,
+      height: iconSize,
+      child: CircularProgressIndicator(
+        strokeWidth: 2,
+        valueColor: AlwaysStoppedAnimation<Color>(color),
+      ),
+    );
+  }
+
+  Widget _label() {
+    return Text(label);
+  }
+
+  ButtonStyle _textButtonStyle(BuildContext context) {
+    return TextButton.styleFrom(
+      foregroundColor: BracuPalette.textPrimary(context),
+      splashFactory: NoSplash.splashFactory,
+      overlayColor: Colors.transparent,
+      enableFeedback: false,
+      padding: padding,
+      minimumSize: Size.zero,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final effectiveOnPressed = isLoading ? null : onPressed;
+    final effectiveIcon = isLoading
+        ? _spinner(context)
+        : Icon(icon, size: iconSize);
+    if (isLoading) {
+      final child = Center(child: _spinner(context));
+      if (!outlined) {
+        return TextButton(
+          onPressed: null,
+          style: _textButtonStyle(context),
+          child: child,
+        );
+      }
+
+      return OutlinedButton(
+        onPressed: null,
+        style: bracuCompactOutlinedButtonStyle(
+          context,
+          padding: padding,
+          borderRadius: borderRadius,
+        ),
+        child: child,
+      );
+    }
+
     if (!outlined) {
       if (icon != null) {
         return TextButton.icon(
-          onPressed: onPressed,
-          icon: Icon(icon, size: iconSize),
-          label: Text(label),
-          style: TextButton.styleFrom(
-            foregroundColor: BracuPalette.textPrimary(context),
-            splashFactory: NoSplash.splashFactory,
-            overlayColor: Colors.transparent,
-            enableFeedback: false,
-            padding: padding,
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: VisualDensity.compact,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(borderRadius),
-            ),
-          ),
+          onPressed: effectiveOnPressed,
+          icon: effectiveIcon,
+          label: _label(),
+          style: _textButtonStyle(context),
         );
       }
 
       return TextButton(
-        onPressed: onPressed,
-        style: TextButton.styleFrom(
-          foregroundColor: BracuPalette.textPrimary(context),
-          splashFactory: NoSplash.splashFactory,
-          overlayColor: Colors.transparent,
-          enableFeedback: false,
-          padding: padding,
-          minimumSize: Size.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          visualDensity: VisualDensity.compact,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(borderRadius),
-          ),
+        onPressed: effectiveOnPressed,
+        style: _textButtonStyle(context),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _label(),
+          ],
         ),
-        child: Text(label),
       );
     }
 
     if (icon != null) {
       return OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: iconSize),
-        label: Text(label),
+        onPressed: effectiveOnPressed,
+        icon: effectiveIcon,
+        label: _label(),
         style: bracuCompactOutlinedButtonStyle(
           context,
           padding: padding,
@@ -158,13 +200,77 @@ class BracuActionButton extends StatelessWidget {
     }
 
     return OutlinedButton(
-      onPressed: onPressed,
+      onPressed: effectiveOnPressed,
       style: bracuCompactOutlinedButtonStyle(
         context,
         padding: padding,
         borderRadius: borderRadius,
       ),
-      child: Text(label),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _label(),
+        ],
+      ),
+    );
+  }
+}
+
+class BracuAsyncActionButton extends StatefulWidget {
+  const BracuAsyncActionButton({
+    super.key,
+    this.icon,
+    required this.label,
+    required this.onPressed,
+    this.outlined = true,
+    this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    this.borderRadius = 12,
+    this.iconSize = 18,
+  });
+
+  final IconData? icon;
+  final String label;
+  final Future<void> Function()? onPressed;
+  final bool outlined;
+  final EdgeInsetsGeometry padding;
+  final double borderRadius;
+  final double iconSize;
+
+  @override
+  State<BracuAsyncActionButton> createState() => _BracuAsyncActionButtonState();
+}
+
+class _BracuAsyncActionButtonState extends State<BracuAsyncActionButton> {
+  bool _isLoading = false;
+
+  Future<void> _handlePressed() async {
+    final action = widget.onPressed;
+    if (_isLoading || action == null) return;
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      await action();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuActionButton(
+      icon: widget.icon,
+      label: widget.label,
+      onPressed: widget.onPressed == null ? null : _handlePressed,
+      outlined: widget.outlined,
+      padding: widget.padding,
+      borderRadius: widget.borderRadius,
+      iconSize: widget.iconSize,
+      isLoading: _isLoading,
     );
   }
 }
@@ -933,6 +1039,54 @@ void attemptScrollToHighlightedKey({
   });
 }
 
+class BracuHighlightScroller {
+  GlobalKey? key;
+  String? _lastToken;
+  bool _didScroll = false;
+  bool _hasRetried = false;
+
+  GlobalKey ensureKey() {
+    return key ??= GlobalKey();
+  }
+
+  void clearKey() {
+    key = null;
+  }
+
+  void reset() {
+    _didScroll = false;
+    _hasRetried = false;
+  }
+
+  void resetForToken(String? token) {
+    if (token == null || token == _lastToken) return;
+    _lastToken = token;
+    reset();
+  }
+
+  void attempt({
+    required bool mounted,
+    required VoidCallback rebuild,
+    double alignment = 0.18,
+    Duration duration = const Duration(milliseconds: 450),
+  }) {
+    if (_didScroll || key == null) return;
+    attemptScrollToHighlightedKey(
+      highlightKey: key,
+      hasRetried: _hasRetried,
+      alignment: alignment,
+      duration: duration,
+      retry: () {
+        _hasRetried = true;
+        if (mounted) rebuild();
+      },
+      onScrolled: () {
+        _didScroll = true;
+      },
+    );
+  }
+}
+
 class BracuSelectChip extends StatelessWidget {
   const BracuSelectChip({
     super.key,
@@ -1506,7 +1660,7 @@ Widget buildRefreshLoadingState({
   return BracuRefreshPlaceholder(
     onRefresh: onRefresh,
     topSpacing: topSpacing,
-    child: const SizedBox.shrink(),
+    child: const BracuLoading(),
   );
 }
 
@@ -1963,7 +2117,28 @@ class BracuLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox.shrink();
+    final useCompact = compact ?? false;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (label.trim().isNotEmpty) ...[
+          Text(
+            label,
+            style: TextStyle(
+              color: BracuPalette.textSecondary(context),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+        BracuSkeletonList(
+          itemCount: itemCount,
+          compact: useCompact,
+          showLabel: false,
+        ),
+      ],
+    );
   }
 }
 
@@ -1983,7 +2158,16 @@ class BracuSkeletonList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox.shrink();
+    return _BracuShimmer(
+      child: Column(
+        children: List.generate(itemCount, (index) {
+          return Padding(
+            padding: EdgeInsets.only(bottom: index == itemCount - 1 ? 0 : 12),
+            child: BracuCard(child: _BracuSkeletonRow(compact: compact)),
+          );
+        }),
+      ),
+    );
   }
 }
 
@@ -2003,7 +2187,26 @@ class BracuSkeletonGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox.shrink();
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final tileWidth =
+            (width - spacing * (crossAxisCount - 1)) / crossAxisCount;
+        return _BracuShimmer(
+          child: Wrap(
+            spacing: spacing,
+            runSpacing: spacing,
+            children: List.generate(itemCount, (index) {
+              return SizedBox(
+                width: tileWidth,
+                height: itemHeight,
+                child: const BracuCard(child: _BracuSkeletonTile()),
+              );
+            }),
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -2102,7 +2305,195 @@ class BracuSkeletonBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(width: width, height: height);
+    final box = Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: BracuPalette.textSecondary(context).withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(radius),
+      ),
+    );
+    final shimmerValue = _BracuShimmerScope.maybeOf(context);
+    if (shimmerValue != null) {
+      return box;
+    }
+    return _BracuShimmer(child: box);
+  }
+}
+
+class _BracuSkeletonRow extends StatelessWidget {
+  const _BracuSkeletonRow({required this.compact});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const BracuSkeletonBox(width: 52, height: 52, radius: 16),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const BracuSkeletonBox(height: 14, radius: 8),
+              SizedBox(height: compact ? 8 : 10),
+              const BracuSkeletonBox(height: 10, radius: 8),
+              if (!compact) ...[
+                const SizedBox(height: 8),
+                const BracuSkeletonBox(height: 10, radius: 8),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BracuSkeletonTile extends StatelessWidget {
+  const _BracuSkeletonTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxHeight < 60) {
+          return const BracuSkeletonCompactTile();
+        }
+        final compact = constraints.maxHeight < 78;
+        final padding = compact ? 10.0 : 12.0;
+        final iconSize = compact ? 22.0 : 28.0;
+        return Padding(
+          padding: EdgeInsets.all(padding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              BracuSkeletonBox(width: iconSize, height: iconSize, radius: 10),
+              SizedBox(height: compact ? 8 : 10),
+              const BracuSkeletonBox(height: 10, radius: 8),
+              if (!compact) ...[
+                const SizedBox(height: 8),
+                const BracuSkeletonBox(width: 64, height: 10, radius: 8),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class BracuSkeletonCompactTile extends StatelessWidget {
+  const BracuSkeletonCompactTile({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.all(10),
+      child: Center(
+        child: BracuSkeletonBox(width: 42, height: 18, radius: 10),
+      ),
+    );
+  }
+}
+
+class _BracuShimmer extends StatefulWidget {
+  const _BracuShimmer({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_BracuShimmer> createState() => _BracuShimmerState();
+}
+
+class _BracuShimmerState extends State<_BracuShimmer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1500),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final shimmerValue = _controller.value * 2 - 1;
+        return _BracuShimmerScope(
+          value: shimmerValue,
+          child: _BracuShimmerMask(
+            value: shimmerValue,
+            child: child ?? const SizedBox.shrink(),
+          ),
+        );
+      },
+      child: widget.child,
+    );
+  }
+}
+
+class _BracuShimmerMask extends StatelessWidget {
+  const _BracuShimmerMask({required this.value, required this.child});
+
+  final double value;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ShaderMask(
+      shaderCallback: (rect) {
+        return LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [
+            BracuPalette.textSecondary(context).withValues(alpha: 0.05),
+            BracuPalette.textSecondary(context).withValues(alpha: 0.14),
+            BracuPalette.textSecondary(context).withValues(alpha: 0.05),
+          ],
+          stops: const [0.35, 0.5, 0.65],
+          transform: _SlidingGradientTransform(value),
+        ).createShader(rect);
+      },
+      blendMode: BlendMode.srcATop,
+      child: child,
+    );
+  }
+}
+
+class _BracuShimmerScope extends InheritedWidget {
+  const _BracuShimmerScope({required this.value, required super.child});
+
+  final double value;
+
+  static double? maybeOf(BuildContext context) {
+    return context
+        .dependOnInheritedWidgetOfExactType<_BracuShimmerScope>()
+        ?.value;
+  }
+
+  @override
+  bool updateShouldNotify(_BracuShimmerScope oldWidget) {
+    return value != oldWidget.value;
+  }
+}
+
+class _SlidingGradientTransform extends GradientTransform {
+  const _SlidingGradientTransform(this.value);
+
+  final double value;
+
+  @override
+  Matrix4 transform(Rect bounds, {ui.TextDirection? textDirection}) {
+    return Matrix4.translationValues(bounds.width * value, 0, 0);
   }
 }
 

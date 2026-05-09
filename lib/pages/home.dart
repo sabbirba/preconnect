@@ -262,7 +262,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
                 _builtTabs.add(tab);
                 return pages[tab]!(context);
               }
-              return const SizedBox.shrink();
+              return const BracuLoading(itemCount: 4);
             }).toList(),
           ),
         ),
@@ -642,7 +642,7 @@ class _RamadanTopCountdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (targetTime == null || targetTime!.trim().isEmpty) {
-      return const SizedBox.shrink();
+      return const BracuSkeletonBox(height: 56, radius: 14);
     }
     return SizedBox(
       width: double.infinity,
@@ -654,7 +654,9 @@ class _RamadanTopCountdown extends StatelessWidget {
         builder: (context, snapshot) {
           final now = DateTime.now();
           final remaining = _durationTo(targetTime!, now);
-          if (remaining == null) return const SizedBox.shrink();
+          if (remaining == null) {
+            return const BracuSkeletonBox(height: 56, radius: 14);
+          }
           return Row(
             children: [
               Expanded(
@@ -856,7 +858,7 @@ class _HomeData {
         ? profileJson.map((key, value) => MapEntry('$key', value?.toString()))
         : null;
     final scheduleJson = json['scheduleJson']?.toString();
-    final sections = section.parseSectionsFromScheduleJson(scheduleJson);
+    final sections = ScheduleService().parseStudentSections(scheduleJson);
     final entries = <_ScheduleEntry>[];
     for (final sectionItem in sections) {
       for (final classSchedule in sectionItem.sectionSchedule.classSchedules) {

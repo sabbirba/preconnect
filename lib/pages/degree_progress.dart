@@ -186,8 +186,9 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
           .fetchStudentScheduleForSemester(
             semesterSessionId: currentSessionSemesterId,
           );
-      final freshSections = section.parseSectionsFromScheduleJson(
+      final freshSections = ScheduleService().parseStudentSections(
         freshScheduleJson,
+        semesterSessionId: currentSessionSemesterId,
       );
       unawaited(_loadCgpa());
       if (!mounted) return;
@@ -239,10 +240,9 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
           }
 
           if (info == null) {
-            return buildRefreshEmptyState(
+            return buildRefreshLoadingState(
               onRefresh: _refresh,
               topSpacing: 180,
-              message: 'No progress data available.',
             );
           }
 

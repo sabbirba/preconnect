@@ -11,6 +11,7 @@ import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/shared_widgets/schedule_entry_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/async_preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/exam_sorting.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
@@ -31,8 +32,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   static const MethodChannel _androidAlarmChannel = MethodChannel(
     'preconnect/android_alarm',
   );
-  static _AlarmData? _cachedData;
-  static Future<_AlarmData>? _preloadFuture;
+  static final AsyncPreloadCache<_AlarmData> _preloadCache =
+      AsyncPreloadCache<_AlarmData>();
 
   late Future<_AlarmData> _futureData;
   _AlarmData? _latestData;
@@ -41,10 +42,11 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   @override
   void initState() {
     super.initState();
-    _latestData = _cachedData;
-    _futureData = _cachedData == null
+    final cachedData = _preloadCache.value;
+    _latestData = cachedData;
+    _futureData = cachedData == null
         ? _fetchSchedule()
-        : Future<_AlarmData>.value(_cachedData);
+        : Future<_AlarmData>.value(cachedData);
     bindRefreshBus(_onRefreshSignal);
     unawaited(_warmAndBind());
   }
@@ -86,27 +88,10 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   }
 
   static Future<_AlarmData> preloadData({bool forceRefresh = false}) async {
-    if (!forceRefresh && _cachedData != null) {
-      return _cachedData!;
-    }
-    if (!forceRefresh) {
-      final inFlight = _preloadFuture;
-      if (inFlight != null) {
-        return inFlight;
-      }
-    }
-
-    final future = _loadAlarmData(forceRefresh: forceRefresh);
-    _preloadFuture = future;
-    try {
-      final data = await future;
-      _cachedData = data;
-      return data;
-    } finally {
-      if (identical(_preloadFuture, future)) {
-        _preloadFuture = null;
-      }
-    }
+    return _preloadCache.get(
+      forceRefresh: forceRefresh,
+      loader: () => _loadAlarmData(forceRefresh: forceRefresh),
+    );
   }
 
   Future<_AlarmData> _fetchSchedule({bool forceRefresh = false}) async {
@@ -224,7 +209,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       return;
     }
     setState(() {
-      _latestData = _latestData ?? _cachedData;
+      _latestData = _latestData ?? _preloadCache.value;
       _futureData = preloadData(forceRefresh: true);
     });
     final data = await _futureData;
@@ -476,9 +461,12 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           }
 
           final data = _latestData ?? snapshot.data;
-          final sections = data?.sections ?? const <Section>[];
-          final exams = data?.examEntries ?? const <_ExamAlarmEntry>[];
-          final isRamadan = data?.isRamadan ?? false;
+          if (data == null) {
+            return buildRefreshLoadingState(onRefresh: _handleRefresh);
+          }
+          final sections = data.sections;
+          final exams = data.examEntries;
+          final isRamadan = data.isRamadan;
           if (sections.isEmpty && exams.isEmpty) {
             return buildRefreshEmptyState(
               onRefresh: _handleRefresh,
@@ -772,7 +760,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             const SizedBox(height: 12),
                             SizedBox(
                               width: double.infinity,
-                              child: BracuActionButton(
+                              child: BracuAsyncActionButton(
                                 onPressed: () async {
                                   await _setExamAlarm(
                                     context,
@@ -931,7 +919,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                       Row(
                         children: [
                           Expanded(
-                            child: BracuActionButton(
+                            child: BracuAsyncActionButton(
                               onPressed: () async {
                                 final days = schedules
                                     .map((s) => s.day)

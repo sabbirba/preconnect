@@ -165,11 +165,27 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
             onRefresh: _refreshDetailsFromApi,
             itemCount: itemCount,
             itemBuilder: (context, index) {
+              if (_isInitialLoading) {
+                if (index == 0) {
+                  return _buildFilterHeader(context);
+                }
+                return const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: BracuCard(
+                    child: BracuSkeletonList(itemCount: 1, compact: true),
+                  ),
+                );
+              }
               if (index == 0) {
                 return _buildFilterHeader(context);
               }
               if (!hasCards || !hasVisibleCards) {
-                return const SizedBox.shrink();
+                return const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: BracuCard(
+                    child: BracuSkeletonList(itemCount: 1, compact: true),
+                  ),
+                );
               }
               final item = _visibleCards[index - 1];
               return Padding(

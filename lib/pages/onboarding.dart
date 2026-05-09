@@ -359,7 +359,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     width: double.infinity,
                     child: BracuActionButton(
                       onPressed: _openCampusMapBottomSheet,
-                      icon: Icons.map_rounded,
                       label: 'Campus Map',
                       borderRadius: 12,
                       padding: const EdgeInsets.symmetric(
@@ -371,17 +370,30 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
-                    child: BracuActionButton(
+                    child: ElevatedButton(
                       onPressed: _isStartingWebLogin
                           ? null
                           : () => _completeOnboarding(context),
-                      icon: Icons.arrow_forward_rounded,
-                      label: 'Continue',
-                      borderRadius: 12,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: BracuPalette.primary,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: BracuPalette.primary
+                            .withValues(alpha: 0.45),
+                        disabledForegroundColor: Colors.white70,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
+                      child: const Text('Continue'),
                     ),
                   ),
                 ],

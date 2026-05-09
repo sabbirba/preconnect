@@ -13,6 +13,7 @@ import 'package:preconnect/pages/student_profile_sections/payment_graph.dart';
 import 'package:preconnect/pages/student_profile_sections/payment_list.dart';
 import 'package:preconnect/pages/student_profile_sections/personal_info_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/async_preload_cache.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
@@ -29,8 +30,8 @@ class StudentProfile extends StatefulWidget {
 
 class _StudentProfileState extends State<StudentProfile>
     with SingleTickerProviderStateMixin, RefreshBusState {
-  static _StudentProfileSnapshot? _cachedSnapshot;
-  static Future<_StudentProfileSnapshot>? _preloadFuture;
+  static final AsyncPreloadCache<_StudentProfileSnapshot> _preloadCache =
+      AsyncPreloadCache<_StudentProfileSnapshot>();
   Map<String, String?>? _profile;
   String? _photoUrl;
   List<PaymentInfo> _payments = [];
@@ -53,7 +54,7 @@ class _StudentProfileState extends State<StudentProfile>
   }
 
   void _seedCachedSnapshot() {
-    final snapshot = _cachedSnapshot;
+    final snapshot = _preloadCache.value;
     if (snapshot == null) return;
     _profile = snapshot.profile;
     _photoUrl = snapshot.photoUrl;
@@ -66,27 +67,10 @@ class _StudentProfileState extends State<StudentProfile>
   static Future<_StudentProfileSnapshot> preloadData({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && _cachedSnapshot != null) {
-      return _cachedSnapshot!;
-    }
-    if (!forceRefresh) {
-      final inFlight = _preloadFuture;
-      if (inFlight != null) {
-        return inFlight;
-      }
-    }
-
-    final future = _loadProfileSnapshot(forceRefresh: forceRefresh);
-    _preloadFuture = future;
-    try {
-      final snapshot = await future;
-      _cachedSnapshot = snapshot;
-      return snapshot;
-    } finally {
-      if (identical(_preloadFuture, future)) {
-        _preloadFuture = null;
-      }
-    }
+    return _preloadCache.get(
+      forceRefresh: forceRefresh,
+      loader: () => _loadProfileSnapshot(forceRefresh: forceRefresh),
+    );
   }
 
   @override
@@ -214,20 +198,18 @@ class _StudentProfileState extends State<StudentProfile>
     try {
       advising =
           (forceRefresh
-                  ? await AdvisingService().fetchAdvisingInfo()
-                  : await AdvisingService().getAdvisingInfo()) ??
-              advising;
+              ? await AdvisingService().fetchAdvisingInfo()
+              : await AdvisingService().getAdvisingInfo()) ??
+          advising;
     } catch (_) {}
 
     try {
-      final progress =
-          forceRefresh
+      final progress = forceRefresh
           ? await ProgressService().fetchProgress()
           : await ProgressService().getProgress();
-      progressSummary =
-          progress == null
-              ? progressSummary
-              : ProgressSummary.fromProgressInfo(progress);
+      progressSummary = progress == null
+          ? progressSummary
+          : ProgressSummary.fromProgressInfo(progress);
     } catch (_) {}
 
     return _StudentProfileSnapshot(
@@ -260,7 +242,7 @@ class _StudentProfileState extends State<StudentProfile>
         _advising = snapshot.advising;
         _progressSummary = snapshot.progressSummary;
       });
-      _cachedSnapshot = snapshot;
+      _preloadCache.value = snapshot;
       RefreshBus.instance.notify(reason: 'student_profile');
     } finally {
       if (mounted) {
@@ -276,48 +258,77 @@ class _StudentProfileState extends State<StudentProfile>
 
   @override
   Widget build(BuildContext context) {
+    final isInitialLoading =
+        _profile == null &&
+        _payments.isEmpty &&
+        _attendances.isEmpty &&
+        _progressSummary == null;
     return BracuPageScaffold(
       title: 'Student Profile',
       subtitle: 'Academic & Finance',
       icon: Icons.person_outline,
       body: BracuRefreshList(
         onRefresh: _refreshProfile,
-        children: [
-          CardSection(profile: _profile, photoUrl: _photoUrl),
-          const SizedBox(height: 18),
-          AcademicSummaryCard(
-            profile: _profile ?? const {},
-            advising: _advising,
-            progressSummary: _progressSummary,
-          ),
-          const SizedBox(height: 18),
-          const BracuSectionTitle(title: 'Documents'),
-          const SizedBox(height: 10),
-          const GradeSheetCard(),
-          const SizedBox(height: 18),
-          const BracuSectionTitle(title: 'Personal Info'),
-          const SizedBox(height: 10),
-          PersonalInfoCard(profile: _profile ?? const {}),
-          const SizedBox(height: 18),
-          const BracuSectionTitle(title: 'Attendance'),
-          const SizedBox(height: 10),
-          if (_attendances.isNotEmpty) ...[
-            AttendanceSummary(attendances: _attendances),
-            const SizedBox(height: 12),
-          ],
-          const SizedBox(height: 18),
-          const BracuSectionTitle(title: 'Payments'),
-          const SizedBox(height: 10),
-          _payments.isEmpty
-              ? (_profile == null
-                    ? const SizedBox.shrink()
-                    : const BracuEmptyState(message: 'No payments found'))
-              : PaymentGraph(payments: _payments),
-          if (_payments.isNotEmpty) const SizedBox(height: 12),
-          if (_payments.isNotEmpty)
-            PaymentList(payments: _payments),
-          const SizedBox(height: 12),
-        ],
+        children: isInitialLoading
+            ? const [
+                SizedBox(height: 8),
+                BracuSkeletonBox(height: 220, radius: 18),
+                SizedBox(height: 18),
+                BracuSectionTitle(title: 'Academic Summary'),
+                SizedBox(height: 10),
+                BracuSkeletonList(itemCount: 2, compact: true),
+                SizedBox(height: 18),
+                BracuSectionTitle(title: 'Documents'),
+                SizedBox(height: 10),
+                BracuCard(child: BracuSkeletonBox(height: 80, radius: 14)),
+                SizedBox(height: 18),
+                BracuSectionTitle(title: 'Personal Info'),
+                SizedBox(height: 10),
+                BracuSkeletonList(itemCount: 3, compact: true),
+                SizedBox(height: 18),
+                BracuSectionTitle(title: 'Attendance'),
+                SizedBox(height: 10),
+                BracuSkeletonBox(height: 160, radius: 16),
+                SizedBox(height: 18),
+                BracuSectionTitle(title: 'Payments'),
+                SizedBox(height: 10),
+                BracuSkeletonList(itemCount: 2, compact: true),
+              ]
+            : [
+                CardSection(profile: _profile, photoUrl: _photoUrl),
+                const SizedBox(height: 18),
+                AcademicSummaryCard(
+                  profile: _profile ?? const {},
+                  advising: _advising,
+                  progressSummary: _progressSummary,
+                ),
+                const SizedBox(height: 18),
+                const BracuSectionTitle(title: 'Documents'),
+                const SizedBox(height: 10),
+                const GradeSheetCard(),
+                const SizedBox(height: 18),
+                const BracuSectionTitle(title: 'Personal Info'),
+                const SizedBox(height: 10),
+                PersonalInfoCard(profile: _profile ?? const {}),
+                const SizedBox(height: 18),
+                const BracuSectionTitle(title: 'Attendance'),
+                const SizedBox(height: 10),
+                if (_attendances.isNotEmpty) ...[
+                  AttendanceSummary(attendances: _attendances),
+                  const SizedBox(height: 12),
+                ],
+                const SizedBox(height: 18),
+                const BracuSectionTitle(title: 'Payments'),
+                const SizedBox(height: 10),
+                _payments.isEmpty
+                    ? (_profile == null
+                          ? const SizedBox.shrink()
+                          : const BracuEmptyState(message: 'No payments found'))
+                    : PaymentGraph(payments: _payments),
+                if (_payments.isNotEmpty) const SizedBox(height: 12),
+                if (_payments.isNotEmpty) PaymentList(payments: _payments),
+                const SizedBox(height: 12),
+              ],
       ),
     );
   }

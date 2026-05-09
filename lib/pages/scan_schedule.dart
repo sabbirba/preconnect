@@ -115,7 +115,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                         const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
-                          child: BracuActionButton(
+                          child: BracuAsyncActionButton(
                             onPressed: () => _ensureCameraPermission(
                               openSettingsOnDeny: true,
                             ),
@@ -428,6 +428,17 @@ class _ScanScheduleLoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox.shrink();
+    return BracuRefreshList(
+      onRefresh: () async {},
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      children: const [
+        SizedBox(height: 28),
+        BracuSkeletonBox(height: 24, radius: 10),
+        SizedBox(height: 10),
+        BracuCard(child: BracuSkeletonBox(height: 260, radius: 16)),
+        SizedBox(height: 14),
+        BracuSkeletonList(itemCount: 2, compact: true),
+      ],
+    );
   }
 }

@@ -7,6 +7,7 @@ import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/shared_widgets/course_community_sheet.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/async_preload_cache.dart';
 import 'package:preconnect/tools/exam_sorting.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/time_utils.dart';
@@ -29,25 +30,23 @@ class ExamSchedule extends StatefulWidget {
 }
 
 class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
-  static _ExamScheduleData? _cachedData;
-  static Future<_ExamScheduleData>? _preloadFuture;
+  static final AsyncPreloadCache<_ExamScheduleData> _preloadCache =
+      AsyncPreloadCache<_ExamScheduleData>();
 
   late Future<_ExamScheduleData> _future;
   _ExamScheduleData? _latestData;
   final ScrollController _scrollController = ScrollController();
   int? _currentSessionSemesterId;
-  GlobalKey? _highlightKey;
-  String? _lastHighlightKey;
-  bool _didScroll = false;
-  bool _scrollRetry = false;
+  final BracuHighlightScroller _highlightScroller = BracuHighlightScroller();
 
   @override
   void initState() {
     super.initState();
-    _latestData = _cachedData;
-    _future = _cachedData == null
+    final cachedData = _preloadCache.value;
+    _latestData = cachedData;
+    _future = cachedData == null
         ? _initializeExamSchedule()
-        : Future<_ExamScheduleData>.value(_cachedData!);
+        : Future<_ExamScheduleData>.value(cachedData);
     unawaited(_loadCurrentSessionSemesterId());
     unawaited(_warmAndBind());
     ExamSchedule.jumpSignal.addListener(_onJumpRequested);
@@ -66,27 +65,10 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   static Future<_ExamScheduleData> preloadData({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && _cachedData != null) {
-      return _cachedData!;
-    }
-    if (!forceRefresh) {
-      final inFlight = _preloadFuture;
-      if (inFlight != null) {
-        return inFlight;
-      }
-    }
-
-    final future = _loadExamData(forceRefresh: forceRefresh);
-    _preloadFuture = future;
-    try {
-      final data = await future;
-      _cachedData = data;
-      return data;
-    } finally {
-      if (identical(_preloadFuture, future)) {
-        _preloadFuture = null;
-      }
-    }
+    return _preloadCache.get(
+      forceRefresh: forceRefresh,
+      loader: () => _loadExamData(forceRefresh: forceRefresh),
+    );
   }
 
   static Future<_ExamScheduleData> _loadExamData({
@@ -149,8 +131,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   }
 
   void _onJumpRequested() {
-    _didScroll = false;
-    _scrollRetry = false;
+    _highlightScroller.reset();
     if (mounted) {
       setState(() {});
     }
@@ -175,7 +156,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
       forceRefresh: forceRefresh,
       forcedSemesterSessionId: currentSessionSemesterId,
     );
-    _cachedData = data;
+    _preloadCache.value = data;
     if (mounted) {
       setState(() {
         _latestData = data;
@@ -220,8 +201,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
       return;
     }
     setState(() {
-      _didScroll = false;
-      _scrollRetry = false;
+      _highlightScroller.reset();
       _future = preloadData(forceRefresh: true);
     });
     await _future;
@@ -300,10 +280,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
 
           final examData = _latestData ?? snapshot.data;
           if (examData == null) {
-            return buildRefreshEmptyState(
-              onRefresh: _handleRefresh,
-              message: 'No exam data available',
-            );
+            return buildRefreshLoadingState(onRefresh: _handleRefresh);
           }
 
           if (examData.sections.isEmpty) {
@@ -447,7 +424,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           final highlightedKey = ongoingExamKey ?? nextExamKey;
 
           final children = <Widget>[];
-          _highlightKey = null;
+          _highlightScroller.clearKey();
 
           if (midExams.isNotEmpty) {
             children.addAll(
@@ -455,7 +432,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                 final isHighlighted =
                     highlightedKey == '${section.sectionId}-mid';
                 if (isHighlighted) {
-                  _highlightKey ??= GlobalKey();
+                  _highlightScroller.ensureKey();
                 }
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -505,7 +482,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                             );
                           },
                           child: BracuCard(
-                            key: isHighlighted ? _highlightKey : null,
+                            key: isHighlighted ? _highlightScroller.key : null,
                             isHighlighted: isHighlighted,
                             highlightColor: BracuPalette.primary,
                             child: Row(
@@ -636,7 +613,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                 final isHighlighted =
                     highlightedKey == '${section.sectionId}-final';
                 if (isHighlighted) {
-                  _highlightKey ??= GlobalKey();
+                  _highlightScroller.ensureKey();
                 }
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -688,7 +665,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                             );
                           },
                           child: BracuCard(
-                            key: isHighlighted ? _highlightKey : null,
+                            key: isHighlighted ? _highlightScroller.key : null,
                             isHighlighted: isHighlighted,
                             highlightColor: BracuPalette.primary,
                             child: Row(
@@ -803,27 +780,11 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
 
           children.add(const SizedBox(height: 8));
 
-          if (highlightedKey != null && highlightedKey != _lastHighlightKey) {
-            _lastHighlightKey = highlightedKey;
-            _didScroll = false;
-            _scrollRetry = false;
-          }
-          if (!_didScroll && _highlightKey != null) {
-            attemptScrollToHighlightedKey(
-              highlightKey: _highlightKey,
-              hasRetried: _scrollRetry,
-              retry: () {
-                _scrollRetry = true;
-                if (mounted) {
-                  setState(() {});
-                }
-              },
-              onScrolled: () {
-                _didScroll = true;
-              },
-              alignment: 0.18,
-            );
-          }
+          _highlightScroller.resetForToken(highlightedKey);
+          _highlightScroller.attempt(
+            mounted: mounted,
+            rebuild: () => setState(() {}),
+          );
 
           return BracuRefreshList(
             onRefresh: _handleRefresh,

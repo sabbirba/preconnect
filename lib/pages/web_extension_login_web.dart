@@ -65,7 +65,7 @@ class _WebExtensionLoginPageState extends State<WebExtensionLoginPage> {
       if (!mounted) return;
       setState(() {
         _busy = true;
-        _status = 'Opening BRACU SSO...';
+        _status = null;
       });
       return;
     }
@@ -75,7 +75,7 @@ class _WebExtensionLoginPageState extends State<WebExtensionLoginPage> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _status = 'Login complete. Opening the app...';
+        _status = 'Login complete.';
       });
       Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
       return;
@@ -101,16 +101,14 @@ class _WebExtensionLoginPageState extends State<WebExtensionLoginPage> {
     if (_busy) return;
     setState(() {
       _busy = true;
-      _status = 'Opening BRACU SSO...';
+      _status = null;
     });
     try {
       await chrome.runtime.sendMessage(null, {
         'type': 'preconnect.startLogin',
       }, null);
       if (!mounted) return;
-      setState(() {
-        _status = 'Waiting for BRACU SSO approval...';
-      });
+      setState(() => _status = null);
     } catch (e) {
       if (!mounted) return;
       setState(() {

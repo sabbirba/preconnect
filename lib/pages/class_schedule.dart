@@ -6,6 +6,7 @@ import 'package:preconnect/pages/shared_widgets/course_community_sheet.dart';
 import 'package:preconnect/pages/shared_widgets/schedule_entry_card.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/async_preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/time_utils.dart';
@@ -39,26 +40,24 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     'SUNDAY',
   ];
 
-  static _ScheduleData? _cachedData;
-  static Future<_ScheduleData>? _preloadFuture;
+  static final AsyncPreloadCache<_ScheduleData> _preloadCache =
+      AsyncPreloadCache<_ScheduleData>();
 
   late Future<_ScheduleData> _future;
   _ScheduleData? _latestData;
   final ScrollController _scrollController = ScrollController();
   int? _currentSessionSemesterId;
-  GlobalKey? _highlightKey;
-  String? _lastHighlightToken;
-  bool _didScroll = false;
-  bool _scrollRetry = false;
+  final BracuHighlightScroller _highlightScroller = BracuHighlightScroller();
   int _visibleWeekCount = _initialVisibleWeekCount;
 
   @override
   void initState() {
     super.initState();
-    _latestData = _cachedData;
-    _future = _cachedData == null
+    final cachedData = _preloadCache.value;
+    _latestData = cachedData;
+    _future = cachedData == null
         ? _initializeSchedule()
-        : Future<_ScheduleData>.value(_cachedData!);
+        : Future<_ScheduleData>.value(cachedData);
     unawaited(_loadCurrentSessionSemesterId());
     unawaited(_warmAndBind());
     ClassSchedule.jumpSignal.addListener(_onJumpRequested);
@@ -75,27 +74,10 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   }
 
   static Future<_ScheduleData> preloadData({bool forceRefresh = false}) async {
-    if (!forceRefresh && _cachedData != null) {
-      return _cachedData!;
-    }
-    if (!forceRefresh) {
-      final inFlight = _preloadFuture;
-      if (inFlight != null) {
-        return inFlight;
-      }
-    }
-
-    final future = _loadScheduleData(forceRefresh: forceRefresh);
-    _preloadFuture = future;
-    try {
-      final data = await future;
-      _cachedData = data;
-      return data;
-    } finally {
-      if (identical(_preloadFuture, future)) {
-        _preloadFuture = null;
-      }
-    }
+    return _preloadCache.get(
+      forceRefresh: forceRefresh,
+      loader: () => _loadScheduleData(forceRefresh: forceRefresh),
+    );
   }
 
   static Future<_ScheduleData> _loadScheduleData({
@@ -150,8 +132,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   }
 
   void _onJumpRequested() {
-    _didScroll = false;
-    _scrollRetry = false;
+    _highlightScroller.reset();
     if (mounted) {
       setState(() {
         _visibleWeekCount = _initialVisibleWeekCount;
@@ -160,17 +141,9 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   }
 
   void _attemptScrollToHighlight() {
-    attemptScrollToHighlightedKey(
-      highlightKey: _highlightKey,
-      hasRetried: _scrollRetry,
-      retry: () {
-        _scrollRetry = true;
-        _attemptScrollToHighlight();
-      },
-      onScrolled: () {
-        _didScroll = true;
-      },
-      alignment: 0.18,
+    _highlightScroller.attempt(
+      mounted: mounted,
+      rebuild: _attemptScrollToHighlight,
     );
   }
 
@@ -196,7 +169,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       shouldHighlightCurrentSemester: true,
       isRamadan: isRamadan,
     );
-    _cachedData = data;
+    _preloadCache.value = data;
     if (mounted) {
       setState(() {
         _latestData = data;
@@ -435,8 +408,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       return;
     }
     setState(() {
-      _didScroll = false;
-      _scrollRetry = false;
+      _highlightScroller.reset();
       _visibleWeekCount = _initialVisibleWeekCount;
       _future = preloadData(forceRefresh: true);
     });
@@ -566,11 +538,14 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
           }
 
           final data = _latestData ?? snapshot.data;
-          final grouped = data?.grouped ?? {};
-          final scrollSchedule = data?.scrollSchedule;
-          final scrollDateTime = data?.scrollDateTime;
+          if (data == null) {
+            return buildRefreshLoadingState(onRefresh: _handleRefresh);
+          }
+          final grouped = data.grouped;
+          final scrollSchedule = data.scrollSchedule;
+          final scrollDateTime = data.scrollDateTime;
           const shouldHighlightCurrentSemester = true;
-          final isRamadan = data?.isRamadan ?? false;
+          final isRamadan = data.isRamadan;
           if (grouped.isEmpty) {
             return buildRefreshEmptyState(
               onRefresh: _handleRefresh,
@@ -585,7 +560,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
 
           final children = <Widget>[];
           String? highlightToken;
-          _highlightKey = null;
+          _highlightScroller.clearKey();
           for (var i = 0; i < sections.length; i++) {
             final sectionInfo = sections[i];
             final day = sectionInfo.day;
@@ -637,12 +612,12 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
                     if (isScrollTarget) {
                       highlightToken =
                           '${sectionInfo.weekOffset}_${day}_${s.startTime}_${s.endTime}_$code';
-                      _highlightKey ??= GlobalKey();
+                      _highlightScroller.ensureKey();
                     }
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: ScheduleEntryCard(
-                        key: isScrollTarget ? _highlightKey : null,
+                        key: isScrollTarget ? _highlightScroller.key : null,
                         sectionName: sectionName?.toString(),
                         courseCode: '$code',
                         schedule: s,
@@ -698,14 +673,8 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
           }
           children.add(const SizedBox(height: 8));
 
-          if (highlightToken != null && highlightToken != _lastHighlightToken) {
-            _lastHighlightToken = highlightToken;
-            _didScroll = false;
-            _scrollRetry = false;
-          }
-          if (!_didScroll && _highlightKey != null) {
-            _attemptScrollToHighlight();
-          }
+          _highlightScroller.resetForToken(highlightToken);
+          _attemptScrollToHighlight();
 
           return BracuRefreshList(
             onRefresh: _handleRefresh,

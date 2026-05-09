@@ -2,9 +2,10 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:preconnect/api/sembast_cache.dart';
+import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/pages/api_test.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/async_preload_cache.dart';
 import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/tools/cached_image.dart';
 
@@ -25,15 +26,16 @@ class _DevsPageState extends State<DevsPage> {
   bool _contributorsLoading = false;
   int _secretTapCount = 0;
   bool _showAllContributors = false;
-  static List<_ContributorProfile>? _cachedContributors;
-  static Future<List<_ContributorProfile>>? _preloadFuture;
+  static final AsyncPreloadCache<List<_ContributorProfile>> _preloadCache =
+      AsyncPreloadCache<List<_ContributorProfile>>();
 
   @override
   void initState() {
     super.initState();
     _subtitleFuture = _buildVersionSubtitle();
-    if (_cachedContributors != null) {
-      _contributors = _cachedContributors!;
+    final cachedContributors = _preloadCache.value;
+    if (cachedContributors != null) {
+      _contributors = cachedContributors;
     }
     _loadContributors();
   }
@@ -41,27 +43,10 @@ class _DevsPageState extends State<DevsPage> {
   static Future<List<_ContributorProfile>> preloadData({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && _cachedContributors != null) {
-      return _cachedContributors!;
-    }
-    if (!forceRefresh) {
-      final inFlight = _preloadFuture;
-      if (inFlight != null) {
-        return inFlight;
-      }
-    }
-
-    final future = _loadContributorsStatic(forceRefresh: forceRefresh);
-    _preloadFuture = future;
-    try {
-      final contributors = await future;
-      _cachedContributors = contributors;
-      return contributors;
-    } finally {
-      if (identical(_preloadFuture, future)) {
-        _preloadFuture = null;
-      }
-    }
+    return _preloadCache.get(
+      forceRefresh: forceRefresh,
+      loader: () => _loadContributorsStatic(forceRefresh: forceRefresh),
+    );
   }
 
   Future<String> _buildVersionSubtitle() async {
@@ -90,7 +75,7 @@ class _DevsPageState extends State<DevsPage> {
     bool forceRefresh = false,
   }) async {
     try {
-      final cache = SembastCache();
+      final cache = AppPreferencesStore();
       if (!forceRefresh) {
         final cached = await _readCachedContributorsStatic(cache);
         if (cached.isNotEmpty) {
@@ -146,7 +131,7 @@ class _DevsPageState extends State<DevsPage> {
   }
 
   static Future<List<_ContributorProfile>> _readCachedContributorsStatic(
-    SembastCache cache,
+    AppPreferencesStore cache,
   ) async {
     final raw = await cache.getJsonList(_contributorsCacheKey);
     if (raw == null || raw.isEmpty) return const <_ContributorProfile>[];
@@ -183,6 +168,7 @@ class _DevsPageState extends State<DevsPage> {
       future: _subtitleFuture,
       builder: (context, snapshot) {
         final subtitle = snapshot.data ?? 'App Version';
+        final showLoading = _contributorsLoading && _contributors.isEmpty;
         return BracuPageScaffold(
           title: 'Devs & Support',
           subtitle: subtitle,
@@ -198,13 +184,30 @@ class _DevsPageState extends State<DevsPage> {
                 const SizedBox(height: 14),
                 const BracuSectionTitle(title: 'People Behind It'),
                 const SizedBox(height: 10),
-                _ContributorsGrid(
-                  contributors: _contributors,
-                  showAll: _showAllContributors,
-                  onToggle: () => setState(
-                    () => _showAllContributors = !_showAllContributors,
-                  ),
-                ),
+                showLoading
+                    ? const Column(
+                        children: [
+                          BracuCard(
+                            child: BracuSkeletonList(
+                              itemCount: 2,
+                              compact: true,
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          BracuSkeletonGrid(
+                            itemCount: 6,
+                            crossAxisCount: 2,
+                            itemHeight: 92,
+                          ),
+                        ],
+                      )
+                    : _ContributorsGrid(
+                        contributors: _contributors,
+                        showAll: _showAllContributors,
+                        onToggle: () => setState(
+                          () => _showAllContributors = !_showAllContributors,
+                        ),
+                      ),
                 const Padding(
                   padding: EdgeInsets.only(top: 14),
                   child: Column(

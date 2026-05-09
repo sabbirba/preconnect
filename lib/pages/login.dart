@@ -291,7 +291,7 @@ class _LoginPageState extends State<LoginPage> {
                           child: Container(
                             color: Colors.black.withValues(alpha: 0.08),
                             alignment: Alignment.center,
-                            child: const SizedBox.shrink(),
+                            child: const BracuLoading(itemCount: 1),
                           ),
                         ),
                     ],
@@ -303,10 +303,5 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 }

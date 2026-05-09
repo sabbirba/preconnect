@@ -6,6 +6,7 @@ import 'package:preconnect/api/notification_service.dart';
 import 'package:preconnect/pages/notifications_sections/notification_detail_panels.dart';
 import 'package:preconnect/pages/notifications_sections/notification_list_widgets.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/async_preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
 class NotificationsPage extends StatefulWidget {
@@ -21,50 +22,35 @@ class NotificationsPage extends StatefulWidget {
 
 class _NotificationsPageState extends State<NotificationsPage> {
   static const int _pageSize = 32;
-  static NotificationsViewData? _cachedData;
-  static Future<NotificationsViewData>? _preloadFuture;
+  static final AsyncPreloadCache<NotificationsViewData> _preloadCache =
+      AsyncPreloadCache<NotificationsViewData>();
 
   late Future<NotificationsViewData> _future;
   NotificationsViewData? _lastData;
   int _visibleItemCount = _pageSize;
+  bool _isMarkingAllSeen = false;
 
   @override
   void initState() {
     super.initState();
-    _lastData = _cachedData;
-    _future = _cachedData == null
+    final cachedData = _preloadCache.value;
+    _lastData = cachedData;
+    _future = cachedData == null
         ? preloadData().then((data) {
             _lastData = data;
             return data;
           })
-        : Future<NotificationsViewData>.value(_cachedData!);
+        : Future<NotificationsViewData>.value(cachedData);
     unawaited(_warmAndBind());
   }
 
   static Future<NotificationsViewData> preloadData({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && _cachedData != null) {
-      return _cachedData!;
-    }
-    if (!forceRefresh) {
-      final inFlight = _preloadFuture;
-      if (inFlight != null) {
-        return inFlight;
-      }
-    }
-
-    final future = _loadDataStatic(forceRefresh: forceRefresh);
-    _preloadFuture = future;
-    try {
-      final data = await future;
-      _cachedData = data;
-      return data;
-    } finally {
-      if (identical(_preloadFuture, future)) {
-        _preloadFuture = null;
-      }
-    }
+    return _preloadCache.get(
+      forceRefresh: forceRefresh,
+      loader: () => _loadDataStatic(forceRefresh: forceRefresh),
+    );
   }
 
   static Future<NotificationsViewData> _loadDataStatic({
@@ -122,49 +108,62 @@ class _NotificationsPageState extends State<NotificationsPage> {
     if (!mounted) return;
     setState(() {
       _lastData = refreshed;
-      _cachedData = refreshed;
+      _preloadCache.value = refreshed;
     });
     RefreshBus.instance.notify(reason: 'notifications');
   }
 
   Future<void> _markAllSeen() async {
-    final currentData = _lastData ?? await _future;
-    if (!mounted) return;
-
-    final updated = await NotificationService().markAllSeen();
-    final scraperIds = currentData.scraped.map((item) => item.id).toSet();
-    await NotificationService().markAllScraperNotificationsSeen(scraperIds);
-
-    final optimisticData = NotificationsViewData(
-      connect: updated ?? currentData.connect,
-      scraped: currentData.scraped,
-      seenScraperIds: {...currentData.seenScraperIds, ...scraperIds},
-    );
-
-    final refreshedFuture = _loadData(forceRefresh: true);
-    if (!mounted) return;
+    if (_isMarkingAllSeen) return;
     setState(() {
-      _lastData = optimisticData;
-      _future = refreshedFuture;
-      _cachedData = optimisticData;
+      _isMarkingAllSeen = true;
     });
+    try {
+      final currentData = _lastData ?? await _future;
+      if (!mounted) return;
 
-    unawaited(
-      refreshedFuture.then((value) {
-        if (!mounted) return;
+      final updated = await NotificationService().markAllSeen();
+      final scraperIds = currentData.scraped.map((item) => item.id).toSet();
+      await NotificationService().markAllScraperNotificationsSeen(scraperIds);
+
+      final optimisticData = NotificationsViewData(
+        connect: updated ?? currentData.connect,
+        scraped: currentData.scraped,
+        seenScraperIds: {...currentData.seenScraperIds, ...scraperIds},
+      );
+
+      final refreshedFuture = _loadData(forceRefresh: true);
+      if (!mounted) return;
+      setState(() {
+        _lastData = optimisticData;
+        _future = refreshedFuture;
+        _preloadCache.value = optimisticData;
+      });
+
+      unawaited(
+        refreshedFuture.then((value) {
+          if (!mounted) return;
+          setState(() {
+            _lastData = value;
+            _preloadCache.value = value;
+          });
+        }),
+      );
+
+      RefreshBus.instance.notify(reason: 'notifications');
+      showAppSnackBar(
+        context,
+        updated == null
+            ? 'No notifications available to mark as seen.'
+            : 'All notifications marked as seen.',
+      );
+    } finally {
+      if (mounted) {
         setState(() {
-          _lastData = value;
+          _isMarkingAllSeen = false;
         });
-      }),
-    );
-
-    RefreshBus.instance.notify(reason: 'notifications');
-    showAppSnackBar(
-      context,
-      updated == null
-          ? 'No notifications available to mark as seen.'
-          : 'All notifications marked as seen.',
-    );
+      }
+    }
   }
 
   Future<void> _openConnectNotification(RecentConnectNotification item) async {
@@ -202,7 +201,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         scraped: currentData.scraped,
         seenScraperIds: currentData.seenScraperIds,
       );
-      _cachedData = _lastData;
+      _preloadCache.value = _lastData;
     });
     RefreshBus.instance.notify(reason: 'notifications');
   }
@@ -226,7 +225,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         scraped: current.scraped,
         seenScraperIds: {...current.seenScraperIds, item.id},
       );
-      _cachedData = _lastData;
+      _preloadCache.value = _lastData;
     });
     RefreshBus.instance.notify(reason: 'notifications');
   }
@@ -238,7 +237,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
       subtitle: 'Recent Alerts',
       icon: Icons.notifications_outlined,
       actions: [
-        HeaderActionButton(icon: Icons.done_all_rounded, onTap: _markAllSeen),
+        HeaderActionButton(
+          icon: Icons.done_all_rounded,
+          onTap: _markAllSeen,
+          isLoading: _isMarkingAllSeen,
+        ),
       ],
       body: FutureBuilder<NotificationsViewData>(
         future: _future,
@@ -252,10 +255,16 @@ class _NotificationsPageState extends State<NotificationsPage> {
           }
 
           final data = _lastData ?? snapshot.data;
+          if (data == null) {
+            return buildRefreshLoadingState(
+              onRefresh: _refresh,
+              topSpacing: 180,
+            );
+          }
           final connectItems =
-              data?.connect?.items ?? const <RecentConnectNotification>[];
-          final scrapedItems = data?.scraped ?? const <ScraperContentItem>[];
-          final seenScraperIds = data?.seenScraperIds ?? const <String>{};
+              data.connect?.items ?? const <RecentConnectNotification>[];
+          final scrapedItems = data.scraped;
+          final seenScraperIds = data.seenScraperIds;
           final items = _buildCombinedItems(
             connectItems,
             scrapedItems,

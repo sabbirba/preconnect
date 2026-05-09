@@ -273,7 +273,9 @@ Future<void> showCampusMapBottomSheet(
         ]),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const SizedBox.shrink();
+            return const BracuCard(
+              child: BracuSkeletonList(itemCount: 3, compact: true),
+            );
           }
           final values = snapshot.data;
           final mapData = values != null && values.isNotEmpty

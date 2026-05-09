@@ -20,10 +20,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   List<_FreeRoomSlot>? _latestSlots;
   int _slotsRequestId = 0;
   final ScrollController _scrollController = ScrollController();
-  GlobalKey? _highlightKey;
-  String? _lastHighlightToken;
-  bool _didScroll = false;
-  bool _scrollRetry = false;
+  final BracuHighlightScroller _highlightScroller = BracuHighlightScroller();
   _RoomFilter _selectedFilter = _RoomFilter.labs;
   bool _showNextDayAfterHours = false;
 
@@ -52,8 +49,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     if (!_showNextDayAfterHours) return;
     setState(() {
       _showNextDayAfterHours = false;
-      _didScroll = false;
-      _scrollRetry = false;
+      _highlightScroller.reset();
       _latestSlots = _buildCachedSlots();
       _future = _loadSlots();
     });
@@ -128,27 +124,16 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
 
   Future<void> _refresh() async {
     setState(() {
-      _didScroll = false;
-      _scrollRetry = false;
+      _highlightScroller.reset();
       _future = _loadSlots(forceRefresh: true);
     });
     _bindSlotsFuture(_future);
   }
 
   void _attemptScrollToHighlight() {
-    attemptScrollToHighlightedKey(
-      highlightKey: _highlightKey,
-      hasRetried: _scrollRetry,
-      alignment: 0.18,
-      retry: () {
-        _scrollRetry = true;
-        if (mounted) {
-          setState(() {});
-        }
-      },
-      onScrolled: () {
-        _didScroll = true;
-      },
+    _highlightScroller.attempt(
+      mounted: mounted,
+      rebuild: () => setState(() {}),
     );
   }
 
@@ -156,8 +141,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     if (selected == _selectedFilter) return;
     setState(() {
       _selectedFilter = selected;
-      _didScroll = false;
-      _scrollRetry = false;
+      _highlightScroller.reset();
       _latestSlots = _buildCachedSlots();
       _future = _loadSlots();
     });
@@ -225,6 +209,10 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
           }
 
           final slots = cachedSlots ?? snapshot.data ?? const <_FreeRoomSlot>[];
+          if (cachedSlots == null &&
+              snapshot.connectionState == ConnectionState.waiting) {
+            return buildRefreshLoadingState(onRefresh: _refresh);
+          }
           final visibleSlots = _visibleRoomSlots(slots);
           if (visibleSlots.isEmpty) {
             if (_shouldOfferNextDayLabs()) {
@@ -248,12 +236,8 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
             final key = '${slot.startTime}|${slot.endTime}';
             groupedSlots.putIfAbsent(key, () => <_FreeRoomSlot>[]).add(slot);
           }
-          _highlightKey = null;
-          if (highlightToken != null && highlightToken != _lastHighlightToken) {
-            _lastHighlightToken = highlightToken;
-            _didScroll = false;
-            _scrollRetry = false;
-          }
+          _highlightScroller.clearKey();
+          _highlightScroller.resetForToken(highlightToken);
 
           final children = <Widget>[];
           for (final entry in groupedSlots.entries) {
@@ -289,7 +273,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                         '${slot.roomNumber}_${slot.startTime}_${slot.endTime}';
                     final isHighlighted = slotToken == highlightToken;
                     if (isHighlighted) {
-                      _highlightKey ??= GlobalKey();
+                      _highlightScroller.ensureKey();
                     }
                     final roomSlots = visibleSlots
                         .where((item) => item.roomNumber == slot.roomNumber)
@@ -300,7 +284,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                         borderRadius: BorderRadius.circular(18),
                         onTap: () => _showRoomDetails(slot, roomSlots),
                         child: BracuCard(
-                          key: isHighlighted ? _highlightKey : null,
+                          key: isHighlighted ? _highlightScroller.key : null,
                           isHighlighted: false,
                           highlightColor: _roomCardHighlightColor(slot),
                           backgroundColor: _roomCardBackgroundColor(slot),
@@ -389,9 +373,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
             );
           }
 
-          if (!_didScroll && _highlightKey != null) {
-            _attemptScrollToHighlight();
-          }
+          _attemptScrollToHighlight();
 
           return BracuRefreshList(
             onRefresh: _refresh,
@@ -669,8 +651,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   Future<void> _showNextDayLabs() async {
     setState(() {
       _showNextDayAfterHours = true;
-      _didScroll = false;
-      _scrollRetry = false;
+      _highlightScroller.reset();
       _latestSlots = _buildCachedSlots();
       _future = _loadSlots();
     });
@@ -710,7 +691,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
               ),
             ),
             const SizedBox(height: 14),
-            BracuActionButton(
+            BracuAsyncActionButton(
               onPressed: _showNextDayLabs,
               icon: Icons.arrow_forward_rounded,
               label: 'Show Next Day Labs',

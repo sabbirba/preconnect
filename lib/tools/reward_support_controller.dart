@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:preconnect/tools/app_storage.dart';
 
 class RewardSupportController {
   RewardSupportController._();
@@ -14,8 +14,8 @@ class RewardSupportController {
   Future<void> load() async {
     if (_loaded) return;
     _loaded = true;
-    final prefs = await SharedPreferences.getInstance();
-    supportCount.value = prefs.getInt(_supportCountPrefsKey) ?? 0;
+    supportCount.value =
+        await AppStorage.instance.getInt(_supportCountPrefsKey) ?? 0;
   }
 
   int get count => supportCount.value;
@@ -23,16 +23,14 @@ class RewardSupportController {
   Future<int> recordReward() async {
     await load();
     final next = count + 1;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_supportCountPrefsKey, next);
+    await AppStorage.instance.setInt(_supportCountPrefsKey, next);
     supportCount.value = next;
     return next;
   }
 
   Future<void> clear() async {
     await load();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_supportCountPrefsKey);
+    await AppStorage.instance.remove(_supportCountPrefsKey);
     supportCount.value = 0;
   }
 }

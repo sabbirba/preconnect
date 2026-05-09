@@ -42,9 +42,27 @@ extension _HomeDashboardView on _HomeDashboardState {
                           snapshot.connectionState == ConnectionState.waiting &&
                           _latestData == null;
                       if (isLoading) {
-                        return const SizedBox.shrink();
+                        return BracuRefreshScroll(
+                          onRefresh: _handleRefresh,
+                          showScrollTopButton: false,
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+                          child: const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              BracuSkeletonBox(width: 180, height: 26),
+                              SizedBox(height: 16),
+                              BracuSkeletonList(itemCount: 3, compact: true),
+                              SizedBox(height: 16),
+                              BracuSectionTitle(title: 'Quick Access'),
+                              SizedBox(height: 10),
+                              BracuSkeletonGrid(
+                                itemCount: 6,
+                                crossAxisCount: 3,
+                              ),
+                            ],
+                          ),
+                        );
                       }
-
                       final data = _latestData ?? snapshot.data;
                       final profile = data?.profile ?? {};
                       final photoUrl = data?.photoUrl;
