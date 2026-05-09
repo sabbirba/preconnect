@@ -78,22 +78,7 @@ class ApiClient {
     }
 
     if (response.statusCode == 401) {
-      TokenRefreshStatus refreshStatus = TokenRefreshStatus.retryableFailure;
-      for (int retryAttempt = 0; retryAttempt < 3; retryAttempt++) {
-        try {
-          refreshStatus = await AuthService().refreshTokenStatus();
-
-          if (refreshStatus == TokenRefreshStatus.refreshed) {
-            break;
-          }
-
-          if (refreshStatus == TokenRefreshStatus.invalidSession) {
-            await AuthService().logout(force: true);
-            throw const SessionExpiredException();
-          }
-        } catch (_) {}
-      }
-
+      final refreshStatus = await _refreshTokenWithRetries();
       if (refreshStatus != TokenRefreshStatus.refreshed) {
         throw const SessionExpiredException();
       }
@@ -171,20 +156,7 @@ class ApiClient {
     }
 
     if (response.statusCode == 401) {
-      TokenRefreshStatus refreshStatus = TokenRefreshStatus.retryableFailure;
-      for (int retryAttempt = 0; retryAttempt < 3; retryAttempt++) {
-        refreshStatus = await AuthService().refreshTokenStatus();
-
-        if (refreshStatus == TokenRefreshStatus.refreshed) {
-          break;
-        }
-
-        if (refreshStatus == TokenRefreshStatus.invalidSession) {
-          await AuthService().logout(force: true);
-          throw const SessionExpiredException();
-        }
-      }
-
+      final refreshStatus = await _refreshTokenWithRetries();
       if (refreshStatus != TokenRefreshStatus.refreshed) {
         throw const SessionExpiredException();
       }
@@ -355,6 +327,22 @@ class ApiClient {
       default:
         throw ArgumentError.value(method, 'method', 'Unsupported HTTP method');
     }
+  }
+
+  Future<TokenRefreshStatus> _refreshTokenWithRetries() async {
+    for (var retryAttempt = 0; retryAttempt < 3; retryAttempt++) {
+      try {
+        final refreshStatus = await AuthService().refreshTokenStatus();
+        if (refreshStatus == TokenRefreshStatus.refreshed) {
+          return refreshStatus;
+        }
+        if (refreshStatus == TokenRefreshStatus.invalidSession) {
+          await AuthService().logout(force: true);
+          throw const SessionExpiredException();
+        }
+      } catch (_) {}
+    }
+    return TokenRefreshStatus.retryableFailure;
   }
 }
 

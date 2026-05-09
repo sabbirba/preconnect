@@ -298,7 +298,7 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
               CachedImage(
                 url: widget.imageUrls.first,
                 fit: widget.imageFit,
-                placeholder: const BracuSkeletonBox(height: 220, radius: 8),
+                placeholder: const BracuLoading(height: 220, radius: 8),
                 error: const _BracuImageErrorFallback(),
               )
             else
@@ -315,7 +315,7 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
                   return CachedImage(
                     url: widget.imageUrls[idx],
                     fit: widget.imageFit,
-                    placeholder: const BracuSkeletonBox(height: 220, radius: 8),
+                    placeholder: const BracuLoading(height: 220, radius: 8),
                     error: const _BracuImageErrorFallback(),
                   );
                 },

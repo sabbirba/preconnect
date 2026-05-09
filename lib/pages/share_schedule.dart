@@ -445,13 +445,41 @@ class _ShareScheduleLoadingState extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: const [
         SizedBox(height: 28),
-        BracuSkeletonBox(height: 24, radius: 10),
+        Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2.4),
+          ),
+        ),
         SizedBox(height: 12),
-        BracuCard(child: BracuSkeletonBox(height: 260, radius: 16)),
+        BracuCard(
+          child: SizedBox(
+            height: 260,
+            child: Center(
+              child: SizedBox(
+                width: 34,
+                height: 34,
+                child: CircularProgressIndicator(strokeWidth: 2.6),
+              ),
+            ),
+          ),
+        ),
         SizedBox(height: 14),
         BracuSectionTitle(title: 'How to use'),
         SizedBox(height: 10),
-        BracuCard(child: BracuSkeletonList(itemCount: 1, compact: true)),
+        BracuCard(
+          child: SizedBox(
+            height: 72,
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2.4),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }

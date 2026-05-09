@@ -29,6 +29,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   WebExtensionLoginFlow? _webExtensionLoginFlow;
   StreamSubscription<WebExtensionLoginState>? _webLoginSub;
   bool _isStartingWebLogin = false;
+  bool _isContinuing = false;
 
   @override
   void initState() {
@@ -50,36 +51,50 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 
   Future<void> _completeOnboarding(BuildContext context) async {
-    final prefs = AppStorage.instance;
-    await prefs.setBool(OnboardingPage.seenKey, true);
-    if (!context.mounted) return;
-    if (kIsWeb && !widget.isLoggedIn) {
-      if (_isStartingWebLogin) return;
+    if (_isContinuing) return;
+    if (mounted) {
       setState(() {
-        _isStartingWebLogin = true;
+        _isContinuing = true;
       });
-      try {
-        await _webExtensionLoginFlow?.start();
-      } catch (e) {
-        if (!mounted) return;
+    }
+    final prefs = AppStorage.instance;
+    try {
+      await prefs.setBool(OnboardingPage.seenKey, true);
+      if (!context.mounted) return;
+      if (kIsWeb && !widget.isLoggedIn) {
+        if (_isStartingWebLogin) return;
         setState(() {
-          _isStartingWebLogin = false;
+          _isStartingWebLogin = true;
+        });
+        try {
+          await _webExtensionLoginFlow?.start();
+        } catch (e) {
+          if (!mounted) return;
+          setState(() {
+            _isStartingWebLogin = false;
+          });
+        }
+        return;
+      }
+      if (widget.isLoggedIn) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+        return;
+      }
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const LoginPage(),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isContinuing = false;
         });
       }
-      return;
     }
-    if (widget.isLoggedIn) {
-      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
-      return;
-    }
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        transitionDuration: Duration.zero,
-        reverseTransitionDuration: Duration.zero,
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const LoginPage(),
-      ),
-    );
   }
 
   Future<void> _openLink(BuildContext context, String url) async {
@@ -371,7 +386,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _isStartingWebLogin
+                      onPressed: (_isStartingWebLogin || _isContinuing)
                           ? null
                           : () => _completeOnboarding(context),
                       style: ElevatedButton.styleFrom(
@@ -399,7 +414,18 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           letterSpacing: 0.2,
                         ),
                       ),
-                      child: const Text('Continue'),
+                      child: _isStartingWebLogin || _isContinuing
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : const Text('Continue'),
                     ),
                   ),
                 ],

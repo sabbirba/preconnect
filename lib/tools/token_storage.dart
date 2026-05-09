@@ -516,7 +516,6 @@ class ProfileImageCache {
   static final instance = ProfileImageCache._();
 
   static const _cachedUrlKey = 'profile_image_cached_url';
-  static const _legacyCachedBytesKey = 'profile_image_cached_bytes';
 
   File? _cachedFile;
 
@@ -531,7 +530,6 @@ class ProfileImageCache {
     final file = File('${dir.path}/profile_photo.jpg');
 
     final cachedUrl = await AppStorage.instance.getString(_cachedUrlKey);
-    await AppStorage.instance.remove(_legacyCachedBytesKey);
 
     if (file.existsSync() &&
         file.lengthSync() > 0 &&
@@ -566,7 +564,6 @@ class ProfileImageCache {
       }
     } catch (_) {}
     await AppStorage.instance.remove(_cachedUrlKey);
-    await AppStorage.instance.remove(_legacyCachedBytesKey);
     _cachedFile = null;
   }
 }

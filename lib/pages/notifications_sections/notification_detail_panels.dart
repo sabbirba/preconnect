@@ -238,7 +238,7 @@ class _ConnectNotificationDetailPanelState
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const BracuCard(
-            child: BracuSkeletonList(itemCount: 2, compact: true),
+            child: BracuLoading(itemCount: 2, compact: true),
           );
         }
 

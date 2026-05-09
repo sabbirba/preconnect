@@ -46,20 +46,17 @@ extension _HomeDashboardView on _HomeDashboardState {
                           onRefresh: _handleRefresh,
                           showScrollTopButton: false,
                           padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-                          child: const Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              BracuSkeletonBox(width: 180, height: 26),
-                              SizedBox(height: 16),
-                              BracuSkeletonList(itemCount: 3, compact: true),
-                              SizedBox(height: 16),
-                              BracuSectionTitle(title: 'Quick Access'),
-                              SizedBox(height: 10),
-                              BracuSkeletonGrid(
-                                itemCount: 6,
-                                crossAxisCount: 3,
+                          child: const Padding(
+                            padding: EdgeInsets.only(top: 120),
+                            child: Center(
+                              child: SizedBox(
+                                width: 34,
+                                height: 34,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.6,
+                                ),
                               ),
-                            ],
+                            ),
                           ),
                         );
                       }

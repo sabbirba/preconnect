@@ -433,11 +433,11 @@ class _ScanScheduleLoadingState extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: const [
         SizedBox(height: 28),
-        BracuSkeletonBox(height: 24, radius: 10),
+        BracuLoading(height: 24, radius: 10),
         SizedBox(height: 10),
-        BracuCard(child: BracuSkeletonBox(height: 260, radius: 16)),
+        BracuCard(child: BracuLoading(height: 260, radius: 16)),
         SizedBox(height: 14),
-        BracuSkeletonList(itemCount: 2, compact: true),
+        BracuLoading(itemCount: 2, compact: true),
       ],
     );
   }

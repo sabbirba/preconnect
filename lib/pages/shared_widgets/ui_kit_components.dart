@@ -2110,19 +2110,33 @@ class BracuLoading extends StatelessWidget {
   const BracuLoading({
     super.key,
     this.label = '',
-    this.itemCount = 3,
-    this.compact,
+    this.size = 28,
+    this.itemCount = 1,
+    this.compact = false,
+    this.showLabel = false,
+    this.width,
+    this.height,
+    this.radius,
+    this.crossAxisCount,
+    this.itemHeight,
   });
 
   final String label;
+  final double size;
   final int itemCount;
-  final bool? compact;
+  final bool compact;
+  final bool showLabel;
+  final double? width;
+  final double? height;
+  final double? radius;
+  final int? crossAxisCount;
+  final double? itemHeight;
 
   @override
   Widget build(BuildContext context) {
-    final useCompact = compact ?? false;
+    final effectiveSize = height ?? width ?? size;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         if (label.trim().isNotEmpty) ...[
           Text(
@@ -2135,76 +2149,12 @@ class BracuLoading extends StatelessWidget {
           ),
           const SizedBox(height: 10),
         ],
-        BracuSkeletonList(
-          itemCount: itemCount,
-          compact: useCompact,
-          showLabel: false,
+        SizedBox(
+          width: effectiveSize,
+          height: effectiveSize,
+          child: const CircularProgressIndicator(strokeWidth: 2.6),
         ),
       ],
-    );
-  }
-}
-
-class BracuSkeletonList extends StatelessWidget {
-  const BracuSkeletonList({
-    super.key,
-    this.itemCount = 3,
-    this.compact = false,
-    this.showLabel = false,
-    this.label = '',
-  });
-
-  final int itemCount;
-  final bool compact;
-  final bool showLabel;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: List.generate(itemCount, (index) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: index == itemCount - 1 ? 0 : 12),
-          child: BracuCard(child: _BracuSkeletonRow(compact: compact)),
-        );
-      }),
-    );
-  }
-}
-
-class BracuSkeletonGrid extends StatelessWidget {
-  const BracuSkeletonGrid({
-    super.key,
-    this.itemCount = 6,
-    this.crossAxisCount = 3,
-    this.spacing = 10,
-    this.itemHeight = 72,
-  });
-
-  final int itemCount;
-  final int crossAxisCount;
-  final double spacing;
-  final double itemHeight;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final tileWidth =
-            (width - spacing * (crossAxisCount - 1)) / crossAxisCount;
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: List.generate(itemCount, (index) {
-            return SizedBox(
-              width: tileWidth,
-              height: itemHeight,
-              child: const BracuCard(child: _BracuSkeletonTile()),
-            );
-          }),
-        );
-      },
     );
   }
 }
@@ -2286,108 +2236,6 @@ class _BracuMetricTile extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class BracuSkeletonBox extends StatelessWidget {
-  const BracuSkeletonBox({
-    super.key,
-    this.width,
-    required this.height,
-    this.radius = 8,
-  });
-
-  final double? width;
-  final double height;
-  final double radius;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: BracuPalette.textSecondary(context).withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(radius),
-      ),
-    );
-  }
-}
-
-class _BracuSkeletonRow extends StatelessWidget {
-  const _BracuSkeletonRow({required this.compact});
-
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        const BracuSkeletonBox(width: 52, height: 52, radius: 16),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const BracuSkeletonBox(height: 14, radius: 8),
-              SizedBox(height: compact ? 8 : 10),
-              const BracuSkeletonBox(height: 10, radius: 8),
-              if (!compact) ...[
-                const SizedBox(height: 8),
-                const BracuSkeletonBox(height: 10, radius: 8),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _BracuSkeletonTile extends StatelessWidget {
-  const _BracuSkeletonTile();
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxHeight < 60) {
-          return const BracuSkeletonCompactTile();
-        }
-        final compact = constraints.maxHeight < 78;
-        final padding = compact ? 10.0 : 12.0;
-        final iconSize = compact ? 22.0 : 28.0;
-        return Padding(
-          padding: EdgeInsets.all(padding),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              BracuSkeletonBox(width: iconSize, height: iconSize, radius: 10),
-              SizedBox(height: compact ? 8 : 10),
-              const BracuSkeletonBox(height: 10, radius: 8),
-              if (!compact) ...[
-                const SizedBox(height: 8),
-                const BracuSkeletonBox(width: 64, height: 10, radius: 8),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class BracuSkeletonCompactTile extends StatelessWidget {
-  const BracuSkeletonCompactTile({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.all(10),
-      child: Center(child: BracuSkeletonBox(width: 42, height: 18, radius: 10)),
     );
   }
 }

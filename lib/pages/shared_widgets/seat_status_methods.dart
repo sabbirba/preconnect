@@ -172,7 +172,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
                 return const Padding(
                   padding: EdgeInsets.only(bottom: 12),
                   child: BracuCard(
-                    child: BracuSkeletonList(itemCount: 1, compact: true),
+                    child: BracuLoading(itemCount: 1, compact: true),
                   ),
                 );
               }
@@ -183,7 +183,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
                 return const Padding(
                   padding: EdgeInsets.only(bottom: 12),
                   child: BracuCard(
-                    child: BracuSkeletonList(itemCount: 1, compact: true),
+                    child: BracuLoading(itemCount: 1, compact: true),
                   ),
                 );
               }

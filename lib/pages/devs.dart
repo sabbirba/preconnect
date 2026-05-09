@@ -188,13 +188,13 @@ class _DevsPageState extends State<DevsPage> {
                     ? const Column(
                         children: [
                           BracuCard(
-                            child: BracuSkeletonList(
+                            child: BracuLoading(
                               itemCount: 2,
                               compact: true,
                             ),
                           ),
                           SizedBox(height: 12),
-                          BracuSkeletonGrid(
+                          BracuLoading(
                             itemCount: 6,
                             crossAxisCount: 2,
                             itemHeight: 92,

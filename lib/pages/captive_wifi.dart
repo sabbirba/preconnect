@@ -420,7 +420,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     final status = _sessionStatus;
     if (status == null && !_isCheckingSession) {
       return const BracuCard(
-        child: BracuSkeletonList(itemCount: 2, compact: true),
+        child: BracuLoading(itemCount: 2, compact: true),
       );
     }
     final textPrimary = BracuPalette.textPrimary(context);

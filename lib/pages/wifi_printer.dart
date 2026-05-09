@@ -579,7 +579,7 @@ class _PrintHistoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!isLoaded) {
       return const BracuCard(
-        child: BracuSkeletonList(itemCount: 2, compact: true),
+        child: BracuLoading(itemCount: 2, compact: true),
       );
     }
 

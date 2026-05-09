@@ -17,6 +17,23 @@ fi
 mkdir -p "${OUT_DIR}"
 rm -rf "${ROOT_DIR}/.dart_tool/flutter_build"
 
+python - "${ROOT_DIR}/web/manifest.json" "${APP_VERSION}" <<'PY'
+import json
+import sys
+
+manifest_path = sys.argv[1]
+version = sys.argv[2].strip()
+
+with open(manifest_path, "r", encoding="utf-8") as f:
+    manifest = json.load(f)
+
+manifest["version"] = version
+
+with open(manifest_path, "w", encoding="utf-8") as f:
+    json.dump(manifest, f, indent=2)
+    f.write("\n")
+PY
+
 flutter build web \
   --release \
   --csp \
@@ -27,6 +44,23 @@ flutter build web \
   --dart-define="APP_BUILD_NUMBER=${APP_BUILD_NUMBER}" \
   --target="${ROOT_DIR}/web/extension_app.dart" \
   --output="${OUT_DIR}"
+
+python - "${OUT_DIR}/manifest.json" "${APP_VERSION}" <<'PY'
+import json
+import sys
+
+manifest_path = sys.argv[1]
+version = sys.argv[2].strip()
+
+with open(manifest_path, "r", encoding="utf-8") as f:
+    manifest = json.load(f)
+
+manifest["version"] = version
+
+with open(manifest_path, "w", encoding="utf-8") as f:
+    json.dump(manifest, f, indent=2)
+    f.write("\n")
+PY
 
 perl -0pi -e 's/serviceWorkerSettings:\s*\{\s*serviceWorkerVersion:\s*"[^"]+"[^}]*\}/serviceWorkerSettings: null/s' \
   "${OUT_DIR}/flutter_bootstrap.js"

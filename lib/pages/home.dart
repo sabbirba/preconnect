@@ -261,7 +261,13 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
                 _builtTabs.add(tab);
                 return pages[tab]!(context);
               }
-              return const BracuLoading(itemCount: 4);
+              return const Center(
+                child: SizedBox(
+                  width: 30,
+                  height: 30,
+                  child: CircularProgressIndicator(strokeWidth: 2.6),
+                ),
+              );
             }).toList(),
           ),
         ),
@@ -641,7 +647,7 @@ class _RamadanTopCountdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (targetTime == null || targetTime!.trim().isEmpty) {
-      return const BracuSkeletonBox(height: 56, radius: 14);
+      return const BracuLoading(height: 56, radius: 14);
     }
     return SizedBox(
       width: double.infinity,
@@ -654,7 +660,7 @@ class _RamadanTopCountdown extends StatelessWidget {
           final now = DateTime.now();
           final remaining = _durationTo(targetTime!, now);
           if (remaining == null) {
-            return const BracuSkeletonBox(height: 56, radius: 14);
+            return const BracuLoading(height: 56, radius: 14);
           }
           return Row(
             children: [

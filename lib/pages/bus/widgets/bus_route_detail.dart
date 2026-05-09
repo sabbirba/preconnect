@@ -98,7 +98,7 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
           children: [
             if (isLoading)
               const BracuCard(
-                child: BracuSkeletonList(itemCount: 3, compact: true),
+                child: BracuLoading(itemCount: 3, compact: true),
               ),
             if (_error != null)
               Padding(
@@ -245,7 +245,7 @@ class _RouteLiveMapCard extends StatelessWidget {
                           Positioned(
                             top: 18,
                             left: 18,
-                            child: BracuSkeletonBox(
+                            child: BracuLoading(
                               width: 110,
                               height: 28,
                               radius: 14,
@@ -254,7 +254,7 @@ class _RouteLiveMapCard extends StatelessWidget {
                           Positioned(
                             right: 18,
                             top: 18,
-                            child: BracuSkeletonBox(
+                            child: BracuLoading(
                               width: 44,
                               height: 44,
                               radius: 14,
@@ -263,7 +263,7 @@ class _RouteLiveMapCard extends StatelessWidget {
                           Positioned(
                             right: 18,
                             bottom: 18,
-                            child: BracuSkeletonBox(
+                            child: BracuLoading(
                               width: 86,
                               height: 86,
                               radius: 24,
@@ -272,7 +272,7 @@ class _RouteLiveMapCard extends StatelessWidget {
                           Positioned(
                             left: 18,
                             bottom: 18,
-                            child: BracuSkeletonBox(
+                            child: BracuLoading(
                               width: 120,
                               height: 20,
                               radius: 10,
@@ -371,7 +371,7 @@ class _LiveTrackerDetailsCard extends StatelessWidget {
     final updatedLabel = _updatedLabel(live);
 
     if (speedLabel == null && updatedLabel == null) {
-      return const BracuSkeletonBox(height: 20, radius: 8);
+      return const BracuLoading(height: 20, radius: 8);
     }
 
     return Center(
