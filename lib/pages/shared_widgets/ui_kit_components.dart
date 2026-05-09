@@ -661,6 +661,17 @@ class _BracuConfirmationActionDialogState
     extends State<_BracuConfirmationActionDialog> {
   bool _isLoading = false;
 
+  Widget _buildSpinner() {
+    return SizedBox(
+      width: 16,
+      height: 16,
+      child: CircularProgressIndicator(
+        strokeWidth: 2,
+        valueColor: AlwaysStoppedAnimation<Color>(widget.confirmColor),
+      ),
+    );
+  }
+
   Future<void> _handleConfirm() async {
     if (_isLoading) return;
     setState(() {
@@ -754,7 +765,9 @@ class _BracuConfirmationActionDialogState
                         borderColor: widget.confirmColor.withValues(alpha: 0.6),
                         borderRadius: 12,
                       ),
-                      child: Text(widget.confirmLabel),
+                      child: _isLoading
+                          ? Center(child: _buildSpinner())
+                          : Text(widget.confirmLabel),
                     ),
                   ),
                 ],
@@ -2158,15 +2171,13 @@ class BracuSkeletonList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _BracuShimmer(
-      child: Column(
-        children: List.generate(itemCount, (index) {
-          return Padding(
-            padding: EdgeInsets.only(bottom: index == itemCount - 1 ? 0 : 12),
-            child: BracuCard(child: _BracuSkeletonRow(compact: compact)),
-          );
-        }),
-      ),
+    return Column(
+      children: List.generate(itemCount, (index) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: index == itemCount - 1 ? 0 : 12),
+          child: BracuCard(child: _BracuSkeletonRow(compact: compact)),
+        );
+      }),
     );
   }
 }
@@ -2192,18 +2203,16 @@ class BracuSkeletonGrid extends StatelessWidget {
         final width = constraints.maxWidth;
         final tileWidth =
             (width - spacing * (crossAxisCount - 1)) / crossAxisCount;
-        return _BracuShimmer(
-          child: Wrap(
-            spacing: spacing,
-            runSpacing: spacing,
-            children: List.generate(itemCount, (index) {
-              return SizedBox(
-                width: tileWidth,
-                height: itemHeight,
-                child: const BracuCard(child: _BracuSkeletonTile()),
-              );
-            }),
-          ),
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: List.generate(itemCount, (index) {
+            return SizedBox(
+              width: tileWidth,
+              height: itemHeight,
+              child: const BracuCard(child: _BracuSkeletonTile()),
+            );
+          }),
         );
       },
     );
@@ -2305,7 +2314,7 @@ class BracuSkeletonBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final box = Container(
+    return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
@@ -2313,11 +2322,6 @@ class BracuSkeletonBox extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
       ),
     );
-    final shimmerValue = _BracuShimmerScope.maybeOf(context);
-    if (shimmerValue != null) {
-      return box;
-    }
-    return _BracuShimmer(child: box);
   }
 }
 
@@ -2400,102 +2404,7 @@ class BracuSkeletonCompactTile extends StatelessWidget {
   }
 }
 
-class _BracuShimmer extends StatefulWidget {
-  const _BracuShimmer({required this.child});
 
-  final Widget child;
-
-  @override
-  State<_BracuShimmer> createState() => _BracuShimmerState();
-}
-
-class _BracuShimmerState extends State<_BracuShimmer>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1500),
-  )..repeat();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        final shimmerValue = _controller.value * 2 - 1;
-        return _BracuShimmerScope(
-          value: shimmerValue,
-          child: _BracuShimmerMask(
-            value: shimmerValue,
-            child: child ?? const SizedBox.shrink(),
-          ),
-        );
-      },
-      child: widget.child,
-    );
-  }
-}
-
-class _BracuShimmerMask extends StatelessWidget {
-  const _BracuShimmerMask({required this.value, required this.child});
-
-  final double value;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return ShaderMask(
-      shaderCallback: (rect) {
-        return LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            BracuPalette.textSecondary(context).withValues(alpha: 0.05),
-            BracuPalette.textSecondary(context).withValues(alpha: 0.14),
-            BracuPalette.textSecondary(context).withValues(alpha: 0.05),
-          ],
-          stops: const [0.35, 0.5, 0.65],
-          transform: _SlidingGradientTransform(value),
-        ).createShader(rect);
-      },
-      blendMode: BlendMode.srcATop,
-      child: child,
-    );
-  }
-}
-
-class _BracuShimmerScope extends InheritedWidget {
-  const _BracuShimmerScope({required this.value, required super.child});
-
-  final double value;
-
-  static double? maybeOf(BuildContext context) {
-    return context
-        .dependOnInheritedWidgetOfExactType<_BracuShimmerScope>()
-        ?.value;
-  }
-
-  @override
-  bool updateShouldNotify(_BracuShimmerScope oldWidget) {
-    return value != oldWidget.value;
-  }
-}
-
-class _SlidingGradientTransform extends GradientTransform {
-  const _SlidingGradientTransform(this.value);
-
-  final double value;
-
-  @override
-  Matrix4 transform(Rect bounds, {ui.TextDirection? textDirection}) {
-    return Matrix4.translationValues(bounds.width * value, 0, 0);
-  }
-}
 
 class BracuEmptyState extends StatelessWidget {
   const BracuEmptyState({super.key, required this.message});

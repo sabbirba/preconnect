@@ -87,7 +87,15 @@ class CachedImage extends StatelessWidget {
   }
 
   Widget _placeholder() {
-    return placeholder ?? _CachedImageShimmer(width: width, height: height);
+    if (placeholder != null) return placeholder!;
+    return Container(
+      width: width ?? double.infinity,
+      height: height ?? 120,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5FB),
+        borderRadius: BorderRadius.circular(8),
+      ),
+    );
   }
 
   Widget _errorWidget(BuildContext context) {
@@ -109,22 +117,3 @@ class CachedImage extends StatelessWidget {
   }
 }
 
-class _CachedImageShimmer extends StatelessWidget {
-  const _CachedImageShimmer({this.width, this.height});
-
-  final double? width;
-  final double? height;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      width: width ?? double.infinity,
-      height: height ?? 120,
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF20242D) : const Color(0xFFF1F5FB),
-        borderRadius: BorderRadius.circular(8),
-      ),
-    );
-  }
-}
