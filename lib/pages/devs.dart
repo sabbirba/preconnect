@@ -2,12 +2,12 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/pages/api_test.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/async_preload_cache.dart';
 import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/tools/cached_image.dart';
+import 'package:preconnect/tools/offline_cache_helper.dart';
 
 class DevsPage extends StatefulWidget {
   const DevsPage({super.key});
@@ -75,71 +75,67 @@ class _DevsPageState extends State<DevsPage> {
     bool forceRefresh = false,
   }) async {
     try {
-      final cache = AppPreferencesStore();
-      if (!forceRefresh) {
-        final cached = await _readCachedContributorsStatic(cache);
-        if (cached.isNotEmpty) {
-          return _withPinnedAndManualContributorsStatic(cached);
-        }
-      }
-
       final uri = Uri.parse(
         'https://api.github.com/repos/sabbirba/preconnect/contributors',
       );
-      final response = await http.get(
-        uri,
-        headers: const {
-          'Accept': 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-      );
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        return _withPinnedAndManualContributorsStatic(
-          const <_ContributorProfile>[],
-        );
-      }
-      final decoded = jsonDecode(response.body);
-      if (decoded is! List) {
-        return _withPinnedAndManualContributorsStatic(
-          const <_ContributorProfile>[],
-        );
-      }
-      final contributors = decoded
-          .whereType<Map>()
-          .map((raw) {
-            final contributor = _ContributorProfile.fromGitHubContributor(
-              raw.cast<String, dynamic>(),
-            );
-            return contributor;
-          })
-          .where((item) => item.name.isNotEmpty && item.avatarUrl.isNotEmpty)
-          .where((item) => !item.key.endsWith('[bot]'))
-          .toList();
-      final merged = _withPinnedAndManualContributorsStatic(contributors);
-      if (contributors.isNotEmpty) {
-        await cache.setJson(
-          _contributorsCacheKey,
-          contributors.map((item) => item.toJson()).toList(),
-        );
-      }
-      return merged;
+      final contributors = await OfflineCacheHelper.instance
+          .loadJson<List<_ContributorProfile>>(
+            cacheKey: _contributorsCacheKey,
+            ttl: const Duration(hours: 24),
+            forceRefresh: forceRefresh,
+            fetcher: () async {
+              final response = await http.get(
+                uri,
+                headers: const {
+                  'Accept': 'application/vnd.github+json',
+                  'X-GitHub-Api-Version': '2022-11-28',
+                },
+              );
+              if (response.statusCode < 200 || response.statusCode >= 300) {
+                return const <_ContributorProfile>[];
+              }
+              final decoded = jsonDecode(response.body);
+              if (decoded is! List) {
+                return const <_ContributorProfile>[];
+              }
+              final contributors = decoded
+                  .whereType<Map>()
+                  .map((raw) {
+                    final contributor =
+                        _ContributorProfile.fromGitHubContributor(
+                          raw.cast<String, dynamic>(),
+                        );
+                    return contributor;
+                  })
+                  .where(
+                    (item) => item.name.isNotEmpty && item.avatarUrl.isNotEmpty,
+                  )
+                  .where((item) => !item.key.endsWith('[bot]'))
+                  .toList();
+              await OfflineCacheHelper.instance.saveJson(
+                _contributorsCacheKey,
+                contributors.map((item) => item.toJson()).toList(),
+              );
+              return contributors;
+            },
+            decoder: (cachedData) {
+              final list = cachedData is List ? cachedData : const <dynamic>[];
+              if (list.isEmpty) return null;
+              return list
+                  .whereType<Map>()
+                  .map((entry) => _ContributorProfile.fromJson(entry.cast()))
+                  .where(
+                    (item) => item.name.isNotEmpty && item.avatarUrl.isNotEmpty,
+                  )
+                  .toList();
+            },
+          );
+      return _withPinnedAndManualContributorsStatic(contributors);
     } catch (_) {
       return _withPinnedAndManualContributorsStatic(
         const <_ContributorProfile>[],
       );
     }
-  }
-
-  static Future<List<_ContributorProfile>> _readCachedContributorsStatic(
-    AppPreferencesStore cache,
-  ) async {
-    final raw = await cache.getJsonList(_contributorsCacheKey);
-    if (raw == null || raw.isEmpty) return const <_ContributorProfile>[];
-    return raw
-        .whereType<Map>()
-        .map((entry) => _ContributorProfile.fromJson(entry.cast()))
-        .where((item) => item.name.isNotEmpty && item.avatarUrl.isNotEmpty)
-        .toList();
   }
 
   static List<_ContributorProfile> _withPinnedAndManualContributorsStatic(
@@ -181,48 +177,41 @@ class _DevsPageState extends State<DevsPage> {
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
                 const _IntroCard(),
-                const SizedBox(height: 14),
-                const BracuSectionTitle(title: 'People Behind It'),
-                const SizedBox(height: 10),
-                showLoading
-                    ? const Column(
-                        children: [
-                          BracuCard(
-                            child: BracuLoading(
-                              itemCount: 2,
-                              compact: true,
+                bracuGap(14),
+                bracuSectionBlock(
+                  title: 'People Behind It',
+                  child: showLoading
+                      ? const Column(
+                          children: [
+                            BracuCard(
+                              child: BracuLoading(itemCount: 2, compact: true),
                             ),
+                            SizedBox(height: 12),
+                            BracuLoading(
+                              itemCount: 6,
+                              crossAxisCount: 2,
+                              itemHeight: 92,
+                            ),
+                          ],
+                        )
+                      : _ContributorsGrid(
+                          contributors: _contributors,
+                          showAll: _showAllContributors,
+                          onToggle: () => setState(
+                            () => _showAllContributors = !_showAllContributors,
                           ),
-                          SizedBox(height: 12),
-                          BracuLoading(
-                            itemCount: 6,
-                            crossAxisCount: 2,
-                            itemHeight: 92,
-                          ),
-                        ],
-                      )
-                    : _ContributorsGrid(
-                        contributors: _contributors,
-                        showAll: _showAllContributors,
-                        onToggle: () => setState(
-                          () => _showAllContributors = !_showAllContributors,
                         ),
-                      ),
-                const Padding(
-                  padding: EdgeInsets.only(top: 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      BracuSectionTitle(title: 'Sponsored'),
-                      SizedBox(height: 10),
-                      _SponsoredStrip(),
-                    ],
-                  ),
                 ),
-                const SizedBox(height: 14),
-                const BracuSectionTitle(title: 'Funding & Support'),
-                const SizedBox(height: 10),
-                const _FundingCard(),
+                bracuGap(14),
+                bracuSectionBlock(
+                  title: 'Sponsored',
+                  child: const _SponsoredStrip(),
+                ),
+                bracuGap(14),
+                bracuSectionBlock(
+                  title: 'Funding & Support',
+                  child: const _FundingCard(),
+                ),
               ],
             ),
           ),

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 class RamadanStatus {
@@ -40,6 +41,7 @@ class RamadanTiming {
   RamadanTiming._();
 
   static String get _statusUrl => '${ApiConfig.seatStatusProxyBase}/ramadan';
+  static const String _cacheKey = 'ramadan_status_cache_v1';
   static const Duration _requestTimeout = Duration(seconds: 2);
   static final ({DateTime start, DateTime end}) _knownRamadanWindow2026 = (
     start: DateTime(2026, 2, 18),
@@ -85,6 +87,12 @@ class RamadanTiming {
   static Future<RamadanStatus> _refreshRamadanStatus() async {
     try {
       final result = await _fetchRamadanStatus();
+      if (result.fromNetwork) {
+        await AppPreferencesStore().setJson(
+          _cacheKey,
+          result.value.toCacheJson(),
+        );
+      }
       return result.fromNetwork ? result.value : _fallbackOfflineStatus();
     } finally {
       _inflight = null;
@@ -97,6 +105,11 @@ class RamadanTiming {
     final parsedFallback = _parseStatus(fallbackPayload);
     if (parsedFallback != null) {
       return (value: parsedFallback, fromNetwork: true);
+    }
+
+    final cached = await AppPreferencesStore().getJsonMap(_cacheKey);
+    if (cached != null) {
+      return (value: RamadanStatus.fromCache(cached), fromNetwork: false);
     }
 
     return (value: const RamadanStatus(isRamadan: false), fromNetwork: false);

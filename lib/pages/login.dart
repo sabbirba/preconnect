@@ -286,11 +286,7 @@ class _LoginPageState extends State<LoginPage> {
                           child: Container(
                             color: Colors.black.withValues(alpha: 0.08),
                             alignment: Alignment.center,
-                            child: const SizedBox(
-                              width: 28,
-                              height: 28,
-                              child: CircularProgressIndicator(strokeWidth: 2.6),
-                            ),
+                            child: const SizedBox(width: 28, height: 28),
                           ),
                         ),
                     ],

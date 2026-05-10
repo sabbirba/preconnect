@@ -261,13 +261,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
                 _builtTabs.add(tab);
                 return pages[tab]!(context);
               }
-              return const Center(
-                child: SizedBox(
-                  width: 30,
-                  height: 30,
-                  child: CircularProgressIndicator(strokeWidth: 2.6),
-                ),
-              );
+              return const Center(child: SizedBox(width: 30, height: 30));
             }).toList(),
           ),
         ),

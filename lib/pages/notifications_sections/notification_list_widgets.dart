@@ -70,12 +70,7 @@ class HeaderActionButton extends StatelessWidget {
             width: 20,
             height: 20,
             child: isLoading
-                ? const CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      BracuPalette.primary,
-                    ),
-                  )
+                ? const SizedBox(width: 20, height: 20)
                 : Icon(icon, size: 20, color: BracuPalette.primary),
           ),
         ),

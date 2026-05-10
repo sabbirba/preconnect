@@ -323,7 +323,13 @@ class _StudentProfileState extends State<StudentProfile>
                 _payments.isEmpty
                     ? (_profile == null
                           ? const SizedBox.shrink()
-                          : const BracuEmptyState(message: 'No payments found'))
+                          : buildRefreshCustomState(
+                              onRefresh: _refreshProfile,
+                              topSpacing: 0,
+                              child: const BracuEmptyState(
+                                message: 'No payments found',
+                              ),
+                            ))
                     : PaymentGraph(payments: _payments),
                 if (_payments.isNotEmpty) const SizedBox(height: 12),
                 if (_payments.isNotEmpty) PaymentList(payments: _payments),

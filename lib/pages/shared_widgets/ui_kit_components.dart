@@ -81,6 +81,25 @@ ButtonStyle bracuCompactIconButtonStyle({
   );
 }
 
+Widget bracuGap(double value) => SizedBox(height: value);
+
+Widget bracuWideGap(double value) => SizedBox(width: value);
+
+Widget bracuSectionBlock({
+  required String title,
+  required Widget child,
+  double gap = 10,
+}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      BracuSectionTitle(title: title),
+      SizedBox(height: gap),
+      child,
+    ],
+  );
+}
+
 class BracuActionButton extends StatelessWidget {
   const BracuActionButton({
     super.key,
@@ -104,15 +123,15 @@ class BracuActionButton extends StatelessWidget {
   final bool isLoading;
 
   Widget _spinner(BuildContext context) {
-    final color = outlined
-        ? BracuPalette.primary
-        : BracuPalette.textPrimary(context);
     return SizedBox(
       width: iconSize,
       height: iconSize,
-      child: CircularProgressIndicator(
-        strokeWidth: 2,
-        valueColor: AlwaysStoppedAnimation<Color>(color),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: BracuPalette.primary.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(iconSize * 0.35),
+        ),
+        child: const SizedBox.expand(),
       ),
     );
   }
@@ -655,9 +674,12 @@ class _BracuConfirmationActionDialogState
     return SizedBox(
       width: 16,
       height: 16,
-      child: CircularProgressIndicator(
-        strokeWidth: 2,
-        valueColor: AlwaysStoppedAnimation<Color>(widget.confirmColor),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: widget.confirmColor.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: const SizedBox.expand(),
       ),
     );
   }
@@ -1655,12 +1677,24 @@ class BracuRefreshPlaceholder extends StatelessWidget {
   }
 }
 
+Widget buildRefreshCustomState({
+  required RefreshCallback onRefresh,
+  required Widget child,
+  double topSpacing = 160,
+}) {
+  return BracuRefreshPlaceholder(
+    onRefresh: onRefresh,
+    topSpacing: topSpacing,
+    child: child,
+  );
+}
+
 Widget buildRefreshLoadingState({
   required RefreshCallback onRefresh,
   String label = '',
   double topSpacing = 160,
 }) {
-  return BracuRefreshPlaceholder(
+  return buildRefreshCustomState(
     onRefresh: onRefresh,
     topSpacing: topSpacing,
     child: const BracuLoading(),
@@ -1672,7 +1706,7 @@ Widget buildRefreshErrorState({
   required Object? error,
   double topSpacing = 160,
 }) {
-  return BracuRefreshPlaceholder(
+  return buildRefreshCustomState(
     onRefresh: onRefresh,
     topSpacing: topSpacing,
     child: BracuEmptyState(message: 'Error: $error'),
@@ -1684,7 +1718,7 @@ Widget buildRefreshEmptyState({
   required String message,
   double topSpacing = 160,
 }) {
-  return BracuRefreshPlaceholder(
+  return buildRefreshCustomState(
     onRefresh: onRefresh,
     topSpacing: topSpacing,
     child: BracuEmptyState(message: message),
@@ -2134,13 +2168,57 @@ class BracuLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveSize = height ?? width ?? size;
+    final effectiveWidth = width ?? size;
+    final effectiveHeight = height ?? size;
+    final effectiveRadius = radius ?? 12;
+    final gap = compact ? 8.0 : 12.0;
+    final count = itemCount.clamp(1, 12);
+    Widget buildItem(int index) {
+      final isFirst = index == 0;
+      final isSingle = count == 1;
+      final blockHeight = itemHeight ?? (compact ? 14.0 : 18.0);
+      final blockWidth =
+          width ?? (isFirst ? effectiveWidth : effectiveWidth * 0.72);
+      final block = Container(
+        width: isSingle ? effectiveWidth : blockWidth,
+        height: isSingle ? effectiveHeight : blockHeight,
+        decoration: BoxDecoration(
+          color: BracuPalette.primary.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(effectiveRadius),
+        ),
+      );
+      if (!isSingle) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: index == count - 1 ? 0 : gap),
+          child: block,
+        );
+      }
+      return block;
+    }
+
+    final content = crossAxisCount != null && count > 1
+        ? GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: crossAxisCount!.clamp(1, 6),
+            mainAxisSpacing: gap,
+            crossAxisSpacing: gap,
+            childAspectRatio: 3,
+            children: List.generate(count, buildItem),
+          )
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: List.generate(count, buildItem),
+          );
+
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (label.trim().isNotEmpty) ...[
+        if (showLabel || label.trim().isNotEmpty) ...[
           Text(
-            label,
+            label.trim().isEmpty ? 'Loading' : label,
             style: TextStyle(
               color: BracuPalette.textSecondary(context),
               fontSize: 13,
@@ -2149,11 +2227,7 @@ class BracuLoading extends StatelessWidget {
           ),
           const SizedBox(height: 10),
         ],
-        SizedBox(
-          width: effectiveSize,
-          height: effectiveSize,
-          child: const CircularProgressIndicator(strokeWidth: 2.6),
-        ),
+        content,
       ],
     );
   }

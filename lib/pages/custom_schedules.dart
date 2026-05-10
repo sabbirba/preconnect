@@ -599,43 +599,41 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
           final dayGroups = _groupItemsByDay(items);
 
           if (items.isEmpty) {
-            return BracuRefreshList(
+            return buildRefreshCustomState(
               onRefresh: () => _refresh(forceRefresh: true),
-              children: [
-                const SizedBox(height: 160),
-                _MyContentWrap(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        'No custom schedules yet.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: BracuPalette.textPrimary(context),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
+              topSpacing: 160,
+              child: _MyContentWrap(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      'No custom schedules yet.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: BracuPalette.textPrimary(context),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Tap plus to add your first one.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: BracuPalette.textSecondary(context),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tap plus to add your first one.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: BracuPalette.textSecondary(context),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
                       ),
-                      const SizedBox(height: 14),
-                      BracuActionButton(
-                        onPressed: _openEditor,
-                        icon: Icons.add_rounded,
-                        label: 'Add Schedule',
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 14),
+                    BracuActionButton(
+                      onPressed: _openEditor,
+                      icon: Icons.add_rounded,
+                      label: 'Add Schedule',
+                    ),
+                  ],
                 ),
-              ],
+              ),
             );
           }
 

@@ -12,6 +12,7 @@ import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/friend_schedule_sections/schedule_list.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_detail.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -238,10 +239,11 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       final name = file.name.trim();
       final ext = name.contains('.') ? name.split('.').last.trim() : '';
       final safeExt = ext.isEmpty ? 'png' : ext;
-      final tempFile = File(
-        '${Directory.systemTemp.path}/preconnect_scan_${DateTime.now().millisecondsSinceEpoch}.$safeExt',
+      final tempFile = await AppPaths.writeTemporaryFile(
+        fileName:
+            'preconnect_scan_${DateTime.now().millisecondsSinceEpoch}.$safeExt',
+        bytes: bytes,
       );
-      await tempFile.writeAsBytes(bytes, flush: true);
       return tempFile.path;
     } catch (_) {
       return path;

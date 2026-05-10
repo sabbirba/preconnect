@@ -37,6 +37,17 @@ class AppPreferencesStore {
     await setString(key, next);
   }
 
+  Future<void> setCachedJson(
+    String key,
+    dynamic data, {
+    int? timestampMs,
+  }) async {
+    await setJson(key, <String, dynamic>{
+      if (timestampMs != null) ...{'ts': timestampMs},
+      'data': data,
+    });
+  }
+
   Future<Map<String, dynamic>?> getJsonMap(String key) async {
     final raw = await getString(key);
     if (raw == null || raw.trim().isEmpty) return null;
@@ -47,6 +58,20 @@ class AppPreferencesStore {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<Map<String, dynamic>?> getCachedJsonMap(String key) async {
+    final stored = await getJsonMap(key);
+    final data = stored?['data'];
+    if (data is! Map<String, dynamic>) return null;
+    return <String, dynamic>{'ts': stored?['ts'], 'data': data};
+  }
+
+  Future<List<dynamic>?> getCachedJsonList(String key) async {
+    final stored = await getJsonMap(key);
+    final data = stored?['data'];
+    if (data is! List) return null;
+    return data;
   }
 
   Future<List<dynamic>?> getJsonList(String key) async {

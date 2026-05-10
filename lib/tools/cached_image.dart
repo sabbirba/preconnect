@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:preconnect/tools/image_url_utils.dart';
+import 'package:preconnect/tools/persistent_image_cache.dart';
 
 class CachedImage extends StatelessWidget {
   const CachedImage({
@@ -36,19 +38,7 @@ class CachedImage extends StatelessWidget {
     final value = url.trim();
     final remoteUrl = normalizeImageUrl(value);
     if (remoteUrl != null) {
-      return Image.network(
-        remoteUrl,
-        fit: fit,
-        alignment: alignment,
-        width: width,
-        height: height,
-        filterQuality: filterQuality,
-        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-          if (wasSynchronouslyLoaded || frame != null) return child;
-          return _placeholder();
-        },
-        errorBuilder: (context, _, _) => _errorWidget(context),
-      );
+      return _buildRemoteImage(context, remoteUrl);
     }
 
     final inlineBytes = _tryDecodeInline(value);
@@ -67,6 +57,43 @@ class CachedImage extends StatelessWidget {
       return _placeholder();
     }
     return _errorWidget(context);
+  }
+
+  Widget _buildRemoteImage(BuildContext context, String remoteUrl) {
+    final cache = PersistentImageCache.instance;
+    return FutureBuilder<Object?>(
+      future: cache.fetchFileForUrl(remoteUrl),
+      builder: (context, snapshot) {
+        final file = snapshot.data;
+        if (file is File && file.existsSync()) {
+          return Image.file(
+            file,
+            fit: fit,
+            alignment: alignment,
+            width: width,
+            height: height,
+            filterQuality: filterQuality,
+            errorBuilder: (context, _, _) => _errorWidget(context),
+          );
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _placeholder();
+        }
+        return Image.network(
+          remoteUrl,
+          fit: fit,
+          alignment: alignment,
+          width: width,
+          height: height,
+          filterQuality: filterQuality,
+          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+            if (wasSynchronouslyLoaded || frame != null) return child;
+            return _placeholder();
+          },
+          errorBuilder: (context, _, _) => _errorWidget(context),
+        );
+      },
+    );
   }
 
   Uint8List? _tryDecodeInline(String value) {

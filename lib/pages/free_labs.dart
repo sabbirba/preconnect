@@ -448,42 +448,39 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     final nextDay = formatWeekdayTitle(DateFormat('EEEE').format(nextDate));
     final nextDateLabel =
         '$nextDay, ${nextDate.day} ${_monthLabel(nextDate.month)}';
-    return BracuRefreshList(
+    return buildRefreshCustomState(
       onRefresh: _refresh,
-      controller: _scrollController,
-      children: [
-        const SizedBox(height: 160),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              'Today\'s lab hours are over.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: BracuPalette.textPrimary(context),
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
+      topSpacing: 160,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            'Today\'s lab hours are over.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: BracuPalette.textPrimary(context),
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Show next day labs for $nextDateLabel?',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: BracuPalette.textSecondary(context),
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Show next day labs for $nextDateLabel?',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: BracuPalette.textSecondary(context),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
             ),
-            const SizedBox(height: 14),
-            BracuAsyncActionButton(
-              onPressed: _showNextDayLabs,
-              icon: Icons.arrow_forward_rounded,
-              label: 'Show Next Day Labs',
-            ),
-          ],
-        ),
-      ],
+          ),
+          const SizedBox(height: 14),
+          BracuAsyncActionButton(
+            onPressed: _showNextDayLabs,
+            icon: Icons.arrow_forward_rounded,
+            label: 'Show Next Day Labs',
+          ),
+        ],
+      ),
     );
   }
 

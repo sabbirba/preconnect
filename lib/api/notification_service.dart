@@ -5,6 +5,7 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/tools/image_url_utils.dart';
+import 'package:preconnect/tools/cached_json_repository.dart';
 
 class RecentConnectNotification {
   const RecentConnectNotification({
@@ -56,7 +57,6 @@ class ScraperDataService {
   factory ScraperDataService() => _instance;
 
   final ApiClient _client = ApiClient();
-  final AppPreferencesStore _store = AppPreferencesStore();
 
   Future<List<Map<String, dynamic>>> fetchList({
     required String path,
@@ -99,32 +99,17 @@ class ScraperDataService {
     required Duration ttl,
     required bool forceRefresh,
   }) async {
-    if (!forceRefresh) {
-      final cached = await _store.getJsonMap(cacheKey);
-      final ts = cached?['ts'];
-      final data = cached?['data'];
-      if (ts is int && data != null) {
-        final age = DateTime.now().difference(
-          DateTime.fromMillisecondsSinceEpoch(ts),
-        );
-        if (age <= ttl) return data;
-      }
-    }
-
+    final repo = CachedJsonRepository(cacheKey: cacheKey, ttl: ttl);
     final url =
         '${ApiConfig.seatStatusProxyBase}${path.startsWith('/') ? path : '/$path'}';
-    try {
-      final response = await _client.publicGet(url);
-      final decoded = jsonDecode(response.body);
-      await _store.setJson(cacheKey, <String, dynamic>{
-        'ts': DateTime.now().millisecondsSinceEpoch,
-        'data': decoded,
-      });
-      return decoded;
-    } catch (_) {
-      final cached = await _store.getJsonMap(cacheKey);
-      return cached?['data'];
-    }
+    return repo.load<dynamic>(
+      forceRefresh: forceRefresh,
+      fetcher: () async {
+        final response = await _client.publicGet(url);
+        return jsonDecode(response.body);
+      },
+      decoder: (cachedData) => cachedData,
+    );
   }
 }
 

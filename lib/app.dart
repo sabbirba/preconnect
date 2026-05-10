@@ -3,35 +3,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:in_app_update/in_app_update.dart';
-import 'package:preconnect/api/calendar_service.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/api_client.dart';
-import 'package:preconnect/api/custom_schedules_service.dart';
-import 'package:preconnect/api/friend_schedule_store.dart';
-import 'package:preconnect/api/grade_sheet_service.dart';
-import 'package:preconnect/api/notification_service.dart';
-import 'package:preconnect/api/profile_service.dart';
-import 'package:preconnect/api/progress_service.dart';
-import 'package:preconnect/api/seat_status_service.dart';
-import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/home_tab.dart';
-import 'package:preconnect/pages/alarms.dart';
-import 'package:preconnect/pages/bus.dart';
-import 'package:preconnect/pages/class_schedule.dart';
-import 'package:preconnect/pages/custom_schedules.dart';
-import 'package:preconnect/pages/degree_progress.dart';
-import 'package:preconnect/pages/devs.dart';
-import 'package:preconnect/pages/exam_schedule.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/onboarding.dart';
-import 'package:preconnect/pages/notifications.dart';
-import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
-import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/play_install_referrer.dart';
@@ -39,6 +19,7 @@ import 'package:preconnect/tools/reward_support_controller.dart';
 import 'package:preconnect/tools/quiet_mode_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/offline_bootstrap_service.dart';
 import 'package:preconnect/tools/web_extension_shortcut_bridge_stub.dart'
     if (dart.library.html) 'package:preconnect/tools/web_extension_shortcut_bridge_web.dart';
 
@@ -84,14 +65,13 @@ class MyApp extends StatefulWidget {
         PreconnectStorageKeys.accessToken,
         PreconnectStorageKeys.refreshToken,
         'themeMode',
-        CustomSchedulesService.cacheKey,
       };
       await AppPreferencesStore().clearAllExcept(keepKeys);
     }
 
     final canOpenOffline = hasToken && await _hasOfflineSnapshot();
     if (hasToken) {
-      unawaited(_warmStartupCaches());
+      unawaited(OfflineBootstrapService.warmStartupCaches());
     }
 
     return AppBootstrapState(
@@ -109,36 +89,6 @@ class MyApp extends StatefulWidget {
     final schedule = (await prefs.getString('StudentSchedule') ?? '').trim();
     if (schedule.isNotEmpty) return true;
     return studentId.isNotEmpty && fullName.isNotEmpty;
-  }
-
-  static Future<void> _warmStartupCaches() async {
-    final tasks = <Future<void>>[
-      preloadHomeDashboardData().then((_) {}),
-      ProfileService().getProfile().then((_) {}),
-      AttendanceService().getAttendanceInfo().then((_) {}),
-      PaymentService().getPaymentInfo().then((_) {}),
-      ProgressService().getProgress().then((_) {}),
-      ScheduleService().getCurrentSemesterSections().then((_) {}),
-      CustomSchedulesService().getItems().then((_) {}),
-      FriendScheduleStore().loadSnapshot().then((_) {}),
-      CalendarService().getCalendar().then((_) {}),
-      NotificationService().getRecentNotifications().then((_) {}),
-      GradeSheetService().getGradeSheet().then((_) {}),
-      fetchCampusMapData().then((_) {}),
-      fetchTransportScheduleUrl().then((_) {}),
-      preloadCurrentSessionSemesterId().then((_) {}),
-      SeatStatusService.preload(),
-      BusPage.preload(),
-      NotificationsPage.preload(),
-      DegreeProgressPage.preload(),
-      StudentProfile.preload(),
-      DevsPage.preload(),
-      AlarmPage.preload(),
-      ClassSchedule.preload(),
-      ExamSchedule.preload(),
-      CustomSchedulesPage.preload(),
-    ];
-    await Future.wait(tasks.map((task) => task.catchError((_) {})));
   }
 
   static ThemeMode _decodeTheme(String raw) {
@@ -178,8 +128,6 @@ class _MyAppState extends State<MyApp>
   bool _appLockEnabled = false;
   bool _isUnlocked = true;
   bool _isUnlocking = false;
-  bool _backgroundWarmupInFlight = false;
-  DateTime? _lastBackgroundWarmupAt;
   WebExtensionSessionFlow? _webExtensionSessionFlow;
   StreamSubscription<WebExtensionSessionEvent>? _webSessionSub;
   WebExtensionShortcutBridge? _webShortcutBridge;
@@ -226,6 +174,7 @@ class _MyAppState extends State<MyApp>
       }
       if (_initialLoggedIn) {
         _validateSessionInBackground();
+        unawaited(OfflineBootstrapService.warmStartupCaches());
       }
     });
   }
@@ -272,7 +221,7 @@ class _MyAppState extends State<MyApp>
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
       if (_initialLoggedIn) {
-        unawaited(_warmBackgroundCaches());
+        unawaited(OfflineBootstrapService.warmStartupCaches());
       }
       if (_appLockEnabled && _isUnlocked) {
         setState(() {
@@ -396,46 +345,6 @@ class _MyAppState extends State<MyApp>
 
   Future<void> _runStartupChecks() async {
     await _maybeCheckForUpdates();
-  }
-
-  Future<void> _warmBackgroundCaches() async {
-    if (_backgroundWarmupInFlight) return;
-    final now = DateTime.now();
-    if (_lastBackgroundWarmupAt != null &&
-        now.difference(_lastBackgroundWarmupAt!) < const Duration(minutes: 1)) {
-      return;
-    }
-    _backgroundWarmupInFlight = true;
-    _lastBackgroundWarmupAt = now;
-    try {
-      await Future.wait<void>(
-        <Future<void>>[
-          preloadHomeDashboardData().then((_) {}),
-          ProfileService().getProfile().then((_) {}),
-          AttendanceService().getAttendanceInfo().then((_) {}),
-          PaymentService().getPaymentInfo().then((_) {}),
-          ProgressService().getProgress().then((_) {}),
-          ScheduleService().getCurrentSemesterSections().then((_) {}),
-          CustomSchedulesService().getItems().then((_) {}),
-          FriendScheduleStore().loadSnapshot().then((_) {}),
-          CalendarService().getCalendar().then((_) {}),
-          NotificationService().getRecentNotifications().then((_) {}),
-          GradeSheetService().getGradeSheet().then((_) {}),
-          SeatStatusService.preload(),
-          BusPage.preload(),
-          NotificationsPage.preload(),
-          DegreeProgressPage.preload(),
-          StudentProfile.preload(),
-          DevsPage.preload(),
-          AlarmPage.preload(),
-          ClassSchedule.preload(),
-          ExamSchedule.preload(),
-          CustomSchedulesPage.preload(),
-        ].map((task) => task.catchError((_) {})),
-      );
-    } finally {
-      _backgroundWarmupInFlight = false;
-    }
   }
 
   Future<void> _initializeAppLock() async {

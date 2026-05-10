@@ -15,13 +15,16 @@ import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/cgpa_calculator.dart';
 import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/app_paths.dart';
+import 'package:preconnect/tools/external_url_opener.dart';
+import 'package:preconnect/tools/file_name_utils.dart';
+import 'package:preconnect/tools/file_share_utils.dart';
 import 'package:preconnect/tools/reward_support_controller.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/web_shared.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 export 'package:preconnect/tools/web_shared.dart';
@@ -152,34 +155,8 @@ Future<bool> openExternalUrl(
   BuildContext context,
   String rawUrl, {
   String failureMessage = 'Unable to open link.',
-  LaunchMode mobilePreferredMode = LaunchMode.inAppBrowserView,
-  LaunchMode mobileFallbackMode = LaunchMode.externalApplication,
 }) async {
-  var url = rawUrl.trim();
-  url = url.replaceAll(RegExp(r'\s+'), '');
-  if (url.startsWith('www.')) {
-    url = 'https://$url';
-  }
-  if (url.isEmpty) {
-    if (context.mounted) showAppSnackBar(context, failureMessage);
-    return false;
-  }
-  final uri = Uri.tryParse(url);
-  if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
-    if (context.mounted) showAppSnackBar(context, failureMessage);
-    return false;
-  }
-  final platform = Theme.of(context).platform;
-  final isMobilePlatform =
-      !kIsWeb &&
-      (platform == TargetPlatform.android || platform == TargetPlatform.iOS);
-  final mode = isMobilePlatform
-      ? mobilePreferredMode
-      : LaunchMode.platformDefault;
-  var launched = await launchUrl(uri, mode: mode);
-  if (!launched && isMobilePlatform) {
-    launched = await launchUrl(uri, mode: mobileFallbackMode);
-  }
+  final launched = await openExternalUri(rawUrl);
   if (!launched && context.mounted) {
     showAppSnackBar(context, failureMessage);
   }
@@ -197,10 +174,7 @@ Future<bool> openMailComposer(
     return false;
   }
   final mailtoUri = Uri(scheme: 'mailto', path: cleaned);
-  final openedMail = await launchUrl(
-    mailtoUri,
-    mode: LaunchMode.platformDefault,
-  );
+  final openedMail = await openUriWithFallback(mailtoUri);
   if (!openedMail && context.mounted) {
     showAppSnackBar(context, failureMessage);
   }
@@ -223,7 +197,10 @@ Future<bool> openPhoneDialer(
     return false;
   }
   final telUri = Uri(scheme: 'tel', path: normalized);
-  final opened = await launchUrl(telUri, mode: LaunchMode.platformDefault);
+  final opened = await openUriWithFallback(
+    telUri,
+    mobilePreferredMode: LaunchMode.externalApplication,
+  );
   if (!opened && context.mounted) {
     showAppSnackBar(context, failureMessage);
   }
@@ -444,9 +421,7 @@ Future<void> openGradeSheet(BuildContext context) async {
   final isDark = Theme.of(context).brightness == Brightness.dark;
   try {
     if (kIsWeb) {
-      final bytes = await GradeSheetService().fetchGradeSheetBytes(
-        fromGet: true,
-      );
+      final bytes = await GradeSheetService().fetchGradeSheetBytes();
       if (!context.mounted) return;
       if (bytes == null || bytes.isEmpty) {
         _showPdfSnackBar(
@@ -461,9 +436,9 @@ Future<void> openGradeSheet(BuildContext context) async {
       return;
     }
 
-    final gradeSheet = await GradeSheetService().fetchGradeSheet(fromGet: true);
+    final bytes = await GradeSheetService().fetchGradeSheetBytes();
     if (!context.mounted) return;
-    if (gradeSheet == null) {
+    if (bytes == null || bytes.isEmpty) {
       _showPdfSnackBar(
         messenger,
         'Could not fetch the latest grade sheet',
@@ -471,11 +446,24 @@ Future<void> openGradeSheet(BuildContext context) async {
       );
       return;
     }
-    final opened = await _openPdfNativelyOrFallback(gradeSheet.file.path);
+    final fileName = await GradeSheetService().gradeSheetFileName();
+    final tempFileName = '${sanitizeFileName(
+      fileName,
+      fallback: 'Grade_Sheet_PreConnect',
+    )}.pdf';
+    final temporaryFile = await AppPaths.writeTemporaryFile(
+      fileName: tempFileName,
+      bytes: bytes,
+    );
+    final temporaryPath = temporaryFile.path;
+    final opened = await _openPdfNativelyOrFallback(temporaryPath);
     if (opened) return;
-    await _sharePdfFallback(
-      gradeSheet.file.path,
-      title: await GradeSheetService().gradeSheetFileName(),
+    final browserOpened = await _openPdfInBrowserFallback(temporaryPath);
+    if (browserOpened) return;
+    await shareTemporaryBytesFile(
+      fileName: tempFileName,
+      bytes: bytes,
+      text: fileName,
     );
     if (!context.mounted) return;
   } on PlatformException catch (error) {
@@ -488,14 +476,6 @@ Future<void> openGradeSheet(BuildContext context) async {
   } catch (_) {
     _showPdfSnackBar(messenger, 'Could not open the PDF.', isDark: isDark);
   }
-}
-
-Future<void> _sharePdfFallback(String filePath, {required String title}) async {
-  try {
-    await SharePlus.instance.share(
-      ShareParams(files: [XFile(filePath)], text: title),
-    );
-  } catch (_) {}
 }
 
 void _showPdfSnackBar(
@@ -530,11 +510,21 @@ Future<bool> _openPdfNativelyOrFallback(String filePath) async {
     }
   }
 
-  final opened = await launchUrl(
+  return openUriWithFallback(
     Uri.file(filePath),
-    mode: LaunchMode.externalApplication,
+    mobilePreferredMode: LaunchMode.externalApplication,
   );
-  return opened;
+}
+
+Future<bool> _openPdfInBrowserFallback(String filePath) async {
+  try {
+    return await openUriWithFallback(
+      Uri.file(filePath),
+      mobilePreferredMode: LaunchMode.externalApplication,
+    );
+  } catch (_) {
+    return false;
+  }
 }
 
 List<section.Section> buildCurrentSectionsForCalculator(

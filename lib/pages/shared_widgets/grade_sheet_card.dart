@@ -73,11 +73,7 @@ class _GradeSheetCardState extends State<GradeSheetCard> {
                 ? OutlinedButton(
                     onPressed: null,
                     style: bracuCompactOutlinedButtonStyle(context),
-                    child: const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
+                    child: const SizedBox(width: 18, height: 18),
                   )
                 : BracuActionButton(
                     onPressed: _openGradeSheet,

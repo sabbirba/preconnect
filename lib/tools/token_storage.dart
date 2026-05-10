@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart'
@@ -10,9 +11,9 @@ import 'package:http/http.dart' as http;
 import 'package:in_app_review/in_app_review.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_paths.dart';
+import 'package:preconnect/tools/external_url_opener.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/web_platform_stub.dart'
     if (dart.library.html) 'package:preconnect/tools/web_extension_storage_web.dart';
@@ -430,10 +431,9 @@ class InAppReviewPrompt {
   static Future<bool> openStoreListing({String? iosAppStoreId}) async {
     try {
       if (kIsWeb) {
-        final uri = Uri.parse(
+        return await openExternalUri(
           'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
         );
-        return await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
 
       final inAppReview = InAppReview.instance;
@@ -518,22 +518,32 @@ class ProfileImageCache {
   static const _cachedUrlKey = 'profile_image_cached_url';
 
   File? _cachedFile;
+  String? _cachedUrl;
+
+  String _fileNameForUrl(String photoUrl) {
+    final bytes = utf8.encode(photoUrl);
+    final digest = base64Url.encode(bytes).replaceAll('=', '');
+    return 'profile_photo_$digest.jpg';
+  }
 
   Future<File?> getProfileImage(String? photoUrl) async {
     if (photoUrl == null || photoUrl.isEmpty) return null;
 
-    if (_cachedFile != null && _cachedFile!.existsSync()) {
+    if (_cachedFile != null &&
+        _cachedUrl == photoUrl &&
+        _cachedFile!.existsSync()) {
       return _cachedFile;
     }
 
     final dir = await AppPaths.supportDirectory();
-    final file = File('${dir.path}/profile_photo.jpg');
+    final file = File('${dir.path}/${_fileNameForUrl(photoUrl)}');
 
     final cachedUrl = await AppStorage.instance.getString(_cachedUrlKey);
 
     if (file.existsSync() &&
         file.lengthSync() > 0 &&
         (cachedUrl == null || cachedUrl == photoUrl)) {
+      _cachedUrl = photoUrl;
       _cachedFile = file;
       return file;
     }
@@ -543,6 +553,7 @@ class ProfileImageCache {
       if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
         await file.writeAsBytes(response.bodyBytes, flush: true);
         await AppStorage.instance.setString(_cachedUrlKey, photoUrl);
+        _cachedUrl = photoUrl;
         _cachedFile = file;
         return file;
       }
@@ -553,17 +564,24 @@ class ProfileImageCache {
 
   void invalidate() {
     _cachedFile = null;
+    _cachedUrl = null;
   }
 
   Future<void> clear() async {
     try {
       final dir = await AppPaths.supportDirectory();
-      final file = File('${dir.path}/profile_photo.jpg');
-      if (await file.exists()) {
-        await file.delete();
+      if (await dir.exists()) {
+        await for (final entity in dir.list(followLinks: false)) {
+          if (entity is File &&
+              entity.path.contains('profile_photo_') &&
+              entity.path.endsWith('.jpg')) {
+            await entity.delete();
+          }
+        }
       }
     } catch (_) {}
     await AppStorage.instance.remove(_cachedUrlKey);
     _cachedFile = null;
+    _cachedUrl = null;
   }
 }

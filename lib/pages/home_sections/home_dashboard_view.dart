@@ -49,13 +49,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                           child: const Padding(
                             padding: EdgeInsets.only(top: 120),
                             child: Center(
-                              child: SizedBox(
-                                width: 34,
-                                height: 34,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.6,
-                                ),
-                              ),
+                              child: SizedBox(width: 34, height: 34),
                             ),
                           ),
                         );

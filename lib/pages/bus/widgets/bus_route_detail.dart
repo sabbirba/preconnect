@@ -26,8 +26,11 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
     final normalizedPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
     if (normalizedPhone.isEmpty) return;
     final messenger = ScaffoldMessenger.of(context);
-    final uri = Uri.parse('tel:$normalizedPhone');
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final opened = await openPhoneDialer(
+      context,
+      normalizedPhone,
+      failureMessage: 'Unable to open the dialer.',
+    );
     if (opened || !mounted) return;
     messenger.showSnackBar(
       const SnackBar(content: Text('Unable to open the dialer.')),
@@ -177,10 +180,11 @@ Future<void> _openRouteInGoogleMaps(
   double longitude,
 ) async {
   final messenger = ScaffoldMessenger.of(context);
-  final uri = Uri.parse(
+  final opened = await openExternalUrl(
+    context,
     'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude',
+    failureMessage: 'Unable to open Google Maps.',
   );
-  final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
   if (opened || !context.mounted) return;
   messenger.showSnackBar(
     const SnackBar(content: Text('Unable to open Google Maps.')),

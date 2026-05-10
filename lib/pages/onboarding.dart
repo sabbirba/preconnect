@@ -77,7 +77,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
         return;
       }
       if (widget.isLoggedIn) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/home', (route) => false);
         return;
       }
       Navigator.of(context).pushReplacement(
@@ -418,11 +420,14 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           ? const SizedBox(
                               width: 22,
                               height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.4,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: Colors.white24,
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(7),
+                                  ),
                                 ),
+                                child: SizedBox.expand(),
                               ),
                             )
                           : const Text('Continue'),

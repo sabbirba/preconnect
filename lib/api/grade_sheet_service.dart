@@ -1,21 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
-import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/app_paths.dart';
-
-class GradeSheetFile {
-  const GradeSheetFile({required this.file, required this.fromCache});
-
-  final File file;
-  final bool fromCache;
-}
 
 class GradeSheetService {
   GradeSheetService._internal();
@@ -23,15 +13,6 @@ class GradeSheetService {
   factory GradeSheetService() => _instance;
 
   final ApiClient _client = ApiClient();
-  final Map<String, Future<GradeSheetFile?>> _inFlight =
-      <String, Future<GradeSheetFile?>>{};
-  final StreamController<GradeSheetFile?> _streamController =
-      StreamController<GradeSheetFile?>.broadcast();
-
-  Stream<GradeSheetFile?> watchGradeSheet() async* {
-    yield await getGradeSheet();
-    yield* _streamController.stream;
-  }
 
   Future<Uint8List?> fetchGradeSheetBytes({bool fromGet = false}) async {
     final profileId = await resolvePortfolioId(
@@ -56,94 +37,10 @@ class GradeSheetService {
     return fetchGradeSheetBytes(fromGet: true);
   }
 
-  Future<GradeSheetFile?> fetchGradeSheet({bool fromGet = false}) async {
-    final key = 'gradesheet|$fromGet';
-    final inFlight = _inFlight[key];
-    if (inFlight != null) {
-      return inFlight;
-    }
-
-    final request = _fetchGradeSheetInternal(fromGet: fromGet);
-    _inFlight[key] = request;
-    try {
-      return await request;
-    } finally {
-      _inFlight.remove(key);
-    }
-  }
-
-  Future<GradeSheetFile?> _fetchGradeSheetInternal({
-    required bool fromGet,
-  }) async {
-    final profileId = await resolvePortfolioId(
-      prefs: AppPreferencesStore(),
-      refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
-    );
-
-    if (profileId == null || profileId.isEmpty) {
-      return fromGet ? null : getGradeSheet(fromFetch: true);
-    }
-
-    try {
-      final response = await _client.authenticatedGet(
-        '${ApiConfig.connectApiBase}${ApiConfig.gradeSheetPath(profileId)}',
-        additionalHeaders: const <String, String>{
-          'Accept': 'application/pdf, text/plain, */*',
-        },
-      );
-      final bytes = _extractPdfBytes(response.bodyBytes, response.body);
-      if (bytes == null || bytes.isEmpty) {
-        final fallback = fromGet ? null : await getGradeSheet(fromFetch: true);
-        _publish(fallback);
-        return fallback;
-      }
-
-      final file = await _writePdfFile(profileId, bytes);
-      final result = GradeSheetFile(file: file, fromCache: false);
-      _publish(result);
-      return result;
-    } catch (_) {
-      final fallback = fromGet ? null : await getGradeSheet(fromFetch: true);
-      _publish(fallback);
-      return fallback;
-    }
-  }
-
-  Future<GradeSheetFile?> getGradeSheet({bool fromFetch = false}) async {
-    final profileId = await resolvePortfolioId(
-      prefs: AppPreferencesStore(),
-      refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
-    );
-    if (profileId == null || profileId.isEmpty) return null;
-
-    final file = await _gradeSheetFile(profileId);
-    if (await file.exists()) {
-      final result = GradeSheetFile(file: file, fromCache: true);
-      _publish(result);
-      return result;
-    }
-
-    if (fromFetch) return null;
-    return fetchGradeSheet(fromGet: true);
-  }
-
-  Future<File> _writePdfFile(String profileId, Uint8List bytes) async {
-    final file = await _gradeSheetFile(profileId);
-    await file.parent.create(recursive: true);
-    await file.writeAsBytes(bytes, flush: true);
-    return file;
-  }
-
-  Future<File> _gradeSheetFile(String profileId) async {
-    final dir = await AppPaths.supportDirectory();
-    final fileName = await gradeSheetFileName(profileId: profileId);
-    return File('${dir.path}/$fileName.pdf');
-  }
-
   Future<String> gradeSheetFileName({String? profileId}) async {
-    final fullName = (await AppStorage.instance.getString('fullName') ?? '')
+    final fullName = (await AppPreferencesStore().getString('fullName') ?? '')
         .trim();
-    final studentId = (await AppStorage.instance.getString('studentId') ?? '')
+    final studentId = (await AppPreferencesStore().getString('studentId') ?? '')
         .trim();
     final safeName = fullName
         .replaceAll(RegExp(r'[\\/:*?"<>|]+'), ' ')
@@ -214,10 +111,5 @@ class GradeSheetService {
       }
     }
     return output.replaceAll(RegExp(r'\s+'), '');
-  }
-
-  void _publish(GradeSheetFile? value) {
-    if (_streamController.isClosed) return;
-    _streamController.add(value);
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 class AppPaths {
   AppPaths._();
@@ -15,6 +16,16 @@ class AppPaths {
     return _ensureDirectory(
       Directory('${Directory.systemTemp.path}/PreConnect'),
     );
+  }
+
+  static Future<File> writeTemporaryFile({
+    required String fileName,
+    required Uint8List bytes,
+  }) async {
+    final dir = await temporaryDirectory();
+    final file = File('${dir.path}/$fileName');
+    await file.writeAsBytes(bytes, flush: true);
+    return file;
   }
 
   static Future<Directory> _ensureDirectory(Directory directory) async {

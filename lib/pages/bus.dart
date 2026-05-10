@@ -6,16 +6,20 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/async_preload_cache.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:preconnect/tools/offline_cache_helper.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 part 'package:preconnect/pages/bus/widgets/bus_route_detail.dart';
 part 'package:preconnect/pages/bus/widgets/bus_models.dart';
 part 'package:preconnect/pages/bus/widgets/bus_sections.dart';
 part 'package:preconnect/pages/bus/widgets/bus_widgets.dart';
+
+const String _busDataCacheKey = 'bus_data_v1';
+const String _busScheduleUrlCacheKey = 'bus_schedule_url_v1';
 
 class BusPage extends StatefulWidget {
   const BusPage({super.key});
@@ -70,11 +74,24 @@ class _BusPageState extends State<BusPage> {
           : null;
       final resolvedUrl = (url?.trim().isNotEmpty == true ? url : fallbackUrl)
           ?.trim();
+      if (resolvedUrl != null && resolvedUrl.isNotEmpty) {
+        await AppPreferencesStore().setString(
+          _busScheduleUrlCacheKey,
+          resolvedUrl,
+        );
+      }
       if (!mounted) return;
       setState(() {
         _schedulePdfUrl = resolvedUrl ?? '';
       });
     } catch (error) {
+      final cachedUrl = await AppPreferencesStore().getString(
+        _busScheduleUrlCacheKey,
+      );
+      if (!mounted) return;
+      setState(() {
+        _schedulePdfUrl = cachedUrl?.trim() ?? '';
+      });
       if (kDebugMode) {
         debugPrint('Failed to fetch schedule URL: $error');
       }
@@ -113,6 +130,30 @@ class _BusPageState extends State<BusPage> {
     final contacts = _data?.contacts ?? const <_BusContact>[];
     final instructions = _data?.instructions ?? const <String>[];
     final schedulePdfUrl = _schedulePdfUrl;
+    final routeWidgets = _error == null && routes.isNotEmpty
+        ? routes.asMap().entries.expand((entry) {
+            final route = entry.value;
+            final isLast = entry.key == routes.length - 1;
+            return [
+              _TransportRouteCard(
+                route: route,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => BusRouteDetailPage(
+                        route: route,
+                        vehicle: route.routeVehicle.code.isNotEmpty
+                            ? route.routeVehicle
+                            : null,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              if (!isLast) const SizedBox(height: 10),
+            ];
+          })
+        : const <Widget>[];
 
     return BracuPageScaffold(
       title: 'Bus',
@@ -131,51 +172,18 @@ class _BusPageState extends State<BusPage> {
         onRefresh: () => _load(forceRefresh: true),
         children: [
           if (_error != null && _data == null)
-            BracuCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _error!,
-                    style: TextStyle(
-                      color: BracuPalette.textPrimary(context),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  BracuActionButton(
-                    onPressed: () => _load(forceRefresh: true),
-                    icon: Icons.refresh_rounded,
-                    label: 'Retry',
-                  ),
-                ],
-              ),
+            buildRefreshErrorState(
+              onRefresh: () => _load(forceRefresh: true),
+              error: _error,
+              topSpacing: 40,
             ),
-          if (routes.isEmpty)
-            const BracuEmptyState(message: 'No bus route data available')
-          else
-            ...routes.asMap().entries.expand((entry) {
-              final route = entry.value;
-              final isLast = entry.key == routes.length - 1;
-              return [
-                _TransportRouteCard(
-                  route: route,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => BusRouteDetailPage(
-                          route: route,
-                          vehicle: route.routeVehicle.code.isNotEmpty
-                              ? route.routeVehicle
-                              : null,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                if (!isLast) const SizedBox(height: 10),
-              ];
-            }),
+          if (_error == null && routes.isEmpty)
+            buildRefreshEmptyState(
+              onRefresh: () => _load(forceRefresh: true),
+              message: 'No bus route data available',
+              topSpacing: 40,
+            ),
+          ...routeWidgets,
           if (outbound != null) ...[
             const SizedBox(height: 2),
             _OutboundTripsCard(outbound: outbound),
@@ -199,18 +207,36 @@ class _BusPageState extends State<BusPage> {
 }
 
 Future<_BusDataPackage> _fetchBusDataPackage() async {
-  final response = await ApiClient().publicGet(
-    ApiConfig.busDataUrl,
-    acceptedStatusCodes: <int>{200},
+  final raw = await OfflineCacheHelper.instance.loadJson<dynamic>(
+    cacheKey: _busDataCacheKey,
+    ttl: const Duration(hours: 12),
+    forceRefresh: false,
+    fetcher: () async {
+      final response = await ApiClient().publicGet(
+        ApiConfig.busDataUrl,
+        acceptedStatusCodes: <int>{200},
+      );
+      final decoded = jsonDecode(response.body);
+      final payload = decoded is Map<String, dynamic>
+          ? decoded
+          : decoded is Map
+          ? decoded.cast<String, dynamic>()
+          : null;
+      if (payload == null) return const _BusDataPackage.empty();
+      await OfflineCacheHelper.instance.saveJson(_busDataCacheKey, payload);
+      return _BusDataPackage.fromJson(payload);
+    },
+    decoder: (cachedData) {
+      if (cachedData is Map<String, dynamic>) {
+        return _BusDataPackage.fromJson(cachedData);
+      }
+      if (cachedData is Map) {
+        return _BusDataPackage.fromJson(cachedData.cast<String, dynamic>());
+      }
+      return null;
+    },
   );
-  final decoded = jsonDecode(response.body);
-  if (decoded is Map<String, dynamic>) {
-    return _BusDataPackage.fromJson(decoded);
-  }
-  if (decoded is Map) {
-    return _BusDataPackage.fromJson(decoded.cast<String, dynamic>());
-  }
-  return const _BusDataPackage.empty();
+  return raw is _BusDataPackage ? raw : const _BusDataPackage.empty();
 }
 
 class _TransportRouteCard extends StatelessWidget {

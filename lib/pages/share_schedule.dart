@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:ui' show ImageByteFormat;
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -11,8 +10,7 @@ import 'package:preconnect/api/schedule_service.dart';
 import 'package:archive/archive.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/app_paths.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:preconnect/tools/file_share_utils.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
 class ShareSchedulePage extends StatefulWidget {
@@ -267,12 +265,10 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
         return;
       }
 
-      final tempDir = await AppPaths.temporaryDirectory();
-      final file = File('${tempDir.path}/$fileName');
-      await file.writeAsBytes(bytes, flush: true);
-
-      await SharePlus.instance.share(
-        ShareParams(files: [XFile(file.path)], text: shareText),
+      await shareTemporaryBytesFile(
+        fileName: fileName,
+        bytes: bytes,
+        text: shareText,
       );
     } catch (e) {
       if (!mounted) return;
@@ -295,7 +291,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
                   BracuEmptyState(message: "Error: $errorMessage")
                 else ...[
                   const BracuSectionTitle(title: 'Your QR Code'),
-                  const SizedBox(height: 10),
+                  bracuGap(10),
                   BracuCard(
                     child: RepaintBoundary(
                       key: _qrKey,
@@ -411,23 +407,24 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
-                  const BracuSectionTitle(title: 'How to use'),
-                  const SizedBox(height: 10),
-                  BracuCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Share your schedule by showing the QR code to your friend. They scan it to add you.',
-                          style: TextStyle(
-                            color: BracuPalette.textSecondary(context),
+                  bracuGap(14),
+                  bracuSectionBlock(
+                    title: 'How to use',
+                    child: BracuCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Share your schedule by showing the QR code to your friend. They scan it to add you.',
+                            style: TextStyle(
+                              color: BracuPalette.textSecondary(context),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  bracuGap(12),
                 ],
               ],
             ),
@@ -443,40 +440,23 @@ class _ShareScheduleLoadingState extends StatelessWidget {
     return BracuRefreshList(
       onRefresh: () async {},
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      children: const [
-        SizedBox(height: 28),
-        Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2.4),
-          ),
-        ),
-        SizedBox(height: 12),
+      children: [
+        bracuGap(28),
+        Center(child: SizedBox(width: 24, height: 24)),
+        bracuGap(12),
         BracuCard(
           child: SizedBox(
             height: 260,
-            child: Center(
-              child: SizedBox(
-                width: 34,
-                height: 34,
-                child: CircularProgressIndicator(strokeWidth: 2.6),
-              ),
-            ),
+            child: Center(child: SizedBox(width: 34, height: 34)),
           ),
         ),
-        SizedBox(height: 14),
-        BracuSectionTitle(title: 'How to use'),
-        SizedBox(height: 10),
-        BracuCard(
-          child: SizedBox(
-            height: 72,
-            child: Center(
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2.4),
-              ),
+        bracuGap(14),
+        bracuSectionBlock(
+          title: 'How to use',
+          child: BracuCard(
+            child: SizedBox(
+              height: 72,
+              child: Center(child: SizedBox(width: 24, height: 24)),
             ),
           ),
         ),
