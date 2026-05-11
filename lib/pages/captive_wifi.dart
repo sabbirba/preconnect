@@ -9,6 +9,7 @@ import 'package:preconnect/tools/android_network_assist.dart';
 import 'package:preconnect/tools/captive_wifi_http_service.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 
 class CaptiveWifiPage extends StatefulWidget {
   const CaptiveWifiPage({super.key, this.autoOpenCaptiveWifiOnStart = false});
@@ -57,8 +58,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     final autoExtendEnabled = await CaptiveLoginStore.instance
         .readAutoExtendEnabled();
     final creds = await CaptiveLoginStore.instance.read();
-    var studentId = (await AppStorage.instance.getString('studentId') ?? '')
-        .trim();
+    var studentId =
+        (await AppStorage.instance.getString(StorageKeys.studentId) ?? '')
+            .trim();
     if (studentId.isEmpty) {
       final profile = await ProfileService().getProfile(fromFetch: true);
       studentId = (profile?['studentId'] ?? '').trim();
@@ -764,7 +766,13 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                         onPressed: _isConnecting
                             ? null
                             : () => unawaited(_runOneTapConnect()),
-                        label: _isConnecting ? 'Connecting...' : 'Connect',
+                        label: 'Connect',
+                        outlined: false,
+                        isLoading: _isConnecting,
+                        backgroundColor: BracuPalette.primary.withValues(
+                          alpha: 0.12,
+                        ),
+                        foregroundColor: BracuPalette.primary,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -775,9 +783,13 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                             ? null
                             : () => unawaited(_refreshSessionStatus()),
                         icon: Icons.refresh_rounded,
-                        label: _isCheckingSession
-                            ? 'Checking...'
-                            : 'Check Session Time',
+                        label: 'Check Session Time',
+                        outlined: false,
+                        isLoading: _isCheckingSession,
+                        backgroundColor: BracuPalette.primary.withValues(
+                          alpha: 0.12,
+                        ),
+                        foregroundColor: BracuPalette.primary,
                       ),
                     ),
                     const SizedBox(height: 4),

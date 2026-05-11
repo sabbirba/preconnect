@@ -54,6 +54,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
 
   Future<List<Course>?> _loadMyCourses() async {
     final semesterSessionId = await resolveCurrentSessionSemesterId();
+    if (semesterSessionId == null) return null;
     final jsonString = await ScheduleService().getStudentScheduleForSemester(
       semesterSessionId: semesterSessionId,
     );

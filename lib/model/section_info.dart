@@ -26,6 +26,16 @@ class SectionFaculty {
       imgUrl: _nullableStringValue(json, 'imgUrl'),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'staffName': staffName,
+      'shortName': shortName,
+      'email': email,
+      'imgUrl': imgUrl,
+    };
+  }
 }
 
 class Section {
@@ -107,6 +117,32 @@ class Section {
           ?.toString(),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'sectionId': sectionId,
+      'advisingSectionId': advisingSectionId,
+      'parentSectionId': parentSectionId,
+      'courseId': courseId,
+      'courseCode': courseCode,
+      'name': name,
+      'sectionName': sectionName,
+      'semesterSessionId': semesterSessionId,
+      'courseCredit': courseCredit,
+      'studentPortfolioId': studentPortfolioId,
+      'capacity': capacity,
+      'consumedSeat': consumedSeat,
+      'sectionSchedule': sectionSchedule.toJson(),
+      'faculties': faculty?.toJson() ?? faculties,
+      'roomName': roomName,
+      'roomNumber': roomNumber,
+      'prerequisiteCourses': prerequisiteCourses,
+      'isReserve': isReserve,
+      'courseType': courseType,
+      'prerequisiteIncompleteGrade': prerequisiteIncompleteGrade,
+      'prerequisiteResultPublished': prerequisiteResultPublished,
+    };
+  }
 }
 
 class SectionSchedule {
@@ -151,6 +187,22 @@ class SectionSchedule {
       classSchedules: _classSchedulesFromJson(json['classSchedules']),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'finalExamDate': finalExamDate,
+      'finalExamStartTime': finalExamStartTime,
+      'finalExamEndTime': finalExamEndTime,
+      'midExamDate': midExamDate,
+      'midExamStartTime': midExamStartTime,
+      'midExamEndTime': midExamEndTime,
+      'finalExamDetail': finalExamDetail,
+      'midExamDetail': midExamDetail,
+      'classStartDate': classStartDate,
+      'classEndDate': classEndDate,
+      'classSchedules': classSchedules.map((e) => e.toJson()).toList(),
+    };
+  }
 }
 
 class ClassSchedule {
@@ -170,6 +222,14 @@ class ClassSchedule {
       endTime: json['endTime'],
       day: json['day'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'startTime': startTime,
+      'endTime': endTime,
+      'day': day,
+    };
   }
 }
 

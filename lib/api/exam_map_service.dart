@@ -261,6 +261,32 @@ class ExamScheduleOverride {
       finalRoomNumber: finalRoomNumber ?? this.finalRoomNumber,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'midDate': midDate,
+      'midStartTime': midStartTime,
+      'midEndTime': midEndTime,
+      'midRoomNumber': midRoomNumber,
+      'finalDate': finalDate,
+      'finalStartTime': finalStartTime,
+      'finalEndTime': finalEndTime,
+      'finalRoomNumber': finalRoomNumber,
+    };
+  }
+
+  factory ExamScheduleOverride.fromJson(Map<String, dynamic> json) {
+    return ExamScheduleOverride(
+      midDate: json['midDate']?.toString(),
+      midStartTime: json['midStartTime']?.toString(),
+      midEndTime: json['midEndTime']?.toString(),
+      midRoomNumber: json['midRoomNumber']?.toString(),
+      finalDate: json['finalDate']?.toString(),
+      finalStartTime: json['finalStartTime']?.toString(),
+      finalEndTime: json['finalEndTime']?.toString(),
+      finalRoomNumber: json['finalRoomNumber']?.toString(),
+    );
+  }
 }
 
 class ExamSectionResolved {

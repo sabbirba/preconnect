@@ -8,6 +8,7 @@ import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/quiet_mode_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -30,6 +31,7 @@ class _SettingsPageState extends State<SettingsPage>
   bool _quietModeNeedsSetup = false;
   String? _quietModeSetupPermission;
   String _quietModeStatusMessage = '';
+  bool _isClearingCache = false;
 
   @override
   void initState() {
@@ -202,25 +204,26 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   Future<void> _clearCacheKeepingLoginData() async {
-    final confirmed = await showBracuConfirmationWithActionDialog(
-      context,
-      icon: Icons.delete_outline_rounded,
-      title: 'Clear cache?',
-      message: 'Clean app cache storage.',
-      confirmLabel: 'Clear',
-      confirmColor: BracuPalette.danger,
-      onConfirm: () async {
-        final keepKeys = <String>{
-          PreconnectStorageKeys.accessToken,
-          PreconnectStorageKeys.refreshToken,
-          PreconnectStorageKeys.cachedHasAuthSession,
-          'currentSessionSemesterId',
-          CustomSchedulesService.cacheKey,
-        };
-        await AppPreferencesStore().clearAllExcept(keepKeys);
-      },
-    );
-    if (!confirmed) return;
+    if (_isClearingCache) return;
+    setState(() {
+      _isClearingCache = true;
+    });
+    try {
+      final keepKeys = <String>{
+        PreconnectStorageKeys.accessToken,
+        PreconnectStorageKeys.refreshToken,
+        PreconnectStorageKeys.cachedHasAuthSession,
+        StorageKeys.currentSessionSemesterId,
+        CustomSchedulesService.cacheKey,
+      };
+      await AppPreferencesStore().clearAllExcept(keepKeys);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isClearingCache = false;
+        });
+      }
+    }
 
     RefreshBus.instance.notify(reason: 'cache_cleared');
     if (!mounted) return;
@@ -280,29 +283,6 @@ class _SettingsPageState extends State<SettingsPage>
                 child: const ListTile(
                   leading: Icon(Icons.wifi_rounded, size: 20),
                   title: Text('Wi-Fi Setup'),
-                  trailing: Icon(Icons.chevron_right_rounded, size: 20),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: _sectionGap),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: _clearCacheKeepingLoginData,
-              child: Ink(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: BracuPalette.textSecondary(
-                      context,
-                    ).withValues(alpha: 0.18),
-                  ),
-                ),
-                child: const ListTile(
-                  leading: Icon(Icons.delete_outline_rounded, size: 20),
-                  title: Text('Clear Cache'),
                   trailing: Icon(Icons.chevron_right_rounded, size: 20),
                 ),
               ),
@@ -434,6 +414,16 @@ class _SettingsPageState extends State<SettingsPage>
               value: _appLockEnabled,
               onChanged: _setAppLockEnabled,
             ),
+          ),
+          const SizedBox(height: _sectionGap),
+          BracuActionButton(
+            onPressed: _isClearingCache ? null : _clearCacheKeepingLoginData,
+            outlined: true,
+            isLoading: _isClearingCache,
+            icon: Icons.delete_outline_rounded,
+            label: 'Clear Cache',
+            borderRadius: 14,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
           const SizedBox(height: _sectionGap),
         ],

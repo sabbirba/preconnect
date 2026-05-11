@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
 class CampusPrinterPage extends StatefulWidget {
@@ -87,12 +88,15 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   }
 
   Future<void> _loadStudentProfile() async {
-    var studentId = (await AppStorage.instance.getString('studentId') ?? '')
-        .trim();
-    var fullName = (await AppStorage.instance.getString('fullName') ?? '')
-        .trim();
-    var shortCode = (await AppStorage.instance.getString('shortCode') ?? '')
-        .trim();
+    var studentId =
+        (await AppStorage.instance.getString(StorageKeys.studentId) ?? '')
+            .trim();
+    var fullName =
+        (await AppStorage.instance.getString(StorageKeys.fullName) ?? '')
+            .trim();
+    var shortCode =
+        (await AppStorage.instance.getString(StorageKeys.shortCode) ?? '')
+            .trim();
 
     if (studentId.isEmpty || fullName.isEmpty || shortCode.isEmpty) {
       final profile = await ProfileService().getProfile(fromFetch: true);
@@ -351,25 +355,19 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         onRefresh: _refreshPrinterInfo,
         children: [
           BracuCard(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(
-                      _printerHost.isEmpty
-                          ? Icons.wifi_find_outlined
-                          : Icons.local_printshop_outlined,
-                      color: BracuPalette.textSecondary(context),
-                    ),
-                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         _printerStatus,
                         style: TextStyle(
                           color: BracuPalette.textPrimary(context),
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
                         ),
                       ),
                     ),
@@ -377,12 +375,24 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                       onPressed: _busy || _discovering
                           ? null
                           : () => _discoverPrinter(),
-                      label: 'Scan',
                       outlined: false,
+                      isLoading: _discovering,
+                      backgroundColor: BracuPalette.primary.withValues(
+                        alpha: 0.12,
+                      ),
+                      foregroundColor: BracuPalette.primary,
+                      borderRadius: 14,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      icon: Icons.wifi_find_outlined,
+                      label: 'Scan',
+                      iconSize: 20,
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 10),
                 _StudentPrintDetails(
                   name: _studentName,
                   shortCode: _studentShortCode,
@@ -549,6 +559,7 @@ class _PrintHistoryCard extends StatelessWidget {
     }
 
     return BracuCard(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -616,19 +627,10 @@ class _PrintHistoryRow extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                entry.copies == 1 ? '1 copy' : '${entry.copies} copies',
-                style: TextStyle(
-                  color: BracuPalette.textSecondary(context),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
                 _formatHistoryTime(entry.createdAt),
                 style: TextStyle(
                   color: BracuPalette.textSecondary(context),
-                  fontSize: 10,
+                  fontSize: 11,
                 ),
               ),
             ],

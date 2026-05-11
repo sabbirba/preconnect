@@ -85,6 +85,13 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
           }
 
           final feed = _lastFeed ?? snapshot.data;
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              feed == null) {
+            return buildRefreshLoadingState(
+              onRefresh: _refresh,
+              topSpacing: 180,
+            );
+          }
           final items = feed?.items ?? const <CalendarEntry>[];
           if (items.isEmpty) {
             return buildRefreshEmptyState(

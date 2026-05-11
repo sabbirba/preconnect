@@ -15,22 +15,9 @@ class ScheduleService {
   final Map<String, Future<String?>> _scheduleFetchInFlight =
       <String, Future<String?>>{};
 
-  static const String _scheduleKey = 'StudentSchedule';
-  String _cacheKeyForSemester(int? semesterSessionId) =>
-      semesterSessionId == null
-      ? _scheduleKey
-      : '${_scheduleKey}_$semesterSessionId';
-
-  Future<int?> _resolveCurrentSessionSemesterId() async {
-    final store = AppPreferencesStore();
-    final parsed = int.tryParse(
-      (await store.getString('currentSessionSemesterId') ?? '').trim(),
-    );
-    if (parsed != null && parsed > 0) {
-      return parsed;
-    }
-    return null;
-  }
+  static const String _scheduleKey = 'student_schedule_v1';
+  String _cacheKeyForSemester(int semesterSessionId) =>
+      '${_scheduleKey}_$semesterSessionId';
 
   List<section.Section> parseStudentSections(
     String? scheduleJson, {
@@ -57,19 +44,11 @@ class ScheduleService {
     }
   }
 
-  Future<String?> fetchStudentSchedule({bool fromGet = false}) async {
-    final semesterSessionId = await _resolveCurrentSessionSemesterId();
-    return fetchStudentScheduleForSemester(
-      fromGet: fromGet,
-      semesterSessionId: semesterSessionId,
-    );
-  }
-
   Future<String?> fetchStudentScheduleForSemester({
-    required int? semesterSessionId,
+    required int semesterSessionId,
     bool fromGet = false,
   }) async {
-    final inFlightKey = '${semesterSessionId ?? -1}|$fromGet';
+    final inFlightKey = '$semesterSessionId|$fromGet';
     final inFlight = _scheduleFetchInFlight[inFlightKey];
     if (inFlight != null) {
       return await inFlight;
@@ -87,7 +66,7 @@ class ScheduleService {
   }
 
   Future<String?> _fetchStudentScheduleForSemesterInternal({
-    required int? semesterSessionId,
+    required int semesterSessionId,
     required bool fromGet,
   }) async {
     final cacheKey = _cacheKeyForSemester(semesterSessionId);
@@ -123,16 +102,8 @@ class ScheduleService {
     );
   }
 
-  Future<String?> getStudentSchedule({bool fromFetch = false}) async {
-    final semesterSessionId = await _resolveCurrentSessionSemesterId();
-    return getStudentScheduleForSemester(
-      semesterSessionId: semesterSessionId,
-      fromFetch: fromFetch,
-    );
-  }
-
   Future<String?> getStudentScheduleForSemester({
-    required int? semesterSessionId,
+    required int semesterSessionId,
     bool fromFetch = false,
   }) async {
     final cacheKey = _cacheKeyForSemester(semesterSessionId);
@@ -143,6 +114,14 @@ class ScheduleService {
         semesterSessionId: semesterSessionId,
         fromGet: true,
       ),
+    );
+  }
+
+  Future<String?> getCachedStudentScheduleForSemester({
+    required int semesterSessionId,
+  }) async {
+    return AppPreferencesStore().getString(
+      _cacheKeyForSemester(semesterSessionId),
     );
   }
 }

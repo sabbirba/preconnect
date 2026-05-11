@@ -102,16 +102,31 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     bool forceRefresh = false,
   }) async {
     final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+    if (currentSessionSemesterId == null) {
+      final isRamadan = await RamadanTiming.isRamadan(
+        forceRefresh: forceRefresh,
+      );
+      return _buildScheduleDataFromSectionsStatic(
+        const <section.Section>[],
+        shouldHighlightCurrentSemester: true,
+        isRamadan: isRamadan,
+      );
+    }
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
     final service = ScheduleService();
-    final jsonString = forceRefresh
-        ? await service.fetchStudentScheduleForSemester(
-            semesterSessionId: currentSessionSemesterId,
-            fromGet: true,
-          )
-        : await service.getStudentScheduleForSemester(
-            semesterSessionId: currentSessionSemesterId,
-          );
+    final cachedJson = await service.getCachedStudentScheduleForSemester(
+      semesterSessionId: currentSessionSemesterId,
+    );
+    final jsonString =
+        cachedJson ??
+        (forceRefresh
+            ? await service.fetchStudentScheduleForSemester(
+                semesterSessionId: currentSessionSemesterId,
+                fromGet: true,
+              )
+            : await service.getStudentScheduleForSemester(
+                semesterSessionId: currentSessionSemesterId,
+              ));
     final sections = service.parseStudentSections(
       jsonString,
       semesterSessionId: currentSessionSemesterId,
@@ -178,14 +193,34 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
     final service = ScheduleService();
     final currentSessionSemesterId = _currentSessionSemesterId;
-    final jsonString = forceRefresh
-        ? await service.fetchStudentScheduleForSemester(
-            semesterSessionId: currentSessionSemesterId,
-            fromGet: true,
-          )
-        : await service.getStudentScheduleForSemester(
-            semesterSessionId: currentSessionSemesterId,
-          );
+    if (currentSessionSemesterId == null) {
+      final isRamadan = await ramadanFuture;
+      final data = _buildScheduleDataFromSections(
+        const <section.Section>[],
+        shouldHighlightCurrentSemester: true,
+        isRamadan: isRamadan,
+      );
+      _cachedData = data;
+      if (mounted) {
+        setState(() {
+          _latestData = data;
+        });
+      }
+      return data;
+    }
+    final cachedJson = await service.getCachedStudentScheduleForSemester(
+      semesterSessionId: currentSessionSemesterId,
+    );
+    final jsonString =
+        cachedJson ??
+        (forceRefresh
+            ? await service.fetchStudentScheduleForSemester(
+                semesterSessionId: currentSessionSemesterId,
+                fromGet: true,
+              )
+            : await service.getStudentScheduleForSemester(
+                semesterSessionId: currentSessionSemesterId,
+              ));
     final sections = service.parseStudentSections(
       jsonString,
       semesterSessionId: currentSessionSemesterId,
@@ -566,6 +601,10 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
           }
 
           final data = _latestData ?? snapshot.data;
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              data == null) {
+            return buildRefreshLoadingState(onRefresh: _handleRefresh);
+          }
           final grouped = data?.grouped ?? {};
           final scrollSchedule = data?.scrollSchedule;
           final scrollDateTime = data?.scrollDateTime;

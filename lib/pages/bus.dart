@@ -44,7 +44,9 @@ class _BusPageState extends State<BusPage> {
     unawaited(_warmAndBind());
   }
 
-  static Future<_BusDataPackage> preloadData({bool forceRefresh = false}) async {
+  static Future<_BusDataPackage> preloadData({
+    bool forceRefresh = false,
+  }) async {
     if (!forceRefresh && _cachedData != null) {
       return _cachedData!;
     }
@@ -89,7 +91,7 @@ class _BusPageState extends State<BusPage> {
         _schedulePdfUrl = resolvedUrl ?? '';
       });
     } catch (error) {
-      debugPrint('Failed to fetch schedule URL: $error');
+      // Keep silent and fall back to the rest of the bus data.
     }
   }
 
@@ -112,7 +114,6 @@ class _BusPageState extends State<BusPage> {
       setState(() {
         _error = 'Unable to load bus route data right now.';
       });
-      debugPrint('Bus data load failed: $error');
     }
   }
 

@@ -12,19 +12,18 @@ class ProgressService {
   static final ProgressService _instance = ProgressService._internal();
   factory ProgressService() => _instance;
 
-  static const String _cacheKey = 'StudentProgramProgress';
-  static const String _summaryCacheKey = 'StudentProgramProgressSummary';
-  static const String _majorMinorsCacheKey =
-      'StudentProgramProgressMajorMinors';
+  static const String _cacheKey = 'student_progress_v1';
+  static const String _summaryCacheKey = 'student_progress_summary_v1';
+  static const String _majorMinorsCacheKey = 'student_progress_major_minors_v1';
   static const String _completedCoursesCacheKey =
-      'StudentProgramProgressCompletedCourses';
-  static const String _curriculumCacheKey = 'StudentProgramProgressCurriculum';
+      'student_progress_completed_courses_v1';
+  static const String _curriculumCacheKey = 'student_progress_curriculum_v1';
   static const String _coursePrerequisitesCacheKey =
-      'StudentProgramProgressCoursePrerequisites';
-  static const String _majorMinorsEtagKey = 'StudentProgramProgressMajorEtag';
+      'student_progress_course_prerequisites_v1';
+  static const String _majorMinorsEtagKey = 'student_progress_major_etag_v1';
   static const String _completedCoursesEtagKey =
-      'StudentProgramProgressCompletedEtag';
-  static const String _curriculumEtagKey = 'StudentProgramProgressCurrEtag';
+      'student_progress_completed_etag_v1';
+  static const String _curriculumEtagKey = 'student_progress_curr_etag_v1';
   final ApiClient _client = ApiClient();
   final Map<String, Future<ProgressInfo?>> _fetchInFlight =
       <String, Future<ProgressInfo?>>{};

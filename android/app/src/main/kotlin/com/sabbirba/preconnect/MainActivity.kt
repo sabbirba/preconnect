@@ -448,6 +448,7 @@ class MainActivity : FlutterFragmentActivity() {
             )
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(contentUri, "application/pdf")
+                addCategory(Intent.CATEGORY_DEFAULT)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }

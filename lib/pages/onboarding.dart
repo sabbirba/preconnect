@@ -359,7 +359,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     width: double.infinity,
                     child: BracuActionButton(
                       onPressed: _openCampusMapBottomSheet,
-                      icon: Icons.map_rounded,
                       label: 'Campus Map',
                       borderRadius: 12,
                       padding: const EdgeInsets.symmetric(
@@ -375,13 +374,16 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       onPressed: _isStartingWebLogin
                           ? null
                           : () => _completeOnboarding(context),
-                      icon: Icons.arrow_forward_rounded,
+                      outlined: false,
                       label: 'Continue',
+                      backgroundColor: const Color(0xFF1E5BFF),
+                      foregroundColor: Colors.white,
                       borderRadius: 12,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
-                        vertical: 16,
+                        vertical: 28,
                       ),
+                      fontSize: 18,
                     ),
                   ),
                 ],

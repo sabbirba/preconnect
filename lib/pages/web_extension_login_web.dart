@@ -187,13 +187,17 @@ class _WebExtensionLoginPageState extends State<WebExtensionLoginPage> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      if (!_busy) ...[
-                        const SizedBox(height: 14),
-                        TextButton(
-                          onPressed: _startLogin,
-                          child: const Text('Try again'),
+                      const SizedBox(height: 14),
+                      BracuActionButton(
+                        onPressed: _busy ? null : _startLogin,
+                        label: _busy ? 'Opening...' : 'Try again',
+                        outlined: false,
+                        isLoading: _busy,
+                        backgroundColor: BracuPalette.primary.withValues(
+                          alpha: 0.12,
                         ),
-                      ],
+                        foregroundColor: BracuPalette.primary,
+                      ),
                       const SizedBox(height: 14),
                       Text(
                         'You will be redirected to BRACU SSO in a new tab.',

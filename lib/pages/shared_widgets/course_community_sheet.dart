@@ -352,6 +352,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                           onPressed: canSubmit
                               ? () => Navigator.of(sheetContext).pop(true)
                               : null,
+                          isLoading: _busyWriteAction,
                           label: myOwnedReview == null ? 'Submit' : 'Save',
                         ),
                       ),
@@ -635,6 +636,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                                   },
                             icon: Icons.upload_file_rounded,
                             label: 'Choose File',
+                            isLoading: pickingFile,
                           ),
                         ),
                       ] else ...[
@@ -772,6 +774,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                             ? Icons.check_circle_outline
                             : Icons.link_rounded,
                         label: 'Submit',
+                        isLoading: submitting,
                       ),
                     ),
                   ],

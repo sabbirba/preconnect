@@ -8,7 +8,10 @@ import 'package:preconnect/pages/shared_widgets/course_community_sheet.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/exam_sorting.dart';
+import 'package:preconnect/tools/json_snapshot_store.dart';
+import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 class ExamSchedule extends StatefulWidget {
@@ -29,8 +32,8 @@ class ExamSchedule extends StatefulWidget {
 }
 
 class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
-  static _ExamScheduleData? _cachedData;
-  static Future<_ExamScheduleData>? _preloadFuture;
+  static final PreloadCache<_ExamScheduleData> _cache =
+      PreloadCache<_ExamScheduleData>();
 
   late Future<_ExamScheduleData> _future;
   _ExamScheduleData? _latestData;
@@ -44,10 +47,10 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   @override
   void initState() {
     super.initState();
-    _latestData = _cachedData;
-    _future = _cachedData == null
+    _latestData = _cache.value;
+    _future = _cache.value == null
         ? _initializeExamSchedule()
-        : Future<_ExamScheduleData>.value(_cachedData!);
+        : Future<_ExamScheduleData>.value(_cache.value!);
     unawaited(_loadCurrentSessionSemesterId());
     unawaited(_warmAndBind());
     ExamSchedule.jumpSignal.addListener(_onJumpRequested);
@@ -66,42 +69,62 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   static Future<_ExamScheduleData> preloadData({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && _cachedData != null) {
-      return _cachedData!;
-    }
-    if (!forceRefresh) {
-      final inFlight = _preloadFuture;
-      if (inFlight != null) {
-        return inFlight;
-      }
-    }
-
-    final future = _loadExamData(forceRefresh: forceRefresh);
-    _preloadFuture = future;
-    try {
-      final data = await future;
-      _cachedData = data;
-      return data;
-    } finally {
-      if (identical(_preloadFuture, future)) {
-        _preloadFuture = null;
-      }
-    }
+    return _cache.load(
+      forceRefresh: forceRefresh,
+      fetch: () => _loadExamData(forceRefresh: forceRefresh),
+    );
   }
 
   static Future<_ExamScheduleData> _loadExamData({
     bool forceRefresh = false,
   }) async {
-    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
-    final service = ScheduleService();
-    final jsonString = forceRefresh
-        ? await service.fetchStudentScheduleForSemester(
-            semesterSessionId: currentSessionSemesterId,
-            fromGet: true,
-          )
-        : await service.getStudentScheduleForSemester(
-            semesterSessionId: currentSessionSemesterId,
+    if (!forceRefresh) {
+      final cached = await JsonSnapshotStore.read<_ExamScheduleData>(
+        key: StorageKeys.examScheduleSnapshot,
+        decode: (decoded) {
+          final sectionsRaw = decoded['sections'];
+          final overridesRaw = decoded['overrides'];
+          if (sectionsRaw is! List || overridesRaw is! Map) return null;
+          final sections = sectionsRaw
+              .whereType<Map>()
+              .map((entry) => Section.fromJson(entry.cast<String, dynamic>()))
+              .toList(growable: false);
+          final overrides = overridesRaw.map(
+            (key, value) => MapEntry(
+              key.toString(),
+              ExamScheduleOverride.fromJson(
+                Map<String, dynamic>.from(value as Map),
+              ),
+            ),
           );
+          return _ExamScheduleData(sections: sections, overrides: overrides);
+        },
+      );
+      if (cached != null) {
+        return cached;
+      }
+    }
+    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+    if (currentSessionSemesterId == null) {
+      return const _ExamScheduleData(
+        sections: <Section>[],
+        overrides: <String, ExamScheduleOverride>{},
+      );
+    }
+    final service = ScheduleService();
+    final cachedJson = await service.getCachedStudentScheduleForSemester(
+      semesterSessionId: currentSessionSemesterId,
+    );
+    final jsonString =
+        cachedJson ??
+        (forceRefresh
+            ? await service.fetchStudentScheduleForSemester(
+                semesterSessionId: currentSessionSemesterId,
+                fromGet: true,
+              )
+            : await service.getStudentScheduleForSemester(
+                semesterSessionId: currentSessionSemesterId,
+              ));
     final sections = service.parseStudentSections(
       jsonString,
       semesterSessionId: currentSessionSemesterId,
@@ -120,7 +143,9 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
       forceRefresh: forceRefresh,
       forcedSemesterSessionId: currentSessionSemesterId,
     );
-    return _ExamScheduleData(sections: sections, overrides: overrides);
+    final data = _ExamScheduleData(sections: sections, overrides: overrides);
+    await _writeSnapshot(data);
+    return data;
   }
 
   Future<_ExamScheduleData> _initializeExamSchedule() async {
@@ -159,14 +184,25 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   Future<_ExamScheduleData> _fetchExamData({bool forceRefresh = false}) async {
     final service = ScheduleService();
     final currentSessionSemesterId = _currentSessionSemesterId;
-    final jsonString = forceRefresh
-        ? await service.fetchStudentScheduleForSemester(
-            semesterSessionId: currentSessionSemesterId,
-            fromGet: true,
-          )
-        : await service.getStudentScheduleForSemester(
-            semesterSessionId: currentSessionSemesterId,
-          );
+    if (currentSessionSemesterId == null) {
+      return const _ExamScheduleData(
+        sections: <Section>[],
+        overrides: <String, ExamScheduleOverride>{},
+      );
+    }
+    final cachedJson = await service.getCachedStudentScheduleForSemester(
+      semesterSessionId: currentSessionSemesterId,
+    );
+    final jsonString =
+        cachedJson ??
+        (forceRefresh
+            ? await service.fetchStudentScheduleForSemester(
+                semesterSessionId: currentSessionSemesterId,
+                fromGet: true,
+              )
+            : await service.getStudentScheduleForSemester(
+                semesterSessionId: currentSessionSemesterId,
+              ));
     final data = await _buildExamDataFromSections(
       service.parseStudentSections(
         jsonString,
@@ -175,13 +211,30 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
       forceRefresh: forceRefresh,
       forcedSemesterSessionId: currentSessionSemesterId,
     );
-    _cachedData = data;
+    _cache.value = data;
+    await _writeSnapshot(data);
     if (mounted) {
       setState(() {
         _latestData = data;
       });
     }
     return data;
+  }
+
+  static Future<void> _writeSnapshot(_ExamScheduleData data) {
+    return JsonSnapshotStore.write(
+      key: StorageKeys.examScheduleSnapshot,
+      value: _examSnapshotPayload(data),
+    );
+  }
+
+  static Map<String, dynamic> _examSnapshotPayload(_ExamScheduleData data) {
+    return <String, dynamic>{
+      'sections': data.sections.map((section) => section.toJson()).toList(),
+      'overrides': data.overrides.map(
+        (key, value) => MapEntry(key, value.toJson()),
+      ),
+    };
   }
 
   Future<_ExamScheduleData> _buildExamDataFromSections(
@@ -299,6 +352,11 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           }
 
           final examData = _latestData ?? snapshot.data;
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              examData == null) {
+            return buildRefreshLoadingState(onRefresh: _handleRefresh);
+          }
+
           if (examData == null) {
             return buildRefreshEmptyState(
               onRefresh: _handleRefresh,

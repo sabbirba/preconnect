@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:preconnect/api/sembast_cache.dart';
+import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/pages/api_test.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/build_info.dart';
@@ -90,9 +90,8 @@ class _DevsPageState extends State<DevsPage> {
     bool forceRefresh = false,
   }) async {
     try {
-      final cache = SembastCache();
       if (!forceRefresh) {
-        final cached = await _readCachedContributorsStatic(cache);
+        final cached = await _readCachedContributorsStatic();
         if (cached.isNotEmpty) {
           return _withPinnedAndManualContributorsStatic(cached);
         }
@@ -132,10 +131,11 @@ class _DevsPageState extends State<DevsPage> {
           .toList();
       final merged = _withPinnedAndManualContributorsStatic(contributors);
       if (contributors.isNotEmpty) {
-        await cache.setJson(
-          _contributorsCacheKey,
-          contributors.map((item) => item.toJson()).toList(),
-        );
+        await AppPreferencesStore()
+            .setJson(_contributorsCacheKey, <String, dynamic>{
+              'ts': DateTime.now().millisecondsSinceEpoch,
+              'items': contributors.map((item) => item.toJson()).toList(),
+            });
       }
       return merged;
     } catch (_) {
@@ -145,12 +145,15 @@ class _DevsPageState extends State<DevsPage> {
     }
   }
 
-  static Future<List<_ContributorProfile>> _readCachedContributorsStatic(
-    SembastCache cache,
-  ) async {
-    final raw = await cache.getJsonList(_contributorsCacheKey);
-    if (raw == null || raw.isEmpty) return const <_ContributorProfile>[];
-    return raw
+  static Future<List<_ContributorProfile>>
+  _readCachedContributorsStatic() async {
+    final raw = await AppPreferencesStore().getJsonMap(_contributorsCacheKey);
+    if (raw == null) return const <_ContributorProfile>[];
+    final items = raw['items'];
+    if (items is! List || items.isEmpty) {
+      return const <_ContributorProfile>[];
+    }
+    return items
         .whereType<Map>()
         .map((entry) => _ContributorProfile.fromJson(entry.cast()))
         .where((item) => item.name.isNotEmpty && item.avatarUrl.isNotEmpty)
@@ -198,13 +201,16 @@ class _DevsPageState extends State<DevsPage> {
                 const SizedBox(height: 14),
                 const BracuSectionTitle(title: 'People Behind It'),
                 const SizedBox(height: 10),
-                _ContributorsGrid(
-                  contributors: _contributors,
-                  showAll: _showAllContributors,
-                  onToggle: () => setState(
-                    () => _showAllContributors = !_showAllContributors,
+                if (_contributors.isEmpty && _contributorsLoading)
+                  const BracuLoading()
+                else
+                  _ContributorsGrid(
+                    contributors: _contributors,
+                    showAll: _showAllContributors,
+                    onToggle: () => setState(
+                      () => _showAllContributors = !_showAllContributors,
+                    ),
                   ),
-                ),
                 const Padding(
                   padding: EdgeInsets.only(top: 14),
                   child: Column(

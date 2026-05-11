@@ -42,7 +42,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                           snapshot.connectionState == ConnectionState.waiting &&
                           _latestData == null;
                       if (isLoading) {
-                        return const SizedBox.shrink();
+                        return const BracuLoading();
                       }
 
                       final data = _latestData ?? snapshot.data;

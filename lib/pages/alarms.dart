@@ -6,11 +6,14 @@ import 'package:flutter_alarmkit/flutter_alarmkit.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/exam_map_service.dart';
-import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/section_info.dart';
+import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/shared_widgets/schedule_entry_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/json_snapshot_store.dart';
+import 'package:preconnect/tools/preload_cache.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/exam_sorting.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
@@ -31,8 +34,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   static const MethodChannel _androidAlarmChannel = MethodChannel(
     'preconnect/android_alarm',
   );
-  static _AlarmData? _cachedData;
-  static Future<_AlarmData>? _preloadFuture;
+  static final PreloadCache<_AlarmData> _cache = PreloadCache<_AlarmData>();
 
   late Future<_AlarmData> _futureData;
   _AlarmData? _latestData;
@@ -41,10 +43,10 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   @override
   void initState() {
     super.initState();
-    _latestData = _cachedData;
-    _futureData = _cachedData == null
+    _latestData = _cache.value;
+    _futureData = _cache.value == null
         ? _fetchSchedule()
-        : Future<_AlarmData>.value(_cachedData);
+        : Future<_AlarmData>.value(_cache.value!);
     bindRefreshBus(_onRefreshSignal);
     unawaited(_warmAndBind());
   }
@@ -67,15 +69,6 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     unawaited(_handleRefresh(notify: false));
   }
 
-  static Future<int?> _resolveCurrentSessionSemesterId() async {
-    final parsed = int.tryParse(
-      (await AppPreferencesStore().getString('currentSessionSemesterId') ?? '')
-          .trim(),
-    );
-    if (parsed != null && parsed > 0) return parsed;
-    return null;
-  }
-
   Future<void> _warmAndBind() async {
     final data = await preloadData();
     if (!mounted) return;
@@ -86,27 +79,10 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   }
 
   static Future<_AlarmData> preloadData({bool forceRefresh = false}) async {
-    if (!forceRefresh && _cachedData != null) {
-      return _cachedData!;
-    }
-    if (!forceRefresh) {
-      final inFlight = _preloadFuture;
-      if (inFlight != null) {
-        return inFlight;
-      }
-    }
-
-    final future = _loadAlarmData(forceRefresh: forceRefresh);
-    _preloadFuture = future;
-    try {
-      final data = await future;
-      _cachedData = data;
-      return data;
-    } finally {
-      if (identical(_preloadFuture, future)) {
-        _preloadFuture = null;
-      }
-    }
+    return _cache.load(
+      forceRefresh: forceRefresh,
+      fetch: () => _loadAlarmData(forceRefresh: forceRefresh),
+    );
   }
 
   Future<_AlarmData> _fetchSchedule({bool forceRefresh = false}) async {
@@ -114,17 +90,61 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   }
 
   static Future<_AlarmData> _loadAlarmData({bool forceRefresh = false}) async {
-    final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
-    final semesterSessionId = await _resolveCurrentSessionSemesterId();
-    final scheduleService = ScheduleService();
-    final jsonString = forceRefresh
-        ? await scheduleService.fetchStudentScheduleForSemester(
-            semesterSessionId: semesterSessionId,
-            fromGet: true,
-          )
-        : await scheduleService.getStudentScheduleForSemester(
-            semesterSessionId: semesterSessionId,
+    if (!forceRefresh) {
+      final cached = await JsonSnapshotStore.read<_AlarmData>(
+        key: StorageKeys.alarmsSnapshot,
+        decode: (decoded) {
+          final sectionsRaw = decoded['sections'];
+          final examsRaw = decoded['examEntries'];
+          final isRamadan = decoded['isRamadan'] == true;
+          if (sectionsRaw is! List || examsRaw is! List) return null;
+          final sections = sectionsRaw
+              .whereType<Map>()
+              .map((entry) => Section.fromJson(entry.cast<String, dynamic>()))
+              .toList(growable: false);
+          final examEntries = examsRaw
+              .whereType<Map>()
+              .map(
+                (entry) =>
+                    _ExamAlarmEntry.fromJson(entry.cast<String, dynamic>()),
+              )
+              .toList(growable: false);
+          return _AlarmData(
+            sections: sections,
+            examEntries: examEntries,
+            isRamadan: isRamadan,
           );
+        },
+      );
+      if (cached != null) {
+        return cached;
+      }
+    }
+    final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
+    final semesterSessionId = await resolveCurrentSessionSemesterId();
+    if (semesterSessionId == null) {
+      final isRamadan = await ramadanFuture;
+      return _AlarmData(
+        sections: const [],
+        examEntries: const <_ExamAlarmEntry>[],
+        isRamadan: isRamadan,
+      );
+    }
+    final scheduleService = ScheduleService();
+    final cachedJson = await scheduleService
+        .getCachedStudentScheduleForSemester(
+          semesterSessionId: semesterSessionId,
+        );
+    final jsonString =
+        cachedJson ??
+        (forceRefresh
+            ? await scheduleService.fetchStudentScheduleForSemester(
+                semesterSessionId: semesterSessionId,
+                fromGet: true,
+              )
+            : await scheduleService.getStudentScheduleForSemester(
+                semesterSessionId: semesterSessionId,
+              ));
     final sections = scheduleService.parseStudentSections(
       jsonString,
       semesterSessionId: semesterSessionId,
@@ -144,11 +164,29 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     }
 
     final isRamadan = await ramadanFuture;
-    return _AlarmData(
+    final data = _AlarmData(
       sections: sections,
       examEntries: examEntries,
       isRamadan: isRamadan,
     );
+    _cache.value = data;
+    await _writeSnapshot(data);
+    return data;
+  }
+
+  static Future<void> _writeSnapshot(_AlarmData data) {
+    return JsonSnapshotStore.write(
+      key: StorageKeys.alarmsSnapshot,
+      value: _alarmSnapshotPayload(data),
+    );
+  }
+
+  static Map<String, dynamic> _alarmSnapshotPayload(_AlarmData data) {
+    return <String, dynamic>{
+      'sections': data.sections.map((section) => section.toJson()).toList(),
+      'examEntries': data.examEntries.map((entry) => entry.toJson()).toList(),
+      'isRamadan': data.isRamadan,
+    };
   }
 
   static List<_ExamAlarmEntry> _buildExamEntries(
@@ -224,7 +262,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       return;
     }
     setState(() {
-      _latestData = _latestData ?? _cachedData;
+      _latestData = _latestData ?? _cache.value;
       _futureData = preloadData(forceRefresh: true);
     });
     final data = await _futureData;
@@ -476,6 +514,10 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           }
 
           final data = _latestData ?? snapshot.data;
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              data == null) {
+            return buildRefreshLoadingState(onRefresh: _handleRefresh);
+          }
           final sections = data?.sections ?? const <Section>[];
           final exams = data?.examEntries ?? const <_ExamAlarmEntry>[];
           final isRamadan = data?.isRamadan ?? false;
@@ -1008,4 +1050,36 @@ class _ExamAlarmEntry {
   final String? startTime;
   final String? endTime;
   final DateTime dateTime;
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'type': type,
+      'courseCode': courseCode,
+      'sectionName': sectionName,
+      'roomNumber': roomNumber,
+      'faculties': faculties,
+      'consumedSeat': consumedSeat,
+      'startTime': startTime,
+      'endTime': endTime,
+      'dateTime': dateTime.millisecondsSinceEpoch,
+    };
+  }
+
+  factory _ExamAlarmEntry.fromJson(Map<String, dynamic> json) {
+    return _ExamAlarmEntry(
+      id: json['id']?.toString() ?? '',
+      type: json['type']?.toString() ?? '',
+      courseCode: json['courseCode']?.toString() ?? '',
+      sectionName: json['sectionName']?.toString() ?? '',
+      roomNumber: json['roomNumber']?.toString() ?? '',
+      faculties: json['faculties']?.toString() ?? '',
+      consumedSeat: (json['consumedSeat'] as num?)?.toInt() ?? 0,
+      startTime: json['startTime']?.toString(),
+      endTime: json['endTime']?.toString(),
+      dateTime: DateTime.fromMillisecondsSinceEpoch(
+        (json['dateTime'] as num?)?.toInt() ?? 0,
+      ),
+    );
+  }
 }

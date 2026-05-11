@@ -88,29 +88,52 @@ class BracuActionButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.outlined = true,
+    this.isLoading = false,
+    this.backgroundColor,
+    this.foregroundColor,
     this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     this.borderRadius = 12,
     this.iconSize = 18,
+    this.fontSize,
   });
 
   final IconData? icon;
   final String label;
   final VoidCallback? onPressed;
   final bool outlined;
+  final bool isLoading;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
   final EdgeInsetsGeometry padding;
   final double borderRadius;
   final double iconSize;
+  final double? fontSize;
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      final spinnerColor = foregroundColor ?? BracuPalette.textPrimary(context);
+      return _LoadingButton(
+        outlined: outlined,
+        onPressed: onPressed,
+        padding: padding,
+        borderRadius: borderRadius,
+        backgroundColor: backgroundColor,
+        foregroundColor: spinnerColor,
+        iconSize: iconSize,
+      );
+    }
+
     if (!outlined) {
       if (icon != null) {
         return TextButton.icon(
           onPressed: onPressed,
           icon: Icon(icon, size: iconSize),
-          label: Text(label),
+          label: Text(label, style: TextStyle(fontSize: fontSize)),
           style: TextButton.styleFrom(
-            foregroundColor: BracuPalette.textPrimary(context),
+            foregroundColor:
+                foregroundColor ?? BracuPalette.textPrimary(context),
+            backgroundColor: backgroundColor,
             splashFactory: NoSplash.splashFactory,
             overlayColor: Colors.transparent,
             enableFeedback: false,
@@ -128,7 +151,8 @@ class BracuActionButton extends StatelessWidget {
       return TextButton(
         onPressed: onPressed,
         style: TextButton.styleFrom(
-          foregroundColor: BracuPalette.textPrimary(context),
+          foregroundColor: foregroundColor ?? BracuPalette.textPrimary(context),
+          backgroundColor: backgroundColor,
           splashFactory: NoSplash.splashFactory,
           overlayColor: Colors.transparent,
           enableFeedback: false,
@@ -140,7 +164,7 @@ class BracuActionButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(borderRadius),
           ),
         ),
-        child: Text(label),
+        child: Text(label, style: TextStyle(fontSize: fontSize)),
       );
     }
 
@@ -148,7 +172,7 @@ class BracuActionButton extends StatelessWidget {
       return OutlinedButton.icon(
         onPressed: onPressed,
         icon: Icon(icon, size: iconSize),
-        label: Text(label),
+        label: Text(label, style: TextStyle(fontSize: fontSize)),
         style: bracuCompactOutlinedButtonStyle(
           context,
           padding: padding,
@@ -164,7 +188,70 @@ class BracuActionButton extends StatelessWidget {
         padding: padding,
         borderRadius: borderRadius,
       ),
-      child: Text(label),
+      child: Text(label, style: TextStyle(fontSize: fontSize)),
+    );
+  }
+}
+
+class _LoadingButton extends StatelessWidget {
+  const _LoadingButton({
+    required this.outlined,
+    required this.onPressed,
+    required this.padding,
+    required this.borderRadius,
+    required this.backgroundColor,
+    required this.foregroundColor,
+    required this.iconSize,
+  });
+
+  final bool outlined;
+  final VoidCallback? onPressed;
+  final EdgeInsetsGeometry padding;
+  final double borderRadius;
+  final Color? backgroundColor;
+  final Color foregroundColor;
+  final double iconSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final spinner = SizedBox(
+      width: iconSize,
+      height: iconSize,
+      child: CircularProgressIndicator(
+        strokeWidth: 2.4,
+        valueColor: AlwaysStoppedAnimation<Color>(foregroundColor),
+      ),
+    );
+
+    if (!outlined) {
+      return TextButton(
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+          foregroundColor: foregroundColor,
+          backgroundColor: backgroundColor,
+          splashFactory: NoSplash.splashFactory,
+          overlayColor: Colors.transparent,
+          enableFeedback: false,
+          padding: padding,
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(borderRadius),
+          ),
+        ),
+        child: spinner,
+      );
+    }
+
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: bracuCompactOutlinedButtonStyle(
+        context,
+        padding: padding,
+        borderRadius: borderRadius,
+      ),
+      child: spinner,
     );
   }
 }
@@ -506,14 +593,11 @@ Future<bool> showBracuConfirmationWithActionDialog(
   Color confirmColor = BracuPalette.primary,
   required Future<void> Function() onConfirm,
 }) async {
-  final dialogKey = GlobalKey<_BracuConfirmationActionDialogState>();
-
   final result = await showDialog<bool>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.25),
     barrierDismissible: false,
     builder: (dialogContext) => _BracuConfirmationActionDialog(
-      key: dialogKey,
       icon: icon,
       title: title,
       message: message,
@@ -528,7 +612,6 @@ Future<bool> showBracuConfirmationWithActionDialog(
 
 class _BracuConfirmationActionDialog extends StatefulWidget {
   const _BracuConfirmationActionDialog({
-    super.key,
     required this.icon,
     required this.title,
     required this.message,
@@ -554,14 +637,20 @@ class _BracuConfirmationActionDialog extends StatefulWidget {
 class _BracuConfirmationActionDialogState
     extends State<_BracuConfirmationActionDialog> {
   bool _isLoading = false;
+  static const Duration _minLoadingDuration = Duration(milliseconds: 300);
 
   Future<void> _handleConfirm() async {
     if (_isLoading) return;
+    final startedAt = DateTime.now();
     setState(() {
       _isLoading = true;
     });
     try {
       await widget.onConfirm();
+      final elapsed = DateTime.now().difference(startedAt);
+      if (elapsed < _minLoadingDuration) {
+        await Future<void>.delayed(_minLoadingDuration - elapsed);
+      }
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (_) {
@@ -623,32 +712,32 @@ class _BracuConfirmationActionDialogState
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: BracuActionButton(
                       onPressed: _isLoading
                           ? null
                           : () => Navigator.of(context).pop(false),
-                      style: bracuOutlinedButtonStyle(
-                        context,
-                        foregroundColor: BracuPalette.textPrimary(context),
-                        borderColor: BracuPalette.textSecondary(
-                          context,
-                        ).withValues(alpha: 0.18),
-                        borderRadius: 12,
-                      ),
-                      child: Text(widget.cancelLabel),
+                      outlined: true,
+                      label: widget.cancelLabel,
+                      borderRadius: 12,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: OutlinedButton(
+                    child: BracuActionButton(
                       onPressed: _isLoading ? null : _handleConfirm,
-                      style: bracuOutlinedButtonStyle(
-                        context,
-                        foregroundColor: widget.confirmColor,
-                        borderColor: widget.confirmColor.withValues(alpha: 0.6),
-                        borderRadius: 12,
+                      outlined: false,
+                      isLoading: _isLoading,
+                      label: widget.confirmLabel,
+                      backgroundColor: widget.confirmColor.withValues(
+                        alpha: _isLoading ? 0.18 : 0.12,
                       ),
-                      child: Text(widget.confirmLabel),
+                      foregroundColor: widget.confirmColor,
+                      borderRadius: 12,
+                      iconSize: 20,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                     ),
                   ),
                 ],
@@ -1506,7 +1595,7 @@ Widget buildRefreshLoadingState({
   return BracuRefreshPlaceholder(
     onRefresh: onRefresh,
     topSpacing: topSpacing,
-    child: const SizedBox.shrink(),
+    child: const BracuLoading(),
   );
 }
 
@@ -1950,20 +2039,23 @@ class BracuSectionTitle extends StatelessWidget {
 }
 
 class BracuLoading extends StatelessWidget {
-  const BracuLoading({
-    super.key,
-    this.label = '',
-    this.itemCount = 3,
-    this.compact,
-  });
+  const BracuLoading({super.key, this.itemCount = 3, this.compact});
 
-  final String label;
   final int itemCount;
   final bool? compact;
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox.shrink();
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 36),
+        child: const SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(strokeWidth: 2.6),
+        ),
+      ),
+    );
   }
 }
 

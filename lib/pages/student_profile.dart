@@ -47,7 +47,10 @@ class _StudentProfileState extends State<StudentProfile>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
-    _seedCachedSnapshot();
+    final forceRefresh = isRefreshingFrom('auth');
+    if (!forceRefresh) {
+      _seedCachedSnapshot();
+    }
     unawaited(_warmAndBind());
     bindRefreshBus(_onRefreshSignal);
   }
@@ -103,6 +106,16 @@ class _StudentProfileState extends State<StudentProfile>
       return;
     }
     if (reason == 'auth') {
+      _cachedSnapshot = null;
+      _preloadFuture = null;
+      setState(() {
+        _profile = null;
+        _photoUrl = null;
+        _payments = [];
+        _attendances = [];
+        _advising = {};
+        _progressSummary = null;
+      });
       unawaited(_refreshProfile(notify: false));
     }
   }
@@ -143,7 +156,7 @@ class _StudentProfileState extends State<StudentProfile>
   }
 
   Future<void> _warmAndBind() async {
-    final snapshot = await preloadData();
+    final snapshot = await preloadData(forceRefresh: isRefreshingFrom('auth'));
     if (!mounted) return;
     setState(() {
       _profile = snapshot.profile;
@@ -214,20 +227,18 @@ class _StudentProfileState extends State<StudentProfile>
     try {
       advising =
           (forceRefresh
-                  ? await AdvisingService().fetchAdvisingInfo()
-                  : await AdvisingService().getAdvisingInfo()) ??
-              advising;
+              ? await AdvisingService().fetchAdvisingInfo()
+              : await AdvisingService().getAdvisingInfo()) ??
+          advising;
     } catch (_) {}
 
     try {
-      final progress =
-          forceRefresh
+      final progress = forceRefresh
           ? await ProgressService().fetchProgress()
           : await ProgressService().getProgress();
-      progressSummary =
-          progress == null
-              ? progressSummary
-              : ProgressSummary.fromProgressInfo(progress);
+      progressSummary = progress == null
+          ? progressSummary
+          : ProgressSummary.fromProgressInfo(progress);
     } catch (_) {}
 
     return _StudentProfileSnapshot(
@@ -276,6 +287,11 @@ class _StudentProfileState extends State<StudentProfile>
 
   @override
   Widget build(BuildContext context) {
+    final isLoading =
+        _profile == null &&
+        _payments.isEmpty &&
+        _attendances.isEmpty &&
+        _progressSummary == null;
     return BracuPageScaffold(
       title: 'Student Profile',
       subtitle: 'Academic & Finance',
@@ -283,40 +299,43 @@ class _StudentProfileState extends State<StudentProfile>
       body: BracuRefreshList(
         onRefresh: _refreshProfile,
         children: [
-          CardSection(profile: _profile, photoUrl: _photoUrl),
+          if (isLoading)
+            const BracuLoading()
+          else
+            CardSection(profile: _profile, photoUrl: _photoUrl),
           const SizedBox(height: 18),
-          AcademicSummaryCard(
-            profile: _profile ?? const {},
-            advising: _advising,
-            progressSummary: _progressSummary,
-          ),
+          if (!isLoading)
+            AcademicSummaryCard(
+              profile: _profile ?? const {},
+              advising: _advising,
+              progressSummary: _progressSummary,
+            ),
           const SizedBox(height: 18),
-          const BracuSectionTitle(title: 'Documents'),
-          const SizedBox(height: 10),
-          const GradeSheetCard(),
-          const SizedBox(height: 18),
-          const BracuSectionTitle(title: 'Personal Info'),
-          const SizedBox(height: 10),
-          PersonalInfoCard(profile: _profile ?? const {}),
-          const SizedBox(height: 18),
-          const BracuSectionTitle(title: 'Attendance'),
-          const SizedBox(height: 10),
-          if (_attendances.isNotEmpty) ...[
-            AttendanceSummary(attendances: _attendances),
+          if (!isLoading) ...[
+            const BracuSectionTitle(title: 'Documents'),
+            const SizedBox(height: 10),
+            const GradeSheetCard(),
+            const SizedBox(height: 18),
+            const BracuSectionTitle(title: 'Personal Info'),
+            const SizedBox(height: 10),
+            PersonalInfoCard(profile: _profile ?? const {}),
+            const SizedBox(height: 18),
+            const BracuSectionTitle(title: 'Attendance'),
+            const SizedBox(height: 10),
+            if (_attendances.isNotEmpty) ...[
+              AttendanceSummary(attendances: _attendances),
+              const SizedBox(height: 12),
+            ],
+            const SizedBox(height: 18),
+            const BracuSectionTitle(title: 'Payments'),
+            const SizedBox(height: 10),
+            _payments.isEmpty
+                ? const BracuEmptyState(message: 'No payments found')
+                : PaymentGraph(payments: _payments),
+            if (_payments.isNotEmpty) const SizedBox(height: 12),
+            if (_payments.isNotEmpty) PaymentList(payments: _payments),
             const SizedBox(height: 12),
           ],
-          const SizedBox(height: 18),
-          const BracuSectionTitle(title: 'Payments'),
-          const SizedBox(height: 10),
-          _payments.isEmpty
-              ? (_profile == null
-                    ? const SizedBox.shrink()
-                    : const BracuEmptyState(message: 'No payments found'))
-              : PaymentGraph(payments: _payments),
-          if (_payments.isNotEmpty) const SizedBox(height: 12),
-          if (_payments.isNotEmpty)
-            PaymentList(payments: _payments),
-          const SizedBox(height: 12),
         ],
       ),
     );

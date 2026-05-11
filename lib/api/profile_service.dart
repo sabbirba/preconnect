@@ -233,9 +233,7 @@ class ProfileService {
                     miscData['disabilityDetails']?.toString() ?? '',
               });
             }
-          } catch (e) {
-            // ignore: empty_catches
-          }
+          } catch (_) {}
         }
       },
       readCache: ({required bool fromFetch}) =>

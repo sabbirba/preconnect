@@ -225,6 +225,11 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
           }
 
           final slots = cachedSlots ?? snapshot.data ?? const <_FreeRoomSlot>[];
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              cachedSlots == null &&
+              snapshot.data == null) {
+            return buildRefreshLoadingState(onRefresh: _refresh);
+          }
           final visibleSlots = _visibleRoomSlots(slots);
           if (visibleSlots.isEmpty) {
             if (_shouldOfferNextDayLabs()) {

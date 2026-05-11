@@ -7,14 +7,13 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
-import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_paths.dart';
+import 'package:preconnect/tools/app_storage.dart';
 
 class GradeSheetFile {
-  const GradeSheetFile({required this.file, required this.fromCache});
+  const GradeSheetFile({required this.file});
 
   final File file;
-  final bool fromCache;
 }
 
 class GradeSheetService {
@@ -23,20 +22,17 @@ class GradeSheetService {
   factory GradeSheetService() => _instance;
 
   final ApiClient _client = ApiClient();
-  final Map<String, Future<GradeSheetFile?>> _inFlight =
-      <String, Future<GradeSheetFile?>>{};
-  final StreamController<GradeSheetFile?> _streamController =
-      StreamController<GradeSheetFile?>.broadcast();
 
   Stream<GradeSheetFile?> watchGradeSheet() async* {
     yield await getGradeSheet();
-    yield* _streamController.stream;
   }
 
-  Future<Uint8List?> fetchGradeSheetBytes({bool fromGet = false}) async {
+  Future<Uint8List?> fetchGradeSheetBytes() async {
     final profileId = await resolvePortfolioId(
       prefs: AppPreferencesStore(),
-      refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
+      refreshProfile: () async {
+        await ProfileService().fetchProfile(fromGet: true);
+      },
     );
 
     if (profileId == null || profileId.isEmpty) return null;
@@ -52,36 +48,19 @@ class GradeSheetService {
       if (bytes != null && bytes.isNotEmpty) return bytes;
     } catch (_) {}
 
-    if (fromGet) return null;
-    return fetchGradeSheetBytes(fromGet: true);
+    return null;
   }
 
-  Future<GradeSheetFile?> fetchGradeSheet({bool fromGet = false}) async {
-    final key = 'gradesheet|$fromGet';
-    final inFlight = _inFlight[key];
-    if (inFlight != null) {
-      return inFlight;
-    }
-
-    final request = _fetchGradeSheetInternal(fromGet: fromGet);
-    _inFlight[key] = request;
-    try {
-      return await request;
-    } finally {
-      _inFlight.remove(key);
-    }
-  }
-
-  Future<GradeSheetFile?> _fetchGradeSheetInternal({
-    required bool fromGet,
-  }) async {
+  Future<GradeSheetFile?> fetchGradeSheet() async {
     final profileId = await resolvePortfolioId(
       prefs: AppPreferencesStore(),
-      refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
+      refreshProfile: () async {
+        await ProfileService().fetchProfile(fromGet: true);
+      },
     );
 
     if (profileId == null || profileId.isEmpty) {
-      return fromGet ? null : getGradeSheet(fromFetch: true);
+      return null;
     }
 
     try {
@@ -93,54 +72,33 @@ class GradeSheetService {
       );
       final bytes = _extractPdfBytes(response.bodyBytes, response.body);
       if (bytes == null || bytes.isEmpty) {
-        final fallback = fromGet ? null : await getGradeSheet(fromFetch: true);
-        _publish(fallback);
-        return fallback;
+        return null;
       }
 
-      final file = await _writePdfFile(profileId, bytes);
-      final result = GradeSheetFile(file: file, fromCache: false);
-      _publish(result);
-      return result;
+      return GradeSheetFile(file: await _writeTempPdfFile(bytes));
     } catch (_) {
-      final fallback = fromGet ? null : await getGradeSheet(fromFetch: true);
-      _publish(fallback);
-      return fallback;
+      return null;
     }
   }
 
-  Future<GradeSheetFile?> getGradeSheet({bool fromFetch = false}) async {
-    final profileId = await resolvePortfolioId(
-      prefs: AppPreferencesStore(),
-      refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
-    );
-    if (profileId == null || profileId.isEmpty) return null;
-
-    final file = await _gradeSheetFile(profileId);
-    if (await file.exists()) {
-      final result = GradeSheetFile(file: file, fromCache: true);
-      _publish(result);
-      return result;
-    }
-
-    if (fromFetch) return null;
-    return fetchGradeSheet(fromGet: true);
+  Future<GradeSheetFile?> getGradeSheet() async {
+    return fetchGradeSheet();
   }
 
-  Future<File> _writePdfFile(String profileId, Uint8List bytes) async {
-    final file = await _gradeSheetFile(profileId);
+  Future<File> _writeTempPdfFile(Uint8List bytes) async {
+    final file = await _gradeSheetTempFile();
     await file.parent.create(recursive: true);
     await file.writeAsBytes(bytes, flush: true);
     return file;
   }
 
-  Future<File> _gradeSheetFile(String profileId) async {
-    final dir = await AppPaths.supportDirectory();
-    final fileName = await gradeSheetFileName(profileId: profileId);
+  Future<File> _gradeSheetTempFile() async {
+    final dir = await AppPaths.temporaryDirectory();
+    final fileName = await gradeSheetFileName();
     return File('${dir.path}/$fileName.pdf');
   }
 
-  Future<String> gradeSheetFileName({String? profileId}) async {
+  Future<String> gradeSheetFileName() async {
     final fullName = (await AppStorage.instance.getString('fullName') ?? '')
         .trim();
     final studentId = (await AppStorage.instance.getString('studentId') ?? '')
@@ -163,10 +121,7 @@ class GradeSheetService {
     if (safeStudentId.isNotEmpty) {
       return '${safeStudentId}_Grade Sheet_PreConnect';
     }
-    final fallbackId = (profileId ?? '').trim();
-    return fallbackId.isEmpty
-        ? 'Grade Sheet_PreConnect'
-        : '${fallbackId}_Grade Sheet_PreConnect';
+    return 'Grade Sheet_PreConnect';
   }
 
   Uint8List? _extractPdfBytes(Uint8List rawBytes, String rawBody) {
@@ -214,10 +169,5 @@ class GradeSheetService {
       }
     }
     return output.replaceAll(RegExp(r'\s+'), '');
-  }
-
-  void _publish(GradeSheetFile? value) {
-    if (_streamController.isClosed) return;
-    _streamController.add(value);
   }
 }

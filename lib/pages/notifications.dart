@@ -6,6 +6,7 @@ import 'package:preconnect/api/notification_service.dart';
 import 'package:preconnect/pages/notifications_sections/notification_detail_panels.dart';
 import 'package:preconnect/pages/notifications_sections/notification_list_widgets.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
 class NotificationsPage extends StatefulWidget {
@@ -21,8 +22,8 @@ class NotificationsPage extends StatefulWidget {
 
 class _NotificationsPageState extends State<NotificationsPage> {
   static const int _pageSize = 32;
-  static NotificationsViewData? _cachedData;
-  static Future<NotificationsViewData>? _preloadFuture;
+  static final PreloadCache<NotificationsViewData> _cache =
+      PreloadCache<NotificationsViewData>();
 
   late Future<NotificationsViewData> _future;
   NotificationsViewData? _lastData;
@@ -31,40 +32,52 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   void initState() {
     super.initState();
-    _lastData = _cachedData;
-    _future = _cachedData == null
-        ? preloadData().then((data) {
-            _lastData = data;
-            return data;
-          })
-        : Future<NotificationsViewData>.value(_cachedData!);
+    _lastData = _cache.value;
+    if (_cache.value != null) {
+      _future = Future<NotificationsViewData>.value(_cache.value!);
+    } else {
+      _future = _startWithCache();
+    }
     unawaited(_warmAndBind());
+  }
+
+  Future<NotificationsViewData> _startWithCache() async {
+    final cached = await _loadCachedData();
+    final data = cached ?? await preloadData();
+    _lastData = data;
+    return data;
+  }
+
+  static Future<NotificationsViewData?> _loadCachedData() async {
+    try {
+      final connect = await NotificationService().getRecentNotifications(
+        fromFetch: true,
+      );
+      final scraper = await NotificationService().getScraperContentFeed(
+        forceRefresh: false,
+      );
+      final seenScraperIds = await NotificationService()
+          .getSeenScraperNotificationIds();
+      if (connect == null && scraper.isEmpty && seenScraperIds.isEmpty) {
+        return null;
+      }
+      return NotificationsViewData(
+        connect: connect,
+        scraped: scraper,
+        seenScraperIds: seenScraperIds,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<NotificationsViewData> preloadData({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && _cachedData != null) {
-      return _cachedData!;
-    }
-    if (!forceRefresh) {
-      final inFlight = _preloadFuture;
-      if (inFlight != null) {
-        return inFlight;
-      }
-    }
-
-    final future = _loadDataStatic(forceRefresh: forceRefresh);
-    _preloadFuture = future;
-    try {
-      final data = await future;
-      _cachedData = data;
-      return data;
-    } finally {
-      if (identical(_preloadFuture, future)) {
-        _preloadFuture = null;
-      }
-    }
+    return _cache.load(
+      forceRefresh: forceRefresh,
+      fetch: () => _loadDataStatic(forceRefresh: forceRefresh),
+    );
   }
 
   static Future<NotificationsViewData> _loadDataStatic({
@@ -122,7 +135,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     if (!mounted) return;
     setState(() {
       _lastData = refreshed;
-      _cachedData = refreshed;
+      _cache.value = refreshed;
     });
     RefreshBus.instance.notify(reason: 'notifications');
   }
@@ -146,7 +159,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     setState(() {
       _lastData = optimisticData;
       _future = refreshedFuture;
-      _cachedData = optimisticData;
+      _cache.value = optimisticData;
     });
 
     unawaited(
@@ -202,7 +215,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         scraped: currentData.scraped,
         seenScraperIds: currentData.seenScraperIds,
       );
-      _cachedData = _lastData;
+      _cache.value = _lastData;
     });
     RefreshBus.instance.notify(reason: 'notifications');
   }
@@ -226,7 +239,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         scraped: current.scraped,
         seenScraperIds: {...current.seenScraperIds, item.id},
       );
-      _cachedData = _lastData;
+      _cache.value = _lastData;
     });
     RefreshBus.instance.notify(reason: 'notifications');
   }
@@ -252,6 +265,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
           }
 
           final data = _lastData ?? snapshot.data;
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              data == null) {
+            return buildRefreshLoadingState(
+              onRefresh: _refresh,
+              topSpacing: 180,
+            );
+          }
           final connectItems =
               data?.connect?.items ?? const <RecentConnectNotification>[];
           final scrapedItems = data?.scraped ?? const <ScraperContentItem>[];

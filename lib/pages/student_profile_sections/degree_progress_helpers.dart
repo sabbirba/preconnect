@@ -5,6 +5,7 @@ part of 'package:preconnect/pages/degree_progress.dart';
 extension _DegreeProgressPageStateHelpers on _DegreeProgressPageState {
   Future<void> _loadCurrentSemesterCourses() async {
     final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+    if (currentSessionSemesterId == null) return;
     final scheduleService = ScheduleService();
     final scheduleJson = await scheduleService.getStudentScheduleForSemester(
       semesterSessionId: currentSessionSemesterId,

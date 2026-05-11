@@ -191,6 +191,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
                     onPressed: _isLoading ? null : _sendRequest,
                     icon: Icons.play_arrow_rounded,
                     label: 'Send',
+                    isLoading: _isLoading,
                   ),
                 ),
               ],

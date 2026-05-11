@@ -50,6 +50,7 @@ import 'package:preconnect/tools/exam_sorting.dart';
 import 'package:preconnect/tools/holiday_status.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -93,8 +94,6 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
   HomeTab selectedTab = HomeTab.dashboard;
   StreamSubscription<HomeTab>? _shortcutTabSubscription;
   final Set<HomeTab> _returnToMoreTabs = <HomeTab>{};
-  static const String _lastHomeTabPrefsKey = 'home_tab';
-
   late final Map<HomeTab, WidgetBuilder> pages = {
     HomeTab.settings: (_) => const SettingsPage(),
     HomeTab.notifications: (_) => const NotificationsPage(),
@@ -201,7 +200,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
 
   Future<void> _persistSelectedTab(HomeTab tab) async {
     try {
-      await AppStorage.instance.setString(_lastHomeTabPrefsKey, tab.name);
+      await AppStorage.instance.setString(StorageKeys.homeTab, tab.name);
     } catch (_) {}
   }
 

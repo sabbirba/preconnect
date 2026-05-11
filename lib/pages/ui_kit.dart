@@ -238,10 +238,7 @@ Widget buildCenteredOutlinedActionButton({
   return Padding(
     padding: padding,
     child: Center(
-      child: BracuActionButton(
-        onPressed: onPressed,
-        label: label,
-      ),
+      child: BracuActionButton(onPressed: onPressed, label: label),
     ),
   );
 }
@@ -447,9 +444,7 @@ Future<void> openGradeSheet(BuildContext context) async {
   final isDark = Theme.of(context).brightness == Brightness.dark;
   try {
     if (kIsWeb) {
-      final bytes = await GradeSheetService().fetchGradeSheetBytes(
-        fromGet: true,
-      );
+      final bytes = await GradeSheetService().fetchGradeSheetBytes();
       if (!context.mounted) return;
       if (bytes == null || bytes.isEmpty) {
         _showPdfSnackBar(
@@ -464,7 +459,7 @@ Future<void> openGradeSheet(BuildContext context) async {
       return;
     }
 
-    final gradeSheet = await GradeSheetService().fetchGradeSheet(fromGet: true);
+    final gradeSheet = await GradeSheetService().fetchGradeSheet();
     if (!context.mounted) return;
     if (gradeSheet == null) {
       _showPdfSnackBar(
@@ -566,6 +561,11 @@ Future<void> openCgpaCalculatorPage(BuildContext context) async {
     final info = await ProgressService().getProgress();
     final profile = await ProfileService().getProfile();
     final semesterSessionId = await resolveCurrentSessionSemesterId();
+    if (semesterSessionId == null) {
+      if (!context.mounted) return;
+      showAppSnackBar(context, 'No current semester schedule available.');
+      return;
+    }
     final scheduleJson = await ScheduleService().getStudentScheduleForSemester(
       semesterSessionId: semesterSessionId,
     );
@@ -803,17 +803,18 @@ class _BracuRewardVideoSectionState extends State<BracuRewardVideoSection> {
                   const SizedBox(width: 12),
                   ConstrainedBox(
                     constraints: const BoxConstraints(minWidth: 118),
-                child: BracuActionButton(
-                  onPressed: _isLoading ? null : _watchRewardAd,
-                  label: supportCount > 0
-                      ? '${widget.buttonLabel} #$supportCount'
-                      : widget.buttonLabel,
-                  borderRadius: 10,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                ),
+                    child: BracuActionButton(
+                      onPressed: _isLoading ? null : _watchRewardAd,
+                      isLoading: _isLoading,
+                      label: supportCount > 0
+                          ? '${widget.buttonLabel} #$supportCount'
+                          : widget.buttonLabel,
+                      borderRadius: 10,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -900,6 +901,7 @@ class _BracuInterstitialAdSectionState
                 constraints: const BoxConstraints(minWidth: 118),
                 child: BracuActionButton(
                   onPressed: _isLoading ? null : _showInterstitial,
+                  isLoading: _isLoading,
                   label: 'Show',
                   borderRadius: 10,
                   padding: const EdgeInsets.symmetric(

@@ -81,13 +81,15 @@ class CalendarService {
   _resolveRange() async {
     final scheduleService = ScheduleService();
     final semesterSessionId = await resolveCurrentSessionSemesterId();
+    if (semesterSessionId == null) {
+      return (startDate: '', endDate: '', sourceFingerprint: '');
+    }
     var scheduleJson = await scheduleService.getStudentScheduleForSemester(
       semesterSessionId: semesterSessionId,
     );
-    scheduleJson ??= await scheduleService.fetchStudentScheduleForSemester(
-      semesterSessionId: semesterSessionId,
-      fromGet: true,
-    );
+    if (scheduleJson == null) {
+      return (startDate: '', endDate: '', sourceFingerprint: '');
+    }
     final sections = scheduleService.parseStudentSections(
       scheduleJson,
       semesterSessionId: semesterSessionId,

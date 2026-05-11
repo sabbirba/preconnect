@@ -161,28 +161,31 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       ],
       body: Stack(
         children: [
-          BracuRefreshListBuilder(
-            onRefresh: _refreshDetailsFromApi,
-            itemCount: itemCount,
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return _buildFilterHeader(context);
-              }
-              if (!hasCards || !hasVisibleCards) {
-                return const SizedBox.shrink();
-              }
-              final item = _visibleCards[index - 1];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _SeatStatusCard(
-                  item: item,
-                  onTap: () => _openCourseCommunitySheet(item),
-                  onPinTap: () => _togglePin(item.sectionId),
-                  pinned: _isPinnedSection(item.sectionId),
-                ),
-              );
-            },
-          ),
+          if (_isInitialLoading && !hasCards)
+            const Center(child: BracuLoading())
+          else
+            BracuRefreshListBuilder(
+              onRefresh: _refreshDetailsFromApi,
+              itemCount: itemCount,
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return _buildFilterHeader(context);
+                }
+                if (!hasCards || !hasVisibleCards) {
+                  return const SizedBox.shrink();
+                }
+                final item = _visibleCards[index - 1];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _SeatStatusCard(
+                    item: item,
+                    onTap: () => _openCourseCommunitySheet(item),
+                    onPinTap: () => _togglePin(item.sectionId),
+                    pinned: _isPinnedSection(item.sectionId),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );

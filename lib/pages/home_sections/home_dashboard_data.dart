@@ -47,9 +47,12 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   @override
   void initState() {
     super.initState();
-    _latestData = _cachedData;
-    _future = _cachedData == null
-        ? _initializeHomeData()
+    final forceRefresh = isRefreshingFrom('auth');
+    if (!forceRefresh) {
+      _latestData = _cachedData;
+    }
+    _future = forceRefresh || _cachedData == null
+        ? _initializeHomeData(forceRefresh: forceRefresh)
         : Future<_HomeData>.value(_cachedData!);
     unawaited(_warmAndBind());
     if (AndroidNetworkAssist.isSupported) {
@@ -100,7 +103,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   }
 
   Future<void> _warmAndBind() async {
-    final data = await preloadData();
+    final data = await preloadData(forceRefresh: isRefreshingFrom('auth'));
     if (!mounted) return;
     setState(() {
       _latestData = data;
@@ -117,12 +120,14 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     } catch (_) {}
   }
 
-  Future<_HomeData> _initializeHomeData() async {
-    await _loadHomeDashboardSnapshot();
+  Future<_HomeData> _initializeHomeData({bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      await _loadHomeDashboardSnapshot();
+    }
     if (_cachedData != null) {
       return _cachedData!;
     }
-    return _preloadHomeDashboardData();
+    return _preloadHomeDashboardData(forceRefresh: forceRefresh);
   }
 
   static Future<_HomeData> preloadData({bool forceRefresh = false}) async {
@@ -175,8 +180,9 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
               });
 
       final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
-      final scheduleFuture = needsSchedule
-          ? (forceRefresh
+      final scheduleFuture = currentSessionSemesterId == null || !needsSchedule
+          ? Future<String?>.value(null)
+          : (forceRefresh
                     ? ScheduleService().fetchStudentScheduleForSemester(
                         semesterSessionId: currentSessionSemesterId,
                       )
@@ -185,8 +191,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
                       ))
                 .catchError((e) {
                   return null;
-                })
-          : Future<String?>.value(null);
+                });
 
       final personalSchedulesFuture = cardVisibility.showExamCountdownCard
           ? (forceRefresh
@@ -234,7 +239,9 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
           profile == null
               ? ProfileService().fetchProfile()
               : Future.value(profile),
-          scheduleJson == null && needsSchedule
+          scheduleJson == null &&
+                  needsSchedule &&
+                  currentSessionSemesterId != null
               ? ScheduleService().fetchStudentScheduleForSemester(
                   semesterSessionId: currentSessionSemesterId,
                 )
@@ -798,15 +805,11 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   }
 }
 
-Future<void> preloadHomeDashboardData({
-  bool forceRefresh = false,
-}) async {
+Future<void> preloadHomeDashboardData({bool forceRefresh = false}) async {
   await _preloadHomeDashboardData(forceRefresh: forceRefresh);
 }
 
-Future<_HomeData> _preloadHomeDashboardData({
-  bool forceRefresh = false,
-}) async {
+Future<_HomeData> _preloadHomeDashboardData({bool forceRefresh = false}) async {
   if (!forceRefresh && _HomeDashboardState._cachedData != null) {
     return _HomeDashboardState._cachedData!;
   }

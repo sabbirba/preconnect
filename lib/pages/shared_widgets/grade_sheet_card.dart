@@ -73,6 +73,7 @@ class _GradeSheetCardState extends State<GradeSheetCard> {
               onPressed: _isOpening ? null : _openGradeSheet,
               icon: Icons.picture_as_pdf_rounded,
               label: 'Open',
+              isLoading: _isOpening,
             ),
           ],
         ),

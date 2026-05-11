@@ -224,11 +224,14 @@ class _LoginPageState extends State<LoginPage> {
         return false;
       }
       unawaited(ProfileService().fetchProfile());
-      unawaited(
-        ScheduleService().fetchStudentScheduleForSemester(
-          semesterSessionId: await resolveCurrentSessionSemesterId(),
-        ),
-      );
+      final semesterSessionId = await resolveCurrentSessionSemesterId();
+      if (semesterSessionId != null) {
+        unawaited(
+          ScheduleService().fetchStudentScheduleForSemester(
+            semesterSessionId: semesterSessionId,
+          ),
+        );
+      }
       unawaited(PaymentService().fetchPaymentInfo());
       unawaited(AttendanceService().fetchAttendanceInfo());
       unawaited(AdvisingService().fetchAdvisingInfo());
@@ -277,7 +280,10 @@ class _LoginPageState extends State<LoginPage> {
                     if (await controller.canGoBack()) {
                       await controller.goBack();
                     } else {
-                      navigator.maybePop();
+                      navigator.pushNamedAndRemoveUntil(
+                        '/onboarding',
+                        (route) => false,
+                      );
                     }
                   },
                   child: Stack(

@@ -63,7 +63,6 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
         _refreshing = false;
         _error = 'Unable to load bus data right now.';
       });
-      debugPrint('Bus route refresh failed: $error');
     }
   }
 
@@ -113,7 +112,8 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
                     ),
                     const SizedBox(height: 10),
                     BracuActionButton(
-                      onPressed: _refreshRouteData,
+                      onPressed: _refreshing ? null : _refreshRouteData,
+                      isLoading: _refreshing,
                       icon: Icons.refresh_rounded,
                       label: 'Retry',
                     ),

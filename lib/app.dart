@@ -10,7 +10,6 @@ import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/custom_schedules_service.dart';
 import 'package:preconnect/api/friend_schedule_store.dart';
-import 'package:preconnect/api/grade_sheet_service.dart';
 import 'package:preconnect/api/notification_service.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/progress_service.dart';
@@ -30,6 +29,7 @@ import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/play_install_referrer.dart';
@@ -37,6 +37,7 @@ import 'package:preconnect/tools/reward_support_controller.dart';
 import 'package:preconnect/tools/quiet_mode_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/web_extension_shortcut_bridge_stub.dart'
     if (dart.library.html) 'package:preconnect/tools/web_extension_shortcut_bridge_web.dart';
 
@@ -61,9 +62,9 @@ class MyApp extends StatefulWidget {
 
   static Future<AppBootstrapState> bootstrap() async {
     final prefs = AppStorage.instance;
-    final savedTheme = await prefs.getString('themeMode') ?? 'system';
+    final savedTheme = await prefs.getString(StorageKeys.themeMode) ?? 'system';
     final initialHomeTab = _decodeHomeTab(
-      await prefs.getString(_homeTabPrefsKey),
+      await prefs.getString(StorageKeys.homeTab),
     );
 
     final token = await TokenStorage.instance.read(
@@ -81,7 +82,7 @@ class MyApp extends StatefulWidget {
       final keepKeys = <String>{
         PreconnectStorageKeys.accessToken,
         PreconnectStorageKeys.refreshToken,
-        'themeMode',
+        StorageKeys.themeMode,
         CustomSchedulesService.cacheKey,
       };
       await AppPreferencesStore().clearAllExcept(keepKeys);
@@ -102,9 +103,11 @@ class MyApp extends StatefulWidget {
 
   static Future<bool> _hasOfflineSnapshot() async {
     final prefs = AppStorage.instance;
-    final studentId = (await prefs.getString('studentId') ?? '').trim();
-    final fullName = (await prefs.getString('fullName') ?? '').trim();
-    final schedule = (await prefs.getString('StudentSchedule') ?? '').trim();
+    final studentId = (await prefs.getString(StorageKeys.studentId) ?? '')
+        .trim();
+    final fullName = (await prefs.getString(StorageKeys.fullName) ?? '').trim();
+    final schedule = (await prefs.getString(StorageKeys.studentSchedule) ?? '')
+        .trim();
     if (schedule.isNotEmpty) return true;
     return studentId.isNotEmpty && fullName.isNotEmpty;
   }
@@ -116,12 +119,17 @@ class MyApp extends StatefulWidget {
       AttendanceService().getAttendanceInfo().then((_) {}),
       PaymentService().getPaymentInfo().then((_) {}),
       ProgressService().getProgress().then((_) {}),
-      ScheduleService().getStudentSchedule().then((_) {}),
+      () async {
+        final semesterSessionId = await resolveCurrentSessionSemesterId();
+        if (semesterSessionId == null) return;
+        await ScheduleService().getStudentScheduleForSemester(
+          semesterSessionId: semesterSessionId,
+        );
+      }(),
       CustomSchedulesService().getItems().then((_) {}),
       FriendScheduleStore().loadSnapshot().then((_) {}),
       CalendarService().getCalendar().then((_) {}),
       NotificationService().getRecentNotifications().then((_) {}),
-      GradeSheetService().getGradeSheet().then((_) {}),
       SeatStatusService.preload(),
       BusPage.preload(),
       NotificationsPage.preload(),
@@ -146,8 +154,6 @@ class MyApp extends StatefulWidget {
         return ThemeMode.system;
     }
   }
-
-  static const String _homeTabPrefsKey = 'home_tab';
 
   static HomeTab _decodeHomeTab(String? raw) {
     final value = (raw ?? '').trim();
@@ -410,12 +416,17 @@ class _MyAppState extends State<MyApp>
           AttendanceService().getAttendanceInfo().then((_) {}),
           PaymentService().getPaymentInfo().then((_) {}),
           ProgressService().getProgress().then((_) {}),
-          ScheduleService().getStudentSchedule().then((_) {}),
+          () async {
+            final semesterSessionId = await resolveCurrentSessionSemesterId();
+            if (semesterSessionId == null) return;
+            await ScheduleService().getStudentScheduleForSemester(
+              semesterSessionId: semesterSessionId,
+            );
+          }(),
           CustomSchedulesService().getItems().then((_) {}),
           FriendScheduleStore().loadSnapshot().then((_) {}),
           CalendarService().getCalendar().then((_) {}),
           NotificationService().getRecentNotifications().then((_) {}),
-          GradeSheetService().getGradeSheet().then((_) {}),
           SeatStatusService.preload(),
           BusPage.preload(),
           NotificationsPage.preload(),
@@ -576,7 +587,7 @@ class _MyAppState extends State<MyApp>
       ThemeMode.dark => 'dark',
       ThemeMode.system => 'system',
     };
-    await prefs.setString('themeMode', value);
+    await prefs.setString(StorageKeys.themeMode, value);
   }
 
   Future<void> _validateSessionInBackground() async {

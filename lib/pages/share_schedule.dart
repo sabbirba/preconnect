@@ -13,6 +13,7 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_paths.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
@@ -65,6 +66,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
 
   Future<void> _primeCurrentSemesterSchedule() async {
     final semesterSessionId = await resolveCurrentSessionSemesterId();
+    if (semesterSessionId == null) return;
     await ScheduleService().fetchStudentScheduleForSemester(
       semesterSessionId: semesterSessionId,
     );
@@ -87,10 +89,12 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       return;
     }
 
-    final cachedBase64 = await AppStorage.instance.getString('qr_base64');
-    final cachedHash = await AppStorage.instance.getString('qr_hash');
+    final cachedBase64 = await AppStorage.instance.getString(
+      StorageKeys.qrBase64,
+    );
+    final cachedHash = await AppStorage.instance.getString(StorageKeys.qrHash);
     final cachedVersion = await AppStorage.instance.getInt(
-      'qr_payload_version',
+      StorageKeys.qrPayloadVersion,
     );
 
     if (cachedBase64 != null &&
@@ -133,6 +137,14 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       final photoFilePath = profile?['photoFilePath'] ?? '';
 
       final semesterSessionId = await resolveCurrentSessionSemesterId();
+      if (semesterSessionId == null) {
+        if (_base64Data == null) {
+          _safeSetState(() {
+            errorMessage = 'No schedule data available offline.';
+          });
+        }
+        return;
+      }
       final cachedSchedule = await ScheduleService()
           .getStudentScheduleForSemester(semesterSessionId: semesterSessionId);
       final jsonString = forceRefresh
@@ -198,10 +210,10 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       final base64Str = base64.encode(gzipBytes);
 
       if (!kIsWeb) {
-        await AppStorage.instance.setString('qr_base64', base64Str);
-        await AppStorage.instance.setString('qr_hash', fingerprint);
+        await AppStorage.instance.setString(StorageKeys.qrBase64, base64Str);
+        await AppStorage.instance.setString(StorageKeys.qrHash, fingerprint);
         await AppStorage.instance.setInt(
-          'qr_payload_version',
+          StorageKeys.qrPayloadVersion,
           _qrPayloadVersion,
         );
       }
@@ -237,9 +249,9 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       return;
     }
     if (!kIsWeb) {
-      await AppStorage.instance.remove('qr_base64');
-      await AppStorage.instance.remove('qr_hash');
-      await AppStorage.instance.remove('qr_payload_version');
+      await AppStorage.instance.remove(StorageKeys.qrBase64);
+      await AppStorage.instance.remove(StorageKeys.qrHash);
+      await AppStorage.instance.remove(StorageKeys.qrPayloadVersion);
     }
     await _fetchAndConvertSchedule(forceRefresh: true);
     RefreshBus.instance.notify(reason: 'share_schedule');

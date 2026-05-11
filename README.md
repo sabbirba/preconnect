@@ -268,8 +268,7 @@ Key packages related to user data safety/privacy are listed below.
 | Package                  | What it does for privacy/safety                                                                                                     |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `flutter_secure_storage` | Stores sensitive auth/session tokens in encrypted device-backed secure storage (Keychain/Keystore), instead of plain local storage. |
-| `shared_preferences`     | Stores non-sensitive app settings and flags (for example onboarding and UI preferences). Not used for secret credentials.           |
-| `sembast`                | Provides structured local database caching so app data can stay on-device and support offline usage with controlled reads/writes.   |
+| `shared_preferences`     | Backing store for `AppStorage`, used for non-sensitive app settings, JSON blobs, and lightweight caches. Not used for secrets.     |
 | `local_auth`             | Enables optional biometric/PIN app lock so only the device owner can open protected screens.                                        |
 | `permission_handler`     | Ensures runtime permissions (camera/notifications) are requested explicitly and can be denied by the user.                          |
 | `crypto`                 | Used for cryptographic hashing in integrity/security flows to strengthen request validation.                                        |

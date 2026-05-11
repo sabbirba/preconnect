@@ -20,6 +20,7 @@ dependencies:
   webview_flutter: ^4.13.1
   intl: ^0.20.2
   mobile_scanner: ^7.2.0
+  image_picker: ^1.1.2
   archive: ^4.0.9
   flutter_alarmkit: ^0.0.10
   barcode_widget: ^2.0.4
@@ -30,7 +31,6 @@ dependencies:
   in_app_update: ^4.2.5
   in_app_review: ^2.0.11
   local_auth: ^3.0.1
-  sembast: ^3.8.6
   chrome_extension: ^0.4.0
   web: ^1.1.1
 

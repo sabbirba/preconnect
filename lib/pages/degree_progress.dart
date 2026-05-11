@@ -47,9 +47,12 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
   @override
   void initState() {
     super.initState();
-    _latestInfo = _cachedInfo;
-    _future = _cachedInfo == null
-        ? preloadData().then((info) {
+    final forceRefresh = isRefreshingFrom('auth');
+    if (!forceRefresh) {
+      _latestInfo = _cachedInfo;
+    }
+    _future = forceRefresh || _cachedInfo == null
+        ? preloadData(forceRefresh: forceRefresh).then((info) {
             _latestInfo = info;
             if (info != null) {
               unawaited(_refreshFromNetworkSilent());
@@ -91,7 +94,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
   }
 
   Future<void> _warmAndBind() async {
-    final info = await preloadData();
+    final info = await preloadData(forceRefresh: isRefreshingFrom('auth'));
     if (!mounted || info == null) return;
     setState(() {
       _latestInfo = info;
@@ -113,6 +116,17 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
         reason != 'student_profile' &&
         reason != 'auth') {
       return;
+    }
+    if (reason == 'auth') {
+      _cachedInfo = null;
+      _preloadFuture = null;
+      setState(() {
+        _latestInfo = null;
+        _future = preloadData(forceRefresh: true).then((info) {
+          _latestInfo = info;
+          return info;
+        });
+      });
     }
     unawaited(_refresh(notify: false));
   }
@@ -182,6 +196,9 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
         fromFetch: true,
       );
       final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+      if (currentSessionSemesterId == null) {
+        return;
+      }
       final freshScheduleJson = await ScheduleService()
           .fetchStudentScheduleForSemester(
             semesterSessionId: currentSessionSemesterId,
@@ -235,6 +252,14 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
               onRefresh: _refresh,
               topSpacing: 180,
               error: snapshot.error,
+            );
+          }
+
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              info == null) {
+            return buildRefreshLoadingState(
+              onRefresh: _refresh,
+              topSpacing: 180,
             );
           }
 
