@@ -242,16 +242,17 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
           final highlightToken = highlightedSlot == null
               ? null
               : '${highlightedSlot.roomNumber}_${highlightedSlot.startTime}_${highlightedSlot.endTime}';
-          final groupedSlots = <String, List<_FreeRoomSlot>>{};
-          for (final slot in visibleSlots) {
-            final key = '${slot.startTime}|${slot.endTime}';
-            groupedSlots.putIfAbsent(key, () => <_FreeRoomSlot>[]).add(slot);
-          }
           _highlightKey = null;
           if (highlightToken != null && highlightToken != _lastHighlightToken) {
             _lastHighlightToken = highlightToken;
             _didScroll = false;
             _scrollRetry = false;
+          }
+
+          final groupedSlots = <String, List<_FreeRoomSlot>>{};
+          for (final slot in visibleSlots) {
+            final key = '${slot.startTime}|${slot.endTime}';
+            groupedSlots.putIfAbsent(key, () => <_FreeRoomSlot>[]).add(slot);
           }
 
           final children = <Widget>[];
@@ -295,90 +296,11 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                         .toList();
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(18),
+                      child: _CompactRoomRow(
+                        key: isHighlighted ? _highlightKey : null,
+                        slot: slot,
+                        isHighlighted: isHighlighted,
                         onTap: () => _showRoomDetails(slot, roomSlots),
-                        child: BracuCard(
-                          key: isHighlighted ? _highlightKey : null,
-                          isHighlighted: false,
-                          highlightColor: _roomCardHighlightColor(slot),
-                          backgroundColor: _roomCardBackgroundColor(slot),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                flex: 7,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text.rich(
-                                      TextSpan(
-                                        children: [
-                                          TextSpan(
-                                            text: slot.roomNumber,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          if (slot.statusLabel == 'Available')
-                                            TextSpan(
-                                              text: ' Free',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                color:
-                                                    BracuPalette.textSecondary(
-                                                      context,
-                                                    ),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      formatTimeRange(
-                                        slot.startTime,
-                                        slot.endTime,
-                                      ),
-                                      style: TextStyle(
-                                        color: BracuPalette.textPrimary(
-                                          context,
-                                        ),
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                flex: 4,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text.rich(
-                                      _roomProgramLabelSpan(slot),
-                                      textAlign: TextAlign.right,
-                                    ),
-                                    if (slot.statusLabel.isNotEmpty) ...[
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        slot.statusLabel,
-                                        textAlign: TextAlign.right,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: BracuPalette.textSecondary(
-                                            context,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
                     );
                   }),
@@ -416,11 +338,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
         return i;
       }
     }
-    for (var i = 0; i < slots.length; i++) {
-      final start = _minutesFromString(slots[i].startTime);
-      if (start != null && nowMinutes < start) return i;
-    }
-    return 0;
+    return null;
   }
 
   List<_FreeRoomSlot> _buildFreeRoomSlots(
@@ -713,8 +631,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   Future<void> _showNextDayLabs() async {
     setState(() {
       _showNextDayAfterHours = true;
-      _didScroll = false;
-      _scrollRetry = false;
       _future = _loadSlots();
     });
     _bindSlotsFuture(_future);
@@ -771,19 +687,33 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     final visibleRoomSlots = _visibleRoomSlots(roomSlots);
     await showBracuBottomSheet<void>(
       context,
-      title: '${slot.roomNumber} • ${_roomTypeLabel(slot.roomNumber)}',
+      title: _sheetRoomTitle(slot),
       subtitle: _roomHeaderSubtitle(slot),
       builder: (sheetContext, textPrimary, textSecondary) {
         return ListView(
           shrinkWrap: true,
           children: [
-            Text(
-              _roomTimelineLabel(),
-              style: TextStyle(
-                color: textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Today',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                Text(
+                  _headerDayLabel(),
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 10),
             ...visibleRoomSlots.map(
@@ -864,26 +794,12 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     return parts.join(' • ');
   }
 
-  String _roomTimelineLabel() {
-    if (_isViewingFutureDate()) {
-      return formatWeekdayTitle(_activeDayName);
-    }
-    return 'Today';
-  }
-
-  String _roomProgramLabel(_FreeRoomSlot slot) {
+  String _sheetRoomTitle(_FreeRoomSlot slot) {
     final program = slot.dominantProgramCode.trim().toUpperCase();
-    if (program.isEmpty) {
-      return slot.roomName;
-    }
-    return program;
-  }
-
-  bool _isGreenProgram(_FreeRoomSlot slot) {
-    final program = slot.dominantProgramCode.trim().toUpperCase();
-    final roomNumber = slot.roomNumber.trim().toUpperCase();
-    final isLab = roomNumber.endsWith('L');
-    return isLab && (program == 'CSE' || program == 'EEE');
+    final roomNumber = slot.roomNumber.trim();
+    final roomType = _roomTypeLabel(slot.roomNumber);
+    if (program.isEmpty) return '$roomNumber • $roomType';
+    return '$roomNumber • $program $roomType';
   }
 
   String _dominantProgramCode(_RoomSeed room) {
@@ -895,42 +811,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
         return a.key.compareTo(b.key);
       });
     return sorted.first.key;
-  }
-
-  Color _roomCardHighlightColor(_FreeRoomSlot slot) {
-    return _isGreenProgram(slot)
-        ? const Color(0xFF22C55E)
-        : BracuPalette.primary;
-  }
-
-  Color? _roomCardBackgroundColor(_FreeRoomSlot slot) {
-    return null;
-  }
-
-  TextSpan _roomProgramLabelSpan(_FreeRoomSlot slot) {
-    final program = _roomProgramLabel(slot);
-    final roomType = _roomTypeShortLabel(slot.roomNumber);
-    return TextSpan(
-      children: [
-        TextSpan(
-          text: program,
-          style: TextStyle(
-            color: BracuPalette.textPrimary(context),
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        if (program != slot.roomName && roomType.isNotEmpty)
-          TextSpan(
-            text: ' $roomType',
-            style: TextStyle(
-              color: BracuPalette.textSecondary(context),
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-      ],
-    );
   }
 
   String _courseProgramCode(String courseCode) {
@@ -947,13 +827,111 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     if (suffix.endsWith('C')) return 'Class Room';
     return 'Room';
   }
+}
 
-  String _roomTypeShortLabel(String roomNumber) {
-    final suffix = roomNumber.trim().toUpperCase();
-    if (suffix.endsWith('L')) return 'Lab';
-    if (suffix.endsWith('T')) return 'Theater';
-    if (suffix.endsWith('C')) return 'Class';
-    return '';
+class _CompactRoomRow extends StatelessWidget {
+  const _CompactRoomRow({
+    super.key,
+    required this.slot,
+    required this.onTap,
+    this.isHighlighted = false,
+  });
+
+  final _FreeRoomSlot slot;
+  final VoidCallback onTap;
+  final bool isHighlighted;
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuCard(
+      key: key,
+      isHighlighted: isHighlighted,
+      highlightColor: BracuPalette.primary,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 7,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: slot.roomNumber,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        if (slot.statusLabel == 'Available')
+                          TextSpan(
+                            text: ' Free',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: BracuPalette.textSecondary(context),
+                            ),
+                          ),
+                      ],
+                    ),
+                    style: TextStyle(
+                      color: BracuPalette.textPrimary(context),
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    formatTimeRange(slot.startTime, slot.endTime),
+                    style: TextStyle(
+                      color: BracuPalette.textPrimary(context),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 4,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: slot.dominantProgramCode.isEmpty
+                              ? slot.roomName
+                              : slot.dominantProgramCode,
+                          style: TextStyle(
+                            color: BracuPalette.textPrimary(context),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.right,
+                  ),
+                  if (slot.statusLabel.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      slot.statusLabel,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: BracuPalette.textSecondary(context),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

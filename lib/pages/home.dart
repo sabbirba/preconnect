@@ -1048,22 +1048,6 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
                       color: const Color(0xFF00A8E8),
                       onTap: () => widget.onNavigate(HomeTab.seatStatus),
                     ),
-                    QuickAccessCard(
-                      width: layout.itemWidth,
-                      icon: Icons.local_printshop_outlined,
-                      title: 'Printer',
-                      subtitle: 'Campus',
-                      color: const Color(0xFF22B573),
-                      onTap: () => widget.onNavigate(HomeTab.campusPrinter),
-                    ),
-                    QuickAccessCard(
-                      width: layout.itemWidth,
-                      icon: Icons.developer_mode_outlined,
-                      title: 'Devs',
-                      subtitle: 'Support',
-                      color: const Color(0xFF2C9DFF),
-                      onTap: () => widget.onNavigate(HomeTab.devs),
-                    ),
                   ],
                 ),
               );

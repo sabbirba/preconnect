@@ -45,10 +45,7 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
           ),
           if (imageUrls.isNotEmpty) ...[
             const SizedBox(height: 14),
-            BracuImageCarousel(
-              imageUrls: imageUrls,
-              borderRadius: 14,
-            ),
+            BracuImageCarousel(imageUrls: imageUrls, borderRadius: 14),
           ],
           const SizedBox(height: 18),
           Text(
