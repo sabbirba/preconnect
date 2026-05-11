@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/pages/api_test.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -102,9 +103,10 @@ class _DevsPageState extends State<DevsPage> {
       );
       final response = await http.get(
         uri,
-        headers: const {
+        headers: <String, String>{
           'Accept': 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28',
+          ...compressionHeaders(),
         },
       );
       if (response.statusCode < 200 || response.statusCode >= 300) {

@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:in_app_review/in_app_review.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:preconnect/api/api_client.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:preconnect/tools/app_storage.dart';
@@ -449,7 +450,10 @@ class ProfileImageCache {
     }
 
     try {
-      final response = await http.get(Uri.parse(photoUrl));
+      final response = await http.get(
+        Uri.parse(photoUrl),
+        headers: compressionHeaders(),
+      );
       if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
         await file.writeAsBytes(response.bodyBytes, flush: true);
         await AppStorage.instance.setString(_cachedUrlKey, photoUrl);

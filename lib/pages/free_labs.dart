@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
+import 'package:preconnect/api/api_client.dart';
+import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/seat_status_service.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -15,8 +19,10 @@ class FreeLabsPage extends StatefulWidget {
 }
 
 class _FreeLabsPageState extends State<FreeLabsPage> {
+  static const String _freeLabsUrl = 'https://cdn.preconnect.app/freelabs.json';
+  static const String _freeLabsCacheKey = 'freelabs_json_v1';
+
   late Future<List<_FreeRoomSlot>> _future;
-  Map<int, SeatStatusDetailsResponse>? _cachedDetails;
   List<_FreeRoomSlot>? _latestSlots;
   int _slotsRequestId = 0;
   final ScrollController _scrollController = ScrollController();
@@ -30,11 +36,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   @override
   void initState() {
     super.initState();
-    _cachedDetails = SeatStatusService().cachedDetails;
-    _latestSlots = _buildCachedSlots();
-    _future = _latestSlots == null
-        ? _loadSlots()
-        : Future<List<_FreeRoomSlot>>.value(_latestSlots!);
+    _future = _loadSlots();
     _bindSlotsFuture(_future);
     HomeTabRegistry.activeTab.addListener(_onActiveTabChanged);
   }
@@ -54,7 +56,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
       _showNextDayAfterHours = false;
       _didScroll = false;
       _scrollRetry = false;
-      _latestSlots = _buildCachedSlots();
       _future = _loadSlots();
     });
     _bindSlotsFuture(_future);
@@ -115,14 +116,8 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   }
 
   Future<List<_FreeRoomSlot>> _loadAllSlots({bool forceRefresh = false}) async {
-    final service = SeatStatusService();
-    final details = await service.fetchAllSectionsDetailsFromApi(
-      forceRefresh: forceRefresh,
-    );
-    final allSlots = _buildFreeRoomSlots(
-      details.values.toList(),
-      _activeDayName,
-    );
+    final details = await _loadFreeLabsDetails(forceRefresh: forceRefresh);
+    final allSlots = _buildFreeRoomSlots(details, _activeDayName);
     return allSlots;
   }
 
@@ -158,7 +153,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
       _selectedFilter = selected;
       _didScroll = false;
       _scrollRetry = false;
-      _latestSlots = _buildCachedSlots();
       _future = _loadSlots();
     });
     _bindSlotsFuture(_future);
@@ -490,27 +484,72 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     return slots;
   }
 
-  List<_FreeRoomSlot>? _buildCachedSlots() {
-    final details = _cachedDetails;
-    if (details == null) return null;
-    final allSlots = _buildFreeRoomSlots(
-      details.values.toList(),
-      _activeDayName,
-    );
-    return _applySelectedFilter(allSlots);
-  }
-
   void _bindSlotsFuture(Future<List<_FreeRoomSlot>> future) {
     final requestId = ++_slotsRequestId;
     unawaited(
       future.then((slots) {
         if (!mounted || requestId != _slotsRequestId) return;
         setState(() {
-          _cachedDetails = SeatStatusService().cachedDetails;
           _latestSlots = slots;
         });
       }),
     );
+  }
+
+  Future<List<SeatStatusDetailsResponse>> _loadFreeLabsDetails({
+    required bool forceRefresh,
+  }) async {
+    final cache = AppPreferencesStore();
+    if (!forceRefresh) {
+      final cachedRaw = await cache.getString(_freeLabsCacheKey);
+      if (cachedRaw != null && cachedRaw.trim().isNotEmpty) {
+        final cached = _decodeFreeLabsDetails(cachedRaw);
+        if (cached.isNotEmpty) {
+          return cached;
+        }
+      }
+    }
+
+    try {
+      final response = await http
+          .get(Uri.parse(_freeLabsUrl), headers: compressionHeaders())
+          .timeout(const Duration(seconds: 12));
+      if (response.statusCode != 200) {
+        return await _readCachedFreeLabsDetails(cache);
+      }
+      final decoded = _decodeFreeLabsDetails(response.body);
+      if (decoded.isNotEmpty) {
+        await cache.setString(_freeLabsCacheKey, response.body);
+      }
+      return decoded.isEmpty
+          ? await _readCachedFreeLabsDetails(cache)
+          : decoded;
+    } catch (_) {
+      return await _readCachedFreeLabsDetails(cache);
+    }
+  }
+
+  Future<List<SeatStatusDetailsResponse>> _readCachedFreeLabsDetails(
+    AppPreferencesStore cache,
+  ) async {
+    final cachedRaw = await cache.getString(_freeLabsCacheKey);
+    if (cachedRaw == null || cachedRaw.trim().isEmpty) {
+      return const <SeatStatusDetailsResponse>[];
+    }
+    return _decodeFreeLabsDetails(cachedRaw);
+  }
+
+  List<SeatStatusDetailsResponse> _decodeFreeLabsDetails(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return const <SeatStatusDetailsResponse>[];
+      return decoded.whereType<Map>().map((item) {
+        final map = Map<String, dynamic>.from(item);
+        return SeatStatusDetailsResponse.fromJson(map);
+      }).toList();
+    } catch (_) {
+      return const <SeatStatusDetailsResponse>[];
+    }
   }
 
   void _seedRoomOccupancy({
@@ -676,7 +715,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
       _showNextDayAfterHours = true;
       _didScroll = false;
       _scrollRetry = false;
-      _latestSlots = _buildCachedSlots();
       _future = _loadSlots();
     });
     _bindSlotsFuture(_future);

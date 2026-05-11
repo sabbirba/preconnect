@@ -233,35 +233,10 @@ class _TransportRouteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: BracuPalette.textSecondary(
-                context,
-              ).withValues(alpha: 0.18),
-            ),
-          ),
-          child: ListTile(
-            leading: Icon(
-              Icons.directions_bus_rounded,
-              size: 20,
-              color: BracuPalette.primary,
-            ),
-            title: Text(route.displayTitle),
-            trailing: Icon(
-              Icons.chevron_right_rounded,
-              size: 20,
-              color: BracuPalette.primary,
-            ),
-          ),
-        ),
-      ),
+    return BracuActionCard(
+      title: route.displayTitle,
+      leadingIcon: Icons.directions_bus_rounded,
+      onTap: onTap,
     );
   }
 }

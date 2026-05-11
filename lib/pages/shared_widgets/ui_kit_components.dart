@@ -193,6 +193,54 @@ class BracuActionButton extends StatelessWidget {
   }
 }
 
+class BracuActionCard extends StatelessWidget {
+  const BracuActionCard({
+    super.key,
+    required this.title,
+    this.leadingIcon,
+    this.trailing,
+    this.onTap,
+    this.borderRadius = 14,
+  });
+
+  final String title;
+  final IconData? leadingIcon;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  final double borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = BracuPalette.textSecondary(
+      context,
+    ).withValues(alpha: 0.18);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(borderRadius),
+        onTap: onTap,
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(borderRadius),
+            border: Border.all(color: borderColor),
+          ),
+          child: ListTile(
+            leading: leadingIcon == null ? null : Icon(leadingIcon, size: 20),
+            title: Text(title),
+            trailing:
+                trailing ??
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: BracuPalette.textSecondary(context),
+                ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _LoadingButton extends StatelessWidget {
   const _LoadingButton({
     required this.outlined,

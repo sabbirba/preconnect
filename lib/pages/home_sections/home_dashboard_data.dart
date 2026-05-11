@@ -48,13 +48,15 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   void initState() {
     super.initState();
     final forceRefresh = isRefreshingFrom('auth');
-    if (!forceRefresh) {
+    if (!forceRefresh || _cachedData != null) {
       _latestData = _cachedData;
     }
-    _future = forceRefresh || _cachedData == null
-        ? _initializeHomeData(forceRefresh: forceRefresh)
-        : Future<_HomeData>.value(_cachedData!);
-    unawaited(_warmAndBind());
+    _future = forceRefresh && _cachedData == null
+        ? _initializeHomeData(forceRefresh: true)
+        : (_cachedData != null
+              ? Future<_HomeData>.value(_cachedData!)
+              : _initializeHomeData(forceRefresh: false));
+    unawaited(_warmAndBind(forceRefresh: forceRefresh));
     if (AndroidNetworkAssist.isSupported) {
       _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen(
         _applyAndroidNetworkStatus,
@@ -102,8 +104,10 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     } catch (_) {}
   }
 
-  Future<void> _warmAndBind() async {
-    final data = await preloadData(forceRefresh: isRefreshingFrom('auth'));
+  Future<void> _warmAndBind({bool forceRefresh = false}) async {
+    final data = await preloadData(
+      forceRefresh: forceRefresh && _cachedData == null,
+    );
     if (!mounted) return;
     setState(() {
       _latestData = data;

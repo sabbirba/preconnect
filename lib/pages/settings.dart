@@ -262,31 +262,14 @@ class _SettingsPageState extends State<SettingsPage>
         onRefresh: _load,
         showScrollTopButton: false,
         children: [
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const CaptiveWifiPage()),
-                );
-              },
-              child: Ink(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: BracuPalette.textSecondary(
-                      context,
-                    ).withValues(alpha: 0.18),
-                  ),
-                ),
-                child: const ListTile(
-                  leading: Icon(Icons.wifi_rounded, size: 20),
-                  title: Text('Wi-Fi Setup'),
-                  trailing: Icon(Icons.chevron_right_rounded, size: 20),
-                ),
-              ),
-            ),
+          BracuActionCard(
+            title: 'Wi-Fi Setup',
+            leadingIcon: Icons.wifi_rounded,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CaptiveWifiPage()),
+              );
+            },
           ),
           const SizedBox(height: _sectionGap),
           BracuCard(

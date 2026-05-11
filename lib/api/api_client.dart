@@ -24,7 +24,10 @@ class ApiClient {
   Future<bool> hasConnection({bool forceRefresh = false}) async {
     try {
       final response = await http
-          .get(Uri.parse(ApiConfig.connectApiBase))
+          .get(
+            Uri.parse(ApiConfig.connectApiBase),
+            headers: compressionHeaders(),
+          )
           .timeout(_connectivityProbeTimeout);
       return response.statusCode < 500;
     } catch (_) {
@@ -229,7 +232,7 @@ class ApiClient {
       'Accept': 'application/json',
       ...headers,
     };
-    _addCompressionHeaders(mergedHeaders);
+    mergedHeaders.addAll(compressionHeaders());
     final response = await http
         .get(Uri.parse(url), headers: mergedHeaders)
         .timeout(_requestTimeout);
@@ -292,7 +295,7 @@ class ApiClient {
       'Authorization': 'Bearer $token',
       ...ApiConfig.apiHeaders,
     };
-    _addCompressionHeaders(headers);
+    headers.addAll(compressionHeaders());
 
     final uri = Uri.tryParse(url);
     if (uri != null && uri.host == 'connect.bracu.ac.bd') {
@@ -323,11 +326,6 @@ class ApiClient {
     return headers;
   }
 
-  void _addCompressionHeaders(Map<String, String> headers) {
-    if (kIsWeb) return;
-    headers['Accept-Encoding'] = 'gzip';
-  }
-
   Future<http.Response> _sendAuthenticatedRequest(
     String method,
     String url, {
@@ -356,6 +354,11 @@ class ApiClient {
         throw ArgumentError.value(method, 'method', 'Unsupported HTTP method');
     }
   }
+}
+
+Map<String, String> compressionHeaders() {
+  if (kIsWeb) return const <String, String>{};
+  return const <String, String>{'Accept-Encoding': 'gzip, deflate, br'};
 }
 
 sealed class PreConnectException implements Exception {

@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/image_url_utils.dart';
@@ -79,6 +80,7 @@ class _CachedImageState extends State<CachedImage> {
       try {
         final headers = <String, String>{
           'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+          ...compressionHeaders(),
         };
         final response = await http.get(uri, headers: headers);
         if (response.statusCode >= 200 && response.statusCode < 300) {

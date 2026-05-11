@@ -417,105 +417,59 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                 ),
               ),
               const SizedBox(height: 14),
-              BracuCard(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'All Courses',
-                              style: TextStyle(
-                                color: BracuPalette.textPrimary(context),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            if (info.academicDegree.isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                info.academicDegree,
-                                style: TextStyle(
-                                  color: BracuPalette.textSecondary(context),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ],
+              BracuActionCard(
+                title: 'CGPA Calculator',
+                leadingIcon: Icons.calculate_outlined,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => CgpaCalculatorPage(
+                        info: info,
+                        currentSections: currentSectionsForDisplay,
+                        currentCgpa: _cgpa,
+                      ),
+                    ),
+                  );
+                },
+                trailing: BracuActionButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => CgpaCalculatorPage(
+                          info: info,
+                          currentSections: currentSectionsForDisplay,
+                          currentCgpa: _cgpa,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      BracuActionButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => AllCoursesPage(info: info),
-                            ),
-                          );
-                        },
-                        icon: Icons.tune,
-                        label: 'Open',
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              BracuCard(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'CGPA Calculator',
-                              style: TextStyle(
-                                color: BracuPalette.textPrimary(context),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Based on your progress',
-                              style: TextStyle(
-                                color: BracuPalette.textSecondary(context),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      BracuActionButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => CgpaCalculatorPage(
-                                info: info,
-                                currentSections: currentSectionsForDisplay,
-                                currentCgpa: _cgpa,
-                              ),
-                            ),
-                          );
-                        },
-                        icon: Icons.calculate_outlined,
-                        label: 'Open',
-                      ),
-                    ],
-                  ),
+                    );
+                  },
+                  label: 'Open',
                 ),
               ),
               const SizedBox(height: 14),
               const GradeSheetCard(),
+              const SizedBox(height: 14),
+              BracuActionCard(
+                title: 'All Courses',
+                leadingIcon: Icons.tune,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => AllCoursesPage(info: info),
+                    ),
+                  );
+                },
+                trailing: BracuActionButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AllCoursesPage(info: info),
+                      ),
+                    );
+                  },
+                  label: 'Open',
+                ),
+              ),
               const SizedBox(height: 14),
               if (info.headerProgress.isNotEmpty) ...[
                 const BracuSectionTitle(title: 'Requirement Progress'),

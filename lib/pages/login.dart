@@ -6,8 +6,12 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/calendar_service.dart';
+import 'package:preconnect/api/notification_service.dart';
 import 'package:preconnect/api/profile_service.dart';
+import 'package:preconnect/api/progress_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
+import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
@@ -223,18 +227,22 @@ class _LoginPageState extends State<LoginPage> {
           persistedRefreshToken.isEmpty) {
         return false;
       }
-      unawaited(ProfileService().fetchProfile());
+      await ProfileService().fetchProfile();
       final semesterSessionId = await resolveCurrentSessionSemesterId();
       if (semesterSessionId != null) {
-        unawaited(
-          ScheduleService().fetchStudentScheduleForSemester(
-            semesterSessionId: semesterSessionId,
-          ),
+        await ScheduleService().fetchStudentScheduleForSemester(
+          semesterSessionId: semesterSessionId,
         );
       }
-      unawaited(PaymentService().fetchPaymentInfo());
-      unawaited(AttendanceService().fetchAttendanceInfo());
-      unawaited(AdvisingService().fetchAdvisingInfo());
+      await Future.wait([
+        PaymentService().fetchPaymentInfo(),
+        AttendanceService().fetchAttendanceInfo(),
+        AdvisingService().fetchAdvisingInfo(),
+        ProgressService().fetchProgress(),
+        NotificationService().getRecentNotifications(),
+      ]);
+      await CalendarService().getCalendar();
+      await preloadHomeDashboardData(forceRefresh: false);
 
       RefreshBus.instance.notify(reason: 'auth');
       if (mounted) {

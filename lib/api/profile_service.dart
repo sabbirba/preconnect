@@ -4,6 +4,7 @@ import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 
 class ProfileService {
   static final ProfileService _instance = ProfileService._internal();
@@ -187,6 +188,14 @@ class ProfileService {
             'email': profile['studentEmail'] ?? '',
             'cgpa': profile['cgpa']?.toString() ?? '',
           });
+          final currentSessionSemesterId =
+              profile['currentSessionSemesterId']?.toString().trim() ?? '';
+          if (currentSessionSemesterId.isNotEmpty) {
+            await AppStorage.instance.setString(
+              StorageKeys.currentSessionSemesterId,
+              currentSessionSemesterId,
+            );
+          }
 
           try {
             final miscUrl =

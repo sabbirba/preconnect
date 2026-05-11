@@ -14,29 +14,14 @@ class BusRouteMap extends StatelessWidget {
       body: BracuRefreshList(
         onRefresh: () async {},
         children: [
-          BracuCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Route map view is now integrated into the Bus page.',
-                  style: TextStyle(
-                    color: BracuPalette.textPrimary(context),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                BracuActionButton(
-                  onPressed: () {
-                    Navigator.of(
-                      context,
-                    ).push(MaterialPageRoute(builder: (_) => const BusPage()));
-                  },
-                  icon: Icons.directions_bus_rounded,
-                  label: 'Open Bus',
-                ),
-              ],
-            ),
+          BracuActionCard(
+            title: 'Open Bus',
+            leadingIcon: Icons.directions_bus_rounded,
+            onTap: () {
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const BusPage()));
+            },
           ),
         ],
       ),
