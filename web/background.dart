@@ -29,8 +29,10 @@ const String _openSidePanelCommand =
     PreconnectBrowserActionIds.openSidePanelCommand;
 const String _openCustomScheduleCommand =
     PreconnectBrowserActionIds.openCustomScheduleCommand;
-const String _openProfileCommand = PreconnectBrowserActionIds.openProfileCommand;
-const String _openClassesCommand = PreconnectBrowserActionIds.openClassesCommand;
+const String _openProfileCommand =
+    PreconnectBrowserActionIds.openProfileCommand;
+const String _openClassesCommand =
+    PreconnectBrowserActionIds.openClassesCommand;
 const String _openExamsCommand = PreconnectBrowserActionIds.openExamsCommand;
 const String _openFriendsScheduleCommand =
     PreconnectBrowserActionIds.openFriendsScheduleCommand;
@@ -58,7 +60,8 @@ const String _shortcutExams = PreconnectBrowserActionIds.shortcutExams;
 const String _shortcutFriends = PreconnectBrowserActionIds.shortcutFriends;
 const String _shortcutShare = PreconnectBrowserActionIds.shortcutShare;
 const String _shortcutScan = PreconnectBrowserActionIds.shortcutScan;
-const String _shortcutSeatStatus = PreconnectBrowserActionIds.shortcutSeatStatus;
+const String _shortcutSeatStatus =
+    PreconnectBrowserActionIds.shortcutSeatStatus;
 const String _cookieSnapshotConnectKey = 'preconnect.cookies.connect';
 const String _cookieSnapshotSsoKey = 'preconnect.cookies.sso';
 const String _cookieSnapshotUpdatedAtKey = 'preconnect.cookies.updatedAt';
@@ -159,8 +162,7 @@ Future<void> main() async {
 Future<void> _guarded(Future<void> Function() task) async {
   try {
     await task();
-  } catch (_) {
-  }
+  } catch (_) {}
 }
 
 Future<void> _syncBracuCookieSnapshot() async {
@@ -177,9 +179,7 @@ Future<void> _syncBracuCookieSnapshot() async {
     _cookieSnapshotConnectKey: jsonEncode(
       connectCookies.map(_cookieToJson).toList(),
     ),
-    _cookieSnapshotSsoKey: jsonEncode(
-      ssoCookies.map(_cookieToJson).toList(),
-    ),
+    _cookieSnapshotSsoKey: jsonEncode(ssoCookies.map(_cookieToJson).toList()),
     _cookieSnapshotUpdatedAtKey: DateTime.now().toIso8601String(),
   });
 }
@@ -411,15 +411,14 @@ Future<void> _openSidePanel({Tab? tab}) async {
   await _openOrFocusAppTab();
 }
 
-Future<void> _activateBrowserShortcut(
-  String shortcut, {
-  Tab? tab,
-}) async {
+Future<void> _activateBrowserShortcut(String shortcut, {Tab? tab}) async {
   await _persistPendingShortcutAction(shortcut);
-  unawaited(_broadcastRuntimeMessage({
-    'type': _browserShortcutType,
-    'shortcut': shortcut,
-  }));
+  unawaited(
+    _broadcastRuntimeMessage({
+      'type': _browserShortcutType,
+      'shortcut': shortcut,
+    }),
+  );
   await _openSidePanel(tab: tab);
 }
 
@@ -467,9 +466,10 @@ Future<bool> _hasStoredAuthSession() async {
     PreconnectStorageKeys.accessToken,
     PreconnectStorageKeys.refreshToken,
   ]);
-  final accessToken = '${values[PreconnectStorageKeys.accessToken] ?? ''}'.trim();
-  final refreshToken =
-      '${values[PreconnectStorageKeys.refreshToken] ?? ''}'.trim();
+  final accessToken = '${values[PreconnectStorageKeys.accessToken] ?? ''}'
+      .trim();
+  final refreshToken = '${values[PreconnectStorageKeys.refreshToken] ?? ''}'
+      .trim();
   return accessToken.isNotEmpty && refreshToken.isNotEmpty;
 }
 
@@ -536,11 +536,10 @@ Future<void> _startLogin() async {
         startedAtMillis: DateTime.now().millisecondsSinceEpoch,
       ),
     );
-    await chrome.runtime.sendMessage(
-      null,
-      {'type': _loginStartedType, 'tabId': tab.id},
-      null,
-    );
+    await chrome.runtime.sendMessage(null, {
+      'type': _loginStartedType,
+      'tabId': tab.id,
+    }, null);
   } catch (e) {
     await _broadcastFailure('Unable to start login: $e');
   }
@@ -556,14 +555,15 @@ Future<void> _startLogout() async {
   );
   final appTabId = activeTabs.isNotEmpty ? activeTabs.first.id : null;
 
-  final logoutUrl = Uri.parse(
-    'https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect/logout',
-  ).replace(
-    queryParameters: {
-      'client_id': WebExtensionApiConfig.clientId,
-      'post_logout_redirect_uri': WebExtensionApiConfig.redirectUri,
-    },
-  );
+  final logoutUrl =
+      Uri.parse(
+        'https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect/logout',
+      ).replace(
+        queryParameters: {
+          'client_id': WebExtensionApiConfig.clientId,
+          'post_logout_redirect_uri': WebExtensionApiConfig.redirectUri,
+        },
+      );
 
   final tab = await chrome.tabs.create(
     CreateProperties(url: logoutUrl.toString(), active: true),
@@ -597,7 +597,9 @@ Future<void> _handleNavigation(OnCommittedDetails details) async {
 
   final code = uri.queryParameters['code']?.trim() ?? '';
   if (code.isEmpty) {
-    await _failAndClear('Login callback did not include an authorization code.');
+    await _failAndClear(
+      'Login callback did not include an authorization code.',
+    );
     return;
   }
 
@@ -620,15 +622,11 @@ Future<void> _handleNavigation(OnCommittedDetails details) async {
     if (!chrome.sidePanel.isAvailable) {
       unawaited(_openOrFocusAppTab());
     }
-    await chrome.runtime.sendMessage(
-      null,
-      {
-        'type': _loginCompleteType,
-        'accessToken': tokens.accessToken,
-        'refreshToken': tokens.refreshToken,
-      },
-      null,
-    );
+    await chrome.runtime.sendMessage(null, {
+      'type': _loginCompleteType,
+      'accessToken': tokens.accessToken,
+      'refreshToken': tokens.refreshToken,
+    }, null);
   } catch (e) {
     await _failAndClear('Unable to complete login: $e');
   }
@@ -731,8 +729,7 @@ Future<void> _broadcastFailure(String error) async {
 Future<void> _broadcastRuntimeMessage(Map<String, Object?> message) async {
   try {
     await chrome.runtime.sendMessage(null, message, null);
-  } catch (_) {
-  }
+  } catch (_) {}
 }
 
 Future<void> _savePendingLogin(_PendingLogin pending) async {
@@ -758,10 +755,7 @@ Future<void> _clearPendingLogout() async {
 }
 
 class _TokenResponse {
-  const _TokenResponse({
-    required this.accessToken,
-    required this.refreshToken,
-  });
+  const _TokenResponse({required this.accessToken, required this.refreshToken});
 
   final String accessToken;
   final String refreshToken;
@@ -784,7 +778,8 @@ Future<_TokenResponse> _exchangeCodeForTokens({
     WebExtensionApiConfig.tokenEndpoint,
     RequestInit(
       method: 'POST',
-      headers: Headers()..append('Content-Type', 'application/x-www-form-urlencoded'),
+      headers: Headers()
+        ..append('Content-Type', 'application/x-www-form-urlencoded'),
       body: body.toJS,
     ),
   ).toDart;
@@ -800,10 +795,9 @@ Future<_TokenResponse> _exchangeCodeForTokens({
   final accessToken = '${decoded['access_token'] ?? ''}';
   final refreshToken = '${decoded['refresh_token'] ?? ''}';
   if (accessToken.isEmpty || refreshToken.isEmpty) {
-    throw const FormatException('Token response missing access or refresh token');
+    throw const FormatException(
+      'Token response missing access or refresh token',
+    );
   }
-  return _TokenResponse(
-    accessToken: accessToken,
-    refreshToken: refreshToken,
-  );
+  return _TokenResponse(accessToken: accessToken, refreshToken: refreshToken);
 }

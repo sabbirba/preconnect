@@ -26,8 +26,9 @@ dependencies:
   barcode_widget: ^2.0.4
   flutter_flip_card: ^0.0.6
   url_launcher: ^6.3.2
-  file_picker: ^11.0.2
-  share_plus: ^12.0.2
+  file_selector: ^1.1.0
+  flutter_share: ^2.0.0
+  open_filex: ^4.5.0
   in_app_update: ^4.2.5
   in_app_review: ^2.0.11
   local_auth: ^3.0.1
@@ -39,8 +40,6 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
 
-dependency_overrides:
-  shared_preferences_android: 2.4.10
 
 flutter:
   uses-material-design: true

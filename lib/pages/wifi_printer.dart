@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -211,27 +211,26 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   }
 
   Future<void> _pickPrintFile() async {
-    final picked = await FilePicker.pickFiles(
-      type: FileType.any,
-      allowMultiple: false,
-      withData: true,
-    );
-    if (!mounted || picked == null || picked.files.isEmpty) return;
-    final file = picked.files.first;
-    var bytes = file.bytes;
-    final path = file.path;
-    if ((bytes == null || bytes.isEmpty) && path != null && path.isNotEmpty) {
-      bytes = await File(path).readAsBytes();
-    }
-    if (bytes == null || bytes.isEmpty) {
-      if (mounted) showAppSnackBar(context, _snackFileReadFailed);
-      return;
-    }
+    try {
+      final XFile? picked = await openFile();
+      if (!mounted || picked == null) return;
+      var bytes = await picked.readAsBytes();
+      if (bytes.isEmpty) {
+        final path = picked.path;
+        if (path.isNotEmpty) {
+          bytes = await File(path).readAsBytes();
+        }
+      }
+      if (bytes.isEmpty) {
+        if (mounted) showAppSnackBar(context, _snackFileReadFailed);
+        return;
+      }
 
-    setState(() {
-      _fileBytes = bytes;
-      _fileName = file.name.trim();
-    });
+      setState(() {
+        _fileBytes = bytes;
+        _fileName = picked.name.trim();
+      });
+    } catch (_) {}
   }
 
   Future<void> _sendToPrinter() async {

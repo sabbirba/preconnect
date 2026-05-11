@@ -402,13 +402,11 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   InkWell(
                                     borderRadius: BorderRadius.circular(8),
                                     onTap: () async {
-                                      await SharePlus.instance.share(
-                                        ShareParams(
-                                          text:
-                                              'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
-                                          subject:
-                                              'PreConnect • Prepare. Connect. Succeed.',
-                                        ),
+                                      await FlutterShare.share(
+                                        title:
+                                            'PreConnect • Prepare. Connect. Succeed.',
+                                        text:
+                                            'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
                                       );
                                     },
                                     child: Padding(

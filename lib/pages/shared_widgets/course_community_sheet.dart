@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/course_material_service.dart';
 import 'package:preconnect/api/faculty_review_service.dart';
@@ -604,35 +604,36 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                                     setSheetState(() {
                                       pickingFile = true;
                                     });
-                                    final picked = await FilePicker.pickFiles(
-                                      type: FileType.any,
-                                      allowMultiple: false,
-                                      withData: true,
-                                    );
-                                    if (!mounted) return;
-                                    if (picked == null ||
-                                        picked.files.isEmpty) {
+                                    try {
+                                      final XFile? picked = await openFile();
+                                      if (!mounted) return;
+                                      if (picked == null) {
+                                        setSheetState(() {
+                                          pickingFile = false;
+                                        });
+                                        return;
+                                      }
+                                      final bytes = await picked.readAsBytes();
                                       setSheetState(() {
                                         pickingFile = false;
                                       });
-                                      return;
+                                      if (bytes.isEmpty) {
+                                        if (!mounted) return;
+                                        showAppSnackBar(
+                                          context,
+                                          'Unable to read selected file',
+                                        );
+                                        return;
+                                      }
+                                      setSheetState(() {
+                                        selectedFileName = picked.name.trim();
+                                        selectedFileBytes = bytes;
+                                      });
+                                    } catch (_) {
+                                      setSheetState(() {
+                                        pickingFile = false;
+                                      });
                                     }
-                                    final selected = picked.files.first;
-                                    final bytes = selected.bytes;
-                                    setSheetState(() {
-                                      pickingFile = false;
-                                    });
-                                    if (bytes == null || bytes.isEmpty) {
-                                      showAppSnackBar(
-                                        context,
-                                        'Unable to read selected file',
-                                      );
-                                      return;
-                                    }
-                                    setSheetState(() {
-                                      selectedFileName = selected.name.trim();
-                                      selectedFileBytes = bytes;
-                                    });
                                   },
                             icon: Icons.upload_file_rounded,
                             label: 'Choose File',

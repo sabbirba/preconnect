@@ -1,6 +1,5 @@
 import Flutter
 import GoogleMobileAds
-import QuickLook
 import UIKit
 
 let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
@@ -8,7 +7,7 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private let adsBridge = PreconnectAdsBridge()
-  private var previewedPDFURL: URL?
+  
 
   private func cacheShortcutAction(_ type: String) {
     UserDefaults.standard.set(type, forKey: preconnectPendingShortcutActionKey)
@@ -25,7 +24,6 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
       registerBuildInfoChannel(binaryMessenger: controller.binaryMessenger)
       registerQuietModeChannel(binaryMessenger: controller.binaryMessenger)
       registerNativePrintChannel(binaryMessenger: controller.binaryMessenger)
-      registerOpenPdfChannel(binaryMessenger: controller.binaryMessenger)
     }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
@@ -55,9 +53,7 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreconnectNativePrint") {
       registerNativePrintChannel(binaryMessenger: registrar.messenger())
     }
-    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreconnectOpenPdf") {
-      registerOpenPdfChannel(binaryMessenger: registrar.messenger())
-    }
+    
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
   }
 
@@ -205,78 +201,7 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
       }
     }
   }
-
-  private func registerOpenPdfChannel(binaryMessenger: FlutterBinaryMessenger) {
-    let channel = FlutterMethodChannel(
-      name: "preconnect/open_pdf",
-      binaryMessenger: binaryMessenger
-    )
-    channel.setMethodCallHandler { [weak self] call, result in
-      guard let self else {
-        result(
-          FlutterError(
-            code: "OPEN_PDF_CONTEXT",
-            message: "App context unavailable",
-            details: nil
-          )
-        )
-        return
-      }
-      switch call.method {
-      case "openPdf":
-        self.openPdf(call: call, result: result)
-      default:
-        result(FlutterMethodNotImplemented)
-      }
-    }
-  }
-
-  private func openPdf(call: FlutterMethodCall, result: @escaping FlutterResult) {
-    let args = call.arguments as? [String: Any] ?? [:]
-    let rawPath = (args["filePath"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    guard !rawPath.isEmpty else {
-      result(
-        FlutterError(
-          code: "INVALID_PATH",
-          message: "Missing file path",
-          details: nil
-        )
-      )
-      return
-    }
-
-    let fileURL = URL(fileURLWithPath: rawPath)
-    guard FileManager.default.fileExists(atPath: fileURL.path) else {
-      result(
-        FlutterError(
-          code: "FILE_NOT_FOUND",
-          message: "Selected PDF file was not found",
-          details: nil
-        )
-      )
-      return
-    }
-
-    DispatchQueue.main.async { [weak self] in
-      guard let self, let presenter = self.window?.rootViewController else {
-        result(
-          FlutterError(
-            code: "OPEN_PDF_CONTEXT",
-            message: "Unable to present PDF viewer",
-            details: nil
-          )
-        )
-        return
-      }
-
-      self.previewedPDFURL = fileURL
-      let controller = QLPreviewController()
-      controller.dataSource = self
-      controller.delegate = self
-      presenter.present(controller, animated: true)
-      result(true)
-    }
-  }
+  
 
   private func printPdf(call: FlutterMethodCall, result: @escaping FlutterResult) {
     let args = call.arguments as? [String: Any] ?? [:]
@@ -343,25 +268,7 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
   }
 }
 
-extension AppDelegate: QLPreviewControllerDataSource, QLPreviewControllerDelegate {
-  func numberOfPreviewItems(in controller: QLPreviewController) -> Int {
-    previewedPDFURL == nil ? 0 : 1
-  }
 
-  func previewController(
-    _ controller: QLPreviewController,
-    previewItemAt index: Int
-  ) -> QLPreviewItem {
-    guard let previewedPDFURL else {
-      return NSURL()
-    }
-    return previewedPDFURL as NSURL
-  }
-
-  func previewControllerDidDismiss(_ controller: QLPreviewController) {
-    previewedPDFURL = nil
-  }
-}
 
 private final class BannerAdViewFactory: NSObject, FlutterPlatformViewFactory {
   func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {

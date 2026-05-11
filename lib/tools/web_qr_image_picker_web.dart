@@ -5,7 +5,7 @@ library;
 
 import 'dart:js_interop';
 
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:web/web.dart' as web;
 
 extension type BarcodeDetector._(JSObject _) implements JSObject {
@@ -25,16 +25,15 @@ extension type DetectedBarcode._(JSObject _) implements JSObject {
 }
 
 Future<String?> pickQrFromSystemImage() async {
-  final picked = await FilePicker.pickFiles(
-    type: FileType.image,
-    allowMultiple: false,
-    withData: true,
+  final XFile? picked = await openFile(
+    acceptedTypeGroups: [
+      XTypeGroup(mimeTypes: ['image/*']),
+    ],
   );
-  if (picked == null || picked.files.isEmpty) return null;
+  if (picked == null) return null;
 
-  final file = picked.files.first;
-  final bytes = file.bytes;
-  if (bytes == null || bytes.isEmpty) {
+  final bytes = await picked.readAsBytes();
+  if (bytes.isEmpty) {
     throw UnsupportedError('Selected image could not be read.');
   }
 

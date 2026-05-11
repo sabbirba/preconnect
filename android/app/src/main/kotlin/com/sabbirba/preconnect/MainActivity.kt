@@ -38,7 +38,6 @@ import android.print.PrintManager
 import android.graphics.pdf.PdfDocument
 import java.io.File
 import java.io.FileOutputStream
-import androidx.core.content.FileProvider
 import java.util.ArrayList
 
 class MainActivity : FlutterFragmentActivity() {
@@ -113,7 +112,6 @@ class MainActivity : FlutterFragmentActivity() {
         configureNetworkAssistChannels(flutterEngine)
         configureQuietModeChannel(flutterEngine)
         configureNativePrintChannel(flutterEngine)
-        configurePdfOpenChannel(flutterEngine)
     }
 
     private fun configureBuildInfoChannel(flutterEngine: FlutterEngine) {
@@ -417,49 +415,6 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    private fun configurePdfOpenChannel(flutterEngine: FlutterEngine) {
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "preconnect/open_pdf")
-            .setMethodCallHandler { call, result ->
-                when (call.method) {
-                    "openPdf" -> openPdf(call, result)
-                    else -> result.notImplemented()
-                }
-            }
-    }
-
-    private fun openPdf(call: MethodCall, result: MethodChannel.Result) {
-        val filePath = call.argument<String>("filePath")?.trim().orEmpty()
-        if (filePath.isBlank()) {
-            result.error("INVALID_PATH", "Missing file path", null)
-            return
-        }
-
-        val source = File(filePath)
-        if (!source.exists() || !source.isFile) {
-            result.error("FILE_NOT_FOUND", "Selected PDF file was not found", null)
-            return
-        }
-
-        try {
-            val contentUri = FileProvider.getUriForFile(
-                this,
-                "${packageName}.fileprovider",
-                source,
-            )
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(contentUri, "application/pdf")
-                addCategory(Intent.CATEGORY_DEFAULT)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            startActivity(intent)
-            result.success(true)
-        } catch (_: ActivityNotFoundException) {
-            result.success(false)
-        } catch (e: Exception) {
-            result.error("OPEN_ERROR", e.message ?: "Failed to open PDF", null)
-        }
-    }
 
     private fun printPdf(call: MethodCall, result: MethodChannel.Result) {
         val filePath = call.argument<String>("filePath")?.trim().orEmpty()

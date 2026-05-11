@@ -1,20 +1,19 @@
 import 'dart:typed_data';
 
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 
 import 'system_image_picker_types.dart';
 
 Future<SystemPickedImage?> pickSystemImage() async {
-  final picked = await FilePicker.pickFiles(
-    type: FileType.image,
-    allowMultiple: false,
-    withData: true,
+  final XFile? picked = await openFile(
+    acceptedTypeGroups: [
+      XTypeGroup(mimeTypes: ['image/*']),
+    ],
   );
-  if (picked == null || picked.files.isEmpty) return null;
+  if (picked == null) return null;
 
-  final file = picked.files.first;
-  final bytes = file.bytes;
-  if (bytes == null || bytes.isEmpty) return null;
+  final bytes = await picked.readAsBytes();
+  if (bytes.isEmpty) return null;
 
-  return SystemPickedImage(bytes: Uint8List.fromList(bytes), name: file.name);
+  return SystemPickedImage(bytes: Uint8List.fromList(bytes), name: picked.name);
 }

@@ -23,12 +23,11 @@ import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/web_shared.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:open_filex/open_filex.dart';
 
 export 'package:preconnect/tools/web_shared.dart';
 
 part 'shared_widgets/ui_kit_components.dart';
-
-const MethodChannel _pdfOpenChannel = MethodChannel('preconnect/open_pdf');
 
 String formatDate(String? input) {
   if (input == null || input.trim().isEmpty) return '';
@@ -509,11 +508,8 @@ Future<bool> _openPdfNativelyOrFallback(String filePath) async {
   if (defaultTargetPlatform == TargetPlatform.android ||
       defaultTargetPlatform == TargetPlatform.iOS) {
     try {
-      return await _pdfOpenChannel.invokeMethod<bool>(
-            'openPdf',
-            <String, Object?>{'filePath': filePath},
-          ) ??
-          false;
+      final result = await OpenFilex.open(filePath);
+      return result.type == ResultType.done;
     } catch (_) {
       return false;
     }
