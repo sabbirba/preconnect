@@ -65,12 +65,21 @@ jobs:
           path: build/chrome-extension.zip
           if-no-files-found: error
 
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
       - name: Authenticate to Google Cloud
         id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-          token_format: access_token
+        shell: bash
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/chrome-webstore-sa.json"
+          gcloud auth activate-service-account \
+            --key-file="$RUNNER_TEMP/chrome-webstore-sa.json" \
+            --quiet
+          ACCESS_TOKEN="$(gcloud auth print-access-token)"
+          echo "access_token=$ACCESS_TOKEN" >> "$GITHUB_OUTPUT"
 
       - name: Upload Package to Chrome Web Store
         env:
