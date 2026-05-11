@@ -386,10 +386,7 @@ class PlatformPermissions {
     }
 
     if (defaultTargetPlatform == TargetPlatform.android) {
-      final photos = await Permission.photos.request();
-      if (photos.isGranted) return true;
-      final storage = await Permission.storage.request();
-      return storage.isGranted;
+      return true;
     }
 
     return true;

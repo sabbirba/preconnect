@@ -285,16 +285,15 @@ Key packages related to user data safety/privacy are listed below.
 
 | Package                  | What it does for privacy/safety                                                                                                     |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `shared_preferences`     | Backing store for `AppStorage`, used for app settings, JSON blobs, and lightweight caches. Not used for secrets.     |
 | `shared_preferences`     | Backing store for `AppStorage`, used for non-sensitive app settings, JSON blobs, and lightweight caches. Not used for secrets.     |
 | `local_auth`             | Enables optional biometric/PIN app lock so only the device owner can open protected screens.                                        |
-| `permission_handler`     | Ensures runtime permissions (camera/notifications) are requested explicitly and can be denied by the user.                          |
+| `permission_handler`     | Ensures runtime permissions such as camera and notifications are requested explicitly and can be denied by the user.                 |
 | `crypto`                 | Used for cryptographic hashing in integrity/security flows to strengthen request validation.                                        |
 
 Privacy notes:
 
 - Sensitive tokens are kept in local app storage, not plain preferences.
-- Users can control OS-level permissions (camera/notifications) at any time.
+- Users can control OS-level permissions such as camera and notifications at any time.
 - Local caches are used to improve offline and performance behavior.
 - Notification delivery depends on the VPS queue and client polling.
 

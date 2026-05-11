@@ -543,6 +543,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                         onPressed: canPrint ? _sendToPrinter : null,
                         icon: Icons.print_rounded,
                         label: 'Print',
+                        isLoading: _busy,
                       ),
                     ),
                   ],
@@ -761,12 +762,9 @@ class _PrinterFileCard extends StatelessWidget {
               tooltip: 'Clear file',
               color: BracuPalette.textSecondary(context),
               iconSize: 20,
-              constraints: const BoxConstraints.tightFor(
-                width: 36,
-                height: 36,
-              ),
+              constraints: const BoxConstraints.tightFor(width: 36, height: 36),
               padding: EdgeInsets.zero,
-            )
+            ),
         ],
       ),
     );
@@ -879,8 +877,6 @@ class _LprPrintClient {
           'P$owner',
           'J$printableJobName',
           'C$printableJobName',
-          'M${preferences.summary}',
-          'Z${preferences.lprOption}',
           '$dataCommand$jobToken',
           'U$jobToken',
           'N$safeFileName',
@@ -982,45 +978,16 @@ class _PrinterPreferencesPanel extends StatelessWidget {
 }
 
 class _PrintTicket {
-  const _PrintTicket({
-    required this.copies,
-    required this.duplexMode,
-  });
+  const _PrintTicket({required this.copies, required this.duplexMode});
 
-  final String paperSize = 'A4';
-  final String margins = 'Default';
-  final bool colorPrinting = false;
-  final String resolution = 'Medium';
-  final String orientation = 'Portrait';
   final String duplexMode;
   final int copies;
 
-  String get summary {
-    final color = colorPrinting ? 'Color' : 'Mono';
-    final duplex = duplexMode == 'one-sided' ? 'Single-sided' : 'Dual Sided';
-    return [
-      paperSize,
-      '$margins margins',
-      color,
-      duplex,
-      resolution,
-      orientation,
-      '$copies copies',
-    ].join(' | ');
-  }
-
   String get postScriptPreamble => '%!PS-Adobe-3.0';
-
-  String get lprOption => duplexMode == 'one-sided'
-      ? 'sides=one-sided'
-      : 'sides=two-sided-long-edge';
 }
 
 class _PrinterDuplexPanel extends StatelessWidget {
-  const _PrinterDuplexPanel({
-    required this.mode,
-    required this.onChanged,
-  });
+  const _PrinterDuplexPanel({required this.mode, required this.onChanged});
 
   final String mode;
   final ValueChanged<String> onChanged;
