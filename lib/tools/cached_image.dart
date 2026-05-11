@@ -46,6 +46,7 @@ class _CachedImageState extends State<CachedImage> {
   static final Map<String, Future<Uint8List>> _inFlightFetches =
       <String, Future<Uint8List>>{};
   static const String _manifestKey = 'cached_image_manifest_v1';
+  static const String _webCachePrefix = 'cached_image_web_v1';
   static Map<String, String>? _manifest;
   static bool _cleanupScheduled = false;
 
@@ -111,6 +112,9 @@ class _CachedImageState extends State<CachedImage> {
   }
 
   Future<Directory> _cacheDirectory() async {
+    if (kIsWeb) {
+      throw UnsupportedError('Web cache does not use the file system.');
+    }
     final base = await AppPaths.supportDirectory();
     final dir = Directory('${base.path}/cached_images');
     if (!await dir.exists()) {
@@ -120,9 +124,14 @@ class _CachedImageState extends State<CachedImage> {
   }
 
   Future<File> _cacheFileFor(String value) async {
+    if (kIsWeb) {
+      throw UnsupportedError('Web cache does not use the file system.');
+    }
     final dir = await _cacheDirectory();
     return File('${dir.path}/${_cacheKey(value)}.img');
   }
+
+  String _webCacheKey(String value) => '$_webCachePrefix|${_cacheKey(value)}';
 
   Future<Map<String, String>> _readManifest() async {
     final current = _manifest;
@@ -162,6 +171,7 @@ class _CachedImageState extends State<CachedImage> {
 
   Future<void> _cleanupManifest() async {
     try {
+      if (kIsWeb) return;
       final manifest = await _readManifest();
       if (manifest.isEmpty) return;
       var changed = false;
@@ -194,6 +204,23 @@ class _CachedImageState extends State<CachedImage> {
     if (inMemory != null && inMemory.isNotEmpty) {
       return inMemory;
     }
+    if (kIsWeb) {
+      try {
+        final manifest = await _readManifest();
+        final mappedKey = manifest[normalized];
+        if (mappedKey != null && mappedKey.isNotEmpty) {
+          final raw = await AppStorage.instance.getString(mappedKey);
+          if (raw != null && raw.isNotEmpty) {
+            final bytes = base64Decode(raw);
+            if (bytes.isNotEmpty) {
+              _memoryCache[normalized] = bytes;
+              return bytes;
+            }
+          }
+        }
+      } catch (_) {}
+      return null;
+    }
     try {
       final manifest = await _readManifest();
       final mappedPath = manifest[normalized];
@@ -222,6 +249,16 @@ class _CachedImageState extends State<CachedImage> {
     final normalized = value.trim();
     if (normalized.isEmpty || bytes.isEmpty) return;
     _memoryCache[normalized] = bytes;
+    if (kIsWeb) {
+      try {
+        final cacheKey = _webCacheKey(normalized);
+        await AppStorage.instance.setString(cacheKey, base64Encode(bytes));
+        final manifest = await _readManifest();
+        manifest[normalized] = cacheKey;
+        await _writeManifest(manifest);
+      } catch (_) {}
+      return;
+    }
     try {
       final file = await _cacheFileFor(normalized);
       await file.writeAsBytes(bytes, flush: true);
@@ -253,15 +290,6 @@ class _CachedImageState extends State<CachedImage> {
     final url = widget.url.trim();
     if (url.isEmpty) return;
     final normalizedRemoteUrl = normalizeImageUrl(url);
-    final isRemoteHttp = normalizedRemoteUrl != null;
-
-    if (kIsWeb && isRemoteHttp) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-      });
-      return;
-    }
 
     final inlineBytes = _tryDecodeInline(url);
     if (inlineBytes != null && inlineBytes.isNotEmpty) {
@@ -316,25 +344,22 @@ class _CachedImageState extends State<CachedImage> {
     final normalizedRemoteUrl = normalizeImageUrl(url);
     final remoteUrl = normalizedRemoteUrl;
     final isRemoteHttp = remoteUrl != null;
-    if (remoteUrl != null && kIsWeb) {
-      return Image.network(
-        remoteUrl,
-        fit: widget.fit,
-        alignment: widget.alignment,
-        width: widget.width,
-        height: widget.height,
-        filterQuality: widget.filterQuality,
-        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-          if (wasSynchronouslyLoaded || frame != null) {
-            return child;
-          }
-          return widget.placeholder ??
-              _CachedImageShimmer(width: widget.width, height: widget.height);
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return widget.error ?? _defaultErrorWidget();
-        },
-      );
+    if (remoteUrl != null) {
+      if (_bytes != null) {
+        return Image.memory(
+          _bytes!,
+          fit: widget.fit,
+          alignment: widget.alignment,
+          width: widget.width,
+          height: widget.height,
+          filterQuality: widget.filterQuality,
+        );
+      }
+      if (_error != null) {
+        return widget.error ?? _defaultErrorWidget();
+      }
+      return widget.placeholder ??
+          _CachedImageShimmer(width: widget.width, height: widget.height);
     }
     if (_bytes != null) {
       return Image.memory(

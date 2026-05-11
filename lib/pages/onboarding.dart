@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/friend_schedule.dart';
 import 'package:preconnect/pages/free_labs.dart';
@@ -229,7 +230,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           const SizedBox(height: 10),
                           InkWell(
                             onTap: () =>
-                                _openLink(context, 'https://preconnect.app'),
+                                _openLink(context, ApiConfig.websiteBase),
                             borderRadius: BorderRadius.circular(14),
                             child: Padding(
                               padding: const EdgeInsets.symmetric(

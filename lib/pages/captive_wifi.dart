@@ -156,8 +156,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       final nearbyOk = await _requestPermissionWithUx(
         permission: Permission.nearbyWifiDevices,
       );
-      if (!nearbyOk) return false;
-      return _requestPermissionWithUx(permission: Permission.locationWhenInUse);
+      return nearbyOk;
     }
     return _requestPermissionWithUx(permission: Permission.locationWhenInUse);
   }
@@ -247,9 +246,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     final status = _statusFromNetwork(networkStatus);
     if (status == null) {
       if (showSuccessSnackBar) {
-        _showLocalSnackBar(
-          'Captive Wi-Fi session data unavailable on current network.',
-        );
+        _showLocalSnackBar('Session data unavailable.');
       }
       return;
     }
@@ -276,7 +273,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     } catch (_) {
       if (!mounted) return;
       if (showErrorSnackBar) {
-        _showLocalSnackBar('Unable to read captive Wi-Fi session status.');
+        _showLocalSnackBar('Unable to read session status.');
       }
     } finally {
       if (mounted) {
@@ -462,7 +459,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
           const SizedBox(height: 2),
           Text(
             canExtend
-                ? 'Session can be extended from Captive Wi-Fi.'
+                ? 'Session can be extended.'
                 : 'Session extension is not available.',
             style: TextStyle(fontSize: 12, color: textSecondary),
           ),
@@ -503,6 +500,16 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       return '${mins}m ${secs}s';
     }
     return '${secs}s';
+  }
+
+  String _formatThresholdHours(int seconds) {
+    final safeSeconds = seconds < 0 ? 0 : seconds;
+    final hours = safeSeconds ~/ 3600;
+    final mins = (safeSeconds % 3600) ~/ 60;
+    if (mins == 0) {
+      return '${hours}h';
+    }
+    return '${hours}h ${mins}m';
   }
 
   Future<bool> _loginViaCaptiveApi({
@@ -779,7 +786,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                         onPressed: (_isCheckingSession || _isConnecting)
                             ? null
                             : () => unawaited(_refreshSessionStatus()),
-                        icon: Icons.refresh_rounded,
                         label: 'Check Session Time',
                         isLoading: _isCheckingSession,
                         foregroundColor: BracuPalette.primary,
@@ -791,7 +797,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Auto Extend Session'),
                       subtitle: Text(
-                        'Extend when time is <= ${_autoExtendThresholdSeconds}s',
+                        'Extend when time is <= ${_formatThresholdHours(_autoExtendThresholdSeconds)}',
                       ),
                       value: _autoExtendEnabled,
                       onChanged: _setAutoExtendEnabled,

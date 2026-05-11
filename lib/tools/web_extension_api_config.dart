@@ -1,3 +1,5 @@
+import 'package:preconnect/api/api_config.dart';
+
 class WebExtensionApiConfig {
   WebExtensionApiConfig._();
 
@@ -6,14 +8,13 @@ class WebExtensionApiConfig {
   static const String tokenEndpoint = '$ssoBase/token';
   static const String authEndpoint = '$ssoBase/auth';
   static const String clientId = 'slm';
-  static const String redirectUri =
-      'https://connect.bracu.ac.bd/student/profile/overview';
+  static const String redirectUri = ApiConfig.redirectUri;
 
   static String authUrlWithPkce(String codeChallenge) {
     final encodedChallenge = Uri.encodeQueryComponent(codeChallenge);
     return '$authEndpoint'
         '?client_id=$clientId'
-        '&redirect_uri=https%3A%2F%2Fconnect.bracu.ac.bd%2Fstudent%2Fprofile%2Foverview'
+        '&redirect_uri=${Uri.encodeQueryComponent(redirectUri)}'
         '&response_type=code'
         '&response_mode=query'
         '&scope=openid offline_access'

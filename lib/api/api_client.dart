@@ -299,7 +299,7 @@ class ApiClient {
 
     final uri = Uri.tryParse(url);
     if (uri != null && uri.host == 'connect.bracu.ac.bd') {
-      headers['Origin'] = 'https://connect.bracu.ac.bd';
+      headers['Origin'] = ApiConfig.connectOrigin;
     }
 
     try {

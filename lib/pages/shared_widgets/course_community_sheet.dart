@@ -245,7 +245,11 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
     if (_busyWriteAction) return;
     final initial = _facultyInitial;
     if (initial.isEmpty) {
-      showAppSnackBar(context, 'Not available');
+      showAppSnackBar(
+        context,
+        'Not available',
+        duration: const Duration(seconds: 2),
+      );
       return;
     }
 

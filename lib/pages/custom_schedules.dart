@@ -497,6 +497,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
       title: 'Delete $kindLabel?',
       message: 'This will remove this $kindLabel from your schedule.',
       confirmLabel: 'Delete',
+      confirmColor: BracuPalette.danger,
       onConfirm: () async {
         await CustomSchedulesService().deleteItem(item.itemId);
       },

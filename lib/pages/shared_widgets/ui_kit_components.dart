@@ -175,6 +175,7 @@ class BracuActionButton extends StatelessWidget {
         label: Text(label, style: TextStyle(fontSize: fontSize)),
         style: bracuCompactOutlinedButtonStyle(
           context,
+          foregroundColor: foregroundColor ?? BracuPalette.textPrimary(context),
           padding: padding,
           borderRadius: borderRadius,
         ),
@@ -185,6 +186,7 @@ class BracuActionButton extends StatelessWidget {
       onPressed: onPressed,
       style: bracuCompactOutlinedButtonStyle(
         context,
+        foregroundColor: foregroundColor ?? BracuPalette.textPrimary(context),
         padding: padding,
         borderRadius: borderRadius,
       ),
@@ -773,19 +775,17 @@ class _BracuConfirmationActionDialogState
                   Expanded(
                     child: BracuActionButton(
                       onPressed: _isLoading ? null : _handleConfirm,
-                      outlined: false,
+                      outlined: true,
                       isLoading: _isLoading,
                       label: widget.confirmLabel,
-                      backgroundColor: widget.confirmColor.withValues(
-                        alpha: _isLoading ? 0.18 : 0.12,
-                      ),
                       foregroundColor: widget.confirmColor,
+                      backgroundColor: Colors.transparent,
                       borderRadius: 12,
-                      iconSize: 20,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 14,
                         vertical: 12,
                       ),
+                      iconSize: 20,
                     ),
                   ),
                 ],

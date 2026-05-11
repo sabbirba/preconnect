@@ -227,7 +227,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       title: 'Remove Friend Schedule?',
       message: 'This will remove $displayName\'s shared schedule.',
       confirmLabel: 'Remove',
-      confirmColor: BracuPalette.primary,
+      confirmColor: BracuPalette.danger,
       onConfirm: () async {
         await _store.removeByEncoded(item.encoded);
       },

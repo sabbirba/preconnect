@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/notification_service.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/image_url_utils.dart';
@@ -216,7 +217,7 @@ class CampusEmergencyContact {
 
 Future<CampusMapData?> fetchCampusMapData({bool forceRefresh = false}) async {
   final payload = await ScraperDataService().fetchMap(
-    path: '/data/map',
+    path: ApiConfig.campusMapUrl,
     cacheKey: 'scraper_campus_map_v1',
     ttl: const Duration(hours: 12),
     forceRefresh: forceRefresh,
@@ -227,7 +228,7 @@ Future<CampusMapData?> fetchCampusMapData({bool forceRefresh = false}) async {
   if (hasAnyImage || forceRefresh) return parsed;
 
   final freshPayload = await ScraperDataService().fetchMap(
-    path: '/data/map',
+    path: ApiConfig.campusMapUrl,
     cacheKey: 'scraper_campus_map_v1',
     ttl: const Duration(hours: 12),
     forceRefresh: true,
@@ -238,7 +239,7 @@ Future<CampusMapData?> fetchCampusMapData({bool forceRefresh = false}) async {
 
 Future<String?> fetchTransportScheduleUrl({bool forceRefresh = false}) async {
   final rows = await ScraperDataService().fetchList(
-    path: '/data/transport',
+    path: ApiConfig.transportUrl,
     cacheKey: 'scraper_transport_v1',
     ttl: const Duration(hours: 12),
     forceRefresh: forceRefresh,

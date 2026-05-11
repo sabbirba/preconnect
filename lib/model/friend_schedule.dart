@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 class FriendSchedule {
@@ -36,7 +37,7 @@ String? _buildPhotoUrl(String? photoFilePath) {
   final encoded = base64Url
       .encode(utf8.encode(photoFilePath))
       .replaceAll('=', '');
-  return 'https://connect.bracu.ac.bd/cdn/img/thumb/$encoded.jpg';
+  return '${ApiConfig.connectCdnBase}/img/thumb/$encoded.jpg';
 }
 
 class Course {

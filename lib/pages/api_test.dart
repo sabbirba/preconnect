@@ -18,7 +18,7 @@ class ApiTestPage extends StatefulWidget {
 
 class _ApiTestPageState extends State<ApiTestPage> {
   final TextEditingController _urlController = TextEditingController(
-    text: 'https://connect.bracu.ac.bd/api/adp/v1/staffs/7487',
+    text: '${ApiConfig.connectApiBase}/adp/v1/staffs/7487',
   );
 
   final List<String> _methods = const <String>[
@@ -178,8 +178,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
                 TextField(
                   controller: _urlController,
                   decoration: const InputDecoration(
-                    hintText:
-                        'https://connect.bracu.ac.bd/api/adp/v1/staffs/7487',
+                    hintText: '${ApiConfig.connectApiBase}/adp/v1/staffs/7487',
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),

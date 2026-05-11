@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:preconnect/api/api_client.dart';
+import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/model/section_info.dart';
 
@@ -12,7 +13,6 @@ class ExamMapService {
   final ApiClient _client = ApiClient();
   final AppPreferencesStore _store = AppPreferencesStore();
 
-  static const String _indexUrl = 'https://api.preconnect.app/data/exammap';
   static const Duration _indexCacheTtl = Duration(hours: 6);
   static const Duration _examJsonCacheTtl = Duration(hours: 12);
 
@@ -41,7 +41,7 @@ class ExamMapService {
     if (semesterLabel.isEmpty) return const <String, ExamScheduleOverride>{};
 
     final indexJson = await _fetchJsonWithCache(
-      url: _indexUrl,
+      url: ApiConfig.examMapIndexUrl,
       cacheKey: 'exammap_index_v1',
       ttl: _indexCacheTtl,
       forceRefresh: forceRefresh,

@@ -211,18 +211,26 @@ class _BusPageState extends State<BusPage> {
 }
 
 Future<_BusDataPackage> _fetchBusDataPackage() async {
-  final response = await ApiClient().publicGet(
-    ApiConfig.busDataUrl,
-    acceptedStatusCodes: <int>{200},
-  );
-  final decoded = jsonDecode(response.body);
-  if (decoded is Map<String, dynamic>) {
-    return _BusDataPackage.fromJson(decoded);
+  Future<_BusDataPackage> parseUrl(String url) async {
+    final response = await ApiClient().publicGet(
+      url,
+      acceptedStatusCodes: <int>{200},
+    );
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map<String, dynamic>) {
+      return _BusDataPackage.fromJson(decoded);
+    }
+    if (decoded is Map) {
+      return _BusDataPackage.fromJson(decoded.cast<String, dynamic>());
+    }
+    return const _BusDataPackage.empty();
   }
-  if (decoded is Map) {
-    return _BusDataPackage.fromJson(decoded.cast<String, dynamic>());
+
+  try {
+    return await parseUrl(ApiConfig.busDataUrl);
+  } catch (_) {
+    return await parseUrl(ApiConfig.busDataFallbackUrl);
   }
-  return const _BusDataPackage.empty();
 }
 
 class _TransportRouteCard extends StatelessWidget {

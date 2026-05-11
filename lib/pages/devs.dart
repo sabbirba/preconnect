@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/pages/api_test.dart';
@@ -257,7 +258,7 @@ const _manualContributors = <_ContributorProfile>[
     name: 'Mueen Ahmmed',
     handle: 'mueen-ahmmed',
     role: 'Faculty Reviews',
-    avatarUrl: 'https://preconnect.app/Mueen-Ahmmed.jpeg',
+    avatarUrl: ApiConfig.websiteMueenAvatarUrl,
     linkLabel: 'LinkedIn',
     url: 'https://www.linkedin.com/in/mueen-ahmmed-b337b8231/',
   ),
@@ -282,22 +283,24 @@ class _IntroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textSecondary = BracuPalette.textSecondary(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Made by the BRACU student community and free for every student.',
-          style: TextStyle(color: textSecondary),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'If you have an idea, spot a bug, or want to help, '
-          'we would love to hear from you on GitHub.',
-          style: TextStyle(color: textSecondary),
-        ),
-        const SizedBox(height: 12),
-        const _RepoButton(),
-      ],
+    return BracuCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Made by the BRACU student community and free for every student.',
+            style: TextStyle(color: textSecondary),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'If you have an idea, spot a bug, or want to help, '
+            'we would love to hear from you on GitHub.',
+            style: TextStyle(color: textSecondary),
+          ),
+          const SizedBox(height: 12),
+          const _RepoButton(),
+        ],
+      ),
     );
   }
 }
@@ -539,7 +542,7 @@ class _SponsoredTile extends StatelessWidget {
 class _AdSenseLogoImage extends StatelessWidget {
   const _AdSenseLogoImage();
 
-  static const String _logoUrl = 'https://preconnect.app/google-adsense.png';
+  static const String _logoUrl = ApiConfig.websiteAdSenseLogoUrl;
 
   @override
   Widget build(BuildContext context) {

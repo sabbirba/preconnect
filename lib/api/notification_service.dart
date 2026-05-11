@@ -111,8 +111,9 @@ class ScraperDataService {
       }
     }
 
-    final url =
-        '${ApiConfig.seatStatusProxyBase}${path.startsWith('/') ? path : '/$path'}';
+    final url = path.startsWith('http')
+        ? path
+        : '${ApiConfig.seatStatusProxyBase}${path.startsWith('/') ? path : '/$path'}';
     try {
       final response = await _client.publicGet(url);
       final decoded = jsonDecode(response.body);
@@ -279,13 +280,13 @@ class NotificationService {
     final results = await Future.wait<List<ScraperContentItem>>(
       <Future<List<ScraperContentItem>>>[
         _fetchScraperItems(
-          path: '/data/announcements',
+          path: ApiConfig.announcementFeedUrl,
           source: 'Announcement',
           cacheKey: 'scraper_announcements_v1',
           forceRefresh: forceRefresh,
         ),
         _fetchScraperItems(
-          path: '/data/news',
+          path: ApiConfig.newsFeedUrl,
           source: 'News',
           cacheKey: 'scraper_news_v1',
           forceRefresh: forceRefresh,

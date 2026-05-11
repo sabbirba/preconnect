@@ -1,4 +1,6 @@
 import 'dart:convert';
+
+import 'package:preconnect/api/api_config.dart';
 import 'package:flutter/material.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -153,7 +155,7 @@ class FriendAvatar extends StatelessWidget {
     }
     if (value.startsWith('data:image/')) return value;
     final encoded = base64Url.encode(utf8.encode(value)).replaceAll('=', '');
-    return 'https://connect.bracu.ac.bd/cdn/img/thumb/$encoded.jpg';
+    return '${ApiConfig.connectCdnBase}/img/thumb/$encoded.jpg';
   }
 
   @override

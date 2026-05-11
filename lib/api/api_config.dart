@@ -9,13 +9,29 @@ class ApiConfig {
   static const String logoutEndpoint = '$ssoBase/logout';
   static const String authEndpoint = '$ssoBase/auth';
 
-  static const String seatStatusProxyBase = 'https://api.preconnect.app';
-  static const String seatStatusDataUrl = '$seatStatusProxyBase/connect.json';
-  static const String busDataUrl = 'https://api.preconnect.app/data/bus';
+  static const String cdnApiBase = 'https://cdn.preconnect.app';
+  static const String realtimeApiBase = 'https://api.preconnect.app';
+  static const String seatStatusProxyBase = realtimeApiBase;
+  static const String seatStatusDataUrl = '$realtimeApiBase/connect.json';
+  static const String seatStatusDataFallbackUrl = '$cdnApiBase/connect.json';
+  static const String busDataUrl = '$realtimeApiBase/data/bus';
+  static const String busDataFallbackUrl = '$cdnApiBase/data/bus';
+  static const String freeLabsDataUrl = '$cdnApiBase/freelabs.json';
+  static const String examMapIndexUrl = '$cdnApiBase/data/exammap.json';
+  static const String announcementFeedUrl =
+      '$cdnApiBase/data/announcements.json';
+  static const String newsFeedUrl = '$cdnApiBase/data/news.json';
+  static const String academicDatesUrl = '$cdnApiBase/data/academic_dates.json';
+  static const String campusMapUrl = '$cdnApiBase/data/map.json';
+  static const String transportUrl = '$cdnApiBase/data/transport.json';
   static const String connectApiBase = 'https://connect.bracu.ac.bd/api';
   static const String connectWebApiBase = 'https://connect.bracu.ac.bd/api';
+  static const String connectCdnBase = 'https://connect.bracu.ac.bd/cdn';
+  static const String connectOrigin = 'https://connect.bracu.ac.bd';
   static const String connectMercureLogoutPath = '/ns/mercure/logout';
-  static const String cdnBase = 'https://connect.bracu.ac.bd/cdn';
+  static const String websiteBase = 'https://preconnect.app';
+  static const String websiteMueenAvatarUrl = '$websiteBase/Mueen-Ahmmed.jpeg';
+  static const String websiteAdSenseLogoUrl = '$websiteBase/google-adsense.png';
   static const String filesBase = 'https://files.preconnect.app';
   static const String facultyReviewsBearer = String.fromEnvironment(
     'FACULTY_REVIEWS_BEARER',
@@ -25,8 +41,7 @@ class ApiConfig {
   );
 
   static const String clientId = 'slm';
-  static const String redirectUri =
-      'https://connect.bracu.ac.bd/student/profile/overview';
+  static const String redirectUri = '$connectOrigin/student/profile/overview';
 
   static const String profilePath = '/mds/v1/portfolios';
   static const String miscellaneousInfoPath =
@@ -108,10 +123,10 @@ class ApiConfig {
     return '$connectApiBase${advisingPath(studentId)}?$phasesQuery';
   }
 
-  static const String authUrl =
+  static final String authUrl =
       '$authEndpoint'
       '?client_id=$clientId'
-      '&redirect_uri=https%3A%2F%2Fconnect.bracu.ac.bd%2Fstudent%2Fprofile%2Foverview'
+      '&redirect_uri=${Uri.encodeQueryComponent(redirectUri)}'
       '&response_type=code'
       '&response_mode=query'
       '&scope=openid offline_access';
@@ -120,7 +135,7 @@ class ApiConfig {
     final encodedChallenge = Uri.encodeQueryComponent(codeChallenge);
     return '$authEndpoint'
         '?client_id=$clientId'
-        '&redirect_uri=https%3A%2F%2Fconnect.bracu.ac.bd%2Fstudent%2Fprofile%2Foverview'
+        '&redirect_uri=${Uri.encodeQueryComponent(redirectUri)}'
         '&response_type=code'
         '&response_mode=query'
         '&scope=openid offline_access'
@@ -131,6 +146,6 @@ class ApiConfig {
   static String? photoUrl(String? filePath) {
     if (filePath == null || filePath.isEmpty) return null;
     final encoded = base64Url.encode(utf8.encode(filePath)).replaceAll('=', '');
-    return '$cdnBase/img/thumb/$encoded.jpg';
+    return '$connectCdnBase/img/thumb/$encoded.jpg';
   }
 }

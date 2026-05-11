@@ -228,6 +228,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
       message:
           'Sign out will clear stored data. You can sign in again for fresh data.',
       confirmLabel: 'Sign Out',
+      confirmColor: BracuPalette.danger,
       onConfirm: () async {},
     );
     if (!mounted) return;
@@ -312,8 +313,8 @@ class _CaptiveWifiBanner extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             statusCode == null
-                ? 'Connected to Wi-Fi but internet is behind captive Wi-Fi.'
-                : 'Connected to Wi-Fi but internet is behind captive Wi-Fi (probe: HTTP $statusCode).',
+                ? 'Connected to Wi-Fi but internet.'
+                : 'Connected to Wi-Fi but internet $statusCode.',
             style: TextStyle(
               fontSize: 12,
               color: BracuPalette.textSecondary(context),

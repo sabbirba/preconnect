@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_client.dart';
+import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/seat_status_service.dart';
 import 'package:preconnect/pages/home_tab.dart';
@@ -19,7 +20,7 @@ class FreeLabsPage extends StatefulWidget {
 }
 
 class _FreeLabsPageState extends State<FreeLabsPage> {
-  static const String _freeLabsUrl = 'https://cdn.preconnect.app/freelabs.json';
+  static const String _freeLabsUrl = ApiConfig.freeLabsDataUrl;
   static const String _freeLabsCacheKey = 'freelabs_json_v1';
 
   late Future<List<_FreeRoomSlot>> _future;

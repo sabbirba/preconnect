@@ -357,7 +357,7 @@ class CalendarService {
   Future<List<({String eventName, String startDate, String endDate})>>
   _fetchAcademicDates({required bool forceRefresh}) async {
     final rows = await _scraper.fetchList(
-      path: '/data/academic-dates',
+      path: ApiConfig.academicDatesUrl,
       cacheKey: 'scraper_academic_dates_v1',
       ttl: const Duration(hours: 6),
       forceRefresh: forceRefresh,
