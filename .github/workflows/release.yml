@@ -76,36 +76,18 @@ jobs:
       - name: Auto bump pubspec versionCode
         shell: bash
         run: |
-          VERSION_LINE=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
-          VERSION_NAME=${VERSION_LINE%%+*}
-          VERSION_CODE=${VERSION_LINE#*+}
-          if [ "$VERSION_NAME" = "$VERSION_LINE" ] || [ -z "$VERSION_CODE" ] || ! [[ "$VERSION_CODE" =~ ^[0-9]+$ ]]; then
-            echo "Invalid version in pubspec.yaml. Expected format: x.y.z+NNN"
-            exit 1
-          fi
-          LAST_TAG_CODE=$(git tag --list 'v*+*' --sort=-v:refname \
-            | sed -n 's/^v[^+]*+\([0-9]\+\)$/\1/p' \
-            | head -n1)
-          BASE_CODE="$VERSION_CODE"
-          if [ -n "$LAST_TAG_CODE" ] && [ "$LAST_TAG_CODE" -gt "$BASE_CODE" ]; then
-            BASE_CODE="$LAST_TAG_CODE"
-          fi
-          NEW_VERSION_CODE=$((BASE_CODE + 1))
-          NEW_VERSION="$VERSION_NAME+$NEW_VERSION_CODE"
-          perl -i -pe "s/^version:\\s*.*/version: $NEW_VERSION/" pubspec.yaml
-          echo "Updated pubspec version to $NEW_VERSION (base=$BASE_CODE, latest_tag=${LAST_TAG_CODE:-none})"
+          mapfile -t VERSION_PARTS < <(./tool/sync_versions.sh bump-release)
+          VERSION_NAME="${VERSION_PARTS[0]}"
+          VERSION_CODE="${VERSION_PARTS[1]}"
+          echo "Updated pubspec version to ${VERSION_NAME}+${VERSION_CODE}"
 
       - name: Read App Version
         id: version
         shell: bash
         run: |
-          VERSION_LINE=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
-          VERSION_NAME=${VERSION_LINE%%+*}
-          VERSION_CODE=${VERSION_LINE#*+}
-          if [ "$VERSION_NAME" = "$VERSION_LINE" ] || [ -z "$VERSION_CODE" ] || [ "$VERSION_CODE" = "0" ]; then
-            echo "Invalid version in pubspec.yaml. Expected format: x.y.z+NNN"
-            exit 1
-          fi
+          mapfile -t VERSION_PARTS < <(./tool/sync_versions.sh read)
+          VERSION_NAME="${VERSION_PARTS[0]}"
+          VERSION_CODE="${VERSION_PARTS[1]}"
           echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
@@ -116,7 +98,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pubspec.yaml
+          git add pubspec.yaml web/manifest.json
           if git diff --cached --quiet; then
             echo "No version bump changes to commit."
             exit 0

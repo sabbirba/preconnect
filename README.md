@@ -182,7 +182,8 @@ The extension build uses:
 - `web/extension_app.dart` as the Flutter extension entrypoint
 - `web/background.dart` compiled to `background.dart.js`
 - `lib/app.dart` and `lib/pages/web_extension_login_web.dart` for the extension UI
-- `tool/build_chrome_extension.sh` injects the extension version from `pubspec.yaml` so the Devs page shows the app version inside Chrome
+- `tool/sync_versions.sh` is the shared version helper used by release and Chrome packaging
+- `tool/build_chrome_extension.sh` injects the extension version from `pubspec.yaml` and rewrites the packaged manifest automatically
 
 Notes:
 
@@ -252,10 +253,11 @@ Release automation is handled by [`.github/workflows/release.yml`](.github/workf
 Main flow on push to `main`:
 
 1. Auto-bumps `pubspec.yaml` build number (`x.y.z+NNN`)
-2. Creates/updates a GitHub release tag like `v1.2.3+456`
-3. Builds and uploads platform artifacts (Android, iOS, macOS)
-4. Builds and uploads the Chrome extension artifact for deployment
-5. Publishes Android AAB to Google Play Internal and Beta testing tracks when required secrets are available
+2. Syncs `web/manifest.json` to the same `x.y.z` version
+3. Creates/updates a GitHub release tag like `vX.Y.Z+NNN`
+4. Builds and uploads platform artifacts (Android, iOS, macOS)
+5. Builds and uploads the Chrome extension artifact for deployment
+6. Publishes Android AAB to Google Play Internal and Beta testing tracks when required secrets are available
 
 ## Architecture
 

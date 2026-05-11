@@ -5,14 +5,9 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="${1:-${ROOT_DIR}/build/chrome-extension}"
 ZIP_OUT="${ZIP_OUT:-${ROOT_DIR}/build/chrome-extension.zip}"
 
-VERSION_LINE="$(grep '^version:' "${ROOT_DIR}/pubspec.yaml" | head -n1 | awk '{print $2}')"
-APP_VERSION="${VERSION_LINE%%+*}"
-APP_BUILD_NUMBER="${VERSION_LINE#*+}"
-
-if [[ -z "${APP_VERSION}" || -z "${APP_BUILD_NUMBER}" || "${APP_VERSION}" == "${VERSION_LINE}" || "${APP_BUILD_NUMBER}" == "${VERSION_LINE}" ]]; then
-  echo "Unable to read app version from pubspec.yaml"
-  exit 1
-fi
+mapfile -t VERSION_PARTS < <("${ROOT_DIR}/tool/sync_versions.sh" read)
+APP_VERSION="${VERSION_PARTS[0]}"
+APP_BUILD_NUMBER="${VERSION_PARTS[1]}"
 
 mkdir -p "${OUT_DIR}"
 rm -rf "${ROOT_DIR}/.dart_tool/flutter_build"
@@ -27,6 +22,11 @@ flutter build web \
   --dart-define="APP_BUILD_NUMBER=${APP_BUILD_NUMBER}" \
   --target="${ROOT_DIR}/web/extension_app.dart" \
   --output="${OUT_DIR}"
+
+MANIFEST_FILE="${OUT_DIR}/manifest.json"
+if [[ -f "${MANIFEST_FILE}" ]]; then
+  perl -0pi -e "s/\"version\":\s*\"[^\"]+\"/\"version\": \"${APP_VERSION}\"/" "${MANIFEST_FILE}"
+fi
 
 perl -0pi -e 's/serviceWorkerSettings:\s*\{\s*serviceWorkerVersion:\s*"[^"]+"[^}]*\}/serviceWorkerSettings: null/s' \
   "${OUT_DIR}/flutter_bootstrap.js"
