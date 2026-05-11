@@ -1,0 +1,79 @@
+name: Google Play Production Promotion
+
+on:
+  schedule:
+    # Weekly Update on Thursday 10:00 PM Bangladesh Time.
+    - cron: "00 16 * * 4"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: play-production-promotion-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  promote-google-play-production:
+    name: Promote Beta to Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Read Android Package
+        id: android_meta
+        shell: bash
+        run: |
+          PACKAGE_NAME=$(grep -E 'applicationId\s*=' android/app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Check Google Play Credentials
+        id: play_auth
+        shell: bash
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -n "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not provided."
+          fi
+
+      - name: Set up Ruby for Fastlane
+        if: steps.play_auth.outputs.enabled == 'true'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Install Fastlane
+        if: steps.play_auth.outputs.enabled == 'true'
+        shell: bash
+        env:
+          FASTLANE_OPT_OUT_USAGE: "1"
+        run: gem install fastlane --no-document
+
+      - name: Promote Beta to Production
+        if: steps.play_auth.outputs.enabled == 'true'
+        shell: bash
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          FASTLANE_OPT_OUT_USAGE: "1"
+        run: |
+          fastlane supply \
+            --package_name "${{ steps.android_meta.outputs.package_name }}" \
+            --json_key_data "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" \
+            --track "beta" \
+            --track_promote_to "production" \
+            --track_promote_release_status "completed" \
+            --skip_upload_apk true \
+            --skip_upload_aab true \
+            --skip_upload_metadata true \
+            --skip_upload_changelogs true \
+            --skip_upload_images true \
+            --skip_upload_screenshots true

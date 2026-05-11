@@ -1,0 +1,98 @@
+name: Chrome Extension Publish
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chrome-extension-publish-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish-chrome-extension:
+    name: Build and Publish Chrome Extension
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          cache: true
+
+      - name: Flutter Version
+        run: flutter --version
+
+      - name: Create Chrome Extension Build Env
+        shell: bash
+        run: |
+          cat > .env <<'EOF'
+          FACULTY_REVIEWS_BEARER=${{ secrets.FACULTY_REVIEWS_BEARER }}
+          BANNER_AD_UNIT_ID=${{ secrets.BANNER_AD_UNIT_ID }}
+          INTERSTITIAL_AD_UNIT_ID=${{ secrets.INTERSTITIAL_AD_UNIT_ID }}
+          EOF
+
+      - name: Build Chrome Extension
+        shell: bash
+        run: |
+          attempt=1
+          until [ $attempt -gt 3 ]; do
+            ./tool/build_chrome_extension.sh && break
+            echo "Chrome extension build failed (attempt $attempt)."
+            attempt=$((attempt+1))
+            sleep $((10 * attempt))
+          done
+          if [ $attempt -gt 3 ]; then
+            echo "Chrome extension build failed after 3 attempts."
+            exit 1
+          fi
+
+      - name: Archive Build Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: chrome-extension-build
+          path: build/chrome-extension.zip
+          if-no-files-found: error
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+
+      - name: Upload Package to Chrome Web Store
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          CHROME_WEBSTORE_PUBLISHER_ID: ${{ secrets.CHROME_WEBSTORE_PUBLISHER_ID }}
+          CHROME_WEBSTORE_EXTENSION_ID: ${{ secrets.CHROME_WEBSTORE_EXTENSION_ID }}
+        shell: bash
+        run: |
+          curl \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -X POST \
+            -T build/chrome-extension.zip \
+            "https://chromewebstore.googleapis.com/upload/v2/publishers/${CHROME_WEBSTORE_PUBLISHER_ID}/items/${CHROME_WEBSTORE_EXTENSION_ID}"
+
+      - name: Publish Chrome Web Store Item
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          CHROME_WEBSTORE_PUBLISHER_ID: ${{ secrets.CHROME_WEBSTORE_PUBLISHER_ID }}
+          CHROME_WEBSTORE_EXTENSION_ID: ${{ secrets.CHROME_WEBSTORE_EXTENSION_ID }}
+        shell: bash
+        run: |
+          curl \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -X POST \
+            "https://chromewebstore.googleapis.com/v2/publishers/${CHROME_WEBSTORE_PUBLISHER_ID}/items/${CHROME_WEBSTORE_EXTENSION_ID}:publish"

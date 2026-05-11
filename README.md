@@ -152,6 +152,22 @@ build/chrome-extension/
 build/chrome-extension.zip
 ```
 
+### Publish the Chrome extension
+
+The repo includes a GitHub Actions workflow that can build, upload, and publish the Chrome extension to the Chrome Web Store:
+
+- Workflow: [`.github/workflows/chrome-extension-publish.yml`](.github/workflows/chrome-extension-publish.yml)
+- Triggers:
+  - `workflow_dispatch`
+  - push tags matching `v*.*.*`
+
+Required GitHub secrets:
+
+- `CHROME_WEBSTORE_PUBLISHER_ID`
+- `CHROME_WEBSTORE_EXTENSION_ID`
+
+The workflow uses the Chrome Web Store API v2 and the existing `./tool/build_chrome_extension.sh` build script.
+
 Load `build/chrome-extension` as an unpacked extension in Chrome:
 
 1. Open `chrome://extensions`
