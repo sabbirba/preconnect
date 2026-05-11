@@ -2390,9 +2390,17 @@ class ShowMoreButton extends StatelessWidget {
     return Center(
       child: OutlinedButton(
         onPressed: onPressed,
-        child: const Text(
+        style: bracuOutlinedButtonStyle(
+          context,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          borderRadius: 16,
+        ),
+        child: Text(
           'Show More',
-          style: TextStyle(fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: BracuPalette.textPrimary(context),
+          ),
         ),
       ),
     );

@@ -221,13 +221,14 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
   Future<void> _confirmLogout(BuildContext context) async {
     final navigator = Navigator.of(context);
     final themeNotifier = ThemeController.of(context);
-    final shouldLogout = await showBracuConfirmationDialog(
+    final shouldLogout = await showBracuConfirmationWithActionDialog(
       context,
       icon: Icons.logout,
       title: 'Confirm Sign Out?',
       message:
           'Sign out will clear stored data. You can sign in again for fresh data.',
       confirmLabel: 'Sign Out',
+      onConfirm: () async {},
     );
     if (!mounted) return;
 

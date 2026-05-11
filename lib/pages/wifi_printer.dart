@@ -999,59 +999,30 @@ class _PrinterDuplexPanel extends StatelessWidget {
     Widget buildOption(String value, String label, {required bool first}) {
       final selected = mode == value;
       return Expanded(
-        child: InkWell(
-          onTap: () => onChanged(value),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: selected ? BracuPalette.primary : Colors.transparent,
-              border: Border(
-                left: BorderSide(
-                  color: first
-                      ? Colors.transparent
-                      : BracuPalette.primary.withValues(alpha: 0.32),
-                ),
-              ),
-            ),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                label,
-                maxLines: 1,
-                style: TextStyle(
-                  color: selected
-                      ? Colors.white
-                      : BracuPalette.textPrimary(context),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
+        child: Padding(
+          padding: EdgeInsets.only(left: first ? 0 : 8),
+          child: BracuActionButton(
+            onPressed: () => onChanged(value),
+            outlined: true,
+            backgroundColor: selected
+                ? BracuPalette.primary.withValues(alpha: 0.12)
+                : Colors.transparent,
+            foregroundColor: selected
+                ? BracuPalette.primary
+                : BracuPalette.textPrimary(context),
+            borderRadius: 18,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            label: label,
           ),
         ),
       );
     }
 
-    return SizedBox(
-      width: double.infinity,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: BracuPalette.primary.withValues(alpha: 0.35),
-          ),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Row(
-            children: [
-              buildOption('OFF', 'Single Side', first: true),
-              buildOption('LEFT', 'Double Sided', first: false),
-            ],
-          ),
-        ),
-      ),
+    return Row(
+      children: [
+        buildOption('OFF', 'Single Side', first: true),
+        buildOption('LEFT', 'Double Sided', first: false),
+      ],
     );
   }
 }

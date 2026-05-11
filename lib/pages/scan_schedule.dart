@@ -22,6 +22,8 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
   );
   String? scannedValue;
   bool? _cameraGranted;
+  bool _isEnablingCamera = false;
+  bool _isRescanning = false;
 
   @override
   void initState() {
@@ -56,6 +58,8 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
   Future<void> _ensureCameraPermission({
     bool openSettingsOnDeny = false,
   }) async {
+    if (_isEnablingCamera) return;
+    setState(() => _isEnablingCamera = true);
     final granted = await PlatformPermissions.requestScannerCameraPermission();
     if (!mounted) return;
     setState(() => _cameraGranted = granted);
@@ -63,6 +67,9 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
       _startScanner();
     } else if (openSettingsOnDeny) {
       await openAppSettings();
+    }
+    if (mounted) {
+      setState(() => _isEnablingCamera = false);
     }
   }
 
@@ -85,6 +92,21 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
   Future<void> _handleRefresh() async {
     setState(() => scannedValue = null);
     await _startScanner();
+  }
+
+  Future<void> _restartScanner() async {
+    if (_isRescanning) return;
+    setState(() => _isRescanning = true);
+    try {
+      await _controller.stop();
+      if (!mounted) return;
+      setState(() => scannedValue = null);
+      await _startScanner();
+    } finally {
+      if (mounted) {
+        setState(() => _isRescanning = false);
+      }
+    }
   }
 
   @override
@@ -120,6 +142,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                               openSettingsOnDeny: true,
                             ),
                             label: 'Enable Camera',
+                            isLoading: _isEnablingCamera,
                           ),
                         ),
                       ],
@@ -319,50 +342,13 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              InkWell(
-                                onTap: () {
-                                  setState(() => scannedValue = null);
-                                  _startScanner();
-                                },
-                                borderRadius: BorderRadius.circular(18),
-                                child: BracuCard(
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: BracuPalette.primary
-                                              .withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                        child: const Icon(
-                                          Icons.qr_code_scanner,
-                                          color: BracuPalette.primary,
-                                          size: 20,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      const Expanded(
-                                        child: Text(
-                                          'Scan Again',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                      Icon(
-                                        Icons.arrow_forward,
-                                        color: BracuPalette.textSecondary(
-                                          context,
-                                        ),
-                                        size: 18,
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                              BracuActionButton(
+                                onPressed: _isRescanning
+                                    ? null
+                                    : _restartScanner,
+                                icon: Icons.qr_code_scanner,
+                                label: 'Scan Again',
+                                isLoading: _isRescanning,
                               ),
                               const SizedBox(height: 10),
                               InkWell(

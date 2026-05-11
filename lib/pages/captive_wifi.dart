@@ -767,12 +767,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                             ? null
                             : () => unawaited(_runOneTapConnect()),
                         label: 'Connect',
-                        outlined: false,
                         isLoading: _isConnecting,
-                        backgroundColor: BracuPalette.primary.withValues(
-                          alpha: 0.12,
-                        ),
                         foregroundColor: BracuPalette.primary,
+                        borderRadius: 18,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -784,12 +781,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                             : () => unawaited(_refreshSessionStatus()),
                         icon: Icons.refresh_rounded,
                         label: 'Check Session Time',
-                        outlined: false,
                         isLoading: _isCheckingSession,
-                        backgroundColor: BracuPalette.primary.withValues(
-                          alpha: 0.12,
-                        ),
                         foregroundColor: BracuPalette.primary,
+                        borderRadius: 18,
                       ),
                     ),
                     const SizedBox(height: 4),

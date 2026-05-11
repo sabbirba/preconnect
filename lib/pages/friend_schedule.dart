@@ -218,79 +218,22 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
   }
 
   Future<bool> _deleteFriendSchedule(FriendScheduleItem item) async {
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        final displayName = item.friend.name.trim().isEmpty
-            ? 'this friend'
-            : item.friend.name;
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Container(
-            decoration: _buildDialogDecoration(context),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.delete_outline_rounded,
-                        color: BracuPalette.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Remove Friend Schedule?',
-                        style: TextStyle(
-                          color: BracuPalette.textPrimary(context),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'This will remove $displayName\'s shared schedule.',
-                    style: TextStyle(
-                      color: BracuPalette.textSecondary(context),
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: BracuActionButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          label: 'Cancel',
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: BracuActionButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          label: 'Remove',
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
+    final displayName = item.friend.name.trim().isEmpty
+        ? 'this friend'
+        : item.friend.name;
+    final shouldDelete = await showBracuConfirmationWithActionDialog(
+      context,
+      icon: Icons.delete_outline_rounded,
+      title: 'Remove Friend Schedule?',
+      message: 'This will remove $displayName\'s shared schedule.',
+      confirmLabel: 'Remove',
+      confirmColor: BracuPalette.primary,
+      onConfirm: () async {
+        await _store.removeByEncoded(item.encoded);
       },
     );
 
     if (shouldDelete != true) return false;
-
-    await _store.removeByEncoded(item.encoded);
 
     setState(() {
       decodedSchedules.removeWhere((e) => e.encoded == item.encoded);
