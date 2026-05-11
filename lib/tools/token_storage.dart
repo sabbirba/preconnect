@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart'
     show ValueNotifier, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart' show TargetPlatform;
 import 'package:flutter/services.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:in_app_review/in_app_review.dart';
 import 'package:local_auth/local_auth.dart';
@@ -57,53 +56,15 @@ class TokenStorage {
   static final TokenStorage instance = TokenStorage._();
   static const String _cachedHasSessionKey =
       PreconnectStorageKeys.cachedHasAuthSession;
-  static bool _diagnosticsRun = false;
-
-  final FlutterSecureStorage _secure = const FlutterSecureStorage();
-
-  bool get _useSecure =>
-      !kIsWeb && defaultTargetPlatform != TargetPlatform.macOS;
-
-  Future<void> _runDiagnostics() async {
-    if (_diagnosticsRun) return;
-    _diagnosticsRun = true;
-
-    try {
-      const testKey = '__token_storage_diag_test__';
-      const testValue = 'diagnostic_test_12345';
-
-      await AppStorage.instance.setString(testKey, testValue);
-
-      final readValue = await AppStorage.instance.getString(testKey);
-
-      if (readValue == testValue) {}
-      await AppStorage.instance.remove(testKey);
-    } catch (_) {}
-  }
 
   Future<String?> read({required String key}) async {
     if (kIsWeb) {
       return await webExtensionStorageGet(key);
     }
 
-    try {
-      final appStorageValue = await AppStorage.instance.getString(key);
-      if (appStorageValue != null && appStorageValue.isNotEmpty) {
-        return appStorageValue;
-      }
-    } catch (_) {}
-
-    if (_useSecure) {
-      try {
-        final value = await _secure.read(key: key);
-        if (value != null && value.isNotEmpty) {
-          await AppStorage.instance.setString(key, value);
-          return value;
-        }
-      } catch (_) {}
-    }
-
-    return null;
+    final value = await AppStorage.instance.getString(key);
+    if (value == null || value.isEmpty) return null;
+    return value;
   }
 
   Future<bool> hasAccessToken() async {
@@ -116,10 +77,6 @@ class TokenStorage {
   }
 
   Future<void> write({required String key, String? value}) async {
-    if (!_diagnosticsRun) {
-      unawaited(_runDiagnostics());
-    }
-
     if (kIsWeb) {
       await webExtensionStorageSet(key, value);
       await _updateCachedSessionFlagForKey(key, value);
@@ -130,48 +87,6 @@ class TokenStorage {
       await AppStorage.instance.remove(key);
     } else {
       await AppStorage.instance.setString(key, value);
-
-      var verified = await AppStorage.instance.getString(key);
-      var verificationPassed = verified == value;
-      if (!verificationPassed) {
-        await AppStorage.instance.setString(key, value);
-        verified = await AppStorage.instance.getString(key);
-        verificationPassed = verified == value;
-      }
-    }
-
-    if (_useSecure && value != null && value.isNotEmpty) {
-      try {
-        await _secure.write(key: key, value: value);
-
-        if (key == PreconnectStorageKeys.refreshToken ||
-            key == PreconnectStorageKeys.accessToken) {
-          final verified = await _secure.read(key: key);
-          if (verified != value) {
-            try {
-              await _secure.write(key: key, value: value);
-              final retryVerify = await _secure.read(key: key);
-              if (retryVerify != value) {
-                throw TokenPersistenceException(
-                  'Failed to persist $key to secure storage after 2 attempts. '
-                  'Expected ${value.length} bytes, got ${retryVerify?.length ?? 0} bytes.',
-                );
-              }
-            } catch (retryError) {
-              if (retryError is TokenPersistenceException) rethrow;
-              throw TokenPersistenceException(
-                'Failed to persist $key to secure storage: $retryError',
-              );
-            }
-          }
-        }
-      } catch (e) {
-        if (e is TokenPersistenceException) rethrow;
-      }
-    } else if (_useSecure && (value == null || value.isEmpty)) {
-      try {
-        await _secure.delete(key: key);
-      } catch (_) {}
     }
 
     await _updateCachedSessionFlagForKey(key, value);
@@ -187,10 +102,6 @@ class TokenStorage {
         PreconnectStorageKeys.accessToken,
         PreconnectStorageKeys.refreshToken,
       ]);
-    } else if (_useSecure) {
-      try {
-        await _secure.deleteAll();
-      } catch (_) {}
     }
   }
 

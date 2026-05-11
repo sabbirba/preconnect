@@ -267,7 +267,7 @@ Key packages related to user data safety/privacy are listed below.
 
 | Package                  | What it does for privacy/safety                                                                                                     |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `flutter_secure_storage` | Stores sensitive auth/session tokens in encrypted device-backed secure storage (Keychain/Keystore), instead of plain local storage. |
+| `shared_preferences`     | Backing store for `AppStorage`, used for app settings, JSON blobs, and lightweight caches. Not used for secrets.     |
 | `shared_preferences`     | Backing store for `AppStorage`, used for non-sensitive app settings, JSON blobs, and lightweight caches. Not used for secrets.     |
 | `local_auth`             | Enables optional biometric/PIN app lock so only the device owner can open protected screens.                                        |
 | `permission_handler`     | Ensures runtime permissions (camera/notifications) are requested explicitly and can be denied by the user.                          |
@@ -275,7 +275,7 @@ Key packages related to user data safety/privacy are listed below.
 
 Privacy notes:
 
-- Sensitive tokens are kept in secure storage, not plain preferences.
+- Sensitive tokens are kept in local app storage, not plain preferences.
 - Users can control OS-level permissions (camera/notifications) at any time.
 - Local caches are used to improve offline and performance behavior.
 - Notification delivery depends on the VPS queue and client polling.
@@ -365,7 +365,7 @@ No, PreConnect is an initiative run by BRAC University students. It is community
 
 ### Does PreConnect store sensitive login data insecurely?
 
-Sensitive tokens are stored using `flutter_secure_storage` (on-device-backed secure storage), not plain local preferences and server data share.
+Sensitive tokens are stored in local app storage and web extension storage, not in plain shared preferences and not shared with other apps.
 
 ### Does the app work with poor internet?
 
