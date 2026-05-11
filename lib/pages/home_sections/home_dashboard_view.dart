@@ -496,7 +496,7 @@ extension _HomeDashboardView on _HomeDashboardState {
             title: item.title,
             subtitle: item.subtitle,
             color: item.color,
-            onTap: item.onTap ?? () => widget.onNavigate(item.tab!),
+            onTap: () => widget.onNavigate(item.tab!),
           );
         }).toList(),
       ),
@@ -554,39 +554,6 @@ extension _HomeDashboardView on _HomeDashboardState {
       color: Color(0xFF2C9DFF),
     ),
     _DashboardQuickAccess(
-      icon: Icons.school_outlined,
-      title: 'Advising',
-      subtitle: 'Chrome only',
-      color: const Color(0xFF5B8DEF),
-      onTap: () {
-        showAppSnackBar(
-          context,
-          'Advising is available in the Chrome extension only.',
-        );
-      },
-    ),
-    _DashboardQuickAccess(
-      tab: HomeTab.freeLabs,
-      icon: Icons.computer_outlined,
-      title: 'Free',
-      subtitle: 'Labs',
-      color: const Color(0xFF00A8E8),
-    ),
-    _DashboardQuickAccess(
-      tab: HomeTab.campusPrinter,
-      icon: Icons.local_printshop_outlined,
-      title: 'Printer',
-      subtitle: 'Campus',
-      color: const Color(0xFF22B573),
-    ),
-    _DashboardQuickAccess(
-      tab: HomeTab.devs,
-      icon: Icons.developer_mode_outlined,
-      title: 'Devs',
-      subtitle: 'Support',
-      color: const Color(0xFF2C9DFF),
-    ),
-    _DashboardQuickAccess(
       tab: HomeTab.moreQuickAccess,
       icon: Icons.more_horiz_rounded,
       title: 'More',
@@ -603,7 +570,6 @@ class _DashboardQuickAccess {
     required this.title,
     required this.subtitle,
     required this.color,
-    this.onTap,
   });
 
   final HomeTab? tab;
@@ -611,7 +577,6 @@ class _DashboardQuickAccess {
   final String title;
   final String subtitle;
   final Color color;
-  final VoidCallback? onTap;
 }
 
 class _InlineBannerAd extends StatefulWidget {

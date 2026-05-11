@@ -48,10 +48,10 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   void initState() {
     super.initState();
     final forceRefresh = isRefreshingFrom('auth');
-    if (!forceRefresh || _cachedData != null) {
+    if (_cachedData != null) {
       _latestData = _cachedData;
     }
-    _future = forceRefresh && _cachedData == null
+    _future = forceRefresh
         ? _initializeHomeData(forceRefresh: true)
         : (_cachedData != null
               ? Future<_HomeData>.value(_cachedData!)

@@ -37,11 +37,17 @@ class _GradeSheetCardState extends State<GradeSheetCard> {
       title: widget.title,
       leadingIcon: Icons.picture_as_pdf_rounded,
       onTap: _isOpening ? null : _openGradeSheet,
-      trailing: BracuActionButton(
-        onPressed: _isOpening ? null : _openGradeSheet,
-        label: 'Open',
-        isLoading: _isOpening,
-      ),
+      trailing: _isOpening
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: BracuPalette.textSecondary(context),
+            ),
     );
   }
 }

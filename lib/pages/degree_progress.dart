@@ -431,23 +431,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                     ),
                   );
                 },
-                trailing: BracuActionButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => CgpaCalculatorPage(
-                          info: info,
-                          currentSections: currentSectionsForDisplay,
-                          currentCgpa: _cgpa,
-                        ),
-                      ),
-                    );
-                  },
-                  label: 'Open',
-                ),
               ),
-              const SizedBox(height: 14),
-              const GradeSheetCard(),
               const SizedBox(height: 14),
               BracuActionCard(
                 title: 'All Courses',
@@ -459,17 +443,9 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                     ),
                   );
                 },
-                trailing: BracuActionButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => AllCoursesPage(info: info),
-                      ),
-                    );
-                  },
-                  label: 'Open',
-                ),
               ),
+              const SizedBox(height: 14),
+              const GradeSheetCard(),
               const SizedBox(height: 14),
               if (info.headerProgress.isNotEmpty) ...[
                 const BracuSectionTitle(title: 'Requirement Progress'),

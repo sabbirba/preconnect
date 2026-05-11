@@ -118,8 +118,7 @@ class ProgressService {
 
       if (majorMinors == null ||
           completedCourses == null ||
-          curriculum == null ||
-          coursePrerequisites == null) {
+          curriculum == null) {
         if (fromGet) return null;
         return getProgress(fromFetch: true);
       }
@@ -153,7 +152,7 @@ class ProgressService {
       try {
         return jsonDecode(cached);
       } catch (e) {
-        return null;
+        return await _readCachedComponent(cache, dataKey);
       }
     }
     if (response.statusCode != 200) return null;
@@ -166,7 +165,7 @@ class ProgressService {
       }
       return decoded;
     } catch (e) {
-      return null;
+      return await _readCachedComponent(cache, dataKey);
     }
   }
 
@@ -184,6 +183,19 @@ class ProgressService {
       final cached = await cache.getString(dataKey);
       if (cached == null || cached.trim().isEmpty) return null;
       return jsonDecode(cached);
+    }
+  }
+
+  Future<dynamic> _readCachedComponent(
+    AppPreferencesStore cache,
+    String dataKey,
+  ) async {
+    final cached = await cache.getString(dataKey);
+    if (cached == null || cached.trim().isEmpty) return null;
+    try {
+      return jsonDecode(cached);
+    } catch (_) {
+      return null;
     }
   }
 
