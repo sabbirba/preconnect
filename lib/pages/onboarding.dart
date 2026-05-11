@@ -381,7 +381,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       borderRadius: 12,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
-                        vertical: 28,
+                        vertical: 20,
                       ),
                       fontSize: 18,
                     ),

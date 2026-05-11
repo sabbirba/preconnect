@@ -265,16 +265,14 @@ class BracuImageCarousel extends StatefulWidget {
 class _BracuImageCarouselState extends State<BracuImageCarousel> {
   late final PageController _controller;
   int _index = 0;
+  static const int _virtualPageCount = 10000;
+  static const int _initialVirtualPage = _virtualPageCount ~/ 2;
 
   @override
   void initState() {
     super.initState();
-    _controller = PageController();
-  }
-
-  @override
-  void didUpdateWidget(covariant BracuImageCarousel oldWidget) {
-    super.didUpdateWidget(oldWidget);
+    _controller = PageController(initialPage: _initialVirtualPage);
+    _index = _initialVirtualPage;
   }
 
   @override
@@ -303,7 +301,6 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
             else
               PageView.builder(
                 controller: _controller,
-                itemCount: widget.imageUrls.length,
                 onPageChanged: (value) {
                   if (!mounted) return;
                   setState(() {
@@ -311,8 +308,9 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
                   });
                 },
                 itemBuilder: (context, idx) {
+                  final imageIndex = idx % widget.imageUrls.length;
                   return CachedImage(
-                    url: widget.imageUrls[idx],
+                    url: widget.imageUrls[imageIndex],
                     fit: widget.imageFit,
                     placeholder: const BracuSkeletonBox(height: 220, radius: 8),
                     error: const _BracuImageErrorFallback(),
@@ -325,34 +323,19 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
                 right: 0,
                 bottom: 10,
                 child: Center(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.35),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 6,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: List.generate(widget.imageUrls.length, (i) {
-                          final active = i == _index;
-                          return AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            margin: const EdgeInsets.symmetric(horizontal: 2),
-                            width: active ? 14 : 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: active
-                                  ? Colors.white
-                                  : Colors.white.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                          );
-                        }),
-                      ),
+                  child: Text(
+                    '${(_index % widget.imageUrls.length) + 1}/${widget.imageUrls.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black54,
+                          blurRadius: 6,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
                     ),
                   ),
                 ),

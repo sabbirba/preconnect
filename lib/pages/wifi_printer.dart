@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:dart_pdf_reader/dart_pdf_reader.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
@@ -34,12 +35,15 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   Uint8List? _fileBytes;
   String _fileName = '';
+  int? _filePageCount;
+  String? _filePdfVersion;
   String _studentId = '';
   String _studentName = '';
   String _studentShortCode = '';
   String _guestName = '';
   String _guestId = '';
   String _clientName = '';
+  String _duplexMode = 'one-sided';
   String _printerHost = '';
   String _printerStatus = 'Detecting campus printer...';
   bool _hasSignedInProfile = false;
@@ -153,7 +157,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       await AppStorage.instance.setString(_lastPrinterHostKey, printer.address);
       setState(() {
         _printerHost = printer.address;
-        _printerStatus = 'Campus Printer found';
+        _printerStatus = 'Campus printer found';
       });
     } catch (_) {
       if (!mounted) return;
@@ -192,13 +196,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     await _saveHistory(next);
   }
 
-  Future<void> _deleteHistory(_PrintHistoryEntry entry) async {
-    final next = _history
-        .where((item) => !_sameHistoryEntry(item, entry))
-        .toList();
-    await _saveHistory(next);
-  }
-
   Future<void> _saveHistory(List<_PrintHistoryEntry> history) async {
     final trimmed = history.take(_maxHistoryEntries).toList(growable: false);
     setState(() {
@@ -210,9 +207,21 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     );
   }
 
+  Future<void> _clearHistory() async {
+    if (!mounted) return;
+    setState(() {
+      _history = const <_PrintHistoryEntry>[];
+    });
+    await AppStorage.instance.setString(_historyKey, '[]');
+  }
+
   Future<void> _pickPrintFile() async {
     try {
-      final XFile? picked = await openFile();
+      final XFile? picked = await openFile(
+        acceptedTypeGroups: const <XTypeGroup>[
+          XTypeGroup(label: 'PDF', extensions: <String>['pdf']),
+        ],
+      );
       if (!mounted || picked == null) return;
       var bytes = await picked.readAsBytes();
       if (bytes.isEmpty) {
@@ -230,7 +239,84 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         _fileBytes = bytes;
         _fileName = picked.name.trim();
       });
+      final pdfInfo = await _readPdfInfo(bytes);
+      if (!mounted) return;
+      setState(() {
+        _filePageCount = pdfInfo.pageCount;
+        _filePdfVersion = pdfInfo.version;
+      });
     } catch (_) {}
+  }
+
+  void _clearPickedFile() {
+    if (_busy) return;
+    setState(() {
+      _fileBytes = null;
+      _fileName = '';
+      _filePageCount = null;
+      _filePdfVersion = null;
+    });
+  }
+
+  String _formatFileSizeMb(Uint8List? bytes) {
+    final length = bytes?.lengthInBytes ?? 0;
+    if (length <= 0) return '0 MB';
+    final mb = length / (1024 * 1024);
+    return '${mb.toStringAsFixed(mb >= 10 ? 1 : 2)} MB';
+  }
+
+  String _fileKindLabel() {
+    if (_fileName.trim().isEmpty) return 'File';
+    if (_filePageCount == null) return 'File';
+    return _filePageCount == 1 ? '1 Page' : '$_filePageCount Pages';
+  }
+
+  String _fileVersionLabel() {
+    if (_fileName.trim().isEmpty) return 'PDF';
+    final version = _filePdfVersion?.trim();
+    if (version == null || version.isEmpty) return 'PDF';
+    return 'PDF $version';
+  }
+
+  String _fileStatusLabel() {
+    return _fileName.isEmpty ? 'No file selected' : _fileName;
+  }
+
+  Future<({int? pageCount, String? version})> _readPdfInfo(
+    Uint8List bytes,
+  ) async {
+    try {
+      final header = _readPdfHeaderVersion(bytes);
+      final stream = ByteStream(bytes);
+      final document = await PDFParser(stream).parse();
+      final catalog = await document.catalog;
+      final version = header ?? (await catalog.getVersion());
+      final pages = await catalog.getPages();
+      var count = 0;
+      while (true) {
+        try {
+          pages.getPageAtIndex(count);
+          count++;
+        } catch (_) {
+          break;
+        }
+      }
+      return (
+        pageCount: count > 0 ? count : null,
+        version: version?.trim().isNotEmpty == true ? version!.trim() : null,
+      );
+    } catch (_) {
+      return (pageCount: null, version: null);
+    }
+  }
+
+  String? _readPdfHeaderVersion(Uint8List bytes) {
+    if (bytes.isEmpty) return null;
+    final sampleLength = bytes.length < 64 ? bytes.length : 64;
+    final header = String.fromCharCodes(bytes.take(sampleLength));
+    final match = RegExp(r'%PDF-(\d+\.\d+)').firstMatch(header);
+    final version = match?.group(1)?.trim();
+    return version?.isNotEmpty == true ? version : null;
   }
 
   Future<void> _sendToPrinter() async {
@@ -271,7 +357,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         port: _printerPort,
         queue: _printerQueue,
       );
-      final preferences = _PrintTicket(copies: _copies);
+      final preferences = _PrintTicket(
+        copies: _copies,
+        duplexMode: _duplexMode,
+      );
       await client.sendFile(
         bytes: bytes,
         fileName: _fileName,
@@ -339,7 +428,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         !_hasSignedInProfile &&
         _studentName.trim().isEmpty &&
         _studentId.trim().isEmpty;
-    final selected = _fileName.isEmpty ? 'No file selected' : _fileName;
     final canPrint =
         !_busy &&
         !_discovering &&
@@ -353,8 +441,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       body: BracuRefreshList(
         onRefresh: _refreshPrinterInfo,
         children: [
-          BracuCard(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(2, 0, 2, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -376,9 +464,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                           : () => _discoverPrinter(),
                       outlined: false,
                       isLoading: _discovering,
-                      backgroundColor: BracuPalette.primary.withValues(
-                        alpha: 0.12,
-                      ),
+                      backgroundColor: Colors.transparent,
                       foregroundColor: BracuPalette.primary,
                       borderRadius: 14,
                       padding: const EdgeInsets.symmetric(
@@ -418,28 +504,30 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                     unawaited(_savePrinterPreferences());
                   },
                 ),
+                const SizedBox(height: 12),
+                _PrinterDuplexPanel(
+                  mode: _duplexMode,
+                  onChanged: (mode) {
+                    setState(() => _duplexMode = mode);
+                  },
+                ),
               ],
             ),
           ),
           const SizedBox(height: 12),
-          BracuCard(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_fileName.isNotEmpty) ...[
-                  SizedBox(
-                    width: double.infinity,
-                    child: Text(
-                      selected,
-                      textAlign: TextAlign.left,
-                      style: TextStyle(
-                        color: BracuPalette.textPrimary(context),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
+                _PrinterFileCard(
+                  title: _fileStatusLabel(),
+                  subtitle:
+                      '${_formatFileSizeMb(_fileBytes)} • ${_fileKindLabel()} • ${_fileVersionLabel()}',
+                  isEmpty: _fileName.isEmpty,
+                  onClear: _fileName.isNotEmpty ? _clearPickedFile : null,
+                ),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -459,11 +547,24 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                     ),
                   ],
                 ),
+                if (_history.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: BracuActionButton(
+                      onPressed: _busy ? null : _clearHistory,
+                      outlined: true,
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: BracuPalette.textSecondary(context),
+                      label: 'Clear History',
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
           const SizedBox(height: 12),
-          _PrintHistoryCard(history: _history, onDelete: _deleteHistory),
+          _PrintHistoryCard(history: _history),
         ],
       ),
     );
@@ -546,10 +647,9 @@ class _StudentDetailLine extends StatelessWidget {
 }
 
 class _PrintHistoryCard extends StatelessWidget {
-  const _PrintHistoryCard({required this.history, required this.onDelete});
+  const _PrintHistoryCard({required this.history});
 
   final List<_PrintHistoryEntry> history;
-  final ValueChanged<_PrintHistoryEntry> onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -557,8 +657,8 @@ class _PrintHistoryCard extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    return BracuCard(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -572,15 +672,8 @@ class _PrintHistoryCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           for (var index = 0; index < history.length; index++) ...[
-            _PrintHistoryRow(entry: history[index], onDelete: onDelete),
-            if (index != history.length - 1)
-              Divider(
-                height: 10,
-                thickness: 0.7,
-                color: BracuPalette.textSecondary(
-                  context,
-                ).withValues(alpha: 0.18),
-              ),
+            _PrintHistoryRow(entry: history[index]),
+            if (index != history.length - 1) const SizedBox(height: 8),
           ],
         ],
       ),
@@ -589,62 +682,93 @@ class _PrintHistoryCard extends StatelessWidget {
 }
 
 class _PrintHistoryRow extends StatelessWidget {
-  const _PrintHistoryRow({required this.entry, required this.onDelete});
+  const _PrintHistoryRow({required this.entry});
 
   final _PrintHistoryEntry entry;
-  final ValueChanged<_PrintHistoryEntry> onDelete;
 
   @override
   Widget build(BuildContext context) {
     final failed = entry.status.toLowerCase() == 'failed';
-    final statusColor = failed ? Colors.redAccent : Colors.greenAccent;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: 22,
-          height: 22,
-          child: Icon(
-            failed ? Icons.error_outline : Icons.check_circle_outline,
-            color: statusColor,
-            size: 18,
-          ),
+    final copiesLabel = entry.copies == 1 ? '1 Copy' : '${entry.copies} Copies';
+    return _PrinterFileCard(
+      title: entry.fileName,
+      subtitle:
+          '${failed ? 'Failed' : 'Sent'} • $copiesLabel • ${formatDateTimeLabel(entry.createdAt, includeYear: true)}',
+      isEmpty: false,
+    );
+  }
+}
+
+class _PrinterFileCard extends StatelessWidget {
+  const _PrinterFileCard({
+    required this.title,
+    required this.subtitle,
+    required this.isEmpty,
+    this.onClear,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool isEmpty;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: BracuPalette.textSecondary(context).withValues(alpha: 0.20),
         ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                entry.fileName,
-                softWrap: true,
-                style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: BracuPalette.textSecondary(context),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                _formatHistoryTime(entry.createdAt),
-                style: TextStyle(
-                  color: BracuPalette.textSecondary(context),
-                  fontSize: 11,
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isEmpty
+                        ? BracuPalette.textSecondary(context)
+                        : BracuPalette.textPrimary(context),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        IconButton(
-          onPressed: () => onDelete(entry),
-          icon: const Icon(Icons.delete_outline_rounded),
-          color: BracuPalette.textSecondary(context),
-          iconSize: 18,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints.tightFor(width: 34, height: 34),
-          tooltip: 'Delete',
-        ),
-      ],
+          const SizedBox(width: 8),
+          if (onClear != null)
+            IconButton(
+              onPressed: onClear,
+              icon: const Icon(Icons.close_rounded),
+              tooltip: 'Clear file',
+              color: BracuPalette.textSecondary(context),
+              iconSize: 20,
+              constraints: const BoxConstraints.tightFor(
+                width: 36,
+                height: 36,
+              ),
+              padding: EdgeInsets.zero,
+            )
+        ],
+      ),
     );
   }
 }
@@ -756,6 +880,7 @@ class _LprPrintClient {
           'J$printableJobName',
           'C$printableJobName',
           'M${preferences.summary}',
+          'Z${preferences.lprOption}',
           '$dataCommand$jobToken',
           'U$jobToken',
           'N$safeFileName',
@@ -857,19 +982,22 @@ class _PrinterPreferencesPanel extends StatelessWidget {
 }
 
 class _PrintTicket {
-  const _PrintTicket({required this.copies});
+  const _PrintTicket({
+    required this.copies,
+    required this.duplexMode,
+  });
 
   final String paperSize = 'A4';
   final String margins = 'Default';
   final bool colorPrinting = false;
-  final String duplexMode = 'No';
   final String resolution = 'Medium';
   final String orientation = 'Portrait';
+  final String duplexMode;
   final int copies;
 
   String get summary {
     final color = colorPrinting ? 'Color' : 'Mono';
-    final duplex = duplexMode == 'No' ? 'Simplex' : duplexMode;
+    final duplex = duplexMode == 'one-sided' ? 'Single-sided' : 'Dual Sided';
     return [
       paperSize,
       '$margins margins',
@@ -882,6 +1010,81 @@ class _PrintTicket {
   }
 
   String get postScriptPreamble => '%!PS-Adobe-3.0';
+
+  String get lprOption => duplexMode == 'one-sided'
+      ? 'sides=one-sided'
+      : 'sides=two-sided-long-edge';
+}
+
+class _PrinterDuplexPanel extends StatelessWidget {
+  const _PrinterDuplexPanel({
+    required this.mode,
+    required this.onChanged,
+  });
+
+  final String mode;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget buildOption(String value, String label, {required bool first}) {
+      final selected = mode == value;
+      return Expanded(
+        child: InkWell(
+          onTap: () => onChanged(value),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: selected ? BracuPalette.primary : Colors.transparent,
+              border: Border(
+                left: BorderSide(
+                  color: first
+                      ? Colors.transparent
+                      : BracuPalette.primary.withValues(alpha: 0.32),
+                ),
+              ),
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: TextStyle(
+                  color: selected
+                      ? Colors.white
+                      : BracuPalette.textPrimary(context),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: BracuPalette.primary.withValues(alpha: 0.35),
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Row(
+            children: [
+              buildOption('one-sided', 'Single', first: true),
+              buildOption('two-sided-long-edge', 'Dual Sided', first: false),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _PrinterIdentityPanel extends StatelessWidget {
@@ -1088,15 +1291,6 @@ class _Ipv4Subnet {
   final String interfaceName;
 }
 
-bool _sameHistoryEntry(_PrintHistoryEntry a, _PrintHistoryEntry b) {
-  return a.fileName == b.fileName &&
-      a.printerHost == b.printerHost &&
-      a.copies == b.copies &&
-      a.status == b.status &&
-      a.message == b.message &&
-      a.createdAt.isAtSameMomentAs(b.createdAt);
-}
-
 List<int> _ascii(String value) {
   return value.codeUnits.map((unit) => unit <= 0x7F ? unit : 0x3F).toList();
 }
@@ -1106,18 +1300,4 @@ bool _looksLikePostScript(String fileName, Uint8List bytes) {
   if (lower.endsWith('.ps') || lower.endsWith('.eps')) return true;
   if (bytes.length >= 2 && bytes[0] == 0x25 && bytes[1] == 0x21) return true;
   return false;
-}
-
-String _formatHistoryTime(DateTime value) {
-  if (value.millisecondsSinceEpoch <= 0) return 'Unknown time';
-  final local = value.toLocal();
-  return '${local.day}/${local.month}/${local.year} ${_formatClock(local)}';
-}
-
-String _formatClock(DateTime value) {
-  final local = value.toLocal();
-  final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
-  final minute = local.minute.toString().padLeft(2, '0');
-  final suffix = local.hour >= 12 ? 'PM' : 'AM';
-  return '$hour:$minute $suffix';
 }

@@ -40,6 +40,17 @@ jobs:
             exit 0
           fi
 
+          HEAD_AUTHOR="$(git log -1 --pretty=format:%an)"
+          HEAD_EMAIL="$(git log -1 --pretty=format:%ae)"
+          HEAD_SUBJECT="$(git log -1 --pretty=format:%s)"
+          if [ "$HEAD_AUTHOR" = "github-actions[bot]" ] && \
+             [ "$HEAD_EMAIL" = "github-actions[bot]@users.noreply.github.com" ] && \
+             [[ "$HEAD_SUBJECT" == chore:\ bump\ version\ to* ]]; then
+            echo "Latest commit is the release bot's version bump; skipping retrigger."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           LAST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n1 || true)
           if [ -z "$LAST_TAG" ]; then
             echo "No release tag found yet; scheduled run should proceed."

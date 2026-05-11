@@ -21,6 +21,7 @@ dependencies:
   mobile_scanner: ^7.2.0
   image_picker: ^1.1.2
   archive: ^4.0.9
+  dart_pdf_reader: ^2.2.0
   flutter_alarmkit: ^0.0.10
   barcode_widget: ^2.0.4
   flutter_flip_card: ^0.0.6
