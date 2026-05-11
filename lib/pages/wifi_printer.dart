@@ -43,7 +43,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _guestName = '';
   String _guestId = '';
   String _clientName = '';
-  String _duplexMode = 'one-sided';
+  String _duplexMode = 'OFF';
   String _printerHost = '';
   String _printerStatus = 'Detecting campus printer...';
   bool _hasSignedInProfile = false;
@@ -980,8 +980,10 @@ class _PrinterPreferencesPanel extends StatelessWidget {
 class _PrintTicket {
   const _PrintTicket({required this.copies, required this.duplexMode});
 
-  final String duplexMode;
+  final String paperSize = 'A4';
+  final String orientation = 'Portrait';
   final int copies;
+  final String duplexMode;
 
   String get postScriptPreamble => '%!PS-Adobe-3.0';
 }
@@ -1044,8 +1046,8 @@ class _PrinterDuplexPanel extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           child: Row(
             children: [
-              buildOption('one-sided', 'Single', first: true),
-              buildOption('two-sided-long-edge', 'Dual Sided', first: false),
+              buildOption('OFF', 'Single Side', first: true),
+              buildOption('LEFT', 'Double Sided', first: false),
             ],
           ),
         ),
