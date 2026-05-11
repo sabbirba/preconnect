@@ -318,7 +318,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       title: 'Share Schedule',
       subtitle: 'Generate QR for Friends',
       icon: Icons.qr_code_2,
-      body: isLoading
+      body: isLoading || _base64Data == null
           ? const _ShareScheduleLoadingState()
           : BracuRefreshList(
               onRefresh: _handleRefresh,
@@ -326,8 +326,6 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
                 if (errorMessage != null)
                   BracuEmptyState(message: "Error: $errorMessage")
                 else ...[
-                  const BracuSectionTitle(title: 'Your QR Code'),
-                  const SizedBox(height: 10),
                   BracuCard(
                     child: RepaintBoundary(
                       key: _qrKey,
@@ -337,22 +335,6 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
                         child: LayoutBuilder(
                           builder: (context, constraints) {
                             final size = constraints.maxWidth;
-                            if (_base64Data == null) {
-                              return SizedBox(
-                                height: size,
-                                child: Center(
-                                  child: Text(
-                                    'No QR data available',
-                                    style: TextStyle(
-                                      color: BracuPalette.textSecondary(
-                                        context,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }
-
                             return SizedBox(
                               width: size,
                               height: size,
@@ -472,6 +454,15 @@ class _ShareScheduleLoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox.shrink();
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 36),
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(strokeWidth: 2.6),
+        ),
+      ),
+    );
   }
 }

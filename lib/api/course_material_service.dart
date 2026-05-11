@@ -271,12 +271,7 @@ class CourseMaterialService {
       '$_base/v1/course-materials?$query',
     );
     final map = _decodeMap(response.body);
-    final items =
-        (map['items'] as List?)
-            ?.whereType<Map>()
-            .map((e) => CourseMaterialItem.fromJson(e.cast<String, dynamic>()))
-            .toList() ??
-        const <CourseMaterialItem>[];
+    final items = parseCourseMaterialItemsFromResponse(map);
     _cachedLists[cacheKey] = items;
     unawaited(_writeCachedList(cacheKey, items));
     return items;
@@ -495,4 +490,35 @@ class CourseMaterialService {
     }
     return segments;
   }
+}
+
+List<CourseMaterialItem> parseCourseMaterialItemsFromResponse(
+  Map<String, dynamic> map,
+) {
+  final candidates = <dynamic>[
+    map['items'],
+    map['materials'],
+    map['courseMaterials'],
+    map['rows'],
+    map['data'],
+  ];
+  for (final candidate in candidates) {
+    final items = _courseMaterialItemsFromValue(candidate);
+    if (items.isNotEmpty) return items;
+  }
+  return const <CourseMaterialItem>[];
+}
+
+List<CourseMaterialItem> _courseMaterialItemsFromValue(dynamic value) {
+  final parsed = value is Map ? value.cast<String, dynamic>() : value;
+  if (parsed is List) {
+    return parsed
+        .whereType<Map>()
+        .map((e) => CourseMaterialItem.fromJson(e.cast<String, dynamic>()))
+        .toList();
+  }
+  if (parsed is Map) {
+    return parseCourseMaterialItemsFromResponse(parsed.cast<String, dynamic>());
+  }
+  return const <CourseMaterialItem>[];
 }

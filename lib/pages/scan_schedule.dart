@@ -158,8 +158,6 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const BracuSectionTitle(title: 'Scan QR Code'),
-                        const SizedBox(height: 10),
                         BracuCard(
                           child: AspectRatio(
                             aspectRatio: 1,
@@ -296,11 +294,6 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                         BracuCard(
                           child: Row(
                             children: [
-                              const Icon(
-                                Icons.info_outline,
-                                color: BracuPalette.primary,
-                              ),
-                              const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
                                   'Align the QR code within the frame to import your friend’s schedule.',

@@ -87,7 +87,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
   String get _facultyInitial {
     final raw = (widget.faculties ?? '').trim().toUpperCase();
     if (raw.isEmpty) return '';
-    final first = raw.split(RegExp(r'[,/\\s]+')).first.trim();
+    final first = raw.split(RegExp(r'[,/\s;|]+')).first.trim();
     final cleaned = first.replaceAll(RegExp(r'[^A-Z]'), '');
     return cleaned;
   }
