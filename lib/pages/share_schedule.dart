@@ -14,7 +14,7 @@ import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/storage_keys.dart';
-import 'package:flutter_share/flutter_share.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
 class ShareSchedulePage extends StatefulWidget {
@@ -299,10 +299,12 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       final file = File('${tempDir.path}/$fileName');
       await file.writeAsBytes(bytes, flush: true);
 
-      await FlutterShare.shareFile(
-        title: 'Share Schedule QR',
-        text: shareText,
-        filePath: file.path,
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: shareText,
+          subject: 'Share Schedule QR',
+        ),
       );
     } catch (e) {
       if (!mounted) return;
