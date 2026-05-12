@@ -228,13 +228,16 @@ class ApiClient {
     Map<String, String> headers = const <String, String>{},
     Set<int> acceptedStatusCodes = const <int>{200},
   }) async {
+    final uri = Uri.parse(url);
     final mergedHeaders = <String, String>{
       'Accept': 'application/json',
       ...headers,
     };
-    mergedHeaders.addAll(compressionHeaders());
+    if (uri.host != 'cdn.preconnect.app') {
+      mergedHeaders.addAll(compressionHeaders());
+    }
     final response = await http
-        .get(Uri.parse(url), headers: mergedHeaders)
+        .get(uri, headers: mergedHeaders)
         .timeout(_requestTimeout);
     if (acceptedStatusCodes.contains(response.statusCode)) {
       return response;
