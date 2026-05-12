@@ -86,12 +86,11 @@ jobs:
     steps:
       - name: Download Latest Chrome Extension Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
           mkdir -p build
-          rm -f build/*.zip
           gh release download latest \
             --pattern 'PreConnect-chrome-extension-release-*.zip' \
             --dir build
@@ -101,7 +100,7 @@ jobs:
             echo "No Chrome extension zip was downloaded from the latest release."
             exit 1
           fi
-          mv "$downloaded_zip" build/chrome-extension.zip
+          cp "$downloaded_zip" build/chrome-extension.zip
 
       - name: Set up Google Cloud CLI
         uses: google-github-actions/setup-gcloud@v2
