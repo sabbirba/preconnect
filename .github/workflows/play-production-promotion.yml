@@ -87,11 +87,11 @@ jobs:
       - name: Download Latest Chrome Extension Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
           mkdir -p build
           gh release download latest \
+            --repo "$GITHUB_REPOSITORY" \
             --pattern 'PreConnect-chrome-extension-release-*.zip' \
             --dir build
 
