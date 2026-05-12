@@ -5,7 +5,8 @@ import 'package:preconnect/api/friend_schedule_store.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:mobile_scanner/mobile_scanner.dart'
+    if (dart.library.html) 'package:preconnect/tools/mobile_scanner_stub.dart';
 
 class ScanSchedulePage extends StatefulWidget {
   const ScanSchedulePage({super.key});

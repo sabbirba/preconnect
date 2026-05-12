@@ -28,9 +28,10 @@ sync_chrome_manifest_version() {
 
 bump_release_version() {
   local version_name version_code last_tag_code base_code new_version_code new_version
-  mapfile -t version_parts < <(read_version)
-  version_name="${version_parts[0]}"
-  version_code="${version_parts[1]}"
+  local version_output
+  version_output="$(read_version)"
+  version_name="${version_output%%$'\n'*}"
+  version_code="${version_output#*$'\n'}"
 
   last_tag_code="$(cd "${ROOT_DIR}" && git tag --list 'v*+*' --sort=-v:refname \
     | sed -n 's/^v[^+]*+\([0-9]\+\)$/\1/p' \

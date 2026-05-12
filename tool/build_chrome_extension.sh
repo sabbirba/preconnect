@@ -5,9 +5,13 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="${1:-${ROOT_DIR}/build/chrome-extension}"
 ZIP_OUT="${ZIP_OUT:-${ROOT_DIR}/build/chrome-extension.zip}"
 
-mapfile -t VERSION_PARTS < <("${ROOT_DIR}/tool/sync_versions.sh" read)
-APP_VERSION="${VERSION_PARTS[0]}"
-APP_BUILD_NUMBER="${VERSION_PARTS[1]}"
+VERSION_OUTPUT="$("${ROOT_DIR}/tool/sync_versions.sh" read)"
+APP_VERSION="$(printf '%s\n' "${VERSION_OUTPUT}" | sed -n '1p')"
+APP_BUILD_NUMBER="$(printf '%s\n' "${VERSION_OUTPUT}" | sed -n '2p')"
+if [[ -z "${APP_VERSION}" || -z "${APP_BUILD_NUMBER}" ]]; then
+  echo "Unable to parse version output from sync_versions.sh" >&2
+  exit 1
+fi
 
 mkdir -p "${OUT_DIR}"
 rm -rf "${ROOT_DIR}/.dart_tool/flutter_build"
@@ -31,6 +35,11 @@ fi
 perl -0pi -e 's/serviceWorkerSettings:\s*\{\s*serviceWorkerVersion:\s*"[^"]+"[^}]*\}/serviceWorkerSettings: null/s' \
   "${OUT_DIR}/flutter_bootstrap.js"
 rm -f "${OUT_DIR}/flutter_service_worker.js"
+
+if rg -n "unpkg\.com|eval\\(|new Function" "${OUT_DIR}"/*.js >/dev/null 2>&1; then
+  echo "Unexpected remote code reference found in Chrome extension JS output" >&2
+  exit 1
+fi
 
 dart compile js \
   "${ROOT_DIR}/web/background.dart" \
