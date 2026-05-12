@@ -48,6 +48,10 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   void initState() {
     super.initState();
     final forceRefresh = isRefreshingFrom('auth');
+    if (forceRefresh) {
+      _cachedData = null;
+      _preloadFuture = null;
+    }
     if (_cachedData != null) {
       _latestData = _cachedData;
     }
@@ -106,7 +110,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
   Future<void> _warmAndBind({bool forceRefresh = false}) async {
     final data = await preloadData(
-      forceRefresh: forceRefresh && _cachedData == null,
+      forceRefresh: forceRefresh,
     );
     if (!mounted) return;
     setState(() {

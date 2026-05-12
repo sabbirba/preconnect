@@ -6,6 +6,24 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/profile_service.dart';
+import 'package:preconnect/api/schedule_service.dart';
+import 'package:preconnect/api/calendar_service.dart';
+import 'package:preconnect/api/custom_schedules_service.dart';
+import 'package:preconnect/api/friend_schedule_store.dart';
+import 'package:preconnect/api/notification_service.dart';
+import 'package:preconnect/api/progress_service.dart';
+import 'package:preconnect/api/seat_status_service.dart';
+import 'package:preconnect/pages/alarms.dart';
+import 'package:preconnect/pages/bus.dart';
+import 'package:preconnect/pages/class_schedule.dart';
+import 'package:preconnect/pages/custom_schedules.dart';
+import 'package:preconnect/pages/degree_progress.dart';
+import 'package:preconnect/pages/devs.dart';
+import 'package:preconnect/pages/exam_schedule.dart';
+import 'package:preconnect/pages/notifications.dart';
+import 'package:preconnect/pages/student_profile.dart';
+import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
@@ -220,6 +238,9 @@ class _LoginPageState extends State<LoginPage> {
           persistedRefreshToken.isEmpty) {
         return false;
       }
+
+      await _warmAuthenticatedData();
+
       RefreshBus.instance.notify(reason: 'auth');
       if (mounted) {
         Navigator.of(
@@ -236,6 +257,37 @@ class _LoginPageState extends State<LoginPage> {
     if (_isLoggingIn) return;
     _handledRedirect = false;
     await _webViewController?.reload();
+  }
+
+  Future<void> _warmAuthenticatedData() async {
+    final tasks = <Future<void>>[
+      ProfileService().fetchProfile().then((_) {}),
+      AttendanceService().getAttendanceInfo().then((_) {}),
+      PaymentService().getPaymentInfo().then((_) {}),
+      ProgressService().getProgress().then((_) {}),
+      () async {
+        final semesterSessionId = await resolveCurrentSessionSemesterId();
+        if (semesterSessionId == null) return;
+        await ScheduleService().fetchStudentScheduleForSemester(
+          semesterSessionId: semesterSessionId,
+        );
+      }(),
+      CustomSchedulesService().getItems(forceRefresh: true).then((_) {}),
+      FriendScheduleStore().loadSnapshot().then((_) {}),
+      CalendarService().getCalendar().then((_) {}),
+      NotificationService().getRecentNotifications().then((_) {}),
+      SeatStatusService.preload(),
+      BusPage.preload(),
+      NotificationsPage.preload(),
+      DegreeProgressPage.preload(),
+      StudentProfile.preload(),
+      DevsPage.preload(),
+      AlarmPage.preload(),
+      ClassSchedule.preload(),
+      ExamSchedule.preload(),
+      CustomSchedulesPage.preload(),
+    ];
+    await Future.wait(tasks.map((task) => task.catchError((_) {})));
   }
 
   @override

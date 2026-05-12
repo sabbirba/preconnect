@@ -9,6 +9,7 @@ import 'package:dart_pdf_reader/dart_pdf_reader.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/android_network_assist.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
@@ -24,6 +25,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const String _printerQueue = 'secure';
   static const String _historyKey = 'campus_printer_history';
   static const String _lastPrinterHostKey = 'campus_printer_last_host';
+  static const String _lastPrinterWifiKey = 'campus_printer_last_wifi';
   static const int _maxHistoryEntries = 50;
   static const String _copiesKey = 'campus_printer_copies';
   static const String _snackFileReadFailed = "Couldn't read selected file";
@@ -45,7 +47,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _clientName = '';
   String _duplexMode = 'OFF';
   String _printerHost = '';
-  String _printerStatus = 'Detecting campus printer...';
   bool _hasSignedInProfile = false;
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
   int _copies = 1;
@@ -134,12 +135,24 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     setState(() {
       _discovering = true;
       _printerHost = '';
-      _printerStatus = 'Scanning...';
     });
     try {
+      final wifiFingerprint = await _currentWifiFingerprint();
       final savedHost =
           (await AppStorage.instance.getString(_lastPrinterHostKey) ?? '')
               .trim();
+      final savedWifi =
+          (await AppStorage.instance.getString(_lastPrinterWifiKey) ?? '')
+              .trim();
+      if (savedHost.isNotEmpty &&
+          savedWifi.isNotEmpty &&
+          savedWifi == wifiFingerprint) {
+        if (!mounted) return;
+        setState(() {
+          _printerHost = savedHost;
+        });
+        return;
+      }
       final printers = await _WifiPrinterDiscovery.findLprPrinters(
         port: _printerPort,
         preferredHosts: savedHost.isEmpty
@@ -148,22 +161,18 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       );
       if (!mounted) return;
       if (printers.isEmpty) {
-        setState(() {
-          _printerStatus = 'No printer found';
-        });
         return;
       }
       final printer = printers.first;
       await AppStorage.instance.setString(_lastPrinterHostKey, printer.address);
+      await AppStorage.instance.setString(
+        _lastPrinterWifiKey,
+        wifiFingerprint,
+      );
       setState(() {
         _printerHost = printer.address;
-        _printerStatus = 'Campus printer found';
       });
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _printerStatus = 'Campus printer scan failed.';
-      });
     } finally {
       if (mounted) {
         setState(() {
@@ -171,6 +180,17 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         });
       }
     }
+  }
+
+  Future<String> _currentWifiFingerprint() async {
+    final status = await AndroidNetworkAssist.getNetworkStatus();
+    if (status == null) return 'unknown';
+    final ssid = (status.ssid ?? '').trim();
+    final transport = status.transport.trim();
+    final connected = status.connected ? '1' : '0';
+    final validated = status.validated ? '1' : '0';
+    final captive = status.captive ? '1' : '0';
+    return '$transport|$connected|$validated|$captive|$ssid';
   }
 
   Future<void> _loadHistory() async {
@@ -434,49 +454,54 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         _printerHost.isNotEmpty &&
         (_guestId.isNotEmpty || _studentId.isNotEmpty) &&
         (_guestName.isNotEmpty || _studentName.isNotEmpty);
+    final printerSubtitle = _discovering
+        ? 'Scanning...'
+        : _printerHost.isNotEmpty
+        ? 'Printer found'
+        : 'Not found';
     return BracuPageScaffold(
       title: 'Printer',
-      subtitle: 'Print File',
+      subtitle: printerSubtitle,
       icon: Icons.local_printshop_outlined,
+      actions: [
+        IconButton(
+          onPressed: _busy || _discovering ? null : _discoverPrinter,
+          style: bracuCompactIconButtonStyle(
+            foregroundColor: BracuPalette.primary,
+            borderColor: Colors.transparent,
+            padding: EdgeInsets.zero,
+            borderRadius: 12,
+          ),
+          icon: _discovering
+              ? SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: _printerHost.isNotEmpty
+                        ? const Color(0xFF22B573)
+                        : BracuPalette.primary,
+                  ),
+                )
+              : Icon(
+                  _printerHost.isNotEmpty
+                      ? Icons.wifi_tethering_rounded
+                      : Icons.wifi_find_outlined,
+                  color: _printerHost.isNotEmpty
+                      ? const Color(0xFF22B573)
+                      : BracuPalette.primary,
+                ),
+          tooltip: 'Scan',
+        ),
+      ],
       body: BracuRefreshList(
         onRefresh: _refreshPrinterInfo,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(2, 0, 2, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 2),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _printerStatus,
-                        style: TextStyle(
-                          color: BracuPalette.textPrimary(context),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                    BracuActionButton(
-                      onPressed: _busy || _discovering
-                          ? null
-                          : () => _discoverPrinter(),
-                      outlined: false,
-                      isLoading: _discovering,
-                      backgroundColor: Colors.transparent,
-                      foregroundColor: BracuPalette.primary,
-                      borderRadius: 14,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      icon: Icons.wifi_find_outlined,
-                      label: 'Scan',
-                      iconSize: 20,
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 10),
                 _StudentPrintDetails(
                   name: _studentName,
@@ -664,14 +689,6 @@ class _PrintHistoryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'History',
-            style: TextStyle(
-              color: BracuPalette.textPrimary(context),
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 8),
           for (var index = 0; index < history.length; index++) ...[
             _PrintHistoryRow(entry: history[index]),
             if (index != history.length - 1) const SizedBox(height: 8),
