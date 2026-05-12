@@ -154,19 +154,20 @@ build/chrome-extension.zip
 
 ### Publish the Chrome extension
 
-The repo includes a GitHub Actions workflow that can build, upload, and publish the Chrome extension to the Chrome Web Store:
+The repo includes a GitHub Actions workflow that publishes the Chrome extension to the Chrome Web Store from the latest GitHub release asset:
 
-- Workflow: [`.github/workflows/chrome-extension-publish.yml`](.github/workflows/chrome-extension-publish.yml)
+- Workflow: [`.github/workflows/play-production-promotion.yml`](.github/workflows/play-production-promotion.yml)
 - Triggers:
   - `workflow_dispatch`
-  - push tags matching `v*.*.*`
+  - weekly schedule on Thursday at 10:00 PM Bangladesh Time
 
 Required GitHub secrets:
 
 - `CHROME_WEBSTORE_PUBLISHER_ID`
 - `CHROME_WEBSTORE_EXTENSION_ID`
+- `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
 
-The workflow uses the Chrome Web Store API v2 and the existing `./tool/build_chrome_extension.sh` build script.
+The workflow uses the Chrome Web Store API v2, the existing `./tool/build_chrome_extension.sh` release asset, and the same Google service account secret already used for Google Play promotion.
 
 Load `build/chrome-extension` as an unpacked extension in Chrome:
 

@@ -77,3 +77,66 @@ jobs:
             --skip_upload_changelogs true \
             --skip_upload_images true \
             --skip_upload_screenshots true
+
+  publish-chrome-extension:
+    name: Publish Chrome Extension
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Download Latest Chrome Extension Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          mkdir -p build
+          rm -f build/*.zip
+          gh release download latest \
+            --pattern 'PreConnect-chrome-extension-release-*.zip' \
+            --dir build
+
+          downloaded_zip="$(find build -maxdepth 1 -type f -name 'PreConnect-chrome-extension-release-*.zip' | head -n1)"
+          if [ -z "$downloaded_zip" ]; then
+            echo "No Chrome extension zip was downloaded from the latest release."
+            exit 1
+          fi
+          mv "$downloaded_zip" build/chrome-extension.zip
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Authenticate Chrome Web Store Service Account
+        id: auth
+        shell: bash
+        env:
+          CHROME_WEBSTORE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          key_file="$RUNNER_TEMP/chrome-web-store-service-account.json"
+          printf '%s' "$CHROME_WEBSTORE_SERVICE_ACCOUNT_JSON" > "$key_file"
+          chmod 600 "$key_file"
+          gcloud auth activate-service-account --key-file="$key_file"
+
+          access_token="$(
+            gcloud auth print-access-token \
+              --scopes=https://www.googleapis.com/auth/chromewebstore
+          )"
+          echo "::add-mask::$access_token"
+          echo "access_token=$access_token" >> "$GITHUB_OUTPUT"
+
+      - name: Publish Chrome Web Store Item
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          CHROME_WEBSTORE_PUBLISHER_ID: ${{ secrets.CHROME_WEBSTORE_PUBLISHER_ID }}
+          CHROME_WEBSTORE_EXTENSION_ID: ${{ secrets.CHROME_WEBSTORE_EXTENSION_ID }}
+        shell: bash
+        run: |
+          curl \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -X POST \
+            -T build/chrome-extension.zip \
+            "https://chromewebstore.googleapis.com/upload/v2/publishers/${CHROME_WEBSTORE_PUBLISHER_ID}/items/${CHROME_WEBSTORE_EXTENSION_ID}:upload"
+
+          curl \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -X POST \
+            "https://chromewebstore.googleapis.com/v2/publishers/${CHROME_WEBSTORE_PUBLISHER_ID}/items/${CHROME_WEBSTORE_EXTENSION_ID}:publish"
