@@ -184,6 +184,7 @@ The extension build uses:
 - `lib/app.dart` and `lib/pages/web_extension_login_web.dart` for the extension UI
 - `tool/sync_versions.sh` is the shared version helper used by release and Chrome packaging
 - `tool/build_chrome_extension.sh` injects the extension version from `pubspec.yaml` and rewrites the packaged manifest automatically
+- The packaged Chrome Web Store version includes a build segment so updates are detected even when the semantic app version does not change
 
 Notes:
 

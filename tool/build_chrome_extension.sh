@@ -13,6 +13,12 @@ if [[ -z "${APP_VERSION}" || -z "${APP_BUILD_NUMBER}" ]]; then
   exit 1
 fi
 
+CHROME_BUILD_NUMBER=$((APP_BUILD_NUMBER % 65535))
+if [[ "${CHROME_BUILD_NUMBER}" -eq 0 ]]; then
+  CHROME_BUILD_NUMBER=65535
+fi
+CHROME_VERSION="${APP_VERSION}.${CHROME_BUILD_NUMBER}"
+
 mkdir -p "${OUT_DIR}"
 rm -rf "${ROOT_DIR}/.dart_tool/flutter_build"
 
@@ -29,7 +35,7 @@ flutter build web \
 
 MANIFEST_FILE="${OUT_DIR}/manifest.json"
 if [[ -f "${MANIFEST_FILE}" ]]; then
-  perl -0pi -e "s/\"version\":\s*\"[^\"]+\"/\"version\": \"${APP_VERSION}\"/" "${MANIFEST_FILE}"
+  perl -0pi -e "s/\"version\":\s*\"[^\"]+\"/\"version\": \"${CHROME_VERSION}\"/" "${MANIFEST_FILE}"
 fi
 
 perl -0pi -e 's/serviceWorkerSettings:\s*\{\s*serviceWorkerVersion:\s*"[^"]+"[^}]*\}/serviceWorkerSettings: null/s' \
@@ -52,3 +58,4 @@ rm -f "${ZIP_OUT}"
 
 echo "Chrome extension build ready at: ${OUT_DIR}"
 echo "Chrome extension zip ready at: ${ZIP_OUT}"
+echo "Chrome Web Store version: ${CHROME_VERSION}"
