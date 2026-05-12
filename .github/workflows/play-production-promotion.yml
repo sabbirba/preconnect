@@ -86,21 +86,31 @@ jobs:
     steps:
       - name: Download Latest Chrome Extension Release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           mkdir -p build
-          gh release download latest \
-            --repo "$GITHUB_REPOSITORY" \
-            --pattern 'PreConnect-chrome-extension-release-*.zip' \
-            --dir build
+          release_json="$(
+            curl -fsSL \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest"
+          )"
 
-          downloaded_zip="$(find build -maxdepth 1 -type f -name 'PreConnect-chrome-extension-release-*.zip' | head -n1)"
-          if [ -z "$downloaded_zip" ]; then
-            echo "No Chrome extension zip was downloaded from the latest release."
+          asset_url="$(
+            printf '%s' "$release_json" | jq -r '
+              .assets[]
+              | select(.name | test("^PreConnect-chrome-extension-release-.*\\.zip$"))
+              | .browser_download_url
+            ' | head -n1
+          )"
+
+          if [ -z "$asset_url" ] || [ "$asset_url" = "null" ]; then
+            echo "No Chrome extension zip asset was found on the latest release."
             exit 1
           fi
-          cp "$downloaded_zip" build/chrome-extension.zip
+
+          curl -fsSL -L "$asset_url" -o build/chrome-extension.zip
 
       - name: Set up Google Cloud CLI
         uses: google-github-actions/setup-gcloud@v2
