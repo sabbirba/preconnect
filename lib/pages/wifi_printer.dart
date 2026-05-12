@@ -240,6 +240,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       final XFile? picked = await openFile(
         acceptedTypeGroups: const <XTypeGroup>[
           XTypeGroup(label: 'PDF', extensions: <String>['pdf']),
+          XTypeGroup(label: 'JPEG', extensions: <String>['jpg', 'jpeg']),
+          XTypeGroup(label: 'PNG', extensions: <String>['png']),
         ],
       );
       if (!mounted || picked == null) return;
@@ -259,11 +261,14 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         _fileBytes = bytes;
         _fileName = picked.name.trim();
       });
-      final pdfInfo = await _readPdfInfo(bytes);
       if (!mounted) return;
       setState(() {
-        _filePageCount = pdfInfo.pageCount;
-        _filePdfVersion = pdfInfo.version;
+        if (_isPdfFile(_fileName, bytes)) {
+          _setPdfInfoFromBytes(bytes);
+        } else {
+          _filePageCount = null;
+          _filePdfVersion = null;
+        }
       });
     } catch (_) {}
   }
@@ -287,12 +292,16 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   String _fileKindLabel() {
     if (_fileName.trim().isEmpty) return 'File';
+    if (_isJpegFile(_fileName)) return 'JPEG';
+    if (_isPngFile(_fileName)) return 'PNG';
     if (_filePageCount == null) return 'File';
     return _filePageCount == 1 ? '1 Page' : '$_filePageCount Pages';
   }
 
   String _fileVersionLabel() {
-    if (_fileName.trim().isEmpty) return 'PDF';
+    if (_fileName.trim().isEmpty) return 'PDF/IMAGE';
+    if (_isJpegFile(_fileName)) return 'Image';
+    if (_isPngFile(_fileName)) return 'Image';
     final version = _filePdfVersion?.trim();
     if (version == null || version.isEmpty) return 'PDF';
     return 'PDF $version';
@@ -302,9 +311,18 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     return _fileName.isEmpty ? 'No file selected' : _fileName;
   }
 
-  Future<({int? pageCount, String? version})> _readPdfInfo(
-    Uint8List bytes,
-  ) async {
+  void _setPdfInfoFromBytes(Uint8List bytes) {
+    unawaited(() async {
+      final pdfInfo = await _readPdfInfo(bytes);
+      if (!mounted) return;
+      setState(() {
+        _filePageCount = pdfInfo.pageCount;
+        _filePdfVersion = pdfInfo.version;
+      });
+    }());
+  }
+
+  Future<({int? pageCount, String? version})> _readPdfInfo(Uint8List bytes) async {
     try {
       final header = _readPdfHeaderVersion(bytes);
       final stream = ByteStream(bytes);
@@ -871,9 +889,7 @@ class _LprPrintClient {
     final owner = user;
     final client = clientName.trim().isEmpty ? user : clientName.trim();
     final safeFileName = fileName.trim();
-    final printableJobName = safeFileName.toLowerCase().endsWith('.pdf')
-        ? safeFileName.substring(0, safeFileName.length - 4)
-        : safeFileName;
+    final printableJobName = _basePrintName(safeFileName);
     final isPostScript = _looksLikePostScript(safeFileName, bytes);
     final dataCommand = isPostScript ? 'o' : 'l';
     final jobToken =
@@ -1250,6 +1266,36 @@ class _Ipv4Subnet {
 
 List<int> _ascii(String value) {
   return value.codeUnits.map((unit) => unit <= 0x7F ? unit : 0x3F).toList();
+}
+
+bool _isPdfFile(String fileName, Uint8List bytes) {
+  final lower = fileName.toLowerCase();
+  if (lower.endsWith('.pdf')) return true;
+  if (bytes.length >= 4 &&
+      bytes[0] == 0x25 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x44 &&
+      bytes[3] == 0x46) {
+    return true;
+  }
+  return false;
+}
+
+bool _isJpegFile(String fileName) {
+  final lower = fileName.toLowerCase();
+  return lower.endsWith('.jpg') || lower.endsWith('.jpeg');
+}
+
+bool _isPngFile(String fileName) {
+  return fileName.toLowerCase().endsWith('.png');
+}
+
+String _basePrintName(String fileName) {
+  final trimmed = fileName.trim();
+  if (trimmed.isEmpty) return 'document';
+  final lastDot = trimmed.lastIndexOf('.');
+  if (lastDot <= 0) return trimmed;
+  return trimmed.substring(0, lastDot);
 }
 
 bool _looksLikePostScript(String fileName, Uint8List bytes) {
