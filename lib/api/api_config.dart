@@ -32,7 +32,7 @@ class ApiConfig {
   static const String websiteBase = 'https://preconnect.app';
   static const String websiteMueenAvatarUrl = '$websiteBase/Mueen-Ahmmed.jpeg';
   static const String websiteAdSenseLogoUrl = '$websiteBase/google-adsense.png';
-  static const String filesBase = 'https://files.preconnect.app';
+  static const String filesBase = 'https://cdn.preconnect.app';
   static const String facultyReviewsBearer = String.fromEnvironment(
     'FACULTY_REVIEWS_BEARER',
   );
