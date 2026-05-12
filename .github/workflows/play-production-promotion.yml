@@ -87,6 +87,7 @@ jobs:
       - name: Download Latest Chrome Extension Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
           mkdir -p build
