@@ -22,10 +22,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - target: google play
+          - target: Google Play
             run_play: true
             run_chrome: false
-          - target: chrome web store
+          - target: Chrome Web Store
             run_play: false
             run_chrome: true
 
@@ -158,7 +158,7 @@ jobs:
           path: build/chrome-extension.zip
           if-no-files-found: error
 
-      - name: Setup Gcloud
+      - name: Setup GCloud
         if: matrix.run_chrome
         uses: google-github-actions/setup-gcloud@v2
 
@@ -198,14 +198,20 @@ jobs:
             || true
           )"
 
-          if printf '%s' "$STATUS_JSON" | jq -e '.submittedItemRevisionStatus != null' >/dev/null; then
-            echo "Active submission found; canceling pending review before upload."
+          SUBMITTED_STATE="$(
+            printf '%s' "$STATUS_JSON" | jq -r '
+              .submittedItemRevisionStatus.state? // empty
+            '
+          )"
+
+          if [ "$SUBMITTED_STATE" = "PENDING_REVIEW" ]; then
+            echo "Pending review found; canceling before upload."
             curl -fsSL \
               -H "Authorization: Bearer $ACCESS_TOKEN" \
               -X POST \
               "https://chromewebstore.googleapis.com/v2/${ITEM_NAME}:cancelSubmission"
           else
-            echo "No active submission found; continuing with upload."
+            echo "No pending review found; continuing with upload."
           fi
 
           curl \
