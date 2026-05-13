@@ -35,7 +35,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Read Android Package
+      - name: Read Package
         if: matrix.run_play
         id: android_meta
         shell: bash
@@ -43,7 +43,7 @@ jobs:
           PACKAGE_NAME=$(grep -E 'applicationId\s*=' android/app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
           echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Check Google Play Credentials
+      - name: Check Credentials
         if: matrix.run_play
         id: play_auth
         shell: bash
@@ -57,7 +57,7 @@ jobs:
             echo "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not provided."
           fi
 
-      - name: Set up Ruby for Fastlane
+      - name: Setup Ruby
         if: matrix.run_play && steps.play_auth.outputs.enabled == 'true'
         uses: ruby/setup-ruby@v1
         with:
@@ -70,7 +70,7 @@ jobs:
           FASTLANE_OPT_OUT_USAGE: "1"
         run: gem install fastlane --no-document
 
-      - name: Promote Google Play Production
+      - name: Promote Beta
         if: matrix.run_play && steps.play_auth.outputs.enabled == 'true'
         shell: bash
         env:
@@ -90,14 +90,14 @@ jobs:
             --skip_upload_images true \
             --skip_upload_screenshots true
 
-      - name: Set up Flutter
+      - name: Setup Flutter
         if: matrix.run_chrome
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
           cache: true
 
-      - name: Cache Flutter Pub
+      - name: Cache Pub
         if: matrix.run_chrome
         uses: actions/cache@v5.0.3
         with:
@@ -124,7 +124,7 @@ jobs:
             exit 1
           fi
 
-      - name: Create Chrome Extension Build Env
+      - name: Chrome Env
         if: matrix.run_chrome
         shell: bash
         run: |
@@ -134,7 +134,7 @@ jobs:
           INTERSTITIAL_AD_UNIT_ID=${{ secrets.INTERSTITIAL_AD_UNIT_ID }}
           EOF
 
-      - name: Build Chrome Extension
+      - name: Chrome Extension
         if: matrix.run_chrome
         shell: bash
         run: |
@@ -150,7 +150,7 @@ jobs:
             exit 1
           fi
 
-      - name: Upload Built Chrome Extension Artifact
+      - name: Chrome Artifact
         if: matrix.run_chrome
         uses: actions/upload-artifact@v7
         with:
@@ -158,11 +158,11 @@ jobs:
           path: build/chrome-extension.zip
           if-no-files-found: error
 
-      - name: Set up Google Cloud CLI
+      - name: Setup Gcloud
         if: matrix.run_chrome
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Authenticate Chrome Web Store Service Account
+      - name: Auth Service
         if: matrix.run_chrome
         id: auth
         shell: bash
@@ -181,7 +181,7 @@ jobs:
           echo "::add-mask::$access_token"
           echo "access_token=$access_token" >> "$GITHUB_OUTPUT"
 
-      - name: Publish Chrome Web Store Item
+      - name: Publish Chrome
         if: matrix.run_chrome
         env:
           ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}

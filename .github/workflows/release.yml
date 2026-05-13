@@ -92,7 +92,7 @@ jobs:
           VERSION_CODE="${VERSION_PARTS[1]}"
           echo "Updated pubspec version to ${VERSION_NAME}+${VERSION_CODE}"
 
-      - name: Read App Version
+      - name: Read Version
         id: version
         shell: bash
         run: |
@@ -176,7 +176,7 @@ jobs:
             --title "PreConnect ${{ steps.meta.outputs.release_tag }}" \
             --notes-file release-notes.md
 
-  build-platforms:
+  build:
     name: Build ${{ matrix.name }}
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
     needs: [detect-pending, prepare-version, create-release]
@@ -202,19 +202,19 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: chrome_extension
-            name: chrome extension
+            name: Chrome Extension
             allow_failure: false
           - os: ubuntu-22.04
             platform: android
-            name: android
+            name: Android
             allow_failure: false
           - os: macos-latest
             platform: ios
-            name: ios
+            name: iOS
             allow_failure: false
           - os: macos-latest
             platform: macos
-            name: macos
+            name: macOS
             allow_failure: true
 
     steps:
@@ -223,14 +223,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Java
+      - name: Setup Java
         if: matrix.platform == 'android'
         uses: actions/setup-java@v5
         with:
           distribution: "temurin"
           java-version: "17"
 
-      - name: Set up Flutter
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
@@ -239,19 +239,19 @@ jobs:
       - name: Flutter Version
         run: flutter --version
 
-      - name: Set up Xcode
+      - name: Setup Xcode
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: "latest"
 
-      - name: Show Xcode & SDKs
+      - name: Show Xcode
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
         run: |
           xcodebuild -version
           xcodebuild -showsdks
 
-      - name: Cache Flutter Pub
+      - name: Cache Pub
         uses: actions/cache@v5.0.3
         with:
           path: |
@@ -272,7 +272,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Create Android Local Properties
+      - name: Android Props
         if: matrix.platform == 'android'
         shell: bash
         run: |
@@ -285,14 +285,14 @@ jobs:
             fi
           } > android/local.properties
 
-      - name: Refresh Gradle Dependencies
+      - name: Refresh Gradle
         if: matrix.platform == 'android'
         shell: bash
         run: |
           cd android
           ./gradlew --no-daemon help --refresh-dependencies
 
-      - name: Cache Flutter Build
+      - name: Cache Build
         uses: actions/cache@v5.0.3
         with:
           path: |
@@ -317,7 +317,7 @@ jobs:
             exit 1
           fi
 
-      - name: Create Release Env
+      - name: Release Env
         shell: bash
         run: |
           cat > .env <<'EOF'
@@ -330,7 +330,7 @@ jobs:
           PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=${{ secrets.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER }}
           EOF
 
-      - name: Build Chrome Extension
+      - name: Chrome Extension
         if: matrix.platform == 'chrome_extension'
         shell: bash
         run: |
@@ -346,14 +346,14 @@ jobs:
             exit 1
           fi
 
-      - name: Package Chrome Extension Release
+      - name: Chrome Package
         if: matrix.platform == 'chrome_extension'
         run: |
           mkdir -p artifacts
           cd build/chrome-extension
           zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-chrome-extension-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
 
-      - name: Clean Build State
+      - name: Clean Build
         if: matrix.platform == 'android' || matrix.platform == 'ios' || matrix.platform == 'macos'
         shell: bash
         run: |
@@ -363,7 +363,7 @@ jobs:
             ./gradlew clean
           fi
 
-      - name: Restore Android Keystore
+      - name: Restore Keystore
         if: matrix.platform == 'android'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -384,19 +384,19 @@ jobs:
           keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
           EOF
 
-      - name: Build Android APK
+      - name: Android APK
         if: matrix.platform == 'android'
         shell: bash
         run: |
           flutter build apk --release --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
 
-      - name: Build Android AAB
+      - name: Android AAB
         if: matrix.platform == 'android'
         shell: bash
         run: |
           flutter build appbundle --release --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
 
-      - name: Build iOS App
+      - name: iOS App
         if: matrix.platform == 'ios'
         shell: bash
         run: |
@@ -412,7 +412,7 @@ jobs:
             exit 1
           fi
 
-      - name: Detect iOS Signing Availability
+      - name: Detect Signing
         id: ios_signing
         if: matrix.platform == 'ios'
         shell: bash
@@ -435,7 +435,7 @@ jobs:
             echo "iOS signing secrets missing; continuing with unsigned iOS fallback."
           fi
 
-      - name: Build iOS IPA
+      - name: iOS IPA
         if: matrix.platform == 'ios' && steps.ios_signing.outputs.enabled == 'true'
         env:
           IOS_P12_BASE64: ${{ secrets.IOS_P12_BASE64 }}
@@ -471,7 +471,7 @@ jobs:
             exit 1
           fi
 
-      - name: Build macOS App
+      - name: macOS App
         if: matrix.platform == 'macos'
         shell: bash
         run: |
@@ -487,7 +487,7 @@ jobs:
             exit 1
           fi
 
-      - name: Package Android Release
+      - name: Android Package
         if: matrix.platform == 'android'
         run: |
           mkdir -p artifacts
@@ -496,7 +496,7 @@ jobs:
           cp build/app/outputs/bundle/release/app-release.aab \
             artifacts/PreConnect-android-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.aab
 
-      - name: Package iOS Release
+      - name: iOS Package
         if: matrix.platform == 'ios'
         run: |
           mkdir -p artifacts
@@ -521,7 +521,7 @@ jobs:
           ditto "$APP_PATH" "Payload/$(basename "$APP_PATH")"
           (cd Payload && zip -r -y "$GITHUB_WORKSPACE/artifacts/$IPA_NAME" .) || true
 
-      - name: Package macOS Release
+      - name: macOS Package
         if: matrix.platform == 'macos'
         run: |
           mkdir -p artifacts
@@ -540,7 +540,7 @@ jobs:
           path: artifacts/*
           if-no-files-found: ignore
 
-      - name: Upload Release Assets
+      - name: Upload Assets
         if: always()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -566,7 +566,7 @@ jobs:
     name: Publish Google Play Release (Android)
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
     runs-on: ubuntu-latest
-    needs: [detect-pending, prepare-version, build-platforms]
+    needs: [detect-pending, prepare-version, build]
     timeout-minutes: 20
     permissions:
       contents: read
@@ -577,7 +577,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Read Android package
+      - name: Read Package
         id: android_meta
         shell: bash
         run: |
@@ -591,7 +591,7 @@ jobs:
           name: android-artifacts
           path: artifacts/android
 
-      - name: Resolve AAB file
+      - name: Resolve AAB
         id: aab
         shell: bash
         run: |
@@ -605,7 +605,7 @@ jobs:
           echo "file=$AAB_FILE" >> "$GITHUB_OUTPUT"
           echo "Using AAB: $AAB_FILE"
 
-      - name: Check Google Play credentials
+      - name: Check Credentials
         id: play_auth
         shell: bash
         env:
@@ -665,7 +665,7 @@ jobs:
 
           echo "dir=$NOTES_DIR" >> "$GITHUB_OUTPUT"
 
-      - name: Set up Ruby for Fastlane
+      - name: Setup Ruby
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
         uses: ruby/setup-ruby@v1
         with:
@@ -678,7 +678,7 @@ jobs:
           FASTLANE_OPT_OUT_USAGE: "1"
         run: gem install fastlane --no-document
 
-      - name: Upload to Internal
+      - name: Upload Internal
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
         shell: bash
         env:
@@ -698,7 +698,7 @@ jobs:
             --skip_upload_images true \
             --skip_upload_screenshots true
 
-      - name: Promote to Beta
+      - name: Promote Beta
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
         shell: bash
         env:
