@@ -578,6 +578,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                         onPressed: _busy ? null : _pickPrintFile,
                         icon: Icons.picture_as_pdf_outlined,
                         label: 'Choose',
+                        isLoading: _busy,
                       ),
                     ),
                     const SizedBox(width: 10),

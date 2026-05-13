@@ -5,6 +5,7 @@ import 'package:chrome_extension/runtime.dart';
 import 'package:chrome_extension/src/internal_helpers.dart';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/auth_service.dart';
+import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
@@ -55,7 +56,7 @@ class _WebExtensionLoginPageState extends State<WebExtensionLoginPage> {
     }
   }
 
-  void _handleMessage(OnMessageEvent event) {
+  Future<void> _handleMessage(OnMessageEvent event) async {
     final message = event.message;
     if (message is! Map) return;
     final type = '${message['type'] ?? ''}';
@@ -104,6 +105,7 @@ class _WebExtensionLoginPageState extends State<WebExtensionLoginPage> {
       _status = 'Opening BRACU SSO...';
     });
     try {
+      MyApp.warmStartupCaches();
       await chrome.runtime.sendMessage(null, {
         'type': 'preconnect.startLogin',
       }, null);

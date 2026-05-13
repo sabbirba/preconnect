@@ -144,6 +144,14 @@ class MyApp extends StatefulWidget {
     await Future.wait(tasks.map((task) => task.catchError((_) {})));
   }
 
+  static void warmStartupCaches() {
+    unawaited(_warmStartupCaches());
+  }
+
+  static Future<void> warmStartupCachesAsync() {
+    return _warmStartupCaches();
+  }
+
   static ThemeMode _decodeTheme(String raw) {
     switch (raw) {
       case 'light':

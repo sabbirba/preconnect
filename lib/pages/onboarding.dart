@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/friend_schedule.dart';
 import 'package:preconnect/pages/free_labs.dart';
@@ -60,6 +61,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
         _isStartingWebLogin = true;
       });
       try {
+        MyApp.warmStartupCaches();
         await _webExtensionLoginFlow?.start();
       } catch (e) {
         if (!mounted) return;
@@ -107,7 +109,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     ).push(MaterialPageRoute<void>(builder: (_) => page));
   }
 
-  void _handleWebLogin(WebExtensionLoginState state) {
+  Future<void> _handleWebLogin(WebExtensionLoginState state) async {
     if (!mounted) return;
     if (state.isStarted) {
       setState(() {
@@ -119,6 +121,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
       setState(() {
         _isStartingWebLogin = false;
       });
+      await MyApp.warmStartupCachesAsync();
+      if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
       return;
     }
@@ -376,6 +380,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           ? null
                           : () => _completeOnboarding(context),
                       outlined: false,
+                      isLoading: _isStartingWebLogin,
                       label: 'Continue',
                       backgroundColor: const Color(0xFF1E5BFF),
                       foregroundColor: Colors.white,

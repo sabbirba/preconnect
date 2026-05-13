@@ -17,15 +17,6 @@ read_version() {
   printf '%s\n%s\n' "${version_name}" "${version_code}"
 }
 
-sync_chrome_manifest_version() {
-  local version_name="$1"
-  local manifest_file="${ROOT_DIR}/web/manifest.json"
-
-  if [[ -f "${manifest_file}" ]]; then
-    perl -0pi -e "s/\"version\":\\s*\"[^\"]+\"/\"version\": \"${version_name}\"/" "${manifest_file}"
-  fi
-}
-
 bump_release_version() {
   local version_name version_code last_tag_code base_code new_version_code new_version
   local version_output
@@ -46,7 +37,7 @@ bump_release_version() {
   new_version="${version_name}+${new_version_code}"
 
   perl -i -pe "s/^version:\\s*.*/version: ${new_version}/" "${ROOT_DIR}/pubspec.yaml"
-  sync_chrome_manifest_version "${version_name}"
+  perl -0pi -e "s/\"version\":\\s*\"[^\"]+\"/\"version\": \"${version_name}\"/" "${ROOT_DIR}/web/manifest.json"
 
   printf '%s\n%s\n' "${version_name}" "${new_version_code}"
 }
@@ -58,15 +49,8 @@ case "${1:-}" in
   bump-release)
     bump_release_version
     ;;
-  sync-manifest)
-    if [[ $# -ne 2 ]]; then
-      echo "Usage: $0 sync-manifest <version_name>" >&2
-      exit 1
-    fi
-    sync_chrome_manifest_version "$2"
-    ;;
   *)
-    echo "Usage: $0 {read|bump-release|sync-manifest <version_name>}" >&2
+    echo "Usage: $0 {read|bump-release}" >&2
     exit 1
     ;;
 esac
