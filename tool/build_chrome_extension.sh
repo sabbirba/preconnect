@@ -42,7 +42,12 @@ perl -0pi -e 's/serviceWorkerSettings:\s*\{\s*serviceWorkerVersion:\s*"[^"]+"[^}
   "${OUT_DIR}/flutter_bootstrap.js"
 rm -f "${OUT_DIR}/flutter_service_worker.js"
 
-if rg -n "unpkg\.com|eval\\(|new Function" "${OUT_DIR}"/*.js >/dev/null 2>&1; then
+perl -0pi -e 's#https://www\.gstatic\.com/flutter-canvaskit#canvaskit#g' \
+  "${OUT_DIR}/flutter_bootstrap.js" \
+  "${OUT_DIR}/flutter.js" \
+  "${OUT_DIR}/main.dart.js"
+
+if rg -n "unpkg\.com|gstatic\.com/flutter-canvaskit|eval\\(|new Function" "${OUT_DIR}"/*.js >/dev/null 2>&1; then
   echo "Unexpected remote code reference found in Chrome extension JS output" >&2
   exit 1
 fi
