@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: store-promotion-${{ github.ref }}
   cancel-in-progress: true
@@ -158,9 +161,15 @@ jobs:
           path: build/chrome-extension.zip
           if-no-files-found: error
 
+      - name: Auth GCloud
+        if: matrix.run_chrome
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+
       - name: Setup GCloud
         if: matrix.run_chrome
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
 
       - name: Auth Service
         if: matrix.run_chrome
