@@ -56,7 +56,7 @@ if [[ -f "${MANIFEST_FILE}" ]]; then
   if rg -n '"version_name"\s*:' "${MANIFEST_FILE}" >/dev/null 2>&1; then
     perl -0pi -e "s/\"version_name\":\s*\"[^\"]+\"/\"version_name\": \"${CHROME_VERSION_NAME}\"/" "${MANIFEST_FILE}"
   else
-    perl -0pi -e "s/(\"version\":\s*\"[^\"]+\")/\$1,\n  \"version_name\": \"${CHROME_VERSION_NAME}\"/" "${MANIFEST_FILE}"
+    perl -0pi -e "s/(\"version\":\s*\"[^\"]+\")/\$1,\\n  \"version_name\": \"${CHROME_VERSION_NAME}\"/" "${MANIFEST_FILE}"
   fi
 fi
 
