@@ -154,9 +154,9 @@ build/chrome-extension.zip
 
 ### Publish the Chrome extension
 
-The repo includes a GitHub Actions workflow that publishes the Chrome extension to the Chrome Web Store from the latest GitHub release asset:
+The repo includes a GitHub Actions workflow that builds the Chrome extension from the current checkout and publishes it to the Chrome Web Store:
 
-- Workflow: [`.github/workflows/play-production-promotion.yml`](.github/workflows/play-production-promotion.yml)
+- Workflow: [`.github/workflows/store-promotion.yml`](.github/workflows/store-promotion.yml)
 - Triggers:
   - `workflow_dispatch`
   - weekly schedule on Thursday at 10:00 PM Bangladesh Time
@@ -167,7 +167,8 @@ Required GitHub secrets:
 - `CHROME_WEBSTORE_EXTENSION_ID`
 - `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
 
-The workflow uses the Chrome Web Store API v2, the existing `./tool/build_chrome_extension.sh` release asset, and the same Google service account secret already used for Google Play promotion.
+The workflow uses the Chrome Web Store API v2, `./tool/build_chrome_extension.sh`, and the same Google service account secret already used for Google Play promotion.
+If a submission is already pending review, the workflow cancels that submission first, uploads the freshly built ZIP, and then publishes the new revision.
 
 Load `build/chrome-extension` as an unpacked extension in Chrome:
 
@@ -243,7 +244,7 @@ build/ios/ipa/
 | Platform         | Status       | Notes                                                                                   |
 | ---------------- | ------------ | --------------------------------------------------------------------------------------- |
 | Android          | Stable       | Signed APK/AAB are generated in release workflow when signing secrets are configured.   |
-| Chrome Extension | Stable       | Build locally with `./tool/build_chrome_extension.sh` or download the release artifact. |
+| Chrome Extension | Stable       | Build locally with `./tool/build_chrome_extension.sh` or let the store promotion workflow build and publish it directly. |
 | Web              | Not targeted | Use the Chrome extension build instead of a hosted Flutter web app.                     |
 | iOS              | Beta         | CI builds are enabled, but signing/export depends on Apple certificates/profiles.       |
 | macOS            | Beta         | CI builds and packages a DMG artifact from release workflow.                            |

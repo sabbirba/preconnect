@@ -1,0 +1,220 @@
+name: Store Promotion
+
+on:
+  schedule:
+    # Weekly Update on Thursday 10:00 PM Bangladesh Time.
+    - cron: "00 16 * * 4"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: store-promotion-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  promote:
+    name: Promote ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: google play
+            run_play: true
+            run_chrome: false
+          - target: chrome web store
+            run_play: false
+            run_chrome: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Read Android Package
+        if: matrix.run_play
+        id: android_meta
+        shell: bash
+        run: |
+          PACKAGE_NAME=$(grep -E 'applicationId\s*=' android/app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Check Google Play Credentials
+        if: matrix.run_play
+        id: play_auth
+        shell: bash
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -n "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not provided."
+          fi
+
+      - name: Set up Ruby for Fastlane
+        if: matrix.run_play && steps.play_auth.outputs.enabled == 'true'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Install Fastlane
+        if: matrix.run_play && steps.play_auth.outputs.enabled == 'true'
+        shell: bash
+        env:
+          FASTLANE_OPT_OUT_USAGE: "1"
+        run: gem install fastlane --no-document
+
+      - name: Promote Google Play Production
+        if: matrix.run_play && steps.play_auth.outputs.enabled == 'true'
+        shell: bash
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          FASTLANE_OPT_OUT_USAGE: "1"
+        run: |
+          fastlane supply \
+            --package_name "${{ steps.android_meta.outputs.package_name }}" \
+            --json_key_data "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" \
+            --track "beta" \
+            --track_promote_to "production" \
+            --track_promote_release_status "completed" \
+            --skip_upload_apk true \
+            --skip_upload_aab true \
+            --skip_upload_metadata true \
+            --skip_upload_changelogs true \
+            --skip_upload_images true \
+            --skip_upload_screenshots true
+
+      - name: Set up Flutter
+        if: matrix.run_chrome
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          cache: true
+
+      - name: Cache Flutter Pub
+        if: matrix.run_chrome
+        uses: actions/cache@v5.0.3
+        with:
+          path: |
+            ~/.pub-cache
+            C:\Users\runneradmin\AppData\Local\Pub\Cache
+          key: ${{ runner.os }}-flutter-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-pub-
+
+      - name: Flutter Pub Get
+        if: matrix.run_chrome
+        shell: bash
+        run: |
+          attempt=1
+          until [ $attempt -gt 3 ]; do
+            flutter pub get && break
+            echo "flutter pub get failed (attempt $attempt)."
+            attempt=$((attempt+1))
+            sleep $((5 * attempt))
+          done
+          if [ $attempt -gt 3 ]; then
+            echo "flutter pub get failed after 3 attempts."
+            exit 1
+          fi
+
+      - name: Create Chrome Extension Build Env
+        if: matrix.run_chrome
+        shell: bash
+        run: |
+          cat > .env <<'EOF'
+          FACULTY_REVIEWS_BEARER=${{ secrets.FACULTY_REVIEWS_BEARER }}
+          BANNER_AD_UNIT_ID=${{ secrets.BANNER_AD_UNIT_ID }}
+          INTERSTITIAL_AD_UNIT_ID=${{ secrets.INTERSTITIAL_AD_UNIT_ID }}
+          EOF
+
+      - name: Build Chrome Extension
+        if: matrix.run_chrome
+        shell: bash
+        run: |
+          attempt=1
+          until [ $attempt -gt 3 ]; do
+            ./tool/build_chrome_extension.sh && break
+            echo "Chrome extension build failed (attempt $attempt)."
+            attempt=$((attempt+1))
+            sleep $((10 * attempt))
+          done
+          if [ $attempt -gt 3 ]; then
+            echo "Chrome extension build failed after 3 attempts."
+            exit 1
+          fi
+
+      - name: Upload Built Chrome Extension Artifact
+        if: matrix.run_chrome
+        uses: actions/upload-artifact@v7
+        with:
+          name: store-promotion-chrome-extension
+          path: build/chrome-extension.zip
+          if-no-files-found: error
+
+      - name: Set up Google Cloud CLI
+        if: matrix.run_chrome
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Authenticate Chrome Web Store Service Account
+        if: matrix.run_chrome
+        id: auth
+        shell: bash
+        env:
+          CHROME_WEBSTORE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          key_file="$RUNNER_TEMP/chrome-web-store-service-account.json"
+          printf '%s' "$CHROME_WEBSTORE_SERVICE_ACCOUNT_JSON" > "$key_file"
+          chmod 600 "$key_file"
+          gcloud auth activate-service-account --key-file="$key_file"
+
+          access_token="$(
+            gcloud auth print-access-token \
+              --scopes=https://www.googleapis.com/auth/chromewebstore
+          )"
+          echo "::add-mask::$access_token"
+          echo "access_token=$access_token" >> "$GITHUB_OUTPUT"
+
+      - name: Publish Chrome Web Store Item
+        if: matrix.run_chrome
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          CHROME_WEBSTORE_PUBLISHER_ID: ${{ secrets.CHROME_WEBSTORE_PUBLISHER_ID }}
+          CHROME_WEBSTORE_EXTENSION_ID: ${{ secrets.CHROME_WEBSTORE_EXTENSION_ID }}
+        shell: bash
+        run: |
+          ITEM_NAME="publishers/${CHROME_WEBSTORE_PUBLISHER_ID}/items/${CHROME_WEBSTORE_EXTENSION_ID}"
+          STATUS_JSON="$(
+            curl -fsSL \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              -H "Accept: application/json" \
+              "https://chromewebstore.googleapis.com/v2/${ITEM_NAME}:fetchStatus" \
+            || true
+          )"
+
+          if printf '%s' "$STATUS_JSON" | jq -e '.submittedItemRevisionStatus != null' >/dev/null; then
+            echo "Active submission found; canceling pending review before upload."
+            curl -fsSL \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              -X POST \
+              "https://chromewebstore.googleapis.com/v2/${ITEM_NAME}:cancelSubmission"
+          else
+            echo "No active submission found; continuing with upload."
+          fi
+
+          curl \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -X POST \
+            -T build/chrome-extension.zip \
+            "https://chromewebstore.googleapis.com/upload/v2/${ITEM_NAME}:upload"
+
+          curl \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -X POST \
+            "https://chromewebstore.googleapis.com/v2/${ITEM_NAME}:publish"
