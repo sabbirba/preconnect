@@ -1,20 +1,142 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:dart_pdf_reader/dart_pdf_reader.dart';
+import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/android_network_assist.dart';
 import 'package:preconnect/tools/storage_keys.dart';
-import 'package:preconnect/tools/token_storage.dart';
 
 class CampusPrinterPage extends StatefulWidget {
   const CampusPrinterPage({super.key});
+
+  static _CampusPrinterBootstrap? _cachedBootstrap;
+  static Future<_CampusPrinterBootstrap>? _preloadFuture;
+
+  static Future<void> preload() async {
+    await _preloadBootstrap();
+  }
+
+  static void invalidateCache() {
+    _cachedBootstrap = null;
+    _preloadFuture = null;
+  }
+
+  static Future<void> clearStoredState() async {
+    await AppStorage.instance.remove('campus_printer_copies');
+    await AppStorage.instance.remove('campus_printer_history');
+    await AppStorage.instance.remove('campus_printer_last_host');
+    await AppStorage.instance.remove('campus_printer_last_wifi');
+    await AppStorage.instance.remove(StorageKeys.studentId);
+    await AppStorage.instance.remove(StorageKeys.fullName);
+    await AppStorage.instance.remove(StorageKeys.shortCode);
+    await AppStorage.instance.remove(StorageKeys.currentSemester);
+    await AppStorage.instance.remove(StorageKeys.departmentName);
+    await AppStorage.instance.remove(StorageKeys.studentEmail);
+    invalidateCache();
+  }
+
+  static Future<_CampusPrinterBootstrap> _preloadBootstrap() async {
+    final cached = _cachedBootstrap;
+    if (cached != null) return cached;
+    final inFlight = _preloadFuture;
+    if (inFlight != null) return inFlight;
+
+    final future = _loadBootstrap();
+    _preloadFuture = future;
+    try {
+      final bootstrap = await future;
+      _cachedBootstrap = bootstrap;
+      return bootstrap;
+    } finally {
+      if (identical(_preloadFuture, future)) {
+        _preloadFuture = null;
+      }
+    }
+  }
+
+  static Future<_CampusPrinterBootstrap> _loadBootstrap() async {
+    final copiesRaw = await AppStorage.instance.getInt('campus_printer_copies');
+    final history = await _loadHistorySnapshot();
+    final isLoggedIn = await AuthService().isLoggedIn();
+    final profile = await ProfileService().getProfile();
+    final studentId = (
+      (profile?['studentId'] ?? await AppStorage.instance.getString(StorageKeys.studentId) ?? '')
+    ).trim();
+    final fullName = (
+      (profile?['fullName'] ?? await AppStorage.instance.getString(StorageKeys.fullName) ?? '')
+    ).trim();
+    final shortCode = (
+      (profile?['shortCode'] ?? await AppStorage.instance.getString(StorageKeys.shortCode) ?? '')
+    ).trim();
+    final currentSemester = (
+      (profile?['currentSemester'] ?? await AppStorage.instance.getString(StorageKeys.currentSemester) ?? '')
+    ).trim();
+    final departmentName = (
+      (profile?['departmentName'] ?? await AppStorage.instance.getString(StorageKeys.departmentName) ?? '')
+    ).trim();
+    final hasProfile = isLoggedIn && fullName.isNotEmpty;
+    final guestName = hasProfile ? '' : 'Guest';
+    int? guestIdNumber;
+    final clientName = hasProfile ? fullName : guestName;
+    if (hasProfile) {
+      await AppStorage.instance.setString(StorageKeys.studentId, studentId);
+      await AppStorage.instance.setString(StorageKeys.fullName, fullName);
+      await AppStorage.instance.setString(StorageKeys.shortCode, shortCode);
+      if (currentSemester.isNotEmpty) {
+        await AppStorage.instance.setString(
+          StorageKeys.currentSemester,
+          currentSemester,
+        );
+      }
+      if (departmentName.isNotEmpty) {
+        await AppStorage.instance.setString(
+          StorageKeys.departmentName,
+          departmentName,
+        );
+      }
+    }
+    final copiesValue = copiesRaw == null
+        ? 1
+        : (copiesRaw < 1 ? 1 : (copiesRaw > 999 ? 999 : copiesRaw));
+
+    return _CampusPrinterBootstrap(
+      copies: copiesValue,
+      history: history,
+      studentId: studentId,
+      studentName: fullName,
+      studentShortCode: shortCode,
+      currentSemester: currentSemester,
+      departmentName: departmentName,
+      guestName: guestName,
+      guestId: guestIdNumber,
+      clientName: clientName,
+    );
+  }
+
+  static Future<List<_PrintHistoryEntry>> _loadHistorySnapshot() async {
+    final raw =
+        (await AppStorage.instance.getString('campus_printer_history') ?? '')
+            .trim();
+    if (raw.isEmpty) return const <_PrintHistoryEntry>[];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List<dynamic>) return const <_PrintHistoryEntry>[];
+      return decoded
+          .whereType<Map<String, dynamic>>()
+          .map(_PrintHistoryEntry.fromJson)
+          .where((entry) => entry.fileName.isNotEmpty)
+          .toList(growable: false);
+    } catch (_) {
+      return const <_PrintHistoryEntry>[];
+    }
+  }
 
   @override
   State<CampusPrinterPage> createState() => _CampusPrinterPageState();
@@ -31,7 +153,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const String _snackFileReadFailed = "Couldn't read selected file";
   static const String _snackNoPrinter = 'No printer detected';
   static const String _snackChooseFile = 'Select a file first';
-  static const String _snackIdentityRequired = 'Name + Student ID required';
+  static const String _snackIdentityRequired = 'Profile data required';
   static const String _snackPrintSent = 'Print sent';
   static const String _snackPrintFailed = 'Print failed';
 
@@ -42,12 +164,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _studentId = '';
   String _studentName = '';
   String _studentShortCode = '';
+  String _currentSemester = '';
+  String _departmentName = '';
   String _guestName = '';
-  String _guestId = '';
+  int? _guestId;
   String _clientName = '';
   String _duplexMode = 'OFF';
   String _printerHost = '';
-  bool _hasSignedInProfile = false;
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
   int _copies = 1;
   bool _busy = false;
@@ -60,74 +183,43 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   }
 
   Future<void> _bootstrap() async {
-    final hasSession = await TokenStorage.instance.readCachedHasSession();
-    await Future.wait([
-      _loadStudentProfile().catchError((e) {}),
-      _loadHistory().catchError((e) {}),
-      _loadPrinterPreferences().catchError((e) {}),
-    ]);
+    final bootstrap = await CampusPrinterPage._preloadBootstrap();
     if (!mounted) return;
     setState(() {
-      _hasSignedInProfile = hasSession ?? false;
+      _copies = bootstrap.copies;
+      _history = bootstrap.history;
+      _studentId = bootstrap.studentId;
+      _studentName = bootstrap.studentName;
+      _studentShortCode = bootstrap.studentShortCode;
+      _currentSemester = bootstrap.currentSemester;
+      _departmentName = bootstrap.departmentName;
+      _guestName = bootstrap.guestName;
+      _guestId = bootstrap.guestId;
+      _clientName = bootstrap.clientName;
     });
     unawaited(_discoverPrinter().catchError((e) {}));
   }
 
   Future<void> _refreshPrinterInfo() async {
-    await _loadHistory();
-    await _loadStudentProfile();
-    await _loadPrinterPreferences();
+    final bootstrap = await CampusPrinterPage._loadBootstrap();
+    if (!mounted) return;
+    setState(() {
+      _copies = bootstrap.copies;
+      _history = bootstrap.history;
+      _studentId = bootstrap.studentId;
+      _studentName = bootstrap.studentName;
+      _studentShortCode = bootstrap.studentShortCode;
+      _currentSemester = bootstrap.currentSemester;
+      _departmentName = bootstrap.departmentName;
+      _guestName = bootstrap.guestName;
+      _guestId = bootstrap.guestId;
+      _clientName = bootstrap.clientName;
+    });
     await _discoverPrinter();
   }
 
-  Future<void> _loadPrinterPreferences() async {
-    final copies = await AppStorage.instance.getString(_copiesKey);
-    if (!mounted) return;
-    setState(() {
-      _copies = int.tryParse(copies ?? '')?.clamp(1, 999) ?? 1;
-    });
-  }
-
   Future<void> _savePrinterPreferences() async {
-    await AppStorage.instance.setString(_copiesKey, _copies.toString());
-  }
-
-  Future<void> _loadStudentProfile() async {
-    var studentId =
-        (await AppStorage.instance.getString(StorageKeys.studentId) ?? '')
-            .trim();
-    var fullName =
-        (await AppStorage.instance.getString(StorageKeys.fullName) ?? '')
-            .trim();
-    var shortCode =
-        (await AppStorage.instance.getString(StorageKeys.shortCode) ?? '')
-            .trim();
-
-    if (studentId.isEmpty || fullName.isEmpty || shortCode.isEmpty) {
-      final profile = await ProfileService().getProfile(fromFetch: true);
-      studentId = studentId.isEmpty
-          ? (profile?['studentId'] ?? '').trim()
-          : studentId;
-      fullName = fullName.isEmpty
-          ? (profile?['fullName'] ?? '').trim()
-          : fullName;
-      shortCode = shortCode.isEmpty
-          ? (profile?['shortCode'] ?? '').trim()
-          : shortCode;
-    }
-    if (!mounted) return;
-    setState(() {
-      _studentId = studentId;
-      _studentName = fullName;
-      _studentShortCode = shortCode;
-      _clientName = _clientName.trim().isEmpty ? studentId : _clientName;
-      if (_guestName.trim().isEmpty) {
-        _guestName = fullName.isNotEmpty ? fullName : 'Guest';
-      }
-      if (_guestId.trim().isEmpty) {
-        _guestId = studentId;
-      }
-    });
+    await AppStorage.instance.setInt(_copiesKey, _copies);
   }
 
   Future<void> _discoverPrinter() async {
@@ -191,24 +283,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     final validated = status.validated ? '1' : '0';
     final captive = status.captive ? '1' : '0';
     return '$transport|$connected|$validated|$captive|$ssid';
-  }
-
-  Future<void> _loadHistory() async {
-    final raw = (await AppStorage.instance.getString(_historyKey) ?? '').trim();
-    if (raw.isEmpty) return;
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! List<dynamic>) return;
-      final history = decoded
-          .whereType<Map<String, dynamic>>()
-          .map(_PrintHistoryEntry.fromJson)
-          .where((entry) => entry.fileName.isNotEmpty)
-          .toList();
-      if (!mounted) return;
-      setState(() {
-        _history = history;
-      });
-    } catch (_) {}
   }
 
   Future<void> _addHistory(_PrintHistoryEntry entry) async {
@@ -361,12 +435,14 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     if (_busy) return;
     final host = _printerHost.trim();
     final studentId = _studentId.trim().isNotEmpty
-        ? _studentId.trim()
-        : _guestId.trim();
+      ? _studentId.trim()
+      : (_guestId != null ? _guestId.toString() : '');
     final user = studentId.isEmpty ? 'guest' : studentId;
     final clientName = _clientName.trim().isNotEmpty
         ? _clientName.trim()
-        : (_guestName.trim().isNotEmpty ? _guestName.trim() : studentId);
+        : (_studentName.trim().isNotEmpty
+            ? _studentName.trim()
+            : (_guestName.trim().isNotEmpty ? _guestName.trim() : studentId));
     final bytes = _fileBytes;
 
     if (host.isEmpty) {
@@ -458,20 +534,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   @override
   Widget build(BuildContext context) {
-    final displayGuestName = _guestName.trim().isNotEmpty
-        ? _guestName.trim()
-        : 'Guest';
-    final displayGuestId = _guestId.trim();
-    final showIdentityFields =
-        !_hasSignedInProfile &&
-        _studentName.trim().isEmpty &&
-        _studentId.trim().isEmpty;
     final canPrint =
         !_busy &&
         !_discovering &&
         _printerHost.isNotEmpty &&
-        (_guestId.isNotEmpty || _studentId.isNotEmpty) &&
-        (_guestName.isNotEmpty || _studentName.isNotEmpty);
+      (_studentId.isNotEmpty || _guestId != null) &&
+      (_studentName.isNotEmpty || _guestName.isNotEmpty);
     final printerSubtitle = _discovering
         ? 'Scanning...'
         : _printerHost.isNotEmpty
@@ -520,26 +588,33 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 10),
-                _StudentPrintDetails(
-                  name: _studentName,
-                  shortCode: _studentShortCode,
-                  studentId: _studentId,
-                ),
-                const SizedBox(height: 12),
-                if (showIdentityFields) ...[
+                if (_studentName.trim().isNotEmpty || _studentId.trim().isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  _StudentPrintDetails(
+                    name: _studentName,
+                    shortCode: _studentShortCode,
+                    semester: _currentSemester,
+                    departmentName: _departmentName,
+                    studentId: _studentId,
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (_studentName.trim().isEmpty && _studentId.trim().isEmpty)
                   _PrinterIdentityPanel(
-                    guestName: displayGuestName,
-                    guestId: displayGuestId,
+                    guestName: _guestName,
+                    guestId: _guestId,
                     onGuestNameChanged: (value) {
-                      setState(() => _guestName = value);
+                      setState(() {
+                        _guestName = value;
+                        _clientName = value.trim().isEmpty ? 'Guest' : value;
+                      });
                     },
                     onGuestIdChanged: (value) {
                       setState(() => _guestId = value);
                     },
                   ),
+                if (_studentName.trim().isEmpty && _studentId.trim().isEmpty)
                   const SizedBox(height: 12),
-                ],
                 _PrinterPreferencesPanel(
                   copies: _copies,
                   onCopiesChanged: (value) {
@@ -616,15 +691,45 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   }
 }
 
+class _CampusPrinterBootstrap {
+  const _CampusPrinterBootstrap({
+    required this.copies,
+    required this.history,
+    required this.studentId,
+    required this.studentName,
+    required this.studentShortCode,
+    required this.currentSemester,
+    required this.departmentName,
+    required this.guestName,
+    required this.guestId,
+    required this.clientName,
+  });
+
+  final int copies;
+  final List<_PrintHistoryEntry> history;
+  final String studentId;
+  final String studentName;
+  final String studentShortCode;
+  final String currentSemester;
+  final String departmentName;
+  final String guestName;
+  final int? guestId;
+  final String clientName;
+}
+
 class _StudentPrintDetails extends StatelessWidget {
   const _StudentPrintDetails({
     required this.name,
     required this.shortCode,
+    required this.semester,
+    required this.departmentName,
     required this.studentId,
   });
 
   final String name;
   final String shortCode;
+  final String semester;
+  final String departmentName;
   final String studentId;
 
   @override
@@ -632,6 +737,7 @@ class _StudentPrintDetails extends StatelessWidget {
     final rows = <({String label, String value})>[
       (label: 'Name', value: name.trim()),
       (label: 'Program', value: shortCode.trim()),
+      (label: 'Semester', value: semester.trim()),
       (label: 'Student ID', value: studentId.trim()),
     ].where((row) => row.value.isNotEmpty).toList();
 
@@ -687,6 +793,60 @@ class _StudentDetailLine extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PrinterIdentityPanel extends StatelessWidget {
+  const _PrinterIdentityPanel({
+    required this.guestName,
+    required this.guestId,
+    required this.onGuestNameChanged,
+    required this.onGuestIdChanged,
+  });
+
+  final String guestName;
+  final int? guestId;
+  final ValueChanged<String> onGuestNameChanged;
+  final ValueChanged<int?> onGuestIdChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          initialValue: guestName,
+          decoration: const InputDecoration(
+            labelText: 'Name',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+          onChanged: onGuestNameChanged,
+        ),
+        const SizedBox(height: 10),
+        TextFormField(
+          initialValue: guestId?.toString() ?? '',
+          decoration: const InputDecoration(
+            labelText: 'Student ID / PIN',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+          keyboardType: TextInputType.number,
+          inputFormatters: <TextInputFormatter>[
+            FilteringTextInputFormatter.digitsOnly,
+          ],
+          onChanged: (value) {
+            final trimmed = value.trim();
+            if (trimmed.isEmpty) {
+              onGuestIdChanged(null);
+              return;
+            }
+            final parsed = int.tryParse(trimmed);
+            onGuestIdChanged(parsed);
+          },
+        ),
+      ],
     );
   }
 }
@@ -1056,48 +1216,6 @@ class _PrinterDuplexPanel extends StatelessWidget {
       children: [
         buildOption('OFF', 'Single Side', first: true),
         buildOption('LEFT', 'Double Sided', first: false),
-      ],
-    );
-  }
-}
-
-class _PrinterIdentityPanel extends StatelessWidget {
-  const _PrinterIdentityPanel({
-    required this.guestName,
-    required this.guestId,
-    required this.onGuestNameChanged,
-    required this.onGuestIdChanged,
-  });
-
-  final String guestName;
-  final String guestId;
-  final ValueChanged<String> onGuestNameChanged;
-  final ValueChanged<String> onGuestIdChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          initialValue: guestName,
-          decoration: const InputDecoration(
-            labelText: 'Name',
-            border: OutlineInputBorder(),
-            isDense: true,
-          ),
-          onChanged: onGuestNameChanged,
-        ),
-        const SizedBox(height: 10),
-        TextFormField(
-          initialValue: guestId,
-          decoration: const InputDecoration(
-            labelText: 'Student ID / PIN',
-            border: OutlineInputBorder(),
-            isDense: true,
-          ),
-          onChanged: onGuestIdChanged,
-        ),
       ],
     );
   }

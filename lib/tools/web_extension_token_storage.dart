@@ -29,6 +29,7 @@ class WebExtensionTokenStorage {
     await chrome.storage.local.remove(const [
       PreconnectStorageKeys.accessToken,
       PreconnectStorageKeys.refreshToken,
+      PreconnectStorageKeys.cachedHasAuthSession,
     ]);
   }
 }

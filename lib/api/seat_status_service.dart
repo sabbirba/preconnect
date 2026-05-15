@@ -59,12 +59,7 @@ class SeatStatusService {
       final raw = await _fetchJson(ApiConfig.seatStatusDataUrl);
       return _parseConnectJson(raw);
     } catch (_) {
-      try {
-        final raw = await _fetchJson(ApiConfig.seatStatusDataFallbackUrl);
-        return _parseConnectJson(raw);
-      } catch (_) {
-        return const <int, SeatStatusDetailsResponse>{};
-      }
+      return const <int, SeatStatusDetailsResponse>{};
     }
   }
 

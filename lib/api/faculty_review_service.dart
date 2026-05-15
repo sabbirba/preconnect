@@ -296,12 +296,6 @@ class FacultyReviewService {
 
   String get _base => ApiConfig.seatStatusProxyBase;
 
-  Map<String, String> get _facultyBearerHeaders {
-    final token = ApiConfig.facultyReviewsBearer.trim();
-    if (token.isEmpty) return const <String, String>{};
-    return <String, String>{'Authorization': 'Bearer $token'};
-  }
-
   Future<FacultyReviewFeed> getFacultyReviews(
     String facultyInitial, {
     int limit = 20,
@@ -379,7 +373,6 @@ class FacultyReviewService {
     try {
       final response = await _client.publicGet(
         '$_base/data/facultyreviews',
-        headers: _facultyBearerHeaders,
       );
       final root = _decodeMap(response.body);
       final scoped = _scopedFacultyData(root, initial);
@@ -634,7 +627,6 @@ class FacultyReviewService {
     try {
       final response = await _client.publicGet(
         '$_base/data/facultyreviews',
-        headers: _facultyBearerHeaders,
       );
       final root = _decodeMap(response.body);
       final scoped = _scopedFacultyData(root, initial);

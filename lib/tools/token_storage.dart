@@ -74,6 +74,13 @@ class TokenStorage {
   }
 
   Future<bool?> readCachedHasSession() {
+    if (kIsWeb) {
+      return webExtensionStorageGet(_cachedHasSessionKey).then((value) {
+        final raw = value?.trim().toLowerCase();
+        if (raw == null || raw.isEmpty) return null;
+        return raw == 'true';
+      });
+    }
     return AppStorage.instance.getBool(_cachedHasSessionKey);
   }
 
@@ -102,6 +109,7 @@ class TokenStorage {
       await webExtensionStorageRemoveKeys(const [
         PreconnectStorageKeys.accessToken,
         PreconnectStorageKeys.refreshToken,
+        _cachedHasSessionKey,
       ]);
     }
   }

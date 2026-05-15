@@ -239,14 +239,13 @@ class _LoginPageState extends State<LoginPage> {
         return false;
       }
 
-      await _warmAuthenticatedData();
-
       RefreshBus.instance.notify(reason: 'auth');
       if (mounted) {
         Navigator.of(
           context,
         ).pushNamedAndRemoveUntil('/home', (route) => false);
       }
+      unawaited(_warmAuthenticatedData());
       return true;
     } catch (_) {
       return false;

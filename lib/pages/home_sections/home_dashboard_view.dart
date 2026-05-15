@@ -38,15 +38,26 @@ extension _HomeDashboardView on _HomeDashboardState {
                   child: FutureBuilder<_HomeData>(
                     future: _future,
                     builder: (context, snapshot) {
+                      final data = _latestData ?? snapshot.data;
                       final isLoading =
                           snapshot.connectionState == ConnectionState.waiting &&
-                          _latestData == null;
+                          data == null;
                       if (isLoading) {
-                        return const BracuLoading();
+                        return BracuRefreshScroll(
+                          onRefresh: _handleRefresh,
+                          showScrollTopButton: false,
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+                          child: _HomeDashboardLoadingShell(
+                            onOpenSupport: () =>
+                                showBracuFundingSupportSheet(context),
+                            onOpenSettings: () =>
+                                widget.onNavigate(HomeTab.settings),
+                            onLogout: widget.onLogout,
+                          ),
+                        );
                       }
 
-                      final data = _latestData ?? snapshot.data;
-                      final profile = data?.profile ?? {};
+                      final profile = data?.profile ?? const <String, String?>{};
                       final photoUrl = data?.photoUrl;
                       final ramadan =
                           data?.ramadan ??
@@ -84,9 +95,6 @@ extension _HomeDashboardView on _HomeDashboardState {
                             const <String, ExamScheduleOverride>{},
                       );
                       final isExamWeekActive = examWeekStatus.isActive;
-                      final visibleEntries = isTodayHoliday
-                          ? <_ScheduleEntry>[]
-                          : todayEntries;
                       final nextCountdown = _nextDeadlineCountdown(
                         data?.sections ?? const <section.Section>[],
                         data?.examOverrides ??
@@ -98,6 +106,11 @@ extension _HomeDashboardView on _HomeDashboardState {
                         data?.examOverrides ??
                             const <String, ExamScheduleOverride>{},
                       );
+                      final visibleEntries = isTodayHoliday
+                          ? <_ScheduleEntry>[]
+                          : (todayExams.isNotEmpty || isExamWeekActive
+                              ? <_ScheduleEntry>[]
+                              : todayEntries);
                       return BracuRefreshScroll(
                         onRefresh: _handleRefresh,
                         showScrollTopButton: false,
@@ -278,6 +291,15 @@ extension _HomeDashboardView on _HomeDashboardState {
                                       ),
                                     ),
                             ],
+                            if (cardVisibility.showTodaySchedule &&
+                                todayExams.isEmpty &&
+                                visibleEntries.isEmpty &&
+                                !isTodayHoliday &&
+                                !isExamWeekActive)
+                              const Padding(
+                                padding: EdgeInsets.only(top: 8, bottom: 2),
+                                child: _LoadingLine(),
+                              ),
                             if (cardVisibility.showRamadanCard && isRamadan)
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
@@ -458,8 +480,13 @@ extension _HomeDashboardView on _HomeDashboardState {
                               ),
                             ],
                             const SizedBox(height: 12),
+                            if (data == null)
+                              const Padding(
+                                padding: EdgeInsets.only(bottom: 12),
+                                child: _LoadingLine(),
+                              ),
                             BracuActionBannerCard(
-                              icon: Icons.map_outlined,
+                              icon: null,
                               title: 'Campus Map & Contacts',
                               subtitle: 'Location and emergency contacts',
                               iconColor: const Color(0xFF22B573),
@@ -663,5 +690,153 @@ class _InlineBannerAdState extends State<_InlineBannerAd> {
       default:
         return null;
     }
+  }
+}
+
+class _HomeDashboardLoadingShell extends StatelessWidget {
+  const _HomeDashboardLoadingShell({
+    required this.onOpenSupport,
+    required this.onOpenSettings,
+    required this.onLogout,
+  });
+
+  final Future<void> Function() onOpenSupport;
+  final VoidCallback onOpenSettings;
+  final Future<void> Function() onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: BracuPalette.card(context),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: BracuPalette.textSecondary(
+                    context,
+                  ).withValues(alpha: 0.18),
+                ),
+              ),
+              alignment: Alignment.center,
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    BracuPalette.primary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 92,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: BracuPalette.card(context),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: 148,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: BracuPalette.card(context),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: BracuPalette.card(context),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: BracuPalette.textSecondary(
+                    context,
+                  ).withValues(alpha: 0.18),
+                ),
+              ),
+              alignment: Alignment.center,
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    BracuPalette.primary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        StudentOverviewCard(
+          studentId: '',
+          shortCode: '',
+          department: '',
+          currentSemester: '',
+          currentSessionSemesterId: '',
+          onOpenSupport: onOpenSupport,
+          onOpenSettings: onOpenSettings,
+          onLogout: onLogout,
+          countdown: const _LoadingLine(),
+        ),
+        const SizedBox(height: 12),
+        const _LoadingLine(),
+        const SizedBox(height: 12),
+        const _LoadingLine(),
+        const SizedBox(height: 12),
+        const _LoadingLine(),
+      ],
+    );
+  }
+}
+
+class _LoadingLine extends StatelessWidget {
+  const _LoadingLine();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 56,
+      decoration: BoxDecoration(
+        color: BracuPalette.card(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: BracuPalette.textSecondary(context).withValues(alpha: 0.18),
+        ),
+      ),
+      child: Center(
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.6,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              BracuPalette.primary,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

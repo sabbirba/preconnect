@@ -31,6 +31,11 @@ class StudentOverviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final titleColor = BracuPalette.textPrimary(context);
+    final hasProfileData = studentId.trim().isNotEmpty ||
+        shortCode.trim().isNotEmpty ||
+        department.trim().isNotEmpty ||
+        currentSemester.trim().isNotEmpty ||
+        currentSessionSemesterId.trim().isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -79,14 +84,17 @@ class StudentOverviewCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _OverviewHeader(
-                  isDark: isDark,
-                  studentId: studentId,
-                  shortCode: shortCode,
-                  department: department,
-                  currentSemester: currentSemester,
-                  currentSessionSemesterId: currentSessionSemesterId,
-                ),
+                if (hasProfileData)
+                  _OverviewHeader(
+                    isDark: isDark,
+                    studentId: studentId,
+                    shortCode: shortCode,
+                    department: department,
+                    currentSemester: currentSemester,
+                    currentSessionSemesterId: currentSessionSemesterId,
+                  )
+                else
+                  _OverviewLoadingCard(isDark: isDark),
                 if (countdown != null) ...[
                   const SizedBox(height: 10),
                   countdown!,
@@ -96,6 +104,42 @@ class StudentOverviewCard extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _OverviewLoadingCard extends StatelessWidget {
+  const _OverviewLoadingCard({required this.isDark});
+
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = BracuPalette.textSecondary(
+      context,
+    ).withValues(alpha: isDark ? 0.35 : 0.18);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        color: BracuPalette.card(context),
+        border: Border.all(color: borderColor),
+      ),
+      child: SizedBox(
+        height: 54,
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.4,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                BracuPalette.primary,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -234,10 +278,9 @@ class _OverviewHeader extends StatelessWidget {
         : (fallbackSemester.isNotEmpty ? fallbackSemester : '');
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        color: BracuPalette.card(context),
-        border: Border.all(color: baseBorderColor),
+      decoration: _overviewCardDecoration(
+        context,
+        borderColor: baseBorderColor,
       ),
       child: Row(
         children: [
@@ -288,4 +331,15 @@ class _OverviewHeader extends StatelessWidget {
     final right = semester.isEmpty ? '' : semester;
     return '${left.toUpperCase()} ${right.toUpperCase()}'.trim();
   }
+}
+
+BoxDecoration _overviewCardDecoration(
+  BuildContext context, {
+  required Color borderColor,
+}) {
+  return BoxDecoration(
+    borderRadius: BorderRadius.circular(14),
+    color: BracuPalette.card(context),
+    border: Border.all(color: borderColor),
+  );
 }

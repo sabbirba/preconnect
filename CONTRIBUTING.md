@@ -1,24 +1,319 @@
 # Contributing
 
-Thanks for your interest in contributing.
+Thanks for your interest in contributing. PreConnect is a student-run Flutter app, and beginner contributions are welcome.
 
-## Development Setup
+## Start Here
 
-1. Install Flutter for your platform.
-2. Run `flutter pub get`.
-3. Run `flutter run`.
+Use this guide when you want to build, test, or contribute to the app. You do not need production secrets, release signing keys, or store credentials for normal contribution work.
 
-## Local Configuration
+## What You Need
 
-1. Copy `.env.example` to `.env` and fill values as needed.
-2. For Android release builds, create `android/key.properties` with your keystore values.
+- Git
+- Flutter stable, using Dart from the Flutter SDK
+- Android Studio with Android SDK
+- An Android emulator or physical Android device
+- Chrome for Chrome extension testing
+- Xcode only if you plan to work on iOS or macOS
 
-## Code Quality
+On macOS, the Android Studio JDK is recommended for Android builds:
 
-1. Format: `dart format .`
-2. Analyze: `flutter analyze`
+```bash
+/Applications/Android Studio.app/Contents/jbr/Contents/Home
+```
 
-## Security & Privacy
+## First-Time Setup
 
-- Do not commit secrets, tokens, or real credentials.
-- Keep `.env`, `android/key.properties`, and any keystores out of git.
+Clone the repo and install packages:
+
+```bash
+git clone https://github.com/sabbirba/preconnect.git
+cd preconnect
+flutter pub get
+```
+
+Check your local Flutter setup:
+
+```bash
+flutter doctor -v
+flutter devices
+```
+
+Fix the Flutter Doctor items for the platform you want to run. It is okay if iOS or macOS checks fail when you only plan to work on Android or the Chrome extension.
+
+## Environment File
+
+The helper scripts can run without `.env`. When `.env` is missing, they create a temporary empty env file so optional dart defines stay blank and normal app builds can continue.
+
+Create a local `.env` only when you need overrides:
+
+```bash
+cp .env.example .env
+```
+
+Blank values are okay for most development:
+
+- normal app development
+- debug Android builds
+- analyzer checks
+- unit tests
+- Chrome extension smoke builds
+
+## Optional Env Values
+
+Only fill env values when you are testing the related feature:
+
+| Key | Needed for |
+| --- | ---------- |
+| `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER` | Play Integrity checks |
+| `REWARDED_AD_UNIT_ID` | rewarded ad testing |
+| `BANNER_AD_UNIT_ID` | banner ad testing |
+| `INTERSTITIAL_AD_UNIT_ID` | interstitial ad testing |
+| `ADS_APP_ID_IOS` | iOS ad configuration |
+| `DEVELOPMENT_TEAM` | iOS signing |
+| `storeFile` | Android release signing |
+| `storePassword` | Android release signing |
+| `keyAlias` | Android release signing |
+| `keyPassword` | Android release signing |
+
+Do not commit `.env`, `android/key.properties`, keystores, tokens, or real credentials.
+
+## Repo Tour
+
+- [lib/main.dart](lib/main.dart): mobile and desktop app entrypoint
+- [web/extension_app.dart](web/extension_app.dart): Chrome extension entrypoint
+- [lib/app.dart](lib/app.dart): app shell, routing, and bootstrap
+- [lib/api](lib/api): API clients and service classes
+- [lib/model](lib/model): data models and parsing helpers
+- [lib/pages](lib/pages): screens and feature UI
+- [lib/tools](lib/tools): storage, platform helpers, tokens, and utilities
+- [test](test): automated tests
+- [tool](tool): project scripts
+
+## Pick a Task
+
+Good first contributions include:
+
+- fixing a typo or unclear text
+- improving a small UI state
+- adding a focused parsing or model test
+- making setup docs clearer
+- fixing a small bug with clear reproduction steps
+
+Keep one PR about one topic. Smaller PRs are easier to review and merge.
+
+## Create a Branch
+
+Create a branch with a short, descriptive name:
+
+```bash
+git checkout -b fix/short-description
+```
+
+Examples:
+
+- `fix/schedule-empty-state`
+- `docs/fixing-bugs`
+- `test/seat-status-parser`
+
+## Run the App
+
+Start an emulator or connect a device, then run:
+
+```bash
+flutter run
+```
+
+If you need local env values:
+
+```bash
+flutter run --dart-define-from-file=.env
+```
+
+If Flutter cannot find a device:
+
+```bash
+flutter devices
+```
+
+Then start an Android emulator from Android Studio or enable USB debugging on a physical Android device.
+
+## Run a Specific Target
+
+Android:
+
+```bash
+flutter run -d android
+```
+
+Android with env values:
+
+```bash
+flutter run -d android --dart-define-from-file=.env
+```
+
+macOS:
+
+```bash
+flutter run -d macos
+```
+
+macOS with env values:
+
+```bash
+flutter run -d macos --dart-define-from-file=.env
+```
+
+Chrome debug target:
+
+```bash
+flutter run -d chrome
+```
+
+Chrome debug target with env values:
+
+```bash
+flutter run -d chrome --dart-define-from-file=.env
+```
+
+The supported browser product is the Chrome extension. The Chrome debug target is still useful for quick UI checks.
+
+## Chrome Extension Testing
+
+Build the extension:
+
+```bash
+./tool/build_chrome_extension.sh
+```
+
+The extension build outputs:
+
+```bash
+build/chrome-extension/
+build/chrome-extension.zip
+```
+
+Load the unpacked extension:
+
+1. Open `chrome://extensions`.
+2. Turn on Developer mode.
+3. Click Load unpacked.
+4. Select `build/chrome-extension`.
+
+The script can run even when `.env` is missing; optional dart defines are treated as blank.
+
+## Code Quality Checks
+
+Run these before a PR:
+
+```bash
+dart format --set-exit-if-changed .
+flutter analyze
+flutter test
+```
+
+Current tests live in [test/schedule_parsing_test.dart](test/schedule_parsing_test.dart). Add focused tests when you change parsing, models, service behavior, or shared helpers.
+
+## Local Build Smoke Checks
+
+These are useful before changes that touch platform config, release scripts, extension files, or native code.
+
+Android APK:
+
+```bash
+flutter build apk --release
+```
+
+Android APK with env values:
+
+```bash
+flutter build apk --release --dart-define-from-file=.env
+```
+
+Android app bundle:
+
+```bash
+flutter build appbundle --release
+```
+
+Android app bundle with env values:
+
+```bash
+flutter build appbundle --release --dart-define-from-file=.env
+```
+
+iOS no-codesign build:
+
+```bash
+flutter build ipa --no-codesign
+```
+
+iOS no-codesign build with env values:
+
+```bash
+flutter build ipa --no-codesign --dart-define-from-file=.env
+```
+
+Chrome extension:
+
+```bash
+./tool/build_chrome_extension.sh
+```
+
+Debug builds do not need signing setup. Real Android release signing uses `.env`, Gradle properties, or `android/key.properties`; keep signing files out of git.
+
+## Manual App Test
+
+Use this quick pass before opening a PR:
+
+1. Launch the app from a clean build.
+2. Confirm the app opens without a crash.
+3. Visit the screen or flow you changed.
+4. Try the empty, loading, success, and error states when they apply.
+5. Rotate or resize the screen if the UI is responsive.
+6. Check that text is readable on a small device.
+7. Check that buttons are tappable on a small device.
+8. Run `flutter test` after the manual pass.
+
+For login-dependent screens, note whether you tested with a real BRACU account, cached/offline data, or a non-login fallback path.
+
+## PR Checklist
+
+Before opening a PR, confirm:
+
+- the change is focused
+- formatting passes
+- analyzer passes
+- tests pass
+- manual app test is done when UI or behavior changed
+- screenshots or screen recordings are attached for visible UI changes
+- skipped checks are mentioned with a reason
+
+## PR Description
+
+Include:
+
+- what changed
+- why it changed
+- how you tested it
+- device or emulator used
+- linked issue, when one exists
+
+## Community Help
+
+Use [GitHub issues](https://github.com/sabbirba/preconnect/issues) for app questions, contributor onboarding, project direction, bugs, and scoped feature requests until a public chat server invite is available.
+
+For bugs, include:
+
+- platform
+- app version or commit
+- steps to reproduce
+- expected behavior
+- actual behavior
+- screenshot or screen recording when useful
+
+## Security and Privacy
+
+- Do not commit secrets, tokens, private student data, or real credentials.
+- Avoid logging access tokens or personal data.
+- Keep `.env`, `android/key.properties`, and keystores out of git.
+- Report security-sensitive issues privately using [SECURITY.md](SECURITY.md).

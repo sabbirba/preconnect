@@ -1,14 +1,15 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/friend_schedule_sections/compare_schedules.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 class FriendDetailPage extends StatefulWidget {
@@ -75,9 +76,11 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
         showAppSnackBar(context, 'Please log in to compare schedules');
         return;
       }
-      final myProfile = await ProfileService().getProfile();
-      if (!mounted) return;
-      final myPhotoUrl = ApiConfig.photoUrl(myProfile?['photoFilePath']);
+      final myPhotoPath =
+          (await AppStorage.instance.getString(StorageKeys.photoFilePath) ??
+                  '')
+              .trim();
+      final myPhotoUrl = ApiConfig.photoUrl(myPhotoPath);
       navigator.push(
         MaterialPageRoute(
           builder: (context) => CompareSchedulesPage(

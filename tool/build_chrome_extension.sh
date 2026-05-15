@@ -27,6 +27,21 @@ if (( CHROME_BUILD_NUMBER > 65535 )); then
 fi
 CHROME_VERSION="${APP_VERSION}.${CHROME_BUILD_NUMBER}"
 CHROME_VERSION_NAME="${APP_VERSION}.${APP_BUILD_NUMBER}"
+ENV_FILE="${ROOT_DIR}/.env"
+TEMP_ENV_FILE=""
+
+cleanup() {
+  if [[ -n "${TEMP_ENV_FILE}" ]]; then
+    rm -f "${TEMP_ENV_FILE}"
+  fi
+}
+trap cleanup EXIT
+
+if [[ ! -f "${ENV_FILE}" ]]; then
+  TEMP_ENV_FILE="$(mktemp)"
+  ENV_FILE="${TEMP_ENV_FILE}"
+  echo "No .env file found; continuing with empty optional dart defines." >&2
+fi
 
 for font_file in \
   "${ROOT_DIR}/assets/fonts/Roboto-Regular.ttf" \
@@ -47,7 +62,7 @@ flutter build web \
   --csp \
   --no-web-resources-cdn \
   --no-wasm-dry-run \
-  --dart-define-from-file="${ROOT_DIR}/.env" \
+  --dart-define-from-file="${ENV_FILE}" \
   --dart-define="APP_VERSION=${APP_VERSION}" \
   --dart-define="APP_BUILD_NUMBER=${APP_BUILD_NUMBER}" \
   --target="${ROOT_DIR}/web/extension_app.dart" \

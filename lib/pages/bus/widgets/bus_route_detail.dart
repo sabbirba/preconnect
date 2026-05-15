@@ -313,24 +313,48 @@ class _BusMapShimmerPlaceholder extends StatelessWidget {
           Positioned(
             top: 18,
             left: 18,
-            child: BracuSkeletonBox(width: 110, height: 28, radius: 14),
+            child: _PlaceholderPill(width: 110, height: 28, radius: 14),
           ),
           Positioned(
             right: 18,
             top: 18,
-            child: BracuSkeletonBox(width: 44, height: 44, radius: 14),
+            child: _PlaceholderPill(width: 44, height: 44, radius: 14),
           ),
           Positioned(
             right: 18,
             bottom: 18,
-            child: BracuSkeletonBox(width: 86, height: 86, radius: 24),
+            child: _PlaceholderPill(width: 86, height: 86, radius: 24),
           ),
           Positioned(
             left: 18,
             bottom: 18,
-            child: BracuSkeletonBox(width: 120, height: 20, radius: 10),
+            child: _PlaceholderPill(width: 120, height: 20, radius: 10),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PlaceholderPill extends StatelessWidget {
+  const _PlaceholderPill({
+    required this.width,
+    required this.height,
+    required this.radius,
+  });
+
+  final double width;
+  final double height;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(radius),
       ),
     );
   }

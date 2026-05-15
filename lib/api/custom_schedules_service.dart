@@ -12,6 +12,10 @@ class CustomSchedulesService {
 
   static const String cacheKey = 'custom_schedules_v1';
 
+  Future<void> clearCache() async {
+    await _store.remove(cacheKey);
+  }
+
   Future<List<CustomSchedule>> getItems({bool forceRefresh = false}) async {
     final cached = await _readCachedItems();
     return cached ?? const <CustomSchedule>[];

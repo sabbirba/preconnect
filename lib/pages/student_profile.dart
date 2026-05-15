@@ -31,6 +31,7 @@ class _StudentProfileState extends State<StudentProfile>
     with SingleTickerProviderStateMixin, RefreshBusState {
   static _StudentProfileSnapshot? _cachedSnapshot;
   static Future<_StudentProfileSnapshot>? _preloadFuture;
+  static const Duration _emptyRetryInterval = Duration(seconds: 5);
   Map<String, String?>? _profile;
   String? _photoUrl;
   List<PaymentInfo> _payments = [];
@@ -39,6 +40,7 @@ class _StudentProfileState extends State<StudentProfile>
   ProgressSummary? _progressSummary;
   bool _isRefreshing = false;
   late final AnimationController _refreshController;
+  Timer? _emptyRetryTimer;
 
   @override
   void initState() {
@@ -52,6 +54,7 @@ class _StudentProfileState extends State<StudentProfile>
       _seedCachedSnapshot();
     }
     unawaited(_warmAndBind());
+    _scheduleEmptyRetry();
     bindRefreshBus(_onRefreshSignal);
   }
 
@@ -94,9 +97,21 @@ class _StudentProfileState extends State<StudentProfile>
 
   @override
   void dispose() {
+    _emptyRetryTimer?.cancel();
     _refreshController.dispose();
     unbindRefreshBus(_onRefreshSignal);
     super.dispose();
+  }
+
+  void _scheduleEmptyRetry() {
+    _emptyRetryTimer?.cancel();
+    if (_profile != null) return;
+    _emptyRetryTimer = Timer(_emptyRetryInterval, () {
+      if (!mounted || _isRefreshing) return;
+      if (_profile != null) return;
+      unawaited(_refreshProfile(notify: false));
+      _scheduleEmptyRetry();
+    });
   }
 
   void _onRefreshSignal() {
@@ -271,6 +286,7 @@ class _StudentProfileState extends State<StudentProfile>
         _advising = snapshot.advising;
         _progressSummary = snapshot.progressSummary;
       });
+      _scheduleEmptyRetry();
       _cachedSnapshot = snapshot;
       RefreshBus.instance.notify(reason: 'student_profile');
     } finally {
@@ -287,11 +303,7 @@ class _StudentProfileState extends State<StudentProfile>
 
   @override
   Widget build(BuildContext context) {
-    final isLoading =
-        _profile == null &&
-        _payments.isEmpty &&
-        _attendances.isEmpty &&
-        _progressSummary == null;
+    final isLoading = _profile == null;
     return BracuPageScaffold(
       title: 'Student Profile',
       subtitle: 'Academic & Finance',

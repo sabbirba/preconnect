@@ -148,6 +148,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
           ClassSchedule.preload().catchError((_) {}),
           ExamSchedule.preload().catchError((_) {}),
           CustomSchedulesPage.preload().catchError((_) {}),
+          CampusPrinterPage.preload().catchError((_) {}),
         ]).then((_) async {
           await QuietModeController.instance.refresh();
         }),
@@ -350,7 +351,6 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initial = name.isNotEmpty ? name.trim().characters.first : 'S';
     final textSecondary = BracuPalette.textSecondary(context);
     final textPrimary = BracuPalette.textPrimary(context);
     return Row(
@@ -361,50 +361,21 @@ class _TopBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             child: Row(
               children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E6BE3),
+                if (photoUrl != null) ...[
+                  ClipRRect(
                     borderRadius: BorderRadius.circular(14),
+                    child: CachedImage(
+                      url: photoUrl!,
+                      fit: BoxFit.cover,
+                      width: 42,
+                      height: 42,
+                      filterQuality: FilterQuality.low,
+                      placeholder: const SizedBox.shrink(),
+                      error: const SizedBox.shrink(),
+                    ),
                   ),
-                  alignment: Alignment.center,
-                  child: photoUrl == null
-                      ? Text(
-                          initial.toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        )
-                      : ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
-                          child: CachedImage(
-                            url: photoUrl!,
-                            fit: BoxFit.cover,
-                            width: 42,
-                            height: 42,
-                            filterQuality: FilterQuality.low,
-                            placeholder: const BracuSkeletonBox(
-                              width: 42,
-                              height: 42,
-                              radius: 14,
-                            ),
-                            error: Center(
-                              child: Text(
-                                initial.toUpperCase(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                ),
-                const SizedBox(width: 12),
+                  const SizedBox(width: 12),
+                ],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -788,6 +759,21 @@ class _HomeData {
   final HomeCardVisibility cardVisibility;
   final String? scheduleJson;
 
+  bool get hasRequiredProfileFields {
+    final profileData = profile;
+    if (profileData == null) return false;
+    final studentId = (profileData['studentId'] ?? '').trim();
+    final fullName = (profileData['fullName'] ?? '').trim();
+    final shortCode = (profileData['shortCode'] ?? '').trim();
+    final departmentName = (profileData['departmentName'] ?? '').trim();
+    final currentSemester = (profileData['currentSemester'] ?? '').trim();
+    return studentId.isNotEmpty &&
+        fullName.isNotEmpty &&
+        shortCode.isNotEmpty &&
+        departmentName.isNotEmpty &&
+        currentSemester.isNotEmpty;
+  }
+
   _HomeData copyWith({HomeCardVisibility? cardVisibility}) {
     return _HomeData(
       profile: profile,
@@ -919,7 +905,7 @@ class _HomeData {
         );
       }
     }
-    return _HomeData(
+    final data = _HomeData(
       profile: profile,
       entries: entries,
       photoUrl: json['photoUrl']?.toString(),
@@ -932,6 +918,7 @@ class _HomeData {
       cardVisibility: cardVisibility,
       scheduleJson: scheduleJson,
     );
+    return data.hasRequiredProfileFields ? data : null;
   }
 }
 

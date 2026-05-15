@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/notification_service.dart';
-import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/progress_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/api/grade_sheet_service.dart';
@@ -18,6 +17,7 @@ import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/reward_support_controller.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/token_storage.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/web_shared.dart';
@@ -295,7 +295,7 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
               CachedImage(
                 url: widget.imageUrls.first,
                 fit: widget.imageFit,
-                placeholder: const BracuSkeletonBox(height: 220, radius: 8),
+                placeholder: const SizedBox.shrink(),
                 error: const _BracuImageErrorFallback(),
               )
             else
@@ -312,7 +312,7 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
                   return CachedImage(
                     url: widget.imageUrls[imageIndex],
                     fit: widget.imageFit,
-                    placeholder: const BracuSkeletonBox(height: 220, radius: 8),
+                    placeholder: const SizedBox.shrink(),
                     error: const _BracuImageErrorFallback(),
                   );
                 },
@@ -539,7 +539,6 @@ List<section.Section> buildCurrentSectionsForCalculator(
 Future<void> openCgpaCalculatorPage(BuildContext context) async {
   try {
     final info = await ProgressService().getProgress();
-    final profile = await ProfileService().getProfile();
     final semesterSessionId = await resolveCurrentSessionSemesterId();
     if (semesterSessionId == null) {
       if (!context.mounted) return;
@@ -559,7 +558,9 @@ Future<void> openCgpaCalculatorPage(BuildContext context) async {
       return;
     }
 
-    final currentCgpa = (profile?['cgpa'] ?? '').trim();
+    final currentCgpa =
+        (await AppStorage.instance.getString(StorageKeys.cgpa) ?? '').trim();
+    if (!context.mounted) return;
     final sections = buildCurrentSectionsForCalculator(info, scheduleJson);
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -579,14 +580,14 @@ Future<void> openCgpaCalculatorPage(BuildContext context) async {
 class BracuActionBannerCard extends StatelessWidget {
   const BracuActionBannerCard({
     super.key,
-    required this.icon,
+    this.icon,
     required this.title,
     required this.subtitle,
     required this.onTap,
     this.iconColor = BracuPalette.primary,
   });
 
-  final IconData icon;
+  final IconData? icon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
@@ -603,24 +604,26 @@ class BracuActionBannerCard extends StatelessWidget {
           color: iconColor.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(18),
         ),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+              if (icon != null) ...[
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 18),
                 ),
-                child: Icon(icon, color: iconColor, size: 18),
-              ),
-              const SizedBox(width: 12),
+                const SizedBox(width: 12),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

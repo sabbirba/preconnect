@@ -135,18 +135,6 @@ class FriendAvatar extends StatelessWidget {
   final double size;
   final double radius;
 
-  String _initials() {
-    final parts = name
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((p) => p.isNotEmpty)
-        .toList();
-    if (parts.isEmpty) return 'F';
-    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-    return (parts.first.substring(0, 1) + parts[1].substring(0, 1))
-        .toUpperCase();
-  }
-
   String? _resolvePhotoUrl(String? raw) {
     final value = raw?.trim() ?? '';
     if (value.isEmpty) return null;
@@ -160,56 +148,17 @@ class FriendAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fontSize = size > 50 ? 20.0 : 14.0;
     final resolvedPhotoUrl = _resolvePhotoUrl(photoUrl);
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: BracuPalette.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(radius),
-      ),
-      child: resolvedPhotoUrl == null
-          ? Center(
-              child: Text(
-                _initials(),
-                style: TextStyle(
-                  color: BracuPalette.primary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: fontSize,
-                ),
-              ),
-            )
-          : ClipRRect(
-              borderRadius: BorderRadius.circular(radius),
-              child: CachedImage(
-                url: resolvedPhotoUrl,
-                fit: BoxFit.cover,
-                placeholder: _avatarFallback(fontSize),
-                error: Center(
-                  child: Text(
-                    _initials(),
-                    style: TextStyle(
-                      color: BracuPalette.primary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: fontSize,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-    );
-  }
-
-  Widget _avatarFallback(double fontSize) {
-    return Center(
-      child: Text(
-        _initials(),
-        style: TextStyle(
-          color: BracuPalette.primary,
-          fontWeight: FontWeight.w700,
-          fontSize: fontSize,
-        ),
+    if (resolvedPhotoUrl == null) return const SizedBox.shrink();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: CachedImage(
+        url: resolvedPhotoUrl,
+        fit: BoxFit.cover,
+        width: size,
+        height: size,
+        placeholder: const SizedBox.shrink(),
+        error: const SizedBox.shrink(),
       ),
     );
   }

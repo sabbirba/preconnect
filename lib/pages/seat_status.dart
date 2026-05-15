@@ -288,9 +288,6 @@ class _SeatStatusCard extends StatelessWidget {
     final faculty = item.faculty;
     final facultyName = faculty?.staffName.trim() ?? '';
     final facultyEmail = faculty?.email.trim() ?? '';
-    final facultyAvatarName = facultyName.isNotEmpty
-        ? facultyName
-        : item.facultyInitial.trim();
     final classLines = _scheduleLines(item.classSchedule);
     final hasMidExam = _hasExam(
       item.midExamDate,
@@ -374,15 +371,17 @@ class _SeatStatusCard extends StatelessWidget {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          FriendAvatar(
-                            name: facultyAvatarName.isNotEmpty
-                                ? facultyAvatarName
-                                : courseHeader,
-                            photoUrl: faculty?.imgUrl,
-                            size: 40,
-                            radius: 20,
-                          ),
-                          const SizedBox(width: 10),
+                          if (faculty?.imgUrl?.trim().isNotEmpty == true) ...[
+                            FriendAvatar(
+                              name: facultyName.isNotEmpty
+                                  ? facultyName
+                                  : courseHeader,
+                              photoUrl: faculty!.imgUrl,
+                              size: 40,
+                              radius: 20,
+                            ),
+                            const SizedBox(width: 10),
+                          ],
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,

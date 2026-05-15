@@ -94,6 +94,7 @@ class ProfileService {
     'program',
     'currentSemester',
     'enrolledSessionSemesterId',
+    'currentSessionSemesterId',
     'enrolledSemester',
     'mobileNo',
     'photoFilePath',
@@ -188,6 +189,58 @@ class ProfileService {
             'email': profile['studentEmail'] ?? '',
             'cgpa': profile['cgpa']?.toString() ?? '',
           });
+          await AppStorage.instance.setString(
+            StorageKeys.studentId,
+            profile['studentId']?.toString() ?? '',
+          );
+          await AppStorage.instance.setString(
+            StorageKeys.fullName,
+            profile['fullName'] ?? '',
+          );
+          await AppStorage.instance.setString(
+            StorageKeys.studentEmail,
+            profile['studentEmail'] ?? '',
+          );
+          await AppStorage.instance.setString(
+            StorageKeys.shortCode,
+            profile['shortCode']?.toString() ?? '',
+          );
+          await AppStorage.instance.setString(
+            StorageKeys.program,
+            profile['programOrCourse']?.toString() ?? '',
+          );
+          await AppStorage.instance.setString(
+            StorageKeys.departmentName,
+            profile['departmentName']?.toString() ?? '',
+          );
+          await AppStorage.instance.setString(
+            StorageKeys.currentSemester,
+            profile['currentSemester']?.toString() ?? '',
+          );
+          await AppStorage.instance.setString(
+            StorageKeys.cgpa,
+            profile['cgpa']?.toString() ?? '',
+          );
+          await AppStorage.instance.setString(
+            StorageKeys.earnedCredit,
+            profile['earnedCredit']?.toString() ?? '',
+          );
+          await AppStorage.instance.setString(
+            StorageKeys.attemptedCredit,
+            profile['attemptedCredit']?.toString() ?? '',
+          );
+          await AppStorage.instance.setString(
+            StorageKeys.photoFilePath,
+            profile['filePath']?.toString() ?? '',
+          );
+          await AppStorage.instance.setString(
+            StorageKeys.mobileNo,
+            profile['mobileNo']?.toString() ?? '',
+          );
+          await AppStorage.instance.setString(
+            StorageKeys.bloodGroup,
+            profile['bloodGroup']?.toString() ?? '',
+          );
           final currentSessionSemesterId =
               profile['currentSessionSemesterId']?.toString().trim() ?? '';
           if (currentSessionSemesterId.isNotEmpty) {
@@ -241,6 +294,86 @@ class ProfileService {
                 'disabilityDetails':
                     miscData['disabilityDetails']?.toString() ?? '',
               });
+              await AppStorage.instance.setString(
+                StorageKeys.permanentAddress,
+                miscData['permanentAddress']?.toString() ?? '',
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.presentAddress,
+                miscData['presentAddress']?.toString() ?? '',
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.isBothAddressSame,
+                _boolToYesNo(miscData['isBothAddressSame']),
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.permanentUpazilaName,
+                miscData['permanentUpazilaName']?.toString() ?? '',
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.presentUpazilaName,
+                miscData['presentUpazilaName']?.toString() ?? '',
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.fatherName,
+                miscData['fatherName']?.toString() ?? '',
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.fatherMobileNo,
+                miscData['fatherMobileNo']?.toString() ?? '',
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.fatherEmail,
+                miscData['fatherEmail']?.toString() ?? '',
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.motherName,
+                miscData['motherName']?.toString() ?? '',
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.motherMobileNo,
+                miscData['motherMobileNo']?.toString() ?? '',
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.motherEmail,
+                miscData['motherEmail']?.toString() ?? '',
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.localGuardianName,
+                miscData['localGuardianName']?.toString() ?? '',
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.localGuardianMobileNo,
+                miscData['localGuardianMobileNo']?.toString() ?? '',
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.localGuardianEmail,
+                miscData['localGuardianEmail']?.toString() ?? '',
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.sponsoredBy,
+                miscData['sponsoredBy']?.toString() ?? '',
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.countryName,
+                miscData['countryName']?.toString() ?? '',
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.hobbies,
+                miscData['hobbies']?.toString() ?? '',
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.awards,
+                miscData['awards']?.toString() ?? '',
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.hasDisability,
+                _boolToYesNo(miscData['hasDisability']),
+              );
+              await AppStorage.instance.setString(
+                StorageKeys.disabilityDetails,
+                miscData['disabilityDetails']?.toString() ?? '',
+              );
             }
           } catch (_) {}
         }

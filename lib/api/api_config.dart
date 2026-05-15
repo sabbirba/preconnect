@@ -13,7 +13,6 @@ class ApiConfig {
   static const String realtimeApiBase = 'https://api.preconnect.app';
   static const String seatStatusProxyBase = realtimeApiBase;
   static const String seatStatusDataUrl = '$realtimeApiBase/connect.json';
-  static const String seatStatusDataFallbackUrl = '$cdnApiBase/connect.json';
   static const String busDataUrl = '$realtimeApiBase/data/bus';
   static const String busDataFallbackUrl = '$cdnApiBase/data/bus.json';
   static const String freeLabsDataUrl = '$cdnApiBase/freelabs.json';
@@ -33,9 +32,6 @@ class ApiConfig {
   static const String websiteMueenAvatarUrl = '$websiteBase/Mueen-Ahmmed.jpeg';
   static const String websiteAdSenseLogoUrl = '$websiteBase/google-adsense.png';
   static const String filesBase = 'https://cdn.preconnect.app';
-  static const String facultyReviewsBearer = String.fromEnvironment(
-    'FACULTY_REVIEWS_BEARER',
-  );
   static const String playIntegrityCloudProjectNumber = String.fromEnvironment(
     'PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER',
   );

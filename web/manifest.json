@@ -17,10 +17,14 @@
     "service_worker": "background.dart.js"
   },
   "permissions": [
+    "alarms",
     "cookies",
     "sidePanel",
     "commands",
     "contextMenus",
+    "notifications",
+    "scripting",
+    "unlimitedStorage",
     "storage",
     "tabs",
     "webNavigation"
@@ -59,8 +63,7 @@
     }
   },
   "host_permissions": [
-    "https://connect.bracu.ac.bd/*",
-    "https://sso.bracu.ac.bd/*"
+    "<all_urls>"
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"

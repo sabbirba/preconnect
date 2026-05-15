@@ -1821,7 +1821,7 @@ class BracuPageScaffold extends StatelessWidget {
     super.key,
     required this.title,
     required this.subtitle,
-    required this.icon,
+    this.icon,
     required this.body,
     this.actions = const [],
     this.showMenu = false,
@@ -1831,7 +1831,7 @@ class BracuPageScaffold extends StatelessWidget {
 
   final String title;
   final String subtitle;
-  final IconData icon;
+  final IconData? icon;
   final Widget body;
   final List<Widget> actions;
   final bool showMenu;
@@ -1930,7 +1930,7 @@ class _PageHeader extends StatelessWidget {
 
   final String title;
   final String subtitle;
-  final IconData icon;
+  final IconData? icon;
   final List<Widget> actions;
   final bool showMenu;
   final bool showBack;
@@ -1968,20 +1968,7 @@ class _PageHeader extends StatelessWidget {
               ),
             ),
           ),
-        Transform.translate(
-          offset: hasBack ? const Offset(-4, 0) : Offset.zero,
-          child: Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: BracuPalette.primary,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            alignment: Alignment.center,
-            child: Icon(icon, color: Colors.white, size: 22),
-          ),
-        ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2228,23 +2215,6 @@ class _BracuMetricTile extends StatelessWidget {
   }
 }
 
-class BracuSkeletonBox extends StatelessWidget {
-  const BracuSkeletonBox({
-    super.key,
-    this.width,
-    required this.height,
-    this.radius = 8,
-  });
-
-  final double? width;
-  final double height;
-  final double radius;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(width: width, height: height);
-  }
-}
 
 class BracuEmptyState extends StatelessWidget {
   const BracuEmptyState({super.key, required this.message});

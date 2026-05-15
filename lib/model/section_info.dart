@@ -89,18 +89,18 @@ class Section {
 
   factory Section.fromJson(Map<String, dynamic> json) {
     return Section(
-      sectionId: json['sectionId'],
-      advisingSectionId: json['advisingSectionId'],
-      parentSectionId: json['parentSectionId'],
-      courseId: json['courseId'],
+      sectionId: _intValue(json, 'sectionId'),
+      advisingSectionId: _nullableIntValue(json, 'advisingSectionId'),
+      parentSectionId: _nullableIntValue(json, 'parentSectionId'),
+      courseId: _intValue(json, 'courseId'),
       courseCode: _stringValue(json, 'courseCode'),
       name: _stringValue(json, 'name'),
       sectionName: _stringValue(json, 'sectionName'),
-      semesterSessionId: json['semesterSessionId'],
-      courseCredit: json['courseCredit'],
-      studentPortfolioId: json['studentPortfolioId'],
-      capacity: json['capacity'],
-      consumedSeat: json['consumedSeat'],
+      semesterSessionId: _intValue(json, 'semesterSessionId'),
+      courseCredit: _intValue(json, 'courseCredit'),
+      studentPortfolioId: _intValue(json, 'studentPortfolioId'),
+      capacity: _intValue(json, 'capacity'),
+      consumedSeat: _intValue(json, 'consumedSeat'),
       sectionSchedule: SectionSchedule.fromJson(
         _scheduleMapFromJson(json['sectionSchedule']),
       ),
@@ -271,6 +271,21 @@ String _nullableStringValue(Map<String, dynamic> json, String key) {
   final value = json[key];
   if (value == null) return '';
   return value.toString().trim();
+}
+
+int _intValue(Map<String, dynamic> json, String key) {
+  final value = json[key];
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+int? _nullableIntValue(Map<String, dynamic> json, String key) {
+  final value = json[key];
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString());
 }
 
 SectionFaculty? _facultyFromJson(dynamic value) {

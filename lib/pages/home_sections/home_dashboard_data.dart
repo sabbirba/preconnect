@@ -120,6 +120,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   }
 
   Future<void> _saveHomeDashboardSnapshot(_HomeData data) async {
+    if (!data.hasRequiredProfileFields) return;
     try {
       await AppStorage.instance.setString(
         _homeDashboardSnapshotCacheKey,
@@ -576,8 +577,8 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         exams.add(
           _CountdownCardData(
             title: fin.difference(now).inDays <= 3
-                ? '${s.courseCode} Final'
-                : 'Final Exam',
+              ? '${s.courseCode} Final'
+                : 'Final',
             targetDateTime: fin,
             tab: HomeTab.examSchedule,
           ),
@@ -696,7 +697,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     if (isMidWeek) {
       return const _ExamWeekStatus(
         isActive: true,
-        subtitle: 'No class today, midterm exam week running.',
+        subtitle: 'No class today, mid exam week running.',
       );
     }
     if (isFinalWeek) {
@@ -729,7 +730,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
           _TodayExamEntry(
             dateTime: mid,
             courseCode: s.courseCode,
-            type: 'Mid',
+            type: 'Midterm',
             sectionName: s.sectionName,
             faculties: s.faculties,
             startTime: resolved.midStartTime,

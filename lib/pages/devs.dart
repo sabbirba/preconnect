@@ -701,12 +701,7 @@ class _ContributorAvatar extends StatelessWidget {
   final double size;
 
   Widget _placeholder(BuildContext context) {
-    final initial = name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : '?';
-    return Container(
-      color: BracuPalette.primary.withValues(alpha: 0.12),
-      alignment: Alignment.center,
-      child: Text(initial, style: const TextStyle(fontWeight: FontWeight.w700)),
-    );
+    return const SizedBox.shrink();
   }
 
   @override

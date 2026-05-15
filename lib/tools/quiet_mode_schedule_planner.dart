@@ -217,14 +217,14 @@ class QuietModeSchedulePlanner {
         startTime: resolved.midStartTime,
         endTime: resolved.midEndTime,
         source: 'exam_mid',
-        label: '$courseCode Mid Exam',
+        label: '$courseCode Midterm',
       );
       addWindow(
         date: resolved.finalDate,
         startTime: resolved.finalStartTime,
         endTime: resolved.finalEndTime,
         source: 'exam_final',
-        label: '$courseCode Final Exam',
+        label: '$courseCode Final',
       );
     }
 

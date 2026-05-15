@@ -29,6 +29,7 @@ import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
@@ -140,6 +141,7 @@ class MyApp extends StatefulWidget {
       ClassSchedule.preload(),
       ExamSchedule.preload(),
       CustomSchedulesPage.preload(),
+      CampusPrinterPage.preload(),
     ];
     await Future.wait(tasks.map((task) => task.catchError((_) {})));
   }
@@ -669,6 +671,7 @@ class _MyAppState extends State<MyApp>
         : ColorScheme.light(primary: primary, secondary: secondary);
     return ThemeData(
       brightness: brightness,
+      fontFamily: 'Roboto',
       colorScheme: colorScheme,
       scaffoldBackgroundColor: scaffoldBackgroundColor,
       dialogTheme: dialogTheme,

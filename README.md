@@ -69,182 +69,24 @@ web/                 Chrome extension shell
 assets/              Icons & SVGs
 ```
 
-## Getting Started
-
-### Requirements
-
-- Flutter stable
-- Android Studio with Android SDK
-- Java 21
-
-Recommended JDK for Android/Flutter:
-
-```bash
-/Applications/Android Studio.app/Contents/jbr/Contents/Home
-```
-
-Check your setup:
-
-```bash
-flutter doctor -v
-```
-
-Install packages:
-
-```bash
-flutter pub get
-```
-
-### Environment setup
-
-Copy the example env file:
-
-```bash
-cp .env.example .env
-```
-
-Update [`.env.example`](.env.example) values in your local [`.env`](.env):
-
-- `storeFile`
-- `storePassword`
-- `keyAlias`
-- `keyPassword`
-- `DEVELOPMENT_TEAM`
-- `REWARDED_AD_UNIT_ID`
-- `BANNER_AD_UNIT_ID`
-- `ADS_APP_ID_IOS`
-
-### Android Signing Setup
-
-Release builds require `android/key.properties`.
-
-Create `android/key.properties` manually with:
-
-```bash
-cat > android/key.properties <<'EOF'
-storeFile=preconnect-release-key.jks
-storePassword=YOUR_STORE_PASSWORD
-keyAlias=preconnect
-keyPassword=YOUR_KEY_PASSWORD
-EOF
-```
-
-Update the values to match your keystore. The Android release build will fail if `android/key.properties` is missing.
-
-### Run the app
-
-```bash
-flutter run --dart-define-from-file=.env
-```
-
-### Build the Chrome extension
-
-Build the extension bundle:
-
-```bash
-./tool/build_chrome_extension.sh
-```
-
-Output:
-
-```bash
-build/chrome-extension/
-build/chrome-extension.zip
-```
-
-### Publish the Chrome extension
-
-The repo includes a GitHub Actions workflow that builds the Chrome extension from the current checkout and publishes it to the Chrome Web Store:
-
-- Workflow: [`.github/workflows/store-promotion.yml`](.github/workflows/store-promotion.yml)
-- Triggers:
-  - `workflow_dispatch`
-  - weekly schedule on Thursday at 10:00 PM Bangladesh Time
-
-Required GitHub secrets:
-
-- `CHROME_WEBSTORE_PUBLISHER_ID`
-- `CHROME_WEBSTORE_EXTENSION_ID`
-- `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
-
-The workflow uses the Chrome Web Store API v2, `./tool/build_chrome_extension.sh`, and the same Google service account secret already used for Google Play promotion.
-If a submission is already pending review, the workflow cancels that submission first, uploads the freshly built ZIP, and then publishes the new revision.
-
-Load `build/chrome-extension` as an unpacked extension in Chrome:
-
-1. Open `chrome://extensions`
-2. Turn on `Developer mode`
-3. Click `Load unpacked`
-4. Select `build/chrome-extension`
-
-The extension build uses:
-
-- `web/index.html` as the extension app shell
-- `web/manifest.json` as the MV3 extension manifest
-- `web/extension_app.dart` as the Flutter extension entrypoint
-- `web/background.dart` compiled to `background.dart.js`
-- `lib/app.dart` and `lib/pages/web_extension_login_web.dart` for the extension UI
-- `tool/sync_versions.sh` is the shared version helper used by release and Chrome packaging
-- `tool/build_chrome_extension.sh` injects the extension version from `pubspec.yaml` and rewrites the packaged manifest automatically
-- The packaged Chrome Web Store version uses a sequential counter so updates are detected even when the semantic app version does not change
-
-Notes:
-
-- Reload the unpacked extension after every rebuild
-- The zip artifact is convenient for sharing or release uploads
-
-### Build Android APK
-
-Release APK:
-
-```bash
-flutter build apk --release --dart-define-from-file=.env
-```
-
-Output:
-
-```bash
-build/app/outputs/flutter-apk/app-release.apk
-```
-
-### Build Android AAB
-
-Release AAB:
-
-```bash
-flutter build appbundle --release --dart-define-from-file=.env
-```
-
-Output:
-
-```bash
-build/app/outputs/bundle/release/app-release.aab
-```
-
-### Build iOS IPA
-
-```bash
-flutter build ipa --no-codesign --dart-define-from-file=.env
-```
-
-Output:
-
-```bash
-build/ios/ipa/
-```
-
 ## Download
 
 - Latest release assets (APK / AAB / Chrome extension / iOS / macOS): [GitHub Releases](https://github.com/sabbirba/preconnect/releases/latest)
-- Chrome extension: build locally with `./tool/build_chrome_extension.sh`
-- Release feed: [All releases](https://github.com/sabbirba/preconnect/releases)
+
+## Getting Started
+
+Want to build, test, or contribute locally? Follow the full setup guide in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Community
+
+New students and first-time contributors are welcome to ask questions in [GitHub issues](https://github.com/sabbirba/preconnect/issues).
 
 ## Platform Support
 
 | Platform         | Status       | Notes                                                                                   |
 | ---------------- | ------------ | --------------------------------------------------------------------------------------- |
 | Android          | Stable       | Signed APK/AAB are generated in release workflow when signing secrets are configured.   |
-| Chrome Extension | Stable       | Build locally with `./tool/build_chrome_extension.sh` or let the store promotion workflow build and publish it directly. |
+| Chrome Extension | Stable       | Distributed through release assets and store promotion automation.                      |
 | Web              | Not targeted | Use the Chrome extension build instead of a hosted Flutter web app.                     |
 | iOS              | Beta         | CI builds are enabled, but signing/export depends on Apple certificates/profiles.       |
 | macOS            | Beta         | CI builds and packages a DMG artifact from release workflow.                            |
@@ -271,7 +113,7 @@ flowchart LR
   A[PreConnect Client\nAndroid/iOS/macOS/Chrome Extension] --> B[PreConnect Hosted API\napi.preconnect.app]
   B --> C[BRACU Connect APIs]
   B --> D[Seat Status Cache + Stream]
-  B --> E[VPS Alert Queue]
+  B --> E[Alert Queue]
   E --> A
 ```
 
@@ -299,24 +141,6 @@ Privacy notes:
 - Users can control OS-level permissions such as camera and notifications at any time.
 - Local caches are used to improve offline and performance behavior.
 - Notification delivery depends on the VPS queue and client polling.
-
-## Testing & Quality
-
-Run these checks before opening a PR:
-
-```bash
-flutter pub get
-flutter analyze
-flutter test
-dart format --set-exit-if-changed .
-```
-
-Optional local release smoke checks:
-
-```bash
-flutter build apk --release --dart-define-from-file=.env
-./tool/build_chrome_extension.sh
-```
 
 ## Seat Status Proxy
 
@@ -351,10 +175,6 @@ Why this reduces Connect API calls:
 - Code of Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Security: [SECURITY.md](SECURITY.md)
-- Environment Example: [.env.example](.env.example)
-- Workflows: [.github/workflows/release.yml](.github/workflows/release.yml)
-- Hosted Seat Status API Server: [api.preconnect.app](https://api.preconnect.app)
-- Chrome Extension: `./tool/build_chrome_extension.sh`
 - Status Page: [status.preconnect.app](https://status.preconnect.app)
 
 ## Support PreConnect
@@ -366,8 +186,6 @@ If you want to support the project locally, you can send to:
 - bKash / Nagad / Upay: **01865493144**
 
 Reference (required): **PreConnect App**
-
-Bug reports, feature requests, and ideas are welcome. Please create issues in our GitHub repo.
 
 ## Roadmap
 
@@ -381,23 +199,31 @@ Bug reports, feature requests, and ideas are welcome. Please create issues in ou
 
 ### Is this an official BRAC University app?
 
-No, PreConnect is an initiative run by BRAC University students. It is community-driven and focused on improving daily academic workflows.
+No. PreConnect is a community-driven initiative run by BRAC University students.
+
+### Does the app need production secrets to build locally?
+
+No. Normal contributor builds can run with missing or blank optional env values. See [CONTRIBUTING.md](CONTRIBUTING.md) for the local setup flow.
 
 ### Does PreConnect store sensitive login data insecurely?
 
-Sensitive tokens are stored in local app storage and web extension storage, not in plain shared preferences and not shared with other apps.
+Sensitive tokens are stored in local app storage and web extension storage, not in plain shared preferences.
 
 ### Does the app work with poor internet?
 
-Yes. The app uses cache-first patterns in several flows so students can still access key information with limited connectivity.
+Yes. Several flows use cache-first behavior so students can still access key information with limited connectivity.
 
 ### How do I use the browser version?
 
-Build the Chrome extension locally and load `build/chrome-extension` as an unpacked extension in Chrome.
+Use the Chrome extension from the latest release assets. Contributor build instructions live in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Where do seat-status updates come from?
 
-The app uses a hosted proxy (`api.preconnect.app`) that handles caching and stream updates, then notifies clients when data changes.
+The app uses the hosted PreConnect API (`api.preconnect.app`) for cached seat-status data, stream updates, and alerts.
+
+### What if ads do not load locally?
+
+Ad env values are optional. Leave them blank unless you are specifically working on ad behavior.
 
 ## Acknowledgements
 

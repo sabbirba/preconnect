@@ -5,11 +5,16 @@ import 'package:chrome_extension/src/internal_helpers.dart';
 
 import 'package:chrome_extension/cookies.dart' as ck;
 import 'package:chrome_extension/context_menus.dart' as cm;
+import 'package:chrome_extension/action.dart' as action;
 import 'package:chrome_extension/chrome.dart';
+import 'package:chrome_extension/alarms.dart' as alarms;
+import 'package:chrome_extension/notifications.dart' as notifications;
+import 'package:chrome_extension/scripting.dart' as scripting;
 import 'package:chrome_extension/tabs.dart';
 import 'package:chrome_extension/side_panel.dart';
 import 'package:chrome_extension/web_navigation.dart';
 import 'package:web/web.dart' show Headers, RequestInit, Response;
+import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/web_extension_api_config.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/web_extension_session_sync.dart';
@@ -65,6 +70,8 @@ const String _shortcutSeatStatus =
 const String _cookieSnapshotConnectKey = 'preconnect.cookies.connect';
 const String _cookieSnapshotSsoKey = 'preconnect.cookies.sso';
 const String _cookieSnapshotUpdatedAtKey = 'preconnect.cookies.updatedAt';
+const String _cachedUnreadCountKey = 'preconnect.cachedUnreadCount';
+const String _extensionAlarmId = 'preconnect.syncAlarm';
 const String _connectCookieUrl = 'https://connect.bracu.ac.bd/';
 const String _ssoCookieUrl =
     'https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect/';
@@ -75,6 +82,8 @@ external JSPromise<Response> _fetch(String input, [RequestInit? init]);
 Future<void> main() async {
   await _guarded(_configureBrowserSurfaces);
   await _guarded(_syncBracuCookieSnapshot);
+  await _guarded(_configureAlarms);
+  await _guarded(_refreshBadgeAndNotifyIfNeeded);
 
   if (chrome.cookies.isAvailable) {
     chrome.cookies.onChanged.listen((changeInfo) {
@@ -93,6 +102,8 @@ Future<void> main() async {
     unawaited(
       _guarded(() async {
         await _bootstrapSessionSync();
+        await _configureAlarms();
+        await _refreshBadgeAndNotifyIfNeeded();
         await _restoreAppTabAfterStartup();
       }),
     );
@@ -101,6 +112,8 @@ Future<void> main() async {
     unawaited(
       _guarded(() async {
         await _bootstrapSessionSync();
+        await _configureAlarms();
+        await _refreshBadgeAndNotifyIfNeeded();
       }),
     );
   });
@@ -155,6 +168,18 @@ Future<void> main() async {
   chrome.tabs.onRemoved.listen((event) {
     unawaited(_guarded(() => _handleTabRemoved(event)));
   });
+
+  if (chrome.alarms.isAvailable) {
+    chrome.alarms.onAlarm.listen((alarm) {
+      if (alarm.name != _extensionAlarmId) return;
+      unawaited(
+        _guarded(() async {
+          await _syncLatestSession();
+          await _refreshBadgeAndNotifyIfNeeded();
+        }),
+      );
+    });
+  }
 
   unawaited(_guarded(_bootstrapSessionSync));
 }
@@ -452,6 +477,114 @@ Future<void> _syncLatestSession() async {
   await ensureFreshWebExtensionSession();
 }
 
+bool _isLogoutUrl(String? url) {
+  final uri = Uri.tryParse(url ?? '');
+  return uri != null &&
+      uri.scheme == 'https' &&
+      uri.host == 'sso.bracu.ac.bd' &&
+      uri.path.contains('/protocol/openid-connect/logout');
+}
+
+Future<void> _autoClickLogoutIfNeeded(int? tabId, {String? url}) async {
+  if (!chrome.scripting.isAvailable || tabId == null || !_isLogoutUrl(url)) {
+    return;
+  }
+  try {
+    await chrome.scripting.executeScript(
+      scripting.ScriptInjection(
+        target: scripting.InjectionTarget(tabId: tabId),
+        files: const ['auto_click_logout.js'],
+        injectImmediately: true,
+      ),
+    );
+  } catch (_) {}
+}
+
+Future<void> _configureAlarms() async {
+  if (!chrome.alarms.isAvailable) return;
+  await chrome.alarms.create(
+    _extensionAlarmId,
+    alarms.AlarmCreateInfo(periodInMinutes: 5),
+  );
+}
+
+Future<void> _refreshBadgeAndNotifyIfNeeded() async {
+  await _refreshBadge();
+  await _maybeNotifyUnreadChange();
+}
+
+Future<void> _refreshBadge() async {
+  if (!chrome.action.isAvailable) return;
+  try {
+    final count = await _fetchUnreadCount();
+    await chrome.storage.local.set({_cachedUnreadCountKey: count});
+    if (count > 0) {
+      await chrome.action.setBadgeBackgroundColor(
+        action.SetBadgeBackgroundColorDetails(color: [214, 59, 59, 255]),
+      );
+      await chrome.action.setBadgeText(
+        action.SetBadgeTextDetails(text: count > 9 ? '9+' : '$count'),
+      );
+      await chrome.action.setTitle(
+        action.SetTitleDetails(
+          title: 'PreConnect - $count unread notification${count == 1 ? '' : 's'}',
+        ),
+      );
+    } else {
+      await chrome.action.setBadgeText(action.SetBadgeTextDetails(text: ''));
+      await chrome.action.setTitle(action.SetTitleDetails(title: 'PreConnect'));
+    }
+  } catch (_) {}
+}
+
+Future<void> _maybeNotifyUnreadChange() async {
+  if (!chrome.notifications.isAvailable) return;
+  try {
+    final values = await chrome.storage.local.get(_cachedUnreadCountKey);
+    final previous = int.tryParse('${values[_cachedUnreadCountKey] ?? ''}') ?? 0;
+    final current = await _fetchUnreadCount();
+    if (current <= previous) {
+      await chrome.storage.local.set({_cachedUnreadCountKey: current});
+      return;
+    }
+    await chrome.storage.local.set({_cachedUnreadCountKey: current});
+    final permission = await chrome.notifications.getPermissionLevel();
+    if (permission != notifications.PermissionLevel.granted) return;
+    await chrome.notifications.create(
+      'preconnect-unread-$current',
+      notifications.NotificationOptions(
+        type: notifications.TemplateType.basic,
+        iconUrl: chrome.runtime.getURL('icons/Icon-128.png'),
+        title: 'New notification update',
+        message: 'You have $current unread notification${current == 1 ? '' : 's'}.',
+        priority: 0,
+        requireInteraction: false,
+      ),
+    );
+  } catch (_) {}
+}
+
+Future<int> _fetchUnreadCount() async {
+  try {
+    final response = await _fetch(
+      '${ApiConfig.connectApiBase}${ApiConfig.recentNotificationsPath}',
+      RequestInit(
+        method: 'GET',
+        credentials: 'include',
+        headers: Headers()..append('Accept', 'application/json'),
+      ),
+    ).toDart;
+    if (response.status != 200) return 0;
+    final text = await response.text().toDart;
+    final decoded = jsonDecode(text.toDart);
+    if (decoded is Map<String, dynamic>) {
+      final newCount = decoded['new'];
+      if (newCount is num) return newCount.toInt();
+    }
+  } catch (_) {}
+  return 0;
+}
+
 Future<void> _restoreAppTabAfterStartup() async {
   if (chrome.sidePanel.isAvailable) {
     return;
@@ -573,6 +706,8 @@ Future<void> _startLogout() async {
     return;
   }
 
+  await _autoClickLogoutIfNeeded(logoutTabId, url: logoutUrl.toString());
+
   await chrome.storage.session.set({
     _pendingLogoutKey: {
       'appTabId': appTabId,
@@ -586,6 +721,8 @@ Future<void> _handleNavigation(OnCommittedDetails details) async {
   if (await _handleLogoutNavigation(details)) {
     return;
   }
+
+  await _autoClickLogoutIfNeeded(details.tabId, url: details.url);
 
   final pending = await _loadPendingLogin();
   if (pending == null || pending.tabId != details.tabId) return;
@@ -618,6 +755,7 @@ Future<void> _handleNavigation(OnCommittedDetails details) async {
       PreconnectStorageKeys.cachedHasAuthSession: 'true',
     });
     await _syncBracuCookieSnapshot();
+    await _refreshBadgeAndNotifyIfNeeded();
     await _clearPendingLogin();
     if (!chrome.sidePanel.isAvailable) {
       unawaited(_openOrFocusAppTab());
@@ -683,7 +821,12 @@ Future<bool> _handleLogoutNavigation(OnCommittedDetails details) async {
     _cookieSnapshotConnectKey,
     _cookieSnapshotSsoKey,
     _cookieSnapshotUpdatedAtKey,
+    _cachedUnreadCountKey,
   ]);
+  if (chrome.action.isAvailable) {
+    await chrome.action.setBadgeText(action.SetBadgeTextDetails(text: ''));
+    await chrome.action.setTitle(action.SetTitleDetails(title: 'PreConnect'));
+  }
   try {
     await chrome.tabs.remove(details.tabId);
   } catch (_) {}

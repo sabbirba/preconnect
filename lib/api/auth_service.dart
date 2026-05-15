@@ -8,10 +8,12 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/friend_schedule_store.dart';
 import 'package:preconnect/api/custom_schedules_service.dart';
-import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/pages/login.dart';
+import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
+import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/token_refresh_flow.dart';
 import 'package:preconnect/tools/web_shared.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -123,22 +125,71 @@ class AuthService {
   Future<void> _clearAuthSessionData() async {
     await _storage.deleteAll();
     await LoginPage.clearSessionArtifacts();
+    await CampusPrinterPage.clearStoredState();
   }
 
   Future<void> _clearLocalCaches() async {
     final keepKeys = <String>{
-      PreconnectStorageKeys.accessToken,
-      PreconnectStorageKeys.refreshToken,
-      PreconnectStorageKeys.cachedHasAuthSession,
       CustomSchedulesService.cacheKey,
     };
-    keepKeys.addAll(ProfileService.profileFields);
-
     await AppPreferencesStore().clearAllExcept(keepKeys);
 
+    await _clearStoredProfileAndSessionData();
     await FriendScheduleStore().clearAll();
     await ProfileImageCache.instance.clear();
     CachedImage.clearMemoryCache();
+  }
+
+  Future<void> _clearStoredProfileAndSessionData() async {
+    final storage = AppStorage.instance;
+    final keysToRemove = <String>{
+      StorageKeys.currentSessionSemesterId,
+      StorageKeys.studentId,
+      StorageKeys.fullName,
+      StorageKeys.studentEmail,
+      StorageKeys.shortCode,
+      StorageKeys.program,
+      StorageKeys.departmentName,
+      StorageKeys.currentSemester,
+      StorageKeys.cgpa,
+      StorageKeys.earnedCredit,
+      StorageKeys.attemptedCredit,
+      StorageKeys.photoFilePath,
+      StorageKeys.mobileNo,
+      StorageKeys.bloodGroup,
+      StorageKeys.permanentAddress,
+      StorageKeys.presentAddress,
+      StorageKeys.isBothAddressSame,
+      StorageKeys.permanentUpazilaName,
+      StorageKeys.presentUpazilaName,
+      StorageKeys.fatherName,
+      StorageKeys.fatherMobileNo,
+      StorageKeys.fatherEmail,
+      StorageKeys.motherName,
+      StorageKeys.motherMobileNo,
+      StorageKeys.motherEmail,
+      StorageKeys.localGuardianName,
+      StorageKeys.localGuardianMobileNo,
+      StorageKeys.localGuardianEmail,
+      StorageKeys.sponsoredBy,
+      StorageKeys.countryName,
+      StorageKeys.hobbies,
+      StorageKeys.awards,
+      StorageKeys.hasDisability,
+      StorageKeys.disabilityDetails,
+      StorageKeys.qrBase64,
+      StorageKeys.qrHash,
+      StorageKeys.qrPayloadVersion,
+      StorageKeys.cachedHasAuthSession,
+      StorageKeys.homeTab,
+      StorageKeys.studentSchedule,
+      StorageKeys.examScheduleSnapshot,
+      StorageKeys.alarmsSnapshot,
+      StorageKeys.themeMode,
+    };
+    for (final key in keysToRemove) {
+      await storage.remove(key);
+    }
   }
 
   Future<TokenRefreshStatus> refreshTokenStatus() async {
