@@ -12,21 +12,25 @@ if [[ -z "${APP_VERSION}" || -z "${APP_BUILD_NUMBER}" ]]; then
   echo "Unable to parse version output from sync_versions.sh" >&2
   exit 1
 fi
-LAST_TAG_CODE="$(git tag --list 'v*+*' \
-  | sort -V \
-  | tail -n1 \
-  | awk -F'+' 'NF == 2 { print $2 }')"
-if [[ -z "${LAST_TAG_CODE}" || ! "${LAST_TAG_CODE}" =~ ^[0-9]+$ ]]; then
-  echo "Unable to parse Chrome release counter from git tags" >&2
+if [[ ! "${APP_BUILD_NUMBER}" =~ ^[0-9]+$ ]]; then
+  echo "Unable to parse app build number for Chrome manifest versioning" >&2
   exit 1
 fi
 
-CHROME_BUILD_NUMBER=$((LAST_TAG_CODE + 1))
-if (( CHROME_BUILD_NUMBER > 65535 )); then
-  CHROME_BUILD_NUMBER=65535
+CHROME_BUILD_NUMBER=${APP_BUILD_NUMBER}
+IFS='.' read -r APP_MAJOR APP_MINOR APP_PATCH <<< "${APP_VERSION}"
+if [[ -z "${APP_MAJOR}" || -z "${APP_MINOR}" || -z "${APP_PATCH}" ]]; then
+  echo "Unable to parse app version for Chrome manifest versioning" >&2
+  exit 1
 fi
-CHROME_VERSION="${APP_VERSION}.${CHROME_BUILD_NUMBER}"
-CHROME_VERSION_NAME="${APP_VERSION}.${APP_BUILD_NUMBER}"
+CHROME_BUILD_NUMBER_SUFFIX=$((CHROME_BUILD_NUMBER % 10000))
+CHROME_VERSION_SUFFIX=$((10000 + CHROME_BUILD_NUMBER_SUFFIX))
+if (( CHROME_VERSION_SUFFIX > 65535 )); then
+  echo "Chrome version suffix ${CHROME_VERSION_SUFFIX} exceeds the manifest limit of 65535" >&2
+  exit 1
+fi
+CHROME_VERSION="${APP_MAJOR}.${APP_MINOR}.${APP_PATCH}.${CHROME_VERSION_SUFFIX}"
+CHROME_VERSION_NAME="${CHROME_VERSION}"
 ENV_FILE="${ROOT_DIR}/.env"
 TEMP_ENV_FILE=""
 
