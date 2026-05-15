@@ -30,7 +30,7 @@ dependencies:
   share_plus: ^13.1.0
   open_filex: ^4.5.0
   in_app_update: ^4.2.5
-  in_app_review: ^2.0.11
+  in_app_review: ^2.0.12
   local_auth: ^3.0.1
   chrome_extension: ^0.4.0
   web: ^1.1.1
