@@ -4,6 +4,7 @@ import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/custom_schedules_service.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/quiet_mode_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -25,6 +26,7 @@ class _SettingsPageState extends State<SettingsPage>
   bool _showRamadanCard = true;
   bool _showExamCountdownCard = true;
   bool _showTodaySchedule = true;
+  bool _showDecorations = true;
   bool _appLockEnabled = false;
   bool _showSupport = true;
   bool _quietModeEnabled = false;
@@ -59,6 +61,9 @@ class _SettingsPageState extends State<SettingsPage>
     final appLockEnabled = await AppLockService().isEnabled();
     await QuietModeController.instance.load();
     final quietModeResult = await QuietModeController.instance.refresh();
+    AppStorage.instance.getBool("showdecorblobs").then((value) {
+      if (mounted) setState(() => _showDecorations = value ?? true);
+    });
     if (!mounted) return;
     setState(() {
       _showQuickAccessSection = visibility.showQuickAccessSection;
@@ -76,12 +81,25 @@ class _SettingsPageState extends State<SettingsPage>
     });
   }
 
+  Future<void> _storageSetShowDecorations(bool value) async {
+    await AppStorage.instance.setBool("showdecorblobs", value);
+  }
+
   Future<void> _setShowRamadanCard(bool value) async {
     await _setVisibility(
       label: 'Ramadan Times',
       value: value,
       applyLocal: () => _showRamadanCard = value,
       persist: HomeCardPreferences.setShowRamadanCard,
+    );
+  }
+
+  Future<void> _setShowDecorations(bool value) async {
+    await _setVisibility(
+      label: 'Show Decorations',
+      value: value,
+      applyLocal: () => _showDecorations = value,
+      persist: _storageSetShowDecorations,
     );
   }
 
@@ -280,6 +298,22 @@ class _SettingsPageState extends State<SettingsPage>
                   subtitle: 'Show upcoming exam countdown',
                   value: _showExamCountdownCard,
                   onChanged: _setShowExamCountdownCard,
+                ),
+                Divider(
+                  height: 12,
+                  thickness: 1,
+                  color: BracuPalette.textSecondary(context).withValues(
+                    alpha: Theme.of(context).brightness == Brightness.dark
+                        ? 0.20
+                        : 0.12,
+                  ),
+                ),
+                _ToggleRow(
+                  title: 'Show Decorations',
+                  subtitle:
+                      'Display beautiful decorations on pages (restart required)',
+                  value: _showDecorations,
+                  onChanged: _setShowDecorations,
                 ),
                 Divider(
                   height: 12,
