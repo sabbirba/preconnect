@@ -5,6 +5,7 @@ extension _HomeDashboardView on _HomeDashboardState {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgTop = isDark ? Colors.black : _HomeDashboardState._bgTop;
     final bgBottom = isDark ? Colors.black : _HomeDashboardState._bgBottom;
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -16,22 +17,24 @@ extension _HomeDashboardView on _HomeDashboardState {
       child: SafeArea(
         child: Stack(
           children: [
-            Positioned(
-              top: -80,
-              right: -60,
-              child: DecorBlob(
-                color: _HomeDashboardState._primary.withValues(alpha: 0.12),
-                size: 200,
+            if (_showBlobs)
+              Positioned(
+                top: -80,
+                right: -60,
+                child: DecorBlob(
+                  color: _HomeDashboardState._primary.withValues(alpha: 0.12),
+                  size: 200,
+                ),
               ),
-            ),
-            Positioned(
-              bottom: -90,
-              left: -70,
-              child: DecorBlob(
-                color: _HomeDashboardState._accent.withValues(alpha: 0.10),
-                size: 220,
+            if (_showBlobs)
+              Positioned(
+                bottom: -90,
+                left: -70,
+                child: DecorBlob(
+                  color: _HomeDashboardState._accent.withValues(alpha: 0.10),
+                  size: 220,
+                ),
               ),
-            ),
             Column(
               children: [
                 Expanded(
