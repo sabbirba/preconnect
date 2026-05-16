@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/shared_widgets/course_community_sheet.dart';
+import 'package:preconnect/pages/shared_widgets/highlight_scroll_helper.dart';
 import 'package:preconnect/pages/shared_widgets/schedule_entry_card.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -45,11 +46,9 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   late Future<_ScheduleData> _future;
   _ScheduleData? _latestData;
   final ScrollController _scrollController = ScrollController();
+  late final HighlightScrollCoordinator _highlightScroll =
+      HighlightScrollCoordinator(scrollController: _scrollController);
   int? _currentSessionSemesterId;
-  GlobalKey? _highlightKey;
-  String? _lastHighlightToken;
-  bool _didScroll = false;
-  bool _scrollRetry = false;
   int _visibleWeekCount = _initialVisibleWeekCount;
 
   @override
@@ -101,7 +100,8 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   static Future<_ScheduleData> _loadScheduleData({
     bool forceRefresh = false,
   }) async {
-    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+    final currentSessionSemesterId =
+        await resolveCurrentSessionSemesterIdWithRetry();
     if (currentSessionSemesterId == null) {
       final isRamadan = await RamadanTiming.isRamadan(
         forceRefresh: forceRefresh,
@@ -165,8 +165,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   }
 
   void _onJumpRequested() {
-    _didScroll = false;
-    _scrollRetry = false;
+    _highlightScroll.resetScrollState();
     if (mounted) {
       setState(() {
         _visibleWeekCount = _initialVisibleWeekCount;
@@ -174,25 +173,12 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     }
   }
 
-  void _attemptScrollToHighlight() {
-    attemptScrollToHighlightedKey(
-      highlightKey: _highlightKey,
-      hasRetried: _scrollRetry,
-      retry: () {
-        _scrollRetry = true;
-        _attemptScrollToHighlight();
-      },
-      onScrolled: () {
-        _didScroll = true;
-      },
-      alignment: 0.18,
-    );
-  }
-
   Future<_ScheduleData> _loadSchedule({bool forceRefresh = false}) async {
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
     final service = ScheduleService();
-    final currentSessionSemesterId = _currentSessionSemesterId;
+    final currentSessionSemesterId =
+        _currentSessionSemesterId ??
+        await resolveCurrentSessionSemesterIdWithRetry();
     if (currentSessionSemesterId == null) {
       final isRamadan = await ramadanFuture;
       final data = _buildScheduleDataFromSections(
@@ -456,7 +442,8 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   }
 
   Future<void> _loadCurrentSessionSemesterId() async {
-    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+    final currentSessionSemesterId =
+        await resolveCurrentSessionSemesterIdWithRetry();
     if (!mounted || currentSessionSemesterId == null) return;
     if (_currentSessionSemesterId == currentSessionSemesterId) return;
     setState(() {
@@ -470,8 +457,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       return;
     }
     setState(() {
-      _didScroll = false;
-      _scrollRetry = false;
+      _highlightScroll.resetScrollState();
       _visibleWeekCount = _initialVisibleWeekCount;
       _future = preloadData(forceRefresh: true);
     });
@@ -624,7 +610,13 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
 
           final children = <Widget>[];
           String? highlightToken;
-          _highlightKey = null;
+          int? highlightIndex;
+          var cardIndex = 0;
+          final totalCards = sections.fold<int>(0, (sum, sectionInfo) {
+            final daySchedules = grouped[sectionInfo.day] ?? const [];
+            return sum + daySchedules.length;
+          });
+          _highlightScroll.clearHighlightKey();
           for (var i = 0; i < sections.length; i++) {
             final sectionInfo = sections[i];
             final day = sectionInfo.day;
@@ -655,63 +647,75 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  ...schedules.map((entry) {
-                    final s = entry["schedule"] as section.ClassSchedule;
-                    final code = entry["courseCode"];
-                    final sectionName = entry["sectionName"];
-                    final room = entry["roomNumber"];
-                    final faculties = entry["faculties"] as String?;
-                    final consumedSeat = entry["consumedSeat"] as int?;
-                    final courseType = (entry["courseType"] as String?)?.trim();
-                    final semesterSessionId =
-                        entry["semesterSessionId"] as int?;
-                    final isScrollTarget =
-                        shouldHighlightCurrentSemester &&
-                        scrollSchedule == s &&
-                        scrollDateTime != null &&
-                        dayDate != null &&
-                        scrollDateTime.year == dayDate.year &&
-                        scrollDateTime.month == dayDate.month &&
-                        scrollDateTime.day == dayDate.day;
-                    if (isScrollTarget) {
-                      highlightToken =
-                          '${sectionInfo.weekOffset}_${day}_${s.startTime}_${s.endTime}_$code';
-                      _highlightKey ??= GlobalKey();
-                    }
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: ScheduleEntryCard(
-                        key: isScrollTarget ? _highlightKey : null,
-                        sectionName: sectionName?.toString(),
-                        courseCode: '$code',
-                        schedule: s,
-                        isRamadan: isRamadan,
-                        roomNumber: room?.toString(),
-                        faculties: faculties,
-                        consumedSeat: consumedSeat,
-                        courseType: courseType,
-                        highlighted: isScrollTarget,
-                        onTap: () {
-                          final semesterLabel = semesterSessionId == null
-                              ? 'Current'
-                              : formatSemesterFromSessionIdInt(
-                                  semesterSessionId,
-                                );
-                          _openClassActionsSheet(
+                  ...(() {
+                    final scheduleWidgets = <Widget>[];
+                    for (final entry in schedules) {
+                      final s = entry["schedule"] as section.ClassSchedule;
+                      final code = entry["courseCode"];
+                      final sectionName = entry["sectionName"];
+                      final room = entry["roomNumber"];
+                      final faculties = entry["faculties"] as String?;
+                      final consumedSeat = entry["consumedSeat"] as int?;
+                      final courseType = (entry["courseType"] as String?)
+                          ?.trim();
+                      final semesterSessionId =
+                          entry["semesterSessionId"] as int?;
+                      final isScrollTarget =
+                          shouldHighlightCurrentSemester &&
+                          scrollSchedule == s &&
+                          scrollDateTime != null &&
+                          dayDate != null &&
+                          scrollDateTime.year == dayDate.year &&
+                          scrollDateTime.month == dayDate.month &&
+                          scrollDateTime.day == dayDate.day;
+                      if (isScrollTarget) {
+                        highlightToken =
+                            '${sectionInfo.weekOffset}_${day}_${s.startTime}_${s.endTime}_$code';
+                        highlightIndex ??= cardIndex;
+                      }
+                      final isHighlighted = isScrollTarget;
+                      _highlightScroll.markHighlighted(isHighlighted);
+                      scheduleWidgets.add(
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: ScheduleEntryCard(
+                            key: isHighlighted
+                                ? _highlightScroll.highlightKey
+                                : null,
+                            sectionName: sectionName?.toString(),
                             courseCode: '$code',
-                            sectionName: sectionName?.toString() ?? '',
                             schedule: s,
                             isRamadan: isRamadan,
                             roomNumber: room?.toString(),
                             faculties: faculties,
                             consumedSeat: consumedSeat,
                             courseType: courseType,
-                            semesterLabel: semesterLabel,
-                          );
-                        },
-                      ),
-                    );
-                  }),
+                            highlighted: isHighlighted,
+                            onTap: () {
+                              final semesterLabel = semesterSessionId == null
+                                  ? 'Current'
+                                  : formatSemesterFromSessionIdInt(
+                                      semesterSessionId,
+                                    );
+                              _openClassActionsSheet(
+                                courseCode: '$code',
+                                sectionName: sectionName?.toString() ?? '',
+                                schedule: s,
+                                isRamadan: isRamadan,
+                                roomNumber: room?.toString(),
+                                faculties: faculties,
+                                consumedSeat: consumedSeat,
+                                courseType: courseType,
+                                semesterLabel: semesterLabel,
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                      cardIndex++;
+                    }
+                    return scheduleWidgets;
+                  })(),
                   const SizedBox(height: 6),
                 ],
               ),
@@ -737,13 +741,19 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
           }
           children.add(const SizedBox(height: 8));
 
-          if (highlightToken != null && highlightToken != _lastHighlightToken) {
-            _lastHighlightToken = highlightToken;
-            _didScroll = false;
-            _scrollRetry = false;
-          }
-          if (!_didScroll && _highlightKey != null) {
-            _attemptScrollToHighlight();
+          if (highlightToken != null) {
+            unawaited(
+              _highlightScroll.scrollToTarget(
+                targetToken: highlightToken,
+                targetIndex: highlightIndex,
+                itemCount: totalCards,
+                onRetryBuild: () {
+                  if (mounted) {
+                    setState(() {});
+                  }
+                },
+              ),
+            );
           }
 
           return BracuRefreshList(

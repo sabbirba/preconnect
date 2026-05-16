@@ -31,7 +31,8 @@ class StudentOverviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final titleColor = BracuPalette.textPrimary(context);
-    final hasProfileData = studentId.trim().isNotEmpty ||
+    final hasProfileData =
+        studentId.trim().isNotEmpty ||
         shortCode.trim().isNotEmpty ||
         department.trim().isNotEmpty ||
         currentSemester.trim().isNotEmpty ||
@@ -133,9 +134,7 @@ class _OverviewLoadingCard extends StatelessWidget {
             height: 20,
             child: CircularProgressIndicator(
               strokeWidth: 2.4,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                BracuPalette.primary,
-              ),
+              valueColor: AlwaysStoppedAnimation<Color>(BracuPalette.primary),
             ),
           ),
         ),

@@ -8,6 +8,7 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/seat_status_service.dart';
 import 'package:preconnect/pages/home_tab.dart';
+import 'package:preconnect/pages/shared_widgets/highlight_scroll_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
@@ -26,10 +27,9 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   List<_FreeRoomSlot>? _latestSlots;
   int _slotsRequestId = 0;
   final ScrollController _scrollController = ScrollController();
-  GlobalKey? _highlightKey;
-  String? _lastHighlightToken;
-  bool _didScroll = false;
-  bool _scrollRetry = false;
+  late final HighlightScrollCoordinator _highlightScroll =
+      HighlightScrollCoordinator(scrollController: _scrollController);
+  Timer? _liveRefreshTimer;
   _RoomFilter _selectedFilter = _RoomFilter.labs;
   bool _showNextDayAfterHours = false;
 
@@ -39,11 +39,16 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     _future = _loadSlots();
     _bindSlotsFuture(_future);
     HomeTabRegistry.activeTab.addListener(_onActiveTabChanged);
+    _liveRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!mounted) return;
+      setState(() {});
+    });
   }
 
   @override
   void dispose() {
     HomeTabRegistry.activeTab.removeListener(_onActiveTabChanged);
+    _liveRefreshTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
@@ -54,8 +59,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     if (!_showNextDayAfterHours) return;
     setState(() {
       _showNextDayAfterHours = false;
-      _didScroll = false;
-      _scrollRetry = false;
+      _highlightScroll.resetScrollState();
       _future = _loadSlots();
     });
     _bindSlotsFuture(_future);
@@ -123,36 +127,17 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
 
   Future<void> _refresh() async {
     setState(() {
-      _didScroll = false;
-      _scrollRetry = false;
+      _highlightScroll.resetScrollState();
       _future = _loadSlots(forceRefresh: true);
     });
     _bindSlotsFuture(_future);
-  }
-
-  void _attemptScrollToHighlight() {
-    attemptScrollToHighlightedKey(
-      highlightKey: _highlightKey,
-      hasRetried: _scrollRetry,
-      alignment: 0.18,
-      retry: () {
-        _scrollRetry = true;
-        if (mounted) {
-          setState(() {});
-        }
-      },
-      onScrolled: () {
-        _didScroll = true;
-      },
-    );
   }
 
   Future<void> _changeFilter(_RoomFilter selected) async {
     if (selected == _selectedFilter) return;
     setState(() {
       _selectedFilter = selected;
-      _didScroll = false;
-      _scrollRetry = false;
+      _highlightScroll.resetScrollState();
       _future = _loadSlots();
     });
     _bindSlotsFuture(_future);
@@ -242,12 +227,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
           final highlightToken = highlightedSlot == null
               ? null
               : '${highlightedSlot.roomNumber}_${highlightedSlot.startTime}_${highlightedSlot.endTime}';
-          _highlightKey = null;
-          if (highlightToken != null && highlightToken != _lastHighlightToken) {
-            _lastHighlightToken = highlightToken;
-            _didScroll = false;
-            _scrollRetry = false;
-          }
+          _highlightScroll.clearHighlightKey();
 
           final groupedSlots = <String, List<_FreeRoomSlot>>{};
           for (final slot in visibleSlots) {
@@ -288,16 +268,16 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                     final slotToken =
                         '${slot.roomNumber}_${slot.startTime}_${slot.endTime}';
                     final isHighlighted = slotToken == highlightToken;
-                    if (isHighlighted) {
-                      _highlightKey ??= GlobalKey();
-                    }
+                    _highlightScroll.markHighlighted(isHighlighted);
                     final roomSlots = visibleSlots
                         .where((item) => item.roomNumber == slot.roomNumber)
                         .toList();
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: _CompactRoomRow(
-                        key: isHighlighted ? _highlightKey : null,
+                        key: isHighlighted
+                            ? _highlightScroll.highlightKey
+                            : null,
                         slot: slot,
                         isHighlighted: isHighlighted,
                         onTap: () => _showRoomDetails(slot, roomSlots),
@@ -310,8 +290,19 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
             );
           }
 
-          if (!_didScroll && _highlightKey != null) {
-            _attemptScrollToHighlight();
+          if (highlightToken != null) {
+            unawaited(
+              _highlightScroll.scrollToTarget(
+                targetToken: highlightToken,
+                targetIndex: highlightIndex,
+                itemCount: visibleSlots.length,
+                onRetryBuild: () {
+                  if (mounted) {
+                    setState(() {});
+                  }
+                },
+              ),
+            );
           }
 
           return BracuRefreshList(

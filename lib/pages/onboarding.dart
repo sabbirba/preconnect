@@ -5,9 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/devs.dart';
-import 'package:preconnect/pages/friend_schedule.dart';
 import 'package:preconnect/pages/free_labs.dart';
-import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
@@ -326,15 +324,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               showLabels: false,
                               onTap: () => _openOnboardingQuickPage(
                                 const FreeLabsPage(),
-                              ),
-                            ),
-                            _CompactQuickAccessCard(
-                              width: layout.itemWidth,
-                              icon: Icons.people_outline_rounded,
-                              color: const Color(0xFF5B8DEF),
-                              showLabels: false,
-                              onTap: () => _openOnboardingQuickPage(
-                                FriendSchedulePage(onNavigate: (HomeTab _) {}),
                               ),
                             ),
                             _CompactQuickAccessCard(

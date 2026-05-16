@@ -13,10 +13,13 @@ class ApiConfig {
   static const String realtimeApiBase = 'https://api.preconnect.app';
   static const String seatStatusProxyBase = realtimeApiBase;
   static const String seatStatusDataUrl = '$realtimeApiBase/connect.json';
+  static const String seatStatusDataFallbackUrl = '$cdnApiBase/connect.json';
   static const String busDataUrl = '$realtimeApiBase/data/bus';
   static const String busDataFallbackUrl = '$cdnApiBase/data/bus.json';
   static const String freeLabsDataUrl = '$cdnApiBase/freelabs.json';
   static const String examMapIndexUrl = '$cdnApiBase/data/exammap.json';
+  static const String facultyReviewsDataUrl =
+      '$cdnApiBase/data/facultyreviews.json';
   static const String announcementFeedUrl =
       '$cdnApiBase/data/announcements.json';
   static const String newsFeedUrl = '$cdnApiBase/data/news.json';

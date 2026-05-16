@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/calendar_service.dart';
 import 'package:preconnect/model/calendar_info.dart';
+import 'package:preconnect/pages/shared_widgets/highlight_scroll_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
@@ -17,10 +18,9 @@ class CalendarPage extends StatefulWidget {
 class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
   late Future<CalendarFeed?> _future;
   CalendarFeed? _lastFeed;
-  GlobalKey? _highlightKey;
-  String? _lastHighlightToken;
-  bool _didScroll = false;
-  bool _scrollRetry = false;
+  final ScrollController _scrollController = ScrollController();
+  late final HighlightScrollCoordinator _highlightScroll =
+      HighlightScrollCoordinator(scrollController: _scrollController);
 
   @override
   void initState() {
@@ -32,6 +32,7 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     unbindRefreshBus(_onRefreshSignal);
     super.dispose();
   }
@@ -53,8 +54,7 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
   Future<void> _refresh({bool notify = true}) async {
     final next = CalendarService().fetchCalendar(fallback: _lastFeed);
     setState(() {
-      _didScroll = false;
-      _scrollRetry = false;
+      _highlightScroll.resetScrollState();
       _future = next;
     });
     final refreshed = await next;
@@ -120,12 +120,10 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
           final highlightToken = targetDate == null
               ? null
               : 'focus_${targetDate.year}_${targetDate.month}_${targetDate.day}';
-          _highlightKey = null;
-          if (highlightToken != null && highlightToken != _lastHighlightToken) {
-            _lastHighlightToken = highlightToken;
-            _didScroll = false;
-            _scrollRetry = false;
-          }
+          final targetIndex = targetDate == null
+              ? null
+              : sortedDates.indexOf(targetDate);
+          _highlightScroll.clearHighlightKey();
           final children = <Widget>[];
           for (final entry in grouped.entries) {
             final isTargetSection =
@@ -155,13 +153,13 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
                     ...entry.value.asMap().entries.map((itemEntry) {
                       final isTargetCard =
                           isTargetSection && itemEntry.key == 0;
-                      if (isTargetCard) {
-                        _highlightKey ??= GlobalKey();
-                      }
+                      _highlightScroll.markHighlighted(isTargetCard);
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 10),
                         child: _CalendarCard(
-                          key: isTargetCard ? _highlightKey : null,
+                          key: isTargetCard
+                              ? _highlightScroll.highlightKey
+                              : null,
                           item: itemEntry.value,
                           isHighlighted: false,
                         ),
@@ -174,26 +172,25 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
           }
           final content = BracuRefreshScroll(
             onRefresh: _refresh,
+            controller: _scrollController,
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: children,
             ),
           );
-          if (!_didScroll && _highlightKey != null) {
-            attemptScrollToHighlightedKey(
-              highlightKey: _highlightKey,
-              hasRetried: _scrollRetry,
-              alignment: 0.18,
-              retry: () {
-                _scrollRetry = true;
-                if (mounted) {
-                  setState(() {});
-                }
-              },
-              onScrolled: () {
-                _didScroll = true;
-              },
+          if (highlightToken != null) {
+            unawaited(
+              _highlightScroll.scrollToTarget(
+                targetToken: highlightToken,
+                targetIndex: targetIndex,
+                itemCount: sortedDates.length,
+                onRetryBuild: () {
+                  if (mounted) {
+                    setState(() {});
+                  }
+                },
+              ),
             );
           }
           return content;

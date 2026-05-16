@@ -57,7 +57,8 @@ extension _HomeDashboardView on _HomeDashboardState {
                         );
                       }
 
-                      final profile = data?.profile ?? const <String, String?>{};
+                      final profile =
+                          data?.profile ?? const <String, String?>{};
                       final photoUrl = data?.photoUrl;
                       final ramadan =
                           data?.ramadan ??
@@ -109,8 +110,8 @@ extension _HomeDashboardView on _HomeDashboardState {
                       final visibleEntries = isTodayHoliday
                           ? <_ScheduleEntry>[]
                           : (todayExams.isNotEmpty || isExamWeekActive
-                              ? <_ScheduleEntry>[]
-                              : todayEntries);
+                                ? <_ScheduleEntry>[]
+                                : todayEntries);
                       return BracuRefreshScroll(
                         onRefresh: _handleRefresh,
                         showScrollTopButton: false,
@@ -212,7 +213,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                           ),
                                           child: _ScheduleTile(
                                             title:
-                                                '${exam.courseCode} ${exam.type} Exam',
+                                                '${exam.courseCode} ${exam.type}',
                                             subtitle: formatTimeRange(
                                               exam.startTime,
                                               exam.endTime,
@@ -546,18 +547,18 @@ extension _HomeDashboardView on _HomeDashboardState {
       color: _HomeDashboardState._accent,
     ),
     _DashboardQuickAccess(
-      tab: HomeTab.alarms,
-      icon: Icons.alarm_outlined,
-      title: 'Alarm',
-      subtitle: 'Reminders',
-      color: Color(0xFFFF8A34),
-    ),
-    _DashboardQuickAccess(
       tab: HomeTab.examSchedule,
       icon: Icons.event_note_outlined,
       title: 'Exam',
       subtitle: 'Schedules',
       color: Color(0xFF7C56FF),
+    ),
+    _DashboardQuickAccess(
+      tab: HomeTab.alarms,
+      icon: Icons.alarm_outlined,
+      title: 'Alarm',
+      subtitle: 'Reminders',
+      color: Color(0xFFFF8A34),
     ),
     _DashboardQuickAccess(
       tab: HomeTab.personalSchedules,
@@ -831,9 +832,7 @@ class _LoadingLine extends StatelessWidget {
           height: 22,
           child: CircularProgressIndicator(
             strokeWidth: 2.6,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              BracuPalette.primary,
-            ),
+            valueColor: AlwaysStoppedAnimation<Color>(BracuPalette.primary),
           ),
         ),
       ),

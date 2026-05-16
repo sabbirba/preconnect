@@ -9,6 +9,7 @@ import 'package:preconnect/api/exam_map_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
+import 'package:preconnect/pages/shared_widgets/highlight_scroll_helper.dart';
 import 'package:preconnect/pages/shared_widgets/schedule_entry_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/json_snapshot_store.dart';
@@ -16,6 +17,7 @@ import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/exam_sorting.dart';
+import 'package:preconnect/tools/exam_visibility.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
@@ -38,6 +40,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
 
   late Future<_AlarmData> _futureData;
   _AlarmData? _latestData;
+  final ScrollController _scrollController = ScrollController();
+  late final HighlightScrollCoordinator _highlightScroll =
+      HighlightScrollCoordinator(scrollController: _scrollController);
   final Map<String, int> _minutesBefore = {};
 
   @override
@@ -54,6 +59,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   @override
   void dispose() {
     unbindRefreshBus(_onRefreshSignal);
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -90,6 +96,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   }
 
   static Future<_AlarmData> _loadAlarmData({bool forceRefresh = false}) async {
+    final now = DateTime.now();
     if (!forceRefresh) {
       final cached = await JsonSnapshotStore.read<_AlarmData>(
         key: StorageKeys.alarmsSnapshot,
@@ -111,7 +118,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
               .toList(growable: false);
           return _AlarmData(
             sections: sections,
-            examEntries: examEntries,
+            examEntries: _pruneExpiredExamEntries(examEntries, now: now),
             isRamadan: isRamadan,
           );
         },
@@ -121,7 +128,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       }
     }
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
-    final semesterSessionId = await resolveCurrentSessionSemesterId();
+    final semesterSessionId = await resolveCurrentSessionSemesterIdWithRetry();
     if (semesterSessionId == null) {
       final isRamadan = await ramadanFuture;
       return _AlarmData(
@@ -158,7 +165,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       final isRamadan = await ramadanFuture;
       return _AlarmData(
         sections: const [],
-        examEntries: examEntries,
+        examEntries: _pruneExpiredExamEntries(examEntries, now: now),
         isRamadan: isRamadan,
       );
     }
@@ -166,12 +173,26 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     final isRamadan = await ramadanFuture;
     final data = _AlarmData(
       sections: sections,
-      examEntries: examEntries,
+      examEntries: _pruneExpiredExamEntries(examEntries, now: now),
       isRamadan: isRamadan,
     );
     _cache.value = data;
     await _writeSnapshot(data);
     return data;
+  }
+
+  static List<_ExamAlarmEntry> _pruneExpiredExamEntries(
+    List<_ExamAlarmEntry> entries, {
+    required DateTime now,
+  }) {
+    return entries
+        .where(
+          (entry) => ExamVisibility.isUpcomingOrOngoingDateTime(
+            entry.dateTime,
+            now: now,
+          ),
+        )
+        .toList(growable: false);
   }
 
   static Future<void> _writeSnapshot(_AlarmData data) {
@@ -205,7 +226,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         resolved.midDate,
         resolved.midStartTime,
       );
-      if (midAt != null && !midAt.isBefore(now)) {
+      if (midAt != null &&
+          ExamVisibility.isUpcomingOrOngoingDateTime(midAt, now: now)) {
         items.add(
           _ExamAlarmEntry(
             id: '${section.sectionId}-mid',
@@ -225,7 +247,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         resolved.finalDate,
         resolved.finalStartTime,
       );
-      if (finalAt != null && !finalAt.isBefore(now)) {
+      if (finalAt != null &&
+          ExamVisibility.isUpcomingOrOngoingDateTime(finalAt, now: now)) {
         items.add(
           _ExamAlarmEntry(
             id: '${section.sectionId}-final',
@@ -255,6 +278,24 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       );
     });
     return items;
+  }
+
+  String? _resolveHighlightedExamKey(List<_ExamAlarmEntry> exams) {
+    final now = DateTime.now();
+    DateTime? nextExamTime;
+    String? nextExamKey;
+
+    for (final exam in exams) {
+      final startTime = exam.dateTime;
+      if (startTime.isAfter(now)) {
+        if (nextExamTime == null || startTime.isBefore(nextExamTime)) {
+          nextExamTime = startTime;
+          nextExamKey = exam.id;
+        }
+      }
+    }
+
+    return nextExamKey;
   }
 
   Future<void> _handleRefresh({bool notify = true}) async {
@@ -521,6 +562,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           final sections = data?.sections ?? const <Section>[];
           final exams = data?.examEntries ?? const <_ExamAlarmEntry>[];
           final isRamadan = data?.isRamadan ?? false;
+          final highlightedExamKey = _resolveHighlightedExamKey(exams);
+          _highlightScroll.clearHighlightKey();
           if (sections.isEmpty && exams.isEmpty) {
             return buildRefreshEmptyState(
               onRefresh: _handleRefresh,
@@ -528,44 +571,51 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
             );
           }
 
+          final highlightedIndex = highlightedExamKey == null
+              ? -1
+              : exams.indexWhere((exam) => exam.id == highlightedExamKey);
+          unawaited(
+            _highlightScroll.scrollToTarget(
+              targetToken: highlightedExamKey,
+              targetIndex: highlightedIndex >= 0
+                  ? sections.length + highlightedIndex
+                  : null,
+              itemCount: sections.length + exams.length + 1,
+              onRetryBuild: () {
+                if (mounted) {
+                  setState(() {});
+                }
+              },
+            ),
+          );
+
           return BracuRefreshListBuilder(
             onRefresh: _handleRefresh,
-            itemCount: sections.length + exams.length + 2,
+            controller: _scrollController,
+            itemCount: sections.length + exams.length + 1,
             itemBuilder: (context, index) {
-              if (index == sections.length + exams.length + 1) {
+              if (index == sections.length + exams.length) {
                 return const Padding(padding: EdgeInsets.only(top: 12));
               }
-              if (index == sections.length && exams.isNotEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12, top: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: BracuPalette.primary.withValues(alpha: 0.38),
-                      ),
-                    ],
-                  ),
-                );
-              }
 
-              if (index > sections.length && exams.isNotEmpty) {
-                final examIndex = index - sections.length - 1;
+              if (index >= sections.length && exams.isNotEmpty) {
+                final examIndex = index - sections.length;
                 final exam = exams[examIndex];
-                final showTypeHeader =
-                    examIndex == 0 || exams[examIndex - 1].type != exam.type;
                 final alarmKey = 'exam_${exam.id}';
                 _minutesBefore.putIfAbsent(alarmKey, () => 15);
+                final isHighlighted = highlightedExamKey == exam.id;
+                if (isHighlighted) {
+                  _highlightScroll.markHighlighted(true);
+                }
                 return Padding(
+                  key: isHighlighted ? _highlightScroll.highlightKey : null,
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (showTypeHeader && exam.type == 'Final')
-                        const SizedBox(height: 8),
                       BracuCard(
+                        isHighlighted: isHighlighted,
+                        highlightColor: BracuPalette.primary,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [

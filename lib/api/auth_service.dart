@@ -129,9 +129,7 @@ class AuthService {
   }
 
   Future<void> _clearLocalCaches() async {
-    final keepKeys = <String>{
-      CustomSchedulesService.cacheKey,
-    };
+    final keepKeys = <String>{CustomSchedulesService.cacheKey};
     await AppPreferencesStore().clearAllExcept(keepKeys);
 
     await _clearStoredProfileAndSessionData();

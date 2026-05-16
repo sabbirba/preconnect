@@ -46,20 +46,36 @@ class CourseMaterialItem {
 
   factory CourseMaterialItem.fromJson(Map<String, dynamic> json) {
     return CourseMaterialItem(
-      materialId: (json['materialId'] as num?)?.toInt() ?? 0,
-      courseCode: '${json['courseCode'] ?? ''}'.trim(),
-      courseTitle: '${json['courseTitle'] ?? ''}'.trim(),
-      semester: '${json['semester'] ?? ''}'.trim(),
-      title: '${json['title'] ?? ''}'.trim(),
-      description: '${json['description'] ?? ''}'.trim(),
-      fileName: '${json['fileName'] ?? ''}'.trim(),
-      contentType: '${json['contentType'] ?? ''}'.trim(),
-      fileSize: (json['fileSize'] as num?)?.toInt() ?? 0,
-      isApproved: json['isApproved'] == true,
+      materialId:
+          (json['materialId'] as num?)?.toInt() ??
+          (json['material_id'] as num?)?.toInt() ??
+          0,
+      courseCode: _firstNonEmpty(<dynamic>[
+        json['courseCode'],
+        json['course_code'],
+      ]),
+      courseTitle: _firstNonEmpty(<dynamic>[
+        json['courseTitle'],
+        json['course_title'],
+      ]),
+      semester: _firstNonEmpty(<dynamic>[json['semester']]),
+      title: _firstNonEmpty(<dynamic>[json['title']]),
+      description: _firstNonEmpty(<dynamic>[json['description']]),
+      fileName: _firstNonEmpty(<dynamic>[json['fileName'], json['file_name']]),
+      contentType: _firstNonEmpty(<dynamic>[
+        json['contentType'],
+        json['content_type'],
+      ]),
+      fileSize:
+          (json['fileSize'] as num?)?.toInt() ??
+          (json['file_size'] as num?)?.toInt() ??
+          0,
+      isApproved: json['isApproved'] == true || json['is_approved'] == true,
       canDelete: (json['canDelete'] as bool?) ?? (json['can_delete'] as bool?),
-      filePath: '${json['filePath'] ?? ''}'.trim(),
+      filePath: _firstNonEmpty(<dynamic>[json['filePath'], json['file_path']]),
       uploaderName: _firstNonEmpty(<dynamic>[
         json['uploaderName'],
+        json['uploader_name'],
         json['uploadedByName'],
         json['uploadedBy'],
         json['ownerName'],
@@ -76,8 +92,12 @@ class CourseMaterialItem {
         json['materialUrl'],
         json['material_url'],
       ]),
-      createdAt: DateTime.tryParse('${json['createdAt'] ?? ''}'),
-      updatedAt: DateTime.tryParse('${json['updatedAt'] ?? ''}'),
+      createdAt: DateTime.tryParse(
+        _firstNonEmpty(<dynamic>[json['createdAt'], json['created_at']]),
+      ),
+      updatedAt: DateTime.tryParse(
+        _firstNonEmpty(<dynamic>[json['updatedAt'], json['updated_at']]),
+      ),
     );
   }
 
@@ -129,9 +149,14 @@ class CourseMaterialDetail {
         json;
     return CourseMaterialDetail(
       item: CourseMaterialItem.fromJson(itemJson),
-      downloadUrl: '${json['downloadUrl'] ?? ''}'.trim(),
+      downloadUrl: CourseMaterialItem._firstNonEmpty(<dynamic>[
+        json['downloadUrl'],
+        json['download_url'],
+      ]),
       downloadUrlExpiresIn:
-          (json['downloadUrlExpiresIn'] as num?)?.toInt() ?? 0,
+          (json['downloadUrlExpiresIn'] as num?)?.toInt() ??
+          (json['download_url_expires_in'] as num?)?.toInt() ??
+          0,
     );
   }
 }
@@ -149,9 +174,19 @@ class CourseMaterialUploadUrlResponse {
 
   factory CourseMaterialUploadUrlResponse.fromJson(Map<String, dynamic> json) {
     return CourseMaterialUploadUrlResponse(
-      key: '${json['key'] ?? ''}'.trim(),
-      uploadUrl: '${json['uploadUrl'] ?? ''}'.trim(),
-      expiresIn: (json['expiresIn'] as num?)?.toInt() ?? 0,
+      key: CourseMaterialItem._firstNonEmpty(<dynamic>[
+        json['key'],
+        json['storageKey'],
+        json['storage_key'],
+      ]),
+      uploadUrl: CourseMaterialItem._firstNonEmpty(<dynamic>[
+        json['uploadUrl'],
+        json['upload_url'],
+      ]),
+      expiresIn:
+          (json['expiresIn'] as num?)?.toInt() ??
+          (json['expires_in'] as num?)?.toInt() ??
+          0,
     );
   }
 }
@@ -172,8 +207,11 @@ class CourseMaterialUploadUrlInput {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       'fileName': fileName,
+      'file_name': fileName,
       'contentType': contentType,
+      'content_type': contentType,
       'courseCode': courseCode,
+      'course_code': courseCode,
       'semester': semester,
     };
   }
@@ -208,17 +246,26 @@ class CourseMaterialFinalizeInput {
     final normalizedExternalUrl = externalUrl.trim();
     return <String, dynamic>{
       'key': key,
+      'storageKey': key,
+      'storage_key': key,
       'courseCode': courseCode,
+      'course_code': courseCode,
       'courseTitle': courseTitle,
+      'course_title': courseTitle,
       'semester': semester,
       'title': title,
       'description': description,
       'fileName': fileName,
+      'file_name': fileName,
       'contentType': contentType,
+      'content_type': contentType,
       'fileSize': fileSize,
+      'file_size': fileSize,
       if (normalizedExternalUrl.isNotEmpty) ...<String, dynamic>{
         'externalUrl': normalizedExternalUrl,
         'linkUrl': normalizedExternalUrl,
+        'external_url': normalizedExternalUrl,
+        'link_url': normalizedExternalUrl,
       },
     };
   }

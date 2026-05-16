@@ -283,24 +283,26 @@ class _IntroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textSecondary = BracuPalette.textSecondary(context);
-    return BracuCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Made by the BRACU student community and free for every student.',
-            style: TextStyle(color: textSecondary),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Made by the BRACU Students.',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
           ),
-          const SizedBox(height: 6),
-          Text(
-            'If you have an idea, spot a bug, or want to help, '
-            'we would love to hear from you on GitHub.',
-            style: TextStyle(color: textSecondary),
-          ),
-          const SizedBox(height: 12),
-          const _RepoButton(),
-        ],
-      ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'If you have an idea, spot a bug, or want to help, '
+          'we would love to hear from you on GitHub.',
+          style: TextStyle(color: textSecondary),
+        ),
+        const SizedBox(height: 12),
+        const _RepoButton(),
+      ],
     );
   }
 }

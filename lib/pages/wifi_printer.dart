@@ -66,21 +66,35 @@ class CampusPrinterPage extends StatefulWidget {
     final history = await _loadHistorySnapshot();
     final isLoggedIn = await AuthService().isLoggedIn();
     final profile = await ProfileService().getProfile();
-    final studentId = (
-      (profile?['studentId'] ?? await AppStorage.instance.getString(StorageKeys.studentId) ?? '')
-    ).trim();
-    final fullName = (
-      (profile?['fullName'] ?? await AppStorage.instance.getString(StorageKeys.fullName) ?? '')
-    ).trim();
-    final shortCode = (
-      (profile?['shortCode'] ?? await AppStorage.instance.getString(StorageKeys.shortCode) ?? '')
-    ).trim();
-    final currentSemester = (
-      (profile?['currentSemester'] ?? await AppStorage.instance.getString(StorageKeys.currentSemester) ?? '')
-    ).trim();
-    final departmentName = (
-      (profile?['departmentName'] ?? await AppStorage.instance.getString(StorageKeys.departmentName) ?? '')
-    ).trim();
+    final studentId =
+        ((profile?['studentId'] ??
+                await AppStorage.instance.getString(StorageKeys.studentId) ??
+                ''))
+            .trim();
+    final fullName =
+        ((profile?['fullName'] ??
+                await AppStorage.instance.getString(StorageKeys.fullName) ??
+                ''))
+            .trim();
+    final shortCode =
+        ((profile?['shortCode'] ??
+                await AppStorage.instance.getString(StorageKeys.shortCode) ??
+                ''))
+            .trim();
+    final currentSemester =
+        ((profile?['currentSemester'] ??
+                await AppStorage.instance.getString(
+                  StorageKeys.currentSemester,
+                ) ??
+                ''))
+            .trim();
+    final departmentName =
+        ((profile?['departmentName'] ??
+                await AppStorage.instance.getString(
+                  StorageKeys.departmentName,
+                ) ??
+                ''))
+            .trim();
     final hasProfile = isLoggedIn && fullName.isNotEmpty;
     final guestName = hasProfile ? '' : 'Guest';
     int? guestIdNumber;
@@ -257,10 +271,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       }
       final printer = printers.first;
       await AppStorage.instance.setString(_lastPrinterHostKey, printer.address);
-      await AppStorage.instance.setString(
-        _lastPrinterWifiKey,
-        wifiFingerprint,
-      );
+      await AppStorage.instance.setString(_lastPrinterWifiKey, wifiFingerprint);
       setState(() {
         _printerHost = printer.address;
       });
@@ -396,7 +407,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     }());
   }
 
-  Future<({int? pageCount, String? version})> _readPdfInfo(Uint8List bytes) async {
+  Future<({int? pageCount, String? version})> _readPdfInfo(
+    Uint8List bytes,
+  ) async {
     try {
       final header = _readPdfHeaderVersion(bytes);
       final stream = ByteStream(bytes);
@@ -435,14 +448,14 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     if (_busy) return;
     final host = _printerHost.trim();
     final studentId = _studentId.trim().isNotEmpty
-      ? _studentId.trim()
-      : (_guestId != null ? _guestId.toString() : '');
+        ? _studentId.trim()
+        : (_guestId != null ? _guestId.toString() : '');
     final user = studentId.isEmpty ? 'guest' : studentId;
     final clientName = _clientName.trim().isNotEmpty
         ? _clientName.trim()
         : (_studentName.trim().isNotEmpty
-            ? _studentName.trim()
-            : (_guestName.trim().isNotEmpty ? _guestName.trim() : studentId));
+              ? _studentName.trim()
+              : (_guestName.trim().isNotEmpty ? _guestName.trim() : studentId));
     final bytes = _fileBytes;
 
     if (host.isEmpty) {
@@ -538,8 +551,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         !_busy &&
         !_discovering &&
         _printerHost.isNotEmpty &&
-      (_studentId.isNotEmpty || _guestId != null) &&
-      (_studentName.isNotEmpty || _guestName.isNotEmpty);
+        (_studentId.isNotEmpty || _guestId != null) &&
+        (_studentName.isNotEmpty || _guestName.isNotEmpty);
     final printerSubtitle = _discovering
         ? 'Scanning...'
         : _printerHost.isNotEmpty
@@ -588,7 +601,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_studentName.trim().isNotEmpty || _studentId.trim().isNotEmpty) ...[
+                if (_studentName.trim().isNotEmpty ||
+                    _studentId.trim().isNotEmpty) ...[
                   const SizedBox(height: 2),
                   _StudentPrintDetails(
                     name: _studentName,

@@ -604,14 +604,14 @@ class BracuActionBannerCard extends StatelessWidget {
           color: iconColor.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(18),
         ),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
               if (icon != null) ...[
                 Container(
                   width: 36,

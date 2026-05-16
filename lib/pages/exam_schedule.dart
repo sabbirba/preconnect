@@ -4,10 +4,12 @@ import 'package:intl/intl.dart';
 import 'package:preconnect/api/exam_map_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/section_info.dart';
+import 'package:preconnect/pages/shared_widgets/highlight_scroll_helper.dart';
 import 'package:preconnect/pages/shared_widgets/course_community_sheet.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/exam_sorting.dart';
+import 'package:preconnect/tools/exam_visibility.dart';
 import 'package:preconnect/tools/json_snapshot_store.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
@@ -38,11 +40,9 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   late Future<_ExamScheduleData> _future;
   _ExamScheduleData? _latestData;
   final ScrollController _scrollController = ScrollController();
+  late final HighlightScrollCoordinator _highlightScroll =
+      HighlightScrollCoordinator(scrollController: _scrollController);
   int? _currentSessionSemesterId;
-  GlobalKey? _highlightKey;
-  String? _lastHighlightKey;
-  bool _didScroll = false;
-  bool _scrollRetry = false;
 
   @override
   void initState() {
@@ -104,7 +104,8 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
         return cached;
       }
     }
-    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+    final currentSessionSemesterId =
+        await resolveCurrentSessionSemesterIdWithRetry();
     if (currentSessionSemesterId == null) {
       return const _ExamScheduleData(
         sections: <Section>[],
@@ -174,8 +175,6 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   }
 
   void _onJumpRequested() {
-    _didScroll = false;
-    _scrollRetry = false;
     if (mounted) {
       setState(() {});
     }
@@ -183,7 +182,9 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
 
   Future<_ExamScheduleData> _fetchExamData({bool forceRefresh = false}) async {
     final service = ScheduleService();
-    final currentSessionSemesterId = _currentSessionSemesterId;
+    final currentSessionSemesterId =
+        _currentSessionSemesterId ??
+        await resolveCurrentSessionSemesterIdWithRetry();
     if (currentSessionSemesterId == null) {
       return const _ExamScheduleData(
         sections: <Section>[],
@@ -259,7 +260,8 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   }
 
   Future<void> _loadCurrentSessionSemesterId() async {
-    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+    final currentSessionSemesterId =
+        await resolveCurrentSessionSemesterIdWithRetry();
     if (!mounted || currentSessionSemesterId == null) return;
     if (_currentSessionSemesterId == currentSessionSemesterId) return;
     setState(() {
@@ -273,8 +275,6 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
       return;
     }
     setState(() {
-      _didScroll = false;
-      _scrollRetry = false;
       _future = preloadData(forceRefresh: true);
     });
     await _future;
@@ -394,12 +394,21 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           String? finalRoom(Section section) =>
               resolved(section).finalRoomNumber;
 
+          final now = DateTime.now();
           final midExams = sections
               .where(
                 (s) =>
                     midDate(s) != null ||
                     midStart(s) != null ||
                     midEnd(s) != null,
+              )
+              .where(
+                (s) => ExamVisibility.isUpcomingOrOngoingSchedule(
+                  date: midDate(s),
+                  start: midStart(s),
+                  end: midEnd(s),
+                  now: now,
+                ),
               )
               .toList();
           final finalExams = sections
@@ -408,6 +417,14 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                     finalDate(s) != null ||
                     finalStart(s) != null ||
                     finalEnd(s) != null,
+              )
+              .where(
+                (s) => ExamVisibility.isUpcomingOrOngoingSchedule(
+                  date: finalDate(s),
+                  start: finalStart(s),
+                  end: finalEnd(s),
+                  now: now,
+                ),
               )
               .toList();
 
@@ -448,26 +465,20 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
             );
           }
 
-          final now = DateTime.now();
           const shouldHighlightCurrentSemester = true;
           DateTime? nextExamTime;
           String? nextExamKey;
-          DateTime? ongoingExamEnd;
-          String? ongoingExamKey;
           if (shouldHighlightCurrentSemester) {
             for (final s in sections) {
               final midTime = BracuTime.parseDateTime(midDate(s), midStart(s));
-              final midEndTime = BracuTime.parseDateTime(midDate(s), midEnd(s));
-              if (midTime != null) {
-                if (midEndTime != null &&
-                    now.isAfter(midTime) &&
-                    now.isBefore(midEndTime)) {
-                  if (ongoingExamEnd == null ||
-                      midEndTime.isBefore(ongoingExamEnd)) {
-                    ongoingExamEnd = midEndTime;
-                    ongoingExamKey = '${s.sectionId}-mid';
-                  }
-                } else if (midTime.isAfter(now)) {
+              if (midTime != null &&
+                  ExamVisibility.isUpcomingOrOngoingSchedule(
+                    date: midDate(s),
+                    start: midStart(s),
+                    end: midEnd(s),
+                    now: now,
+                  )) {
+                if (midTime.isAfter(now)) {
                   if (nextExamTime == null || midTime.isBefore(nextExamTime)) {
                     nextExamTime = midTime;
                     nextExamKey = '${s.sectionId}-mid';
@@ -478,20 +489,14 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                 finalDate(s),
                 finalStart(s),
               );
-              final finalEndTime = BracuTime.parseDateTime(
-                finalDate(s),
-                finalEnd(s),
-              );
-              if (finalTime != null) {
-                if (finalEndTime != null &&
-                    now.isAfter(finalTime) &&
-                    now.isBefore(finalEndTime)) {
-                  if (ongoingExamEnd == null ||
-                      finalEndTime.isBefore(ongoingExamEnd)) {
-                    ongoingExamEnd = finalEndTime;
-                    ongoingExamKey = '${s.sectionId}-final';
-                  }
-                } else if (finalTime.isAfter(now)) {
+              if (finalTime != null &&
+                  ExamVisibility.isUpcomingOrOngoingSchedule(
+                    date: finalDate(s),
+                    start: finalStart(s),
+                    end: finalEnd(s),
+                    now: now,
+                  )) {
+                if (finalTime.isAfter(now)) {
                   if (nextExamTime == null ||
                       finalTime.isBefore(nextExamTime)) {
                     nextExamTime = finalTime;
@@ -502,10 +507,10 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
             }
           }
 
-          final highlightedKey = ongoingExamKey ?? nextExamKey;
+          final highlightedKey = nextExamKey;
 
           final children = <Widget>[];
-          _highlightKey = null;
+          _highlightScroll.clearHighlightKey();
 
           if (midExams.isNotEmpty) {
             children.addAll(
@@ -513,7 +518,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                 final isHighlighted =
                     highlightedKey == '${section.sectionId}-mid';
                 if (isHighlighted) {
-                  _highlightKey ??= GlobalKey();
+                  _highlightScroll.markHighlighted(true);
                 }
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -563,7 +568,9 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                             );
                           },
                           child: BracuCard(
-                            key: isHighlighted ? _highlightKey : null,
+                            key: isHighlighted
+                                ? _highlightScroll.highlightKey
+                                : null,
                             isHighlighted: isHighlighted,
                             highlightColor: BracuPalette.primary,
                             child: Row(
@@ -672,20 +679,6 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                 );
               }),
             );
-            if (finalExams.isNotEmpty) {
-              children.add(
-                Padding(
-                  padding: const EdgeInsets.only(top: 2, bottom: 12),
-                  child: Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: BracuPalette.accent.withValues(alpha: 0.45),
-                  ),
-                ),
-              );
-            } else {
-              children.add(const SizedBox(height: 6));
-            }
           }
 
           if (finalExams.isNotEmpty) {
@@ -694,7 +687,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                 final isHighlighted =
                     highlightedKey == '${section.sectionId}-final';
                 if (isHighlighted) {
-                  _highlightKey ??= GlobalKey();
+                  _highlightScroll.markHighlighted(true);
                 }
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -746,7 +739,9 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                             );
                           },
                           child: BracuCard(
-                            key: isHighlighted ? _highlightKey : null,
+                            key: isHighlighted
+                                ? _highlightScroll.highlightKey
+                                : null,
                             isHighlighted: isHighlighted,
                             highlightColor: BracuPalette.primary,
                             child: Row(
@@ -860,28 +855,16 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           }
 
           children.add(const SizedBox(height: 8));
-
-          if (highlightedKey != null && highlightedKey != _lastHighlightKey) {
-            _lastHighlightKey = highlightedKey;
-            _didScroll = false;
-            _scrollRetry = false;
-          }
-          if (!_didScroll && _highlightKey != null) {
-            attemptScrollToHighlightedKey(
-              highlightKey: _highlightKey,
-              hasRetried: _scrollRetry,
-              retry: () {
-                _scrollRetry = true;
+          unawaited(
+            _highlightScroll.scrollToTarget(
+              targetToken: highlightedKey,
+              onRetryBuild: () {
                 if (mounted) {
                   setState(() {});
                 }
               },
-              onScrolled: () {
-                _didScroll = true;
-              },
-              alignment: 0.18,
-            );
-          }
+            ),
+          );
 
           return BracuRefreshList(
             onRefresh: _handleRefresh,

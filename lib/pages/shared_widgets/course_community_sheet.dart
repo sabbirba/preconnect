@@ -138,7 +138,9 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
     }
     try {
       final feed = await _facultyService.getFacultyReviews(initial, limit: 20);
-      final facultyDetails = await _facultyService.getFacultyByInitial(initial);
+      final facultyDetails = _needsFacultyLookup(feed.faculty)
+          ? await _facultyService.getFacultyByInitial(initial)
+          : null;
       final mergedFaculty = _mergeFacultySummary(
         primary: feed.faculty,
         lookup: facultyDetails,
@@ -217,6 +219,12 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
       reviewInsights: primary.reviewInsights,
       sourceLabel: primary.sourceLabel,
     );
+  }
+
+  bool _needsFacultyLookup(FacultySummary faculty) {
+    return faculty.name.trim().isEmpty ||
+        faculty.courses.isEmpty ||
+        faculty.email.trim().isEmpty;
   }
 
   Future<void> _loadMaterials() async {

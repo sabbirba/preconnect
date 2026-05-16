@@ -109,9 +109,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   }
 
   Future<void> _warmAndBind({bool forceRefresh = false}) async {
-    final data = await preloadData(
-      forceRefresh: forceRefresh,
-    );
+    final data = await preloadData(forceRefresh: forceRefresh);
     if (!mounted) return;
     setState(() {
       _latestData = data;
@@ -558,7 +556,8 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         resolved.midDate,
         resolved.midStartTime,
       );
-      if (mid != null) {
+      if (mid != null &&
+          ExamVisibility.isUpcomingOrOngoingDateTime(mid, now: now)) {
         exams.add(
           _CountdownCardData(
             title: mid.difference(now).inDays <= 3
@@ -573,11 +572,12 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         resolved.finalDate,
         resolved.finalStartTime,
       );
-      if (fin != null) {
+      if (fin != null &&
+          ExamVisibility.isUpcomingOrOngoingDateTime(fin, now: now)) {
         exams.add(
           _CountdownCardData(
             title: fin.difference(now).inDays <= 3
-              ? '${s.courseCode} Final'
+                ? '${s.courseCode} Final'
                 : 'Final',
             targetDateTime: fin,
             tab: HomeTab.examSchedule,
@@ -714,7 +714,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     Map<String, ExamScheduleOverride> overrides,
   ) {
     final examService = ExamScheduleService();
-    final today = DateTime.now();
+    final now = DateTime.now();
     final exams = <_TodayExamEntry>[];
     for (final s in sections) {
       final resolved = examService.resolveSection(
@@ -725,7 +725,9 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         resolved.midDate,
         resolved.midStartTime,
       );
-      if (mid != null && _isSameDate(mid, today)) {
+      if (mid != null &&
+          ExamVisibility.isUpcomingOrOngoingDateTime(mid, now: now) &&
+          _isSameDate(mid, now)) {
         exams.add(
           _TodayExamEntry(
             dateTime: mid,
@@ -743,7 +745,9 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         resolved.finalDate,
         resolved.finalStartTime,
       );
-      if (fin != null && _isSameDate(fin, today)) {
+      if (fin != null &&
+          ExamVisibility.isUpcomingOrOngoingDateTime(fin, now: now) &&
+          _isSameDate(fin, now)) {
         exams.add(
           _TodayExamEntry(
             dateTime: fin,

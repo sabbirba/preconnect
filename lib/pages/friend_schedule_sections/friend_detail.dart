@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/api_config.dart';
@@ -5,6 +6,7 @@ import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/friend_schedule_sections/compare_schedules.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
+import 'package:preconnect/pages/shared_widgets/highlight_scroll_helper.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
@@ -42,10 +44,8 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
       ? widget.displayName
       : null;
   final ScrollController _scrollController = ScrollController();
-  GlobalKey? _highlightKey;
-  String? _lastHighlightKey;
-  bool _didScroll = false;
-  bool _scrollRetry = false;
+  late final HighlightScrollCoordinator _highlightScroll =
+      HighlightScrollCoordinator(scrollController: _scrollController);
 
   @override
   void dispose() {
@@ -77,8 +77,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
         return;
       }
       final myPhotoPath =
-          (await AppStorage.instance.getString(StorageKeys.photoFilePath) ??
-                  '')
+          (await AppStorage.instance.getString(StorageKeys.photoFilePath) ?? '')
               .trim();
       final myPhotoUrl = ApiConfig.photoUrl(myPhotoPath);
       navigator.push(
@@ -321,7 +320,12 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
 
     final widgets = <Widget>[];
     final highlightedEntryKey = _pickHighlightedEntryKey(flatEntries);
-    _highlightKey = null;
+    final targetIndex = highlightedEntryKey == null
+        ? null
+        : flatEntries.indexWhere(
+            (entry) => entry['entryKey'] == highlightedEntryKey,
+          );
+    _highlightScroll.clearHighlightKey();
     for (final day in sortedDays) {
       final entries = grouped[day]!;
       entries.sort((a, b) {
@@ -341,14 +345,14 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
           children: [
             BracuSectionTitle(title: day),
             const SizedBox(height: 10),
-            ...entries.map(
-              (entry) => Padding(
+            ...entries.map((entry) {
+              final isHighlighted = entry['entryKey'] == highlightedEntryKey;
+              _highlightScroll.markHighlighted(isHighlighted);
+              return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: BracuCard(
-                  key: entry['entryKey'] == highlightedEntryKey
-                      ? (_highlightKey ??= GlobalKey())
-                      : null,
-                  isHighlighted: entry['entryKey'] == highlightedEntryKey,
+                  key: isHighlighted ? _highlightScroll.highlightKey : null,
+                  isHighlighted: isHighlighted,
                   highlightColor: BracuPalette.primary,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -417,33 +421,25 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                     ],
                   ),
                 ),
-              ),
-            ),
+              );
+            }),
             const SizedBox(height: 6),
           ],
         ),
       );
     }
-    if (highlightedEntryKey != null &&
-        highlightedEntryKey != _lastHighlightKey) {
-      _lastHighlightKey = highlightedEntryKey;
-      _didScroll = false;
-      _scrollRetry = false;
-    }
-    if (!_didScroll && highlightedEntryKey != null) {
-      attemptScrollToHighlightedKey(
-        highlightKey: _highlightKey,
-        hasRetried: _scrollRetry,
-        retry: () {
-          _scrollRetry = true;
-          if (mounted) {
-            setState(() {});
-          }
-        },
-        onScrolled: () {
-          _didScroll = true;
-        },
-        alignment: 0.18,
+    if (highlightedEntryKey != null) {
+      unawaited(
+        _highlightScroll.scrollToTarget(
+          targetToken: highlightedEntryKey,
+          targetIndex: targetIndex,
+          itemCount: flatEntries.length,
+          onRetryBuild: () {
+            if (mounted) {
+              setState(() {});
+            }
+          },
+        ),
       );
     }
     return widgets;

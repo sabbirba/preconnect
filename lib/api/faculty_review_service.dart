@@ -61,29 +61,51 @@ class FacultySummary {
   final int downvotes;
 
   factory FacultySummary.fromJson(Map<String, dynamic> json) {
+    final statsJson =
+        (json['stats'] as Map?)?.cast<String, dynamic>() ??
+        <String, dynamic>{
+          'reviewsTotal': json['reviewsTotal'] ?? json['reviews_total'],
+          'overall': json['overall'],
+          'teaching': json['teaching'],
+          'fairness': json['fairness'],
+          'behavior': json['behavior'],
+        };
     return FacultySummary(
-      facultyId: (json['facultyId'] as num?)?.toInt() ?? 0,
-      initial: '${json['initial'] ?? ''}'.trim(),
-      name: '${json['name'] ?? ''}'.trim(),
-      email: '${json['email'] ?? ''}'.trim(),
+      facultyId:
+          (json['facultyId'] as num?)?.toInt() ??
+          (json['faculty_id'] as num?)?.toInt() ??
+          0,
+      initial: _firstNonEmpty(<dynamic>[
+        json['initial'],
+        json['faculty_initial'],
+      ]),
+      name: _firstNonEmpty(<dynamic>[json['name'], json['faculty_name']]),
+      email: _firstNonEmpty(<dynamic>[json['email']]),
       courses:
           (json['courses'] as List?)
               ?.map((v) => '$v'.trim())
               .where((v) => v.isNotEmpty)
               .toList() ??
           const <String>[],
-      stats: FacultyRatingStats.fromJson(
-        (json['stats'] as Map?)?.cast<String, dynamic>() ??
-            const <String, dynamic>{},
-      ),
-      reviewSummary: '${json['reviewSummary'] ?? ''}'.trim(),
+      stats: FacultyRatingStats.fromJson(statsJson),
+      reviewSummary: _firstNonEmpty(<dynamic>[
+        json['reviewSummary'],
+        json['review_summary'],
+      ]),
       reviewInsights:
           (json['reviewInsights'] as List?)
               ?.map((v) => '$v'.trim())
               .where((v) => v.isNotEmpty)
               .toList() ??
+          (json['review_insights'] as List?)
+              ?.map((v) => '$v'.trim())
+              .where((v) => v.isNotEmpty)
+              .toList() ??
           const <String>[],
-      sourceLabel: '${json['sourceLabel'] ?? ''}'.trim(),
+      sourceLabel: _firstNonEmpty(<dynamic>[
+        json['sourceLabel'],
+        json['source_label'],
+      ]),
       voteScore:
           (json['voteScore'] as num?)?.toInt() ??
           (json['vote_score'] as num?)?.toInt() ??
@@ -157,9 +179,18 @@ class FacultyReviewItem {
   factory FacultyReviewItem.fromJson(Map<String, dynamic> json) {
     final ratings = (json['ratings'] as Map?)?.cast<String, dynamic>();
     return FacultyReviewItem(
-      reviewId: (json['reviewId'] as num?)?.toInt() ?? 0,
-      facultyInitial: '${json['facultyInitial'] ?? ''}'.trim(),
-      facultyName: '${json['facultyName'] ?? ''}'.trim(),
+      reviewId:
+          (json['reviewId'] as num?)?.toInt() ??
+          (json['review_id'] as num?)?.toInt() ??
+          0,
+      facultyInitial: _firstNonEmpty(<dynamic>[
+        json['facultyInitial'],
+        json['faculty_initial'],
+      ]),
+      facultyName: _firstNonEmpty(<dynamic>[
+        json['facultyName'],
+        json['faculty_name'],
+      ]),
       overall:
           (ratings?['overall'] as num?)?.toInt() ??
           (json['overall'] as num?)?.toInt() ??
@@ -176,7 +207,7 @@ class FacultyReviewItem {
           (ratings?['behavior'] as num?)?.toInt() ??
           (json['behavior'] as num?)?.toInt() ??
           0,
-      comment: '${json['comment'] ?? ''}'.trim(),
+      comment: _firstNonEmpty(<dynamic>[json['comment']]),
       isApproved: json['isApproved'] == true || json['is_approved'] == true,
       canDelete: (json['canDelete'] as bool?) ?? (json['can_delete'] as bool?),
       canReport:
@@ -225,18 +256,23 @@ class FacultyReviewFeed {
   factory FacultyReviewFeed.fromJson(Map<String, dynamic> json) {
     final facultyJson =
         (json['faculty'] as Map?)?.cast<String, dynamic>() ??
-        const <String, dynamic>{};
-    final items =
-        (json['reviews'] as List?)
-            ?.whereType<Map>()
-            .map((e) => FacultyReviewItem.fromJson(e.cast<String, dynamic>()))
-            .toList() ??
-        const <FacultyReviewItem>[];
+        (json['faculty_summary'] as Map?)?.cast<String, dynamic>() ??
+        (json['summary'] as Map?)?.cast<String, dynamic>() ??
+        json;
+    final items = _itemsFromValue(
+      json['reviews'] ?? json['items'] ?? json['rows'] ?? json['data'],
+    );
     return FacultyReviewFeed(
       faculty: FacultySummary.fromJson(facultyJson),
       reviews: items,
-      limit: (json['limit'] as num?)?.toInt() ?? 20,
-      offset: (json['offset'] as num?)?.toInt() ?? 0,
+      limit:
+          (json['limit'] as num?)?.toInt() ??
+          (json['pageSize'] as num?)?.toInt() ??
+          20,
+      offset:
+          (json['offset'] as num?)?.toInt() ??
+          (json['skip'] as num?)?.toInt() ??
+          0,
     );
   }
 
@@ -270,6 +306,7 @@ class FacultyReviewUpsertInput {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       'facultyInitial': facultyInitial,
+      'faculty_initial': facultyInitial,
       'overall': overall,
       'teaching': teaching,
       'fairness': fairness,
@@ -302,87 +339,79 @@ class FacultyReviewService {
     int offset = 0,
   }) async {
     final initial = facultyInitial.trim().toUpperCase();
-    final cached = await _readCachedFeed(initial);
-    if (cached != null) {
-      return _sliceFeed(cached, limit: limit, offset: offset);
-    }
-    final apiBundle = await _fetchApiBundle(initial);
+    final safeOffset = offset < 0 ? 0 : offset;
+    final safeLimit = limit <= 0 ? 20 : limit;
     final dbFeed = await _fetchDatabaseFeed(
       initial,
-      limit: limit,
-      offset: offset,
-    );
-
-    final summary =
-        apiBundle?.summary ??
-        dbFeed?.faculty ??
-        FacultySummary(
-          facultyId: 0,
-          initial: initial,
-          name: '',
-          email: '',
-          courses: const <String>[],
-          stats: const FacultyRatingStats(
-            reviewsTotal: 0,
-            overall: 0,
-            teaching: 0,
-            fairness: 0,
-            behavior: 0,
-          ),
-          reviewSummary: '',
-          reviewInsights: const <String>[],
-          sourceLabel: '',
-          voteScore: 0,
-          upvotes: 0,
-          downvotes: 0,
-        );
-    final dbReviews = dbFeed?.reviews ?? const <FacultyReviewItem>[];
-    final apiReviews = apiBundle?.reviews ?? const <FacultyReviewItem>[];
-    final merged = <FacultyReviewItem>[...dbReviews, ...apiReviews];
-    final seen = <String>{};
-    final unique = merged.where((review) {
-      final key = review.reviewId != 0
-          ? 'id:${review.reviewId}'
-          : '${review.facultyInitial}|${review.overall}|${review.teaching}|${review.fairness}|${review.behavior}|${review.comment.trim().toLowerCase()}';
-      return seen.add(key);
-    }).toList();
-    final safeOffset = offset < 0 ? 0 : offset;
-    final safeLimit = limit <= 0 ? unique.length : limit;
-    final paged = unique.skip(safeOffset).take(safeLimit).toList();
-    final feed = FacultyReviewFeed(
-      faculty: summary,
-      reviews: paged,
       limit: safeLimit,
       offset: safeOffset,
     );
-    _feedCache[initial] = feed;
-    _summaryCache[initial] = summary;
-    unawaited(_writeCachedFeed(initial, feed));
-    return feed;
+    final legacyBundle = await _fetchLegacyBundle(initial);
+    if (dbFeed != null || legacyBundle != null) {
+      final merged = _mergeFeeds(
+        initial: initial,
+        dbFeed: dbFeed,
+        legacyBundle: legacyBundle,
+        limit: safeLimit,
+        offset: safeOffset,
+      );
+      _feedCache[initial] = merged;
+      _summaryCache[initial] = merged.faculty;
+      unawaited(_writeCachedFeed(initial, merged));
+      return merged;
+    }
+
+    final cached = await _readCachedFeed(initial);
+    if (cached != null) {
+      return _sliceFeed(cached, limit: limit, offset: safeOffset);
+    }
+
+    return FacultyReviewFeed(
+      faculty: FacultySummary(
+        facultyId: 0,
+        initial: initial,
+        name: '',
+        email: '',
+        courses: const <String>[],
+        stats: const FacultyRatingStats(
+          reviewsTotal: 0,
+          overall: 0,
+          teaching: 0,
+          fairness: 0,
+          behavior: 0,
+        ),
+        reviewSummary: '',
+        reviewInsights: const <String>[],
+        sourceLabel: '',
+        voteScore: 0,
+        upvotes: 0,
+        downvotes: 0,
+      ),
+      reviews: const <FacultyReviewItem>[],
+      limit: safeLimit,
+      offset: safeOffset,
+    );
   }
 
   Future<FacultySummary?> getFacultyByInitial(String facultyInitial) async {
     final initial = facultyInitial.trim().toUpperCase();
     if (initial.isEmpty) return null;
+    final dbFeed = await _fetchDatabaseFeed(initial, limit: 1, offset: 0);
+    final legacyBundle = await _fetchLegacyBundle(initial);
+    final merged = _mergeFacultySummary(
+      initial: initial,
+      dbSummary: dbFeed?.faculty,
+      legacySummary: legacyBundle?.summary,
+    );
+    if (merged != null) {
+      _summaryCache[initial] = merged;
+      return merged;
+    }
+
     final cachedSummary = _summaryCache[initial];
     if (cachedSummary != null) return cachedSummary;
     final cachedFeed = await _readCachedFeed(initial);
-    if (cachedFeed != null) {
-      return cachedFeed.faculty;
-    }
-    try {
-      final response = await _client.publicGet(
-        '$_base/data/facultyreviews',
-      );
-      final root = _decodeMap(response.body);
-      final scoped = _scopedFacultyData(root, initial);
-      if (scoped == null || scoped.isEmpty) return null;
-      final summary = _summaryFromDataScoped(scoped, initial);
-      _summaryCache[initial] = summary;
-      return summary;
-    } catch (_) {
-      return null;
-    }
+    return cachedFeed?.faculty;
   }
 
   Future<FacultyReviewFeed?> _readCachedFeed(String initial) async {
@@ -623,11 +652,9 @@ class FacultyReviewService {
     );
   }
 
-  Future<_ApiFacultyBundle?> _fetchApiBundle(String initial) async {
+  Future<_ApiFacultyBundle?> _fetchLegacyBundle(String initial) async {
     try {
-      final response = await _client.publicGet(
-        '$_base/data/facultyreviews',
-      );
+      final response = await _client.publicGet(ApiConfig.facultyReviewsDataUrl);
       final root = _decodeMap(response.body);
       final scoped = _scopedFacultyData(root, initial);
       if (scoped == null || scoped.isEmpty) return null;
@@ -670,6 +697,118 @@ class FacultyReviewService {
     final sum = filtered.fold<int>(0, (a, b) => a + b);
     return (sum / filtered.length).round();
   }
+
+  FacultyReviewFeed _mergeFeeds({
+    required String initial,
+    required FacultyReviewFeed? dbFeed,
+    required _ApiFacultyBundle? legacyBundle,
+    required int limit,
+    required int offset,
+  }) {
+    final dbReviews = dbFeed?.reviews ?? const <FacultyReviewItem>[];
+    final legacyReviews = legacyBundle?.reviews ?? const <FacultyReviewItem>[];
+    final merged = <FacultyReviewItem>[...dbReviews, ...legacyReviews];
+    final seen = <String>{};
+    final unique = merged.where((review) {
+      final key = review.reviewId != 0
+          ? 'id:${review.reviewId}'
+          : '${review.facultyInitial}|${review.overall}|${review.teaching}|${review.fairness}|${review.behavior}|${review.comment.trim().toLowerCase()}';
+      return seen.add(key);
+    }).toList();
+    final summary =
+        _mergeFacultySummary(
+          initial: initial,
+          dbSummary: dbFeed?.faculty,
+          legacySummary: legacyBundle?.summary,
+        ) ??
+        FacultySummary(
+          facultyId: 0,
+          initial: initial,
+          name: '',
+          email: '',
+          courses: const <String>[],
+          stats: const FacultyRatingStats(
+            reviewsTotal: 0,
+            overall: 0,
+            teaching: 0,
+            fairness: 0,
+            behavior: 0,
+          ),
+          reviewSummary: '',
+          reviewInsights: const <String>[],
+          sourceLabel: '',
+          voteScore: 0,
+          upvotes: 0,
+          downvotes: 0,
+        );
+    final paged = unique.skip(offset).take(limit).toList();
+    return FacultyReviewFeed(
+      faculty: summary,
+      reviews: paged,
+      limit: limit,
+      offset: offset,
+    );
+  }
+
+  FacultySummary? _mergeFacultySummary({
+    required String initial,
+    required FacultySummary? dbSummary,
+    required FacultySummary? legacySummary,
+  }) {
+    final primary = dbSummary;
+    final fallback = legacySummary;
+    if (primary == null && fallback == null) return null;
+    final mergedCourses = <String>{
+      ...(primary?.courses ?? const <String>[]),
+      ...(fallback?.courses ?? const <String>[]),
+    }.where((course) => course.trim().isNotEmpty).toList();
+    final stats = primary != null && primary.stats.reviewsTotal > 0
+        ? primary.stats
+        : (fallback?.stats ??
+              primary?.stats ??
+              const FacultyRatingStats(
+                reviewsTotal: 0,
+                overall: 0,
+                teaching: 0,
+                fairness: 0,
+                behavior: 0,
+              ));
+    final chosen = primary ?? fallback!;
+    return FacultySummary(
+      facultyId: chosen.facultyId,
+      initial: primary?.initial.trim().isNotEmpty == true
+          ? primary!.initial
+          : (fallback?.initial.trim().isNotEmpty == true
+                ? fallback!.initial
+                : initial),
+      name: primary?.name.trim().isNotEmpty == true
+          ? primary!.name
+          : (fallback?.name ?? ''),
+      email: primary?.email.trim().isNotEmpty == true
+          ? primary!.email
+          : (fallback?.email ?? ''),
+      courses: mergedCourses.isNotEmpty ? mergedCourses : chosen.courses,
+      stats: stats,
+      reviewSummary: primary?.reviewSummary.trim().isNotEmpty == true
+          ? primary!.reviewSummary
+          : (fallback?.reviewSummary ?? ''),
+      reviewInsights: primary?.reviewInsights.isNotEmpty == true
+          ? primary!.reviewInsights
+          : (fallback?.reviewInsights ?? const <String>[]),
+      sourceLabel: primary?.sourceLabel.trim().isNotEmpty == true
+          ? primary!.sourceLabel
+          : (fallback?.sourceLabel ?? ''),
+      voteScore: primary?.voteScore != 0
+          ? primary!.voteScore
+          : (fallback?.voteScore ?? 0),
+      upvotes: primary?.upvotes != 0
+          ? primary!.upvotes
+          : (fallback?.upvotes ?? 0),
+      downvotes: primary?.downvotes != 0
+          ? primary!.downvotes
+          : (fallback?.downvotes ?? 0),
+    );
+  }
 }
 
 class _ApiFacultyBundle {
@@ -691,4 +830,26 @@ class _ParsedRatings {
   final int teaching;
   final int fairness;
   final int behavior;
+}
+
+String _firstNonEmpty(List<dynamic> values) {
+  for (final value in values) {
+    final normalized = '${value ?? ''}'.trim();
+    if (normalized.isNotEmpty) return normalized;
+  }
+  return '';
+}
+
+List<FacultyReviewItem> _itemsFromValue(dynamic value) {
+  final parsed = value is Map ? value.cast<String, dynamic>() : value;
+  if (parsed is List) {
+    return parsed
+        .whereType<Map>()
+        .map((e) => FacultyReviewItem.fromJson(e.cast<String, dynamic>()))
+        .toList();
+  }
+  if (parsed is Map) {
+    return FacultyReviewFeed.fromJson(parsed.cast<String, dynamic>()).reviews;
+  }
+  return const <FacultyReviewItem>[];
 }

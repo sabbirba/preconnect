@@ -48,6 +48,7 @@ import 'package:preconnect/tools/quiet_mode_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/captive_wifi_http_service.dart';
 import 'package:preconnect/tools/exam_sorting.dart';
+import 'package:preconnect/tools/exam_visibility.dart';
 import 'package:preconnect/tools/holiday_status.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/refresh_bus.dart';

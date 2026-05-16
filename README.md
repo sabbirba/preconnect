@@ -19,10 +19,38 @@ The supported browser experience is the Chrome extension build.
 ### Key features
 
 - Simple, predictable navigation
+- Dashboard with today, schedule, and exam snapshots
 - Class schedules and exam tracking
+- Seat status, section details, and exam maps
 - Smart alarms and reminders
 - QR-based friend sharing
+- Custom schedules and personal planning
+- Campus tools like bus routes, free labs, printer support, and map/contact access
+- Notifications, profile, degree progress, and student helpers
 - Offline-friendly, cache-first experience
+
+## Project Map
+
+The repository is organized around the main product areas below:
+
+- `lib/pages/home.dart` and `lib/pages/home_sections/` for the main dashboard and quick-access cards
+- `lib/pages/class_schedule.dart` for class schedules
+- `lib/pages/exam_schedule.dart` for midterm and final exam data
+- `lib/pages/seat_status.dart` for seat availability and section details
+- `lib/pages/alarms.dart` for class and exam reminders
+- `lib/pages/notifications.dart` for app notifications
+- `lib/pages/friend_schedule.dart` and `lib/pages/share_schedule.dart` for schedule sharing
+- `lib/pages/custom_schedules.dart` for personal schedules
+- `lib/pages/degree_progress.dart` and `lib/pages/cgpa_calculator.dart` for academic planning
+- `lib/pages/bus.dart`, `lib/pages/free_labs.dart`, `lib/pages/wifi_printer.dart`, and `lib/pages/captive_wifi.dart` for campus utilities
+
+## Documentation
+
+- Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Code of Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- Security: [SECURITY.md](SECURITY.md)
+- Trademark Guidelines: [TRADEMARKS.md](TRADEMARKS.md)
+- Support / Funding: [FUNDING.md](FUNDING.md)
 
 ## Screenshots
 
@@ -80,6 +108,7 @@ Want to build, test, or contribute locally? Follow the full setup guide in [CONT
 ## Community
 
 New students and first-time contributors are welcome to ask questions in [GitHub issues](https://github.com/sabbirba/preconnect/issues).
+Please also review the community and safety guidance in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and the private reporting process in [SECURITY.md](SECURITY.md).
 
 ## Platform Support
 
@@ -172,10 +201,8 @@ Why this reduces Connect API calls:
 
 ## Documentation & Policies
 
-- Code of Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
-- Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
-- Security: [SECURITY.md](SECURITY.md)
 - Status Page: [status.preconnect.app](https://status.preconnect.app)
+- The full repo policy links are listed in the [Documentation](#documentation) section above.
 
 ## Support PreConnect
 
@@ -186,6 +213,8 @@ If you want to support the project locally, you can send to:
 - bKash / Nagad / Upay: **01865493144**
 
 Reference (required): **PreConnect App**
+
+More details: [FUNDING.md](FUNDING.md)
 
 ## Roadmap
 

@@ -1044,32 +1044,6 @@ Future<T?> showBracuSelectDropdown<T>(
   );
 }
 
-void attemptScrollToHighlightedKey({
-  required GlobalKey? highlightKey,
-  required bool hasRetried,
-  required VoidCallback retry,
-  required VoidCallback onScrolled,
-  double alignment = 0.5,
-  Duration duration = const Duration(milliseconds: 450),
-}) {
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    final context = highlightKey?.currentContext;
-    if (context == null) {
-      if (!hasRetried) {
-        retry();
-      }
-      return;
-    }
-    Scrollable.ensureVisible(
-      context,
-      alignment: alignment,
-      duration: duration,
-      curve: Curves.easeOutCubic,
-    );
-    onScrolled();
-  });
-}
-
 class BracuSelectChip extends StatelessWidget {
   const BracuSelectChip({
     super.key,
@@ -1678,37 +1652,48 @@ class BracuRefreshScroll extends StatefulWidget {
     required this.child,
     this.padding = kBracuPageListPadding,
     this.showScrollTopButton = true,
+    this.controller,
   });
 
   final RefreshCallback onRefresh;
   final Widget child;
   final EdgeInsets padding;
   final bool showScrollTopButton;
+  final ScrollController? controller;
 
   @override
   State<BracuRefreshScroll> createState() => _BracuRefreshScrollState();
 }
 
 class _BracuRefreshScrollState extends State<BracuRefreshScroll> {
-  final ScrollController _controller = ScrollController();
+  ScrollController? _controller;
   bool _showScrollTop = false;
+
+  ScrollController get _effectiveController =>
+      widget.controller ?? _controller!;
 
   @override
   void initState() {
     super.initState();
-    _controller.addListener(_onScroll);
+    if (widget.controller == null) {
+      _controller = ScrollController();
+      _controller!.addListener(_onScroll);
+    } else {
+      widget.controller!.addListener(_onScroll);
+    }
   }
 
   @override
   void dispose() {
-    _controller.removeListener(_onScroll);
-    _controller.dispose();
+    final controller = widget.controller ?? _controller;
+    controller?.removeListener(_onScroll);
+    _controller?.dispose();
     super.dispose();
   }
 
   void _onScroll() {
-    if (!_controller.hasClients) return;
-    final shouldShow = _controller.offset > 360;
+    if (!_effectiveController.hasClients) return;
+    final shouldShow = _effectiveController.offset > 360;
     if (shouldShow == _showScrollTop) return;
     setState(() {
       _showScrollTop = shouldShow;
@@ -1716,8 +1701,8 @@ class _BracuRefreshScrollState extends State<BracuRefreshScroll> {
   }
 
   Future<void> _scrollToTop() async {
-    if (!_controller.hasClients) return;
-    await _controller.animateTo(
+    if (!_effectiveController.hasClients) return;
+    await _effectiveController.animateTo(
       0,
       duration: const Duration(milliseconds: 320),
       curve: Curves.easeOutCubic,
@@ -1731,7 +1716,7 @@ class _BracuRefreshScrollState extends State<BracuRefreshScroll> {
         RefreshIndicator(
           onRefresh: widget.onRefresh,
           child: SingleChildScrollView(
-            controller: _controller,
+            controller: _effectiveController,
             padding: widget.padding,
             physics: const AlwaysScrollableScrollPhysics(),
             child: widget.child,
@@ -2214,7 +2199,6 @@ class _BracuMetricTile extends StatelessWidget {
     );
   }
 }
-
 
 class BracuEmptyState extends StatelessWidget {
   const BracuEmptyState({super.key, required this.message});

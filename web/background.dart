@@ -527,7 +527,8 @@ Future<void> _refreshBadge() async {
       );
       await chrome.action.setTitle(
         action.SetTitleDetails(
-          title: 'PreConnect - $count unread notification${count == 1 ? '' : 's'}',
+          title:
+              'PreConnect - $count unread notification${count == 1 ? '' : 's'}',
         ),
       );
     } else {
@@ -541,7 +542,8 @@ Future<void> _maybeNotifyUnreadChange() async {
   if (!chrome.notifications.isAvailable) return;
   try {
     final values = await chrome.storage.local.get(_cachedUnreadCountKey);
-    final previous = int.tryParse('${values[_cachedUnreadCountKey] ?? ''}') ?? 0;
+    final previous =
+        int.tryParse('${values[_cachedUnreadCountKey] ?? ''}') ?? 0;
     final current = await _fetchUnreadCount();
     if (current <= previous) {
       await chrome.storage.local.set({_cachedUnreadCountKey: current});
@@ -556,7 +558,8 @@ Future<void> _maybeNotifyUnreadChange() async {
         type: notifications.TemplateType.basic,
         iconUrl: chrome.runtime.getURL('icons/Icon-128.png'),
         title: 'New notification update',
-        message: 'You have $current unread notification${current == 1 ? '' : 's'}.',
+        message:
+            'You have $current unread notification${current == 1 ? '' : 's'}.',
         priority: 0,
         requireInteraction: false,
       ),

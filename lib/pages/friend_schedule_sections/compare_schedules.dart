@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
+import 'package:preconnect/pages/shared_widgets/highlight_scroll_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/time_utils.dart';
@@ -229,10 +230,8 @@ class CompareSchedulesPage extends StatefulWidget {
 class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
   final Set<String> _pinnedEntries = <String>{};
   final ScrollController _scrollController = ScrollController();
-  GlobalKey? _highlightKey;
-  String? _lastHighlightKey;
-  bool _didScroll = false;
-  bool _scrollRetry = false;
+  late final HighlightScrollCoordinator _highlightScroll =
+      HighlightScrollCoordinator(scrollController: _scrollController);
 
   @override
   void initState() {
@@ -525,7 +524,10 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
     final entries = _buildEntries(freeSlots, busySlots, commonClasses);
     final grouped = _groupByDay(entries);
     final highlightedEntryKey = _pickHighlightedEntryKey(entries);
-    _highlightKey = null;
+    final targetIndex = highlightedEntryKey == null
+        ? null
+        : entries.indexWhere((item) => item.key == highlightedEntryKey);
+    _highlightScroll.clearHighlightKey();
 
     final scheduleWidgets = <Widget>[
       _buildPeopleCard(context),
@@ -543,41 +545,33 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
           for (final item in entry.value) {
             final pinned = _pinnedEntries.contains(item.key);
             final isHighlighted = item.key == highlightedEntryKey;
-            if (isHighlighted) {
-              _highlightKey ??= GlobalKey();
-            }
+            _highlightScroll.markHighlighted(isHighlighted);
             yield _buildEntryCard(
               context,
               item,
               pinned,
               isHighlighted: isHighlighted,
-              highlightKey: isHighlighted ? _highlightKey : null,
+              highlightKey: isHighlighted
+                  ? _highlightScroll.highlightKey
+                  : null,
             );
           }
           yield const SizedBox(height: 8);
         }),
     ];
 
-    if (highlightedEntryKey != null &&
-        highlightedEntryKey != _lastHighlightKey) {
-      _lastHighlightKey = highlightedEntryKey;
-      _didScroll = false;
-      _scrollRetry = false;
-    }
-    if (!_didScroll && highlightedEntryKey != null) {
-      attemptScrollToHighlightedKey(
-        highlightKey: _highlightKey,
-        hasRetried: _scrollRetry,
-        retry: () {
-          _scrollRetry = true;
-          if (mounted) {
-            setState(() {});
-          }
-        },
-        onScrolled: () {
-          _didScroll = true;
-        },
-        alignment: 0.18,
+    if (highlightedEntryKey != null) {
+      unawaited(
+        _highlightScroll.scrollToTarget(
+          targetToken: highlightedEntryKey,
+          targetIndex: targetIndex,
+          itemCount: entries.length,
+          onRetryBuild: () {
+            if (mounted) {
+              setState(() {});
+            }
+          },
+        ),
       );
     }
 
