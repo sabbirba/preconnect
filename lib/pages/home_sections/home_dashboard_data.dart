@@ -25,7 +25,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   bool _autoOpenedWifiAssistant = false;
   bool _isOpeningWifiAssistant = false;
   bool _isAutoExtendingSession = false;
-  bool _showBlobs = true;
   DateTime? _lastAutoAssistantOpenAt;
   DateTime? _lastAutoSessionExtendAt;
   Timer? _captiveAutoTimer;
@@ -48,9 +47,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   @override
   void initState() {
     super.initState();
-    AppStorage.instance.getBool("showdecorblobs").then((value) {
-      if (mounted) setState(() => _showBlobs = value ?? true);
-    });
+
     final forceRefresh = isRefreshingFrom('auth');
     if (forceRefresh) {
       _cachedData = null;

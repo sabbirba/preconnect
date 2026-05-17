@@ -199,6 +199,7 @@ class CoursePinStore {
 class HomeCardPreferences {
   HomeCardPreferences._();
 
+  static final decorationNotifier = ValueNotifier(true);
   static const String _showQuickAccessSectionKey =
       'home_show_quick_access_section';
   static const String _showRamadanCardKey = 'home_show_ramadan_card';
@@ -206,21 +207,28 @@ class HomeCardPreferences {
       'home_show_exam_countdown_card';
   static const String _showTodayScheduleKey = 'home_show_today_schedule';
   static const String _showSponsoredContentKey = 'home_show_sponsored_content';
+  static const String _showDecorations = 'home_show_decorations';
 
   static const HomeCardVisibility defaults = HomeCardVisibility(
     showQuickAccessSection: true,
     showRamadanCard: true,
     showExamCountdownCard: true,
+    showDecorations: true,
     showTodaySchedule: true,
     showSponsoredContent: true,
   );
 
   static Future<HomeCardVisibility> load() async {
     try {
+      bool showDecorations =
+          await AppStorage.instance.getBool(_showDecorations) ?? true;
+      decorationNotifier.value = showDecorations;
+
       return HomeCardVisibility(
         showQuickAccessSection:
             await AppStorage.instance.getBool(_showQuickAccessSectionKey) ??
             true,
+        showDecorations: showDecorations,
         showRamadanCard:
             await AppStorage.instance.getBool(_showRamadanCardKey) ?? true,
         showExamCountdownCard:
@@ -239,6 +247,13 @@ class HomeCardPreferences {
   static Future<void> setShowRamadanCard(bool value) async {
     try {
       await AppStorage.instance.setBool(_showRamadanCardKey, value);
+    } catch (_) {}
+  }
+
+  static Future<void> setShowDecorations(bool value) async {
+    try {
+      decorationNotifier.value = value;
+      await AppStorage.instance.setBool(_showDecorations, value);
     } catch (_) {}
   }
 
@@ -271,11 +286,13 @@ class HomeCardVisibility {
   const HomeCardVisibility({
     required this.showQuickAccessSection,
     required this.showRamadanCard,
+    required this.showDecorations,
     required this.showExamCountdownCard,
     required this.showTodaySchedule,
     required this.showSponsoredContent,
   });
 
+  final bool showDecorations;
   final bool showQuickAccessSection;
   final bool showRamadanCard;
   final bool showExamCountdownCard;

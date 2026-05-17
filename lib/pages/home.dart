@@ -880,6 +880,7 @@ class _HomeData {
             showQuickAccessSection:
                 visibilityJson['showQuickAccessSection'] == true,
             showRamadanCard: visibilityJson['showRamadanCard'] == true,
+            showDecorations: visibilityJson['showDecorations'] == true,
             showTodaySchedule: visibilityJson['showTodaySchedule'] == true,
             showExamCountdownCard:
                 visibilityJson['showExamCountdownCard'] == true,
