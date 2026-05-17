@@ -64,6 +64,7 @@ class _SettingsPageState extends State<SettingsPage>
     setState(() {
       _showQuickAccessSection = visibility.showQuickAccessSection;
       _showRamadanCard = visibility.showRamadanCard;
+      _showDecorations = visibility.showDecorations;
       _showExamCountdownCard = visibility.showExamCountdownCard;
       _showTodaySchedule = visibility.showTodaySchedule;
       _appLockEnabled = appLockEnabled;
