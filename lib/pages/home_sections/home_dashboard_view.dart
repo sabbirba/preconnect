@@ -5,6 +5,7 @@ extension _HomeDashboardView on _HomeDashboardState {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgTop = isDark ? Colors.black : _HomeDashboardState._bgTop;
     final bgBottom = isDark ? Colors.black : _HomeDashboardState._bgBottom;
+    final showBlobs = _latestData?.cardVisibility.showDecorations ?? true;
 
     return Container(
       decoration: BoxDecoration(
@@ -17,7 +18,7 @@ extension _HomeDashboardView on _HomeDashboardState {
       child: SafeArea(
         child: Stack(
           children: [
-            if (_showBlobs)
+            if (showBlobs)
               Positioned(
                 top: -80,
                 right: -60,
@@ -26,7 +27,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                   size: 200,
                 ),
               ),
-            if (_showBlobs)
+            if (showBlobs)
               Positioned(
                 bottom: -90,
                 left: -70,

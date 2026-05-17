@@ -4,7 +4,6 @@ import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/custom_schedules_service.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/quiet_mode_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -61,9 +60,6 @@ class _SettingsPageState extends State<SettingsPage>
     final appLockEnabled = await AppLockService().isEnabled();
     await QuietModeController.instance.load();
     final quietModeResult = await QuietModeController.instance.refresh();
-    AppStorage.instance.getBool("showdecorblobs").then((value) {
-      if (mounted) setState(() => _showDecorations = value ?? true);
-    });
     if (!mounted) return;
     setState(() {
       _showQuickAccessSection = visibility.showQuickAccessSection;
@@ -81,10 +77,6 @@ class _SettingsPageState extends State<SettingsPage>
     });
   }
 
-  Future<void> _storageSetShowDecorations(bool value) async {
-    await AppStorage.instance.setBool("showdecorblobs", value);
-  }
-
   Future<void> _setShowRamadanCard(bool value) async {
     await _setVisibility(
       label: 'Ramadan Times',
@@ -99,7 +91,7 @@ class _SettingsPageState extends State<SettingsPage>
       label: 'Show Decorations',
       value: value,
       applyLocal: () => _showDecorations = value,
-      persist: _storageSetShowDecorations,
+      persist: HomeCardPreferences.setShowDecorations,
     );
   }
 

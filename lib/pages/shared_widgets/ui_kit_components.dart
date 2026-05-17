@@ -1828,18 +1828,9 @@ class BracuPageScaffold extends StatefulWidget {
 }
 
 class _BracuPageScaffoldState extends State<BracuPageScaffold> {
-  bool _showBlobs = true;
   @override
   void initState() {
     super.initState();
-
-    AppStorage.instance.getBool("showdecorblobs").then((value) {
-      if (mounted) {
-        setState(() {
-          _showBlobs = value ?? true;
-        });
-      }
-    });
   }
 
   @override
@@ -1856,69 +1847,74 @@ class _BracuPageScaffoldState extends State<BracuPageScaffold> {
           ? Brightness.light
           : Brightness.dark,
     );
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              BracuPalette.bgTop(context),
-              BracuPalette.bgBottom(context),
-            ],
-          ),
-        ),
-        child: AnnotatedRegion<SystemUiOverlayStyle>(
-          value: overlayStyle,
-          child: Material(
-            type: MaterialType.transparency,
-            child: SafeArea(
-              child: Stack(
-                children: [
-                  if (_showBlobs)
-                    Positioned(
-                      top: -70,
-                      right: -60,
-                      child: DecorBlob(
-                        color: BracuPalette.primary.withValues(alpha: 0.12),
-                        size: 200,
-                      ),
-                    ),
-                  if (_showBlobs)
-                    Positioned(
-                      bottom: -80,
-                      left: -70,
-                      child: DecorBlob(
-                        color: BracuPalette.accent.withValues(alpha: 0.10),
-                        size: 220,
-                      ),
-                    ),
-                  Column(
-                    children: [
-                      Padding(
-                        padding: widget.showBack
-                            ? const EdgeInsets.fromLTRB(6, 12, 20, 8)
-                            : const EdgeInsets.fromLTRB(20, 12, 20, 8),
-                        child: _PageHeader(
-                          title: widget.title,
-                          subtitle: widget.subtitle,
-                          icon: widget.icon,
-                          actions: widget.actions,
-                          showMenu: widget.showMenu,
-                          showBack: widget.showBack,
-                          onHeaderTap: widget.onHeaderTap,
-                        ),
-                      ),
-                      Expanded(child: widget.body),
-                    ],
-                  ),
+    return ValueListenableBuilder(
+      valueListenable: HomeCardPreferences.decorationNotifier,
+      builder: (BuildContext context, enabled, Widget? child) {
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  BracuPalette.bgTop(context),
+                  BracuPalette.bgBottom(context),
                 ],
               ),
             ),
+            child: AnnotatedRegion<SystemUiOverlayStyle>(
+              value: overlayStyle,
+              child: Material(
+                type: MaterialType.transparency,
+                child: SafeArea(
+                  child: Stack(
+                    children: [
+                      if (enabled)
+                        Positioned(
+                          top: -70,
+                          right: -60,
+                          child: DecorBlob(
+                            color: BracuPalette.primary.withValues(alpha: 0.12),
+                            size: 200,
+                          ),
+                        ),
+                      if (enabled)
+                        Positioned(
+                          bottom: -80,
+                          left: -70,
+                          child: DecorBlob(
+                            color: BracuPalette.accent.withValues(alpha: 0.10),
+                            size: 220,
+                          ),
+                        ),
+                      Column(
+                        children: [
+                          Padding(
+                            padding: widget.showBack
+                                ? const EdgeInsets.fromLTRB(6, 12, 20, 8)
+                                : const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                            child: _PageHeader(
+                              title: widget.title,
+                              subtitle: widget.subtitle,
+                              icon: widget.icon,
+                              actions: widget.actions,
+                              showMenu: widget.showMenu,
+                              showBack: widget.showBack,
+                              onHeaderTap: widget.onHeaderTap,
+                            ),
+                          ),
+                          Expanded(child: widget.body),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
