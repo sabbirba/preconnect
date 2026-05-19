@@ -10,20 +10,27 @@ class BusRouteDetailPage extends StatefulWidget {
   State<BusRouteDetailPage> createState() => _BusRouteDetailPageState();
 }
 
-class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
+class _BusRouteDetailPageState extends State<BusRouteDetailPage>
+    with SingleTickerProviderStateMixin {
   late BusTransportRoute _route;
   bool _refreshing = false;
   String? _error;
+  late final AnimationController _refreshController;
 
   @override
   void initState() {
     super.initState();
     _route = widget.route;
+    _refreshController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
     unawaited(_refreshRouteData());
   }
 
   @override
   void dispose() {
+    _refreshController.dispose();
     super.dispose();
   }
 
@@ -46,6 +53,7 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
       _refreshing = true;
       _error = null;
     });
+    _refreshController.repeat();
 
     try {
       final package = await _fetchBusDataPackage();
@@ -57,12 +65,16 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
         }
         _refreshing = false;
       });
+      _refreshController.stop();
+      _refreshController.reset();
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _refreshing = false;
         _error = 'Unable to load bus data right now.';
       });
+      _refreshController.stop();
+      _refreshController.reset();
     }
   }
 
@@ -91,7 +103,10 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
           IconButton(
             tooltip: 'Refresh bus data',
             onPressed: _refreshing ? null : _refreshRouteData,
-            icon: const Icon(Icons.refresh_rounded),
+            icon: RotationTransition(
+              turns: _refreshController,
+              child: const Icon(Icons.refresh_rounded),
+            ),
           ),
         ],
         body: BracuRefreshList(

@@ -39,7 +39,11 @@ class RamadanStatus {
 class RamadanTiming {
   RamadanTiming._();
 
-  static String get _statusUrl => '${ApiConfig.seatStatusProxyBase}/ramadan';
+  static List<String> get _statusUrls => <String>[
+    '${ApiConfig.publicJsonBase}/ramadan.json',
+    '${ApiConfig.publicJsonBase}/data/ramadan.json',
+    '${ApiConfig.seatStatusProxyBase}/ramadan',
+  ];
   static const Duration _requestTimeout = Duration(seconds: 2);
   static final ({DateTime start, DateTime end}) _knownRamadanWindow2026 = (
     start: DateTime(2026, 2, 18),
@@ -118,27 +122,27 @@ class RamadanTiming {
   }
 
   static Future<Map<String, dynamic>?> _fetchPayload() async {
-    try {
-      final response = await http
-          .get(
-            Uri.parse(_statusUrl),
-            headers: const {'Accept': 'application/json'},
-          )
-          .timeout(_requestTimeout);
+    for (final url in _statusUrls) {
+      try {
+        final response = await http
+            .get(Uri.parse(url), headers: const {'Accept': 'application/json'})
+            .timeout(_requestTimeout);
 
-      if (response.statusCode != 200 || response.body.trim().isEmpty) {
-        return null;
+        if (response.statusCode != 200 || response.body.trim().isEmpty) {
+          continue;
+        }
+
+        final payload = jsonDecode(response.body);
+        if (payload is! Map<String, dynamic>) {
+          continue;
+        }
+
+        return payload;
+      } catch (_) {
+        continue;
       }
-
-      final payload = jsonDecode(response.body);
-      if (payload is! Map<String, dynamic>) {
-        return null;
-      }
-
-      return payload;
-    } catch (_) {
-      return null;
     }
+    return null;
   }
 
   static RamadanStatus? _parseStatus(Map<String, dynamic>? payload) {

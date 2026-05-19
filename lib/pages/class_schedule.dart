@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:preconnect/api/exam_map_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/shared_widgets/course_community_sheet.dart';
+import 'package:preconnect/pages/shared_widgets/course_section_exam_filter.dart';
 import 'package:preconnect/pages/shared_widgets/highlight_scroll_helper.dart';
 import 'package:preconnect/pages/shared_widgets/schedule_entry_card.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
@@ -50,6 +52,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       HighlightScrollCoordinator(scrollController: _scrollController);
   int? _currentSessionSemesterId;
   int _visibleWeekCount = _initialVisibleWeekCount;
+  bool _showDoneSections = false;
 
   @override
   void initState() {
@@ -110,6 +113,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
         const <section.Section>[],
         shouldHighlightCurrentSemester: true,
         isRamadan: isRamadan,
+        examOverrides: const <String, ExamScheduleOverride>{},
       );
     }
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
@@ -132,10 +136,18 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       semesterSessionId: currentSessionSemesterId,
     );
     final isRamadan = await ramadanFuture;
+    final examOverrides = sections.isEmpty
+        ? const <String, ExamScheduleOverride>{}
+        : await ExamScheduleService().getOverridesForSections(
+            sections,
+            forceRefresh: forceRefresh,
+            forcedSemesterSessionId: currentSessionSemesterId,
+          );
     return _buildScheduleDataFromSectionsStatic(
       sections,
       shouldHighlightCurrentSemester: true,
       isRamadan: isRamadan,
+      examOverrides: examOverrides,
     );
   }
 
@@ -173,6 +185,14 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     }
   }
 
+  void _toggleDoneView() {
+    setState(() {
+      _showDoneSections = !_showDoneSections;
+      _highlightScroll.resetScrollState();
+      _visibleWeekCount = _initialVisibleWeekCount;
+    });
+  }
+
   Future<_ScheduleData> _loadSchedule({bool forceRefresh = false}) async {
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
     final service = ScheduleService();
@@ -185,6 +205,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
         const <section.Section>[],
         shouldHighlightCurrentSemester: true,
         isRamadan: isRamadan,
+        examOverrides: const <String, ExamScheduleOverride>{},
       );
       _cachedData = data;
       if (mounted) {
@@ -212,10 +233,18 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       semesterSessionId: currentSessionSemesterId,
     );
     final isRamadan = await ramadanFuture;
+    final examOverrides = sections.isEmpty
+        ? const <String, ExamScheduleOverride>{}
+        : await ExamScheduleService().getOverridesForSections(
+            sections,
+            forceRefresh: forceRefresh,
+            forcedSemesterSessionId: currentSessionSemesterId,
+          );
     final data = _buildScheduleDataFromSections(
       sections,
       shouldHighlightCurrentSemester: true,
       isRamadan: isRamadan,
+      examOverrides: examOverrides,
     );
     _cachedData = data;
     if (mounted) {
@@ -230,17 +259,20 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     List<section.Section> sections, {
     required bool shouldHighlightCurrentSemester,
     required bool isRamadan,
+    required Map<String, ExamScheduleOverride> examOverrides,
   }) {
     if (sections.isEmpty) {
       return _ScheduleData(
         grouped: {},
+        sections: sections,
+        examOverrides: examOverrides,
         scrollSchedule: null,
         scrollDateTime: null,
         isRamadan: isRamadan,
       );
     }
 
-    final Map<String, List<Map<String, dynamic>>> grouped = {};
+    final Map<String, List<_ScheduleRow>> grouped = {};
     section.ClassSchedule? scrollSchedule;
     DateTime? scrollDateTime;
     final now = DateTime.now();
@@ -249,17 +281,9 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     for (final section in sections) {
       for (final classSchedule in section.sectionSchedule.classSchedules) {
         grouped.putIfAbsent(classSchedule.day, () => []);
-        grouped[classSchedule.day]!.add({
-          'schedule': classSchedule,
-          'courseCode': section.courseCode,
-          'sectionName': section.sectionName,
-          'roomNumber': section.roomNumber,
-          'faculties': section.faculties,
-          'consumedSeat': section.consumedSeat,
-          'capacity': section.capacity,
-          'courseType': section.courseType,
-          'semesterSessionId': section.semesterSessionId,
-        });
+        grouped[classSchedule.day]!.add(
+          _ScheduleRow.fromSection(section, classSchedule),
+        );
 
         if (shouldHighlightCurrentSemester) {
           final candidate = _nextOccurrenceStatic(
@@ -281,8 +305,8 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
 
     for (final entries in grouped.values) {
       entries.sort((a, b) {
-        final aSchedule = a['schedule'] as section.ClassSchedule;
-        final bSchedule = b['schedule'] as section.ClassSchedule;
+        final aSchedule = a.schedule;
+        final bSchedule = b.schedule;
         final aStart = RamadanTiming.effectiveStartMinutes(
           aSchedule.startTime,
           aSchedule.endTime,
@@ -310,6 +334,8 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
 
     return _ScheduleData(
       grouped: grouped,
+      sections: sections,
+      examOverrides: examOverrides,
       scrollSchedule: scrollSchedule,
       scrollDateTime: scrollDateTime,
       isRamadan: isRamadan,
@@ -356,17 +382,20 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     List<section.Section> sections, {
     required bool shouldHighlightCurrentSemester,
     required bool isRamadan,
+    required Map<String, ExamScheduleOverride> examOverrides,
   }) {
     if (sections.isEmpty) {
       return _ScheduleData(
         grouped: {},
+        sections: sections,
+        examOverrides: examOverrides,
         scrollSchedule: null,
         scrollDateTime: null,
         isRamadan: isRamadan,
       );
     }
 
-    final Map<String, List<Map<String, dynamic>>> grouped = {};
+    final Map<String, List<_ScheduleRow>> grouped = {};
     section.ClassSchedule? scrollSchedule;
     DateTime? scrollDateTime;
     final now = DateTime.now();
@@ -375,17 +404,9 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     for (final section in sections) {
       for (final classSchedule in section.sectionSchedule.classSchedules) {
         grouped.putIfAbsent(classSchedule.day, () => []);
-        grouped[classSchedule.day]!.add({
-          "schedule": classSchedule,
-          "courseCode": section.courseCode,
-          "sectionName": section.sectionName,
-          "roomNumber": section.roomNumber,
-          "faculties": section.faculties,
-          "consumedSeat": section.consumedSeat,
-          "capacity": section.capacity,
-          "courseType": section.courseType,
-          "semesterSessionId": section.semesterSessionId,
-        });
+        grouped[classSchedule.day]!.add(
+          _ScheduleRow.fromSection(section, classSchedule),
+        );
 
         if (shouldHighlightCurrentSemester) {
           final candidate = _nextOccurrence(
@@ -407,8 +428,8 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
 
     for (final entries in grouped.values) {
       entries.sort((a, b) {
-        final aSchedule = a["schedule"] as section.ClassSchedule;
-        final bSchedule = b["schedule"] as section.ClassSchedule;
+        final aSchedule = a.schedule;
+        final bSchedule = b.schedule;
         final aStart = RamadanTiming.effectiveStartMinutes(
           aSchedule.startTime,
           aSchedule.endTime,
@@ -435,6 +456,8 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     }
     return _ScheduleData(
       grouped: grouped,
+      sections: sections,
+      examOverrides: examOverrides,
       scrollSchedule: scrollSchedule,
       scrollDateTime: scrollDateTime,
       isRamadan: isRamadan,
@@ -535,7 +558,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   }
 
   List<_RenderedScheduleSection> _buildRenderedSections(
-    Map<String, List<Map<String, dynamic>>> grouped, {
+    Map<String, List<_ScheduleRow>> grouped, {
     required bool shouldHighlightCurrentSemester,
   }) {
     if (!shouldHighlightCurrentSemester) {
@@ -575,7 +598,16 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       title: 'Schedules',
       subtitle: 'Class Timing',
       icon: Icons.schedule_outlined,
-      actions: const [],
+      actions: [
+        BracuSelectChip(
+          label: 'Done',
+          icon: Icons.history_rounded,
+          selected: _showDoneSections,
+          compact: true,
+          showArrow: false,
+          onTap: _toggleDoneView,
+        ),
+      ],
       body: FutureBuilder<_ScheduleData>(
         future: _future,
         builder: (context, snapshot) {
@@ -592,10 +624,34 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
             return buildRefreshLoadingState(onRefresh: _handleRefresh);
           }
           final grouped = data?.grouped ?? {};
+          final studentSections = data?.sections ?? const <section.Section>[];
+          final overrides =
+              data?.examOverrides ?? const <String, ExamScheduleOverride>{};
           final scrollSchedule = data?.scrollSchedule;
           final scrollDateTime = data?.scrollDateTime;
           const shouldHighlightCurrentSemester = true;
           final isRamadan = data?.isRamadan ?? false;
+          final finishedSectionKeys =
+              CourseSectionExamFilter.finishedSectionKeys(
+                studentSections,
+                overrides,
+              );
+          final visibleGrouped = <String, List<_ScheduleRow>>{};
+          for (final entry in grouped.entries) {
+            final filteredEntries = entry.value
+                .where((item) {
+                  final key = ExamMapService.sectionKey(
+                    courseCode: item.courseCode,
+                    sectionName: item.sectionName,
+                  );
+                  final isDone = finishedSectionKeys.contains(key);
+                  return _showDoneSections ? isDone : !isDone;
+                })
+                .toList(growable: false);
+            if (filteredEntries.isNotEmpty) {
+              visibleGrouped[entry.key] = filteredEntries;
+            }
+          }
           if (grouped.isEmpty) {
             return buildRefreshEmptyState(
               onRefresh: _handleRefresh,
@@ -603,24 +659,33 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
             );
           }
 
-          final sections = _buildRenderedSections(
-            grouped,
+          final renderedSections = _buildRenderedSections(
+            visibleGrouped,
             shouldHighlightCurrentSemester: shouldHighlightCurrentSemester,
           );
+
+          if (visibleGrouped.isEmpty) {
+            return buildRefreshEmptyState(
+              onRefresh: _handleRefresh,
+              message: _showDoneSections
+                  ? 'No done classes available'
+                  : 'No active classes available',
+            );
+          }
 
           final children = <Widget>[];
           String? highlightToken;
           int? highlightIndex;
           var cardIndex = 0;
-          final totalCards = sections.fold<int>(0, (sum, sectionInfo) {
-            final daySchedules = grouped[sectionInfo.day] ?? const [];
+          final totalCards = renderedSections.fold<int>(0, (sum, sectionInfo) {
+            final daySchedules = visibleGrouped[sectionInfo.day] ?? const [];
             return sum + daySchedules.length;
           });
           _highlightScroll.clearHighlightKey();
-          for (var i = 0; i < sections.length; i++) {
-            final sectionInfo = sections[i];
+          for (var i = 0; i < renderedSections.length; i++) {
+            final sectionInfo = renderedSections[i];
             final day = sectionInfo.day;
-            final schedules = grouped[day]!;
+            final schedules = visibleGrouped[day]!;
             final dayDate = sectionInfo.date;
             final dayDateLabel = dayDate == null ? '' : formatLongDate(dayDate);
 
@@ -650,16 +715,14 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
                   ...(() {
                     final scheduleWidgets = <Widget>[];
                     for (final entry in schedules) {
-                      final s = entry["schedule"] as section.ClassSchedule;
-                      final code = entry["courseCode"];
-                      final sectionName = entry["sectionName"];
-                      final room = entry["roomNumber"];
-                      final faculties = entry["faculties"] as String?;
-                      final consumedSeat = entry["consumedSeat"] as int?;
-                      final courseType = (entry["courseType"] as String?)
-                          ?.trim();
-                      final semesterSessionId =
-                          entry["semesterSessionId"] as int?;
+                      final s = entry.schedule;
+                      final code = entry.courseCode;
+                      final sectionName = entry.sectionName;
+                      final room = entry.roomNumber;
+                      final faculties = entry.faculties;
+                      final consumedSeat = entry.consumedSeat;
+                      final courseType = entry.courseType.trim();
+                      final semesterSessionId = entry.semesterSessionId;
                       final isScrollTarget =
                           shouldHighlightCurrentSemester &&
                           scrollSchedule == s &&
@@ -682,27 +745,27 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
                             key: isHighlighted
                                 ? _highlightScroll.highlightKey
                                 : null,
-                            sectionName: sectionName?.toString(),
-                            courseCode: '$code',
+                            sectionName: sectionName,
+                            courseCode: code,
                             schedule: s,
                             isRamadan: isRamadan,
-                            roomNumber: room?.toString(),
+                            roomNumber: room,
                             faculties: faculties,
                             consumedSeat: consumedSeat,
                             courseType: courseType,
                             highlighted: isHighlighted,
                             onTap: () {
-                              final semesterLabel = semesterSessionId == null
-                                  ? 'Current'
-                                  : formatSemesterFromSessionIdInt(
+                              final semesterLabel = semesterSessionId > 0
+                                  ? formatSemesterFromSessionIdInt(
                                       semesterSessionId,
-                                    );
+                                    )
+                                  : 'Current';
                               _openClassActionsSheet(
-                                courseCode: '$code',
-                                sectionName: sectionName?.toString() ?? '',
+                                courseCode: code,
+                                sectionName: sectionName,
                                 schedule: s,
                                 isRamadan: isRamadan,
-                                roomNumber: room?.toString(),
+                                roomNumber: room,
                                 faculties: faculties,
                                 consumedSeat: consumedSeat,
                                 courseType: courseType,
@@ -770,12 +833,16 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
 class _ScheduleData {
   const _ScheduleData({
     required this.grouped,
+    required this.sections,
+    required this.examOverrides,
     required this.scrollSchedule,
     required this.scrollDateTime,
     required this.isRamadan,
   });
 
-  final Map<String, List<Map<String, dynamic>>> grouped;
+  final Map<String, List<_ScheduleRow>> grouped;
+  final List<section.Section> sections;
+  final Map<String, ExamScheduleOverride> examOverrides;
   final section.ClassSchedule? scrollSchedule;
   final DateTime? scrollDateTime;
   final bool isRamadan;
@@ -791,4 +858,45 @@ class _RenderedScheduleSection {
   final String day;
   final DateTime? date;
   final int weekOffset;
+}
+
+class _ScheduleRow {
+  const _ScheduleRow({
+    required this.schedule,
+    required this.courseCode,
+    required this.sectionName,
+    required this.roomNumber,
+    required this.faculties,
+    required this.consumedSeat,
+    required this.capacity,
+    required this.courseType,
+    required this.semesterSessionId,
+  });
+
+  factory _ScheduleRow.fromSection(
+    section.Section value,
+    section.ClassSchedule schedule,
+  ) {
+    return _ScheduleRow(
+      schedule: schedule,
+      courseCode: value.courseCode,
+      sectionName: value.sectionName,
+      roomNumber: value.roomNumber,
+      faculties: value.faculties,
+      consumedSeat: value.consumedSeat,
+      capacity: value.capacity,
+      courseType: value.courseType,
+      semesterSessionId: value.semesterSessionId,
+    );
+  }
+
+  final section.ClassSchedule schedule;
+  final String courseCode;
+  final String sectionName;
+  final String? roomNumber;
+  final String? faculties;
+  final int? consumedSeat;
+  final int? capacity;
+  final String courseType;
+  final int semesterSessionId;
 }

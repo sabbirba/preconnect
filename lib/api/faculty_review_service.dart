@@ -328,8 +328,8 @@ class FacultyReviewService {
       <String, FacultyReviewFeed>{};
   static final Map<String, FacultySummary> _summaryCache =
       <String, FacultySummary>{};
-  static const String _feedCachePrefix = 'faculty_reviews_feed_v1';
-  static const String _summaryCachePrefix = 'faculty_reviews_summary_v1';
+  static const String _feedCachePrefix = 'faculty_reviews_feed_v2';
+  static const String _summaryCachePrefix = 'faculty_reviews_summary_v2';
 
   String get _base => ApiConfig.seatStatusProxyBase;
 
@@ -341,16 +341,11 @@ class FacultyReviewService {
     final initial = facultyInitial.trim().toUpperCase();
     final safeOffset = offset < 0 ? 0 : offset;
     final safeLimit = limit <= 0 ? 20 : limit;
-    final dbFeed = await _fetchDatabaseFeed(
-      initial,
-      limit: safeLimit,
-      offset: safeOffset,
-    );
     final legacyBundle = await _fetchLegacyBundle(initial);
-    if (dbFeed != null || legacyBundle != null) {
+    if (legacyBundle != null) {
       final merged = _mergeFeeds(
         initial: initial,
-        dbFeed: dbFeed,
+        dbFeed: null,
         legacyBundle: legacyBundle,
         limit: safeLimit,
         offset: safeOffset,
@@ -396,11 +391,10 @@ class FacultyReviewService {
   Future<FacultySummary?> getFacultyByInitial(String facultyInitial) async {
     final initial = facultyInitial.trim().toUpperCase();
     if (initial.isEmpty) return null;
-    final dbFeed = await _fetchDatabaseFeed(initial, limit: 1, offset: 0);
     final legacyBundle = await _fetchLegacyBundle(initial);
     final merged = _mergeFacultySummary(
       initial: initial,
-      dbSummary: dbFeed?.faculty,
+      dbSummary: null,
       legacySummary: legacyBundle?.summary,
     );
     if (merged != null) {
@@ -667,30 +661,6 @@ class FacultyReviewService {
     }
   }
 
-  Future<FacultyReviewFeed?> _fetchDatabaseFeed(
-    String initial, {
-    required int limit,
-    required int offset,
-  }) async {
-    Future<FacultyReviewFeed?> request(String path) async {
-      try {
-        final response = await _client.authenticatedRequest('GET', path);
-        final map = _decodeMap(response.body);
-        return FacultyReviewFeed.fromJson(map);
-      } catch (_) {
-        return null;
-      }
-    }
-
-    final byPath = await request(
-      '$_base/v1/faculty-reviews/$initial?limit=$limit&offset=$offset',
-    );
-    if (byPath != null) return byPath;
-    return request(
-      '$_base/v1/faculty-reviews?facultyInitial=$initial&limit=$limit&offset=$offset',
-    );
-  }
-
   int _averageFromNonZero(List<int> values) {
     final filtered = values.where((v) => v > 0).toList();
     if (filtered.isEmpty) return 0;
@@ -758,22 +728,14 @@ class FacultyReviewService {
     final primary = dbSummary;
     final fallback = legacySummary;
     if (primary == null && fallback == null) return null;
+    final chosen = primary ?? fallback!;
     final mergedCourses = <String>{
       ...(primary?.courses ?? const <String>[]),
       ...(fallback?.courses ?? const <String>[]),
     }.where((course) => course.trim().isNotEmpty).toList();
-    final stats = primary != null && primary.stats.reviewsTotal > 0
-        ? primary.stats
-        : (fallback?.stats ??
-              primary?.stats ??
-              const FacultyRatingStats(
-                reviewsTotal: 0,
-                overall: 0,
-                teaching: 0,
-                fairness: 0,
-                behavior: 0,
-              ));
-    final chosen = primary ?? fallback!;
+    final stats = (primary?.stats.reviewsTotal ?? 0) > 0
+        ? primary!.stats
+        : (fallback?.stats ?? primary?.stats ?? chosen.stats);
     return FacultySummary(
       facultyId: chosen.facultyId,
       initial: primary?.initial.trim().isNotEmpty == true
@@ -798,13 +760,13 @@ class FacultyReviewService {
       sourceLabel: primary?.sourceLabel.trim().isNotEmpty == true
           ? primary!.sourceLabel
           : (fallback?.sourceLabel ?? ''),
-      voteScore: primary?.voteScore != 0
+      voteScore: (primary?.voteScore ?? 0) != 0
           ? primary!.voteScore
           : (fallback?.voteScore ?? 0),
-      upvotes: primary?.upvotes != 0
+      upvotes: (primary?.upvotes ?? 0) != 0
           ? primary!.upvotes
           : (fallback?.upvotes ?? 0),
-      downvotes: primary?.downvotes != 0
+      downvotes: (primary?.downvotes ?? 0) != 0
           ? primary!.downvotes
           : (fallback?.downvotes ?? 0),
     );

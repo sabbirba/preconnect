@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +31,7 @@ class CampusPrinterPage extends StatefulWidget {
 
   static Future<void> clearStoredState() async {
     await AppStorage.instance.remove('campus_printer_copies');
+    await AppStorage.instance.remove('campus_printer_collate');
     await AppStorage.instance.remove('campus_printer_history');
     await AppStorage.instance.remove('campus_printer_last_host');
     await AppStorage.instance.remove('campus_printer_last_wifi');
@@ -63,6 +65,9 @@ class CampusPrinterPage extends StatefulWidget {
 
   static Future<_CampusPrinterBootstrap> _loadBootstrap() async {
     final copiesRaw = await AppStorage.instance.getInt('campus_printer_copies');
+    final collateRaw = await AppStorage.instance.getBool(
+      'campus_printer_collate',
+    );
     final history = await _loadHistorySnapshot();
     final isLoggedIn = await AuthService().isLoggedIn();
     final profile = await ProfileService().getProfile();
@@ -119,9 +124,10 @@ class CampusPrinterPage extends StatefulWidget {
     final copiesValue = copiesRaw == null
         ? 1
         : (copiesRaw < 1 ? 1 : (copiesRaw > 999 ? 999 : copiesRaw));
-
+    final collateValue = collateRaw ?? false;
     return _CampusPrinterBootstrap(
       copies: copiesValue,
+      collate: collateValue,
       history: history,
       studentId: studentId,
       studentName: fullName,
@@ -187,6 +193,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _printerHost = '';
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
   int _copies = 1;
+  bool _collate = false;
   bool _busy = false;
   bool _discovering = false;
 
@@ -201,6 +208,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     if (!mounted) return;
     setState(() {
       _copies = bootstrap.copies;
+      _collate = bootstrap.collate;
       _history = bootstrap.history;
       _studentId = bootstrap.studentId;
       _studentName = bootstrap.studentName;
@@ -219,6 +227,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     if (!mounted) return;
     setState(() {
       _copies = bootstrap.copies;
+      _collate = bootstrap.collate;
       _history = bootstrap.history;
       _studentId = bootstrap.studentId;
       _studentName = bootstrap.studentName;
@@ -234,6 +243,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   Future<void> _savePrinterPreferences() async {
     await AppStorage.instance.setInt(_copiesKey, _copies);
+    await AppStorage.instance.setBool('campus_printer_collate', _collate);
   }
 
   Future<void> _discoverPrinter() async {
@@ -484,9 +494,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         port: _printerPort,
         queue: _printerQueue,
       );
+      final copies = _copies < 1 ? 1 : _copies;
       final preferences = _PrintTicket(
-        copies: _copies,
+        copies: copies,
         duplexMode: _duplexMode,
+        collate: _collate,
       );
       await client.sendFile(
         bytes: bytes,
@@ -494,6 +506,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         user: user,
         clientName: clientName,
         preferences: preferences,
+        onStatus: (message) {
+          if (!mounted) return;
+          _showPrintProgress(message, duration: _progressSnackDuration(copies));
+        },
       );
       if (!mounted) return;
       await _addHistory(
@@ -545,6 +561,34 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     }
   }
 
+  Duration _progressSnackDuration(int copies) {
+    if (copies >= 10) return const Duration(seconds: 5);
+    if (copies >= 5) return const Duration(seconds: 4);
+    if (copies > 1) return const Duration(seconds: 3);
+    return const Duration(seconds: 2);
+  }
+
+  void _showPrintProgress(String message, {required Duration duration}) {
+    if (!mounted) return;
+    final trimmed = message.trim();
+    if (trimmed.isEmpty) return;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(trimmed, style: const TextStyle(color: Colors.white)),
+        backgroundColor: isDark
+            ? const Color(0xFF1E6BE3)
+            : BracuPalette.primary,
+        duration: duration,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final canPrint =
@@ -556,7 +600,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     final printerSubtitle = _discovering
         ? 'Scanning...'
         : _printerHost.isNotEmpty
-        ? 'Printer found'
+        ? 'Connected'
         : 'Not found';
     return BracuPageScaffold(
       title: 'Printer',
@@ -631,8 +675,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   const SizedBox(height: 12),
                 _PrinterPreferencesPanel(
                   copies: _copies,
+                  collate: _collate,
                   onCopiesChanged: (value) {
                     setState(() => _copies = value);
+                    unawaited(_savePrinterPreferences());
+                  },
+                  onCollateChanged: (value) {
+                    setState(() => _collate = value);
                     unawaited(_savePrinterPreferences());
                   },
                 ),
@@ -667,7 +716,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                         onPressed: _busy ? null : _pickPrintFile,
                         icon: Icons.picture_as_pdf_outlined,
                         label: 'Choose',
-                        isLoading: _busy,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -708,6 +756,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 class _CampusPrinterBootstrap {
   const _CampusPrinterBootstrap({
     required this.copies,
+    required this.collate,
     required this.history,
     required this.studentId,
     required this.studentName,
@@ -720,6 +769,7 @@ class _CampusPrinterBootstrap {
   });
 
   final int copies;
+  final bool collate;
   final List<_PrintHistoryEntry> history;
   final String studentId;
   final String studentName;
@@ -791,8 +841,8 @@ class _StudentDetailLine extends StatelessWidget {
               label,
               style: TextStyle(
                 color: BracuPalette.textSecondary(context),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -801,7 +851,8 @@ class _StudentDetailLine extends StatelessWidget {
               value,
               style: TextStyle(
                 color: BracuPalette.textPrimary(context),
-                fontWeight: FontWeight.w700,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
@@ -1054,6 +1105,7 @@ class _LprPrintClient {
     required String user,
     required String clientName,
     required _PrintTicket preferences,
+    void Function(String message)? onStatus,
   }) async {
     final printerHost = host.trim();
     if (printerHost.isEmpty) {
@@ -1062,16 +1114,17 @@ class _LprPrintClient {
 
     final printerQueue = queue;
     final owner = user;
-    final client = clientName.trim().isEmpty ? user : clientName.trim();
+    final client = _lprSafeToken(
+      clientName.trim().isEmpty ? user : clientName,
+      fallback: user,
+    );
     final safeFileName = fileName.trim();
     final printableJobName = _basePrintName(safeFileName);
     final isPostScript = _looksLikePostScript(safeFileName, bytes);
     final dataCommand = isPostScript ? 'o' : 'l';
-    final jobToken =
-        'dfA${(DateTime.now().microsecondsSinceEpoch % 999 + 1).toString().padLeft(3, '0')}$client';
+    final copies = preferences.copies < 1 ? 1 : preferences.copies;
+    final duplexMode = preferences.duplexMode.trim().toUpperCase();
 
-    Socket? socket;
-    _LprAckReader? ackReader;
     try {
       final sendBytes = isPostScript
           ? Uint8List.fromList([
@@ -1079,19 +1132,111 @@ class _LprPrintClient {
               ...bytes,
             ])
           : bytes;
+      onStatus?.call(_jobStartMessage(copies, duplexMode));
+      final jobSuffix = _jobSuffix();
+      final controlFileName = _jobFileName(client, jobSuffix: jobSuffix);
+      final dataFileName = _jobFileName(
+        client,
+        prefix: 'df',
+        jobSuffix: jobSuffix,
+      );
       final control = _ascii(
         [
           'H$client',
           'P$owner',
           'J$printableJobName',
           'C$printableJobName',
-          '$dataCommand$jobToken',
-          'U$jobToken',
+          '$dataCommand$dataFileName',
+          'U$dataFileName',
           'N$safeFileName',
           '',
         ].join('\n'),
       );
 
+      await _sendLprJob(
+        printerHost: printerHost,
+        printerQueue: printerQueue,
+        controlFileName: controlFileName,
+        dataFileName: dataFileName,
+        control: control,
+        payload: _buildPjlPayload(
+          bytes: sendBytes,
+          jobName: printableJobName,
+          copies: copies,
+          duplexMode: duplexMode,
+          collate: preferences.collate,
+          isPostScript: isPostScript,
+        ),
+      );
+    } on _LprPrintException {
+      rethrow;
+    } on TimeoutException {
+      throw const _LprPrintException(_errPrinterConnectionTimedOut);
+    } on SocketException catch (error) {
+      throw _LprPrintException(error.message);
+    }
+  }
+
+  String _jobStartMessage(int copies, String duplexMode) {
+    final duplex = duplexMode.trim().toUpperCase();
+    final duplexLabel = duplex == 'OFF' ? 'One Side' : 'Both Side';
+    if (copies <= 1) {
+      return 'Sending $duplexLabel print...';
+    }
+    return 'Sending $copies $duplexLabel copies...';
+  }
+
+  String _jobSuffix() {
+    final number = DateTime.now().microsecondsSinceEpoch % 1000;
+    return number.toString().padLeft(3, '0');
+  }
+
+  String _jobFileName(
+    String client, {
+    String prefix = 'cf',
+    String? jobSuffix,
+  }) {
+    final suffix = jobSuffix ?? _jobSuffix();
+    return '${prefix}A$suffix$client';
+  }
+
+  Uint8List _buildPjlPayload({
+    required Uint8List bytes,
+    required String jobName,
+    required int copies,
+    required String duplexMode,
+    required bool collate,
+    required bool isPostScript,
+  }) {
+    final language = isPostScript ? 'POSTSCRIPT' : 'PDF';
+    final duplex = duplexMode.trim().toUpperCase();
+    final useDuplex = duplex != 'OFF';
+    final builder = BytesBuilder(copy: false);
+    builder.add(_ascii('\x1B%-12345X'));
+    builder.add(_ascii('@PJL JOB NAME = "${_escapePjlValue(jobName)}"\r\n'));
+    builder.add(_ascii('@PJL SET COPIES = $copies\r\n'));
+    builder.add(_ascii('@PJL SET COLLATE = ${collate ? 'ON' : 'OFF'}\r\n'));
+    builder.add(_ascii('@PJL SET DUPLEX = ${useDuplex ? 'ON' : 'OFF'}\r\n'));
+    if (useDuplex) {
+      builder.add(_ascii('@PJL SET BINDING = LONGEDGE\r\n'));
+    }
+    builder.add(_ascii('@PJL ENTER LANGUAGE = $language\r\n'));
+    builder.add(bytes);
+    builder.add(_ascii('\r\n\x1B%-12345X@PJL EOJ\r\n\x1B%-12345X'));
+    return builder.takeBytes();
+  }
+
+  Future<void> _sendLprJob({
+    required String printerHost,
+    required String printerQueue,
+    required String controlFileName,
+    required String dataFileName,
+    required List<int> control,
+    required Uint8List payload,
+  }) async {
+    Socket? socket;
+    _LprAckReader? ackReader;
+    try {
       socket = await Socket.connect(printerHost, port, timeout: _timeout);
       ackReader = _LprAckReader(socket);
       await _writeAndAck(
@@ -1104,7 +1249,7 @@ class _LprPrintClient {
         ackReader,
         Uint8List.fromList([
           0x02,
-          ..._ascii('${control.length} $jobToken'),
+          ..._ascii('${control.length} $controlFileName'),
           0x0A,
         ]),
       );
@@ -1118,21 +1263,17 @@ class _LprPrintClient {
         ackReader,
         Uint8List.fromList([
           0x03,
-          ..._ascii('${sendBytes.length} $jobToken'),
+          ..._ascii('${payload.length} $dataFileName'),
           0x0A,
         ]),
       );
       await _writeAndAck(
         socket,
         ackReader,
-        Uint8List.fromList([...sendBytes, 0x00]),
+        Uint8List.fromList([...payload, 0x00]),
       );
-    } on _LprPrintException {
-      rethrow;
-    } on TimeoutException {
-      throw const _LprPrintException(_errPrinterConnectionTimedOut);
-    } on SocketException catch (error) {
-      throw _LprPrintException(error.message);
+      await ackReader.cancel();
+      await socket.close();
     } finally {
       await ackReader?.cancel();
       socket?.destroy();
@@ -1151,34 +1292,102 @@ class _LprPrintClient {
       throw const _LprPrintException(_errPrinterRejectedJob);
     }
   }
+
+  String _lprSafeToken(String value, {required String fallback}) {
+    final normalized = value
+        .trim()
+        .replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+    final safeFallback = fallback
+        .trim()
+        .replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+    final token = normalized.isNotEmpty ? normalized : safeFallback;
+    if (token.isEmpty) return 'preconnect';
+    return token.length > 31 ? token.substring(0, 31) : token;
+  }
+
+  String _escapePjlValue(String value) {
+    return value.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
+  }
 }
 
 class _PrinterPreferencesPanel extends StatelessWidget {
   const _PrinterPreferencesPanel({
     required this.copies,
+    required this.collate,
     required this.onCopiesChanged,
+    required this.onCollateChanged,
   });
 
   final int copies;
+  final bool collate;
   final ValueChanged<int> onCopiesChanged;
+  final ValueChanged<bool> onCollateChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final collateEnabled = copies > 1;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        TextFormField(
-          initialValue: copies.toString(),
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: 'Copies',
-            border: OutlineInputBorder(),
-            isDense: true,
+        Expanded(
+          child: TextFormField(
+            initialValue: copies.toString(),
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            decoration: InputDecoration(
+              labelText: 'Copies',
+              border: const OutlineInputBorder(),
+              isDense: true,
+              suffixIconConstraints: const BoxConstraints(
+                minWidth: 0,
+                minHeight: 0,
+              ),
+              suffixIcon: Padding(
+                padding: const EdgeInsets.only(right: 8, top: 2, bottom: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Transform.scale(
+                      scale: 1.15,
+                      child: Checkbox(
+                        value: collateEnabled ? collate : false,
+                        onChanged: collateEnabled
+                            ? (value) => onCollateChanged(value ?? false)
+                            : null,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                    Text(
+                      'Collate',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: collateEnabled
+                            ? BracuPalette.textPrimary(context)
+                            : BracuPalette.textSecondary(
+                                context,
+                              ).withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            onChanged: (value) {
+              final parsed = int.tryParse(value.trim());
+              final nextCopies = (parsed ?? 1).clamp(1, 999);
+              onCopiesChanged(nextCopies);
+              if (nextCopies == 1 && collate) {
+                onCollateChanged(false);
+              }
+            },
           ),
-          onChanged: (value) {
-            final parsed = int.tryParse(value.trim());
-            onCopiesChanged((parsed ?? 1).clamp(1, 999));
-          },
         ),
       ],
     );
@@ -1186,12 +1395,15 @@ class _PrinterPreferencesPanel extends StatelessWidget {
 }
 
 class _PrintTicket {
-  const _PrintTicket({required this.copies, required this.duplexMode});
+  const _PrintTicket({
+    required this.copies,
+    required this.duplexMode,
+    required this.collate,
+  });
 
-  final String paperSize = 'A4';
-  final String orientation = 'Portrait';
   final int copies;
   final String duplexMode;
+  final bool collate;
 
   String get postScriptPreamble => '%!PS-Adobe-3.0';
 }
@@ -1228,8 +1440,8 @@ class _PrinterDuplexPanel extends StatelessWidget {
 
     return Row(
       children: [
-        buildOption('OFF', 'Single Side', first: true),
-        buildOption('LEFT', 'Double Sided', first: false),
+        buildOption('OFF', 'One Side', first: true),
+        buildOption('LEFT', 'Both Side', first: false),
       ],
     );
   }

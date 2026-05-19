@@ -80,6 +80,8 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
   bool _busyWriteAction = false;
   bool _showAllReviews = false;
   bool _showAllMaterials = false;
+  bool _reviewsLoading = true;
+  bool _materialsLoading = true;
   String? _reviewsError;
   String? _materialsError;
   String _currentUserName = '';
@@ -127,6 +129,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
 
   Future<void> _loadReviews() async {
     setState(() {
+      _reviewsLoading = true;
       _reviewsError = null;
     });
     final initial = _facultyInitial;
@@ -175,10 +178,17 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
           return;
         }
       } catch (_) {}
-      if (!mounted) return;
-      setState(() {
-        _reviewsError = 'Not available';
-      });
+      if (mounted) {
+        setState(() {
+          _reviewsError = 'Not available';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _reviewsLoading = false;
+        });
+      }
     }
   }
 
@@ -221,6 +231,19 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
     );
   }
 
+  Widget _buildCompactLoading() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Center(
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(strokeWidth: 2.4),
+        ),
+      ),
+    );
+  }
+
   bool _needsFacultyLookup(FacultySummary faculty) {
     return faculty.name.trim().isEmpty ||
         faculty.courses.isEmpty ||
@@ -229,6 +252,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
 
   Future<void> _loadMaterials() async {
     setState(() {
+      _materialsLoading = true;
       _materialsError = null;
     });
     try {
@@ -242,10 +266,17 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
         _materials = list;
       });
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _materialsError = 'Not available';
-      });
+      if (mounted) {
+        setState(() {
+          _materialsError = 'Not available';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _materialsLoading = false;
+        });
+      }
     }
   }
 
@@ -1287,7 +1318,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
       controller: sheetScroll,
       children: [
         _buildSummaryCard(),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         _buildReviewSectionHeader(
           context: context,
           title: reviewHeaderTitle,
@@ -1298,8 +1329,11 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
               ? _writeReview
               : null,
         ),
-        if (_reviewsError != null)
-          BracuCard(
+        if (_reviewsLoading)
+          _buildCompactLoading()
+        else if (_reviewsError != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
             child: Text(
               'No reviews yet for ${_facultyInitial.isEmpty ? 'this faculty' : _facultyInitial}.',
               style: TextStyle(color: textSecondary, fontSize: 12),
@@ -1352,16 +1386,24 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                   },
                   padding: const EdgeInsets.only(top: 2, bottom: 8),
                 ),
-            ],
+            ] else
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text(
+                  'No reviews yet for this faculty.',
+                  style: _reviewMetaStyle(context),
+                ),
+              ),
           ] else
-            BracuCard(
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
               child: Text(
                 'No reviews yet for this faculty.',
                 style: _reviewMetaStyle(context),
               ),
             ),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
         Row(
           children: [
             const Expanded(child: BracuSectionTitle(title: 'Course Materials')),
@@ -1372,15 +1414,19 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
               ),
           ],
         ),
-        if (_materialsError != null)
-          BracuCard(
+        if (_materialsLoading)
+          _buildCompactLoading()
+        else if (_materialsError != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
             child: Text(
               _materialsError!,
               style: TextStyle(color: textSecondary, fontSize: 12),
             ),
           )
         else if (allMaterials.isEmpty)
-          BracuCard(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
             child: Text(
               'No materials yet for ${widget.courseCode}.',
               style: TextStyle(color: textSecondary, fontSize: 12),

@@ -81,8 +81,8 @@ class _CachedImageState extends State<CachedImage> {
       try {
         final headers = <String, String>{
           'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-          ...compressionHeaders(),
         };
+        headers.addAll(compressionHeadersForUri(uri));
         final response = await http.get(uri, headers: headers);
         if (response.statusCode >= 200 && response.statusCode < 300) {
           return response.bodyBytes;

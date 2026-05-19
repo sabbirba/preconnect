@@ -10,10 +10,8 @@ import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/exam_sorting.dart';
 import 'package:preconnect/tools/exam_visibility.dart';
-import 'package:preconnect/tools/json_snapshot_store.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
-import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 class ExamSchedule extends StatefulWidget {
@@ -43,6 +41,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   late final HighlightScrollCoordinator _highlightScroll =
       HighlightScrollCoordinator(scrollController: _scrollController);
   int? _currentSessionSemesterId;
+  bool _showUpcomingExams = true;
 
   @override
   void initState() {
@@ -78,32 +77,6 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   static Future<_ExamScheduleData> _loadExamData({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh) {
-      final cached = await JsonSnapshotStore.read<_ExamScheduleData>(
-        key: StorageKeys.examScheduleSnapshot,
-        decode: (decoded) {
-          final sectionsRaw = decoded['sections'];
-          final overridesRaw = decoded['overrides'];
-          if (sectionsRaw is! List || overridesRaw is! Map) return null;
-          final sections = sectionsRaw
-              .whereType<Map>()
-              .map((entry) => Section.fromJson(entry.cast<String, dynamic>()))
-              .toList(growable: false);
-          final overrides = overridesRaw.map(
-            (key, value) => MapEntry(
-              key.toString(),
-              ExamScheduleOverride.fromJson(
-                Map<String, dynamic>.from(value as Map),
-              ),
-            ),
-          );
-          return _ExamScheduleData(sections: sections, overrides: overrides);
-        },
-      );
-      if (cached != null) {
-        return cached;
-      }
-    }
     final currentSessionSemesterId =
         await resolveCurrentSessionSemesterIdWithRetry();
     if (currentSessionSemesterId == null) {
@@ -141,11 +114,10 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
     final examService = ExamScheduleService();
     final overrides = await examService.getOverridesForSections(
       sections,
-      forceRefresh: forceRefresh,
+      forceRefresh: true,
       forcedSemesterSessionId: currentSessionSemesterId,
     );
     final data = _ExamScheduleData(sections: sections, overrides: overrides);
-    await _writeSnapshot(data);
     return data;
   }
 
@@ -178,6 +150,13 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
     if (mounted) {
       setState(() {});
     }
+  }
+
+  void _toggleExamView() {
+    setState(() {
+      _showUpcomingExams = !_showUpcomingExams;
+      _highlightScroll.resetScrollState();
+    });
   }
 
   Future<_ExamScheduleData> _fetchExamData({bool forceRefresh = false}) async {
@@ -213,29 +192,12 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
       forcedSemesterSessionId: currentSessionSemesterId,
     );
     _cache.value = data;
-    await _writeSnapshot(data);
     if (mounted) {
       setState(() {
         _latestData = data;
       });
     }
     return data;
-  }
-
-  static Future<void> _writeSnapshot(_ExamScheduleData data) {
-    return JsonSnapshotStore.write(
-      key: StorageKeys.examScheduleSnapshot,
-      value: _examSnapshotPayload(data),
-    );
-  }
-
-  static Map<String, dynamic> _examSnapshotPayload(_ExamScheduleData data) {
-    return <String, dynamic>{
-      'sections': data.sections.map((section) => section.toJson()).toList(),
-      'overrides': data.overrides.map(
-        (key, value) => MapEntry(key, value.toJson()),
-      ),
-    };
   }
 
   Future<_ExamScheduleData> _buildExamDataFromSections(
@@ -251,9 +213,9 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
     }
 
     final examService = ExamScheduleService();
-    var overrides = await examService.getOverridesForSections(
+    final overrides = await examService.getOverridesForSections(
       sections,
-      forceRefresh: forceRefresh,
+      forceRefresh: true,
       forcedSemesterSessionId: forcedSemesterSessionId,
     );
     return _ExamScheduleData(sections: sections, overrides: overrides);
@@ -340,7 +302,16 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
       title: 'Exams',
       subtitle: 'Mid & Final',
       icon: Icons.event_note_outlined,
-      actions: const [],
+      actions: [
+        BracuSelectChip(
+          label: 'Done',
+          icon: Icons.history_rounded,
+          selected: !_showUpcomingExams,
+          compact: true,
+          showArrow: false,
+          onTap: _toggleExamView,
+        ),
+      ],
       body: FutureBuilder<_ExamScheduleData>(
         future: _future,
         builder: (context, snapshot) {
@@ -395,43 +366,58 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
               resolved(section).finalRoomNumber;
 
           final now = DateTime.now();
-          final midExams = sections
+          bool isUpcoming(Section section, {required bool isMid}) {
+            return ExamVisibility.isUpcomingOrOngoingSchedule(
+              date: isMid ? midDate(section) : finalDate(section),
+              start: isMid ? midStart(section) : finalStart(section),
+              end: isMid ? midEnd(section) : finalEnd(section),
+              now: now,
+            );
+          }
+
+          bool hasExamValue(Section section, {required bool isMid}) {
+            return isMid
+                ? (midDate(section) != null || midStart(section) != null)
+                : (finalDate(section) != null || finalStart(section) != null);
+          }
+
+          final upcomingMidExams = sections
               .where(
                 (s) =>
-                    midDate(s) != null ||
-                    midStart(s) != null ||
-                    midEnd(s) != null,
-              )
-              .where(
-                (s) => ExamVisibility.isUpcomingOrOngoingSchedule(
-                  date: midDate(s),
-                  start: midStart(s),
-                  end: midEnd(s),
-                  now: now,
-                ),
+                    hasExamValue(s, isMid: true) && isUpcoming(s, isMid: true),
               )
               .toList();
-          final finalExams = sections
+          final upcomingFinalExams = sections
               .where(
                 (s) =>
-                    finalDate(s) != null ||
-                    finalStart(s) != null ||
-                    finalEnd(s) != null,
-              )
-              .where(
-                (s) => ExamVisibility.isUpcomingOrOngoingSchedule(
-                  date: finalDate(s),
-                  start: finalStart(s),
-                  end: finalEnd(s),
-                  now: now,
-                ),
+                    hasExamValue(s, isMid: false) &&
+                    isUpcoming(s, isMid: false),
               )
               .toList();
+
+          final pastMidExams = sections
+              .where(
+                (s) =>
+                    hasExamValue(s, isMid: true) && !isUpcoming(s, isMid: true),
+              )
+              .toList();
+          final pastFinalExams = sections
+              .where(
+                (s) =>
+                    hasExamValue(s, isMid: false) &&
+                    !isUpcoming(s, isMid: false),
+              )
+              .toList();
+
+          final showPast = !_showUpcomingExams;
+
+          final midExams = showPast ? pastMidExams : upcomingMidExams;
+          final finalExams = showPast ? pastFinalExams : upcomingFinalExams;
 
           midExams.sort((a, b) {
             final aTime = BracuTime.parseDateTime(midDate(a), midStart(a));
             final bTime = BracuTime.parseDateTime(midDate(b), midStart(b));
-            return ExamSorting.compareExamEntries(
+            final cmp = ExamSorting.compareExamEntries(
               typeA: 'Midterm',
               typeB: 'Midterm',
               dateTimeA: aTime,
@@ -441,12 +427,13 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
               sectionNameA: a.sectionName,
               sectionNameB: b.sectionName,
             );
+            return showPast ? -cmp : cmp;
           });
 
           finalExams.sort((a, b) {
             final aTime = BracuTime.parseDateTime(finalDate(a), finalStart(a));
             final bTime = BracuTime.parseDateTime(finalDate(b), finalStart(b));
-            return ExamSorting.compareExamEntries(
+            final cmp = ExamSorting.compareExamEntries(
               typeA: 'Final',
               typeB: 'Final',
               dateTimeA: aTime,
@@ -456,16 +443,26 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
               sectionNameA: a.sectionName,
               sectionNameB: b.sectionName,
             );
+            return showPast ? -cmp : cmp;
           });
 
           if (midExams.isEmpty && finalExams.isEmpty) {
+            final hasAnyExamData = sections.any(
+              (s) =>
+                  midDate(s) != null ||
+                  midStart(s) != null ||
+                  finalDate(s) != null ||
+                  finalStart(s) != null,
+            );
             return buildRefreshEmptyState(
               onRefresh: _handleRefresh,
-              message: 'Exam schedule not published yet',
+              message: hasAnyExamData
+                  ? 'No exams found'
+                  : 'No exam data available',
             );
           }
 
-          const shouldHighlightCurrentSemester = true;
+          final shouldHighlightCurrentSemester = !showPast;
           DateTime? nextExamTime;
           String? nextExamKey;
           if (shouldHighlightCurrentSemester) {

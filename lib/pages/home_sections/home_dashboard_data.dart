@@ -265,7 +265,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       }
 
       final photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
-      final List<_ScheduleEntry> entries = [];
       final List<section.Section> sections = [];
       Map<String, ExamScheduleOverride> examOverrides =
           const <String, ExamScheduleOverride>{};
@@ -278,27 +277,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
           semesterSessionId: currentSessionSemesterId,
         );
         sections.addAll(decoded);
-        for (final section in decoded) {
-          for (final s in section.sectionSchedule.classSchedules) {
-            final adjusted = RamadanTiming.adjustRange(
-              s.startTime,
-              s.endTime,
-              isRamadan: isRamadan,
-            );
-            entries.add(
-              _ScheduleEntry(
-                day: s.day,
-                startTime: adjusted.startTime,
-                endTime: adjusted.endTime,
-                courseCode: section.courseCode,
-                sectionName: section.sectionName,
-                roomNumber: section.roomNumber,
-                faculties: section.faculties,
-              ),
-            );
-          }
-        }
-
         if (cardVisibility.showExamCountdownCard && sections.isNotEmpty) {
           examOverridesFuture = ExamScheduleService()
               .getOverridesForSections(sections, forceRefresh: forceRefresh)
@@ -310,6 +288,33 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
       if (examOverridesFuture != null) {
         examOverrides = await examOverridesFuture;
+      }
+      final List<_ScheduleEntry> entries = [];
+      for (final section in sections) {
+        if (CourseSectionExamFilter.isFinishedAfterFinalExam(
+          section: section,
+          overrides: examOverrides,
+        )) {
+          continue;
+        }
+        for (final s in section.sectionSchedule.classSchedules) {
+          final adjusted = RamadanTiming.adjustRange(
+            s.startTime,
+            s.endTime,
+            isRamadan: isRamadan,
+          );
+          entries.add(
+            _ScheduleEntry(
+              day: s.day,
+              startTime: adjusted.startTime,
+              endTime: adjusted.endTime,
+              courseCode: section.courseCode,
+              sectionName: section.sectionName,
+              roomNumber: section.roomNumber,
+              faculties: section.faculties,
+            ),
+          );
+        }
       }
       return _HomeData(
         profile: profile,

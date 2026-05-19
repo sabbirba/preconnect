@@ -153,7 +153,11 @@ class HolidayStatus {
 class HolidayTiming {
   HolidayTiming._();
 
-  static String get _statusUrl => '${ApiConfig.seatStatusProxyBase}/holiday';
+  static List<String> get _statusUrls => <String>[
+    '${ApiConfig.publicJsonBase}/holiday.json',
+    '${ApiConfig.publicJsonBase}/data/holiday.json',
+    '${ApiConfig.seatStatusProxyBase}/holiday',
+  ];
   static const Duration _requestTimeout = Duration(seconds: 3);
 
   static Future<HolidayStatus>? _inflight;
@@ -187,27 +191,27 @@ class HolidayTiming {
 
   static Future<({HolidayStatus value, bool fromNetwork})>
   _fetchTodayStatus() async {
-    try {
-      final response = await http
-          .get(
-            Uri.parse(_statusUrl),
-            headers: const {'Accept': 'application/json'},
-          )
-          .timeout(_requestTimeout);
+    for (final url in _statusUrls) {
+      try {
+        final response = await http
+            .get(Uri.parse(url), headers: const {'Accept': 'application/json'})
+            .timeout(_requestTimeout);
 
-      if (response.statusCode != 200 || response.body.trim().isEmpty) {
-        return (value: HolidayStatus.empty, fromNetwork: false);
+        if (response.statusCode != 200 || response.body.trim().isEmpty) {
+          continue;
+        }
+
+        final payload = jsonDecode(response.body);
+        if (payload is! List && payload is! Map<String, dynamic>) {
+          continue;
+        }
+
+        return (value: HolidayStatus.fromApi(payload), fromNetwork: true);
+      } catch (_) {
+        continue;
       }
-
-      final payload = jsonDecode(response.body);
-      if (payload is! List && payload is! Map<String, dynamic>) {
-        return (value: HolidayStatus.empty, fromNetwork: false);
-      }
-
-      return (value: HolidayStatus.fromApi(payload), fromNetwork: true);
-    } catch (_) {
-      return (value: HolidayStatus.empty, fromNetwork: false);
     }
+    return (value: HolidayStatus.empty, fromNetwork: false);
   }
 
   static HolidayStatus _fallbackOfflineStatus(DateTime now) {

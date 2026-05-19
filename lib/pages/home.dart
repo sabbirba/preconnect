@@ -37,6 +37,7 @@ import 'package:preconnect/pages/home_sections/exam_countdown.dart';
 import 'package:preconnect/pages/home_sections/student_overview.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
+import 'package:preconnect/pages/shared_widgets/course_section_exam_filter.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -836,22 +837,6 @@ class _HomeData {
         : null;
     final scheduleJson = json['scheduleJson']?.toString();
     final sections = section.parseSectionsFromScheduleJson(scheduleJson);
-    final entries = <_ScheduleEntry>[];
-    for (final sectionItem in sections) {
-      for (final classSchedule in sectionItem.sectionSchedule.classSchedules) {
-        entries.add(
-          _ScheduleEntry(
-            day: classSchedule.day,
-            startTime: classSchedule.startTime,
-            endTime: classSchedule.endTime,
-            courseCode: sectionItem.courseCode,
-            sectionName: sectionItem.sectionName,
-            roomNumber: sectionItem.roomNumber,
-            faculties: sectionItem.faculties,
-          ),
-        );
-      }
-    }
     final personalSchedulesJson = json['personalSchedules'];
     final personalSchedules = personalSchedulesJson is List
         ? personalSchedulesJson
@@ -907,6 +892,28 @@ class _HomeData {
         );
       }
     }
+    final entries = <_ScheduleEntry>[];
+    for (final sectionItem in sections) {
+      if (CourseSectionExamFilter.isFinishedAfterFinalExam(
+        section: sectionItem,
+        overrides: examOverrides,
+      )) {
+        continue;
+      }
+      for (final classSchedule in sectionItem.sectionSchedule.classSchedules) {
+        entries.add(
+          _ScheduleEntry(
+            day: classSchedule.day,
+            startTime: classSchedule.startTime,
+            endTime: classSchedule.endTime,
+            courseCode: sectionItem.courseCode,
+            sectionName: sectionItem.sectionName,
+            roomNumber: sectionItem.roomNumber,
+            faculties: sectionItem.faculties,
+          ),
+        );
+      }
+    }
     final data = _HomeData(
       profile: profile,
       entries: entries,
@@ -922,26 +929,6 @@ class _HomeData {
     );
     return data.hasRequiredProfileFields ? data : null;
   }
-}
-
-class _ScheduleEntry {
-  _ScheduleEntry({
-    required this.day,
-    required this.startTime,
-    required this.endTime,
-    required this.courseCode,
-    required this.sectionName,
-    required this.roomNumber,
-    required this.faculties,
-  });
-
-  final String day;
-  final String startTime;
-  final String endTime;
-  final String courseCode;
-  final String sectionName;
-  final String roomNumber;
-  final String faculties;
 }
 
 class _CountdownCardData {
@@ -976,6 +963,26 @@ class _TodayExamEntry {
   final String? startTime;
   final String? endTime;
   final String? room;
+}
+
+class _ScheduleEntry {
+  const _ScheduleEntry({
+    required this.day,
+    required this.startTime,
+    required this.endTime,
+    required this.courseCode,
+    required this.sectionName,
+    required this.roomNumber,
+    required this.faculties,
+  });
+
+  final String day;
+  final String startTime;
+  final String endTime;
+  final String courseCode;
+  final String sectionName;
+  final String? roomNumber;
+  final String? faculties;
 }
 
 class MoreQuickAccessPage extends StatefulWidget {

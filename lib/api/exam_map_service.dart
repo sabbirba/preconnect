@@ -15,6 +15,7 @@ class ExamMapService {
 
   static const Duration _indexCacheTtl = Duration(hours: 6);
   static const Duration _examJsonCacheTtl = Duration(hours: 12);
+  static const String _indexCacheKey = 'exammap_index_v4';
 
   static String sectionKeyForSection(Section section) {
     return sectionKey(
@@ -42,7 +43,7 @@ class ExamMapService {
 
     final indexJson = await _fetchJsonWithCache(
       url: ApiConfig.examMapIndexUrl,
-      cacheKey: 'exammap_index_v1',
+      cacheKey: _indexCacheKey,
       ttl: _indexCacheTtl,
       forceRefresh: forceRefresh,
     );
@@ -64,7 +65,7 @@ class ExamMapService {
     if (midUrl != null) {
       final midJson = await _fetchJsonWithCache(
         url: midUrl,
-        cacheKey: 'exammap_mid_${semesterSessionId}_v1',
+        cacheKey: 'exammap_mid_${semesterSessionId}_v3',
         ttl: _examJsonCacheTtl,
         forceRefresh: forceRefresh,
       );
@@ -74,7 +75,7 @@ class ExamMapService {
     if (finalUrl != null) {
       final finalJson = await _fetchJsonWithCache(
         url: finalUrl,
-        cacheKey: 'exammap_final_${semesterSessionId}_v1',
+        cacheKey: 'exammap_final_${semesterSessionId}_v3',
         ttl: _examJsonCacheTtl,
         forceRefresh: forceRefresh,
       );
@@ -98,7 +99,11 @@ class ExamMapService {
         final age = DateTime.now().difference(
           DateTime.fromMillisecondsSinceEpoch(ts),
         );
-        if (age <= ttl) return data;
+        if (age <= ttl) {
+          if (!(data is List && data.isEmpty && cacheKey == _indexCacheKey)) {
+            return data;
+          }
+        }
       }
     }
 
@@ -121,30 +126,72 @@ class ExamMapService {
     dynamic payload, {
     required String examTypeHint,
   }) {
-    if (payload is! Map<String, dynamic>) return;
+    final root = payload is Map<String, dynamic>
+        ? payload
+        : payload is Map
+        ? payload.cast<String, dynamic>()
+        : null;
+    if (root == null) return;
 
-    final metadata = payload['metadata'];
+    final metadata = root['metadata'];
     final metaType = metadata is Map<String, dynamic>
         ? _clean(metadata['exam_type'])
         : null;
     final examType = ((metaType ?? examTypeHint).trim().toUpperCase());
 
-    final rows = payload['exams'];
-    if (rows is! List) return;
+    final rows = root['exams'] ?? root['rows'] ?? root['data'] ?? root['items'];
+    final rowList = rows is List
+        ? rows
+        : rows is Map
+        ? rows.values.toList()
+        : null;
+    if (rowList == null) return;
 
-    for (final raw in rows.whereType<Map>()) {
+    for (final raw in rowList.whereType<Map>()) {
       final row = raw.cast<String, dynamic>();
-      final course = _clean(row['Course']).toUpperCase();
-      final section = _normalizeSection(_clean(row['Section']));
+      final course = _firstString(row, const <String>[
+        'Course',
+        'course',
+        'Course Code',
+        'courseCode',
+        'course_code',
+      ]).toUpperCase();
+      final section = _normalizeSection(
+        _firstString(row, const <String>[
+          'Section',
+          'section',
+          'Section Number',
+          'sectionNumber',
+          'section_number',
+        ]),
+      );
       if (course.isEmpty || section.isEmpty) continue;
       final key = '$course|$section';
 
-      final date = _clean(row['Mid Date']).isNotEmpty
-          ? _clean(row['Mid Date'])
-          : _clean(row['Final Date']);
-      final start = _clean(row['Start Time']);
-      final end = _clean(row['End Time']);
-      final room = _clean(row['Room.']);
+      final date = examType == 'MID'
+          ? _firstString(row, const <String>['Mid Date', 'midDate', 'mid_date'])
+          : _firstString(row, const <String>[
+              'Final Date',
+              'finalDate',
+              'final_date',
+            ]);
+      final start = _firstString(row, const <String>[
+        'Start Time',
+        'startTime',
+        'start_time',
+      ]);
+      final end = _firstString(row, const <String>[
+        'End Time',
+        'endTime',
+        'end_time',
+      ]);
+      final room = _firstString(row, const <String>[
+        'Room.',
+        'Room',
+        'room',
+        'roomNumber',
+        'room_number',
+      ]);
 
       final existing = out[key] ?? const ExamScheduleOverride();
 
@@ -208,6 +255,14 @@ class ExamMapService {
   }
 
   static String _clean(dynamic value) => value?.toString().trim() ?? '';
+
+  static String _firstString(Map<String, dynamic> row, List<String> keys) {
+    for (final key in keys) {
+      final value = _clean(row[key]);
+      if (value.isNotEmpty) return value;
+    }
+    return '';
+  }
 
   static String _normalizeSection(String raw) {
     final match = RegExp(r'\d+').firstMatch(raw.trim());
