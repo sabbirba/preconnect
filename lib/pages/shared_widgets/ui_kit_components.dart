@@ -1852,66 +1852,77 @@ class _BracuPageScaffoldState extends State<BracuPageScaffold> {
       builder: (BuildContext context, enabled, Widget? child) {
         return Scaffold(
           backgroundColor: Colors.transparent,
-          body: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  BracuPalette.bgTop(context),
-                  BracuPalette.bgBottom(context),
-                ],
-              ),
-            ),
-            child: AnnotatedRegion<SystemUiOverlayStyle>(
-              value: overlayStyle,
-              child: Material(
-                type: MaterialType.transparency,
-                child: SafeArea(
-                  child: Stack(
-                    children: [
-                      if (enabled)
-                        Positioned(
-                          top: -70,
-                          right: -60,
-                          child: DecorBlob(
-                            color: BracuPalette.primary.withValues(alpha: 0.12),
-                            size: 200,
-                          ),
+          body: ValueListenableBuilder(
+            valueListenable: HomeCardPreferences.decorationNotifier,
+            builder: (context, decorationsEnabled, child) {
+              return Container(
+                decoration: decorationsEnabled
+                    ? BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            BracuPalette.bgTop(context),
+                            BracuPalette.bgBottom(context),
+                          ],
                         ),
-                      if (enabled)
-                        Positioned(
-                          bottom: -80,
-                          left: -70,
-                          child: DecorBlob(
-                            color: BracuPalette.accent.withValues(alpha: 0.10),
-                            size: 220,
-                          ),
-                        ),
-                      Column(
+                      )
+                    : null,
+                child: AnnotatedRegion<SystemUiOverlayStyle>(
+                  value: overlayStyle,
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: SafeArea(
+                      child: Stack(
                         children: [
-                          Padding(
-                            padding: widget.showBack
-                                ? const EdgeInsets.fromLTRB(6, 12, 20, 8)
-                                : const EdgeInsets.fromLTRB(20, 12, 20, 8),
-                            child: _PageHeader(
-                              title: widget.title,
-                              subtitle: widget.subtitle,
-                              icon: widget.icon,
-                              actions: widget.actions,
-                              showMenu: widget.showMenu,
-                              showBack: widget.showBack,
-                              onHeaderTap: widget.onHeaderTap,
+                          if (enabled)
+                            Positioned(
+                              top: -70,
+                              right: -60,
+                              child: DecorBlob(
+                                color: BracuPalette.primary.withValues(
+                                  alpha: 0.12,
+                                ),
+                                size: 200,
+                              ),
                             ),
+                          if (enabled)
+                            Positioned(
+                              bottom: -80,
+                              left: -70,
+                              child: DecorBlob(
+                                color: BracuPalette.accent.withValues(
+                                  alpha: 0.10,
+                                ),
+                                size: 220,
+                              ),
+                            ),
+                          Column(
+                            children: [
+                              Padding(
+                                padding: widget.showBack
+                                    ? const EdgeInsets.fromLTRB(6, 12, 20, 8)
+                                    : const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                                child: _PageHeader(
+                                  title: widget.title,
+                                  subtitle: widget.subtitle,
+                                  icon: widget.icon,
+                                  actions: widget.actions,
+                                  showMenu: widget.showMenu,
+                                  showBack: widget.showBack,
+                                  onHeaderTap: widget.onHeaderTap,
+                                ),
+                              ),
+                              Expanded(child: widget.body),
+                            ],
                           ),
-                          Expanded(child: widget.body),
                         ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         );
       },
