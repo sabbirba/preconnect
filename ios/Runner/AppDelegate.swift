@@ -1,6 +1,5 @@
 import Flutter
 import GoogleMobileAds
-import restart_app
 import UIKit
 
 let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
@@ -18,9 +17,6 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    RestartAppPlugin.configureEngineRestart { engine in
-      GeneratedPluginRegistrant.register(with: engine)
-    }
     if let shortcutItem = launchOptions?[.shortcutItem] as? UIApplicationShortcutItem {
       cacheShortcutAction(shortcutItem.type)
     }
