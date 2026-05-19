@@ -815,46 +815,55 @@ class _MyAppState extends State<MyApp>
                     final shellMediaQuery = mediaQuery.copyWith(
                       size: shellSize,
                     );
-                    return Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            BracuPalette.bgTop(context),
-                            BracuPalette.bgBottom(context),
-                          ],
-                        ),
-                      ),
-                      child: Center(
-                        child: Container(
-                          width: shellWidth,
-                          height: shellHeight,
-                          margin: const EdgeInsets.symmetric(vertical: 0),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).scaffoldBackgroundColor,
-                            borderRadius: BorderRadius.circular(
-                              kIsWeb ? 32 : 0,
+                    return ValueListenableBuilder(
+                      valueListenable: HomeCardPreferences.decorationNotifier,
+                      builder: (context, decorationsEnabled, child) {
+                        return Container(
+                          decoration: decorationsEnabled
+                              ? BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      BracuPalette.bgTop(context),
+                                      BracuPalette.bgBottom(context),
+                                    ],
+                                  ),
+                                )
+                              : null,
+                          child: Center(
+                            child: Container(
+                              width: shellWidth,
+                              height: shellHeight,
+                              margin: const EdgeInsets.symmetric(vertical: 0),
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).scaffoldBackgroundColor,
+                                borderRadius: BorderRadius.circular(
+                                  kIsWeb ? 32 : 0,
+                                ),
+                                boxShadow: kIsWeb
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.16,
+                                          ),
+                                          blurRadius: 30,
+                                          offset: const Offset(0, 16),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: MediaQuery(
+                                data: shellMediaQuery,
+                                child: content,
+                              ),
                             ),
-                            boxShadow: kIsWeb
-                                ? [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.16,
-                                      ),
-                                      blurRadius: 30,
-                                      offset: const Offset(0, 16),
-                                    ),
-                                  ]
-                                : null,
                           ),
-                          clipBehavior: Clip.antiAlias,
-                          child: MediaQuery(
-                            data: shellMediaQuery,
-                            child: content,
-                          ),
-                        ),
-                      ),
+                        );
+                      },
                     );
                   },
                 ),

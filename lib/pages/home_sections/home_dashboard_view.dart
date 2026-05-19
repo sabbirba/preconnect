@@ -5,511 +5,547 @@ extension _HomeDashboardView on _HomeDashboardState {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgTop = isDark ? Colors.black : _HomeDashboardState._bgTop;
     final bgBottom = isDark ? Colors.black : _HomeDashboardState._bgBottom;
-    final showBlobs = _latestData?.cardVisibility.showDecorations ?? true;
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [bgTop, bgBottom],
-        ),
-      ),
-      child: SafeArea(
-        child: Stack(
-          children: [
-            if (showBlobs)
-              Positioned(
-                top: -80,
-                right: -60,
-                child: DecorBlob(
-                  color: _HomeDashboardState._primary.withValues(alpha: 0.12),
-                  size: 200,
-                ),
-              ),
-            if (showBlobs)
-              Positioned(
-                bottom: -90,
-                left: -70,
-                child: DecorBlob(
-                  color: _HomeDashboardState._accent.withValues(alpha: 0.10),
-                  size: 220,
-                ),
-              ),
-            Column(
+    return ValueListenableBuilder(
+      valueListenable: HomeCardPreferences.decorationNotifier,
+      builder: (context, decorationsEnabled, child) {
+        return Container(
+          decoration: decorationsEnabled
+              ? BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [bgTop, bgBottom],
+                  ),
+                )
+              : null,
+          child: SafeArea(
+            child: Stack(
               children: [
-                Expanded(
-                  child: FutureBuilder<_HomeData>(
-                    future: _future,
-                    builder: (context, snapshot) {
-                      final data = _latestData ?? snapshot.data;
-                      final isLoading =
-                          snapshot.connectionState == ConnectionState.waiting &&
-                          data == null;
-                      if (isLoading) {
-                        return BracuRefreshScroll(
-                          onRefresh: _handleRefresh,
-                          showScrollTopButton: false,
-                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-                          child: _HomeDashboardLoadingShell(
-                            onOpenSupport: () =>
-                                showBracuFundingSupportSheet(context),
-                            onOpenSettings: () =>
-                                widget.onNavigate(HomeTab.settings),
-                            onLogout: widget.onLogout,
-                          ),
-                        );
-                      }
-
-                      final profile =
-                          data?.profile ?? const <String, String?>{};
-                      final photoUrl = data?.photoUrl;
-                      final ramadan =
-                          data?.ramadan ??
-                          const RamadanStatus(isRamadan: false);
-                      final isRamadan = ramadan.isRamadan;
-                      final nextCountdownTarget = _nextRamadanTarget(
-                        sehri: ramadan.sehriEndsAt,
-                        iftar: ramadan.iftarAt,
-                      );
-                      final holidayStatus =
-                          data?.holiday ?? HolidayStatus.empty;
-                      final cardVisibility =
-                          data?.cardVisibility ?? HomeCardPreferences.defaults;
-                      final isTodayHoliday = holidayStatus.isTodayHoliday;
-                      final today = _todayName();
-                      final todayDate = DateFormat(
-                        'd MMMM, yyyy',
-                      ).format(DateTime.now());
-                      final todayEntries =
-                          (data?.entries ?? [])
-                              .where(
-                                (e) =>
-                                    normalizeWeekday(e.day) ==
-                                    normalizeWeekday(today),
-                              )
-                              .toList()
-                            ..sort(
-                              (a, b) =>
-                                  _timeToMinutes(a.startTime) -
-                                  _timeToMinutes(b.startTime),
+                if (decorationsEnabled)
+                  Positioned(
+                    top: -80,
+                    right: -60,
+                    child: DecorBlob(
+                      color: _HomeDashboardState._primary.withValues(
+                        alpha: 0.12,
+                      ),
+                      size: 200,
+                    ),
+                  ),
+                if (decorationsEnabled)
+                  Positioned(
+                    bottom: -90,
+                    left: -70,
+                    child: DecorBlob(
+                      color: _HomeDashboardState._accent.withValues(
+                        alpha: 0.10,
+                      ),
+                      size: 220,
+                    ),
+                  ),
+                Column(
+                  children: [
+                    Expanded(
+                      child: FutureBuilder<_HomeData>(
+                        future: _future,
+                        builder: (context, snapshot) {
+                          final data = _latestData ?? snapshot.data;
+                          final isLoading =
+                              snapshot.connectionState ==
+                                  ConnectionState.waiting &&
+                              data == null;
+                          if (isLoading) {
+                            return BracuRefreshScroll(
+                              onRefresh: _handleRefresh,
+                              showScrollTopButton: false,
+                              padding: const EdgeInsets.fromLTRB(
+                                20,
+                                16,
+                                20,
+                                28,
+                              ),
+                              child: _HomeDashboardLoadingShell(
+                                onOpenSupport: () =>
+                                    showBracuFundingSupportSheet(context),
+                                onOpenSettings: () =>
+                                    widget.onNavigate(HomeTab.settings),
+                                onLogout: widget.onLogout,
+                              ),
                             );
-                      final examWeekStatus = _todayExamWeekStatus(
-                        data?.sections ?? const <section.Section>[],
-                        data?.examOverrides ??
-                            const <String, ExamScheduleOverride>{},
-                      );
-                      final isExamWeekActive = examWeekStatus.isActive;
-                      final nextCountdown = _nextDeadlineCountdown(
-                        data?.sections ?? const <section.Section>[],
-                        data?.examOverrides ??
-                            const <String, ExamScheduleOverride>{},
-                        data?.personalSchedules ?? const <CustomSchedule>[],
-                      );
-                      final todayExams = _todayExamEntries(
-                        data?.sections ?? const <section.Section>[],
-                        data?.examOverrides ??
-                            const <String, ExamScheduleOverride>{},
-                      );
-                      final visibleEntries = isTodayHoliday
-                          ? <_ScheduleEntry>[]
-                          : (todayExams.isNotEmpty || isExamWeekActive
-                                ? <_ScheduleEntry>[]
-                                : todayEntries);
-                      return BracuRefreshScroll(
-                        onRefresh: _handleRefresh,
-                        showScrollTopButton: false,
-                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _TopBar(
-                              name: profile['fullName'] ?? 'BRACU Student',
-                              photoUrl: photoUrl,
-                              onOpenNotifications: () =>
-                                  widget.onNavigate(HomeTab.notifications),
-                              onProfileTap: () =>
-                                  widget.onNavigate(HomeTab.profile),
-                            ),
-                            if (_captiveStatus?.state ==
-                                CaptiveWifiState.captive) ...[
-                              const SizedBox(height: 12),
-                              _CaptiveWifiBanner(
-                                statusCode: _captiveStatus?.httpStatusCode,
-                                onOpenLogin: _openWifiLoginAssistant,
-                              ),
-                            ],
-                            const SizedBox(height: 18),
-                            StudentOverviewCard(
-                              studentId: profile['studentId'] ?? '',
-                              shortCode: profile['shortCode'] ?? '',
-                              department: profile['departmentName'] ?? '',
-                              currentSemester: profile['currentSemester'] ?? '',
-                              currentSessionSemesterId:
-                                  profile['currentSessionSemesterId'] ?? '',
-                              onOpenSupport: () =>
-                                  showBracuFundingSupportSheet(context),
-                              onOpenSettings: () =>
-                                  widget.onNavigate(HomeTab.settings),
-                              onLogout: widget.onLogout,
-                              countdown:
-                                  !cardVisibility.showExamCountdownCard ||
-                                      nextCountdown == null
-                                  ? null
-                                  : InkWell(
-                                      borderRadius: BorderRadius.circular(18),
-                                      onTap: () =>
-                                          widget.onNavigate(nextCountdown.tab),
-                                      child: ExamCountdownCard(
-                                        title: nextCountdown.title,
-                                        targetDateTime:
-                                            nextCountdown.targetDateTime,
-                                      ),
-                                    ),
-                            ),
-                            if (cardVisibility.showTodaySchedule) ...[
-                              const SizedBox(height: 12),
-                              InkWell(
-                                onTap: () => widget.onNavigate(
-                                  (todayExams.isNotEmpty || isExamWeekActive)
-                                      ? HomeTab.examSchedule
-                                      : HomeTab.studentSchedule,
+                          }
+
+                          final profile =
+                              data?.profile ?? const <String, String?>{};
+                          final photoUrl = data?.photoUrl;
+                          final ramadan =
+                              data?.ramadan ??
+                              const RamadanStatus(isRamadan: false);
+                          final isRamadan = ramadan.isRamadan;
+                          final nextCountdownTarget = _nextRamadanTarget(
+                            sehri: ramadan.sehriEndsAt,
+                            iftar: ramadan.iftarAt,
+                          );
+                          final holidayStatus =
+                              data?.holiday ?? HolidayStatus.empty;
+                          final cardVisibility =
+                              data?.cardVisibility ??
+                              HomeCardPreferences.defaults;
+                          final isTodayHoliday = holidayStatus.isTodayHoliday;
+                          final today = _todayName();
+                          final todayDate = DateFormat(
+                            'd MMMM, yyyy',
+                          ).format(DateTime.now());
+                          final todayEntries =
+                              (data?.entries ?? [])
+                                  .where(
+                                    (e) =>
+                                        normalizeWeekday(e.day) ==
+                                        normalizeWeekday(today),
+                                  )
+                                  .toList()
+                                ..sort(
+                                  (a, b) =>
+                                      _timeToMinutes(a.startTime) -
+                                      _timeToMinutes(b.startTime),
+                                );
+                          final examWeekStatus = _todayExamWeekStatus(
+                            data?.sections ?? const <section.Section>[],
+                            data?.examOverrides ??
+                                const <String, ExamScheduleOverride>{},
+                          );
+                          final isExamWeekActive = examWeekStatus.isActive;
+                          final nextCountdown = _nextDeadlineCountdown(
+                            data?.sections ?? const <section.Section>[],
+                            data?.examOverrides ??
+                                const <String, ExamScheduleOverride>{},
+                            data?.personalSchedules ?? const <CustomSchedule>[],
+                          );
+                          final todayExams = _todayExamEntries(
+                            data?.sections ?? const <section.Section>[],
+                            data?.examOverrides ??
+                                const <String, ExamScheduleOverride>{},
+                          );
+                          final visibleEntries = isTodayHoliday
+                              ? <_ScheduleEntry>[]
+                              : (todayExams.isNotEmpty || isExamWeekActive
+                                    ? <_ScheduleEntry>[]
+                                    : todayEntries);
+                          return BracuRefreshScroll(
+                            onRefresh: _handleRefresh,
+                            showScrollTopButton: false,
+                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _TopBar(
+                                  name: profile['fullName'] ?? 'BRACU Student',
+                                  photoUrl: photoUrl,
+                                  onOpenNotifications: () =>
+                                      widget.onNavigate(HomeTab.notifications),
+                                  onProfileTap: () =>
+                                      widget.onNavigate(HomeTab.profile),
                                 ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        'Today is $today',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: BracuPalette.textPrimary(
-                                            context,
+                                if (_captiveStatus?.state ==
+                                    CaptiveWifiState.captive) ...[
+                                  const SizedBox(height: 12),
+                                  _CaptiveWifiBanner(
+                                    statusCode: _captiveStatus?.httpStatusCode,
+                                    onOpenLogin: _openWifiLoginAssistant,
+                                  ),
+                                ],
+                                const SizedBox(height: 18),
+                                StudentOverviewCard(
+                                  studentId: profile['studentId'] ?? '',
+                                  shortCode: profile['shortCode'] ?? '',
+                                  department: profile['departmentName'] ?? '',
+                                  currentSemester:
+                                      profile['currentSemester'] ?? '',
+                                  currentSessionSemesterId:
+                                      profile['currentSessionSemesterId'] ?? '',
+                                  onOpenSupport: () =>
+                                      showBracuFundingSupportSheet(context),
+                                  onOpenSettings: () =>
+                                      widget.onNavigate(HomeTab.settings),
+                                  onLogout: widget.onLogout,
+                                  countdown:
+                                      !cardVisibility.showExamCountdownCard ||
+                                          nextCountdown == null
+                                      ? null
+                                      : InkWell(
+                                          borderRadius: BorderRadius.circular(
+                                            18,
                                           ),
-                                        ),
-                                      ),
-                                    ),
-                                    Text(
-                                      todayDate,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: BracuPalette.textPrimary(
-                                          context,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              if (todayExams.isNotEmpty)
-                                ...todayExams
-                                    .take(3)
-                                    .map(
-                                      (exam) => Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 10,
-                                        ),
-                                        child: InkWell(
                                           onTap: () => widget.onNavigate(
-                                            HomeTab.examSchedule,
+                                            nextCountdown.tab,
                                           ),
-                                          child: _ScheduleTile(
-                                            title:
-                                                '${exam.courseCode} ${exam.type}',
-                                            subtitle: formatTimeRange(
-                                              exam.startTime,
-                                              exam.endTime,
-                                            ),
-                                            trailing: exam.room,
-                                            trailingSub: exam.faculties,
-                                            badge: formatSectionBadge(
-                                              exam.sectionName,
-                                            ),
-                                            color: _HomeDashboardState._accent,
-                                            isHighlighted: false,
+                                          child: ExamCountdownCard(
+                                            title: nextCountdown.title,
+                                            targetDateTime:
+                                                nextCountdown.targetDateTime,
                                           ),
                                         ),
-                                      ),
-                                    ),
-                              if (todayExams.isNotEmpty &&
-                                  visibleEntries.isNotEmpty)
-                                const SizedBox(height: 10),
-                              if (todayExams.isEmpty &&
-                                  (isTodayHoliday || visibleEntries.isEmpty))
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 10),
-                                  child: InkWell(
+                                ),
+                                if (cardVisibility.showTodaySchedule) ...[
+                                  const SizedBox(height: 12),
+                                  InkWell(
                                     onTap: () => widget.onNavigate(
-                                      isExamWeekActive
+                                      (todayExams.isNotEmpty ||
+                                              isExamWeekActive)
                                           ? HomeTab.examSchedule
                                           : HomeTab.studentSchedule,
                                     ),
-                                    child: _ScheduleTile(
-                                      title: isExamWeekActive
-                                          ? 'No Class Today'
-                                          : isTodayHoliday
-                                          ? 'National Holiday'
-                                          : 'No Class Today',
-                                      subtitle: isExamWeekActive
-                                          ? examWeekStatus.subtitle
-                                          : isTodayHoliday
-                                          ? holidayStatus.displayNames
-                                          : 'Enjoy your day off.',
-                                      badge: isExamWeekActive
-                                          ? '--'
-                                          : isTodayHoliday
-                                          ? 'OFF'
-                                          : '--',
-                                      color: _HomeDashboardState._primary,
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            'Today is $today',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: BracuPalette.textPrimary(
+                                                context,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        Text(
+                                          todayDate,
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: BracuPalette.textPrimary(
+                                              context,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                )
-                              else if (visibleEntries.isNotEmpty)
-                                ...visibleEntries
-                                    .take(3)
-                                    .map(
-                                      (entry) => Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 10,
-                                        ),
-                                        child: InkWell(
-                                          onTap: () => widget.onNavigate(
-                                            HomeTab.studentSchedule,
+                                  const SizedBox(height: 12),
+                                  if (todayExams.isNotEmpty)
+                                    ...todayExams
+                                        .take(3)
+                                        .map(
+                                          (exam) => Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 10,
+                                            ),
+                                            child: InkWell(
+                                              onTap: () => widget.onNavigate(
+                                                HomeTab.examSchedule,
+                                              ),
+                                              child: _ScheduleTile(
+                                                title:
+                                                    '${exam.courseCode} ${exam.type}',
+                                                subtitle: formatTimeRange(
+                                                  exam.startTime,
+                                                  exam.endTime,
+                                                ),
+                                                trailing: exam.room,
+                                                trailingSub: exam.faculties,
+                                                badge: formatSectionBadge(
+                                                  exam.sectionName,
+                                                ),
+                                                color:
+                                                    _HomeDashboardState._accent,
+                                                isHighlighted: false,
+                                              ),
+                                            ),
                                           ),
-                                          child: _ScheduleTile(
-                                            title: entry.courseCode,
-                                            subtitle: formatTimeRange(
-                                              entry.startTime,
-                                              entry.endTime,
+                                        ),
+                                  if (todayExams.isNotEmpty &&
+                                      visibleEntries.isNotEmpty)
+                                    const SizedBox(height: 10),
+                                  if (todayExams.isEmpty &&
+                                      (isTodayHoliday ||
+                                          visibleEntries.isEmpty))
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 10,
+                                      ),
+                                      child: InkWell(
+                                        onTap: () => widget.onNavigate(
+                                          isExamWeekActive
+                                              ? HomeTab.examSchedule
+                                              : HomeTab.studentSchedule,
+                                        ),
+                                        child: _ScheduleTile(
+                                          title: isExamWeekActive
+                                              ? 'No Class Today'
+                                              : isTodayHoliday
+                                              ? 'National Holiday'
+                                              : 'No Class Today',
+                                          subtitle: isExamWeekActive
+                                              ? examWeekStatus.subtitle
+                                              : isTodayHoliday
+                                              ? holidayStatus.displayNames
+                                              : 'Enjoy your day off.',
+                                          badge: isExamWeekActive
+                                              ? '--'
+                                              : isTodayHoliday
+                                              ? 'OFF'
+                                              : '--',
+                                          color: _HomeDashboardState._primary,
+                                        ),
+                                      ),
+                                    )
+                                  else if (visibleEntries.isNotEmpty)
+                                    ...visibleEntries
+                                        .take(3)
+                                        .map(
+                                          (entry) => Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 10,
                                             ),
-                                            trailing: entry.roomNumber,
-                                            trailingSub: entry.faculties,
-                                            badge: formatSectionBadge(
-                                              entry.sectionName,
+                                            child: InkWell(
+                                              onTap: () => widget.onNavigate(
+                                                HomeTab.studentSchedule,
+                                              ),
+                                              child: _ScheduleTile(
+                                                title: entry.courseCode,
+                                                subtitle: formatTimeRange(
+                                                  entry.startTime,
+                                                  entry.endTime,
+                                                ),
+                                                trailing: entry.roomNumber,
+                                                trailingSub: entry.faculties,
+                                                badge: formatSectionBadge(
+                                                  entry.sectionName,
+                                                ),
+                                                color: _HomeDashboardState
+                                                    ._primary,
+                                                isHighlighted: false,
+                                              ),
                                             ),
-                                            color: _HomeDashboardState._primary,
-                                            isHighlighted: false,
+                                          ),
+                                        ),
+                                ],
+                                if (cardVisibility.showTodaySchedule &&
+                                    todayExams.isEmpty &&
+                                    visibleEntries.isEmpty &&
+                                    !isTodayHoliday &&
+                                    !isExamWeekActive)
+                                  const Padding(
+                                    padding: EdgeInsets.only(top: 8, bottom: 2),
+                                    child: _LoadingLine(),
+                                  ),
+                                if (cardVisibility.showRamadanCard && isRamadan)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: BracuCard(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          if (nextCountdownTarget != null) ...[
+                                            _RamadanTopCountdown(
+                                              ramadanDay: ramadan.ramadanDay,
+                                              targetLabel: nextCountdownTarget,
+                                              targetTime:
+                                                  nextCountdownTarget == 'Sehri'
+                                                  ? ramadan.sehriEndsAt
+                                                  : ramadan.iftarAt,
+                                            ),
+                                            Divider(
+                                              height: 14,
+                                              thickness: 1,
+                                              color:
+                                                  BracuPalette.textSecondary(
+                                                    context,
+                                                  ).withValues(
+                                                    alpha:
+                                                        Theme.of(
+                                                              context,
+                                                            ).brightness ==
+                                                            Brightness.dark
+                                                        ? 0.20
+                                                        : 0.12,
+                                                  ),
+                                            ),
+                                          ],
+                                          if (ramadan.sehriEndsAt != null ||
+                                              ramadan.iftarAt != null) ...[
+                                            Row(
+                                              children: [
+                                                if (ramadan.sehriEndsAt != null)
+                                                  Expanded(
+                                                    child: _RamadanHeroTime(
+                                                      label: 'Sehri',
+                                                      value: BracuTime.format(
+                                                        ramadan.sehriEndsAt,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                if (ramadan.sehriEndsAt !=
+                                                        null &&
+                                                    ramadan.iftarAt != null)
+                                                  const SizedBox(width: 10),
+                                                if (ramadan.iftarAt != null)
+                                                  Expanded(
+                                                    child: _RamadanHeroTime(
+                                                      label: 'Iftar',
+                                                      value: BracuTime.format(
+                                                        ramadan.iftarAt,
+                                                      ),
+                                                      alignRight: true,
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 2),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                if (cardVisibility.showQuickAccessSection) ...[
+                                  SizedBox(
+                                    height:
+                                        cardVisibility.showRamadanCard &&
+                                            isRamadan
+                                        ? 0
+                                        : 10,
+                                  ),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      const Expanded(
+                                        child: _SectionTitle(
+                                          title: 'Quick Access',
+                                        ),
+                                      ),
+                                      InkWell(
+                                        borderRadius: BorderRadius.circular(8),
+                                        onTap: () async {
+                                          await InAppReviewPrompt.openStoreListing();
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              SizedBox(
+                                                width: 16,
+                                                child: Icon(
+                                                  Icons.star_border_rounded,
+                                                  size: 17,
+                                                  color:
+                                                      BracuPalette.textPrimary(
+                                                        context,
+                                                      ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                'Rate',
+                                                softWrap: false,
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                  color:
+                                                      BracuPalette.textPrimary(
+                                                        context,
+                                                      ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ),
-                                    ),
-                            ],
-                            if (cardVisibility.showTodaySchedule &&
-                                todayExams.isEmpty &&
-                                visibleEntries.isEmpty &&
-                                !isTodayHoliday &&
-                                !isExamWeekActive)
-                              const Padding(
-                                padding: EdgeInsets.only(top: 8, bottom: 2),
-                                child: _LoadingLine(),
-                              ),
-                            if (cardVisibility.showRamadanCard && isRamadan)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: BracuCard(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      if (nextCountdownTarget != null) ...[
-                                        _RamadanTopCountdown(
-                                          ramadanDay: ramadan.ramadanDay,
-                                          targetLabel: nextCountdownTarget,
-                                          targetTime:
-                                              nextCountdownTarget == 'Sehri'
-                                              ? ramadan.sehriEndsAt
-                                              : ramadan.iftarAt,
-                                        ),
-                                        Divider(
-                                          height: 14,
-                                          thickness: 1,
-                                          color:
-                                              BracuPalette.textSecondary(
-                                                context,
-                                              ).withValues(
-                                                alpha:
-                                                    Theme.of(
-                                                          context,
-                                                        ).brightness ==
-                                                        Brightness.dark
-                                                    ? 0.20
-                                                    : 0.12,
+                                      const SizedBox(width: 4),
+                                      InkWell(
+                                        borderRadius: BorderRadius.circular(8),
+                                        onTap: () async {
+                                          await SharePlus.instance.share(
+                                            ShareParams(
+                                              uri: Uri.parse(
+                                                'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
                                               ),
-                                        ),
-                                      ],
-                                      if (ramadan.sehriEndsAt != null ||
-                                          ramadan.iftarAt != null) ...[
-                                        Row(
-                                          children: [
-                                            if (ramadan.sehriEndsAt != null)
-                                              Expanded(
-                                                child: _RamadanHeroTime(
-                                                  label: 'Sehri',
-                                                  value: BracuTime.format(
-                                                    ramadan.sehriEndsAt,
-                                                  ),
+                                              subject:
+                                                  'PreConnect • Prepare. Connect. Succeed.',
+                                            ),
+                                          );
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              SizedBox(
+                                                width: 16,
+                                                child: Icon(
+                                                  Icons.share_outlined,
+                                                  size: 14,
+                                                  color:
+                                                      BracuPalette.textPrimary(
+                                                        context,
+                                                      ),
                                                 ),
                                               ),
-                                            if (ramadan.sehriEndsAt != null &&
-                                                ramadan.iftarAt != null)
-                                              const SizedBox(width: 10),
-                                            if (ramadan.iftarAt != null)
-                                              Expanded(
-                                                child: _RamadanHeroTime(
-                                                  label: 'Iftar',
-                                                  value: BracuTime.format(
-                                                    ramadan.iftarAt,
-                                                  ),
-                                                  alignRight: true,
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                'Share',
+                                                softWrap: false,
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                  color:
+                                                      BracuPalette.textPrimary(
+                                                        context,
+                                                      ),
                                                 ),
                                               ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
-                                        const SizedBox(height: 2),
-                                      ],
+                                      ),
                                     ],
                                   ),
-                                ),
-                              ),
-                            if (cardVisibility.showQuickAccessSection) ...[
-                              SizedBox(
-                                height:
-                                    cardVisibility.showRamadanCard && isRamadan
-                                    ? 0
-                                    : 10,
-                              ),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  const Expanded(
-                                    child: _SectionTitle(title: 'Quick Access'),
-                                  ),
-                                  InkWell(
-                                    borderRadius: BorderRadius.circular(8),
-                                    onTap: () async {
-                                      await InAppReviewPrompt.openStoreListing();
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          SizedBox(
-                                            width: 16,
-                                            child: Icon(
-                                              Icons.star_border_rounded,
-                                              size: 17,
-                                              color: BracuPalette.textPrimary(
-                                                context,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            'Rate',
-                                            softWrap: false,
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                              color: BracuPalette.textPrimary(
-                                                context,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  InkWell(
-                                    borderRadius: BorderRadius.circular(8),
-                                    onTap: () async {
-                                      await SharePlus.instance.share(
-                                        ShareParams(
-                                          uri: Uri.parse(
-                                            'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
-                                          ),
-                                          subject:
-                                              'PreConnect • Prepare. Connect. Succeed.',
-                                        ),
+                                  const SizedBox(height: 12),
+                                  LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      return _buildQuickAccessGrid(
+                                        maxWidth: constraints.maxWidth,
                                       );
                                     },
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          SizedBox(
-                                            width: 16,
-                                            child: Icon(
-                                              Icons.share_outlined,
-                                              size: 14,
-                                              color: BracuPalette.textPrimary(
-                                                context,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            'Share',
-                                            softWrap: false,
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                              color: BracuPalette.textPrimary(
-                                                context,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
                                   ),
                                 ],
-                              ),
-                              const SizedBox(height: 12),
-                              LayoutBuilder(
-                                builder: (context, constraints) {
-                                  return _buildQuickAccessGrid(
-                                    maxWidth: constraints.maxWidth,
-                                  );
-                                },
-                              ),
-                            ],
-                            const SizedBox(height: 12),
-                            if (data == null)
-                              const Padding(
-                                padding: EdgeInsets.only(bottom: 12),
-                                child: _LoadingLine(),
-                              ),
-                            BracuActionBannerCard(
-                              icon: null,
-                              title: 'Campus Map & Contacts',
-                              subtitle: 'Location and emergency contacts',
-                              iconColor: const Color(0xFF22B573),
-                              onTap: _openCampusMapSheet,
+                                const SizedBox(height: 12),
+                                if (data == null)
+                                  const Padding(
+                                    padding: EdgeInsets.only(bottom: 12),
+                                    child: _LoadingLine(),
+                                  ),
+                                BracuActionBannerCard(
+                                  icon: null,
+                                  title: 'Campus Map & Contacts',
+                                  subtitle: 'Location and emergency contacts',
+                                  iconColor: const Color(0xFF22B573),
+                                  onTap: _openCampusMapSheet,
+                                ),
+                                const SizedBox(height: 12),
+                                const _InlineBannerAd(),
+                              ],
                             ),
-                            const SizedBox(height: 12),
-                            const _InlineBannerAd(),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
