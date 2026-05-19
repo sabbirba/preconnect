@@ -56,33 +56,16 @@ class SeatStatusService {
     bool forceRefresh = false,
   }) async {
     try {
-      return await _loadDetailsWithFallback();
+      return await _loadDetailsRealtimeOnly();
     } catch (_) {
       return const <int, SeatStatusDetailsResponse>{};
     }
   }
 
-  Future<Map<int, SeatStatusDetailsResponse>> _loadDetailsWithFallback() async {
-    final urls = <String>[
-      ApiConfig.seatStatusDataUrl,
-      ApiConfig.seatStatusDataFallbackUrl,
-    ];
-    Object? lastError;
-    for (final url in urls) {
-      try {
-        final raw = await _fetchJson(url);
-        final parsed = _parseConnectJson(raw);
-        if (parsed.isNotEmpty) {
-          return parsed;
-        }
-      } catch (error) {
-        lastError = error;
-      }
-    }
-    if (lastError != null) {
-      throw lastError;
-    }
-    return const <int, SeatStatusDetailsResponse>{};
+  Future<Map<int, SeatStatusDetailsResponse>> _loadDetailsRealtimeOnly() async {
+    final raw = await _fetchJson(ApiConfig.seatStatusDataUrl);
+    final parsed = _parseConnectJson(raw);
+    return parsed;
   }
 
   Future<dynamic> _fetchJson(String url) async {

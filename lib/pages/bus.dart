@@ -90,9 +90,7 @@ class _BusPageState extends State<BusPage> {
       setState(() {
         _schedulePdfUrl = resolvedUrl ?? '';
       });
-    } catch (error) {
-      // Keep silent and fall back to the rest of the bus data.
-    }
+    } catch (_) {}
   }
 
   Future<void> _load({bool forceRefresh = false}) async {
@@ -226,11 +224,7 @@ Future<_BusDataPackage> _fetchBusDataPackage() async {
     return const _BusDataPackage.empty();
   }
 
-  try {
-    return await parseUrl(ApiConfig.busDataUrl);
-  } catch (_) {
-    return await parseUrl(ApiConfig.busDataFallbackUrl);
-  }
+  return await parseUrl(ApiConfig.busDataUrl);
 }
 
 class _TransportRouteCard extends StatelessWidget {

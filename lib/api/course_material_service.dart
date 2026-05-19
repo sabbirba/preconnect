@@ -284,7 +284,8 @@ class CourseMaterialService {
   static final Map<String, List<CourseMaterialItem>> _cachedLists =
       <String, List<CourseMaterialItem>>{};
 
-  String get _base => ApiConfig.seatStatusProxyBase;
+  String get _realtimeBase => ApiConfig.realtimeApiBase;
+  String get _publicBase => ApiConfig.publicJsonBase;
 
   Future<List<CourseMaterialItem>> list({
     required String courseCode,
@@ -314,8 +315,9 @@ class CourseMaterialService {
     if (searchValue.isNotEmpty) {
       query.write('&search=${Uri.encodeQueryComponent(searchValue)}');
     }
-    final response = await _client.publicGet(
-      '$_base/v1/course-materials?$query',
+    final response = await _publicJsonGet(
+      publicUrl: '$_publicBase/v1/course-materials?$query',
+      realtimeUrl: '$_realtimeBase/v1/course-materials?$query',
     );
     final map = _decodeMap(response.body);
     final items = parseCourseMaterialItemsFromResponse(map);
@@ -373,7 +375,10 @@ class CourseMaterialService {
         '${Uri.encodeComponent(semester.trim())}/'
         '${Uri.encodeComponent(courseCode.trim().toUpperCase())}/'
         '${Uri.encodeComponent(fileName.trim())}';
-    final response = await _client.publicGet('$_base$path');
+    final response = await _publicJsonGet(
+      publicUrl: '$_publicBase$path',
+      realtimeUrl: '$_realtimeBase$path',
+    );
     return CourseMaterialDetail.fromJson(_decodeMap(response.body));
   }
 
@@ -402,7 +407,7 @@ class CourseMaterialService {
   ) async {
     final response = await _client.authenticatedRequest(
       'POST',
-      '$_base/v1/course-materials/upload-url',
+      '$_realtimeBase/v1/course-materials/upload-url',
       body: jsonEncode(input.toJson()),
       additionalHeaders: const <String, String>{
         'Content-Type': 'application/json',
@@ -434,7 +439,7 @@ class CourseMaterialService {
   Future<CourseMaterialItem> finalize(CourseMaterialFinalizeInput input) async {
     final response = await _client.authenticatedRequest(
       'POST',
-      '$_base/v1/course-materials',
+      '$_realtimeBase/v1/course-materials',
       body: jsonEncode(input.toJson()),
       additionalHeaders: const <String, String>{
         'Content-Type': 'application/json',
@@ -457,7 +462,7 @@ class CourseMaterialService {
         '${Uri.encodeComponent(semester.trim())}/'
         '${Uri.encodeComponent(courseCode.trim().toUpperCase())}/'
         '${Uri.encodeComponent(fileName.trim())}';
-    await _client.authenticatedRequest('DELETE', '$_base$path');
+    await _client.authenticatedRequest('DELETE', '$_realtimeBase$path');
   }
 
   Future<bool> report({
@@ -473,7 +478,7 @@ class CourseMaterialService {
         '${Uri.encodeComponent(fileName.trim())}/report';
     final response = await _client.authenticatedRequest(
       'POST',
-      '$_base$path',
+      '$_realtimeBase$path',
       body: jsonEncode(<String, dynamic>{'reason': reason}),
       additionalHeaders: const <String, String>{
         'Content-Type': 'application/json',
@@ -536,6 +541,17 @@ class CourseMaterialService {
       return segments.sublist(1);
     }
     return segments;
+  }
+
+  Future<http.Response> _publicJsonGet({
+    required String publicUrl,
+    required String realtimeUrl,
+  }) async {
+    try {
+      return await _client.publicGet(publicUrl);
+    } catch (_) {
+      return _client.publicGet(realtimeUrl);
+    }
   }
 }
 

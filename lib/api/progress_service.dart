@@ -19,7 +19,7 @@ class ProgressService {
       'student_progress_completed_courses_v1';
   static const String _curriculumCacheKey = 'student_progress_curriculum_v1';
   static const String _coursePrerequisitesCacheKey =
-      'student_progress_course_prerequisites_v1';
+      'student_progress_course_prerequisites_v2';
   static const String _majorMinorsEtagKey = 'student_progress_major_etag_v1';
   static const String _completedCoursesEtagKey =
       'student_progress_completed_etag_v1';
@@ -66,8 +66,9 @@ class ProgressService {
           '${ApiConfig.connectApiBase}${ApiConfig.completedCoursesPath(portfolioId)}';
       final curriculumUrl =
           '${ApiConfig.connectApiBase}${ApiConfig.programCurriculumsPath(portfolioId)}';
-      final coursePrerequisitesUrl =
-          '${ApiConfig.seatStatusProxyBase}/course-prerequisites';
+      final coursePrerequisitesUrls = <String>[
+        '${ApiConfig.publicJsonBase}/data/course-prerequisites.json',
+      ];
       final cache = AppPreferencesStore();
 
       final majorEtag = await cache.getString(_majorMinorsEtagKey);
@@ -112,7 +113,7 @@ class ProgressService {
       );
       final coursePrerequisites = await _resolvePublicComponent(
         cache: cache,
-        url: coursePrerequisitesUrl,
+        urls: coursePrerequisitesUrls,
         dataKey: _coursePrerequisitesCacheKey,
       );
 
@@ -171,19 +172,22 @@ class ProgressService {
 
   Future<dynamic> _resolvePublicComponent({
     required AppPreferencesStore cache,
-    required String url,
+    required List<String> urls,
     required String dataKey,
   }) async {
-    try {
-      final response = await _client.publicGet(url);
-      final decoded = jsonDecode(response.body);
-      await cache.setJson(dataKey, decoded);
-      return decoded;
-    } catch (_) {
-      final cached = await cache.getString(dataKey);
-      if (cached == null || cached.trim().isEmpty) return null;
-      return jsonDecode(cached);
+    for (final url in urls) {
+      try {
+        final response = await _client.publicGet(url);
+        final decoded = jsonDecode(response.body);
+        await cache.setJson(dataKey, decoded);
+        return decoded;
+      } catch (_) {
+        continue;
+      }
     }
+    final cached = await cache.getString(dataKey);
+    if (cached == null || cached.trim().isEmpty) return null;
+    return jsonDecode(cached);
   }
 
   Future<dynamic> _readCachedComponent(

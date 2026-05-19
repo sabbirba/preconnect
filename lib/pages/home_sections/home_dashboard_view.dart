@@ -9,16 +9,18 @@ extension _HomeDashboardView on _HomeDashboardState {
     return ValueListenableBuilder(
       valueListenable: HomeCardPreferences.decorationNotifier,
       builder: (context, decorationsEnabled, child) {
+        final baseColor = Theme.of(context).scaffoldBackgroundColor;
         return Container(
           decoration: decorationsEnabled
               ? BoxDecoration(
+                  color: baseColor,
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [bgTop, bgBottom],
                   ),
                 )
-              : null,
+              : BoxDecoration(color: baseColor),
           child: SafeArea(
             child: Stack(
               children: [
@@ -321,15 +323,6 @@ extension _HomeDashboardView on _HomeDashboardState {
                                           ),
                                         ),
                                 ],
-                                if (cardVisibility.showTodaySchedule &&
-                                    todayExams.isEmpty &&
-                                    visibleEntries.isEmpty &&
-                                    !isTodayHoliday &&
-                                    !isExamWeekActive)
-                                  const Padding(
-                                    padding: EdgeInsets.only(top: 8, bottom: 2),
-                                    child: _LoadingLine(),
-                                  ),
                                 if (cardVisibility.showRamadanCard && isRamadan)
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 8),

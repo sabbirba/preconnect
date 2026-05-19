@@ -200,14 +200,14 @@ class HomeCardPreferences {
   HomeCardPreferences._();
 
   static final decorationNotifier = ValueNotifier(true);
-  static const String _showQuickAccessSectionKey =
+  static const String showQuickAccessSectionKey =
       'home_show_quick_access_section';
-  static const String _showRamadanCardKey = 'home_show_ramadan_card';
-  static const String _showExamCountdownCardKey =
+  static const String showRamadanCardKey = 'home_show_ramadan_card';
+  static const String showExamCountdownCardKey =
       'home_show_exam_countdown_card';
-  static const String _showTodayScheduleKey = 'home_show_today_schedule';
-  static const String _showSponsoredContentKey = 'home_show_sponsored_content';
-  static const String _showDecorations = 'home_show_decorations';
+  static const String showTodayScheduleKey = 'home_show_today_schedule';
+  static const String showSponsoredContentKey = 'home_show_sponsored_content';
+  static const String showDecorationsKey = 'home_show_decorations';
 
   static const HomeCardVisibility defaults = HomeCardVisibility(
     showQuickAccessSection: true,
@@ -221,23 +221,22 @@ class HomeCardPreferences {
   static Future<HomeCardVisibility> load() async {
     try {
       bool showDecorations =
-          await AppStorage.instance.getBool(_showDecorations) ?? true;
+          await AppStorage.instance.getBool(showDecorationsKey) ?? true;
       decorationNotifier.value = showDecorations;
 
       return HomeCardVisibility(
         showQuickAccessSection:
-            await AppStorage.instance.getBool(_showQuickAccessSectionKey) ??
+            await AppStorage.instance.getBool(showQuickAccessSectionKey) ??
             true,
         showDecorations: showDecorations,
         showRamadanCard:
-            await AppStorage.instance.getBool(_showRamadanCardKey) ?? true,
+            await AppStorage.instance.getBool(showRamadanCardKey) ?? true,
         showExamCountdownCard:
-            await AppStorage.instance.getBool(_showExamCountdownCardKey) ??
-            true,
+            await AppStorage.instance.getBool(showExamCountdownCardKey) ?? true,
         showTodaySchedule:
-            await AppStorage.instance.getBool(_showTodayScheduleKey) ?? true,
+            await AppStorage.instance.getBool(showTodayScheduleKey) ?? true,
         showSponsoredContent:
-            await AppStorage.instance.getBool(_showSponsoredContentKey) ?? true,
+            await AppStorage.instance.getBool(showSponsoredContentKey) ?? true,
       );
     } catch (_) {
       return defaults;
@@ -246,38 +245,38 @@ class HomeCardPreferences {
 
   static Future<void> setShowRamadanCard(bool value) async {
     try {
-      await AppStorage.instance.setBool(_showRamadanCardKey, value);
+      await AppStorage.instance.setBool(showRamadanCardKey, value);
     } catch (_) {}
   }
 
   static Future<void> setShowDecorations(bool value) async {
     try {
       decorationNotifier.value = value;
-      await AppStorage.instance.setBool(_showDecorations, value);
+      await AppStorage.instance.setBool(showDecorationsKey, value);
     } catch (_) {}
   }
 
   static Future<void> setShowExamCountdownCard(bool value) async {
     try {
-      await AppStorage.instance.setBool(_showExamCountdownCardKey, value);
+      await AppStorage.instance.setBool(showExamCountdownCardKey, value);
     } catch (_) {}
   }
 
   static Future<void> setShowQuickAccessSection(bool value) async {
     try {
-      await AppStorage.instance.setBool(_showQuickAccessSectionKey, value);
+      await AppStorage.instance.setBool(showQuickAccessSectionKey, value);
     } catch (_) {}
   }
 
   static Future<void> setShowTodaySchedule(bool value) async {
     try {
-      await AppStorage.instance.setBool(_showTodayScheduleKey, value);
+      await AppStorage.instance.setBool(showTodayScheduleKey, value);
     } catch (_) {}
   }
 
   static Future<void> setShowSponsoredContent(bool value) async {
     try {
-      await AppStorage.instance.setBool(_showSponsoredContentKey, value);
+      await AppStorage.instance.setBool(showSponsoredContentKey, value);
     } catch (_) {}
   }
 }
@@ -475,9 +474,10 @@ class ProfileImageCache {
     }
 
     try {
+      final uri = Uri.parse(photoUrl);
       final response = await http.get(
-        Uri.parse(photoUrl),
-        headers: compressionHeaders(),
+        uri,
+        headers: compressionHeadersForUri(uri),
       );
       if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
         await file.writeAsBytes(response.bodyBytes, flush: true);

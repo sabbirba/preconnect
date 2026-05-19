@@ -89,7 +89,7 @@ class _SettingsPageState extends State<SettingsPage>
 
   Future<void> _setShowDecorations(bool value) async {
     await _setVisibility(
-      label: 'Show Decorations',
+      label: 'Show decorations',
       value: value,
       applyLocal: () => _showDecorations = value,
       persist: HomeCardPreferences.setShowDecorations,
@@ -226,6 +226,12 @@ class _SettingsPageState extends State<SettingsPage>
         PreconnectStorageKeys.cachedHasAuthSession,
         StorageKeys.currentSessionSemesterId,
         CustomSchedulesService.cacheKey,
+        HomeCardPreferences.showQuickAccessSectionKey,
+        HomeCardPreferences.showRamadanCardKey,
+        HomeCardPreferences.showExamCountdownCardKey,
+        HomeCardPreferences.showTodayScheduleKey,
+        HomeCardPreferences.showSponsoredContentKey,
+        HomeCardPreferences.showDecorationsKey,
       };
       await AppPreferencesStore().clearAllExcept(keepKeys);
     } finally {
@@ -303,8 +309,7 @@ class _SettingsPageState extends State<SettingsPage>
                 ),
                 _ToggleRow(
                   title: 'Show Decorations',
-                  subtitle:
-                      'Display beautiful decorations on pages (restart required)',
+                  subtitle: 'Display UI background decorations',
                   value: _showDecorations,
                   onChanged: _setShowDecorations,
                 ),

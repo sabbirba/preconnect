@@ -85,6 +85,12 @@ class MyApp extends StatefulWidget {
         PreconnectStorageKeys.refreshToken,
         StorageKeys.themeMode,
         CustomSchedulesService.cacheKey,
+        HomeCardPreferences.showQuickAccessSectionKey,
+        HomeCardPreferences.showRamadanCardKey,
+        HomeCardPreferences.showExamCountdownCardKey,
+        HomeCardPreferences.showTodayScheduleKey,
+        HomeCardPreferences.showSponsoredContentKey,
+        HomeCardPreferences.showDecorationsKey,
       };
       await AppPreferencesStore().clearAllExcept(keepKeys);
     }
@@ -783,7 +789,6 @@ class _MyAppState extends State<MyApp>
                 value: overlayStyle,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    const mobileShellWidth = 390.0;
                     if (!kIsWeb && constraints.maxWidth >= 700) {
                       const shellWidth = 700.0;
                       final shellSize = Size(
@@ -807,9 +812,7 @@ class _MyAppState extends State<MyApp>
                       );
                     }
 
-                    final shellWidth = constraints.maxWidth < mobileShellWidth
-                        ? constraints.maxWidth
-                        : mobileShellWidth;
+                    final shellWidth = constraints.maxWidth;
                     final shellHeight = mediaQuery.size.height;
                     final shellSize = Size(shellWidth, shellHeight);
                     final shellMediaQuery = mediaQuery.copyWith(
@@ -818,50 +821,59 @@ class _MyAppState extends State<MyApp>
                     return ValueListenableBuilder(
                       valueListenable: HomeCardPreferences.decorationNotifier,
                       builder: (context, decorationsEnabled, child) {
-                        return Container(
-                          decoration: decorationsEnabled
-                              ? BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      BracuPalette.bgTop(context),
-                                      BracuPalette.bgBottom(context),
-                                    ],
-                                  ),
-                                )
-                              : null,
-                          child: Center(
-                            child: Container(
-                              width: shellWidth,
-                              height: shellHeight,
-                              margin: const EdgeInsets.symmetric(vertical: 0),
-                              decoration: BoxDecoration(
-                                color: Theme.of(
-                                  context,
-                                ).scaffoldBackgroundColor,
-                                borderRadius: BorderRadius.circular(
-                                  kIsWeb ? 32 : 0,
-                                ),
-                                boxShadow: kIsWeb
-                                    ? [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(
-                                            alpha: 0.16,
-                                          ),
-                                          blurRadius: 30,
-                                          offset: const Offset(0, 16),
+                        final baseColor = Theme.of(
+                          context,
+                        ).scaffoldBackgroundColor;
+                        return Stack(
+                          children: [
+                            Positioned.fill(
+                              child: Container(
+                                decoration: decorationsEnabled
+                                    ? BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            BracuPalette.bgTop(context),
+                                            BracuPalette.bgBottom(context),
+                                          ],
                                         ),
-                                      ]
-                                    : null,
-                              ),
-                              clipBehavior: Clip.antiAlias,
-                              child: MediaQuery(
-                                data: shellMediaQuery,
-                                child: content,
+                                      )
+                                    : BoxDecoration(color: baseColor),
                               ),
                             ),
-                          ),
+                            Center(
+                              child: Container(
+                                width: shellWidth,
+                                height: shellHeight,
+                                margin: const EdgeInsets.symmetric(vertical: 0),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(
+                                    context,
+                                  ).scaffoldBackgroundColor,
+                                  borderRadius: BorderRadius.circular(
+                                    kIsWeb ? 32 : 0,
+                                  ),
+                                  boxShadow: kIsWeb
+                                      ? [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.16,
+                                            ),
+                                            blurRadius: 30,
+                                            offset: const Offset(0, 16),
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: MediaQuery(
+                                  data: shellMediaQuery,
+                                  child: content,
+                                ),
+                              ),
+                            ),
+                          ],
                         );
                       },
                     );

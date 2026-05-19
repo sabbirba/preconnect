@@ -233,9 +233,7 @@ class ApiClient {
       'Accept': 'application/json',
       ...headers,
     };
-    if (uri.host != 'cdn.preconnect.app') {
-      mergedHeaders.addAll(compressionHeaders());
-    }
+    mergedHeaders.addAll(compressionHeadersForUri(uri));
     final response = await http
         .get(uri, headers: mergedHeaders)
         .timeout(_requestTimeout);
@@ -298,9 +296,9 @@ class ApiClient {
       'Authorization': 'Bearer $token',
       ...ApiConfig.apiHeaders,
     };
-    headers.addAll(compressionHeaders());
 
     final uri = Uri.tryParse(url);
+    headers.addAll(compressionHeadersForUri(uri));
     if (uri != null && uri.host == 'connect.bracu.ac.bd') {
       headers['Origin'] = ApiConfig.connectOrigin;
     }
@@ -361,7 +359,14 @@ class ApiClient {
 
 Map<String, String> compressionHeaders() {
   if (kIsWeb) return const <String, String>{};
-  return const <String, String>{'Accept-Encoding': 'gzip, deflate, br'};
+  return const <String, String>{'Accept-Encoding': 'gzip, deflate'};
+}
+
+Map<String, String> compressionHeadersForUri(Uri? uri) {
+  if (uri != null && uri.host == 'cdn.preconnect.app') {
+    return const <String, String>{};
+  }
+  return compressionHeaders();
 }
 
 sealed class PreConnectException implements Exception {

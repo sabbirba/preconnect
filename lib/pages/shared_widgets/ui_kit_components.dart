@@ -336,22 +336,22 @@ Future<T?> showBracuBottomSheet<T>(
       return SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 16),
+          padding: const EdgeInsets.fromLTRB(18, 6, 18, 10),
           child: Column(
             mainAxisSize: MainAxisSize.max,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
                 child: Container(
-                  width: 42,
-                  height: 4,
+                  width: 36,
+                  height: 3,
                   decoration: BoxDecoration(
                     color: textSecondary.withValues(alpha: 0.28),
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               Row(
                 children: [
                   Expanded(
@@ -363,8 +363,8 @@ Future<T?> showBracuBottomSheet<T>(
                             title,
                             style: TextStyle(
                               color: textPrimary,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
                             ),
                           )
                         else
@@ -375,8 +375,8 @@ Future<T?> showBracuBottomSheet<T>(
                                 value,
                                 style: TextStyle(
                                   color: textPrimary,
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               );
                             },
@@ -389,10 +389,17 @@ Future<T?> showBracuBottomSheet<T>(
                     onPressed: () => Navigator.of(sheetContext).pop(),
                     icon: Icon(Icons.close_rounded, color: textSecondary),
                     tooltip: 'Close',
+                    iconSize: 20,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 36,
+                      height: 36,
+                    ),
+                    visualDensity: VisualDensity.compact,
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Expanded(
                 child: builder(sheetContext, textPrimary, textSecondary),
               ),
@@ -1849,80 +1856,83 @@ class _BracuPageScaffoldState extends State<BracuPageScaffold> {
     );
     return ValueListenableBuilder(
       valueListenable: HomeCardPreferences.decorationNotifier,
-      builder: (BuildContext context, enabled, Widget? child) {
+      builder: (BuildContext context, decorationsEnabled, Widget? child) {
+        final enabled = decorationsEnabled == true;
+        final baseColor = Theme.of(context).scaffoldBackgroundColor;
         return Scaffold(
           backgroundColor: Colors.transparent,
-          body: ValueListenableBuilder(
-            valueListenable: HomeCardPreferences.decorationNotifier,
-            builder: (context, decorationsEnabled, child) {
-              return Container(
-                decoration: decorationsEnabled
-                    ? BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            BracuPalette.bgTop(context),
-                            BracuPalette.bgBottom(context),
-                          ],
-                        ),
-                      )
-                    : null,
-                child: AnnotatedRegion<SystemUiOverlayStyle>(
-                  value: overlayStyle,
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: SafeArea(
-                      child: Stack(
-                        children: [
-                          if (enabled)
-                            Positioned(
-                              top: -70,
-                              right: -60,
-                              child: DecorBlob(
-                                color: BracuPalette.primary.withValues(
-                                  alpha: 0.12,
-                                ),
-                                size: 200,
-                              ),
-                            ),
-                          if (enabled)
-                            Positioned(
-                              bottom: -80,
-                              left: -70,
-                              child: DecorBlob(
-                                color: BracuPalette.accent.withValues(
-                                  alpha: 0.10,
-                                ),
-                                size: 220,
-                              ),
-                            ),
-                          Column(
-                            children: [
-                              Padding(
-                                padding: widget.showBack
-                                    ? const EdgeInsets.fromLTRB(6, 12, 20, 8)
-                                    : const EdgeInsets.fromLTRB(20, 12, 20, 8),
-                                child: _PageHeader(
-                                  title: widget.title,
-                                  subtitle: widget.subtitle,
-                                  icon: widget.icon,
-                                  actions: widget.actions,
-                                  showMenu: widget.showMenu,
-                                  showBack: widget.showBack,
-                                  onHeaderTap: widget.onHeaderTap,
-                                ),
-                              ),
-                              Expanded(child: widget.body),
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: Container(
+                  decoration: enabled
+                      ? BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              BracuPalette.bgTop(context),
+                              BracuPalette.bgBottom(context),
                             ],
                           ),
-                        ],
-                      ),
+                        )
+                      : BoxDecoration(color: baseColor),
+                ),
+              ),
+              AnnotatedRegion<SystemUiOverlayStyle>(
+                value: overlayStyle,
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: SafeArea(
+                    child: Stack(
+                      children: [
+                        if (enabled)
+                          Positioned(
+                            top: -70,
+                            right: -60,
+                            child: DecorBlob(
+                              color: BracuPalette.primary.withValues(
+                                alpha: 0.12,
+                              ),
+                              size: 200,
+                            ),
+                          ),
+                        if (enabled)
+                          Positioned(
+                            bottom: -80,
+                            left: -70,
+                            child: DecorBlob(
+                              color: BracuPalette.accent.withValues(
+                                alpha: 0.10,
+                              ),
+                              size: 220,
+                            ),
+                          ),
+                        Column(
+                          children: [
+                            Padding(
+                              padding: widget.showBack
+                                  ? const EdgeInsets.fromLTRB(6, 12, 20, 8)
+                                  : const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                              child: _PageHeader(
+                                title: widget.title,
+                                subtitle: widget.subtitle,
+                                icon: widget.icon,
+                                actions: widget.actions,
+                                showMenu: widget.showMenu,
+                                showBack: widget.showBack,
+                                onHeaderTap: widget.onHeaderTap,
+                              ),
+                            ),
+                            Expanded(child: widget.body),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              );
-            },
+              ),
+            ],
           ),
         );
       },
