@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:dart_pdf_reader/dart_pdf_reader.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/profile_service.dart';
@@ -31,7 +32,6 @@ class CampusPrinterPage extends StatefulWidget {
 
   static Future<void> clearStoredState() async {
     await AppStorage.instance.remove('campus_printer_copies');
-    await AppStorage.instance.remove('campus_printer_collate');
     await AppStorage.instance.remove('campus_printer_history');
     await AppStorage.instance.remove('campus_printer_last_host');
     await AppStorage.instance.remove('campus_printer_last_wifi');
@@ -39,8 +39,6 @@ class CampusPrinterPage extends StatefulWidget {
     await AppStorage.instance.remove(StorageKeys.fullName);
     await AppStorage.instance.remove(StorageKeys.shortCode);
     await AppStorage.instance.remove(StorageKeys.currentSemester);
-    await AppStorage.instance.remove(StorageKeys.departmentName);
-    await AppStorage.instance.remove(StorageKeys.studentEmail);
     invalidateCache();
   }
 
@@ -65,9 +63,6 @@ class CampusPrinterPage extends StatefulWidget {
 
   static Future<_CampusPrinterBootstrap> _loadBootstrap() async {
     final copiesRaw = await AppStorage.instance.getInt('campus_printer_copies');
-    final collateRaw = await AppStorage.instance.getBool(
-      'campus_printer_collate',
-    );
     final history = await _loadHistorySnapshot();
     final isLoggedIn = await AuthService().isLoggedIn();
     final profile = await ProfileService().getProfile();
@@ -93,13 +88,6 @@ class CampusPrinterPage extends StatefulWidget {
                 ) ??
                 ''))
             .trim();
-    final departmentName =
-        ((profile?['departmentName'] ??
-                await AppStorage.instance.getString(
-                  StorageKeys.departmentName,
-                ) ??
-                ''))
-            .trim();
     final hasProfile = isLoggedIn && fullName.isNotEmpty;
     final guestName = hasProfile ? '' : 'Guest';
     int? guestIdNumber;
@@ -114,26 +102,17 @@ class CampusPrinterPage extends StatefulWidget {
           currentSemester,
         );
       }
-      if (departmentName.isNotEmpty) {
-        await AppStorage.instance.setString(
-          StorageKeys.departmentName,
-          departmentName,
-        );
-      }
     }
     final copiesValue = copiesRaw == null
         ? 1
         : (copiesRaw < 1 ? 1 : (copiesRaw > 999 ? 999 : copiesRaw));
-    final collateValue = collateRaw ?? false;
     return _CampusPrinterBootstrap(
       copies: copiesValue,
-      collate: collateValue,
       history: history,
       studentId: studentId,
       studentName: fullName,
       studentShortCode: shortCode,
       currentSemester: currentSemester,
-      departmentName: departmentName,
       guestName: guestName,
       guestId: guestIdNumber,
       clientName: clientName,
@@ -173,9 +152,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const String _snackFileReadFailed = "Couldn't read selected file";
   static const String _snackNoPrinter = 'No printer detected';
   static const String _snackChooseFile = 'Select a file first';
+  static const String _snackWhitePageLoadFailed =
+      "Couldn't load the white page";
   static const String _snackIdentityRequired = 'Profile data required';
   static const String _snackPrintSent = 'Print sent';
   static const String _snackPrintFailed = 'Print failed';
+  static const String _whitePageUrl =
+      'https://cdn.preconnect.app/WhitePage.pdf';
 
   Uint8List? _fileBytes;
   String _fileName = '';
@@ -185,7 +168,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _studentName = '';
   String _studentShortCode = '';
   String _currentSemester = '';
-  String _departmentName = '';
   String _guestName = '';
   int? _guestId;
   String _clientName = '';
@@ -193,14 +175,42 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _printerHost = '';
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
   int _copies = 1;
-  bool _collate = false;
   bool _busy = false;
   bool _discovering = false;
+  bool _loadingPreset = false;
+  bool _syncingCopiesController = false;
+  final TextEditingController _copiesController = TextEditingController(
+    text: '1',
+  );
 
   @override
   void initState() {
     super.initState();
+    _copiesController.addListener(_handleCopiesControllerChanged);
     _bootstrap();
+  }
+
+  void _handleCopiesControllerChanged() {
+    if (_syncingCopiesController) return;
+    final parsed = int.tryParse(_copiesController.text.trim()) ?? 1;
+    final nextCopies = parsed.clamp(1, 999);
+    if (nextCopies == _copies) return;
+    setState(() {
+      _copies = nextCopies;
+    });
+    unawaited(_savePrinterPreferences());
+  }
+
+  void _setCopiesControllerText(int copies) {
+    final nextText = copies.toString();
+    if (_copiesController.text == nextText) return;
+    _syncingCopiesController = true;
+    _copiesController.value = TextEditingValue(
+      text: nextText,
+      selection: TextSelection.collapsed(offset: nextText.length),
+      composing: TextRange.empty,
+    );
+    _syncingCopiesController = false;
   }
 
   Future<void> _bootstrap() async {
@@ -208,17 +218,16 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     if (!mounted) return;
     setState(() {
       _copies = bootstrap.copies;
-      _collate = bootstrap.collate;
       _history = bootstrap.history;
       _studentId = bootstrap.studentId;
       _studentName = bootstrap.studentName;
       _studentShortCode = bootstrap.studentShortCode;
       _currentSemester = bootstrap.currentSemester;
-      _departmentName = bootstrap.departmentName;
       _guestName = bootstrap.guestName;
       _guestId = bootstrap.guestId;
       _clientName = bootstrap.clientName;
     });
+    _setCopiesControllerText(bootstrap.copies);
     unawaited(_discoverPrinter().catchError((e) {}));
   }
 
@@ -227,23 +236,28 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     if (!mounted) return;
     setState(() {
       _copies = bootstrap.copies;
-      _collate = bootstrap.collate;
       _history = bootstrap.history;
       _studentId = bootstrap.studentId;
       _studentName = bootstrap.studentName;
       _studentShortCode = bootstrap.studentShortCode;
       _currentSemester = bootstrap.currentSemester;
-      _departmentName = bootstrap.departmentName;
       _guestName = bootstrap.guestName;
       _guestId = bootstrap.guestId;
       _clientName = bootstrap.clientName;
     });
+    _setCopiesControllerText(bootstrap.copies);
     await _discoverPrinter();
   }
 
   Future<void> _savePrinterPreferences() async {
     await AppStorage.instance.setInt(_copiesKey, _copies);
-    await AppStorage.instance.setBool('campus_printer_collate', _collate);
+  }
+
+  @override
+  void dispose() {
+    _copiesController.removeListener(_handleCopiesControllerChanged);
+    _copiesController.dispose();
+    super.dispose();
   }
 
   Future<void> _discoverPrinter() async {
@@ -366,6 +380,45 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         }
       });
     } catch (_) {}
+  }
+
+  Future<void> _loadWhitePage() async {
+    if (_busy || _loadingPreset) return;
+    setState(() {
+      _loadingPreset = true;
+    });
+    try {
+      final response = await http
+          .get(Uri.parse(_whitePageUrl))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
+        throw const FormatException('Unexpected response');
+      }
+
+      final bytes = response.bodyBytes;
+      if (!mounted) return;
+      setState(() {
+        _fileBytes = bytes;
+        _fileName = 'WhitePage.pdf';
+        if (_isPdfFile(_fileName, bytes)) {
+          _filePageCount = 1;
+          _filePdfVersion = _readPdfHeaderVersion(bytes) ?? 'PDF';
+        } else {
+          _filePageCount = null;
+          _filePdfVersion = null;
+        }
+      });
+    } catch (_) {
+      if (mounted) {
+        showAppSnackBar(context, _snackWhitePageLoadFailed);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loadingPreset = false;
+        });
+      }
+    }
   }
 
   void _clearPickedFile() {
@@ -495,11 +548,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         queue: _printerQueue,
       );
       final copies = _copies < 1 ? 1 : _copies;
-      final preferences = _PrintTicket(
-        copies: copies,
-        duplexMode: _duplexMode,
-        collate: _collate,
-      );
+      final preferences = _PrintTicket(copies: copies, duplexMode: _duplexMode);
       await client.sendFile(
         bytes: bytes,
         fileName: _fileName,
@@ -652,7 +701,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                     name: _studentName,
                     shortCode: _studentShortCode,
                     semester: _currentSemester,
-                    departmentName: _departmentName,
                     studentId: _studentId,
                   ),
                   const SizedBox(height: 12),
@@ -674,21 +722,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 if (_studentName.trim().isEmpty && _studentId.trim().isEmpty)
                   const SizedBox(height: 12),
                 _PrinterPreferencesPanel(
-                  copies: _copies,
-                  collate: _collate,
-                  onCopiesChanged: (value) {
-                    setState(() => _copies = value);
-                    unawaited(_savePrinterPreferences());
-                  },
-                  onCollateChanged: (value) {
-                    setState(() => _collate = value);
-                    unawaited(_savePrinterPreferences());
-                  },
-                ),
-                const SizedBox(height: 12),
-                _PrinterDuplexPanel(
+                  copiesController: _copiesController,
                   mode: _duplexMode,
-                  onChanged: (mode) {
+                  onDuplexChanged: (mode) {
                     setState(() => _duplexMode = mode);
                   },
                 ),
@@ -707,6 +743,45 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                       '${_formatFileSizeMb(_fileBytes)} • ${_fileKindLabel()} • ${_fileVersionLabel()}',
                   isEmpty: _fileName.isEmpty,
                   onClear: _fileName.isNotEmpty ? _clearPickedFile : null,
+                  emptyAction: _fileName.isEmpty
+                      ? Align(
+                          alignment: Alignment.centerRight,
+                          child: SizedBox(
+                            width: 168,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                              child: OutlinedButton(
+                                onPressed: (_busy || _loadingPreset)
+                                    ? null
+                                    : _loadWhitePage,
+                                style: bracuCompactOutlinedButtonStyle(
+                                  context,
+                                  foregroundColor: BracuPalette.textPrimary(
+                                    context,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 10,
+                                  ),
+                                  borderRadius: 12,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.download_rounded, size: 22),
+                                    const SizedBox(width: 0),
+                                    const Text(
+                                      'White Page',
+                                      style: TextStyle(fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                      : null,
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -756,26 +831,22 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 class _CampusPrinterBootstrap {
   const _CampusPrinterBootstrap({
     required this.copies,
-    required this.collate,
     required this.history,
     required this.studentId,
     required this.studentName,
     required this.studentShortCode,
     required this.currentSemester,
-    required this.departmentName,
     required this.guestName,
     required this.guestId,
     required this.clientName,
   });
 
   final int copies;
-  final bool collate;
   final List<_PrintHistoryEntry> history;
   final String studentId;
   final String studentName;
   final String studentShortCode;
   final String currentSemester;
-  final String departmentName;
   final String guestName;
   final int? guestId;
   final String clientName;
@@ -786,14 +857,12 @@ class _StudentPrintDetails extends StatelessWidget {
     required this.name,
     required this.shortCode,
     required this.semester,
-    required this.departmentName,
     required this.studentId,
   });
 
   final String name;
   final String shortCode;
   final String semester;
-  final String departmentName;
   final String studentId;
 
   @override
@@ -809,55 +878,41 @@ class _StudentPrintDetails extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Table(
+      columnWidths: const <int, TableColumnWidth>{
+        0: FixedColumnWidth(84),
+        1: FlexColumnWidth(),
+      },
+      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
       children: [
-        for (final row in rows) ...[
-          _StudentDetailLine(label: row.label, value: row.value),
-          if (row != rows.last) const SizedBox(height: 4),
-        ],
+        for (final row in rows)
+          TableRow(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 10, bottom: 4),
+                child: Text(
+                  row.label,
+                  style: TextStyle(
+                    color: BracuPalette.textSecondary(context),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  row.value,
+                  style: TextStyle(
+                    color: BracuPalette.textPrimary(context),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
       ],
-    );
-  }
-}
-
-class _StudentDetailLine extends StatelessWidget {
-  const _StudentDetailLine({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: null,
-      borderRadius: BorderRadius.circular(8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 82,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: BracuPalette.textSecondary(context),
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                color: BracuPalette.textPrimary(context),
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -967,12 +1022,14 @@ class _PrinterFileCard extends StatelessWidget {
     required this.subtitle,
     required this.isEmpty,
     this.onClear,
+    this.emptyAction,
   });
 
   final String title;
   final String subtitle;
   final bool isEmpty;
   final VoidCallback? onClear;
+  final Widget? emptyAction;
 
   @override
   Widget build(BuildContext context) {
@@ -1016,7 +1073,9 @@ class _PrinterFileCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          if (onClear != null)
+          if (isEmpty && emptyAction != null)
+            emptyAction!
+          else if (onClear != null)
             IconButton(
               onPressed: onClear,
               icon: const Icon(Icons.close_rounded),
@@ -1164,7 +1223,6 @@ class _LprPrintClient {
           jobName: printableJobName,
           copies: copies,
           duplexMode: duplexMode,
-          collate: preferences.collate,
           isPostScript: isPostScript,
         ),
       );
@@ -1205,7 +1263,6 @@ class _LprPrintClient {
     required String jobName,
     required int copies,
     required String duplexMode,
-    required bool collate,
     required bool isPostScript,
   }) {
     final language = isPostScript ? 'POSTSCRIPT' : 'PDF';
@@ -1215,7 +1272,7 @@ class _LprPrintClient {
     builder.add(_ascii('\x1B%-12345X'));
     builder.add(_ascii('@PJL JOB NAME = "${_escapePjlValue(jobName)}"\r\n'));
     builder.add(_ascii('@PJL SET COPIES = $copies\r\n'));
-    builder.add(_ascii('@PJL SET COLLATE = ${collate ? 'ON' : 'OFF'}\r\n'));
+    builder.add(_ascii('@PJL SET COLLATE = ON\r\n'));
     builder.add(_ascii('@PJL SET DUPLEX = ${useDuplex ? 'ON' : 'OFF'}\r\n'));
     if (useDuplex) {
       builder.add(_ascii('@PJL SET BINDING = LONGEDGE\r\n'));
@@ -1316,77 +1373,71 @@ class _LprPrintClient {
 
 class _PrinterPreferencesPanel extends StatelessWidget {
   const _PrinterPreferencesPanel({
-    required this.copies,
-    required this.collate,
-    required this.onCopiesChanged,
-    required this.onCollateChanged,
+    required this.copiesController,
+    required this.mode,
+    required this.onDuplexChanged,
   });
 
-  final int copies;
-  final bool collate;
-  final ValueChanged<int> onCopiesChanged;
-  final ValueChanged<bool> onCollateChanged;
+  final TextEditingController copiesController;
+  final String mode;
+  final ValueChanged<String> onDuplexChanged;
 
   @override
   Widget build(BuildContext context) {
-    final collateEnabled = copies > 1;
+    final currentCopies = int.tryParse(copiesController.text.trim()) ?? 1;
+    final duplexEnabled = currentCopies > 1;
+
+    Widget buildOption(String value, String label, {required bool first}) {
+      final selected = mode == value;
+      return Expanded(
+        child: Padding(
+          padding: EdgeInsets.only(left: first ? 0 : 8),
+          child: BracuActionButton(
+            onPressed: duplexEnabled ? () => onDuplexChanged(value) : null,
+            outlined: true,
+            backgroundColor: selected
+                ? BracuPalette.primary.withValues(alpha: 0.12)
+                : Colors.transparent,
+            foregroundColor: selected
+                ? BracuPalette.primary
+                : duplexEnabled
+                ? BracuPalette.textPrimary(context)
+                : BracuPalette.textSecondary(context),
+            borderRadius: 4,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            label: label,
+          ),
+        ),
+      );
+    }
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Expanded(
+        SizedBox(
+          width: 108,
           child: TextFormField(
-            initialValue: copies.toString(),
+            controller: copiesController,
             keyboardType: TextInputType.number,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             decoration: InputDecoration(
               labelText: 'Copies',
               border: const OutlineInputBorder(),
               isDense: true,
-              suffixIconConstraints: const BoxConstraints(
-                minWidth: 0,
-                minHeight: 0,
-              ),
-              suffixIcon: Padding(
-                padding: const EdgeInsets.only(right: 8, top: 2, bottom: 2),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Transform.scale(
-                      scale: 1.15,
-                      child: Checkbox(
-                        value: collateEnabled ? collate : false,
-                        onChanged: collateEnabled
-                            ? (value) => onCollateChanged(value ?? false)
-                            : null,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ),
-                    Text(
-                      'Collate',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: collateEnabled
-                            ? BracuPalette.textPrimary(context)
-                            : BracuPalette.textSecondary(
-                                context,
-                              ).withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ],
-                ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 10,
               ),
             ),
-            onChanged: (value) {
-              final parsed = int.tryParse(value.trim());
-              final nextCopies = (parsed ?? 1).clamp(1, 999);
-              onCopiesChanged(nextCopies);
-              if (nextCopies == 1 && collate) {
-                onCollateChanged(false);
-              }
-            },
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Row(
+            children: [
+              buildOption('OFF', 'One Side', first: true),
+              buildOption('LEFT', 'Both Side', first: false),
+            ],
           ),
         ),
       ],
@@ -1395,56 +1446,12 @@ class _PrinterPreferencesPanel extends StatelessWidget {
 }
 
 class _PrintTicket {
-  const _PrintTicket({
-    required this.copies,
-    required this.duplexMode,
-    required this.collate,
-  });
+  const _PrintTicket({required this.copies, required this.duplexMode});
 
   final int copies;
   final String duplexMode;
-  final bool collate;
 
   String get postScriptPreamble => '%!PS-Adobe-3.0';
-}
-
-class _PrinterDuplexPanel extends StatelessWidget {
-  const _PrinterDuplexPanel({required this.mode, required this.onChanged});
-
-  final String mode;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    Widget buildOption(String value, String label, {required bool first}) {
-      final selected = mode == value;
-      return Expanded(
-        child: Padding(
-          padding: EdgeInsets.only(left: first ? 0 : 8),
-          child: BracuActionButton(
-            onPressed: () => onChanged(value),
-            outlined: true,
-            backgroundColor: selected
-                ? BracuPalette.primary.withValues(alpha: 0.12)
-                : Colors.transparent,
-            foregroundColor: selected
-                ? BracuPalette.primary
-                : BracuPalette.textPrimary(context),
-            borderRadius: 18,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            label: label,
-          ),
-        ),
-      );
-    }
-
-    return Row(
-      children: [
-        buildOption('OFF', 'One Side', first: true),
-        buildOption('LEFT', 'Both Side', first: false),
-      ],
-    );
-  }
 }
 
 class _LprAckReader {

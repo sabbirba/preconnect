@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'app.dart';
 import 'tools/app_storage.dart';
-import 'pages/home_tab.dart';
 
 Future<void> main() async {
   runZonedGuarded(() async {
@@ -23,18 +22,13 @@ Future<void> main() async {
     PaintingBinding.instance.imageCache.maximumSizeBytes = 1 << 62;
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-    AppBootstrapState bootstrapState;
-    try {
-      bootstrapState = await MyApp.bootstrap();
-    } catch (_) {
-      bootstrapState = const AppBootstrapState(
-        themeMode: ThemeMode.system,
-        isLoggedIn: false,
-        canOpenOffline: false,
-        initialHomeTab: HomeTab.dashboard,
-      );
-    }
-
-    runApp(MyApp(bootstrapState: bootstrapState));
+    runApp(
+      AppRestart(
+        key: AppRestart.restartKey,
+        bootstrap: MyApp.bootstrap,
+        builder: (bootstrapState) => MyApp(bootstrapState: bootstrapState),
+        child: const MyApp(),
+      ),
+    );
   }, (error, stackTrace) {});
 }

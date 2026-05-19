@@ -139,43 +139,19 @@ Then start an Android emulator from Android Studio or enable USB debugging on a 
 
 ## Run a Specific Target
 
-Android:
+Use `flutter run` and pick the target when Flutter prompts you, or use your IDE's run target selector.
 
 ```bash
-flutter run -d android
+flutter run
 ```
 
-Android with env values:
+With env values:
 
 ```bash
-flutter run -d android --dart-define-from-file=.env
+flutter run --dart-define-from-file=.env
 ```
 
-macOS:
-
-```bash
-flutter run -d macos
-```
-
-macOS with env values:
-
-```bash
-flutter run -d macos --dart-define-from-file=.env
-```
-
-Chrome debug target:
-
-```bash
-flutter run -d chrome
-```
-
-Chrome debug target with env values:
-
-```bash
-flutter run -d chrome --dart-define-from-file=.env
-```
-
-The supported browser product is the Chrome extension. The Chrome debug target is still useful for quick UI checks.
+The supported browser product is the Chrome extension. For quick UI checks on the web, use your IDE run target or the Flutter device picker, then build the extension separately with the script below.
 
 ## Chrome Extension Testing
 

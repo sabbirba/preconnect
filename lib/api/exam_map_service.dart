@@ -15,7 +15,7 @@ class ExamMapService {
 
   static const Duration _indexCacheTtl = Duration(hours: 6);
   static const Duration _examJsonCacheTtl = Duration(hours: 12);
-  static const String _indexCacheKey = 'exammap_index_v4';
+  static const String _indexCacheKey = 'exammap_index_v1';
 
   static String sectionKeyForSection(Section section) {
     return sectionKey(
@@ -65,7 +65,7 @@ class ExamMapService {
     if (midUrl != null) {
       final midJson = await _fetchJsonWithCache(
         url: midUrl,
-        cacheKey: 'exammap_mid_${semesterSessionId}_v3',
+        cacheKey: 'exammap_mid_${semesterSessionId}_v1',
         ttl: _examJsonCacheTtl,
         forceRefresh: forceRefresh,
       );
@@ -75,7 +75,7 @@ class ExamMapService {
     if (finalUrl != null) {
       final finalJson = await _fetchJsonWithCache(
         url: finalUrl,
-        cacheKey: 'exammap_final_${semesterSessionId}_v3',
+        cacheKey: 'exammap_final_${semesterSessionId}_v1',
         ttl: _examJsonCacheTtl,
         forceRefresh: forceRefresh,
       );

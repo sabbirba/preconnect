@@ -56,6 +56,64 @@ class AppBootstrapState {
   final HomeTab initialHomeTab;
 }
 
+class AppRestart extends StatefulWidget {
+  const AppRestart({
+    super.key,
+    required this.child,
+    required this.bootstrap,
+    required this.builder,
+  });
+
+  final Widget child;
+  final Future<AppBootstrapState> Function() bootstrap;
+  final Widget Function(AppBootstrapState bootstrapState) builder;
+
+  static final GlobalKey<AppRestartState> restartKey =
+      GlobalKey<AppRestartState>();
+
+  static void restart() {
+    restartKey.currentState?._restart();
+  }
+
+  @override
+  State<AppRestart> createState() => AppRestartState();
+}
+
+class AppRestartState extends State<AppRestart> {
+  late Future<AppBootstrapState> _bootstrapFuture;
+  int _restartToken = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrapFuture = widget.bootstrap();
+  }
+
+  void _restart() {
+    if (!mounted) return;
+    setState(() {
+      _bootstrapFuture = widget.bootstrap();
+      _restartToken++;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<AppBootstrapState>(
+      future: _bootstrapFuture,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return widget.child;
+        }
+        return KeyedSubtree(
+          key: ValueKey(_restartToken),
+          child: widget.builder(snapshot.data!),
+        );
+      },
+    );
+  }
+}
+
 class MyApp extends StatefulWidget {
   const MyApp({super.key, this.bootstrapState});
 
@@ -230,20 +288,7 @@ class _MyAppState extends State<MyApp>
       bindRefreshBus(_onRefreshSignal);
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!kIsWeb) {
-        unawaited(AdsPreferences.instance.load());
-        unawaited(AdsBridge.initialize());
-        unawaited(RewardSupportController.instance.load());
-        PlayIntegrity.prepare().catchError((_) {});
-        PlayInstallReferrer.prefetch().catchError((_) {});
-      }
-      unawaited(_setupQuickAccessShortcuts());
-      if (!kIsWeb) {
-        unawaited(_runStartupChecks());
-      }
-      if (_initialLoggedIn) {
-        _validateSessionInBackground();
-      }
+      unawaited(_runDeferredStartupWork());
     });
   }
 
@@ -263,6 +308,25 @@ class _MyAppState extends State<MyApp>
     try {
       await _consumePendingShortcutAction();
     } catch (_) {}
+  }
+
+  Future<void> _runDeferredStartupWork() async {
+    await Future<void>.delayed(const Duration(milliseconds: 1800));
+    if (!mounted) return;
+    if (!kIsWeb) {
+      unawaited(AdsPreferences.instance.load());
+      unawaited(AdsBridge.initialize());
+      unawaited(RewardSupportController.instance.load());
+      PlayIntegrity.prepare().catchError((_) {});
+      PlayInstallReferrer.prefetch().catchError((_) {});
+    }
+    unawaited(_setupQuickAccessShortcuts());
+    if (!kIsWeb) {
+      unawaited(_runStartupChecks());
+    }
+    if (_initialLoggedIn) {
+      _validateSessionInBackground();
+    }
   }
 
   Future<void> _consumePendingShortcutAction() async {
@@ -677,7 +741,6 @@ class _MyAppState extends State<MyApp>
         : ColorScheme.light(primary: primary, secondary: secondary);
     return ThemeData(
       brightness: brightness,
-      fontFamily: 'Roboto',
       colorScheme: colorScheme,
       scaffoldBackgroundColor: scaffoldBackgroundColor,
       dialogTheme: dialogTheme,

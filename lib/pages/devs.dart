@@ -10,6 +10,8 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/tools/cached_image.dart';
 
+const String _githubToken = String.fromEnvironment('GITHUB_TOKEN');
+
 class DevsPage extends StatefulWidget {
   const DevsPage({super.key});
 
@@ -26,7 +28,6 @@ class _DevsPageState extends State<DevsPage> {
   List<_ContributorProfile> _contributors = const <_ContributorProfile>[];
   bool _contributorsLoading = false;
   int _secretTapCount = 0;
-  bool _showAllContributors = false;
   static List<_ContributorProfile>? _cachedContributors;
   static Future<List<_ContributorProfile>>? _preloadFuture;
 
@@ -95,45 +96,34 @@ class _DevsPageState extends State<DevsPage> {
       if (!forceRefresh) {
         final cached = await _readCachedContributorsStatic();
         if (cached.isNotEmpty) {
-          return _withPinnedAndManualContributorsStatic(cached);
+          return _buildContributors(cached);
         }
       }
 
       final uri = Uri.parse(
         'https://api.github.com/repos/sabbirba/preconnect/contributors',
       );
-      final response = await http.get(
-        uri,
-        headers: <String, String>{
-          'Accept': 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-          ...compressionHeaders(),
-        },
-      );
+      final response = await _githubGet(uri);
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        return _withPinnedAndManualContributorsStatic(
-          const <_ContributorProfile>[],
-        );
+        return _buildContributors(const <_ContributorProfile>[]);
       }
       final decoded = jsonDecode(response.body);
       if (decoded is! List) {
-        return _withPinnedAndManualContributorsStatic(
-          const <_ContributorProfile>[],
-        );
+        return _buildContributors(const <_ContributorProfile>[]);
       }
-      final contributors = decoded
-          .whereType<Map>()
-          .map((raw) {
-            final contributor = _ContributorProfile.fromGitHubContributor(
-              raw.cast<String, dynamic>(),
-            );
-            return contributor;
-          })
-          .where((item) => item.name.isNotEmpty && item.avatarUrl.isNotEmpty)
-          .where((item) => !item.key.endsWith('[bot]'))
+      final contributors = await Future.wait(
+        decoded.whereType<Map>().map((raw) async {
+          final contributor = _ContributorProfile.fromGitHubContributor(
+            raw.cast<String, dynamic>(),
+          );
+          return _enrichContributorIfNeeded(contributor);
+        }),
+      );
+      final merged = await _buildContributors(contributors);
+      final visibleContributors = merged
+          .where((item) => !_isBotContributor(item))
           .toList();
-      final merged = _withPinnedAndManualContributorsStatic(contributors);
-      if (contributors.isNotEmpty) {
+      if (visibleContributors.isNotEmpty) {
         await AppPreferencesStore()
             .setJson(_contributorsCacheKey, <String, dynamic>{
               'ts': DateTime.now().millisecondsSinceEpoch,
@@ -142,9 +132,7 @@ class _DevsPageState extends State<DevsPage> {
       }
       return merged;
     } catch (_) {
-      return _withPinnedAndManualContributorsStatic(
-        const <_ContributorProfile>[],
-      );
+      return _buildContributors(const <_ContributorProfile>[]);
     }
   }
 
@@ -160,17 +148,72 @@ class _DevsPageState extends State<DevsPage> {
         .whereType<Map>()
         .map((entry) => _ContributorProfile.fromJson(entry.cast()))
         .where((item) => item.name.isNotEmpty && item.avatarUrl.isNotEmpty)
+        .where((item) => !_isBotContributor(item))
         .toList();
   }
 
-  static List<_ContributorProfile> _withPinnedAndManualContributorsStatic(
+  static Future<List<_ContributorProfile>> _buildContributors(
     List<_ContributorProfile> items,
-  ) {
-    return _dedupeContributors([
+  ) async {
+    final merged = <_ContributorProfile>[
       ..._pinnedGitHubContributors,
       ..._manualContributors,
       ...items,
-    ]);
+    ];
+    final enriched = await Future.wait(merged.map(_enrichContributorIfNeeded));
+    final visible = enriched.where((item) => !_isBotContributor(item)).toList();
+    return _orderContributors(_dedupeContributors(visible));
+  }
+
+  static Future<_ContributorProfile> _enrichContributorIfNeeded(
+    _ContributorProfile contributor,
+  ) async {
+    if (!_isGitHubBackedContributor(contributor)) {
+      return contributor;
+    }
+    final handle = contributor.handle.trim();
+    if (handle.isEmpty || handle.toLowerCase().endsWith('[bot]')) {
+      return contributor;
+    }
+
+    try {
+      final uri = Uri.parse('https://api.github.com/users/$handle');
+      final response = await _githubGet(uri);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return contributor;
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map) return contributor;
+      final profile = decoded.cast<String, dynamic>();
+      final resolvedName = '${profile['name'] ?? ''}'.trim();
+      final resolvedAvatar = '${profile['avatar_url'] ?? ''}'.trim();
+      final resolvedUrl = '${profile['html_url'] ?? ''}'.trim();
+      return contributor.copyWith(
+        name: resolvedName.isEmpty ? contributor.handle : resolvedName,
+        avatarUrl: resolvedAvatar.isEmpty
+            ? contributor.avatarUrl
+            : resolvedAvatar,
+        url: resolvedUrl.isEmpty ? contributor.url : resolvedUrl,
+      );
+    } catch (_) {
+      return contributor;
+    }
+  }
+
+  static bool _isGitHubBackedContributor(_ContributorProfile contributor) {
+    final linkLabel = contributor.linkLabel.trim().toLowerCase();
+    final url = contributor.url.trim().toLowerCase();
+    return linkLabel == 'github' || url.contains('github.com/');
+  }
+
+  static bool _isBotContributor(_ContributorProfile contributor) {
+    final handle = contributor.handle.trim().toLowerCase();
+    final url = contributor.url.trim().toLowerCase();
+    return handle.isEmpty ||
+        handle.endsWith('[bot]') ||
+        url.contains('/apps/') ||
+        url.contains('github-actions[bot]') ||
+        url.contains('dependabot');
   }
 
   Future<void> _onHeaderSecretTap() async {
@@ -207,13 +250,7 @@ class _DevsPageState extends State<DevsPage> {
                 if (_contributors.isEmpty && _contributorsLoading)
                   const BracuLoading()
                 else
-                  _ContributorsGrid(
-                    contributors: _contributors,
-                    showAll: _showAllContributors,
-                    onToggle: () => setState(
-                      () => _showAllContributors = !_showAllContributors,
-                    ),
-                  ),
+                  _ContributorsGrid(contributors: _contributors),
                 const Padding(
                   padding: EdgeInsets.only(top: 14),
                   child: Column(
@@ -238,19 +275,14 @@ class _DevsPageState extends State<DevsPage> {
   }
 }
 
-const _contributorsCacheKey = 'devs_contributors_v1';
-const _collapsedContributorCount = 6;
+const _contributorsCacheKey = 'devs_contributors_v3';
 
 const _pinnedGitHubContributors = <_ContributorProfile>[
   _ContributorProfile.github(
     handle: 'NaiveInvestigator',
     role: 'Lead Developer',
   ),
-  _ContributorProfile.github(
-    handle: 'sabbirba',
-    name: 'Sabbir Bin Abbas',
-    role: 'Developer & UI/UX',
-  ),
+  _ContributorProfile.github(handle: 'sabbirba', role: 'Developer & UI/UX'),
 ];
 
 const _manualContributors = <_ContributorProfile>[
@@ -262,19 +294,8 @@ const _manualContributors = <_ContributorProfile>[
     linkLabel: 'LinkedIn',
     url: 'https://www.linkedin.com/in/mueen-ahmmed-b337b8231/',
   ),
-  _ContributorProfile.github(
-    handle: 'Zamiul-rashid',
-    name: 'Zamiul-rashid',
-    role: 'Friends Schedule',
-  ),
-  _ContributorProfile(
-    name: 'Shakil Ahmed',
-    handle: 'shakilofficial0',
-    role: 'Live Bus Data',
-    avatarUrl: 'https://github.com/shakilofficial0.png',
-    linkLabel: 'GitHub',
-    url: 'https://github.com/shakilofficial0',
-  ),
+  _ContributorProfile.github(handle: 'Zamiul-rashid', role: 'Friends Schedule'),
+  _ContributorProfile.github(handle: 'shakilofficial0', role: 'Live Bus Data'),
 ];
 
 class _IntroCard extends StatelessWidget {
@@ -289,7 +310,7 @@ class _IntroCard extends StatelessWidget {
         Text(
           'Made by the BRACU Students.',
           style: TextStyle(
-            color: Colors.white,
+            color: BracuPalette.textPrimary(context),
             fontSize: 18,
             fontWeight: FontWeight.w800,
           ),
@@ -297,7 +318,8 @@ class _IntroCard extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           'If you have an idea, spot a bug, or want to help, '
-          'we would love to hear from you on GitHub.',
+          'we would love to hear from you on GitHub. '
+          'You can open an issue, share suggestions, or send a pull request.',
           style: TextStyle(color: textSecondary),
         ),
         const SizedBox(height: 12),
@@ -363,22 +385,15 @@ class _RepoButton extends StatelessWidget {
 }
 
 class _ContributorsGrid extends StatelessWidget {
-  const _ContributorsGrid({
-    required this.contributors,
-    required this.showAll,
-    required this.onToggle,
-  });
+  const _ContributorsGrid({required this.contributors});
 
   final List<_ContributorProfile> contributors;
-  final bool showAll;
-  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
     final all = _orderContributors(
       _dedupeContributors([...contributors, ..._manualContributors]),
     );
-    final visible = showAll ? all : all.take(_collapsedContributorCount);
     return Column(
       children: [
         GridView.count(
@@ -387,18 +402,12 @@ class _ContributorsGrid extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 8,
           crossAxisSpacing: 0,
-          childAspectRatio: 5.2,
+          childAspectRatio: 4.7,
           children: [
-            for (final contributor in visible)
+            for (final contributor in all)
               _DevGridTile(contributor: contributor),
           ],
         ),
-        if (all.length > _collapsedContributorCount)
-          buildCenteredOutlinedActionButton(
-            label: showAll ? 'Show Less' : 'Show More',
-            onPressed: onToggle,
-            padding: const EdgeInsets.only(top: 6),
-          ),
       ],
     );
   }
@@ -593,13 +602,7 @@ List<_ContributorProfile> _orderContributors(List<_ContributorProfile> items) {
     ?rez1,
   ];
 
-  for (final item in others) {
-    if (ordered.length >= _collapsedContributorCount) break;
-    ordered.add(item);
-  }
-  for (final item in others) {
-    if (!ordered.contains(item)) ordered.add(item);
-  }
+  ordered.addAll(others);
   return ordered;
 }
 
@@ -645,7 +648,7 @@ class _DevGridTile extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     FittedBox(
@@ -661,7 +664,7 @@ class _DevGridTile extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 5),
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
@@ -782,6 +785,24 @@ class _ContributorProfile {
   final String linkLabel;
   final String url;
 
+  _ContributorProfile copyWith({
+    String? handle,
+    String? name,
+    String? role,
+    String? avatarUrl,
+    String? linkLabel,
+    String? url,
+  }) {
+    return _ContributorProfile(
+      handle: handle ?? this.handle,
+      name: name ?? this.name,
+      role: role ?? this.role,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      linkLabel: linkLabel ?? this.linkLabel,
+      url: url ?? this.url,
+    );
+  }
+
   String get key => handle.trim().toLowerCase();
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -833,4 +854,35 @@ String _githubRole(String login) {
     'sabbirba' => 'Developer & UI/UX',
     _ => 'Contributor',
   };
+}
+
+Map<String, String> _githubHeaders() {
+  return _githubHeadersWithToken(includeToken: true);
+}
+
+Map<String, String> _githubHeadersWithToken({required bool includeToken}) {
+  final headers = <String, String>{
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    ...compressionHeaders(),
+  };
+  final token = _githubToken.trim();
+  if (includeToken && token.isNotEmpty) {
+    headers['Authorization'] = 'Bearer $token';
+  }
+  return headers;
+}
+
+Future<http.Response> _githubGet(Uri uri) async {
+  final token = _githubToken.trim();
+  final authenticated = token.isNotEmpty;
+
+  if (authenticated) {
+    final response = await http.get(uri, headers: _githubHeaders());
+    if (response.statusCode != 401 && response.statusCode != 403) {
+      return response;
+    }
+  }
+
+  return http.get(uri, headers: _githubHeadersWithToken(includeToken: false));
 }

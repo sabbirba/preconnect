@@ -132,6 +132,7 @@ jobs:
         shell: bash
         run: |
           cat > .env <<'EOF'
+          GITHUB_TOKEN=${{ secrets.GH_TOKEN }}
           FACULTY_REVIEWS_BEARER=${{ secrets.FACULTY_REVIEWS_BEARER }}
           BANNER_AD_UNIT_ID=${{ secrets.BANNER_AD_UNIT_ID }}
           INTERSTITIAL_AD_UNIT_ID=${{ secrets.INTERSTITIAL_AD_UNIT_ID }}

@@ -202,7 +202,6 @@ class _ApiTestPageState extends State<ApiTestPage> {
               child: SelectableText(
                 _responseText,
                 style: TextStyle(
-                  fontFamily: 'Roboto',
                   fontSize: 12,
                   color: BracuPalette.textPrimary(context),
                 ),

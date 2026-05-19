@@ -47,17 +47,6 @@ if [[ ! -f "${ENV_FILE}" ]]; then
   echo "No .env file found; continuing with empty optional dart defines." >&2
 fi
 
-for font_file in \
-  "${ROOT_DIR}/assets/fonts/Roboto-Regular.ttf" \
-  "${ROOT_DIR}/assets/fonts/Roboto-Medium.ttf" \
-  "${ROOT_DIR}/assets/fonts/Roboto-Bold.ttf"
-do
-  if [[ ! -f "${font_file}" ]]; then
-    echo "Missing required font asset: ${font_file}" >&2
-    exit 1
-  fi
-done
-
 mkdir -p "${OUT_DIR}"
 rm -rf "${ROOT_DIR}/.dart_tool/flutter_build"
 

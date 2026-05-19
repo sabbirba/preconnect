@@ -128,8 +128,6 @@ class BracuActionButton extends StatelessWidget {
       if (icon != null) {
         return TextButton.icon(
           onPressed: onPressed,
-          icon: Icon(icon, size: iconSize),
-          label: Text(label, style: TextStyle(fontSize: fontSize)),
           style: TextButton.styleFrom(
             foregroundColor:
                 foregroundColor ?? BracuPalette.textPrimary(context),
@@ -145,6 +143,8 @@ class BracuActionButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(borderRadius),
             ),
           ),
+          icon: Icon(icon, size: iconSize),
+          label: Text(label, style: TextStyle(fontSize: fontSize)),
         );
       }
 

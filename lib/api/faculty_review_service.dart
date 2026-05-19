@@ -328,8 +328,8 @@ class FacultyReviewService {
       <String, FacultyReviewFeed>{};
   static final Map<String, FacultySummary> _summaryCache =
       <String, FacultySummary>{};
-  static const String _feedCachePrefix = 'faculty_reviews_feed_v2';
-  static const String _summaryCachePrefix = 'faculty_reviews_summary_v2';
+  static const String _feedCachePrefix = 'faculty_reviews_feed_v1';
+  static const String _summaryCachePrefix = 'faculty_reviews_summary_v1';
 
   String get _base => ApiConfig.seatStatusProxyBase;
 

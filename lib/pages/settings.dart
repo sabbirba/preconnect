@@ -245,6 +245,8 @@ class _SettingsPageState extends State<SettingsPage>
     RefreshBus.instance.notify(reason: 'cache_cleared');
     if (!mounted) return;
     showAppSnackBar(context, 'Cached data cleared');
+    await Future.delayed(const Duration(milliseconds: 250));
+    AppRestart.restart();
   }
 
   @override
@@ -436,7 +438,7 @@ class _SettingsPageState extends State<SettingsPage>
             outlined: true,
             isLoading: _isClearingCache,
             icon: Icons.delete_outline_rounded,
-            label: 'Clear Cache',
+            label: 'Clear Cache and Restart',
             borderRadius: 14,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),

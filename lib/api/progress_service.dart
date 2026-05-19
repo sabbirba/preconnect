@@ -19,7 +19,7 @@ class ProgressService {
       'student_progress_completed_courses_v1';
   static const String _curriculumCacheKey = 'student_progress_curriculum_v1';
   static const String _coursePrerequisitesCacheKey =
-      'student_progress_course_prerequisites_v2';
+      'student_progress_course_prerequisites_v1';
   static const String _majorMinorsEtagKey = 'student_progress_major_etag_v1';
   static const String _completedCoursesEtagKey =
       'student_progress_completed_etag_v1';
