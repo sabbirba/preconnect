@@ -157,6 +157,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const String _snackIdentityRequired = 'Profile data required';
   static const String _snackPrintSent = 'Print sent';
   static const String _snackPrintFailed = 'Print failed';
+  static const String _snackPrinterConnectionFailed =
+      'Printer connection failed';
   static const String _whitePageUrl =
       'https://cdn.preconnect.app/WhitePage.pdf';
 
@@ -171,6 +173,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _guestName = '';
   int? _guestId;
   String _clientName = '';
+  String _wifiName = '';
   String _duplexMode = 'OFF';
   String _printerHost = '';
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
@@ -179,6 +182,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   bool _discovering = false;
   bool _loadingPreset = false;
   bool _syncingCopiesController = false;
+  StreamSubscription<AndroidNetworkStatus>? _networkStatusSubscription;
+  String _lastNetworkFingerprint = '';
   final TextEditingController _copiesController = TextEditingController(
     text: '1',
   );
@@ -187,13 +192,18 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   void initState() {
     super.initState();
     _copiesController.addListener(_handleCopiesControllerChanged);
+    if (AndroidNetworkAssist.isSupported) {
+      _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen(
+        (status) => unawaited(_handleNetworkStatusChanged(status)),
+      );
+    }
     _bootstrap();
   }
 
   void _handleCopiesControllerChanged() {
     if (_syncingCopiesController) return;
-    final parsed = int.tryParse(_copiesController.text.trim()) ?? 1;
-    final nextCopies = parsed.clamp(1, 999);
+    final parsed = int.tryParse(_copiesController.text.trim()) ?? 0;
+    final nextCopies = parsed.clamp(0, 999);
     if (nextCopies == _copies) return;
     setState(() {
       _copies = nextCopies;
@@ -213,6 +223,16 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     _syncingCopiesController = false;
   }
 
+  void _adjustCopies(int delta) {
+    final next = (_copies + delta).clamp(0, 999);
+    if (next == _copies) return;
+    setState(() {
+      _copies = next;
+    });
+    _setCopiesControllerText(next);
+    unawaited(_savePrinterPreferences());
+  }
+
   Future<void> _bootstrap() async {
     final bootstrap = await CampusPrinterPage._preloadBootstrap();
     if (!mounted) return;
@@ -228,6 +248,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _clientName = bootstrap.clientName;
     });
     _setCopiesControllerText(bootstrap.copies);
+    unawaited(_refreshWifiName());
     unawaited(_discoverPrinter().catchError((e) {}));
   }
 
@@ -246,7 +267,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _clientName = bootstrap.clientName;
     });
     _setCopiesControllerText(bootstrap.copies);
-    await _discoverPrinter();
+    unawaited(_refreshWifiName());
+    await _discoverPrinter(forceRescan: true);
   }
 
   Future<void> _savePrinterPreferences() async {
@@ -255,34 +277,54 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   @override
   void dispose() {
+    _networkStatusSubscription?.cancel();
     _copiesController.removeListener(_handleCopiesControllerChanged);
     _copiesController.dispose();
     super.dispose();
   }
 
-  Future<void> _discoverPrinter() async {
+  Future<void> _handleNetworkStatusChanged(AndroidNetworkStatus status) async {
+    if (!mounted) return;
+    _setWifiNameFromStatus(status);
+    if (status.transport.trim().toLowerCase() != 'wifi' || !status.connected) {
+      if (_printerHost.isNotEmpty) {
+        setState(() {
+          _printerHost = '';
+        });
+      }
+      return;
+    }
+    final currentNetworkFingerprint = await _currentNetworkFingerprint();
+    if (currentNetworkFingerprint.isEmpty ||
+        currentNetworkFingerprint == _lastNetworkFingerprint) {
+      return;
+    }
+    _lastNetworkFingerprint = currentNetworkFingerprint;
+    unawaited(_discoverPrinter(forceRescan: true));
+  }
+
+  Future<void> _discoverPrinter({bool forceRescan = false}) async {
     if (_discovering) return;
     setState(() {
       _discovering = true;
-      _printerHost = '';
     });
     try {
-      final wifiFingerprint = await _currentWifiFingerprint();
-      final savedHost =
-          (await AppStorage.instance.getString(_lastPrinterHostKey) ?? '')
-              .trim();
-      final savedWifi =
-          (await AppStorage.instance.getString(_lastPrinterWifiKey) ?? '')
-              .trim();
-      if (savedHost.isNotEmpty &&
-          savedWifi.isNotEmpty &&
-          savedWifi == wifiFingerprint) {
+      final wifiStatus = await AndroidNetworkAssist.getNetworkStatus();
+      if (wifiStatus == null ||
+          wifiStatus.transport.trim().toLowerCase() != 'wifi' ||
+          !wifiStatus.connected) {
         if (!mounted) return;
         setState(() {
-          _printerHost = savedHost;
+          _printerHost = '';
         });
         return;
       }
+      _setWifiNameFromStatus(wifiStatus);
+      final networkKey = await _currentNetworkFingerprint();
+      _lastNetworkFingerprint = networkKey;
+      final savedHost =
+          (await AppStorage.instance.getString(_lastPrinterHostKey) ?? '')
+              .trim();
       final printers = await _WifiPrinterDiscovery.findLprPrinters(
         port: _printerPort,
         preferredHosts: savedHost.isEmpty
@@ -291,11 +333,14 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       );
       if (!mounted) return;
       if (printers.isEmpty) {
+        setState(() {
+          _printerHost = '';
+        });
         return;
       }
       final printer = printers.first;
       await AppStorage.instance.setString(_lastPrinterHostKey, printer.address);
-      await AppStorage.instance.setString(_lastPrinterWifiKey, wifiFingerprint);
+      await AppStorage.instance.setString(_lastPrinterWifiKey, networkKey);
       setState(() {
         _printerHost = printer.address;
       });
@@ -309,15 +354,54 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     }
   }
 
-  Future<String> _currentWifiFingerprint() async {
+  Future<String> _currentNetworkFingerprint() async {
+    final prefixes = await _currentLocalIpv4Prefixes();
+    if (prefixes.isEmpty) return '';
+    return prefixes.join('|');
+  }
+
+  Future<void> _refreshWifiName() async {
     final status = await AndroidNetworkAssist.getNetworkStatus();
-    if (status == null) return 'unknown';
-    final ssid = (status.ssid ?? '').trim();
-    final transport = status.transport.trim();
-    final connected = status.connected ? '1' : '0';
-    final validated = status.validated ? '1' : '0';
-    final captive = status.captive ? '1' : '0';
-    return '$transport|$connected|$validated|$captive|$ssid';
+    if (!mounted || status == null) return;
+    _setWifiNameFromStatus(status);
+  }
+
+  void _setWifiNameFromStatus(AndroidNetworkStatus status) {
+    final wifiName = (status.ssid ?? '').trim();
+    if (!mounted || wifiName == _wifiName) return;
+    setState(() {
+      _wifiName = wifiName;
+    });
+  }
+
+  Future<List<String>> _currentLocalIpv4Prefixes() async {
+    final subnets = await _WifiPrinterDiscovery._localIpv4Subnets();
+    final prefixes = subnets.map((subnet) => subnet.prefix).toSet().toList()
+      ..sort();
+    return prefixes;
+  }
+
+  String _sanitizePrinterMessage(String message) {
+    final trimmed = message.trim();
+    if (trimmed.isEmpty) return trimmed;
+
+    final withoutIp = trimmed.replaceAll(
+      RegExp(r'\b(?:\d{1,3}\.){3}\d{1,3}\b'),
+      '',
+    );
+    final withoutPort = withoutIp.replaceAll(RegExp(r':\d{2,5}\b'), '');
+    final cleaned = withoutPort.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (cleaned.isEmpty) return _snackPrinterConnectionFailed;
+
+    final lowered = cleaned.toLowerCase();
+    if (lowered.contains('socketexception') ||
+        lowered.contains('connection refused') ||
+        lowered.contains('timed out') ||
+        lowered.contains('connection reset') ||
+        lowered.contains('broken pipe')) {
+      return _snackPrinterConnectionFailed;
+    }
+    return cleaned;
   }
 
   Future<void> _addHistory(_PrintHistoryEntry entry) async {
@@ -541,13 +625,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     setState(() {
       _busy = true;
     });
+    final copies = _copies;
     try {
       final client = _LprPrintClient(
         host: host,
         port: _printerPort,
         queue: _printerQueue,
       );
-      final copies = _copies < 1 ? 1 : _copies;
       final preferences = _PrintTicket(copies: copies, duplexMode: _duplexMode);
       await client.sendFile(
         bytes: bytes,
@@ -565,7 +649,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         _PrintHistoryEntry(
           fileName: _fileName,
           printerHost: host,
-          copies: _copies,
+          copies: copies,
           status: 'Sent',
           message: 'Sent to campus printer',
           createdAt: DateTime.now(),
@@ -579,21 +663,21 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         _PrintHistoryEntry(
           fileName: _fileName,
           printerHost: host,
-          copies: _copies,
+          copies: copies,
           status: 'Failed',
           message: error.message,
           createdAt: DateTime.now(),
         ),
       );
       if (!mounted) return;
-      showAppSnackBar(context, error.message);
+      showAppSnackBar(context, _sanitizePrinterMessage(error.message));
     } catch (_) {
       if (!mounted) return;
       await _addHistory(
         _PrintHistoryEntry(
           fileName: _fileName,
           printerHost: host,
-          copies: _copies,
+          copies: copies,
           status: 'Failed',
           message: _snackPrintFailed,
           createdAt: DateTime.now(),
@@ -619,7 +703,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   void _showPrintProgress(String message, {required Duration duration}) {
     if (!mounted) return;
-    final trimmed = message.trim();
+    final trimmed = _sanitizePrinterMessage(message);
     if (trimmed.isEmpty) return;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final messenger = ScaffoldMessenger.of(context);
@@ -657,7 +741,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       icon: Icons.local_printshop_outlined,
       actions: [
         IconButton(
-          onPressed: _busy || _discovering ? null : _discoverPrinter,
+          onPressed: _busy || _discovering
+              ? null
+              : () => unawaited(_discoverPrinter(forceRescan: true)),
           style: bracuCompactIconButtonStyle(
             foregroundColor: BracuPalette.primary,
             borderColor: Colors.transparent,
@@ -688,6 +774,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       ],
       body: BracuRefreshList(
         onRefresh: _refreshPrinterInfo,
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -696,14 +783,14 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               children: [
                 if (_studentName.trim().isNotEmpty ||
                     _studentId.trim().isNotEmpty) ...[
-                  const SizedBox(height: 2),
                   _StudentPrintDetails(
                     name: _studentName,
                     shortCode: _studentShortCode,
                     semester: _currentSemester,
                     studentId: _studentId,
+                    wifiName: _wifiName,
+                    printerHost: _printerHost,
                   ),
-                  const SizedBox(height: 12),
                 ],
                 if (_studentName.trim().isEmpty && _studentId.trim().isEmpty)
                   _PrinterIdentityPanel(
@@ -719,19 +806,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                       setState(() => _guestId = value);
                     },
                   ),
-                if (_studentName.trim().isEmpty && _studentId.trim().isEmpty)
-                  const SizedBox(height: 12),
-                _PrinterPreferencesPanel(
-                  copiesController: _copiesController,
-                  mode: _duplexMode,
-                  onDuplexChanged: (mode) {
-                    setState(() => _duplexMode = mode);
-                  },
-                ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
             child: Column(
@@ -743,6 +821,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                       '${_formatFileSizeMb(_fileBytes)} • ${_fileKindLabel()} • ${_fileVersionLabel()}',
                   isEmpty: _fileName.isEmpty,
                   onClear: _fileName.isNotEmpty ? _clearPickedFile : null,
+                  borderRadius: 8,
                   emptyAction: _fileName.isEmpty
                       ? Align(
                           alignment: Alignment.centerRight,
@@ -782,6 +861,16 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                           ),
                         )
                       : null,
+                ),
+                const SizedBox(height: 6),
+                _PrinterPreferencesPanel(
+                  copiesController: _copiesController,
+                  copies: _copies,
+                  mode: _duplexMode,
+                  onCopiesStep: _adjustCopies,
+                  onDuplexChanged: (mode) {
+                    setState(() => _duplexMode = mode);
+                  },
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -858,12 +947,16 @@ class _StudentPrintDetails extends StatelessWidget {
     required this.shortCode,
     required this.semester,
     required this.studentId,
+    required this.wifiName,
+    required this.printerHost,
   });
 
   final String name;
   final String shortCode;
   final String semester;
   final String studentId;
+  final String wifiName;
+  final String printerHost;
 
   @override
   Widget build(BuildContext context) {
@@ -872,6 +965,11 @@ class _StudentPrintDetails extends StatelessWidget {
       (label: 'Program', value: shortCode.trim()),
       (label: 'Semester', value: semester.trim()),
       (label: 'Student ID', value: studentId.trim()),
+      (
+        label: 'Network',
+        value: wifiName.trim().isEmpty ? 'Unknown' : wifiName.trim(),
+      ),
+      (label: 'Printer', value: printerHost.trim()),
     ].where((row) => row.value.isNotEmpty).toList();
 
     if (rows.isEmpty) {
@@ -1023,6 +1121,7 @@ class _PrinterFileCard extends StatelessWidget {
     required this.isEmpty,
     this.onClear,
     this.emptyAction,
+    this.borderRadius = 14,
   });
 
   final String title;
@@ -1030,6 +1129,7 @@ class _PrinterFileCard extends StatelessWidget {
   final bool isEmpty;
   final VoidCallback? onClear;
   final Widget? emptyAction;
+  final double borderRadius;
 
   @override
   Widget build(BuildContext context) {
@@ -1038,7 +1138,7 @@ class _PrinterFileCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(
           color: BracuPalette.textSecondary(context).withValues(alpha: 0.20),
         ),
@@ -1181,7 +1281,7 @@ class _LprPrintClient {
     final printableJobName = _basePrintName(safeFileName);
     final isPostScript = _looksLikePostScript(safeFileName, bytes);
     final dataCommand = isPostScript ? 'o' : 'l';
-    final copies = preferences.copies < 1 ? 1 : preferences.copies;
+    final copies = preferences.copies.clamp(0, 999);
     final duplexMode = preferences.duplexMode.trim().toUpperCase();
 
     try {
@@ -1273,6 +1373,13 @@ class _LprPrintClient {
     builder.add(_ascii('@PJL JOB NAME = "${_escapePjlValue(jobName)}"\r\n'));
     builder.add(_ascii('@PJL SET COPIES = $copies\r\n'));
     builder.add(_ascii('@PJL SET COLLATE = ON\r\n'));
+    builder.add(_ascii('@PJL SET PAPER = A4\r\n'));
+    builder.add(_ascii('@PJL SET ORIENTATION = PORTRAIT\r\n'));
+    builder.add(_ascii('@PJL SET RESOLUTION = 600\r\n'));
+    builder.add(_ascii('@PJL SET MANUALFEED = OFF\r\n'));
+    builder.add(_ascii('@PJL SET MPTRAY = CASSETTE\r\n'));
+    builder.add(_ascii('@PJL SET PERSONALITY = AUTO\r\n'));
+    builder.add(_ascii('@PJL SET PAGEPROTECT = A4\r\n'));
     builder.add(_ascii('@PJL SET DUPLEX = ${useDuplex ? 'ON' : 'OFF'}\r\n'));
     if (useDuplex) {
       builder.add(_ascii('@PJL SET BINDING = LONGEDGE\r\n'));
@@ -1374,70 +1481,115 @@ class _LprPrintClient {
 class _PrinterPreferencesPanel extends StatelessWidget {
   const _PrinterPreferencesPanel({
     required this.copiesController,
+    required this.copies,
     required this.mode,
+    required this.onCopiesStep,
     required this.onDuplexChanged,
   });
 
   final TextEditingController copiesController;
+  final int copies;
   final String mode;
+  final ValueChanged<int> onCopiesStep;
   final ValueChanged<String> onDuplexChanged;
 
   @override
   Widget build(BuildContext context) {
-    final currentCopies = int.tryParse(copiesController.text.trim()) ?? 1;
-    final duplexEnabled = currentCopies > 1;
-
-    Widget buildOption(String value, String label, {required bool first}) {
-      final selected = mode == value;
-      return Expanded(
-        child: Padding(
-          padding: EdgeInsets.only(left: first ? 0 : 8),
-          child: BracuActionButton(
-            onPressed: duplexEnabled ? () => onDuplexChanged(value) : null,
-            outlined: true,
-            backgroundColor: selected
-                ? BracuPalette.primary.withValues(alpha: 0.12)
-                : Colors.transparent,
-            foregroundColor: selected
-                ? BracuPalette.primary
-                : duplexEnabled
-                ? BracuPalette.textPrimary(context)
-                : BracuPalette.textSecondary(context),
-            borderRadius: 4,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            label: label,
-          ),
-        ),
-      );
-    }
+    final duplexEnabled = mode == 'LEFT';
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(
-          width: 108,
-          child: TextFormField(
-            controller: copiesController,
-            keyboardType: TextInputType.number,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            decoration: InputDecoration(
-              labelText: 'Copies',
-              border: const OutlineInputBorder(),
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 10,
+          width: 188,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    flex: 42,
+                    child: BracuActionButton(
+                      onPressed: copies <= 0 ? null : () => onCopiesStep(-1),
+                      outlined: true,
+                      borderRadius: 4,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 10,
+                      ),
+                      label: '−',
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 52,
+                    child: SizedBox(
+                      height: 40,
+                      child: Center(
+                        child: TextField(
+                          controller: copiesController,
+                          keyboardType: TextInputType.number,
+                          textInputAction: TextInputAction.done,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(3),
+                          ],
+                          textAlign: TextAlign.center,
+                          textAlignVertical: TextAlignVertical.center,
+                          maxLines: 1,
+                          expands: false,
+                          onSubmitted: (_) => FocusScope.of(context).unfocus(),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: BracuPalette.textPrimary(context),
+                          ),
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(vertical: 8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 42,
+                    child: BracuActionButton(
+                      onPressed: copies >= 999 ? null : () => onCopiesStep(1),
+                      outlined: true,
+                      borderRadius: 4,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 10,
+                      ),
+                      label: '+',
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
               ),
-            ),
+            ],
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: Row(
-            children: [
-              buildOption('OFF', 'One Side', first: true),
-              buildOption('LEFT', 'Both Side', first: false),
-            ],
+          child: BracuActionButton(
+            onPressed: () {
+              onDuplexChanged(duplexEnabled ? 'OFF' : 'LEFT');
+            },
+            outlined: true,
+            backgroundColor: duplexEnabled
+                ? BracuPalette.primary.withValues(alpha: 0.12)
+                : Colors.transparent,
+            foregroundColor: duplexEnabled
+                ? BracuPalette.primary
+                : BracuPalette.textPrimary(context),
+            borderRadius: 4,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            label: duplexEnabled ? 'Both Side' : 'One Side',
           ),
         ),
       ],
