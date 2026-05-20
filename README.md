@@ -16,6 +16,18 @@ An initiative run by [BRAC University](https://bracu.ac.bd) students.
 A Flutter app for BRAC University students with SSO login and Connect API integration.
 The supported browser experience is the Chrome extension build.
 
+## Installation
+
+Installation is available for multiple platforms through:
+
+- Latest release assets (APK / AAB / Chrome extension / iOS / macOS): [GitHub Releases](https://github.com/sabbirba/preconnect/releases/latest)
+- Android: [Google Play Store](https://play.google.com/store/apps/details?id=com.sabbirba.preconnect)
+- macOS: Using [Homebrew](https://brew.sh):
+  ```bash
+  brew install hitblast/tap/preconnect
+  ```
+  Or, use GitHub Releases as mentioned before.
+
 ### Key features
 
 - Simple, predictable navigation
@@ -96,10 +108,6 @@ macos/               macOS shell
 web/                 Chrome extension shell
 assets/              Icons & SVGs
 ```
-
-## Download
-
-- Latest release assets (APK / AAB / Chrome extension / iOS / macOS): [GitHub Releases](https://github.com/sabbirba/preconnect/releases/latest)
 
 ## Getting Started
 
