@@ -179,6 +179,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   bool _discovering = false;
   bool _loadingPreset = false;
   bool _syncingCopiesController = false;
+  StreamSubscription<AndroidNetworkStatus>? _networkStatusSubscription;
+  String _lastWifiFingerprint = '';
   final TextEditingController _copiesController = TextEditingController(
     text: '1',
   );
@@ -187,6 +189,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   void initState() {
     super.initState();
     _copiesController.addListener(_handleCopiesControllerChanged);
+    if (AndroidNetworkAssist.isSupported) {
+      _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen(
+        _handleNetworkStatusChanged,
+      );
+    }
     _bootstrap();
   }
 
@@ -246,7 +253,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _clientName = bootstrap.clientName;
     });
     _setCopiesControllerText(bootstrap.copies);
-    await _discoverPrinter();
+    await _discoverPrinter(forceRescan: true);
   }
 
   Future<void> _savePrinterPreferences() async {
@@ -255,26 +262,38 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   @override
   void dispose() {
+    _networkStatusSubscription?.cancel();
     _copiesController.removeListener(_handleCopiesControllerChanged);
     _copiesController.dispose();
     super.dispose();
   }
 
-  Future<void> _discoverPrinter() async {
+  void _handleNetworkStatusChanged(AndroidNetworkStatus status) {
+    if (!mounted) return;
+    final wifiFingerprint = _wifiFingerprintFromStatus(status);
+    if (wifiFingerprint.isEmpty || wifiFingerprint == _lastWifiFingerprint) {
+      return;
+    }
+    _lastWifiFingerprint = wifiFingerprint;
+    unawaited(_discoverPrinter(forceRescan: true));
+  }
+
+  Future<void> _discoverPrinter({bool forceRescan = false}) async {
     if (_discovering) return;
     setState(() {
       _discovering = true;
-      _printerHost = '';
     });
     try {
       final wifiFingerprint = await _currentWifiFingerprint();
+      _lastWifiFingerprint = wifiFingerprint;
       final savedHost =
           (await AppStorage.instance.getString(_lastPrinterHostKey) ?? '')
               .trim();
       final savedWifi =
           (await AppStorage.instance.getString(_lastPrinterWifiKey) ?? '')
               .trim();
-      if (savedHost.isNotEmpty &&
+      if (!forceRescan &&
+          savedHost.isNotEmpty &&
           savedWifi.isNotEmpty &&
           savedWifi == wifiFingerprint) {
         if (!mounted) return;
@@ -312,6 +331,15 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   Future<String> _currentWifiFingerprint() async {
     final status = await AndroidNetworkAssist.getNetworkStatus();
     if (status == null) return 'unknown';
+    final ssid = (status.ssid ?? '').trim();
+    final transport = status.transport.trim();
+    final connected = status.connected ? '1' : '0';
+    final validated = status.validated ? '1' : '0';
+    final captive = status.captive ? '1' : '0';
+    return '$transport|$connected|$validated|$captive|$ssid';
+  }
+
+  String _wifiFingerprintFromStatus(AndroidNetworkStatus status) {
     final ssid = (status.ssid ?? '').trim();
     final transport = status.transport.trim();
     final connected = status.connected ? '1' : '0';
@@ -657,7 +685,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       icon: Icons.local_printshop_outlined,
       actions: [
         IconButton(
-          onPressed: _busy || _discovering ? null : _discoverPrinter,
+          onPressed: _busy || _discovering
+              ? null
+              : () => unawaited(_discoverPrinter(forceRescan: true)),
           style: bracuCompactIconButtonStyle(
             foregroundColor: BracuPalette.primary,
             borderColor: Colors.transparent,
@@ -1430,8 +1460,8 @@ class _PrinterPreferencesPanel extends StatelessWidget {
         Expanded(
           child: Row(
             children: [
-              buildOption('OFF', '1', first: true),
-              buildOption('LEFT', '2', first: false),
+              buildOption('OFF', 'One Side', first: true),
+              buildOption('LEFT', 'Both Side', first: false),
             ],
           ),
         ),
