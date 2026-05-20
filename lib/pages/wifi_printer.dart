@@ -1384,25 +1384,20 @@ class _PrinterPreferencesPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentCopies = int.tryParse(copiesController.text.trim()) ?? 1;
-    final duplexEnabled = currentCopies > 1;
-
     Widget buildOption(String value, String label, {required bool first}) {
       final selected = mode == value;
       return Expanded(
         child: Padding(
           padding: EdgeInsets.only(left: first ? 0 : 8),
           child: BracuActionButton(
-            onPressed: duplexEnabled ? () => onDuplexChanged(value) : null,
+            onPressed: () => onDuplexChanged(value),
             outlined: true,
             backgroundColor: selected
                 ? BracuPalette.primary.withValues(alpha: 0.12)
                 : Colors.transparent,
             foregroundColor: selected
                 ? BracuPalette.primary
-                : duplexEnabled
-                ? BracuPalette.textPrimary(context)
-                : BracuPalette.textSecondary(context),
+                : BracuPalette.textPrimary(context),
             borderRadius: 4,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             label: label,
@@ -1435,8 +1430,8 @@ class _PrinterPreferencesPanel extends StatelessWidget {
         Expanded(
           child: Row(
             children: [
-              buildOption('OFF', 'One Side', first: true),
-              buildOption('LEFT', 'Both Side', first: false),
+              buildOption('OFF', '1', first: true),
+              buildOption('LEFT', '2', first: false),
             ],
           ),
         ),
