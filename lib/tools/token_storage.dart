@@ -29,12 +29,12 @@ class AdsPreferences {
   AdsPreferences._();
 
   static final AdsPreferences instance = AdsPreferences._();
-  static const String _hideAdsKey = 'hide_ads';
+  static const String hideAdsKey = 'hide_ads';
   final ValueNotifier<bool> adsVisible = ValueNotifier<bool>(true);
 
   Future<void> load() async {
     try {
-      final hidden = await AppStorage.instance.getBool(_hideAdsKey) ?? false;
+      final hidden = await AppStorage.instance.getBool(hideAdsKey) ?? false;
       adsVisible.value = !hidden;
     } catch (_) {}
   }
@@ -45,7 +45,7 @@ class AdsPreferences {
   Future<void> setHidden(bool hidden) async {
     try {
       await load();
-      await AppStorage.instance.setBool(_hideAdsKey, hidden);
+      await AppStorage.instance.setBool(hideAdsKey, hidden);
       adsVisible.value = !hidden;
     } catch (_) {}
   }

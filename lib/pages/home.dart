@@ -813,6 +813,7 @@ class _HomeData {
         'showTodaySchedule': cardVisibility.showTodaySchedule,
         'showExamCountdownCard': cardVisibility.showExamCountdownCard,
         'showSponsoredContent': cardVisibility.showSponsoredContent,
+        'showDecorations': cardVisibility.showDecorations,
       },
       'sections': scheduleJson,
       'examOverrides': examOverrides.map(

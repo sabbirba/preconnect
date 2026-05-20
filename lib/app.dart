@@ -149,6 +149,7 @@ class MyApp extends StatefulWidget {
         HomeCardPreferences.showTodayScheduleKey,
         HomeCardPreferences.showSponsoredContentKey,
         HomeCardPreferences.showDecorationsKey,
+        AdsPreferences.hideAdsKey,
       };
       await AppPreferencesStore().clearAllExcept(keepKeys);
     }

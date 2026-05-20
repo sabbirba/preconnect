@@ -53,14 +53,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       _cachedData = null;
       _preloadFuture = null;
     }
-    if (_cachedData != null) {
-      _latestData = _cachedData;
-    }
-    _future = forceRefresh
-        ? _initializeHomeData(forceRefresh: true)
-        : (_cachedData != null
-              ? Future<_HomeData>.value(_cachedData!)
-              : _initializeHomeData(forceRefresh: false));
+    _future = _initializeHomeData(forceRefresh: forceRefresh);
     unawaited(_warmAndBind(forceRefresh: forceRefresh));
     if (AndroidNetworkAssist.isSupported) {
       _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen(
@@ -102,9 +95,11 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       if (decoded is! Map) return;
       final cached = _HomeData.fromCache(Map<String, dynamic>.from(decoded));
       if (cached == null || !mounted) return;
+      final merged = await _withCurrentVisibility(cached);
+      if (!mounted) return;
       setState(() {
-        _latestData = cached;
-        _cachedData = cached;
+        _latestData = merged;
+        _cachedData = merged;
       });
     } catch (_) {}
   }
@@ -166,7 +161,15 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       if (_latestData != null) {
         _latestData = _latestData!.copyWith(cardVisibility: visibility);
       }
+      if (_cachedData != null) {
+        _cachedData = _cachedData!.copyWith(cardVisibility: visibility);
+      }
     });
+  }
+
+  static Future<_HomeData> _withCurrentVisibility(_HomeData data) async {
+    final visibility = await HomeCardPreferences.load();
+    return data.copyWith(cardVisibility: visibility);
   }
 
   Future<_HomeData> _loadData({bool forceRefresh = false}) async {
@@ -316,7 +319,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
           );
         }
       }
-      return _HomeData(
+      final data = _HomeData(
         profile: profile,
         entries: entries,
         photoUrl: photoUrl,
@@ -329,6 +332,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         cardVisibility: cardVisibility,
         scheduleJson: scheduleJson,
       );
+      return _withCurrentVisibility(data).catchError((_) => data);
     } catch (error) {
       final fallbackVisibility = await HomeCardPreferences.load().catchError((
         _,
@@ -843,7 +847,9 @@ Future<void> preloadHomeDashboardData({bool forceRefresh = false}) async {
 
 Future<_HomeData> _preloadHomeDashboardData({bool forceRefresh = false}) async {
   if (!forceRefresh && _HomeDashboardState._cachedData != null) {
-    return _HomeDashboardState._cachedData!;
+    return _HomeDashboardState._withCurrentVisibility(
+      _HomeDashboardState._cachedData!,
+    );
   }
   if (!forceRefresh) {
     final inFlight = _HomeDashboardState._preloadFuture;
@@ -857,8 +863,9 @@ Future<_HomeData> _preloadHomeDashboardData({bool forceRefresh = false}) async {
   _HomeDashboardState._preloadFuture = future;
   try {
     final data = await future;
-    _HomeDashboardState._cachedData = data;
-    return data;
+    final merged = await _HomeDashboardState._withCurrentVisibility(data);
+    _HomeDashboardState._cachedData = merged;
+    return merged;
   } finally {
     if (identical(_HomeDashboardState._preloadFuture, future)) {
       _HomeDashboardState._preloadFuture = null;

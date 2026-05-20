@@ -524,8 +524,10 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   iconColor: const Color(0xFF22B573),
                                   onTap: _openCampusMapSheet,
                                 ),
-                                const SizedBox(height: 12),
-                                const _InlineBannerAd(),
+                                if (cardVisibility.showSponsoredContent) ...[
+                                  const SizedBox(height: 12),
+                                  const _InlineBannerAd(),
+                                ],
                               ],
                             ),
                           );

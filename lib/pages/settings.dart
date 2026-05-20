@@ -68,7 +68,8 @@ class _SettingsPageState extends State<SettingsPage>
       _showExamCountdownCard = visibility.showExamCountdownCard;
       _showTodaySchedule = visibility.showTodaySchedule;
       _appLockEnabled = appLockEnabled;
-      _showSupport = AdsPreferences.instance.isVisible;
+      _showSupport =
+          visibility.showSponsoredContent && AdsPreferences.instance.isVisible;
       _quietModeEnabled = QuietModeController.instance.isEnabled;
       _quietModeNeedsSetup = quietModeResult.status == 'permission_required';
       _quietModeSetupPermission = quietModeResult.permission;
@@ -128,7 +129,8 @@ class _SettingsPageState extends State<SettingsPage>
       _showSupport = value;
     });
     await AdsPreferences.instance.setHidden(!value);
-    RefreshBus.instance.notify(reason: 'ads_settings_changed');
+    await HomeCardPreferences.setShowSponsoredContent(value);
+    RefreshBus.instance.notify(reason: 'home_card_settings_changed');
     if (!mounted) return;
     showAppSnackBar(context, value ? 'Support shown' : 'Support hidden');
   }
@@ -232,6 +234,7 @@ class _SettingsPageState extends State<SettingsPage>
         HomeCardPreferences.showTodayScheduleKey,
         HomeCardPreferences.showSponsoredContentKey,
         HomeCardPreferences.showDecorationsKey,
+        AdsPreferences.hideAdsKey,
       };
       await AppPreferencesStore().clearAllExcept(keepKeys);
     } finally {
