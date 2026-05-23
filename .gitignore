@@ -94,3 +94,7 @@ crashlytics-build.properties
 .dev.vars*
 !.dev.vars.example
 !.env.example
+
+# ephemeral
+.ephemeral
+linux/flutter/ephemeral/
