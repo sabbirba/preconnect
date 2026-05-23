@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:preconnect/api/http_service.dart';
+import 'package:preconnect/tools/http_service.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/api_config.dart';

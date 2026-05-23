@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:preconnect/api/http_service.dart';
+import 'package:preconnect/tools/http_service.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
