@@ -1101,7 +1101,7 @@ class BracuFundingSupportContent extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 12),
               Text(
                 'Open the QR code in your bKash app to support PreConnect. You can also send money manually using the number and reference below.',
                 style: TextStyle(
