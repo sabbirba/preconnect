@@ -96,5 +96,5 @@ crashlytics-build.properties
 !.env.example
 
 # ephemeral
-.ephemeral
-linux/flutter/ephemeral/
+**/flutter/ephemeral/
+**/ephemeral/
