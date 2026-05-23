@@ -135,6 +135,10 @@ If Flutter cannot find a device:
 flutter devices
 ```
 
+> [!WARNING]
+> Flutter does not work with `sccache` with the current stack of the project, so when you are contributing, make sure you have any related environment variables disabled (e.g. `CC`/`CXX`/`RUSTC_WRAPPER`). Global Rust `[build]` configurations in this case might also conflict if you
+have `rustc_wrapper = "sccache"` in it.
+
 Then start an Android emulator from Android Studio or enable USB debugging on a physical Android device.
 
 ## Run a Specific Target
