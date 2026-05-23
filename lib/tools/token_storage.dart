@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart'
     show ValueNotifier, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart' show TargetPlatform;
 import 'package:flutter/services.dart';
-import 'package:preconnect/api/http_service.dart';
+import 'package:preconnect/tools/http_service.dart';
 
 import 'package:in_app_review/in_app_review.dart';
 import 'package:local_auth/local_auth.dart';
