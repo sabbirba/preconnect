@@ -276,10 +276,10 @@ extension _HomeDashboardView on _HomeDashboardState {
                                         ),
                                         child: _ScheduleTile(
                                           title: isExamWeekActive
-                                              ? 'No Class Today'
+                                              ? 'No classes today!'
                                               : isTodayHoliday
-                                              ? 'National Holiday'
-                                              : 'No Class Today',
+                                              ? 'National holiday'
+                                              : 'No classes today!',
                                           subtitle: isExamWeekActive
                                               ? examWeekStatus.subtitle
                                               : isTodayHoliday
