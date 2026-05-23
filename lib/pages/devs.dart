@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:preconnect/api/http_service.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
@@ -952,11 +953,17 @@ Future<http.Response> _githubGet(Uri uri) async {
   final authenticated = token.isNotEmpty;
 
   if (authenticated) {
-    final response = await http.get(uri, headers: _githubHeaders());
+    final response = await HttpService.client.get(
+      uri,
+      headers: _githubHeaders(),
+    );
     if (response.statusCode != 401 && response.statusCode != 403) {
       return response;
     }
   }
 
-  return http.get(uri, headers: _githubHeadersWithToken(includeToken: false));
+  return HttpService.client.get(
+    uri,
+    headers: _githubHeadersWithToken(includeToken: false),
+  );
 }

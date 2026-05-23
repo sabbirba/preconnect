@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:preconnect/tools/android_network_assist.dart';
 import 'package:preconnect/tools/token_storage.dart';
+import 'package:rhttp/rhttp.dart';
 
 class CaptiveWifiHttpResult {
   const CaptiveWifiHttpResult({
@@ -49,14 +50,15 @@ class CaptiveWifiHttpService {
     return null;
   }
 
-  HttpClient newClient() {
-    final client = HttpClient()..userAgent = kPreconnectUserAgent;
+  Future<IoCompatibleClient> newClient() async {
+    final client = await IoCompatibleClient.create()
+      ..userAgent = kPreconnectUserAgent;
     client.connectionTimeout = _connectionTimeout;
     return client;
   }
 
   Future<void> requestSessionExtension(Uri uri) async {
-    final client = newClient();
+    final client = await newClient();
     try {
       final request = await client.getUrl(uri);
       final response = await request.close();
@@ -70,7 +72,7 @@ class CaptiveWifiHttpService {
   }
 
   Future<bool> isValidatedViaProbe({
-    required HttpClient client,
+    required IoCompatibleClient client,
     required Map<String, Cookie> cookies,
     Uri? probeUri,
   }) async {
@@ -88,7 +90,7 @@ class CaptiveWifiHttpService {
   }
 
   Future<CaptiveWifiHttpResult> getWithRedirects({
-    required HttpClient client,
+    required IoCompatibleClient client,
     required Uri uri,
     required Map<String, Cookie> cookies,
   }) async {
@@ -98,13 +100,15 @@ class CaptiveWifiHttpService {
       request.followRedirects = false;
       final cookieHeader = _cookieHeader(cookies);
       if (cookieHeader != null) {
-        request.headers.set(HttpHeaders.cookieHeader, cookieHeader);
+        request.headers.set('Cookie', cookieHeader);
       }
       final response = await request.close();
       _captureCookies(response, cookies);
 
       final status = response.statusCode;
-      final location = response.headers.value(HttpHeaders.locationHeader);
+      final location =
+          response.headers.value('location') ??
+          response.headers.value('Location');
       final body = await response.transform(utf8.decoder).join();
 
       if (status >= 300 && status < 400 && location != null) {
@@ -130,25 +134,24 @@ class CaptiveWifiHttpService {
   }
 
   Future<CaptiveWifiHttpResult> postOnce({
-    required HttpClient client,
+    required IoCompatibleClient client,
     required Uri uri,
     required String body,
     required Map<String, Cookie> cookies,
   }) async {
     final request = await client.postUrl(uri);
     request.followRedirects = false;
-    request.headers.set(
-      HttpHeaders.contentTypeHeader,
-      'application/x-www-form-urlencoded',
-    );
+    request.headers.set('content-type', 'application/x-www-form-urlencoded');
     final cookieHeader = _cookieHeader(cookies);
     if (cookieHeader != null) {
-      request.headers.set(HttpHeaders.cookieHeader, cookieHeader);
+      request.headers.set('Cookie', cookieHeader);
     }
     request.write(body);
     final response = await request.close();
     _captureCookies(response, cookies);
-    final location = response.headers.value(HttpHeaders.locationHeader);
+    final location =
+        response.headers.value('location') ??
+        response.headers.value('Location');
     final text = await response.transform(utf8.decoder).join();
 
     return CaptiveWifiHttpResult(

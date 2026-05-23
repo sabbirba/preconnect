@@ -554,7 +554,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     if (captiveWifiUrl == null) {
       return false;
     }
-    final client = httpService.newClient();
+    final client = await httpService.newClient();
     final cookies = <String, Cookie>{};
 
     try {

@@ -6,7 +6,7 @@ import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
+import 'package:preconnect/api/http_service.dart';
 import 'package:dart_pdf_reader/dart_pdf_reader.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/profile_service.dart';
@@ -473,7 +473,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _loadingPreset = true;
     });
     try {
-      final response = await http
+      final response = await HttpService.client
           .get(Uri.parse(_whitePageUrl))
           .timeout(const Duration(seconds: 15));
       if (response.statusCode != 200 || response.bodyBytes.isEmpty) {

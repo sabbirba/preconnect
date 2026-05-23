@@ -2,9 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:preconnect/api/http_service.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
-import 'package:http/http.dart' as http;
+
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
@@ -183,7 +184,7 @@ class _LoginPageState extends State<LoginPage> {
       if (verifier == null || verifier.isEmpty) {
         return false;
       }
-      final response = await http
+      final response = await HttpService.client
           .post(
             Uri.parse(ApiConfig.tokenEndpoint),
             headers: {"Content-Type": "application/x-www-form-urlencoded"},

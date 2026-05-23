@@ -1,6 +1,7 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
+import 'package:preconnect/api/http_service.dart';
+
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
@@ -124,7 +125,7 @@ class RamadanTiming {
   static Future<Map<String, dynamic>?> _fetchPayload() async {
     for (final url in _statusUrls) {
       try {
-        final response = await http
+        final response = await HttpService.client
             .get(Uri.parse(url), headers: const {'Accept': 'application/json'})
             .timeout(_requestTimeout);
 
