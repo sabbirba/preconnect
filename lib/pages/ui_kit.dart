@@ -1032,28 +1032,37 @@ class BracuCommunityLink extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
             decoration: BoxDecoration(
-              color: const Color(0xFF5865F2).withValues(alpha: 0.08),
+              color: const Color(0xFF5865F2).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  _title,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: BracuPalette.textPrimary(context),
-                  ),
+                const Icon(
+                  Icons.discord,
+                  color: Color.fromRGBO(88, 101, 242, 1),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  _subtitle,
-                  style: TextStyle(
-                    fontSize: 11,
-                    height: 1.2,
-                    color: BracuPalette.textSecondary(context),
-                  ),
+                const SizedBox(width: 15),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _title,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: BracuPalette.textPrimary(context),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _subtitle,
+                      style: TextStyle(
+                        fontSize: 11,
+                        height: 1.2,
+                        color: BracuPalette.textSecondary(context),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
