@@ -23,8 +23,6 @@ import android.provider.AlarmClock
 import android.provider.Settings
 import com.android.installreferrer.api.InstallReferrerClient
 import com.android.installreferrer.api.InstallReferrerStateListener
-import com.google.android.play.core.integrity.IntegrityManagerFactory
-import com.google.android.play.core.integrity.StandardIntegrityManager
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -43,8 +41,6 @@ import java.util.ArrayList
 class MainActivity : FlutterFragmentActivity() {
     private val shortcutExtraKey = "flutter_shortcut"
     private val shortcutPrefsKey = "flutter.pending_shortcut_action"
-    private var standardTokenProvider: StandardIntegrityManager.StandardIntegrityTokenProvider? = null
-    private val integrityManager by lazy { IntegrityManagerFactory.createStandard(applicationContext) }
 
     private val connectivityManager by lazy {
         getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -105,7 +101,6 @@ class MainActivity : FlutterFragmentActivity() {
                 "preconnect/banner_ad_android",
                 BannerAdViewFactory(this),
             )
-        configureIntegrityChannel(flutterEngine)
         configureInstallReferrerChannel(flutterEngine)
         configureBuildInfoChannel(flutterEngine)
         configureAndroidAlarmChannel(flutterEngine)
@@ -182,84 +177,6 @@ class MainActivity : FlutterFragmentActivity() {
             "version" to (packageInfo.versionName ?: ""),
             "buildNumber" to buildNumber,
         )
-    }
-
-    private fun configureIntegrityChannel(flutterEngine: FlutterEngine) {
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "preconnect/play_integrity")
-            .setMethodCallHandler { call, result ->
-                when (call.method) {
-                    "prepare" -> prepareIntegrityProvider(call, result)
-                    "requestToken" -> requestIntegrityToken(call, result)
-                    else -> result.notImplemented()
-                }
-            }
-    }
-
-    private fun prepareIntegrityProvider(
-        call: MethodCall,
-        result: MethodChannel.Result,
-    ) {
-        val cloudProjectNumber = when (val raw = call.argument<Any>("cloudProjectNumber")) {
-            is Int -> raw.toLong()
-            is Long -> raw
-            is Number -> raw.toLong()
-            else -> null
-        }
-        if (cloudProjectNumber == null || cloudProjectNumber <= 0L) {
-            result.error("INVALID_PROJECT", "Missing cloud project number", null)
-            return
-        }
-
-        val prepareRequest = StandardIntegrityManager.PrepareIntegrityTokenRequest.builder()
-            .setCloudProjectNumber(cloudProjectNumber)
-            .build()
-
-        integrityManager.prepareIntegrityToken(prepareRequest)
-            .addOnSuccessListener { provider ->
-                standardTokenProvider = provider
-                result.success(true)
-            }
-            .addOnFailureListener { exception ->
-                result.error(
-                    "INTEGRITY_PREPARE_ERROR",
-                    exception.message ?: "Failed to prepare integrity provider",
-                    null,
-                )
-            }
-    }
-
-    private fun requestIntegrityToken(
-        call: MethodCall,
-        result: MethodChannel.Result,
-    ) {
-        val requestHash = call.argument<String>("requestHash")
-        if (requestHash.isNullOrBlank()) {
-            result.error("INVALID_REQUEST_HASH", "Missing request hash", null)
-            return
-        }
-
-        val provider = standardTokenProvider
-        if (provider == null) {
-            result.error("INTEGRITY_NOT_PREPARED", "Integrity provider is not prepared", null)
-            return
-        }
-
-        val request = StandardIntegrityManager.StandardIntegrityTokenRequest.builder()
-            .setRequestHash(requestHash)
-            .build()
-
-        provider.request(request)
-            .addOnSuccessListener { token ->
-                result.success(token.token())
-            }
-            .addOnFailureListener { exception ->
-                standardTokenProvider = null
-                result.error(
-                    "INTEGRITY_ERROR",
-                    exception.message ?: "Failed to request integrity token",
-                    null,
-                )
-            }
     }
 
     private fun configureInstallReferrerChannel(flutterEngine: FlutterEngine) {
@@ -695,12 +612,26 @@ class MainActivity : FlutterFragmentActivity() {
             if (!ssid.isNullOrBlank()) {
                 payload["ssid"] = ssid
             }
+            val gatewayAddress = currentGatewayAddress(network)
+            if (!gatewayAddress.isNullOrBlank()) {
+                payload["gatewayAddress"] = gatewayAddress
+            }
         }
         val captiveWifiData = currentCaptiveWifiData(caps)
         if (captiveWifiData.isNotEmpty()) {
             payload.putAll(captiveWifiData)
         }
         return payload
+    }
+
+    private fun currentGatewayAddress(network: Network): String? {
+        return try {
+            val linkProperties = connectivityManager.getLinkProperties(network) ?: return null
+            val route = linkProperties.routes.firstOrNull { it.isDefaultRoute }
+            route?.gateway?.hostAddress
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun currentCaptiveWifiData(caps: NetworkCapabilities?): Map<String, Any> {

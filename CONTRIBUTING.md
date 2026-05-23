@@ -64,7 +64,6 @@ Only fill env values when you are testing the related feature:
 
 | Key | Needed for |
 | --- | ---------- |
-| `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER` | Play Integrity checks |
 | `REWARDED_AD_UNIT_ID` | rewarded ad testing |
 | `BANNER_AD_UNIT_ID` | banner ad testing |
 | `INTERSTITIAL_AD_UNIT_ID` | interstitial ad testing |

@@ -170,7 +170,7 @@ Key packages related to user data safety/privacy are listed below.
 | `shared_preferences`     | Backing store for `AppStorage`, used for non-sensitive app settings, JSON blobs, and lightweight caches. Not used for secrets.     |
 | `local_auth`             | Enables optional biometric/PIN app lock so only the device owner can open protected screens.                                        |
 | `permission_handler`     | Ensures runtime permissions such as camera and notifications are requested explicitly and can be denied by the user.                 |
-| `crypto`                 | Used for cryptographic hashing in integrity/security flows to strengthen request validation.                                        |
+| `crypto`                 | Used for hashing in PKCE, cached image keys, and other local request helpers.                                                        |
 
 Privacy notes:
 

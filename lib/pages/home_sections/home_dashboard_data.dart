@@ -443,14 +443,8 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   Future<void> _maybeAutoExtendSession(AndroidNetworkStatus status) async {
     if (!mounted || _isAutoExtendingSession) return;
     if (status.canExtendSession != true) return;
-    final rawCaptiveWifiUrl = (status.captiveWifiUrl ?? '').trim();
-    if (rawCaptiveWifiUrl.isEmpty) return;
-    final captiveWifiUri = Uri.tryParse(rawCaptiveWifiUrl);
-    if (captiveWifiUri == null ||
-        !captiveWifiUri.hasAuthority ||
-        (captiveWifiUri.scheme != 'http' && captiveWifiUri.scheme != 'https')) {
-      return;
-    }
+    final captiveWifiUri = CaptiveWifiHttpService.resolvePortalUri(status);
+    if (captiveWifiUri == null) return;
 
     final expiryMillis = status.sessionExpiryTimeMillis;
     if (expiryMillis == null || expiryMillis <= 0) return;

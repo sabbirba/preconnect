@@ -200,6 +200,7 @@ class HomeCardPreferences {
   HomeCardPreferences._();
 
   static final decorationNotifier = ValueNotifier(true);
+  static final sponsoredContentNotifier = ValueNotifier(true);
   static const String showQuickAccessSectionKey =
       'home_show_quick_access_section';
   static const String showRamadanCardKey = 'home_show_ramadan_card';
@@ -222,7 +223,10 @@ class HomeCardPreferences {
     try {
       bool showDecorations =
           await AppStorage.instance.getBool(showDecorationsKey) ?? true;
+      final showSponsoredContent =
+          await AppStorage.instance.getBool(showSponsoredContentKey) ?? true;
       decorationNotifier.value = showDecorations;
+      sponsoredContentNotifier.value = showSponsoredContent;
 
       return HomeCardVisibility(
         showQuickAccessSection:
@@ -235,8 +239,7 @@ class HomeCardPreferences {
             await AppStorage.instance.getBool(showExamCountdownCardKey) ?? true,
         showTodaySchedule:
             await AppStorage.instance.getBool(showTodayScheduleKey) ?? true,
-        showSponsoredContent:
-            await AppStorage.instance.getBool(showSponsoredContentKey) ?? true,
+        showSponsoredContent: showSponsoredContent,
       );
     } catch (_) {
       return defaults;
@@ -276,6 +279,7 @@ class HomeCardPreferences {
 
   static Future<void> setShowSponsoredContent(bool value) async {
     try {
+      sponsoredContentNotifier.value = value;
       await AppStorage.instance.setBool(showSponsoredContentKey, value);
     } catch (_) {}
   }

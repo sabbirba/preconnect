@@ -178,6 +178,20 @@ class _ExpectedResult {
       selectedCredits <= 0 ? '--' : selectedGpa.toStringAsFixed(3);
 }
 
+class _GradeGuideRow {
+  const _GradeGuideRow({
+    required this.range,
+    required this.grade,
+    required this.point,
+    required this.comment,
+  });
+
+  final String range;
+  final String grade;
+  final String point;
+  final String comment;
+}
+
 const List<String> _gradeOptions = <String>[
   'A+',
   'A',
@@ -197,6 +211,176 @@ const List<String> _gradeOptions = <String>[
   'W',
   'I',
 ];
+
+const List<_GradeGuideRow> _gradeGuideRows = <_GradeGuideRow>[
+  _GradeGuideRow(
+    range: '97 - 100',
+    grade: 'A+',
+    point: '4.0',
+    comment: 'Exceptional',
+  ),
+  _GradeGuideRow(
+    range: '90 - 97',
+    grade: 'A',
+    point: '4.0',
+    comment: 'Excellent',
+  ),
+  _GradeGuideRow(
+    range: '85 - 90',
+    grade: 'A-',
+    point: '3.7',
+    comment: 'Very good',
+  ),
+  _GradeGuideRow(range: '80 - 85', grade: 'B+', point: '3.3', comment: 'Good'),
+  _GradeGuideRow(range: '75 - 80', grade: 'B', point: '3.0', comment: 'Good'),
+  _GradeGuideRow(range: '70 - 75', grade: 'B-', point: '2.7', comment: 'Fair'),
+  _GradeGuideRow(
+    range: '65 - 70',
+    grade: 'C+',
+    point: '2.3',
+    comment: 'Average',
+  ),
+  _GradeGuideRow(range: '60 - 65', grade: 'C', point: '2.0', comment: 'Fair'),
+  _GradeGuideRow(
+    range: '57 - 60',
+    grade: 'C-',
+    point: '1.7',
+    comment: 'Marginal',
+  ),
+  _GradeGuideRow(range: '55 - 57', grade: 'D+', point: '1.3', comment: 'Weak'),
+  _GradeGuideRow(range: '52 - 55', grade: 'D', point: '1.0', comment: 'Poor'),
+  _GradeGuideRow(range: '50 - 52', grade: 'D-', point: '0.7', comment: 'Poor'),
+  _GradeGuideRow(
+    range: '00 - 50',
+    grade: 'F',
+    point: '0.0',
+    comment: 'Failure',
+  ),
+  _GradeGuideRow(range: '70 - 100', grade: 'P', point: '', comment: 'Pass'),
+  _GradeGuideRow(
+    range: '80 - 100',
+    grade: 'S',
+    point: '',
+    comment: 'Satisfactory',
+  ),
+  _GradeGuideRow(range: '', grade: 'W', point: '', comment: 'Withdrawal'),
+  _GradeGuideRow(range: '', grade: 'I', point: '', comment: 'Incomplete'),
+];
+
+Widget _buildGradeGuideLegend(
+  BuildContext context,
+  Color textPrimary,
+  Color textSecondary,
+) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: Text(
+              'Marking',
+              style: TextStyle(
+                color: textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Center(
+              child: Text(
+                'Grade',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: textSecondary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              'Point • Comment',
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                color: textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      ..._gradeGuideRows.map((row) {
+        final details = row.point.isEmpty && row.comment.isEmpty
+            ? ''
+            : row.point.isEmpty
+            ? row.comment
+            : row.comment.isEmpty
+            ? row.point
+            : '${row.point} • ${row.comment}';
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          decoration: BoxDecoration(
+            color: textSecondary.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: Text(
+                  row.range,
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Center(
+                  child: Text(
+                    row.grade,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 3,
+                child: Text(
+                  details,
+                  textAlign: TextAlign.end,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+      const SizedBox(height: 4),
+    ],
+  );
+}
 
 String _normalizeGrade(String raw) {
   final grade = raw.trim().toUpperCase();

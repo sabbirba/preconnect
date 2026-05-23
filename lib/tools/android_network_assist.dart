@@ -12,6 +12,7 @@ class AndroidNetworkStatus {
     required this.androidApi,
     required this.ssid,
     required this.captiveWifiUrl,
+    required this.gatewayAddress,
     required this.canExtendSession,
     required this.sessionExpiryTimeMillis,
   });
@@ -23,6 +24,7 @@ class AndroidNetworkStatus {
   final int androidApi;
   final String? ssid;
   final String? captiveWifiUrl;
+  final String? gatewayAddress;
   final bool? canExtendSession;
   final int? sessionExpiryTimeMillis;
 
@@ -39,6 +41,9 @@ class AndroidNetworkStatus {
       captiveWifiUrl: (map['captiveWifiUrl'] as String?)?.trim().isEmpty == true
           ? null
           : (map['captiveWifiUrl'] as String?),
+      gatewayAddress: (map['gatewayAddress'] as String?)?.trim().isEmpty == true
+          ? null
+          : (map['gatewayAddress'] as String?),
       canExtendSession: map['canExtendSession'] as bool?,
       sessionExpiryTimeMillis: (map['sessionExpiryTimeMillis'] as num?)
           ?.toInt(),

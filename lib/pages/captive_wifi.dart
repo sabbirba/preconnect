@@ -42,6 +42,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
   bool _isAutoExtending = false;
   bool _autoExtendEnabled = true;
   CaptiveWifiApiStatus? _sessionStatus;
+  StreamSubscription<AndroidNetworkStatus>? _networkStatusSubscription;
   Timer? _autoSessionTimer;
   Timer? _liveSessionTimer;
   DateTime? _lastAutoExtendAt;
@@ -51,6 +52,11 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
   @override
   void initState() {
     super.initState();
+    if (AndroidNetworkAssist.isSupported) {
+      _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen(
+        _handleNetworkStatusChanged,
+      );
+    }
     _loadStoredCredentials();
   }
 
@@ -75,6 +81,13 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     });
     await _autofillSsidFromSystem();
     _restartAutoSessionMonitor();
+    unawaited(
+      _refreshSessionStatus(
+        showSuccessSnackBar: false,
+        showErrorSnackBar: false,
+        allowAutoExtend: true,
+      ),
+    );
     unawaited(_checkPostConnectionEvent());
     if (widget.autoOpenCaptiveWifiOnStart) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -284,9 +297,37 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     }
   }
 
+  Future<void> _handleNetworkStatusChanged(AndroidNetworkStatus status) async {
+    if (!mounted) return;
+    _setSsidFromStatus(status);
+    final transport = status.transport.trim().toLowerCase();
+    if (transport != 'wifi' || !status.connected) {
+      return;
+    }
+    if (_isConnecting || _isCheckingSession) return;
+    unawaited(
+      _refreshSessionStatus(
+        showSuccessSnackBar: false,
+        showErrorSnackBar: false,
+        allowAutoExtend: true,
+      ),
+    );
+  }
+
+  void _setSsidFromStatus(AndroidNetworkStatus status) {
+    final ssid = (status.ssid ?? '').trim();
+    if (ssid.isEmpty) return;
+    final current = _ssidController.text.trim();
+    if (current == ssid) return;
+    final hasCustomValue =
+        current.isNotEmpty && current != CaptiveLoginStore.defaultCampusSsid;
+    if (hasCustomValue) return;
+    _ssidController.text = ssid;
+  }
+
   CaptiveWifiApiStatus? _statusFromNetwork(AndroidNetworkStatus? status) {
     if (status == null) return null;
-    final parsedUrl = _currentPortalUriFromStatus(status);
+    final parsedUrl = CaptiveWifiHttpService.resolvePortalUri(status);
     if (parsedUrl == null) return null;
 
     final expiry = status.sessionExpiryTimeMillis;
@@ -301,14 +342,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       canExtendSession: status.canExtendSession == true,
       sessionUrl: parsedUrl,
     );
-  }
-
-  Uri? _validatedHttpUri(String raw) {
-    if (raw.isEmpty) return null;
-    final uri = Uri.tryParse(raw);
-    if (uri == null || !uri.hasScheme || !uri.hasAuthority) return null;
-    if (uri.scheme != 'http' && uri.scheme != 'https') return null;
-    return uri;
   }
 
   Future<void> _openExtendSession(CaptiveWifiApiStatus status) async {
@@ -579,18 +612,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     if (!AndroidNetworkAssist.isSupported) return null;
     final status = await AndroidNetworkAssist.getNetworkStatus();
     if (status == null) return null;
-    return _currentPortalUriFromStatus(status);
-  }
-
-  Uri? _currentPortalUriFromStatus(AndroidNetworkStatus status) {
-    final parsedUrl = _validatedHttpUri(status.captiveWifiUrl?.trim() ?? '');
-    if (parsedUrl != null) {
-      return parsedUrl;
-    }
-    if (status.transport == 'wifi' && (status.captive || !status.validated)) {
-      return CaptiveWifiHttpService.defaultProbeUri;
-    }
-    return null;
+    return CaptiveWifiHttpService.resolvePortalUri(status);
   }
 
   _CaptiveWifiForm? _extractLoginForm({
@@ -726,85 +748,81 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
           body: BracuRefreshList(
             onRefresh: _loadStoredCredentials,
             children: [
-              BracuCard(
-                child: Column(
-                  children: [
-                    AutofillGroup(
-                      child: Column(
-                        children: [
-                          TextField(
-                            controller: _ssidController,
-                            readOnly: true,
-                            enableInteractiveSelection: false,
-                            decoration: const InputDecoration(
-                              labelText: 'SSID',
-                              border: OutlineInputBorder(),
-                            ),
+              Column(
+                children: [
+                  AutofillGroup(
+                    child: Column(
+                      children: [
+                        TextField(
+                          controller: _ssidController,
+                          readOnly: true,
+                          enableInteractiveSelection: false,
+                          decoration: const InputDecoration(
+                            labelText: 'SSID',
+                            border: OutlineInputBorder(),
                           ),
-                          const SizedBox(height: 10),
-                          InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'Student ID',
-                              border: OutlineInputBorder(),
-                            ),
-                            child: Text(
-                              _studentId.isEmpty ? 'Not available' : _studentId,
-                            ),
+                        ),
+                        const SizedBox(height: 10),
+                        InputDecorator(
+                          decoration: const InputDecoration(
+                            labelText: 'Student ID',
+                            border: OutlineInputBorder(),
                           ),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: _passwordController,
-                            obscureText: true,
-                            autofillHints: const <String>[
-                              AutofillHints.password,
-                            ],
-                            decoration: const InputDecoration(
-                              labelText: 'Password',
-                              border: OutlineInputBorder(),
-                            ),
+                          child: Text(
+                            _studentId.isEmpty ? 'Not available' : _studentId,
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          autofillHints: const <String>[AutofillHints.password],
+                          decoration: const InputDecoration(
+                            labelText: 'Password',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: BracuActionButton(
-                        onPressed: _isConnecting
-                            ? null
-                            : () => unawaited(_runOneTapConnect()),
-                        label: 'Connect',
-                        isLoading: _isConnecting,
-                        foregroundColor: BracuPalette.primary,
-                        borderRadius: 18,
-                      ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: BracuActionButton(
+                      onPressed: _isConnecting
+                          ? null
+                          : () => unawaited(_runOneTapConnect()),
+                      label: 'Connect',
+                      isLoading: _isConnecting,
+                      foregroundColor: BracuPalette.primary,
+                      borderRadius: 18,
                     ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: BracuActionButton(
-                        onPressed: (_isCheckingSession || _isConnecting)
-                            ? null
-                            : () => unawaited(_refreshSessionStatus()),
-                        label: 'Check Session Time',
-                        isLoading: _isCheckingSession,
-                        foregroundColor: BracuPalette.primary,
-                        borderRadius: 18,
-                      ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: BracuActionButton(
+                      onPressed: (_isCheckingSession || _isConnecting)
+                          ? null
+                          : () => unawaited(_refreshSessionStatus()),
+                      label: 'Check Session Time',
+                      isLoading: _isCheckingSession,
+                      foregroundColor: BracuPalette.primary,
+                      borderRadius: 18,
                     ),
-                    const SizedBox(height: 4),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Auto Extend Session'),
-                      subtitle: Text(
-                        'Extend when time is <= ${_formatThresholdHours(_autoExtendThresholdSeconds)}',
-                      ),
-                      value: _autoExtendEnabled,
-                      onChanged: _setAutoExtendEnabled,
-                      activeThumbColor: BracuPalette.primary,
+                  ),
+                  const SizedBox(height: 4),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Auto Extend Session'),
+                    subtitle: Text(
+                      'Extend when time is <= ${_formatThresholdHours(_autoExtendThresholdSeconds)}',
                     ),
-                  ],
-                ),
+                    value: _autoExtendEnabled,
+                    onChanged: _setAutoExtendEnabled,
+                    activeThumbColor: BracuPalette.primary,
+                  ),
+                ],
               ),
               const SizedBox(height: 10),
               _sessionInfoCard(context),
@@ -817,6 +835,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
 
   @override
   void dispose() {
+    _networkStatusSubscription?.cancel();
     _autoSessionTimer?.cancel();
     _liveSessionTimer?.cancel();
     _ssidController.dispose();

@@ -190,8 +190,6 @@ jobs:
       REWARDED_AD_UNIT_ID: ${{ secrets.REWARDED_AD_UNIT_ID }}
       ADS_APP_ID_IOS: ${{ secrets.ADS_APP_ID_IOS }}
       INTERSTITIAL_AD_UNIT_ID: ${{ secrets.INTERSTITIAL_AD_UNIT_ID }}
-      FACULTY_REVIEWS_BEARER: ${{ secrets.FACULTY_REVIEWS_BEARER }}
-      PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: ${{ secrets.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER }}
       storeFile: preconnect-release-key.jks
       storePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       keyAlias: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
@@ -322,13 +320,11 @@ jobs:
         run: |
           cat > .env <<'EOF'
           GITHUB_TOKEN=${{ secrets.GH_TOKEN }}
-          FACULTY_REVIEWS_BEARER=${{ secrets.FACULTY_REVIEWS_BEARER }}
           REWARDED_AD_UNIT_ID=${{ secrets.REWARDED_AD_UNIT_ID }}
           ADS_APP_ID_IOS=${{ secrets.ADS_APP_ID_IOS }}
           BANNER_AD_UNIT_ID=${{ secrets.BANNER_AD_UNIT_ID }}
           INTERSTITIAL_AD_UNIT_ID=${{ secrets.INTERSTITIAL_AD_UNIT_ID }}
           DEVELOPMENT_TEAM=${{ secrets.DEVELOPMENT_TEAM }}
-          PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=${{ secrets.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER }}
           EOF
 
       - name: Chrome Extension

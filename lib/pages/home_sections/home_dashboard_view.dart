@@ -188,6 +188,8 @@ extension _HomeDashboardView on _HomeDashboardState {
                                           ),
                                         ),
                                 ),
+                                const SizedBox(height: 12),
+                                const BracuCommunityLink(),
                                 if (cardVisibility.showTodaySchedule) ...[
                                   const SizedBox(height: 12),
                                   InkWell(

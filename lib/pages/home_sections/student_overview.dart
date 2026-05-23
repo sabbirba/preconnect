@@ -59,16 +59,11 @@ class StudentOverviewCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 ValueListenableBuilder<bool>(
                   valueListenable: AdsPreferences.instance.adsVisible,
-                  builder: (context, adsVisible, _) {
-                    return Visibility(
-                      visible: adsVisible,
-                      maintainAnimation: true,
-                      maintainState: true,
-                      maintainSize: true,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [_SupportButton(onTap: onOpenSupport)],
-                      ),
+                  builder: (context, showSupport, _) {
+                    if (!showSupport) return const SizedBox.shrink();
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [_SupportButton(onTap: onOpenSupport)],
                     );
                   },
                 ),

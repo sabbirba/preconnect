@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,7 +8,6 @@ import 'package:preconnect/api/calendar_service.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/auth_service.dart';
-import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/custom_schedules_service.dart';
 import 'package:preconnect/api/friend_schedule_store.dart';
 import 'package:preconnect/api/notification_service.dart';
@@ -179,6 +179,13 @@ class MyApp extends StatefulWidget {
   }
 
   static Future<void> _warmStartupCaches() async {
+    final tasks = _buildWarmupTasks(includeCampusPrinter: true);
+    await Future.wait(tasks.map((task) => task.catchError((_) {})));
+  }
+
+  static List<Future<void>> _buildWarmupTasks({
+    required bool includeCampusPrinter,
+  }) {
     final tasks = <Future<void>>[
       preloadHomeDashboardData().then((_) {}),
       ProfileService().getProfile().then((_) {}),
@@ -206,9 +213,11 @@ class MyApp extends StatefulWidget {
       ClassSchedule.preload(),
       ExamSchedule.preload(),
       CustomSchedulesPage.preload(),
-      CampusPrinterPage.preload(),
     ];
-    await Future.wait(tasks.map((task) => task.catchError((_) {})));
+    if (includeCampusPrinter) {
+      tasks.add(CampusPrinterPage.preload());
+    }
+    return tasks;
   }
 
   static void warmStartupCaches() {
@@ -289,6 +298,9 @@ class _MyAppState extends State<MyApp>
       bindRefreshBus(_onRefreshSignal);
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_supportsInAppUpdates) {
+        unawaited(_maybeCheckForUpdates());
+      }
       unawaited(_runDeferredStartupWork());
     });
   }
@@ -311,23 +323,29 @@ class _MyAppState extends State<MyApp>
     } catch (_) {}
   }
 
+  bool get _supportsInAppUpdates =>
+      kReleaseMode &&
+      !kIsWeb &&
+      defaultTargetPlatform == TargetPlatform.android;
+
   Future<void> _runDeferredStartupWork() async {
     await Future<void>.delayed(const Duration(milliseconds: 1800));
     if (!mounted) return;
-    if (!kIsWeb) {
-      unawaited(AdsPreferences.instance.load());
-      unawaited(AdsBridge.initialize());
-      unawaited(RewardSupportController.instance.load());
-      PlayIntegrity.prepare().catchError((_) {});
-      PlayInstallReferrer.prefetch().catchError((_) {});
-    }
+    await _loadDeferredServices();
     unawaited(_setupQuickAccessShortcuts());
-    if (!kIsWeb) {
-      unawaited(_runStartupChecks());
-    }
     if (_initialLoggedIn) {
       _validateSessionInBackground();
     }
+  }
+
+  Future<void> _loadDeferredServices() async {
+    if (kIsWeb) return;
+    unawaited(AdsPreferences.instance.load());
+    if (AdsBridge.isSupportedPlatform) {
+      unawaited(AdsBridge.initialize());
+    }
+    unawaited(RewardSupportController.instance.load());
+    PlayInstallReferrer.prefetch().catchError((_) {});
   }
 
   Future<void> _consumePendingShortcutAction() async {
@@ -341,6 +359,39 @@ class _MyAppState extends State<MyApp>
     if (pendingAction == null || pendingAction.isEmpty) return;
     await _clearPendingShortcutAction();
     _handleShortcutAction(pendingAction);
+  }
+
+  Future<bool> _maybeCheckForUpdates() async {
+    if (!_supportsInAppUpdates) return false;
+    try {
+      final info = await InAppUpdate.checkForUpdate();
+      final availability = info.updateAvailability;
+      final installStatus = info.installStatus;
+
+      if (installStatus == InstallStatus.downloaded ||
+          availability ==
+              UpdateAvailability.developerTriggeredUpdateInProgress) {
+        await InAppUpdate.completeFlexibleUpdate();
+        return true;
+      }
+
+      if (availability == UpdateAvailability.updateAvailable) {
+        if (info.flexibleUpdateAllowed) {
+          final result = await InAppUpdate.startFlexibleUpdate();
+          if (result == AppUpdateResult.success) {
+            return true;
+          }
+        }
+
+        if (info.immediateUpdateAllowed) {
+          final result = await InAppUpdate.performImmediateUpdate();
+          return result == AppUpdateResult.success;
+        }
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
   }
 
   @override
@@ -476,10 +527,6 @@ class _MyAppState extends State<MyApp>
     }
   }
 
-  Future<void> _runStartupChecks() async {
-    await _maybeCheckForUpdates();
-  }
-
   Future<void> _warmBackgroundCaches() async {
     if (_backgroundWarmupInFlight) return;
     final now = DateTime.now();
@@ -490,41 +537,14 @@ class _MyAppState extends State<MyApp>
     _backgroundWarmupInFlight = true;
     _lastBackgroundWarmupAt = now;
     try {
-      await Future.wait<void>(
-        <Future<void>>[
-          preloadHomeDashboardData().then((_) {}),
-          ProfileService().getProfile().then((_) {}),
-          AttendanceService().getAttendanceInfo().then((_) {}),
-          PaymentService().getPaymentInfo().then((_) {}),
-          ProgressService().getProgress().then((_) {}),
-          () async {
-            final semesterSessionId = await resolveCurrentSessionSemesterId();
-            if (semesterSessionId == null) return;
-            await ScheduleService().getStudentScheduleForSemester(
-              semesterSessionId: semesterSessionId,
-            );
-          }(),
-          CustomSchedulesService().getItems().then((_) {}),
-          FriendScheduleStore().loadSnapshot().then((_) {}),
-          CalendarService().getCalendar().then((_) {}),
-          NotificationService().getRecentNotifications().then((_) {}),
-          SeatStatusService.preload(),
-          BusPage.preload(),
-          NotificationsPage.preload(),
-          DegreeProgressPage.preload(),
-          StudentProfile.preload(),
-          DevsPage.preload(),
-          AlarmPage.preload(),
-          ClassSchedule.preload(),
-          ExamSchedule.preload(),
-          CustomSchedulesPage.preload(),
-        ].map((task) => task.catchError((_) {})),
-      );
+      final tasks = MyApp._buildWarmupTasks(includeCampusPrinter: false);
+      await Future.wait(tasks.map((task) => task.catchError((_) {})));
     } finally {
       _backgroundWarmupInFlight = false;
     }
   }
 
+  // App lock
   Future<void> _initializeAppLock() async {
     final enabled = await AppLockService().isEnabled();
     if (!mounted) return;
@@ -685,41 +705,6 @@ class _MyAppState extends State<MyApp>
         );
       }
     } catch (_) {}
-  }
-
-  Future<bool> _maybeCheckForUpdates() async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-      return false;
-    }
-    try {
-      final info = await InAppUpdate.checkForUpdate();
-      final availability = info.updateAvailability;
-      final installStatus = info.installStatus;
-
-      if (installStatus == InstallStatus.downloaded) {
-        return await _completeFlexibleUpdate();
-      }
-      if (availability ==
-          UpdateAvailability.developerTriggeredUpdateInProgress) {
-        return await _completeFlexibleUpdate();
-      }
-      if (availability == UpdateAvailability.updateAvailable) {
-        final result = await InAppUpdate.startFlexibleUpdate();
-        return result == AppUpdateResult.success;
-      }
-      return false;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  Future<bool> _completeFlexibleUpdate() async {
-    try {
-      await InAppUpdate.completeFlexibleUpdate();
-      return true;
-    } catch (_) {
-      return false;
-    }
   }
 
   ThemeData _buildTheme({

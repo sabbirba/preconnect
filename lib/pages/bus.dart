@@ -286,9 +286,10 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.icon, required this.text});
+  const _InfoChip({this.icon, this.iconWidget, required this.text});
 
-  final IconData icon;
+  final IconData? icon;
+  final Widget? iconWidget;
   final String text;
 
   @override
@@ -302,7 +303,10 @@ class _InfoChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: BracuPalette.primary),
+          if (iconWidget != null)
+            iconWidget!
+          else if (icon != null)
+            Icon(icon, size: 12, color: BracuPalette.primary),
           const SizedBox(width: 4),
           Text(
             text,

@@ -7,6 +7,7 @@ class AdsBridge {
 
   static const MethodChannel _channel = MethodChannel('preconnect/ads');
   static bool get isSupportedPlatform =>
+      kReleaseMode &&
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.android ||
           defaultTargetPlatform == TargetPlatform.iOS);

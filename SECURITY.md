@@ -1,6 +1,6 @@
 # Security Policy
 
-PreConnect handles student-facing data, login sessions, cached schedule data, and local device state. Security issues are treated seriously because they can affect privacy, account access, or app integrity.
+PreConnect handles student-facing data, login sessions, cached schedule data, and local device state. Security issues are treated seriously because they can affect privacy, account access, or application safety.
 
 ## Supported Versions
 

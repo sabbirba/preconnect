@@ -175,6 +175,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _clientName = '';
   String _wifiName = '';
   String _duplexMode = 'OFF';
+  String _collateMode = 'OFF';
   String _printerHost = '';
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
   int _copies = 1;
@@ -632,7 +633,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         port: _printerPort,
         queue: _printerQueue,
       );
-      final preferences = _PrintTicket(copies: copies, duplexMode: _duplexMode);
+      final preferences = _PrintTicket(
+        copies: copies,
+        duplexMode: _duplexMode,
+        collateMode: _collateMode,
+      );
       await client.sendFile(
         bytes: bytes,
         fileName: _fileName,
@@ -867,9 +872,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   copiesController: _copiesController,
                   copies: _copies,
                   mode: _duplexMode,
+                  collateMode: _collateMode,
                   onCopiesStep: _adjustCopies,
                   onDuplexChanged: (mode) {
                     setState(() => _duplexMode = mode);
+                  },
+                  onCollateChanged: (mode) {
+                    setState(() => _collateMode = mode);
                   },
                 ),
                 const SizedBox(height: 12),
@@ -965,10 +974,6 @@ class _StudentPrintDetails extends StatelessWidget {
       (label: 'Program', value: shortCode.trim()),
       (label: 'Semester', value: semester.trim()),
       (label: 'Student ID', value: studentId.trim()),
-      (
-        label: 'Network',
-        value: wifiName.trim().isEmpty ? 'Unknown' : wifiName.trim(),
-      ),
       (label: 'Printer', value: printerHost.trim()),
     ].where((row) => row.value.isNotEmpty).toList();
 
@@ -1283,6 +1288,7 @@ class _LprPrintClient {
     final dataCommand = isPostScript ? 'o' : 'l';
     final copies = preferences.copies.clamp(0, 999);
     final duplexMode = preferences.duplexMode.trim().toUpperCase();
+    final collateMode = preferences.collateMode.trim().toUpperCase();
 
     try {
       final sendBytes = isPostScript
@@ -1323,6 +1329,7 @@ class _LprPrintClient {
           jobName: printableJobName,
           copies: copies,
           duplexMode: duplexMode,
+          collateMode: collateMode,
           isPostScript: isPostScript,
         ),
       );
@@ -1363,16 +1370,20 @@ class _LprPrintClient {
     required String jobName,
     required int copies,
     required String duplexMode,
+    required String collateMode,
     required bool isPostScript,
   }) {
     final language = isPostScript ? 'POSTSCRIPT' : 'PDF';
     final duplex = duplexMode.trim().toUpperCase();
+    final collate = collateMode.trim().toUpperCase();
     final useDuplex = duplex != 'OFF';
     final builder = BytesBuilder(copy: false);
     builder.add(_ascii('\x1B%-12345X'));
     builder.add(_ascii('@PJL JOB NAME = "${_escapePjlValue(jobName)}"\r\n'));
     builder.add(_ascii('@PJL SET COPIES = $copies\r\n'));
-    builder.add(_ascii('@PJL SET COLLATE = ON\r\n'));
+    builder.add(
+      _ascii('@PJL SET COLLATE = ${collate == 'OFF' ? 'OFF' : 'ON'}\r\n'),
+    );
     builder.add(_ascii('@PJL SET PAPER = A4\r\n'));
     builder.add(_ascii('@PJL SET ORIENTATION = PORTRAIT\r\n'));
     builder.add(_ascii('@PJL SET RESOLUTION = 600\r\n'));
@@ -1483,29 +1494,47 @@ class _PrinterPreferencesPanel extends StatelessWidget {
     required this.copiesController,
     required this.copies,
     required this.mode,
+    required this.collateMode,
     required this.onCopiesStep,
     required this.onDuplexChanged,
+    required this.onCollateChanged,
   });
 
   final TextEditingController copiesController;
   final int copies;
   final String mode;
+  final String collateMode;
   final ValueChanged<int> onCopiesStep;
   final ValueChanged<String> onDuplexChanged;
+  final ValueChanged<String> onCollateChanged;
 
   @override
   Widget build(BuildContext context) {
     final duplexEnabled = mode == 'LEFT';
+    final collateEnabled = collateMode == 'ON';
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: 188,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 420;
+        final gap = compact ? 6.0 : 8.0;
+        final buttonPadding = EdgeInsets.symmetric(
+          horizontal: compact ? 6 : 8,
+          vertical: compact ? 8 : 9,
+        );
+        final controlHeight = compact ? 36.0 : 40.0;
+        final controlFont = compact ? 16.0 : 18.0;
+        final toggleFont = compact ? 13.0 : 14.0;
+        final togglePadding = EdgeInsets.symmetric(
+          horizontal: compact ? 6 : 8,
+          vertical: compact ? 8 : 9,
+        );
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              flex: 42,
+              child: Row(
                 children: [
                   Expanded(
                     flex: 42,
@@ -1513,19 +1542,16 @@ class _PrinterPreferencesPanel extends StatelessWidget {
                       onPressed: copies <= 0 ? null : () => onCopiesStep(-1),
                       outlined: true,
                       borderRadius: 4,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 10,
-                      ),
+                      padding: buttonPadding,
                       label: '−',
-                      fontSize: 18,
+                      fontSize: controlFont,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: gap),
                   Expanded(
                     flex: 52,
                     child: SizedBox(
-                      height: 40,
+                      height: controlHeight,
                       child: Center(
                         child: TextField(
                           controller: copiesController,
@@ -1541,7 +1567,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
                           expands: false,
                           onSubmitted: (_) => FocusScope.of(context).unfocus(),
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: compact ? 16 : 18,
                             fontWeight: FontWeight.w700,
                             color: BracuPalette.textPrimary(context),
                           ),
@@ -1554,54 +1580,83 @@ class _PrinterPreferencesPanel extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: gap),
                   Expanded(
                     flex: 42,
                     child: BracuActionButton(
                       onPressed: copies >= 999 ? null : () => onCopiesStep(1),
                       outlined: true,
                       borderRadius: 4,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 10,
-                      ),
+                      padding: buttonPadding,
                       label: '+',
-                      fontSize: 18,
+                      fontSize: controlFont,
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: BracuActionButton(
-            onPressed: () {
-              onDuplexChanged(duplexEnabled ? 'OFF' : 'LEFT');
-            },
-            outlined: true,
-            backgroundColor: duplexEnabled
-                ? BracuPalette.primary.withValues(alpha: 0.12)
-                : Colors.transparent,
-            foregroundColor: duplexEnabled
-                ? BracuPalette.primary
-                : BracuPalette.textPrimary(context),
-            borderRadius: 4,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            label: duplexEnabled ? 'Both Side' : 'One Side',
-          ),
-        ),
-      ],
+            ),
+            SizedBox(width: compact ? 8 : 10),
+            Expanded(
+              flex: 58,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: BracuActionButton(
+                      onPressed: () {
+                        onDuplexChanged(duplexEnabled ? 'OFF' : 'LEFT');
+                      },
+                      outlined: true,
+                      backgroundColor: duplexEnabled
+                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          : Colors.transparent,
+                      foregroundColor: duplexEnabled
+                          ? BracuPalette.primary
+                          : BracuPalette.textPrimary(context),
+                      borderRadius: 4,
+                      padding: togglePadding,
+                      label: duplexEnabled ? 'Both Side' : 'One Side',
+                      fontSize: toggleFont,
+                    ),
+                  ),
+                  SizedBox(width: gap),
+                  Expanded(
+                    child: BracuActionButton(
+                      onPressed: () {
+                        onCollateChanged(collateEnabled ? 'OFF' : 'ON');
+                      },
+                      outlined: true,
+                      backgroundColor: collateEnabled
+                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          : Colors.transparent,
+                      foregroundColor: collateEnabled
+                          ? BracuPalette.primary
+                          : BracuPalette.textPrimary(context),
+                      borderRadius: 4,
+                      padding: togglePadding,
+                      label: 'Collate',
+                      fontSize: toggleFont,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
 
 class _PrintTicket {
-  const _PrintTicket({required this.copies, required this.duplexMode});
+  const _PrintTicket({
+    required this.copies,
+    required this.duplexMode,
+    required this.collateMode,
+  });
 
   final int copies;
   final String duplexMode;
+  final String collateMode;
 
   String get postScriptPreamble => '%!PS-Adobe-3.0';
 }

@@ -245,32 +245,52 @@ class _DevsPageState extends State<DevsPage> {
               children: [
                 const _IntroCard(),
                 const SizedBox(height: 14),
-                const BracuSectionTitle(title: 'People Behind It'),
-                const SizedBox(height: 10),
-                if (_contributors.isEmpty && _contributorsLoading)
-                  const BracuLoading()
-                else
-                  _ContributorsGrid(contributors: _contributors),
-                const Padding(
-                  padding: EdgeInsets.only(top: 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      BracuSectionTitle(title: 'Sponsored'),
-                      SizedBox(height: 10),
-                      _SponsoredStrip(),
-                    ],
-                  ),
-                ),
+                _buildPeopleSection(),
                 const SizedBox(height: 14),
-                const BracuSectionTitle(title: 'Funding & Support'),
-                const SizedBox(height: 10),
-                const _FundingCard(),
+                _buildSponsoredSection(),
+                const SizedBox(height: 14),
+                _buildFundingSection(),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildPeopleSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const BracuSectionTitle(title: 'People Behind It'),
+        const SizedBox(height: 10),
+        if (_contributors.isEmpty && _contributorsLoading)
+          const BracuLoading()
+        else
+          _ContributorsGrid(contributors: _contributors),
+      ],
+    );
+  }
+
+  Widget _buildSponsoredSection() {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        BracuSectionTitle(title: 'Sponsored'),
+        SizedBox(height: 10),
+        _SponsoredStrip(),
+      ],
+    );
+  }
+
+  Widget _buildFundingSection() {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        BracuSectionTitle(title: 'Funding & Support'),
+        SizedBox(height: 10),
+        _FundingCard(),
+      ],
     );
   }
 }
@@ -324,6 +344,8 @@ class _IntroCard extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         const _RepoButton(),
+        const SizedBox(height: 10),
+        const _CommunityButton(),
       ],
     );
   }
@@ -348,24 +370,65 @@ class _RepoButton extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: BracuPalette.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              alignment: Alignment.center,
-              child: const Icon(
-                Icons.open_in_new,
-                size: 16,
-                color: BracuPalette.primary,
-              ),
+            const Icon(
+              Icons.code_rounded,
+              size: 24,
+              color: BracuPalette.primary,
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             const Expanded(
               child: Text(
                 'View Repository',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: BracuPalette.primary,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 14,
+              color: BracuPalette.primary.withValues(alpha: 0.7),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CommunityButton extends StatelessWidget {
+  const _CommunityButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => openExternalUrl(
+        context,
+        kPreconnectDiscordUrl,
+        failureMessage: 'Unable to open Discord.',
+      ),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: BracuPalette.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: BracuPalette.primary.withValues(alpha: 0.18),
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.forum_rounded,
+              size: 24,
+              color: BracuPalette.primary,
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Join Discord Community',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: BracuPalette.primary,
@@ -448,7 +511,6 @@ class _SponsoredStrip extends StatelessWidget {
           _SponsoredTile(
             title: 'Google Admob',
             subtitle: 'Ads Support Provider',
-            iconColor: BracuPalette.primary,
             leading: _AdSenseLogoImage(),
             url: 'https://admob.google.com/',
           ),
@@ -457,8 +519,11 @@ class _SponsoredStrip extends StatelessWidget {
             width: 220,
             title: 'Become a Sponsor',
             subtitle: 'Tap to chat on WhatsApp',
-            icon: Icons.add,
-            iconColor: Color(0xFF25D366),
+            iconWidget: Icon(
+              Icons.chat_rounded,
+              size: 22,
+              color: Color(0xFF25D366),
+            ),
             url:
                 'https://api.whatsapp.com/send?phone=8801865493144&text=Hi%20PreConnect%2C%20I%20want%20to%20become%20a%20sponsor%20for%20the%20app.',
           ),
@@ -473,8 +538,7 @@ class _SponsoredTile extends StatelessWidget {
     this.width,
     required this.title,
     required this.subtitle,
-    this.icon,
-    required this.iconColor,
+    this.iconWidget,
     this.leading,
     this.url,
   });
@@ -482,8 +546,7 @@ class _SponsoredTile extends StatelessWidget {
   final double? width;
   final String title;
   final String subtitle;
-  final IconData? icon;
-  final Color iconColor;
+  final Widget? iconWidget;
   final Widget? leading;
   final String? url;
 
@@ -492,10 +555,7 @@ class _SponsoredTile extends StatelessWidget {
     final row = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        leading ??
-            (icon != null
-                ? Icon(icon, color: iconColor, size: 22)
-                : const SizedBox.shrink()),
+        leading ?? (iconWidget ?? const SizedBox.shrink()),
         const SizedBox(width: 10),
         Column(
           mainAxisSize: MainAxisSize.min,
@@ -733,23 +793,37 @@ class _LinkChip extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
+  Widget? _iconForLabel() {
+    final normalized = label.trim().toLowerCase();
+    return switch (normalized) {
+      'github' => const Icon(
+        Icons.code_rounded,
+        size: 24,
+        color: BracuPalette.primary,
+      ),
+      'linkedin' => const Icon(
+        Icons.work_outline_rounded,
+        size: 24,
+        color: BracuPalette.primary,
+      ),
+      _ => null,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: BracuPalette.primary.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: BracuPalette.primary,
+    final icon = _iconForLabel();
+    return Tooltip(
+      message: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          decoration: BoxDecoration(color: Colors.transparent),
+          child: Semantics(
+            label: label,
+            button: true,
+            child: icon ?? const SizedBox.shrink(),
           ),
         ),
       ),

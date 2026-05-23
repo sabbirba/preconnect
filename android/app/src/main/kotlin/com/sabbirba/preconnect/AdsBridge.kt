@@ -41,6 +41,10 @@ class AdsBridge(
     }
 
     private fun initialize(call: MethodCall, result: MethodChannel.Result) {
+        if (BuildConfig.DEBUG) {
+            result.success(null)
+            return
+        }
         val testDeviceIds = call.argument<List<*>>("testDeviceIds")
             ?.filterIsInstance<String>()
             .orEmpty()
@@ -55,6 +59,17 @@ class AdsBridge(
     }
 
     private fun showRewarded(call: MethodCall, result: MethodChannel.Result) {
+        if (BuildConfig.DEBUG) {
+            result.success(
+                mapOf(
+                    "shown" to false,
+                    "rewardEarned" to false,
+                    "amount" to 0,
+                    "type" to "",
+                ),
+            )
+            return
+        }
         val adUnitId = call.argument<String>("adUnitId")
             ?.takeIf { it.isNotBlank() }
             ?: BuildConfig.REWARDED_AD_UNIT_ID
@@ -95,6 +110,10 @@ class AdsBridge(
     }
 
     private fun showInterstitial(call: MethodCall, result: MethodChannel.Result) {
+        if (BuildConfig.DEBUG) {
+            result.success(false)
+            return
+        }
         val adUnitId = call.argument<String>("adUnitId")
             ?.takeIf { it.isNotBlank() }
             ?: BuildConfig.INTERSTITIAL_AD_UNIT_ID
@@ -150,22 +169,24 @@ private class BannerAdPlatformView(
     private val adView = AdView(context)
 
     init {
-        val bannerWidthDp = resolveBannerWidthDp(context, args)
-        val adUnitId = BuildConfig.BANNER_AD_UNIT_ID
-        if (adUnitId.isNotBlank()) {
-            adView.adUnitId = adUnitId
-            adView.setAdSize(
-                AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, bannerWidthDp),
-            )
-            container.addView(
-                adView,
-                FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.WRAP_CONTENT,
-                    Gravity.CENTER_HORIZONTAL,
-                ),
-            )
-            adView.loadAd(AdRequest.Builder().build())
+        if (!BuildConfig.DEBUG) {
+            val bannerWidthDp = resolveBannerWidthDp(context, args)
+            val adUnitId = BuildConfig.BANNER_AD_UNIT_ID
+            if (adUnitId.isNotBlank()) {
+                adView.adUnitId = adUnitId
+                adView.setAdSize(
+                    AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, bannerWidthDp),
+                )
+                container.addView(
+                    adView,
+                    FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        Gravity.CENTER_HORIZONTAL,
+                    ),
+                )
+                adView.loadAd(AdRequest.Builder().build())
+            }
         }
     }
 

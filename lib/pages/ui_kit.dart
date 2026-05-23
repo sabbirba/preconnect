@@ -27,7 +27,12 @@ import 'package:open_filex/open_filex.dart';
 
 export 'package:preconnect/tools/web_shared.dart';
 
-part 'shared_widgets/ui_kit_components.dart';
+part 'shared_widgets/ui_kit_core.dart';
+part 'shared_widgets/ui_kit_dialogs.dart';
+part 'shared_widgets/ui_kit_selects.dart';
+part 'shared_widgets/ui_kit_refresh.dart';
+part 'shared_widgets/ui_kit_chrome.dart';
+part 'shared_widgets/ui_kit_launchers.dart';
 
 String formatDate(String? input) {
   if (input == null || input.trim().isEmpty) return '';
@@ -102,144 +107,11 @@ String formatDateTimeLabel(
   return '$date$separator${BracuTime.formatDateTime(localDateTime)}';
 }
 
-Future<bool> showRewardSupportFlow(BuildContext context) async {
-  if (!AdsPreferences.instance.isVisible) {
-    showAppSnackBar(context, 'Hidden in settings');
-    return false;
-  }
-  if (!AdsBridge.isSupportedPlatform) {
-    showAppSnackBar(context, 'Available on mobile only');
-    return false;
-  }
-
-  try {
-    final result = await AdsBridge.showRewarded();
-    if (!context.mounted) return false;
-    if (!result.rewardEarned) {
-      showAppSnackBar(
-        context,
-        result.shown
-            ? 'Watch the full video to support PreConnect'
-            : 'Support video is not ready yet',
-      );
-      return false;
-    }
-
-    final count = await RewardSupportController.instance.recordReward();
-    if (!context.mounted) return false;
-    await AdsBridge.showInterstitial();
-    if (!context.mounted) return false;
-    HapticFeedback.lightImpact();
-    showAppSnackBar(context, 'Thanks! Support #$count added.');
-    return true;
-  } catch (_) {
-    if (context.mounted) {
-      showAppSnackBar(context, 'Support video could not be shown');
-    }
-    return false;
-  }
-}
-
 void copyToClipboard(BuildContext context, String text) {
   final value = text.trim();
   if (value.isEmpty) return;
   Clipboard.setData(ClipboardData(text: value));
   showAppSnackBar(context, 'Copied to clipboard');
-}
-
-Future<bool> openExternalUrl(
-  BuildContext context,
-  String rawUrl, {
-  String failureMessage = 'Unable to open link.',
-  LaunchMode mobilePreferredMode = LaunchMode.inAppBrowserView,
-  LaunchMode mobileFallbackMode = LaunchMode.externalApplication,
-}) async {
-  var url = rawUrl.trim();
-  url = url.replaceAll(RegExp(r'\s+'), '');
-  if (url.startsWith('www.')) {
-    url = 'https://$url';
-  }
-  if (url.isEmpty) {
-    if (context.mounted) showAppSnackBar(context, failureMessage);
-    return false;
-  }
-  final uri = Uri.tryParse(url);
-  if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
-    if (context.mounted) showAppSnackBar(context, failureMessage);
-    return false;
-  }
-  final platform = Theme.of(context).platform;
-  final isMobilePlatform =
-      !kIsWeb &&
-      (platform == TargetPlatform.android || platform == TargetPlatform.iOS);
-  final mode = isMobilePlatform
-      ? mobilePreferredMode
-      : LaunchMode.platformDefault;
-  var launched = await launchUrl(uri, mode: mode);
-  if (!launched && isMobilePlatform) {
-    launched = await launchUrl(uri, mode: mobileFallbackMode);
-  }
-  if (!launched && context.mounted) {
-    showAppSnackBar(context, failureMessage);
-  }
-  return launched;
-}
-
-Future<bool> openMailComposer(
-  BuildContext context,
-  String email, {
-  String failureMessage = 'Unable to open email compose',
-}) async {
-  final cleaned = email.trim();
-  if (cleaned.isEmpty) {
-    if (context.mounted) showAppSnackBar(context, failureMessage);
-    return false;
-  }
-  final mailtoUri = Uri(scheme: 'mailto', path: cleaned);
-  final openedMail = await launchUrl(
-    mailtoUri,
-    mode: LaunchMode.platformDefault,
-  );
-  if (!openedMail && context.mounted) {
-    showAppSnackBar(context, failureMessage);
-  }
-  return openedMail;
-}
-
-Future<bool> openPhoneDialer(
-  BuildContext context,
-  String phone, {
-  String failureMessage = 'Unable to open phone dialer',
-}) async {
-  final cleaned = phone.trim();
-  if (cleaned.isEmpty) {
-    if (context.mounted) showAppSnackBar(context, failureMessage);
-    return false;
-  }
-  final normalized = cleaned.replaceAll(RegExp(r'[^\d+]'), '');
-  if (normalized.isEmpty) {
-    if (context.mounted) showAppSnackBar(context, failureMessage);
-    return false;
-  }
-  final telUri = Uri(scheme: 'tel', path: normalized);
-  final opened = await launchUrl(telUri, mode: LaunchMode.platformDefault);
-  if (!opened && context.mounted) {
-    showAppSnackBar(context, failureMessage);
-  }
-  return opened;
-}
-
-Widget buildCenteredOutlinedActionButton({
-  required String label,
-  required VoidCallback onPressed,
-  EdgeInsetsGeometry padding = const EdgeInsets.only(top: 2, bottom: 8),
-}) {
-  return Padding(
-    padding: padding,
-    child: Center(
-      child: BracuActionButton(onPressed: onPressed, label: label),
-    ),
-  );
 }
 
 class BracuImageCarousel extends StatefulWidget {
@@ -679,9 +551,9 @@ Future<void> showBracuFundingSupportSheet(BuildContext context) async {
               height: 1.45,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           const BracuRewardVideoSection(),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           const BracuFundingSupportContent(),
         ],
       );
@@ -745,7 +617,9 @@ class _BracuRewardVideoSectionState extends State<BracuRewardVideoSection> {
     return ValueListenableBuilder<bool>(
       valueListenable: AdsPreferences.instance.adsVisible,
       builder: (context, adsVisible, _) {
-        if (!adsVisible) return const SizedBox.shrink();
+        if (!adsVisible || !AdsBridge.isSupportedPlatform) {
+          return const SizedBox.shrink();
+        }
         return ValueListenableBuilder<int>(
           valueListenable: RewardSupportController.instance.supportCount,
           builder: (context, supportCount, _) {
@@ -846,7 +720,9 @@ class _BracuInterstitialAdSectionState
     return ValueListenableBuilder<bool>(
       valueListenable: AdsPreferences.instance.adsVisible,
       builder: (context, adsVisible, _) {
-        if (!adsVisible) return const SizedBox.shrink();
+        if (!adsVisible || !AdsBridge.isSupportedPlatform) {
+          return const SizedBox.shrink();
+        }
         final textPrimary = BracuPalette.textPrimary(context);
         final textSecondary = BracuPalette.textSecondary(context);
         return Padding(
@@ -1105,10 +981,88 @@ PopupMenuItem<T> compactPopupMenuItem<T>({
 
 const String _kPreconnectSupportNumber = '01865493144';
 const String _kPreconnectSupportReference = 'PreConnect App';
+const String _kPreconnectSupportQrUrl = 'https://preconnect.app/bkash-qr.png';
+const String kPreconnectDiscordUrl = 'https://discord.gg/HwrgeFrvaz';
 const String _kPreconnectWhatsAppUrl =
     'https://api.whatsapp.com/send?phone=8801865493144&text=Hi%20PreConnect%2C%20I%20want%20to%20support%20the%20app.';
 const String kPreconnectRepositoryUrl =
     'https://github.com/sabbirba/preconnect';
+
+class BracuCommunityLink extends StatelessWidget {
+  const BracuCommunityLink({super.key, this.compact = false});
+
+  final bool compact;
+
+  static const String _title = 'Join Our Discord Community';
+  static const String _subtitle =
+      'Connect with users, developers, and support in one place.';
+  static const String _label = 'Discord';
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: HomeCardPreferences.sponsoredContentNotifier,
+      builder: (context, showSponsoredContent, _) {
+        if (!showSponsoredContent) return const SizedBox.shrink();
+
+        if (compact) {
+          return _BracuSponsorActionChip(
+            iconWidget: const Icon(
+              Icons.forum_rounded,
+              size: 18,
+              color: BracuPalette.primary,
+            ),
+            label: _label,
+            onTap: () => openExternalUrl(
+              context,
+              kPreconnectDiscordUrl,
+              failureMessage: 'Unable to open Discord.',
+            ),
+          );
+        }
+
+        return InkWell(
+          onTap: () => openExternalUrl(
+            context,
+            kPreconnectDiscordUrl,
+            failureMessage: 'Unable to open Discord.',
+          ),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: const Color(0xFF5865F2).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: BracuPalette.textPrimary(context),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _subtitle,
+                  style: TextStyle(
+                    fontSize: 11,
+                    height: 1.2,
+                    color: BracuPalette.textSecondary(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
 
 class BracuFundingSupportContent extends StatelessWidget {
   const BracuFundingSupportContent({super.key});
@@ -1119,24 +1073,37 @@ class BracuFundingSupportContent extends StatelessWidget {
       children: [
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: BracuPalette.primary.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: BracuPalette.primary.withValues(alpha: 0.12),
-            ),
-          ),
+          padding: const EdgeInsets.all(0),
           child: Column(
             children: [
-              Icon(
-                Icons.volunteer_activism_rounded,
-                color: BracuPalette.primary,
-                size: 34,
+              ClipRRect(
+                borderRadius: BorderRadius.zero,
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: Image.network(
+                    _kPreconnectSupportQrUrl,
+                    fit: BoxFit.cover,
+                    filterQuality: FilterQuality.high,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.zero,
+                        ),
+                        child: Icon(
+                          Icons.qr_code_2_rounded,
+                          color: BracuPalette.primary,
+                          size: 44,
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Text(
-                'Support via bKash, Nagad, or Upay',
+                'Open the QR code in your bKash app to support PreConnect. You can also send money manually using the number and reference below.',
                 style: TextStyle(
                   color: BracuPalette.textPrimary(context),
                   fontSize: 15,
@@ -1147,9 +1114,9 @@ class BracuFundingSupportContent extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         const BracuSupportNumberRow(number: _kPreconnectSupportNumber),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Text(
           'Send money with reference',
           style: TextStyle(
@@ -1158,7 +1125,7 @@ class BracuFundingSupportContent extends StatelessWidget {
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 0),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
@@ -1189,7 +1156,7 @@ class BracuFundingSupportContent extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Text(
           'Your support helps cover server costs, ongoing development, and app releases so PreConnect can stay reliable.',
           style: TextStyle(
@@ -1199,19 +1166,27 @@ class BracuFundingSupportContent extends StatelessWidget {
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 2),
         Wrap(
           alignment: WrapAlignment.center,
           spacing: 8,
           runSpacing: 8,
           children: [
             _BracuSponsorActionChip(
-              icon: Icons.call_outlined,
+              iconWidget: const Icon(
+                Icons.phone_rounded,
+                size: 18,
+                color: BracuPalette.primary,
+              ),
               label: _kPreconnectSupportNumber,
               onTap: () => openPhoneDialer(context, _kPreconnectSupportNumber),
             ),
             _BracuSponsorActionChip(
-              icon: Icons.chat_bubble_outline_rounded,
+              iconWidget: const Icon(
+                Icons.chat_rounded,
+                size: 18,
+                color: BracuPalette.primary,
+              ),
               label: 'WhatsApp',
               onTap: () => openExternalUrl(
                 context,
@@ -1219,8 +1194,13 @@ class BracuFundingSupportContent extends StatelessWidget {
                 failureMessage: 'Unable to open WhatsApp.',
               ),
             ),
+            const BracuCommunityLink(compact: true),
             _BracuSponsorActionChip(
-              icon: Icons.open_in_new_rounded,
+              iconWidget: const Icon(
+                Icons.code_rounded,
+                size: 18,
+                color: BracuPalette.primary,
+              ),
               label: 'GitHub Repository',
               onTap: () => openExternalUrl(context, kPreconnectRepositoryUrl),
             ),
@@ -1233,23 +1213,54 @@ class BracuFundingSupportContent extends StatelessWidget {
 
 class _BracuSponsorActionChip extends StatelessWidget {
   const _BracuSponsorActionChip({
-    required this.icon,
+    this.iconWidget,
     required this.label,
     required this.onTap,
   });
 
-  final IconData icon;
+  final Widget? iconWidget;
   final String label;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    if (iconWidget != null) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: BracuPalette.textSecondary(
+                context,
+              ).withValues(alpha: 0.18),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              iconWidget!,
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: BracuPalette.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return BracuActionButton(
       onPressed: onTap,
-      icon: icon,
       label: label,
       borderRadius: 999,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      iconWidget: iconWidget,
     );
   }
 }

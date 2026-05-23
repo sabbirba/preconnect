@@ -34,9 +34,6 @@ class ApiConfig {
   static const String websiteMueenAvatarUrl = '$websiteBase/Mueen-Ahmmed.jpeg';
   static const String websiteAdSenseLogoUrl = '$websiteBase/google-adsense.png';
   static const String filesBase = 'https://cdn.preconnect.app';
-  static const String playIntegrityCloudProjectNumber = String.fromEnvironment(
-    'PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER',
-  );
 
   static const String clientId = 'slm';
   static const String redirectUri = '$connectOrigin/student/profile/overview';

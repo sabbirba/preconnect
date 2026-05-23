@@ -242,9 +242,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(
-                                    Icons.language_rounded,
-                                    size: 16,
+                                  const Icon(
+                                    Icons.public_rounded,
+                                    size: 18,
                                     color: BracuPalette.accent,
                                   ),
                                   const SizedBox(width: 8),
@@ -273,9 +273,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(
-                                    Icons.open_in_new,
-                                    size: 16,
+                                  const Icon(
+                                    Icons.code_rounded,
+                                    size: 18,
                                     color: BracuPalette.primary,
                                   ),
                                   const SizedBox(width: 8),

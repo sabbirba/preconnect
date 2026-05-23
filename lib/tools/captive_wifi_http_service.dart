@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:preconnect/tools/android_network_assist.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
 class CaptiveWifiHttpResult {
@@ -26,6 +27,27 @@ class CaptiveWifiHttpService {
   );
 
   static const Duration _connectionTimeout = Duration(seconds: 10);
+
+  static Uri? resolvePortalUri(AndroidNetworkStatus status) {
+    final captiveWifiUrl = (status.captiveWifiUrl ?? '').trim();
+    final parsedUrl = Uri.tryParse(captiveWifiUrl);
+    if (parsedUrl != null &&
+        parsedUrl.hasScheme &&
+        parsedUrl.hasAuthority &&
+        (parsedUrl.scheme == 'http' || parsedUrl.scheme == 'https')) {
+      return parsedUrl;
+    }
+
+    final gatewayAddress = (status.gatewayAddress ?? '').trim();
+    if (gatewayAddress.isNotEmpty) {
+      return Uri.tryParse('http://$gatewayAddress/');
+    }
+
+    if (status.transport == 'wifi' && (status.captive || !status.validated)) {
+      return defaultProbeUri;
+    }
+    return null;
+  }
 
   HttpClient newClient() {
     final client = HttpClient()..userAgent = kPreconnectUserAgent;

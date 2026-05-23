@@ -157,7 +157,11 @@ class _ContactsCard extends StatelessWidget {
                                   openMailComposer(context, entry.value.email),
                               borderRadius: BorderRadius.circular(999),
                               child: _InfoChip(
-                                icon: Icons.mail_outline_rounded,
+                                iconWidget: const Icon(
+                                  Icons.email_rounded,
+                                  size: 12,
+                                  color: BracuPalette.primary,
+                                ),
                                 text: entry.value.email,
                               ),
                             ),

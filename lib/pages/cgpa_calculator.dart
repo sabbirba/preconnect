@@ -627,7 +627,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
       context,
       title: courseCode.isEmpty ? 'Select grade' : courseCode,
       subtitle: subtitle,
-      initialChildSize: 0.40,
+      initialChildSize: 0.64,
       actions: [
         IconButton(
           onPressed: () => Navigator.of(context).pop(resetGrade),
@@ -640,31 +640,38 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
       ],
       builder: (sheetContext, textPrimary, textSecondary) {
         return SingleChildScrollView(
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _gradeOptions.map((grade) {
-              final selected = currentGrade == grade;
-              return ChoiceChip(
-                label: Text(grade),
-                selected: selected,
-                showCheckmark: false,
-                labelStyle: TextStyle(
-                  color: selected ? BracuPalette.primary : textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
-                backgroundColor: BracuPalette.card(
-                  sheetContext,
-                ).withValues(alpha: 0.92),
-                selectedColor: BracuPalette.primary.withValues(alpha: 0.14),
-                side: BorderSide(
-                  color: selected
-                      ? BracuPalette.primary
-                      : textSecondary.withValues(alpha: 0.24),
-                ),
-                onSelected: (_) => Navigator.of(sheetContext).pop(grade),
-              );
-            }).toList(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _gradeOptions.map((grade) {
+                  final selected = currentGrade == grade;
+                  return ChoiceChip(
+                    label: Text(grade),
+                    selected: selected,
+                    showCheckmark: false,
+                    labelStyle: TextStyle(
+                      color: selected ? BracuPalette.primary : textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    backgroundColor: BracuPalette.card(
+                      sheetContext,
+                    ).withValues(alpha: 0.92),
+                    selectedColor: BracuPalette.primary.withValues(alpha: 0.14),
+                    side: BorderSide(
+                      color: selected
+                          ? BracuPalette.primary
+                          : textSecondary.withValues(alpha: 0.24),
+                    ),
+                    onSelected: (_) => Navigator.of(sheetContext).pop(grade),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 14),
+              _buildGradeGuideLegend(sheetContext, textPrimary, textSecondary),
+            ],
           ),
         );
       },

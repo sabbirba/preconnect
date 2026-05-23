@@ -412,7 +412,7 @@ Future<void> showCampusMapBottomSheet(
                       SizedBox(
                         width: buttonWidth,
                         child: BracuActionButton(
-                          icon: Icons.alternate_email_rounded,
+                          iconWidget: const Icon(Icons.email_rounded, size: 16),
                           label: 'Email',
                           onPressed: mapData.primaryEmail.isEmpty
                               ? null
@@ -439,7 +439,10 @@ Future<void> showCampusMapBottomSheet(
                         SizedBox(
                           width: constraints.maxWidth,
                           child: BracuActionButton(
-                            icon: Icons.call_outlined,
+                            iconWidget: const Icon(
+                              Icons.phone_rounded,
+                              size: 16,
+                            ),
                             label: mapData.primaryPhoneRaw.isEmpty
                                 ? 'Call'
                                 : mapData.primaryPhoneRaw,
@@ -576,8 +579,8 @@ Future<void> showCampusMapBottomSheet(
                                               email,
                                             ),
                                             icon: const Icon(
-                                              Icons.email_outlined,
-                                              size: 18,
+                                              Icons.email_rounded,
+                                              size: 16,
                                             ),
                                             tooltip: 'Email',
                                           ),
@@ -685,7 +688,7 @@ Future<void> showCampusMapBottomSheet(
                                               );
                                             },
                                             icon: const Icon(
-                                              Icons.call_outlined,
+                                              Icons.phone_rounded,
                                               size: 18,
                                             ),
                                             tooltip: 'Call',
