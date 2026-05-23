@@ -8,7 +8,6 @@ import 'package:preconnect/tools/play_install_referrer.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_refresh_flow.dart';
 import 'package:preconnect/tools/token_storage.dart';
-import 'package:rhttp/rhttp.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -21,10 +20,12 @@ class ApiClient {
 
   Future<bool> hasConnection({bool forceRefresh = false}) async {
     try {
-      final response = await Rhttp.get(
-        Uri.parse(ApiConfig.connectApiBase).toString(),
-        headers: HttpHeaders.rawMap(compressionHeaders()),
-      ).timeout(_connectivityProbeTimeout);
+      final response = await HttpService.client
+          .get(
+            Uri.parse(ApiConfig.connectApiBase),
+            headers: compressionHeaders(),
+          )
+          .timeout(_connectivityProbeTimeout);
       return response.statusCode < 500;
     } catch (_) {
       return false;
