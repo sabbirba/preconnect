@@ -221,6 +221,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
       - name: Setup Java
         if: matrix.platform == 'android'
         uses: actions/setup-java@v5
