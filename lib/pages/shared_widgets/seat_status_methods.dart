@@ -195,11 +195,20 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _buildSearchField(context),
           const SizedBox(height: 10),
           _buildFilterActions(context),
+          const SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.only(left: 20, right: 20, bottom: 10),
+            child: Text(
+              "Hint: Tap on any card to view the community sheet (reviews etc.) for its corresponding course/faculty.",
+              style: TextStyle(color: Theme.of(context).hintColor),
+              textAlign: TextAlign.justify,
+            ),
+          ),
         ],
       ),
     );
