@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:preconnect/api/api_config.dart';
-import 'package:rhttp/rhttp.dart';
+import 'package:preconnect/tools/http_service.dart';
 
 typedef HolidayItem = ({String startDate, String endDate, String label});
 
@@ -193,10 +193,9 @@ class HolidayTiming {
   _fetchTodayStatus() async {
     for (final url in _statusUrls) {
       try {
-        final response = await Rhttp.get(
-          Uri.parse(url).toString(),
-          headers: HttpHeaders.rawMap({'Accept': 'application/json'}),
-        ).timeout(_requestTimeout);
+        final response = await HttpService.client
+            .get(Uri.parse(url), headers: {'Accept': 'application/json'})
+            .timeout(_requestTimeout);
 
         if (response.statusCode != 200 || response.body.trim().isEmpty) {
           continue;
