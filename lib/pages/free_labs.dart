@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:http/http.dart' as http;
+import 'package:preconnect/api/http_service.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/seat_status_service.dart';
@@ -420,7 +420,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     }
 
     try {
-      final response = await http
+      final response = await HttpService.client
           .get(Uri.parse(_freeLabsUrl))
           .timeout(const Duration(seconds: 12));
       if (response.statusCode != 200) {

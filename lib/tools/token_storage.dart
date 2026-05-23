@@ -5,7 +5,8 @@ import 'package:flutter/foundation.dart'
     show ValueNotifier, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart' show TargetPlatform;
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
+import 'package:preconnect/api/http_service.dart';
+
 import 'package:in_app_review/in_app_review.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:preconnect/api/api_client.dart';
@@ -479,7 +480,7 @@ class ProfileImageCache {
 
     try {
       final uri = Uri.parse(photoUrl);
-      final response = await http.get(
+      final response = await HttpService.client.get(
         uri,
         headers: compressionHeadersForUri(uri),
       );

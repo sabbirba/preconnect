@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:preconnect/api/http_service.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/api_config.dart';
@@ -97,7 +97,7 @@ class AuthService {
   }) async {
     try {
       if (kIsWeb) {
-        await http
+        await HttpService.client
             .delete(
               Uri.parse(
                 '${ApiConfig.connectWebApiBase}${ApiConfig.connectMercureLogoutPath}',
@@ -108,7 +108,7 @@ class AuthService {
       }
 
       if (refreshToken != null && refreshToken.isNotEmpty) {
-        await http
+        await HttpService.client
             .post(
               Uri.parse(ApiConfig.logoutEndpoint),
               headers: {'Content-Type': 'application/x-www-form-urlencoded'},

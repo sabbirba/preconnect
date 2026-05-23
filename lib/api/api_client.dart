@@ -3,10 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth_service.dart';
+import 'package:preconnect/api/http_service.dart';
 import 'package:preconnect/tools/play_install_referrer.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_refresh_flow.dart';
 import 'package:preconnect/tools/token_storage.dart';
+import 'package:rhttp/rhttp.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -19,12 +21,10 @@ class ApiClient {
 
   Future<bool> hasConnection({bool forceRefresh = false}) async {
     try {
-      final response = await http
-          .get(
-            Uri.parse(ApiConfig.connectApiBase),
-            headers: compressionHeaders(),
-          )
-          .timeout(_connectivityProbeTimeout);
+      final response = await Rhttp.get(
+        Uri.parse(ApiConfig.connectApiBase).toString(),
+        headers: HttpHeaders.rawMap(compressionHeaders()),
+      ).timeout(_connectivityProbeTimeout);
       return response.statusCode < 500;
     } catch (_) {
       return false;
@@ -69,7 +69,7 @@ class ApiClient {
       headers.addAll(additionalHeaders);
     }
 
-    final response = await http
+    final response = await HttpService.client
         .get(Uri.parse(url), headers: headers)
         .timeout(_requestTimeout);
     if (acceptedStatusCodes.contains(response.statusCode)) {
@@ -110,7 +110,7 @@ class ApiClient {
         retryHeaders.addAll(additionalHeaders);
       }
 
-      final retryResponse = await http
+      final retryResponse = await HttpService.client
           .get(Uri.parse(url), headers: retryHeaders)
           .timeout(_requestTimeout);
       if (acceptedStatusCodes.contains(retryResponse.statusCode)) {
