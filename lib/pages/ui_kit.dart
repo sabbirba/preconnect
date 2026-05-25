@@ -993,9 +993,9 @@ class BracuCommunityLink extends StatelessWidget {
 
   final bool compact;
 
-  static const String _title = 'Join Our Discord Community';
+  static const String _title = 'PreConnect Discord Server';
   static const String _subtitle =
-      'Connect with users, developers, and support in one place.';
+      'Students, developers, and support in one place';
   static const String _label = 'Discord';
 
   @override
@@ -1021,52 +1021,19 @@ class BracuCommunityLink extends StatelessWidget {
           );
         }
 
-        return InkWell(
-          onTap: () => openExternalUrl(
-            context,
-            kPreconnectDiscordUrl,
-            failureMessage: 'Unable to open Discord.',
-          ),
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-            decoration: BoxDecoration(
-              color: const Color(0xFF5865F2).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.discord,
-                  color: Color.fromRGBO(88, 101, 242, 1),
-                ),
-                const SizedBox(width: 15),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _title,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: BracuPalette.textPrimary(context),
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _subtitle,
-                      style: TextStyle(
-                        fontSize: 11,
-                        height: 1.2,
-                        color: BracuPalette.textSecondary(context),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+        return BracuActionBannerCard(
+          icon: Icons.discord,
+          iconColor: Color.fromRGBO(88, 101, 242, 1),
+          title: _title,
+          subtitle: _subtitle,
+          onTap: () {
+            openExternalUrl(
+              context,
+              kPreconnectDiscordUrl,
+              failureMessage: 'Unable to open Discord.',
+            );
+            showAppSnackBar(context, 'Opened server link.');
+          },
         );
       },
     );
