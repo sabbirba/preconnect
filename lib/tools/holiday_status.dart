@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/tools/http_service.dart';
+import 'package:preconnect/tools/http/http_service.dart';
 
 typedef HolidayItem = ({String startDate, String endDate, String label});
 

@@ -6,7 +6,7 @@ import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:preconnect/tools/http_service.dart';
+import 'package:preconnect/tools/http/http_service.dart';
 import 'package:dart_pdf_reader/dart_pdf_reader.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/profile_service.dart';

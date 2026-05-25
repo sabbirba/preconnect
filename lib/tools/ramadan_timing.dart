@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:preconnect/tools/http_service.dart';
+import 'package:preconnect/tools/http/http_service.dart';
 
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/time_utils.dart';

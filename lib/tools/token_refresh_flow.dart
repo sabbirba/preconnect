@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:preconnect/tools/http_service.dart';
+import 'package:preconnect/tools/http/http_service.dart';
 import 'package:preconnect/tools/web_extension_api_config.dart';
 
 enum TokenRefreshStatus { refreshed, invalidSession, retryableFailure }
