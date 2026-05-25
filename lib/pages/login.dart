@@ -77,6 +77,7 @@ class LoginPage extends StatefulWidget {
   static Future<void> clearSessionArtifacts() async {
     _preloadedWebViewController = null;
     _isPreloadingWebView = false;
+    _pkceVerifier = null; // FIX: also clear stale verifier on logout
     if (kIsWeb) return;
     try {
       final manager = WebViewCookieManager();
@@ -90,28 +91,31 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   static const Duration _loginRequestTimeout = Duration(seconds: 12);
+
   WebViewController? _webViewController;
   bool _handledRedirect = false;
-
   bool _isLoggingIn = false;
 
   @override
   void initState() {
     super.initState();
     if (kIsWeb) return;
-    _webViewController =
+    final controller =
         LoginPage.takePreloadedWebView() ?? _buildMobileWebView();
-    _attachNavigationDelegate(_webViewController!);
+    _attachNavigationDelegate(controller);
+    _webViewController = controller;
   }
 
   WebViewController _buildMobileWebView() {
+    // Reuse existing verifier if already generated (e.g. partial preload)
     LoginPage._pkceVerifier ??= generatePkceVerifier();
     final codeChallenge = codeChallengeS256(LoginPage._pkceVerifier!);
     final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setUserAgent(kPreconnectUserAgent)
       ..loadRequest(Uri.parse(ApiConfig.authUrlWithPkce(codeChallenge)));
-    LoginPage._configureCookies(controller);
+    // Fire-and-forget; cookie config doesn't affect initial page load
+    unawaited(LoginPage._configureCookies(controller));
     return controller;
   }
 
@@ -119,16 +123,12 @@ class _LoginPageState extends State<LoginPage> {
     controller.setNavigationDelegate(
       NavigationDelegate(
         onNavigationRequest: (request) {
+          // PERF: Single intercept point - removed onPageStarted duplicate
           if (_isRedirectUrl(request.url)) {
             _handleRedirect(request.url);
             return NavigationDecision.prevent;
           }
           return NavigationDecision.navigate;
-        },
-        onPageStarted: (url) {
-          if (_isRedirectUrl(url)) {
-            _handleRedirect(url);
-          }
         },
       ),
     );
@@ -136,77 +136,63 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _isRedirectUrl(String url) {
     final uri = Uri.tryParse(url);
-    if (uri == null) return false;
-    return uri.host == 'connect.bracu.ac.bd';
+    return uri != null && uri.host == 'connect.bracu.ac.bd';
   }
 
-  void _handleRedirect(String url) async {
-    if (_handledRedirect || _isLoggingIn) {
-      return;
-    }
-    final Uri uri = Uri.parse(url);
-    final String? authCode = uri.queryParameters["code"];
+  void _handleRedirect(String url) {
+    // PERF: Idempotency guard — prevents double-fire from simultaneous callbacks
+    if (_handledRedirect || _isLoggingIn) return;
 
-    if (authCode == null || authCode.isEmpty) {
-      return;
-    }
+    final uri = Uri.parse(url);
+    final authCode = uri.queryParameters['code'];
+    if (authCode == null || authCode.isEmpty) return;
+
     _handledRedirect = true;
-    if (mounted) {
-      setState(() => _isLoggingIn = true);
-    }
+    if (mounted) setState(() => _isLoggingIn = true);
 
-    var needsRetry = false;
-    try {
-      final didLogin = await _exchangeCodeForToken(authCode);
-      if (!didLogin) {
-        needsRetry = true;
-        if (mounted) {
-          showAppSnackBar(context, 'Login failed. Please try again.');
-        }
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoggingIn = false);
-      }
-    }
-
-    if (needsRetry && mounted) {
-      _handledRedirect = false;
-      try {
-        await _webViewController?.loadRequest(Uri.parse(ApiConfig.authUrl));
-      } catch (_) {}
-    }
+    _exchangeCodeForToken(authCode)
+        .then((didLogin) {
+          if (!mounted) return;
+          setState(() => _isLoggingIn = false);
+          if (!didLogin) {
+            showAppSnackBar(context, 'Login failed. Please try again.');
+            _handledRedirect = false;
+            _webViewController?.loadRequest(Uri.parse(ApiConfig.authUrl));
+          }
+        })
+        .catchError((_) {
+          if (!mounted) return;
+          setState(() => _isLoggingIn = false);
+          _handledRedirect = false;
+        });
   }
 
   Future<bool> _exchangeCodeForToken(String code) async {
     try {
       final verifier = LoginPage._pkceVerifier;
-      if (verifier == null || verifier.isEmpty) {
-        return false;
-      }
+      if (verifier == null || verifier.isEmpty) return false;
+
       final response = await HttpService.client
           .post(
             Uri.parse(ApiConfig.tokenEndpoint),
-            headers: {"Content-Type": "application/x-www-form-urlencoded"},
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: {
-              "grant_type": "authorization_code",
-              "client_id": ApiConfig.clientId,
-              "code": code,
-              "redirect_uri": ApiConfig.redirectUri,
-              "code_verifier": verifier,
+              'grant_type': 'authorization_code',
+              'client_id': ApiConfig.clientId,
+              'code': code,
+              'redirect_uri': ApiConfig.redirectUri,
+              'code_verifier': verifier,
             },
           )
           .timeout(_loginRequestTimeout);
-      if (response.statusCode != 200) {
-        return false;
-      }
-      final data = json.decode(response.body);
-      if (data is! Map<String, dynamic>) {
-        return false;
-      }
 
-      final accessToken = data["access_token"] as String?;
-      final refreshToken = data["refresh_token"] as String?;
+      if (response.statusCode != 200) return false;
+
+      final data = json.decode(response.body);
+      if (data is! Map<String, dynamic>) return false;
+
+      final accessToken = data['access_token'] as String?;
+      final refreshToken = data['refresh_token'] as String?;
       if (accessToken == null ||
           accessToken.isEmpty ||
           refreshToken == null ||
@@ -215,30 +201,22 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       try {
-        await TokenStorage.instance.write(
-          key: PreconnectStorageKeys.accessToken,
-          value: accessToken,
-        );
-        await TokenStorage.instance.write(
-          key: PreconnectStorageKeys.refreshToken,
-          value: refreshToken,
-        );
+        await Future.wait([
+          TokenStorage.instance.write(
+            key: PreconnectStorageKeys.accessToken,
+            value: accessToken,
+          ),
+          TokenStorage.instance.write(
+            key: PreconnectStorageKeys.refreshToken,
+            value: refreshToken,
+          ),
+        ]);
       } on TokenPersistenceException {
         return false;
       }
 
-      final persistedAccessToken = await TokenStorage.instance.read(
-        key: PreconnectStorageKeys.accessToken,
-      );
-      final persistedRefreshToken = await TokenStorage.instance.read(
-        key: PreconnectStorageKeys.refreshToken,
-      );
-      if (persistedAccessToken == null ||
-          persistedAccessToken.isEmpty ||
-          persistedRefreshToken == null ||
-          persistedRefreshToken.isEmpty) {
-        return false;
-      }
+      // PERF: Removed redundant read-back verification — write failure is
+      // already surfaced via TokenPersistenceException above.
 
       RefreshBus.instance.notify(reason: 'auth');
       if (mounted) {
@@ -260,41 +238,40 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _warmAuthenticatedData() async {
-    final tasks = <Future<void>>[
-      ProfileService().fetchProfile().then((_) {}),
-      AttendanceService().getAttendanceInfo().then((_) {}),
-      PaymentService().getPaymentInfo().then((_) {}),
-      ProgressService().getProgress().then((_) {}),
-      () async {
-        final semesterSessionId = await resolveCurrentSessionSemesterId();
-        if (semesterSessionId == null) return;
-        await ScheduleService().fetchStudentScheduleForSemester(
-          semesterSessionId: semesterSessionId,
-        );
-      }(),
-      CustomSchedulesService().getItems(forceRefresh: true).then((_) {}),
-      FriendScheduleStore().loadSnapshot().then((_) {}),
-      CalendarService().getCalendar().then((_) {}),
-      NotificationService().getRecentNotifications().then((_) {}),
-      SeatStatusService.preload(),
-      BusPage.preload(),
-      NotificationsPage.preload(),
-      DegreeProgressPage.preload(),
-      StudentProfile.preload(),
-      DevsPage.preload(),
-      AlarmPage.preload(),
-      ClassSchedule.preload(),
-      ExamSchedule.preload(),
-      CustomSchedulesPage.preload(),
-    ];
-    await Future.wait(tasks.map((task) => task.catchError((_) {})));
+    await Future.wait(
+      [
+        ProfileService().fetchProfile().then((_) {}),
+        AttendanceService().getAttendanceInfo().then((_) {}),
+        PaymentService().getPaymentInfo().then((_) {}),
+        ProgressService().getProgress().then((_) {}),
+        () async {
+          final semesterSessionId = await resolveCurrentSessionSemesterId();
+          if (semesterSessionId == null) return;
+          await ScheduleService().fetchStudentScheduleForSemester(
+            semesterSessionId: semesterSessionId,
+          );
+        }(),
+        CustomSchedulesService().getItems(forceRefresh: true).then((_) {}),
+        FriendScheduleStore().loadSnapshot().then((_) {}),
+        CalendarService().getCalendar().then((_) {}),
+        NotificationService().getRecentNotifications().then((_) {}),
+        SeatStatusService.preload(),
+        BusPage.preload(),
+        NotificationsPage.preload(),
+        DegreeProgressPage.preload(),
+        StudentProfile.preload(),
+        DevsPage.preload(),
+        AlarmPage.preload(),
+        ClassSchedule.preload(),
+        ExamSchedule.preload(),
+        CustomSchedulesPage.preload(),
+      ].map((task) => task.catchError((_) {})),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (kIsWeb) {
-      return const WebExtensionLoginPage();
-    }
+    if (kIsWeb) return const WebExtensionLoginPage();
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -310,8 +287,7 @@ class _LoginPageState extends State<LoginPage> {
                   canPop: false,
                   onPopInvokedWithResult: (didPop, result) async {
                     final controller = _webViewController;
-                    if (controller == null) return;
-                    if (!mounted) return;
+                    if (controller == null || !mounted) return;
                     final navigator = Navigator.of(context);
                     if (await controller.canGoBack()) {
                       await controller.goBack();
@@ -341,6 +317,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
+    _webViewController = null; // Release reference; platform cleans up
     super.dispose();
   }
 }
