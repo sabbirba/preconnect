@@ -835,7 +835,6 @@ class _CompactRoomRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BracuCard(
-      key: key,
       isHighlighted: isHighlighted,
       highlightColor: BracuPalette.primary,
       child: InkWell(
