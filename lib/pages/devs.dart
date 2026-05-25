@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:preconnect/tools/http/http_service.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
@@ -960,8 +959,5 @@ Future<http.Response> _githubGet(Uri uri) async {
     }
   }
 
-  return HttpService.client.get(
-    uri,
-    headers: _githubHeadersWithToken(includeToken: false),
-  );
+  return http.get(uri, headers: _githubHeadersWithToken(includeToken: false));
 }
