@@ -953,10 +953,8 @@ Future<http.Response> _githubGet(Uri uri) async {
   final authenticated = token.isNotEmpty;
 
   if (authenticated) {
-    final response = await HttpService.client.get(
-      uri,
-      headers: _githubHeaders(),
-    );
+    // rhttp does weird things when used with GitHub APIs
+    final response = await http.get(uri, headers: _githubHeaders());
     if (response.statusCode != 401 && response.statusCode != 403) {
       return response;
     }
