@@ -241,7 +241,6 @@ class _CalendarCard extends StatelessWidget {
         : item.sessionLabel;
 
     return BracuCard(
-      key: key,
       isHighlighted: false,
       highlightColor: BracuPalette.primary,
       child: Row(
