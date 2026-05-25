@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:preconnect/tools/android_network_assist.dart';
 import 'package:preconnect/tools/token_storage.dart';
-import 'package:rhttp/rhttp.dart';
 
 class CaptiveWifiHttpResult {
   const CaptiveWifiHttpResult({
