@@ -5,10 +5,11 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:http/http.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_paths.dart';
+import 'package:preconnect/tools/http/http_service.dart';
 import 'package:preconnect/tools/image_url_utils.dart';
 
 class CachedImage extends StatefulWidget {
@@ -83,12 +84,12 @@ class _CachedImageState extends State<CachedImage> {
           'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
         };
         headers.addAll(compressionHeadersForUri(uri));
-        final response = await http.get(uri, headers: headers);
+        final response = await HttpService.client.get(uri, headers: headers);
         if (response.statusCode >= 200 && response.statusCode < 300) {
           return response.bodyBytes;
         }
         if (response.statusCode < 500 && response.statusCode != 429) {
-          throw http.ClientException(
+          throw ClientException(
             'Unexpected status ${response.statusCode}',
             uri,
           );
