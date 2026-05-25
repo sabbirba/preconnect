@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
+import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_paths.dart';
@@ -84,7 +85,13 @@ class _CachedImageState extends State<CachedImage> {
           'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
         };
         headers.addAll(compressionHeadersForUri(uri));
-        final response = await HttpService.client.get(uri, headers: headers);
+        final response =
+            uri.toString().contains(
+              "api.github.com",
+            ) // avoid rhttp if fetching from GitHub
+            ? await HttpService.client.get(uri, headers: headers)
+            : await http.get(uri, headers: headers);
+
         if (response.statusCode >= 200 && response.statusCode < 300) {
           return response.bodyBytes;
         }
