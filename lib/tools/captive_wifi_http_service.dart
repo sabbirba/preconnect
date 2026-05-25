@@ -50,9 +50,8 @@ class CaptiveWifiHttpService {
     return null;
   }
 
-  Future<IoCompatibleClient> newClient() async {
-    final client = await IoCompatibleClient.create()
-      ..userAgent = kPreconnectUserAgent;
+  Future<HttpClient> newClient() async {
+    final client = HttpClient()..userAgent = kPreconnectUserAgent;
     client.connectionTimeout = _connectionTimeout;
     return client;
   }
@@ -72,7 +71,7 @@ class CaptiveWifiHttpService {
   }
 
   Future<bool> isValidatedViaProbe({
-    required IoCompatibleClient client,
+    required HttpClient client,
     required Map<String, Cookie> cookies,
     Uri? probeUri,
   }) async {
@@ -90,7 +89,7 @@ class CaptiveWifiHttpService {
   }
 
   Future<CaptiveWifiHttpResult> getWithRedirects({
-    required IoCompatibleClient client,
+    required HttpClient client,
     required Uri uri,
     required Map<String, Cookie> cookies,
   }) async {
@@ -134,7 +133,7 @@ class CaptiveWifiHttpService {
   }
 
   Future<CaptiveWifiHttpResult> postOnce({
-    required IoCompatibleClient client,
+    required HttpClient client,
     required Uri uri,
     required String body,
     required Map<String, Cookie> cookies,
