@@ -682,44 +682,51 @@ Future<T?> showBracuSelectDropdown<T>(
                     ),
                   ],
                 ),
-                child: IntrinsicWidth(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: options.map((option) {
-                      final selected = option.value == selectedValue;
-                      return InkWell(
-                        onTap: () =>
-                            Navigator.of(dialogContext).pop(option.value),
-                        borderRadius: BorderRadius.circular(14),
-                        child: Padding(
-                          padding: optionPadding,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                option.label,
-                                style: TextStyle(
-                                  color: textPrimary,
-                                  fontSize: optionFontSize,
-                                  fontWeight: selected
-                                      ? FontWeight.w800
-                                      : FontWeight.w600,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 200, maxHeight: 280),
+                  child: Material(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(999),
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: false,
+                      itemCount: options.length,
+                      itemBuilder: (context, index) {
+                        final option = options[index];
+                        final selected = option.value == selectedValue;
+
+                        return InkWell(
+                          onTap: () =>
+                              Navigator.of(dialogContext).pop(option.value),
+                          child: Padding(
+                            padding: optionPadding,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  option.label,
+                                  style: TextStyle(
+                                    color: textPrimary,
+                                    fontSize: optionFontSize,
+                                    fontWeight: selected
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                              if (selected) ...[
-                                const SizedBox(width: 8),
-                                Icon(
-                                  Icons.check_rounded,
-                                  size: 18,
-                                  color: BracuPalette.primary,
-                                ),
+                                if (selected) ...[
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    Icons.check_rounded,
+                                    size: 18,
+                                    color: BracuPalette.primary,
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                      );
-                    }).toList(),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
