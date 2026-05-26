@@ -314,7 +314,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         ? 'Any Time'
         : formatWeekdayTitle(_selectedTimeFilter);
 
-    List<SeatTimetable> assortedTimes = _visibleCards
+    List<SeatTimetable> assortedTimes = _cards
         .expand((card) => card.timetables)
         .toSet()
         .toList();
@@ -340,7 +340,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
             value: data.repr,
             label: data.repr,
             icon: Icons.calendar_today_outlined,
-            subtitle: 'Only $data',
+            subtitle: 'Only ${data.repr}',
           ),
         ),
       ],
