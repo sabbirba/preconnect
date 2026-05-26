@@ -26,6 +26,7 @@ class _SettingsPageState extends State<SettingsPage>
   bool _showExamCountdownCard = true;
   bool _showTodaySchedule = true;
   bool _showDecorations = true;
+  bool _showCommunityLink = true;
   bool _appLockEnabled = false;
   bool _showSupport = true;
   bool _quietModeEnabled = false;
@@ -65,6 +66,7 @@ class _SettingsPageState extends State<SettingsPage>
       _showQuickAccessSection = visibility.showQuickAccessSection;
       _showRamadanCard = visibility.showRamadanCard;
       _showDecorations = visibility.showDecorations;
+      _showCommunityLink = visibility.showCommunityLink;
       _showExamCountdownCard = visibility.showExamCountdownCard;
       _showTodaySchedule = visibility.showTodaySchedule;
       _appLockEnabled = appLockEnabled;
@@ -90,10 +92,19 @@ class _SettingsPageState extends State<SettingsPage>
 
   Future<void> _setShowDecorations(bool value) async {
     await _setVisibility(
-      label: 'Show decorations',
+      label: 'Decorations',
       value: value,
       applyLocal: () => _showDecorations = value,
       persist: HomeCardPreferences.setShowDecorations,
+    );
+  }
+
+  Future<void> _setShowCommunityLink(bool value) async {
+    await _setVisibility(
+      label: 'Community Link',
+      value: value,
+      applyLocal: () => _showCommunityLink = value,
+      persist: HomeCardPreferences.setShowCommunityLink,
     );
   }
 
@@ -254,6 +265,14 @@ class _SettingsPageState extends State<SettingsPage>
 
   @override
   Widget build(BuildContext context) {
+    Divider divider = Divider(
+      height: 12,
+      thickness: 1,
+      color: BracuPalette.textSecondary(context).withValues(
+        alpha: Theme.of(context).brightness == Brightness.dark ? 0.20 : 0.12,
+      ),
+    );
+
     return BracuPageScaffold(
       title: 'Settings',
       subtitle: 'Customize',
@@ -303,77 +322,44 @@ class _SettingsPageState extends State<SettingsPage>
                   value: _showExamCountdownCard,
                   onChanged: _setShowExamCountdownCard,
                 ),
-                Divider(
-                  height: 12,
-                  thickness: 1,
-                  color: BracuPalette.textSecondary(context).withValues(
-                    alpha: Theme.of(context).brightness == Brightness.dark
-                        ? 0.20
-                        : 0.12,
-                  ),
-                ),
+                divider,
                 _ToggleRow(
-                  title: 'Show Decorations',
-                  subtitle: 'Display UI background decorations',
+                  title: 'Decorations',
+                  subtitle: 'Show UI background decorations',
                   value: _showDecorations,
                   onChanged: _setShowDecorations,
                 ),
-                Divider(
-                  height: 12,
-                  thickness: 1,
-                  color: BracuPalette.textSecondary(context).withValues(
-                    alpha: Theme.of(context).brightness == Brightness.dark
-                        ? 0.20
-                        : 0.12,
-                  ),
+                divider,
+                _ToggleRow(
+                  title: 'Community Link',
+                  subtitle: 'Show Discord banner on homepage',
+                  value: _showCommunityLink,
+                  onChanged: _setShowCommunityLink,
                 ),
+                divider,
                 _ToggleRow(
                   title: 'Ramadan Times',
                   subtitle: 'Show Sehri and Iftar times',
                   value: _showRamadanCard,
                   onChanged: _setShowRamadanCard,
                 ),
-                Divider(
-                  height: 12,
-                  thickness: 1,
-                  color: BracuPalette.textSecondary(context).withValues(
-                    alpha: Theme.of(context).brightness == Brightness.dark
-                        ? 0.20
-                        : 0.12,
-                  ),
-                ),
+                divider,
                 _ToggleRow(
                   title: 'Today\'s Schedule',
                   subtitle: 'Show today\'s class schedule',
                   value: _showTodaySchedule,
                   onChanged: _setShowTodaySchedule,
                 ),
-                Divider(
-                  height: 12,
-                  thickness: 1,
-                  color: BracuPalette.textSecondary(context).withValues(
-                    alpha: Theme.of(context).brightness == Brightness.dark
-                        ? 0.20
-                        : 0.12,
-                  ),
-                ),
+                divider,
                 _ToggleRow(
                   title: 'Quick Access',
                   subtitle: 'Show quick shortcuts on home',
                   value: _showQuickAccessSection,
                   onChanged: _setShowQuickAccessSection,
                 ),
-                Divider(
-                  height: 12,
-                  thickness: 1,
-                  color: BracuPalette.textSecondary(context).withValues(
-                    alpha: Theme.of(context).brightness == Brightness.dark
-                        ? 0.20
-                        : 0.12,
-                  ),
-                ),
+                divider,
                 _ToggleRow(
-                  title: 'Show Support',
+                  title: 'Support Content',
                   subtitle: 'Show support content and ads',
                   value: _showSupport,
                   onChanged: _setShowSupport,

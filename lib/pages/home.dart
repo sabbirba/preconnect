@@ -872,6 +872,7 @@ class _HomeData {
                 visibilityJson['showExamCountdownCard'] == true,
             showSponsoredContent:
                 visibilityJson['showSponsoredContent'] == true,
+            showCommunityLink: visibilityJson['showCommunityLink'] == true,
           )
         : HomeCardPreferences.defaults;
     final overridesJson = json['examOverrides'];
