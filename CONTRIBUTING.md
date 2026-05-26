@@ -10,6 +10,8 @@ Use this guide when you want to build, test, or contribute to the app. You do no
 
 - Git
 - Rust (v1.80.0 or later)
+  > [!NOTE]
+  > Only the `minimal`-profile toolchain is necessary for this project as it does not require any debugging/linting features.
 - Flutter stable, using Dart from the Flutter SDK
 - Android Studio with Android SDK
 - An Android emulator or physical Android device
