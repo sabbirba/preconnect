@@ -993,7 +993,7 @@ class BracuCommunityLink extends StatelessWidget {
 
   final bool compact;
 
-  static const String _title = 'PreConnect Discord Server';
+  static const String _title = 'PreConnect Discord';
   static const String _subtitle =
       'Students, developers, and support in one place';
   static const String _label = 'Discord';
@@ -1001,7 +1001,7 @@ class BracuCommunityLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<bool>(
-      valueListenable: HomeCardPreferences.sponsoredContentNotifier,
+      valueListenable: HomeCardPreferences.communityLinkNotifier,
       builder: (context, showSponsoredContent, _) {
         if (!showSponsoredContent) return const SizedBox.shrink();
 
