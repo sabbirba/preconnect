@@ -2,6 +2,25 @@
 
 part of 'package:preconnect/pages/seat_status.dart';
 
+class SeatTimetable {
+  final String startTime;
+  final String endTime;
+
+  const SeatTimetable({required this.startTime, required this.endTime});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SeatTimetable &&
+          startTime == other.startTime &&
+          endTime == other.endTime;
+
+  @override
+  int get hashCode => Object.hash(startTime, endTime);
+
+  String get repr => "${formatTime(startTime)} - ${formatTime(endTime)}";
+}
+
 extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   _SeatStatusCardData _buildCardFromDetails({
     required int sectionId,
@@ -13,6 +32,13 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     final facultySummaryLabel = seatStatusFacultySummaryLabel(details.faculty);
     final facultyDetailLabel = seatStatusFacultyDetailLabel(details.faculty);
     final facultySearchText = seatStatusFacultySearchText(details.faculty);
+    final timetables = details.sectionSchedule.classSchedules
+        .map(
+          (data) =>
+              SeatTimetable(startTime: data.startTime, endTime: data.endTime),
+        )
+        .toList();
+
     return _SeatStatusCardData(
       sectionId: sectionId,
       courseCode: details.courseCode,
@@ -37,6 +63,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       finalExamDate: details.sectionSchedule.finalExamDate,
       finalExamStartTime: details.sectionSchedule.finalExamStartTime,
       finalExamEndTime: details.sectionSchedule.finalExamEndTime,
+      timetables: timetables,
       remaining: resolvedRemaining,
       consumed: resolvedConsumed,
       total: total,
@@ -233,6 +260,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         children: [
           _buildAvailabilityFilterAction(),
           _buildDayFilterAction(context),
+          _buildTimeFilterAction(context),
         ],
       ),
     );
@@ -281,6 +309,45 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     );
   }
 
+  Widget _buildTimeFilterAction(BuildContext context) {
+    final label = _selectedTimeFilter.isEmpty
+        ? 'Any Time'
+        : formatWeekdayTitle(_selectedTimeFilter);
+
+    List<SeatTimetable> assortedTimes = _visibleCards
+        .expand((card) => card.timetables)
+        .toSet()
+        .toList();
+
+    return BracuSelectDropdownChip<String>(
+      icon: Icons.calendar_today_outlined,
+      label: label,
+      selected: _selectedTimeFilter.isNotEmpty,
+      compact: true,
+      borderRadius: 999,
+      title: 'Filter by Time',
+      subtitle: 'Show seat status for a specific time',
+      selectedValue: _selectedTimeFilter,
+      options: <BracuSelectOption<String>>[
+        const BracuSelectOption<String>(
+          value: '',
+          label: 'Any Time',
+          icon: Icons.all_inclusive_rounded,
+          subtitle: 'Possible times',
+        ),
+        ...assortedTimes.map(
+          (data) => BracuSelectOption<String>(
+            value: data.repr,
+            label: data.repr,
+            icon: Icons.calendar_today_outlined,
+            subtitle: 'Only $data',
+          ),
+        ),
+      ],
+      onSelected: _setTimeFilter,
+    );
+  }
+
   void _setAvailableFilter(bool next) {
     if (next == _availableOnly) return;
     _refreshVisibleCards(availableOnly: next);
@@ -288,26 +355,35 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
 
   void _setDayFilter(String next) {
     if (next == _selectedDayFilter) return;
-    _refreshVisibleCards(dayFilter: next);
+    _refreshVisibleCards(dayFilter: next, timeFilter: _selectedTimeFilter);
+  }
+
+  void _setTimeFilter(String next) {
+    if (next == _selectedTimeFilter) return;
+    _refreshVisibleCards(dayFilter: _selectedDayFilter, timeFilter: next);
   }
 
   void _refreshVisibleCards({
     bool? availableOnly,
     String? dayFilter,
+    String? timeFilter,
     String? query,
   }) {
     final resolvedAvailableOnly = availableOnly ?? _availableOnly;
     final resolvedDayFilter = dayFilter ?? _selectedDayFilter;
+    final resolvedTimeFilter = timeFilter ?? _selectedTimeFilter;
     final resolvedQuery = query ?? _searchQuery;
     final nextVisible = _filterCards(
       _cards,
       resolvedQuery,
       availableOnly: resolvedAvailableOnly,
       dayFilter: resolvedDayFilter,
+      timeFilter: resolvedTimeFilter,
     );
     final filtersChanged =
         resolvedAvailableOnly != _availableOnly ||
         resolvedDayFilter != _selectedDayFilter ||
+        resolvedTimeFilter != _selectedTimeFilter ||
         resolvedQuery != _searchQuery;
     if (!filtersChanged &&
         !_areCardListsDifferent(_visibleCards, nextVisible)) {
@@ -316,6 +392,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     setState(() {
       _availableOnly = resolvedAvailableOnly;
       _selectedDayFilter = resolvedDayFilter;
+      _selectedTimeFilter = resolvedTimeFilter;
       _searchQuery = resolvedQuery;
       _visibleCards
         ..clear()
@@ -329,6 +406,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     String query, {
     required bool availableOnly,
     required String dayFilter,
+    required String timeFilter,
   }) {
     final q = query.trim().toLowerCase();
     return source.where((card) {
@@ -343,6 +421,11 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
           (entry) => normalizeWeekday(entry.day) == dayFilter,
         );
         if (!hasDay) return false;
+      }
+      if (timeFilter.isNotEmpty) {
+        final hasTime = card.timetables.any((data) => data.repr == timeFilter);
+
+        if (!hasTime) return false;
       }
       return true;
     }).toList();
@@ -362,6 +445,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       _searchQuery,
       availableOnly: _availableOnly,
       dayFilter: _selectedDayFilter,
+      timeFilter: _selectedTimeFilter,
     );
     if (!mounted) return;
     final cardsChanged = _areCardListsDifferent(_cards, nextCards);

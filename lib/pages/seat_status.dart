@@ -84,6 +84,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   bool _isDetailsRefreshing = false;
   bool _availableOnly = false;
   String _selectedDayFilter = '';
+  String _selectedTimeFilter = '';
   @override
   void initState() {
     super.initState();
@@ -118,6 +119,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
           _searchQuery,
           availableOnly: _availableOnly,
           dayFilter: _selectedDayFilter,
+          timeFilter: _selectedTimeFilter,
         ),
       );
     _isInitialLoading = false;
@@ -762,6 +764,7 @@ class _SeatStatusCardData {
     required this.remaining,
     required this.consumed,
     required this.total,
+    required this.timetables,
     required this.searchToken,
   });
 
@@ -777,6 +780,7 @@ class _SeatStatusCardData {
   final String courseType;
   final List<SeatStatusClassSchedule> classSchedule;
   final List<SeatStatusClassSchedule> labSchedule;
+  final List<SeatTimetable> timetables;
   final String labRoom;
   final String labCourseCode;
   final String labName;
@@ -822,6 +826,7 @@ class _SeatStatusCardData {
       consumed: consumed ?? this.consumed,
       total: total ?? this.total,
       searchToken: searchToken,
+      timetables: timetables,
     );
   }
 }
