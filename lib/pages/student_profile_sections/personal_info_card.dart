@@ -6,6 +6,8 @@ class PersonalInfoCard extends StatelessWidget {
 
   final Map<String, String?> profile;
 
+  String _valueOf(String key) => (profile[key] ?? '').trim();
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -13,39 +15,54 @@ class PersonalInfoCard extends StatelessWidget {
       context,
     ).withValues(alpha: isDark ? 0.35 : 0.18);
     final rows = <({String label, String value})>[
-      (label: 'Student ID', value: (profile['studentId'] ?? '').trim()),
-      (label: 'Phone Number', value: (profile['mobileNo'] ?? '').trim()),
-      (
-        label: 'Permanent Address',
-        value: (profile['permanentAddress'] ?? '').trim(),
-      ),
-      (label: 'Father Name', value: (profile['fatherName'] ?? '').trim()),
-      (label: 'Father Mobile', value: (profile['fatherMobileNo'] ?? '').trim()),
-      (label: 'Father Email', value: (profile['fatherEmail'] ?? '').trim()),
-      (label: 'Mother Name', value: (profile['motherName'] ?? '').trim()),
-      (label: 'Mother Mobile', value: (profile['motherMobileNo'] ?? '').trim()),
-      (label: 'Mother Email', value: (profile['motherEmail'] ?? '').trim()),
-      (
-        label: 'Local Guardian Name',
-        value: (profile['localGuardianName'] ?? '').trim(),
-      ),
+      (label: 'Student ID', value: _valueOf('studentId')),
+      (label: 'Phone Number', value: _valueOf('mobileNo')),
+      (label: 'Email', value: _valueOf('email')),
+      (label: 'Academic Type', value: _valueOf('academicType')),
+      (label: 'Current Semester', value: _valueOf('currentSemester')),
+      (label: 'Enrolled Semester', value: _valueOf('enrolledSemester')),
+      (label: 'Gender', value: _valueOf('gender')),
+      (label: 'Date of Birth', value: _valueOf('dateOfBirth')),
+      (label: 'Blood Group', value: _valueOf('bloodGroup')),
+      (label: 'Religion', value: _valueOf('religion')),
+      (label: 'Nationality', value: _valueOf('nationality')),
+      (label: 'Marital Status', value: _valueOf('maritalStatus')),
+      (label: 'Admission Session', value: _valueOf('admissionSession')),
+      (label: 'Program', value: _valueOf('program')),
+      (label: 'Department', value: _valueOf('departmentName')),
+      (label: 'Batch', value: _valueOf('batch')),
+      (label: 'Section', value: _valueOf('section')),
+      (label: 'Campus', value: _valueOf('campus')),
+      (label: 'Room / Hall', value: _valueOf('roomNo')),
+      (label: 'Present Address', value: _valueOf('presentAddress')),
+      (label: 'Permanent Address', value: _valueOf('permanentAddress')),
+      (label: 'Father Name', value: _valueOf('fatherName')),
+      (label: 'Father Mobile', value: _valueOf('fatherMobileNo')),
+      (label: 'Father Email', value: _valueOf('fatherEmail')),
+      (label: 'Father Occupation', value: _valueOf('fatherOccupation')),
+      (label: 'Mother Name', value: _valueOf('motherName')),
+      (label: 'Mother Mobile', value: _valueOf('motherMobileNo')),
+      (label: 'Mother Email', value: _valueOf('motherEmail')),
+      (label: 'Mother Occupation', value: _valueOf('motherOccupation')),
+      (label: 'Local Guardian Name', value: _valueOf('localGuardianName')),
       (
         label: 'Local Guardian Mobile',
-        value: (profile['localGuardianMobileNo'] ?? '').trim(),
+        value: _valueOf('localGuardianMobileNo'),
       ),
+      (label: 'Local Guardian Email', value: _valueOf('localGuardianEmail')),
       (
-        label: 'Local Guardian Email',
-        value: (profile['localGuardianEmail'] ?? '').trim(),
+        label: 'Local Guardian Address',
+        value: _valueOf('localGuardianAddress'),
       ),
-      (label: 'Sponsored By', value: (profile['sponsoredBy'] ?? '').trim()),
-      (label: 'Country Name', value: (profile['countryName'] ?? '').trim()),
-      (label: 'Hobbies', value: (profile['hobbies'] ?? '').trim()),
-      (label: 'Awards', value: (profile['awards'] ?? '').trim()),
-      (label: 'Has Disability', value: (profile['hasDisability'] ?? '').trim()),
-      (
-        label: 'Disability Details',
-        value: (profile['disabilityDetails'] ?? '').trim(),
-      ),
+      (label: 'Sponsored By', value: _valueOf('sponsoredBy')),
+      (label: 'Country Name', value: _valueOf('countryName')),
+      (label: 'Hobbies', value: _valueOf('hobbies')),
+      (label: 'Awards', value: _valueOf('awards')),
+      (label: 'Has Disability', value: _valueOf('hasDisability')),
+      (label: 'Disability Details', value: _valueOf('disabilityDetails')),
+      (label: 'Student Type', value: _valueOf('studentType')),
+      (label: 'Emergency Contact', value: _valueOf('emergencyContact')),
+      (label: 'Emergency Relation', value: _valueOf('emergencyRelation')),
     ].where((row) => row.value.isNotEmpty).toList();
 
     if (rows.isEmpty) return const SizedBox.shrink();
@@ -72,12 +89,7 @@ class PersonalInfoCard extends StatelessWidget {
             _InfoRow(
               label: rows[i].label,
               value: rows[i].value,
-              enableCopy:
-                  rows[i].label == 'Student ID' ||
-                  rows[i].label == 'Phone Number' ||
-                  rows[i].label == 'Father Mobile' ||
-                  rows[i].label == 'Mother Mobile' ||
-                  rows[i].label == 'Local Guardian Mobile',
+              enableCopy: _copyableLabels.contains(rows[i].label),
             ),
             if (i != rows.length - 1)
               Divider(
@@ -94,6 +106,21 @@ class PersonalInfoCard extends StatelessWidget {
   }
 }
 
+const _copyableLabels = <String>{
+  'Student ID',
+  'Phone Number',
+  'Email',
+  'CGPA',
+  'Earned Credit',
+  'Father Mobile',
+  'Father Email',
+  'Mother Mobile',
+  'Mother Email',
+  'Local Guardian Mobile',
+  'Local Guardian Email',
+  'Emergency Contact',
+};
+
 class _InfoRow extends StatelessWidget {
   const _InfoRow({
     required this.label,
@@ -107,37 +134,51 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 4,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: BracuPalette.textSecondary(context),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 6,
-          child: GestureDetector(
-            onTap: enableCopy ? () => copyToClipboard(context, value) : null,
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color: BracuPalette.textPrimary(context),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final labelWidth = (label.length * 7.8).clamp(
+          92.0,
+          constraints.maxWidth * 0.42,
+        );
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: labelWidth,
+              child: Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.clip,
+                style: TextStyle(
+                  color: BracuPalette.textSecondary(context),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          ),
-        ),
-      ],
+            const SizedBox(width: 10),
+            Expanded(
+              child: GestureDetector(
+                onTap: enableCopy
+                    ? () => copyToClipboard(context, value)
+                    : null,
+                child: Text(
+                  value,
+                  textAlign: TextAlign.right,
+                  softWrap: true,
+                  textWidthBasis: TextWidthBasis.parent,
+                  style: TextStyle(
+                    color: BracuPalette.textPrimary(context),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
