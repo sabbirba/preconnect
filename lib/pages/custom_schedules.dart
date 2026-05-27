@@ -37,17 +37,17 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
   );
   static const Duration _autoRefreshInterval = Duration(seconds: 20);
   static final CachedPageController<List<CustomSchedule>> itemsCache =
-      CachedPageController<List<CustomSchedule>>(
-        ({bool forceRefresh = false}) async {
-          final service = CustomSchedulesService();
-          try {
-            final items = await service.getItems(forceRefresh: forceRefresh);
-            return await service.autoCompleteOverdueItems(items);
-          } catch (_) {
-            return await service.getCachedItems() ?? const <CustomSchedule>[];
-          }
-        },
-      );
+      CachedPageController<List<CustomSchedule>>(({
+        bool forceRefresh = false,
+      }) async {
+        final service = CustomSchedulesService();
+        try {
+          final items = await service.getItems(forceRefresh: forceRefresh);
+          return await service.autoCompleteOverdueItems(items);
+        } catch (_) {
+          return await service.getCachedItems() ?? const <CustomSchedule>[];
+        }
+      });
   static List<CustomSchedulesCourseOption>? _cachedCourseOptions;
   static Future<void>? _preloadFuture;
 

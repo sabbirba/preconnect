@@ -305,20 +305,17 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         ? 'Any Time'
         : formatWeekdayTitle(_selectedTimeFilter);
 
-    final assortedTimes = _cards
-        .expand((card) => card.timetables)
-        .toSet()
-        .toList()
-      ..sort((a, b) {
-        final startA = BracuTime.toMinutes(a.startTime) ?? 24 * 60;
-        final startB = BracuTime.toMinutes(b.startTime) ?? 24 * 60;
-        final startCmp = startA.compareTo(startB);
-        if (startCmp != 0) return startCmp;
+    final assortedTimes =
+        _cards.expand((card) => card.timetables).toSet().toList()..sort((a, b) {
+          final startA = BracuTime.toMinutes(a.startTime) ?? 24 * 60;
+          final startB = BracuTime.toMinutes(b.startTime) ?? 24 * 60;
+          final startCmp = startA.compareTo(startB);
+          if (startCmp != 0) return startCmp;
 
-        final endA = BracuTime.toMinutes(a.endTime) ?? 24 * 60;
-        final endB = BracuTime.toMinutes(b.endTime) ?? 24 * 60;
-        return endA.compareTo(endB);
-      });
+          final endA = BracuTime.toMinutes(a.endTime) ?? 24 * 60;
+          final endB = BracuTime.toMinutes(b.endTime) ?? 24 * 60;
+          return endA.compareTo(endB);
+        });
 
     return BracuSelectDropdownChip<String>(
       icon: Icons.calendar_today_outlined,

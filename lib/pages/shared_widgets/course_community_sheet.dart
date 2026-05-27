@@ -1007,9 +1007,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
     }
     final textPrimary = BracuPalette.textPrimary(context);
     final textSecondary = BracuPalette.textSecondary(context);
-    final roomLabel = (widget.roomNumber ?? '').trim().isEmpty
-        ? 'TBA'
-        : widget.roomNumber!.trim();
+    final roomLabel = (widget.roomNumber ?? '').trim();
     final facultyLabel = (widget.faculties ?? '').trim();
     final consumedLabel = (widget.consumedSeat ?? 0) > 0
         ? '(${widget.consumedSeat})'
@@ -1040,13 +1038,14 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  widget.examTimeLabel ?? 'TBA',
-                  style: TextStyle(
-                    color: textPrimary,
-                    fontWeight: FontWeight.w700,
+                if ((widget.examTimeLabel ?? '').trim().isNotEmpty)
+                  Text(
+                    widget.examTimeLabel!.trim(),
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -1056,15 +1055,16 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  roomLabel,
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    color: textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
+                if (roomLabel.isNotEmpty)
+                  Text(
+                    roomLabel,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
                 if (facultyLabel.isNotEmpty || consumedLabel.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
@@ -1194,11 +1194,11 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                   style: _reviewBodyStyle(context).copyWith(color: textPrimary),
                 ),
                 if (metricLine.isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(metricLine, style: _reviewMetaStyle(context)),
                 ],
                 if (!isApproved) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text('Pending approval', style: _reviewMetaStyle(context)),
                 ],
               ],
@@ -1350,14 +1350,14 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                       Text(metricLine, style: _reviewMetaStyle(context)),
                     ],
                     if (hasVoteData) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       Text(
                         'Votes $voteScore • Upvote $upvotes • Downvote $downvotes',
                         style: _reviewMetaStyle(context),
                       ),
                     ],
                     if (facultySummaryText.isNotEmpty) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       Text(
                         facultySummaryText,
                         style: _reviewBodyStyle(
@@ -1368,11 +1368,11 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                   ],
                 ),
               ),
-            if (hasSummaryCardContent) const SizedBox(height: 8),
+            if (hasSummaryCardContent) const SizedBox(height: 4),
             if (orderedReviews.isNotEmpty) ...[
               ...displayReviews.map((review) {
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: 6),
                   child: _buildCommunityReviewCard(review),
                 );
               }),
@@ -1384,26 +1384,12 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                       _showAllReviews = !_showAllReviews;
                     });
                   },
-                  padding: const EdgeInsets.only(top: 2, bottom: 8),
+                  padding: const EdgeInsets.only(top: 0, bottom: 4),
                 ),
-            ] else
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text(
-                  'No reviews yet for this faculty.',
-                  style: _reviewMetaStyle(context),
-                ),
-              ),
-          ] else
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Text(
-                'No reviews yet for this faculty.',
-                style: _reviewMetaStyle(context),
-              ),
-            ),
+            ],
+          ],
         ],
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Row(
           children: [
             const Expanded(child: BracuSectionTitle(title: 'Course Materials')),
@@ -1416,29 +1402,15 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
         ),
         if (_materialsLoading)
           _buildCompactLoading()
-        else if (_materialsError != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Text(
-              _materialsError!,
-              style: TextStyle(color: textSecondary, fontSize: 12),
-            ),
-          )
-        else if (allMaterials.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Text(
-              'No materials yet for ${widget.courseCode}.',
-              style: TextStyle(color: textSecondary, fontSize: 12),
-            ),
-          )
+        else if (_materialsError != null || allMaterials.isEmpty)
+          const SizedBox.shrink()
         else ...[
           ...displayMaterials.asMap().entries.map((entry) {
             final index = entry.key;
             final item = entry.value;
             final displayTitle = item.title.trim();
             return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: 6),
               child: BracuCard(
                 child: Row(
                   children: [
