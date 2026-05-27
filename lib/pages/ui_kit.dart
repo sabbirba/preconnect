@@ -457,6 +457,7 @@ class BracuActionBannerCard extends StatelessWidget {
     required this.subtitle,
     required this.onTap,
     this.iconColor = BracuPalette.primary,
+    this.iconDecoration = true,
   });
 
   final IconData? icon;
@@ -464,6 +465,7 @@ class BracuActionBannerCard extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
   final Color iconColor;
+  final bool iconDecoration;
 
   @override
   Widget build(BuildContext context) {
@@ -485,15 +487,18 @@ class BracuActionBannerCard extends StatelessWidget {
           child: Row(
             children: [
               if (icon != null) ...[
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: iconColor, size: 18),
-                ),
+                if (iconDecoration)
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: iconColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: iconColor, size: 18),
+                  )
+                else
+                  Icon(icon, color: iconColor, size: 30),
                 const SizedBox(width: 12),
               ],
               Expanded(
@@ -988,14 +993,45 @@ const String _kPreconnectWhatsAppUrl =
 const String kPreconnectRepositoryUrl =
     'https://github.com/sabbirba/preconnect';
 
+class PreconnectDiscordIcon extends StatelessWidget {
+  const PreconnectDiscordIcon({super.key, this.size = 30, this.color});
+
+  final double size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Icon(
+      Icons.discord,
+      size: size,
+      color: color ?? const Color.fromRGBO(88, 101, 242, 1),
+    );
+  }
+}
+
+class PreconnectGithubIcon extends StatelessWidget {
+  const PreconnectGithubIcon({super.key, this.size = 30, this.color});
+
+  final double size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Icon(
+      Icons.code_rounded,
+      size: size,
+      color: color ?? BracuPalette.primary,
+    );
+  }
+}
+
 class BracuCommunityLink extends StatelessWidget {
   const BracuCommunityLink({super.key, this.compact = false});
 
   final bool compact;
 
   static const String _title = 'PreConnect Discord';
-  static const String _subtitle =
-      'Students, developers, and support in one place';
+  static const String _subtitle = 'Discuss, share feedback, and connect.';
   static const String _label = 'Discord';
 
   @override
@@ -1007,8 +1043,7 @@ class BracuCommunityLink extends StatelessWidget {
 
         if (compact) {
           return _BracuSponsorActionChip(
-            iconWidget: const Icon(
-              Icons.forum_rounded,
+            iconWidget: const PreconnectDiscordIcon(
               size: 18,
               color: BracuPalette.primary,
             ),
@@ -1024,6 +1059,7 @@ class BracuCommunityLink extends StatelessWidget {
         return BracuActionBannerCard(
           icon: Icons.discord,
           iconColor: Color.fromRGBO(88, 101, 242, 1),
+          iconDecoration: false,
           title: _title,
           subtitle: _subtitle,
           onTap: () {
@@ -1172,8 +1208,7 @@ class BracuFundingSupportContent extends StatelessWidget {
             ),
             const BracuCommunityLink(compact: true),
             _BracuSponsorActionChip(
-              iconWidget: const Icon(
-                Icons.code_rounded,
+              iconWidget: const PreconnectGithubIcon(
                 size: 18,
                 color: BracuPalette.primary,
               ),

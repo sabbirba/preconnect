@@ -316,6 +316,8 @@ const _manualContributors = <_ContributorProfile>[
   ),
   _ContributorProfile.github(handle: 'Zamiul-rashid', role: 'Friends Schedule'),
   _ContributorProfile.github(handle: 'shakilofficial0', role: 'Live Bus Data'),
+  _ContributorProfile.github(handle: 'rez1-dev', role: 'Testing & Feedback'),
+  _ContributorProfile.github(handle: 'hitblast', role: 'UI/UX & Community'),
 ];
 
 class _IntroCard extends StatelessWidget {
@@ -370,11 +372,7 @@ class _RepoButton extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(
-              Icons.code_rounded,
-              size: 24,
-              color: BracuPalette.primary,
-            ),
+            const PreconnectGithubIcon(size: 24, color: BracuPalette.primary),
             const SizedBox(width: 12),
             const Expanded(
               child: Text(
@@ -420,11 +418,7 @@ class _CommunityButton extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(
-              Icons.forum_rounded,
-              size: 24,
-              color: BracuPalette.primary,
-            ),
+            const PreconnectDiscordIcon(size: 24, color: BracuPalette.primary),
             const SizedBox(width: 12),
             const Expanded(
               child: Text(
@@ -741,11 +735,6 @@ class _DevGridTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-              _LinkChip(
-                label: contributor.linkLabel,
-                onTap: () => openExternalUrl(context, contributor.url),
-              ),
             ],
           ),
         );
@@ -781,50 +770,6 @@ class _ContributorAvatar extends StatelessWidget {
           fit: BoxFit.cover,
           placeholder: fallback,
           error: fallback,
-        ),
-      ),
-    );
-  }
-}
-
-class _LinkChip extends StatelessWidget {
-  const _LinkChip({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  Widget? _iconForLabel() {
-    final normalized = label.trim().toLowerCase();
-    return switch (normalized) {
-      'github' => const Icon(
-        Icons.code_rounded,
-        size: 24,
-        color: BracuPalette.primary,
-      ),
-      'linkedin' => const Icon(
-        Icons.work_outline_rounded,
-        size: 24,
-        color: BracuPalette.primary,
-      ),
-      _ => null,
-    };
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final icon = _iconForLabel();
-    return Tooltip(
-      message: label,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          decoration: BoxDecoration(color: Colors.transparent),
-          child: Semantics(
-            label: label,
-            button: true,
-            child: icon ?? const SizedBox.shrink(),
-          ),
         ),
       ),
     );
@@ -924,7 +869,7 @@ class _ContributorProfile {
 
 String _githubRole(String login) {
   return switch (login.trim().toLowerCase()) {
-    'naiveinvestigator' || 'naivelnvestigator' => 'Lead Developer',
+    'naivelnvestigator' => 'Lead Developer',
     'sabbirba' => 'Developer & UI/UX',
     _ => 'Contributor',
   };
