@@ -3,12 +3,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/friend_schedule_store.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:archive/archive.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/friend_schedule_sections/schedule_list.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_detail.dart';
+import 'package:preconnect/pages/scan_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
@@ -442,7 +444,20 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                       title: 'Scan',
                       subtitle: 'Schedule',
                       color: BracuPalette.info,
-                      onTap: () => widget.onNavigate(HomeTab.scanSchedule),
+                      onTap: () async {
+                        final navigator = Navigator.of(context);
+                        final isLoggedIn = await AuthService().isLoggedIn();
+                        if (!mounted) return;
+                        if (isLoggedIn) {
+                          widget.onNavigate(HomeTab.scanSchedule);
+                          return;
+                        }
+                        await navigator.push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const ScanSchedulePage(),
+                          ),
+                        );
+                      },
                     ),
                     FriendActionCard(
                       width: layout.itemWidth,
@@ -458,7 +473,17 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                       title: 'Share',
                       subtitle: 'Schedule',
                       color: BracuPalette.accent,
-                      onTap: () {
+                      onTap: () async {
+                        final navigator = Navigator.of(context);
+                        final isLoggedIn = await AuthService().isLoggedIn();
+                        if (!mounted) return;
+                        if (!isLoggedIn) {
+                          showAppSnackBar(
+                            navigator.context,
+                            'Please log in to share your schedule.',
+                          );
+                          return;
+                        }
                         widget.onNavigate(HomeTab.shareSchedule);
                       },
                     ),

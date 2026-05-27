@@ -295,7 +295,7 @@ class _CardBack extends StatelessWidget {
                     color: Colors.black,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 20),
                 const Text(
                   'Contact:',
                   style: TextStyle(
