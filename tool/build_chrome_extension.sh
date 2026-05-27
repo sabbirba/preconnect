@@ -52,6 +52,7 @@ rm -rf "${ROOT_DIR}/.dart_tool/flutter_build"
 
 flutter build web \
   --release \
+  --tree-shake-icons \
   --csp \
   --no-web-resources-cdn \
   --no-wasm-dry-run \

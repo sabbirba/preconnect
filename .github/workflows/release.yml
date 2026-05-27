@@ -29,7 +29,7 @@ jobs:
       should_run: ${{ steps.check.outputs.should_run }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
@@ -82,7 +82,7 @@ jobs:
       version_code: ${{ steps.version.outputs.version_code }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
@@ -130,7 +130,7 @@ jobs:
       release_tag: ${{ steps.meta.outputs.release_tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
@@ -219,26 +219,36 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Cache Rust
+        uses: actions/cache@v5.0.5
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            build/rhttp
+          key: ${{ runner.os }}-rust-rhttp-${{ hashFiles('pubspec.lock', 'pubspec.yaml', '.cargo/config.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-rust-rhttp-
 
       - name: Setup Java
         if: matrix.platform == 'android'
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v5.2.0
         with:
           distribution: "temurin"
           java-version: "17"
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@v2.21.0
         with:
           channel: "stable"
           cache: true
@@ -248,7 +258,7 @@ jobs:
 
       - name: Setup Xcode
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
-        uses: maxim-lobanov/setup-xcode@v1
+        uses: maxim-lobanov/setup-xcode@v1.6.0
         with:
           xcode-version: "latest"
 
@@ -259,7 +269,7 @@ jobs:
           xcodebuild -showsdks
 
       - name: Cache Pub
-        uses: actions/cache@v5.0.3
+        uses: actions/cache@v5.0.5
         with:
           path: |
             ~/.pub-cache
@@ -270,7 +280,7 @@ jobs:
 
       - name: Cache Gradle
         if: matrix.platform == 'android'
-        uses: actions/cache@v5.0.3
+        uses: actions/cache@v5.0.5
         with:
           path: |
             ~/.gradle/caches
@@ -300,7 +310,7 @@ jobs:
           ./gradlew --no-daemon help --refresh-dependencies
 
       - name: Cache Build
-        uses: actions/cache@v5.0.3
+        uses: actions/cache@v5.0.5
         with:
           path: |
             build
@@ -394,13 +404,13 @@ jobs:
         if: matrix.platform == 'android'
         shell: bash
         run: |
-          flutter build apk --release --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
+          flutter build apk --release --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
 
       - name: Android AAB
         if: matrix.platform == 'android'
         shell: bash
         run: |
-          flutter build appbundle --release --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
+          flutter build appbundle --release --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
 
       - name: iOS App
         if: matrix.platform == 'ios'
@@ -408,7 +418,7 @@ jobs:
         run: |
           attempt=1
           until [ $attempt -gt 3 ]; do
-            flutter build ios --release --no-codesign --dart-define-from-file=.env && break
+            flutter build ios --release --no-codesign --tree-shake-icons --obfuscate --split-debug-info=build/symbols/ios --dart-define-from-file=.env && break
             echo "iOS no-codesign build failed (attempt $attempt)."
             attempt=$((attempt+1))
             sleep $((10 * attempt))
@@ -467,7 +477,7 @@ jobs:
           printf '%s' "$IOS_PROFILE_BASE64" | base64 -d > "$HOME/Library/MobileDevice/Provisioning Profiles/profile.mobileprovision"
           attempt=1
           until [ $attempt -gt 3 ]; do
-            flutter build ipa --release --dart-define-from-file=.env --export-options-plist=ios/ExportOptions.plist && break
+            flutter build ipa --release --tree-shake-icons --obfuscate --split-debug-info=build/symbols/ios --dart-define-from-file=.env --export-options-plist=ios/ExportOptions.plist && break
             echo "iOS signed IPA build failed (attempt $attempt)."
             attempt=$((attempt+1))
             sleep $((10 * attempt))
@@ -483,7 +493,7 @@ jobs:
         run: |
           attempt=1
           until [ $attempt -gt 3 ]; do
-            flutter build macos --release --dart-define-from-file=.env && break
+            flutter build macos --release --tree-shake-icons --obfuscate --split-debug-info=build/symbols/macos --dart-define-from-file=.env && break
             echo "macOS build failed (attempt $attempt)."
             attempt=$((attempt+1))
             sleep $((10 * attempt))
@@ -540,7 +550,7 @@ jobs:
           hdiutil create -volname "PreConnect" -srcfolder "$APP_PATH" -ov -format UDZO "$GITHUB_WORKSPACE/artifacts/$DMG_NAME"
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: ${{ matrix.platform }}-artifacts
           path: artifacts/*
@@ -579,7 +589,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
@@ -591,7 +601,7 @@ jobs:
           echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Download Android artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v5.0.0
         continue-on-error: true
         with:
           name: android-artifacts
@@ -673,7 +683,7 @@ jobs:
 
       - name: Setup Ruby
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@v1.268.0
         with:
           ruby-version: "3.3"
 

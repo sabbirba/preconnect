@@ -34,7 +34,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
@@ -62,16 +62,10 @@ jobs:
 
       - name: Setup Ruby
         if: matrix.run_play && steps.play_auth.outputs.enabled == 'true'
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@v1.268.0
         with:
           ruby-version: "3.3"
-
-      - name: Install Fastlane
-        if: matrix.run_play && steps.play_auth.outputs.enabled == 'true'
-        shell: bash
-        env:
-          FASTLANE_OPT_OUT_USAGE: "1"
-        run: gem install fastlane --no-document
+          bundler-cache: true
 
       - name: Promote Beta
         if: matrix.run_play && steps.play_auth.outputs.enabled == 'true'
@@ -80,7 +74,7 @@ jobs:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           FASTLANE_OPT_OUT_USAGE: "1"
         run: |
-          fastlane supply \
+          bundle exec fastlane supply \
             --package_name "${{ steps.android_meta.outputs.package_name }}" \
             --json_key_data "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" \
             --track "beta" \
@@ -95,14 +89,25 @@ jobs:
 
       - name: Setup Flutter
         if: matrix.run_chrome
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@v2.21.0
         with:
           channel: "stable"
           cache: true
 
+      - name: Cache Build
+        if: matrix.run_chrome
+        uses: actions/cache@v5.0.5
+        with:
+          path: |
+            build
+            .dart_tool
+          key: ${{ runner.os }}-store-promotion-build-${{ hashFiles('pubspec.lock', 'tool/build_chrome_extension.sh', 'web/**', 'lib/**') }}
+          restore-keys: |
+            ${{ runner.os }}-store-promotion-build-
+
       - name: Cache Pub
         if: matrix.run_chrome
-        uses: actions/cache@v5.0.3
+        uses: actions/cache@v5.0.5
         with:
           path: |
             ~/.pub-cache
@@ -155,7 +160,7 @@ jobs:
 
       - name: Chrome Artifact
         if: matrix.run_chrome
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: store-promotion-chrome-extension
           path: build/chrome-extension.zip
@@ -169,7 +174,7 @@ jobs:
 
       - name: Setup GCloud
         if: matrix.run_chrome
-        uses: google-github-actions/setup-gcloud@v3
+        uses: google-github-actions/setup-gcloud@v3.0.1
 
       - name: Auth Service
         if: matrix.run_chrome
