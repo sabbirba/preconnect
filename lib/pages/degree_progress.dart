@@ -12,6 +12,7 @@ import 'package:preconnect/pages/shared_widgets/grade_sheet_card.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 
@@ -21,7 +22,7 @@ class DegreeProgressPage extends StatefulWidget {
   const DegreeProgressPage({super.key});
 
   static Future<void> preload() async {
-    await _DegreeProgressPageState.preloadData();
+    await _DegreeProgressPageState.cache.load();
   }
 
   @override
@@ -31,8 +32,10 @@ class DegreeProgressPage extends StatefulWidget {
 class _DegreeProgressPageState extends State<DegreeProgressPage>
     with RefreshBusState {
   static const int _coursesChunkSize = 7;
-  static ProgressInfo? _cachedInfo;
-  static Future<ProgressInfo?>? _preloadFuture;
+  static final CachedPageController<ProgressInfo?> cache =
+      CachedPageController<ProgressInfo?>(
+        ({bool forceRefresh = false}) => ProgressService().getProgress(),
+      );
 
   late Future<ProgressInfo?> _future;
   ProgressInfo? _latestInfo;
@@ -50,9 +53,9 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
     super.initState();
     final forceRefresh = isRefreshingFrom('auth');
     if (!forceRefresh) {
-      _latestInfo = _cachedInfo;
+      _latestInfo = cache.value;
     }
-    _future = forceRefresh || _cachedInfo == null
+    _future = forceRefresh || cache.value == null
         ? preloadData(forceRefresh: forceRefresh).then((info) {
             _latestInfo = info;
             if (info != null) {
@@ -60,7 +63,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
             }
             return info;
           })
-        : Future<ProgressInfo?>.value(_cachedInfo);
+        : Future<ProgressInfo?>.value(cache.value);
     unawaited(_warmAndBind());
     unawaited(_loadCgpa());
     unawaited(_loadSummary());
@@ -69,29 +72,11 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
   }
 
   static Future<ProgressInfo?> preloadData({bool forceRefresh = false}) async {
-    if (!forceRefresh && _cachedInfo != null) {
-      return _cachedInfo!;
+    final info = await cache.load(forceRefresh: forceRefresh);
+    if (info != null) {
+      cache.value = info;
     }
-    if (!forceRefresh) {
-      final inFlight = _preloadFuture;
-      if (inFlight != null) {
-        return inFlight;
-      }
-    }
-
-    final future = ProgressService().getProgress();
-    _preloadFuture = future;
-    try {
-      final info = await future;
-      if (info != null) {
-        _cachedInfo = info;
-      }
-      return info;
-    } finally {
-      if (identical(_preloadFuture, future)) {
-        _preloadFuture = null;
-      }
-    }
+    return info;
   }
 
   Future<void> _warmAndBind() async {
@@ -119,8 +104,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
       return;
     }
     if (reason == 'auth') {
-      _cachedInfo = null;
-      _preloadFuture = null;
+      cache.clear();
       setState(() {
         _latestInfo = null;
         _future = preloadData(forceRefresh: true).then((info) {
@@ -167,7 +151,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
     setState(() {
       if (shouldUpdateInfo) {
         _latestInfo = freshInfo;
-        _cachedInfo = freshInfo;
+        cache.value = freshInfo;
       }
       if (shouldUpdateSummary) {
         _summary = freshSummary;
@@ -217,7 +201,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
         setState(() {
           if (shouldUpdateInfo) {
             _latestInfo = freshInfo;
-            _cachedInfo = freshInfo;
+            cache.value = freshInfo;
           }
           if (shouldUpdateSummary) {
             _summary = freshSummary;

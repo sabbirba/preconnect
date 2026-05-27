@@ -26,3 +26,34 @@ class PreloadCache<T> {
     value = await fetch();
   }
 }
+
+class CachedPageController<T> {
+  CachedPageController(this._fetch);
+
+  final Future<T> Function({bool forceRefresh}) _fetch;
+
+  T? value;
+  Future<T>? inFlight;
+
+  Future<T> load({bool forceRefresh = false}) async {
+    if (!forceRefresh && value != null) return value as T;
+    if (!forceRefresh && inFlight != null) return inFlight!;
+
+    final future = _fetch(forceRefresh: forceRefresh);
+    inFlight = future;
+    try {
+      final loaded = await future;
+      value = loaded;
+      return loaded;
+    } finally {
+      if (identical(inFlight, future)) {
+        inFlight = null;
+      }
+    }
+  }
+
+  void clear() {
+    value = null;
+    inFlight = null;
+  }
+}

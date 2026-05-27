@@ -20,8 +20,8 @@ Future<void> main() async {
     };
 
     await AppStorage.initialize();
-    PaintingBinding.instance.imageCache.maximumSize = 1 << 30;
-    PaintingBinding.instance.imageCache.maximumSizeBytes = 1 << 62;
+    PaintingBinding.instance.imageCache.maximumSize = 200;
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 100 << 20;
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
     runApp(

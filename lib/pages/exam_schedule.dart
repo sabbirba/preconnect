@@ -32,7 +32,7 @@ class ExamSchedule extends StatefulWidget {
 }
 
 class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
-  static final PreloadCache<_ExamScheduleData> _cache =
+  static final PreloadCache<_ExamScheduleData> cache =
       PreloadCache<_ExamScheduleData>();
 
   late Future<_ExamScheduleData> _future;
@@ -46,10 +46,10 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   @override
   void initState() {
     super.initState();
-    _latestData = _cache.value;
-    _future = _cache.value == null
+    _latestData = cache.value;
+    _future = cache.value == null
         ? _initializeExamSchedule()
-        : Future<_ExamScheduleData>.value(_cache.value!);
+        : Future<_ExamScheduleData>.value(cache.value!);
     unawaited(_loadCurrentSessionSemesterId());
     unawaited(_warmAndBind());
     ExamSchedule.jumpSignal.addListener(_onJumpRequested);
@@ -68,7 +68,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   static Future<_ExamScheduleData> preloadData({
     bool forceRefresh = false,
   }) async {
-    return _cache.load(
+    return cache.load(
       forceRefresh: forceRefresh,
       fetch: () => _loadExamData(forceRefresh: forceRefresh),
     );
@@ -191,7 +191,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
       forceRefresh: forceRefresh,
       forcedSemesterSessionId: currentSessionSemesterId,
     );
-    _cache.value = data;
+    cache.value = data;
     if (mounted) {
       setState(() {
         _latestData = data;

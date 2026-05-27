@@ -8,6 +8,7 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/preload_cache.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -28,8 +29,10 @@ class BusPage extends StatefulWidget {
 }
 
 class _BusPageState extends State<BusPage> {
-  static _BusDataPackage? _cachedData;
-  static Future<_BusDataPackage>? _preloadFuture;
+  static final CachedPageController<_BusDataPackage> controller =
+      CachedPageController<_BusDataPackage>(
+        ({bool forceRefresh = false}) => _fetchBusDataPackage(),
+      );
 
   String? _error;
   _BusDataPackage? _data;
@@ -38,7 +41,7 @@ class _BusPageState extends State<BusPage> {
   @override
   void initState() {
     super.initState();
-    _data = _cachedData;
+    _data = controller.value;
     _load();
     _fetchSchedulePdfUrl();
     unawaited(_warmAndBind());
@@ -47,27 +50,7 @@ class _BusPageState extends State<BusPage> {
   static Future<_BusDataPackage> preloadData({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && _cachedData != null) {
-      return _cachedData!;
-    }
-    if (!forceRefresh) {
-      final inFlight = _preloadFuture;
-      if (inFlight != null) {
-        return inFlight;
-      }
-    }
-
-    final future = _fetchBusDataPackage();
-    _preloadFuture = future;
-    try {
-      final data = await future;
-      _cachedData = data;
-      return data;
-    } finally {
-      if (identical(_preloadFuture, future)) {
-        _preloadFuture = null;
-      }
-    }
+    return controller.load(forceRefresh: forceRefresh);
   }
 
   Future<void> _warmAndBind() async {
@@ -105,7 +88,7 @@ class _BusPageState extends State<BusPage> {
       if (!mounted) return;
       setState(() {
         _data = package;
-        _cachedData = package;
+        controller.value = package;
       });
     } catch (error) {
       if (!mounted) return;

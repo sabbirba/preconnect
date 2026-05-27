@@ -22,7 +22,7 @@ class NotificationsPage extends StatefulWidget {
 
 class _NotificationsPageState extends State<NotificationsPage> {
   static const int _pageSize = 32;
-  static final PreloadCache<NotificationsViewData> _cache =
+  static final PreloadCache<NotificationsViewData> cache =
       PreloadCache<NotificationsViewData>();
 
   late Future<NotificationsViewData> _future;
@@ -32,9 +32,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   void initState() {
     super.initState();
-    _lastData = _cache.value;
-    if (_cache.value != null) {
-      _future = Future<NotificationsViewData>.value(_cache.value!);
+    _lastData = cache.value;
+    if (cache.value != null) {
+      _future = Future<NotificationsViewData>.value(cache.value!);
     } else {
       _future = _startWithCache();
     }
@@ -74,7 +74,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   static Future<NotificationsViewData> preloadData({
     bool forceRefresh = false,
   }) async {
-    return _cache.load(
+    return cache.load(
       forceRefresh: forceRefresh,
       fetch: () => _loadDataStatic(forceRefresh: forceRefresh),
     );
@@ -135,7 +135,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     if (!mounted) return;
     setState(() {
       _lastData = refreshed;
-      _cache.value = refreshed;
+      cache.value = refreshed;
     });
     RefreshBus.instance.notify(reason: 'notifications');
   }
@@ -159,7 +159,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     setState(() {
       _lastData = optimisticData;
       _future = refreshedFuture;
-      _cache.value = optimisticData;
+      cache.value = optimisticData;
     });
 
     unawaited(
@@ -215,7 +215,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         scraped: currentData.scraped,
         seenScraperIds: currentData.seenScraperIds,
       );
-      _cache.value = _lastData;
+      cache.value = _lastData;
     });
     RefreshBus.instance.notify(reason: 'notifications');
   }
@@ -239,7 +239,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         scraped: current.scraped,
         seenScraperIds: {...current.seenScraperIds, item.id},
       );
-      _cache.value = _lastData;
+      cache.value = _lastData;
     });
     RefreshBus.instance.notify(reason: 'notifications');
   }

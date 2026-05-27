@@ -16,6 +16,7 @@ import 'package:preconnect/pages/custom_schedules_sections/custom_schedules_edit
     show showCustomSchedulesEditorSheet;
 import 'package:preconnect/pages/custom_schedules_sections/custom_schedules_shared.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
+import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
 class CustomSchedulesPage extends StatefulWidget {
@@ -35,7 +36,18 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
     'preconnect/android_alarm',
   );
   static const Duration _autoRefreshInterval = Duration(seconds: 20);
-  static List<CustomSchedule>? _cachedItems;
+  static final CachedPageController<List<CustomSchedule>> itemsCache =
+      CachedPageController<List<CustomSchedule>>(
+        ({bool forceRefresh = false}) async {
+          final service = CustomSchedulesService();
+          try {
+            final items = await service.getItems(forceRefresh: forceRefresh);
+            return await service.autoCompleteOverdueItems(items);
+          } catch (_) {
+            return await service.getCachedItems() ?? const <CustomSchedule>[];
+          }
+        },
+      );
   static List<CustomSchedulesCourseOption>? _cachedCourseOptions;
   static Future<void>? _preloadFuture;
 
@@ -51,13 +63,13 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _latestItems = _cachedItems;
+    _latestItems = itemsCache.value;
     if (_cachedCourseOptions != null) {
       _latestCourseOptions = _cachedCourseOptions!;
     }
-    _future = _cachedItems == null
+    _future = itemsCache.value == null
         ? _loadItems()
-        : Future<List<CustomSchedule>>.value(_cachedItems!);
+        : Future<List<CustomSchedule>>.value(itemsCache.value!);
     unawaited(_warmAndBind());
     unawaited(_primeCachedItems());
     _autoRefreshTimer = Timer.periodic(_autoRefreshInterval, (_) {
@@ -72,9 +84,9 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
     if (!mounted) return;
     setState(() {
       _future = Future<List<CustomSchedule>>.value(
-        _cachedItems ?? const <CustomSchedule>[],
+        itemsCache.value ?? const <CustomSchedule>[],
       );
-      _latestItems = _cachedItems;
+      _latestItems = itemsCache.value;
       if (_cachedCourseOptions != null) {
         _latestCourseOptions = _cachedCourseOptions!;
       }
@@ -83,7 +95,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
 
   static Future<void> preloadData({bool forceRefresh = false}) async {
     if (!forceRefresh &&
-        _cachedItems != null &&
+        itemsCache.value != null &&
         _cachedCourseOptions != null &&
         _cachedCourseOptions!.isNotEmpty) {
       return;
@@ -108,13 +120,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
   }
 
   static Future<void> _loadPreloadData({bool forceRefresh = false}) async {
-    final service = CustomSchedulesService();
-    try {
-      final items = await service.getItems(forceRefresh: forceRefresh);
-      _cachedItems = await service.autoCompleteOverdueItems(items);
-    } catch (_) {
-      _cachedItems = await service.getCachedItems() ?? const <CustomSchedule>[];
-    }
+    itemsCache.value = await itemsCache.load(forceRefresh: forceRefresh);
 
     try {
       final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
@@ -194,25 +200,14 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
   }
 
   Future<List<CustomSchedule>> _loadItems({bool forceRefresh = false}) async {
-    try {
-      final service = CustomSchedulesService();
-      final items = await service.getItems(forceRefresh: forceRefresh);
-      final normalizedItems = await service.autoCompleteOverdueItems(items);
-      _cachedItems = normalizedItems;
-      return normalizedItems;
-    } catch (e) {
-      final cached = await CustomSchedulesService().getCachedItems();
-      final fallback = cached ?? const <CustomSchedule>[];
-      _cachedItems = fallback;
-      return fallback;
-    }
+    return itemsCache.load(forceRefresh: forceRefresh);
   }
 
   Future<void> _primeCachedItems() async {
-    if (_cachedItems != null) {
+    if (itemsCache.value != null) {
       if (!mounted) return;
       setState(() {
-        _latestItems = _cachedItems;
+        _latestItems = itemsCache.value;
       });
       return;
     }
@@ -221,7 +216,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
     setState(() {
       _latestItems = cached;
     });
-    _cachedItems = cached;
+    itemsCache.value = cached;
   }
 
   Future<List<CustomSchedulesCourseOption>> _loadCourseOptions({

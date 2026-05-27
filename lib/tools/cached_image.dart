@@ -49,6 +49,7 @@ class _CachedImageState extends State<CachedImage> {
       <String, Future<Uint8List>>{};
   static const String _manifestKey = 'cached_image_manifest_v1';
   static const String _webCachePrefix = 'cached_image_web_v1';
+  static const int _maxMemoryCacheEntries = 120;
   static Map<String, String>? _manifest;
   static bool _cleanupScheduled = false;
 
@@ -58,6 +59,14 @@ class _CachedImageState extends State<CachedImage> {
 
   static void clearMemoryCache() {
     _memoryCache.clear();
+  }
+
+  static void _storeInMemoryCache(String key, Uint8List bytes) {
+    _memoryCache[key] = bytes;
+    while (_memoryCache.length > _maxMemoryCacheEntries) {
+      final oldestKey = _memoryCache.keys.first;
+      _memoryCache.remove(oldestKey);
+    }
   }
 
   @override
@@ -221,7 +230,7 @@ class _CachedImageState extends State<CachedImage> {
           if (raw != null && raw.isNotEmpty) {
             final bytes = base64Decode(raw);
             if (bytes.isNotEmpty) {
-              _memoryCache[normalized] = bytes;
+              _storeInMemoryCache(normalized, bytes);
               return bytes;
             }
           }
@@ -237,7 +246,7 @@ class _CachedImageState extends State<CachedImage> {
         if (await mappedFile.exists()) {
           final bytes = await mappedFile.readAsBytes();
           if (bytes.isNotEmpty) {
-            _memoryCache[normalized] = bytes;
+            _storeInMemoryCache(normalized, bytes);
             return bytes;
           }
         }
@@ -246,7 +255,7 @@ class _CachedImageState extends State<CachedImage> {
       if (!await file.exists()) return null;
       final bytes = await file.readAsBytes();
       if (bytes.isEmpty) return null;
-      _memoryCache[normalized] = bytes;
+      _storeInMemoryCache(normalized, bytes);
       return bytes;
     } catch (_) {
       return null;
@@ -256,7 +265,7 @@ class _CachedImageState extends State<CachedImage> {
   Future<void> _writeCachedBytes(String value, Uint8List bytes) async {
     final normalized = value.trim();
     if (normalized.isEmpty || bytes.isEmpty) return;
-    _memoryCache[normalized] = bytes;
+    _storeInMemoryCache(normalized, bytes);
     if (kIsWeb) {
       try {
         final cacheKey = _webCacheKey(normalized);

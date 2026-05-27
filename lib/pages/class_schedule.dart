@@ -9,6 +9,7 @@ import 'package:preconnect/pages/shared_widgets/highlight_scroll_helper.dart';
 import 'package:preconnect/pages/shared_widgets/schedule_entry_card.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/time_utils.dart';
@@ -42,8 +43,11 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     'SUNDAY',
   ];
 
-  static _ScheduleData? _cachedData;
-  static Future<_ScheduleData>? _preloadFuture;
+  static final CachedPageController<_ScheduleData> cache =
+      CachedPageController<_ScheduleData>(
+        ({bool forceRefresh = false}) =>
+            _ClassScheduleState._loadScheduleData(forceRefresh: forceRefresh),
+      );
 
   late Future<_ScheduleData> _future;
   _ScheduleData? _latestData;
@@ -57,10 +61,10 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   @override
   void initState() {
     super.initState();
-    _latestData = _cachedData;
-    _future = _cachedData == null
+    _latestData = cache.value;
+    _future = cache.value == null
         ? _initializeSchedule()
-        : Future<_ScheduleData>.value(_cachedData!);
+        : Future<_ScheduleData>.value(cache.value!);
     unawaited(_loadCurrentSessionSemesterId());
     unawaited(_warmAndBind());
     ClassSchedule.jumpSignal.addListener(_onJumpRequested);
@@ -77,27 +81,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   }
 
   static Future<_ScheduleData> preloadData({bool forceRefresh = false}) async {
-    if (!forceRefresh && _cachedData != null) {
-      return _cachedData!;
-    }
-    if (!forceRefresh) {
-      final inFlight = _preloadFuture;
-      if (inFlight != null) {
-        return inFlight;
-      }
-    }
-
-    final future = _loadScheduleData(forceRefresh: forceRefresh);
-    _preloadFuture = future;
-    try {
-      final data = await future;
-      _cachedData = data;
-      return data;
-    } finally {
-      if (identical(_preloadFuture, future)) {
-        _preloadFuture = null;
-      }
-    }
+    return cache.load(forceRefresh: forceRefresh);
   }
 
   static Future<_ScheduleData> _loadScheduleData({
@@ -207,7 +191,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
         isRamadan: isRamadan,
         examOverrides: const <String, ExamScheduleOverride>{},
       );
-      _cachedData = data;
+      cache.value = data;
       if (mounted) {
         setState(() {
           _latestData = data;
@@ -246,7 +230,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       isRamadan: isRamadan,
       examOverrides: examOverrides,
     );
-    _cachedData = data;
+    cache.value = data;
     if (mounted) {
       setState(() {
         _latestData = data;

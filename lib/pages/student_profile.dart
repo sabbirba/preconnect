@@ -186,75 +186,97 @@ class _StudentProfileState extends State<StudentProfile>
   static Future<_StudentProfileSnapshot> _loadProfileSnapshot({
     bool forceRefresh = false,
   }) async {
-    Map<String, String?>? profile;
-    String? photoUrl;
-    List<PaymentInfo> payments = const <PaymentInfo>[];
-    List<AttendanceInfo> attendances = const <AttendanceInfo>[];
-    Map<String, String?> advising = <String, String?>{};
-    ProgressSummary? progressSummary;
+    final profileFuture = () async {
+      try {
+        return forceRefresh
+            ? await ProfileService().fetchProfile()
+            : await ProfileService().getProfile();
+      } catch (_) {
+        return null;
+      }
+    }();
+    final paymentsFuture = () async {
+      try {
+        final List<dynamic> paymentsJson = _decodeListStatic(
+          forceRefresh
+              ? await PaymentService().fetchPaymentInfo()
+              : await PaymentService().getPaymentInfo(),
+        );
+        return paymentsJson
+            .map<PaymentInfo?>((item) {
+              try {
+                return PaymentInfo.fromJson(item as Map<String, dynamic>);
+              } catch (e) {
+                return null;
+              }
+            })
+            .whereType<PaymentInfo>()
+            .toList()
+          ..sort(_comparePayments);
+      } catch (_) {
+        return const <PaymentInfo>[];
+      }
+    }();
+    final attendanceFuture = () async {
+      try {
+        final List<dynamic> attendanceJson = _decodeListStatic(
+          forceRefresh
+              ? await AttendanceService().fetchAttendanceInfo()
+              : await AttendanceService().getAttendanceInfo(),
+        );
+        return attendanceJson
+            .map<AttendanceInfo?>((e) {
+              try {
+                return AttendanceInfo.fromJson(e as Map<String, dynamic>);
+              } catch (e) {
+                return null;
+              }
+            })
+            .whereType<AttendanceInfo>()
+            .toList();
+      } catch (_) {
+        return const <AttendanceInfo>[];
+      }
+    }();
+    final advisingFuture = () async {
+      try {
+        return forceRefresh
+            ? await AdvisingService().fetchAdvisingInfo()
+            : await AdvisingService().getAdvisingInfo();
+      } catch (_) {
+        return null;
+      }
+    }();
+    final progressFuture = () async {
+      try {
+        final progress = forceRefresh
+            ? await ProgressService().fetchProgress()
+            : await ProgressService().getProgress();
+        return progress == null
+            ? null
+            : ProgressSummary.fromProgressInfo(progress);
+      } catch (_) {
+        return null;
+      }
+    }();
 
-    try {
-      profile = forceRefresh
-          ? await ProfileService().fetchProfile()
-          : await ProfileService().getProfile();
-      photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
-      await ProfileImageCache.instance.getProfileImage(photoUrl);
-    } catch (_) {}
+    final results = await Future.wait<dynamic>(<Future<dynamic>>[
+      profileFuture,
+      paymentsFuture,
+      attendanceFuture,
+      advisingFuture,
+      progressFuture,
+    ]);
 
-    try {
-      final List<dynamic> paymentsJson = _decodeListStatic(
-        forceRefresh
-            ? await PaymentService().fetchPaymentInfo()
-            : await PaymentService().getPaymentInfo(),
-      );
-      payments =
-          paymentsJson
-              .map<PaymentInfo?>((item) {
-                try {
-                  return PaymentInfo.fromJson(item as Map<String, dynamic>);
-                } catch (e) {
-                  return null;
-                }
-              })
-              .whereType<PaymentInfo>()
-              .toList()
-            ..sort(_comparePayments);
-    } catch (_) {}
-
-    try {
-      final List<dynamic> attendanceJson = _decodeListStatic(
-        forceRefresh
-            ? await AttendanceService().fetchAttendanceInfo()
-            : await AttendanceService().getAttendanceInfo(),
-      );
-      attendances = attendanceJson
-          .map<AttendanceInfo?>((e) {
-            try {
-              return AttendanceInfo.fromJson(e as Map<String, dynamic>);
-            } catch (e) {
-              return null;
-            }
-          })
-          .whereType<AttendanceInfo>()
-          .toList();
-    } catch (_) {}
-
-    try {
-      advising =
-          (forceRefresh
-              ? await AdvisingService().fetchAdvisingInfo()
-              : await AdvisingService().getAdvisingInfo()) ??
-          advising;
-    } catch (_) {}
-
-    try {
-      final progress = forceRefresh
-          ? await ProgressService().fetchProgress()
-          : await ProgressService().getProgress();
-      progressSummary = progress == null
-          ? progressSummary
-          : ProgressSummary.fromProgressInfo(progress);
-    } catch (_) {}
+    final profile = results[0] as Map<String, String?>?;
+    final payments = results[1] as List<PaymentInfo>;
+    final attendances = results[2] as List<AttendanceInfo>;
+    final advising = results[3] as Map<String, String?>? ?? <String, String?>{};
+    final progressSummary = results[4] as ProgressSummary?;
+    final photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
+    if ((photoUrl ?? '').trim().isNotEmpty) {
+      unawaited(ProfileImageCache.instance.getProfileImage(photoUrl));
+    }
 
     return _StudentProfileSnapshot(
       profile: profile,

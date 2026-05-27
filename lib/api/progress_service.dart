@@ -71,9 +71,14 @@ class ProgressService {
       ];
       final cache = AppPreferencesStore();
 
-      final majorEtag = await cache.getString(_majorMinorsEtagKey);
-      final completedEtag = await cache.getString(_completedCoursesEtagKey);
-      final curriculumEtag = await cache.getString(_curriculumEtagKey);
+      final etags = await Future.wait<String?>([
+        cache.getString(_majorMinorsEtagKey),
+        cache.getString(_completedCoursesEtagKey),
+        cache.getString(_curriculumEtagKey),
+      ]);
+      final majorEtag = etags[0];
+      final completedEtag = etags[1];
+      final curriculumEtag = etags[2];
 
       final responses = await Future.wait([
         _client.authenticatedGet(
@@ -93,29 +98,35 @@ class ProgressService {
         ),
       ]);
 
-      final majorMinors = await _resolveComponent(
-        cache: cache,
-        response: responses[0],
-        dataKey: _majorMinorsCacheKey,
-        etagKey: _majorMinorsEtagKey,
-      );
-      final completedCourses = await _resolveComponent(
-        cache: cache,
-        response: responses[1],
-        dataKey: _completedCoursesCacheKey,
-        etagKey: _completedCoursesEtagKey,
-      );
-      final curriculum = await _resolveComponent(
-        cache: cache,
-        response: responses[2],
-        dataKey: _curriculumCacheKey,
-        etagKey: _curriculumEtagKey,
-      );
-      final coursePrerequisites = await _resolvePublicComponent(
-        cache: cache,
-        urls: coursePrerequisitesUrls,
-        dataKey: _coursePrerequisitesCacheKey,
-      );
+      final resolved = await Future.wait<dynamic>([
+        _resolveComponent(
+          cache: cache,
+          response: responses[0],
+          dataKey: _majorMinorsCacheKey,
+          etagKey: _majorMinorsEtagKey,
+        ),
+        _resolveComponent(
+          cache: cache,
+          response: responses[1],
+          dataKey: _completedCoursesCacheKey,
+          etagKey: _completedCoursesEtagKey,
+        ),
+        _resolveComponent(
+          cache: cache,
+          response: responses[2],
+          dataKey: _curriculumCacheKey,
+          etagKey: _curriculumEtagKey,
+        ),
+        _resolvePublicComponent(
+          cache: cache,
+          urls: coursePrerequisitesUrls,
+          dataKey: _coursePrerequisitesCacheKey,
+        ),
+      ]);
+      final majorMinors = resolved[0];
+      final completedCourses = resolved[1];
+      final curriculum = resolved[2];
+      final coursePrerequisites = resolved[3];
 
       if (majorMinors == null ||
           completedCourses == null ||

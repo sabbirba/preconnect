@@ -4,30 +4,20 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:in_app_update/in_app_update.dart';
-import 'package:preconnect/api/calendar_service.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/custom_schedules_service.dart';
-import 'package:preconnect/api/friend_schedule_store.dart';
-import 'package:preconnect/api/notification_service.dart';
 import 'package:preconnect/api/profile_service.dart';
-import 'package:preconnect/api/progress_service.dart';
 import 'package:preconnect/api/seat_status_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/home_tab.dart';
-import 'package:preconnect/pages/alarms.dart';
 import 'package:preconnect/pages/bus.dart';
 import 'package:preconnect/pages/class_schedule.dart';
-import 'package:preconnect/pages/custom_schedules.dart';
-import 'package:preconnect/pages/degree_progress.dart';
-import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/onboarding.dart';
-import 'package:preconnect/pages/notifications.dart';
-import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
@@ -179,7 +169,7 @@ class MyApp extends StatefulWidget {
   }
 
   static Future<void> _warmStartupCaches() async {
-    final tasks = _buildWarmupTasks(includeCampusPrinter: true);
+    final tasks = _buildWarmupTasks(includeCampusPrinter: false);
     await Future.wait(tasks.map((task) => task.catchError((_) {})));
   }
 
@@ -189,9 +179,6 @@ class MyApp extends StatefulWidget {
     final tasks = <Future<void>>[
       preloadHomeDashboardData().then((_) {}),
       ProfileService().getProfile().then((_) {}),
-      AttendanceService().getAttendanceInfo().then((_) {}),
-      PaymentService().getPaymentInfo().then((_) {}),
-      ProgressService().getProgress().then((_) {}),
       () async {
         final semesterSessionId = await resolveCurrentSessionSemesterId();
         if (semesterSessionId == null) return;
@@ -199,20 +186,10 @@ class MyApp extends StatefulWidget {
           semesterSessionId: semesterSessionId,
         );
       }(),
-      CustomSchedulesService().getItems().then((_) {}),
-      FriendScheduleStore().loadSnapshot().then((_) {}),
-      CalendarService().getCalendar().then((_) {}),
-      NotificationService().getRecentNotifications().then((_) {}),
       SeatStatusService.preload(),
       BusPage.preload(),
-      NotificationsPage.preload(),
-      DegreeProgressPage.preload(),
-      StudentProfile.preload(),
-      DevsPage.preload(),
-      AlarmPage.preload(),
       ClassSchedule.preload(),
       ExamSchedule.preload(),
-      CustomSchedulesPage.preload(),
     ];
     if (includeCampusPrinter) {
       tasks.add(CampusPrinterPage.preload());

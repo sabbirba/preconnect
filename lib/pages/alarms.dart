@@ -36,7 +36,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   static const MethodChannel _androidAlarmChannel = MethodChannel(
     'preconnect/android_alarm',
   );
-  static final PreloadCache<_AlarmData> _cache = PreloadCache<_AlarmData>();
+  static final PreloadCache<_AlarmData> cache = PreloadCache<_AlarmData>();
 
   late Future<_AlarmData> _futureData;
   _AlarmData? _latestData;
@@ -48,10 +48,10 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   @override
   void initState() {
     super.initState();
-    _latestData = _cache.value;
-    _futureData = _cache.value == null
+    _latestData = cache.value;
+    _futureData = cache.value == null
         ? _fetchSchedule()
-        : Future<_AlarmData>.value(_cache.value!);
+        : Future<_AlarmData>.value(cache.value!);
     bindRefreshBus(_onRefreshSignal);
     unawaited(_warmAndBind());
   }
@@ -85,7 +85,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   }
 
   static Future<_AlarmData> preloadData({bool forceRefresh = false}) async {
-    return _cache.load(
+    return cache.load(
       forceRefresh: forceRefresh,
       fetch: () => _loadAlarmData(forceRefresh: forceRefresh),
     );
@@ -176,7 +176,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       examEntries: _pruneExpiredExamEntries(examEntries, now: now),
       isRamadan: isRamadan,
     );
-    _cache.value = data;
+    cache.value = data;
     await _writeSnapshot(data);
     return data;
   }
@@ -303,7 +303,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       return;
     }
     setState(() {
-      _latestData = _latestData ?? _cache.value;
+      _latestData = _latestData ?? cache.value;
       _futureData = preloadData(forceRefresh: true);
     });
     final data = await _futureData;
