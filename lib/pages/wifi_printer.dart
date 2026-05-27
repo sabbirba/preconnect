@@ -835,32 +835,23 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                             child: FittedBox(
                               fit: BoxFit.scaleDown,
                               alignment: Alignment.centerRight,
-                              child: OutlinedButton(
+                              child: BracuActionButton(
                                 onPressed: (_busy || _loadingPreset)
                                     ? null
                                     : _loadWhitePage,
-                                style: bracuCompactOutlinedButtonStyle(
+                                label: 'White Page',
+                                icon: Icons.download_rounded,
+                                isLoading: _loadingPreset,
+                                foregroundColor: BracuPalette.textPrimary(
                                   context,
-                                  foregroundColor: BracuPalette.textPrimary(
-                                    context,
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 10,
-                                  ),
-                                  borderRadius: 12,
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.download_rounded, size: 22),
-                                    const SizedBox(width: 0),
-                                    const Text(
-                                      'White Page',
-                                      style: TextStyle(fontSize: 16),
-                                    ),
-                                  ],
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
                                 ),
+                                borderRadius: 12,
+                                iconSize: 22,
+                                fontSize: 16,
                               ),
                             ),
                           ),
