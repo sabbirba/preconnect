@@ -542,6 +542,7 @@ Future<void> showBracuFundingSupportSheet(BuildContext context) async {
     context,
     title: 'Support PreConnect',
     subtitle: 'Choose how you want to help',
+    initialChildSize: 0.54,
     builder: (sheetContext, textPrimary, textSecondary) {
       final sheetScroll = bracuBottomSheetScrollController(sheetContext);
       return ListView(
@@ -1083,139 +1084,154 @@ class BracuFundingSupportContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(0),
-          child: Column(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.zero,
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: Image.network(
-                    _kPreconnectSupportQrUrl,
-                    fit: BoxFit.cover,
-                    filterQuality: FilterQuality.high,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.zero,
-                        ),
-                        child: Icon(
-                          Icons.qr_code_2_rounded,
-                          color: BracuPalette.primary,
-                          size: 44,
-                        ),
-                      );
-                    },
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 5,
+              child: Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.zero,
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: Image.network(
+                        _kPreconnectSupportQrUrl,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.high,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            alignment: Alignment.center,
+                            color: Colors.transparent,
+                            child: Icon(
+                              Icons.qr_code_2_rounded,
+                              color: BracuPalette.primary,
+                              size: 44,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              flex: 6,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Align(
+                    alignment: Alignment.center,
+                    child: BracuSupportNumberRow(
+                      number: _kPreconnectSupportNumber,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Align(
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Send money with reference',
+                      style: TextStyle(
+                        color: BracuPalette.textSecondary(context),
+                        fontSize: 11,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 0),
+                  Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _kPreconnectSupportReference,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(width: 4),
+                        InkWell(
+                          onTap: () async {
+                            await Clipboard.setData(
+                              const ClipboardData(
+                                text: _kPreconnectSupportReference,
+                              ),
+                            );
+                            if (context.mounted) {
+                              showAppSnackBar(context, 'Reference copied');
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: const Padding(
+                            padding: EdgeInsets.all(2),
+                            child: Icon(
+                              Icons.copy_rounded,
+                              size: 14,
+                              color: BracuPalette.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Scan the QR code in your bKash app to support or send money manually using the number.',
+                    style: TextStyle(
+                      color: BracuPalette.textSecondary(context),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      height: 1.45,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Center(
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _BracuSponsorActionChip(
+                iconWidget: const Icon(
+                  Icons.phone_rounded,
+                  size: 18,
+                  color: BracuPalette.primary,
+                ),
+                label: _kPreconnectSupportNumber,
+                onTap: () =>
+                    openPhoneDialer(context, _kPreconnectSupportNumber),
+              ),
+              _BracuSponsorActionChip(
+                iconWidget: const Icon(
+                  Icons.chat_rounded,
+                  size: 18,
+                  color: BracuPalette.primary,
+                ),
+                label: 'WhatsApp',
+                onTap: () => openExternalUrl(
+                  context,
+                  _kPreconnectWhatsAppUrl,
+                  failureMessage: 'Unable to open WhatsApp.',
                 ),
               ),
-              const SizedBox(height: 12),
-              Text(
-                'Open the QR code in your bKash app to support PreConnect. You can also send money manually using the number and reference below.',
-                style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
+              const BracuCommunityLink(compact: true),
+              _BracuSponsorActionChip(
+                iconWidget: const PreconnectGithubIcon(
+                  size: 18,
+                  color: BracuPalette.primary,
                 ),
-                textAlign: TextAlign.center,
+                label: 'GitHub Repository',
+                onTap: () => openExternalUrl(context, kPreconnectRepositoryUrl),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 2),
-        const BracuSupportNumberRow(number: _kPreconnectSupportNumber),
-        const SizedBox(height: 2),
-        Text(
-          'Send money with reference',
-          style: TextStyle(
-            color: BracuPalette.textSecondary(context),
-            fontSize: 11,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 0),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              _kPreconnectSupportReference,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(width: 4),
-            InkWell(
-              onTap: () async {
-                await Clipboard.setData(
-                  const ClipboardData(text: _kPreconnectSupportReference),
-                );
-                if (context.mounted) {
-                  showAppSnackBar(context, 'Reference copied');
-                }
-              },
-              borderRadius: BorderRadius.circular(8),
-              child: const Padding(
-                padding: EdgeInsets.all(2),
-                child: Icon(
-                  Icons.copy_rounded,
-                  size: 14,
-                  color: BracuPalette.primary,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Your support helps cover server costs, ongoing development, and app releases so PreConnect can stay reliable.',
-          style: TextStyle(
-            color: BracuPalette.textSecondary(context),
-            fontSize: 13,
-            height: 1.45,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 2),
-        Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _BracuSponsorActionChip(
-              iconWidget: const Icon(
-                Icons.phone_rounded,
-                size: 18,
-                color: BracuPalette.primary,
-              ),
-              label: _kPreconnectSupportNumber,
-              onTap: () => openPhoneDialer(context, _kPreconnectSupportNumber),
-            ),
-            _BracuSponsorActionChip(
-              iconWidget: const Icon(
-                Icons.chat_rounded,
-                size: 18,
-                color: BracuPalette.primary,
-              ),
-              label: 'WhatsApp',
-              onTap: () => openExternalUrl(
-                context,
-                _kPreconnectWhatsAppUrl,
-                failureMessage: 'Unable to open WhatsApp.',
-              ),
-            ),
-            const BracuCommunityLink(compact: true),
-            _BracuSponsorActionChip(
-              iconWidget: const PreconnectGithubIcon(
-                size: 18,
-                color: BracuPalette.primary,
-              ),
-              label: 'GitHub Repository',
-              onTap: () => openExternalUrl(context, kPreconnectRepositoryUrl),
-            ),
-          ],
         ),
       ],
     );
