@@ -9,6 +9,7 @@ import 'package:preconnect/pages/shared_widgets/course_community_sheet.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ramadan_timing.dart';
 import 'package:preconnect/tools/token_storage.dart';
+import 'package:preconnect/tools/time_utils.dart';
 part 'shared_widgets/seat_status_methods.dart';
 
 String seatStatusFacultySummaryLabel(section.SectionFaculty? faculty) {
