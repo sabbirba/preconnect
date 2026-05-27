@@ -547,10 +547,11 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     child: _LoadingLine(),
                                   ),
                                 BracuActionBannerCard(
-                                  icon: Icons.map,
+                                  icon: Icons.location_on_rounded,
                                   title: 'Campus Map & Contacts',
                                   subtitle: 'Location and emergency contacts',
                                   iconColor: const Color(0xFF22B573),
+                                  iconDecoration: false,
                                   onTap: _openCampusMapSheet,
                                 ),
                                 if (cardVisibility.showSponsoredContent) ...[
