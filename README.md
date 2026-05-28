@@ -17,9 +17,10 @@ An initiative run by [BRAC University](https://bracu.ac.bd) students.
 
 <div align="center">
 <a href="https://play.google.com/store/apps/details?id=com.sabbirba.preconnect"><img alt="Google Play" src="https://img.shields.io/badge/Google_Play-414141?style=for-the-badge&logo=googleplay&logoColor=white" /></a>&nbsp;&nbsp;
-<a href="https://github.com/sabbirba/preconnect/releases/download/v1.6.5%2B202605050/PreConnect-chrome-extension-release-1.6.5%2B202605050.zip"><img alt="Chrome Extension" src="https://img.shields.io/badge/Chrome_Extension-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" /></a>&nbsp;&nbsp;
+<a href="https://chromewebstore.google.com/detail/preconnect/fcfkbdogaciifaihbfhnaijfhdcjokca"><img alt="Chrome Extension" src="https://img.shields.io/badge/Chrome_Extension-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" /></a>&nbsp;&nbsp;
 <a href="https://github.com/sabbirba/preconnect/releases/latest"><img alt="GitHub Releases" src="https://img.shields.io/badge/GitHub_Releases-181717?style=for-the-badge&logo=github&logoColor=white" /></a>&nbsp;&nbsp;
-
+<a href="https://preconnect.app/"><img alt="Website" src="https://img.shields.io/badge/Website-2B2B2B?style=for-the-badge&logo=firefoxbrowser&logoColor=white" /></a>&nbsp;&nbsp;
+<a href="https://status.preconnect.app/"><img alt="Status" src="https://img.shields.io/badge/Status-22C55E?style=for-the-badge&logo=statuspage&logoColor=white" /></a>
 </div>
 
 ## Overview
