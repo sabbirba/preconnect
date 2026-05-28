@@ -7,7 +7,18 @@
 Fast, Calm Academic Companion App.
 An initiative run by [BRAC University](https://bracu.ac.bd) students.
 
-![GitHub Release](https://img.shields.io/github/v/release/sabbirba/preconnect?label=latest%20version&&color=dark-green) ![License](https://img.shields.io/badge/license-GPL3.0-blue) [![Contributors](https://img.shields.io/github/contributors/sabbirba/preconnect?color=red)](https://github.com/sabbirba/preconnect/blob/main/CONTRIBUTING.md) [![Discord](https://img.shields.io/discord/1506919568499539968)](https://discord.gg/HwrgeFrvaz)
+[![GitHub Release](https://img.shields.io/github/v/release/sabbirba/preconnect?label=latest%20version&color=dark-green&style=flat-square&logo=github)](https://github.com/sabbirba/preconnect/releases/latest)
+![License](https://img.shields.io/badge/license-GPL3.0-blue?style=flat-square)
+[![Contributors](https://img.shields.io/github/contributors/sabbirba/preconnect?color=red&style=flat-square&logo=github)](https://github.com/sabbirba/preconnect/blob/main/CONTRIBUTING.md)
+[![Stars](https://img.shields.io/github/stars/sabbirba/preconnect?style=flat-square&logo=github)](https://github.com/sabbirba/preconnect/stargazers)
+[![Discord Chat](https://img.shields.io/discord/1506919568499539968?label=chat&logo=discord&logoColor=7289DA&style=flat-square)](https://discord.gg/HwrgeFrvaz)
+
+</div>
+
+<div align="center">
+<a href="https://play.google.com/store/apps/details?id=com.sabbirba.preconnect"><img alt="Google Play" src="https://img.shields.io/badge/Google_Play-414141?style=for-the-badge&logo=googleplay&logoColor=white" /></a>&nbsp;&nbsp;
+<a href="https://github.com/sabbirba/preconnect/releases/download/v1.6.5%2B202605050/PreConnect-chrome-extension-release-1.6.5%2B202605050.zip"><img alt="Chrome Extension" src="https://img.shields.io/badge/Chrome_Extension-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" /></a>&nbsp;&nbsp;
+<a href="https://github.com/sabbirba/preconnect/releases/latest"><img alt="GitHub Releases" src="https://img.shields.io/badge/GitHub_Releases-181717?style=for-the-badge&logo=github&logoColor=white" /></a>&nbsp;&nbsp;
 
 </div>
 
