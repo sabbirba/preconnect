@@ -95,6 +95,7 @@ class BracuActionButton extends StatelessWidget {
     this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     this.borderRadius = 12,
     this.iconSize = 18,
+    this.iconGap = 8,
     this.fontSize,
   });
 
@@ -109,6 +110,7 @@ class BracuActionButton extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final double borderRadius;
   final double iconSize;
+  final double iconGap;
   final double? fontSize;
 
   @override
@@ -131,20 +133,32 @@ class BracuActionButton extends StatelessWidget {
 
   Widget _buildText(BuildContext context) {
     if (iconWidget != null) {
-      return TextButton.icon(
+      return TextButton(
         onPressed: onPressed,
         style: _textButtonStyle(context),
-        icon: iconWidget!,
-        label: _label(),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            iconWidget!,
+            SizedBox(width: iconGap),
+            _label(),
+          ],
+        ),
       );
     }
 
     if (icon != null) {
-      return TextButton.icon(
+      return TextButton(
         onPressed: onPressed,
         style: _textButtonStyle(context),
-        icon: Icon(icon, size: iconSize),
-        label: _label(),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: iconSize),
+            SizedBox(width: iconGap),
+            _label(),
+          ],
+        ),
       );
     }
 
@@ -157,20 +171,32 @@ class BracuActionButton extends StatelessWidget {
 
   Widget _buildOutlined(BuildContext context) {
     if (iconWidget != null) {
-      return OutlinedButton.icon(
+      return OutlinedButton(
         onPressed: onPressed,
-        icon: iconWidget!,
-        label: _label(),
         style: _outlinedStyle(context),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            iconWidget!,
+            SizedBox(width: iconGap),
+            _label(),
+          ],
+        ),
       );
     }
 
     if (icon != null) {
-      return OutlinedButton.icon(
+      return OutlinedButton(
         onPressed: onPressed,
-        icon: Icon(icon, size: iconSize),
-        label: _label(),
         style: _outlinedStyle(context),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: iconSize),
+            SizedBox(width: iconGap),
+            _label(),
+          ],
+        ),
       );
     }
 

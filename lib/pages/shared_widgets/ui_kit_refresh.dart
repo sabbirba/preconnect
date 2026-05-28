@@ -19,17 +19,19 @@ const EdgeInsets kBracuPageListPadding = EdgeInsets.fromLTRB(20, 8, 20, 28);
   double minItemWidth = 72.0,
 }) {
   const maxSpacing = 12.0;
-  const minSpacing = 4.0;
+  const minSpacing = 0.0;
+  final safeMaxWidth = math.max(0.0, maxWidth - 1.0);
 
   for (var spacing = maxSpacing; spacing >= minSpacing; spacing -= 1) {
-    final width = (maxWidth - spacing * (targetColumns - 1)) / targetColumns;
+    final width =
+        (safeMaxWidth - spacing * (targetColumns - 1)) / targetColumns;
     if (width >= minItemWidth) {
       return (itemWidth: width, spacing: spacing);
     }
   }
 
   final fallbackWidth =
-      (maxWidth - minSpacing * (targetColumns - 1)) / targetColumns;
+      (safeMaxWidth - minSpacing * (targetColumns - 1)) / targetColumns;
   return (
     itemWidth: fallbackWidth.clamp(60.0, double.infinity),
     spacing: minSpacing,

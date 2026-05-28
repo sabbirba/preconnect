@@ -240,23 +240,27 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                 horizontal: 4,
                                 vertical: 6,
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.public_rounded,
-                                    size: 18,
-                                    color: BracuPalette.accent,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Open PreConnect Website',
-                                    style: TextStyle(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.public_rounded,
+                                      size: 18,
                                       color: BracuPalette.accent,
-                                      fontWeight: FontWeight.w600,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Open PreConnect Website',
+                                      style: TextStyle(
+                                        color: BracuPalette.accent,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -301,7 +305,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       final layout = quickAccessGridLayout(
                         constraints.maxWidth,
                         targetColumns: 5,
-                        minItemWidth: 62,
+                        minItemWidth: 48,
                       );
                       return Center(
                         child: Wrap(
@@ -527,22 +531,27 @@ class _CompactQuickAccessCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textSecondary = BracuPalette.textSecondary(context);
     final textPrimary = BracuPalette.textPrimary(context);
+    final scale = (width / 64).clamp(0.72, 1.0);
+    final outerPadding = 9.0 * scale;
+    final iconShellPadding = 8.0 * scale;
+    final iconSize = 22.0 * scale;
+    final cardRadius = 12.0 * scale;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(cardRadius),
       child: Container(
         width: width,
-        padding: const EdgeInsets.all(9),
+        padding: EdgeInsets.all(outerPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(iconShellPadding),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(cardRadius),
               ),
-              child: Icon(icon, color: color, size: 22),
+              child: Icon(icon, color: color, size: iconSize),
             ),
             if (showLabels) ...[
               const SizedBox(height: 12),

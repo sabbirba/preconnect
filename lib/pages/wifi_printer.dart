@@ -160,12 +160,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const String _snackPrinterConnectionFailed =
       'Printer connection failed';
   static const String _whitePageUrl =
-      'https://cdn.preconnect.app/WhitePage.pdf';
+      'https://cdn.preconnect.app/api/WhitePage.pdf';
 
   Uint8List? _fileBytes;
   String _fileName = '';
   int? _filePageCount;
-  String? _filePdfVersion;
   String _studentId = '';
   String _studentName = '';
   String _studentShortCode = '';
@@ -461,7 +460,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
           _setPdfInfoFromBytes(bytes);
         } else {
           _filePageCount = null;
-          _filePdfVersion = null;
         }
       });
     } catch (_) {}
@@ -487,10 +485,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         _fileName = 'WhitePage.pdf';
         if (_isPdfFile(_fileName, bytes)) {
           _filePageCount = 1;
-          _filePdfVersion = _readPdfHeaderVersion(bytes) ?? 'PDF';
         } else {
           _filePageCount = null;
-          _filePdfVersion = null;
         }
       });
     } catch (_) {
@@ -512,7 +508,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _fileBytes = null;
       _fileName = '';
       _filePageCount = null;
-      _filePdfVersion = null;
     });
   }
 
@@ -531,17 +526,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     return _filePageCount == 1 ? '1 Page' : '$_filePageCount Pages';
   }
 
-  String _fileVersionLabel() {
-    if (_fileName.trim().isEmpty) return 'PDF/IMAGE';
-    if (_isJpegFile(_fileName)) return 'Image';
-    if (_isPngFile(_fileName)) return 'Image';
-    final version = _filePdfVersion?.trim();
-    if (version == null || version.isEmpty) return 'PDF';
-    return 'PDF $version';
-  }
-
   String _fileStatusLabel() {
-    return _fileName.isEmpty ? 'No file selected' : _fileName;
+    return _fileName.isEmpty ? 'Choose File' : _fileName;
   }
 
   void _setPdfInfoFromBytes(Uint8List bytes) {
@@ -550,20 +536,15 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       if (!mounted) return;
       setState(() {
         _filePageCount = pdfInfo.pageCount;
-        _filePdfVersion = pdfInfo.version;
       });
     }());
   }
 
-  Future<({int? pageCount, String? version})> _readPdfInfo(
-    Uint8List bytes,
-  ) async {
+  Future<({int? pageCount})> _readPdfInfo(Uint8List bytes) async {
     try {
-      final header = _readPdfHeaderVersion(bytes);
       final stream = ByteStream(bytes);
       final document = await PDFParser(stream).parse();
       final catalog = await document.catalog;
-      final version = header ?? (await catalog.getVersion());
       final pages = await catalog.getPages();
       var count = 0;
       while (true) {
@@ -574,22 +555,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
           break;
         }
       }
-      return (
-        pageCount: count > 0 ? count : null,
-        version: version?.trim().isNotEmpty == true ? version!.trim() : null,
-      );
+      return (pageCount: count > 0 ? count : null);
     } catch (_) {
-      return (pageCount: null, version: null);
+      return (pageCount: null);
     }
-  }
-
-  String? _readPdfHeaderVersion(Uint8List bytes) {
-    if (bytes.isEmpty) return null;
-    final sampleLength = bytes.length < 64 ? bytes.length : 64;
-    final header = String.fromCharCodes(bytes.take(sampleLength));
-    final match = RegExp(r'%PDF-(\d+\.\d+)').firstMatch(header);
-    final version = match?.group(1)?.trim();
-    return version?.isNotEmpty == true ? version : null;
   }
 
   Future<void> _sendToPrinter() async {
@@ -823,8 +792,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 _PrinterFileCard(
                   title: _fileStatusLabel(),
                   subtitle:
-                      '${_formatFileSizeMb(_fileBytes)} • ${_fileKindLabel()} • ${_fileVersionLabel()}',
+                      '${_formatFileSizeMb(_fileBytes)} • ${_fileKindLabel()}',
                   isEmpty: _fileName.isEmpty,
+                  onTap: _fileName.isEmpty && !_busy ? _pickPrintFile : null,
                   onClear: _fileName.isNotEmpty ? _clearPickedFile : null,
                   borderRadius: 8,
                   emptyAction: _fileName.isEmpty
@@ -842,6 +812,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                                 label: 'White Page',
                                 icon: Icons.download_rounded,
                                 isLoading: _loadingPreset,
+                                iconGap: 0,
                                 foregroundColor: BracuPalette.textPrimary(
                                   context,
                                 ),
@@ -1115,6 +1086,7 @@ class _PrinterFileCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.isEmpty,
+    this.onTap,
     this.onClear,
     this.emptyAction,
     this.borderRadius = 14,
@@ -1123,13 +1095,14 @@ class _PrinterFileCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool isEmpty;
+  final VoidCallback? onTap;
   final VoidCallback? onClear;
   final Widget? emptyAction;
   final double borderRadius;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final content = Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -1182,6 +1155,19 @@ class _PrinterFileCard extends StatelessWidget {
               padding: EdgeInsets.zero,
             ),
         ],
+      ),
+    );
+
+    if (onTap == null) {
+      return content;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: content,
       ),
     );
   }
