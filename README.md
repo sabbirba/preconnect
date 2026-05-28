@@ -197,9 +197,9 @@ Privacy notes:
 The app does not call BRACU Connect seat-status endpoints directly. It uses the hosted proxy API:
 
 - `GET /seat-status`
-- `GET /sections/:sectionId/details`
+- `GET /details/:sectionId`
 - `GET /staff/:initial`
-- `GET /seat-status/stream` (real-time trigger)
+- `GET /seat-status/ws` (real-time trigger)
 - `GET /course-prerequisites`
 - `POST /push/device/register`
 - `POST /push/device/unregister`
@@ -209,8 +209,8 @@ The app does not call BRACU Connect seat-status endpoints directly. It uses the 
 
 Current client flow:
 
-- Load full section data from `/sections/:sectionId/details`
-- Listen to `/seat-status/stream` and refresh details on updates
+- Load full section data from `/details/:sectionId`
+- Listen to `/seat-status/ws` and refresh details on updates
 
 Why this reduces Connect API calls:
 

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:http/http.dart' as http;
 import 'package:preconnect/tools/http/http_service.dart';
 
 import 'package:preconnect/api/api_client.dart';
@@ -287,8 +286,6 @@ class CourseMaterialService {
       <String, List<CourseMaterialItem>>{};
 
   String get _realtimeBase => ApiConfig.realtimeApiBase;
-  String get _publicBase => ApiConfig.publicJsonBase;
-
   Future<List<CourseMaterialItem>> list({
     required String courseCode,
     String semester = '',
@@ -317,9 +314,8 @@ class CourseMaterialService {
     if (searchValue.isNotEmpty) {
       query.write('&search=${Uri.encodeQueryComponent(searchValue)}');
     }
-    final response = await _publicJsonGet(
-      publicUrl: '$_publicBase/v1/course-materials?$query',
-      realtimeUrl: '$_realtimeBase/v1/course-materials?$query',
+    final response = await _client.publicGet(
+      '$_realtimeBase/v1/course-materials?$query',
     );
     final map = _decodeMap(response.body);
     final items = parseCourseMaterialItemsFromResponse(map);
@@ -377,10 +373,7 @@ class CourseMaterialService {
         '${Uri.encodeComponent(semester.trim())}/'
         '${Uri.encodeComponent(courseCode.trim().toUpperCase())}/'
         '${Uri.encodeComponent(fileName.trim())}';
-    final response = await _publicJsonGet(
-      publicUrl: '$_publicBase$path',
-      realtimeUrl: '$_realtimeBase$path',
-    );
+    final response = await _client.publicGet('$_realtimeBase$path');
     return CourseMaterialDetail.fromJson(_decodeMap(response.body));
   }
 
@@ -543,17 +536,6 @@ class CourseMaterialService {
       return segments.sublist(1);
     }
     return segments;
-  }
-
-  Future<http.Response> _publicJsonGet({
-    required String publicUrl,
-    required String realtimeUrl,
-  }) async {
-    try {
-      return await _client.publicGet(publicUrl);
-    } catch (_) {
-      return _client.publicGet(realtimeUrl);
-    }
   }
 }
 

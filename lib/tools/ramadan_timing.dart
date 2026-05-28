@@ -42,8 +42,6 @@ class RamadanTiming {
 
   static List<String> get _statusUrls => <String>[
     '${ApiConfig.publicJsonBase}/ramadan.json',
-    '${ApiConfig.publicJsonBase}/data/ramadan.json',
-    '${ApiConfig.seatStatusProxyBase}/ramadan',
   ];
   static const Duration _requestTimeout = Duration(seconds: 2);
   static final ({DateTime start, DateTime end}) _knownRamadanWindow2026 = (

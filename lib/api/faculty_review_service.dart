@@ -341,11 +341,16 @@ class FacultyReviewService {
     final initial = facultyInitial.trim().toUpperCase();
     final safeOffset = offset < 0 ? 0 : offset;
     final safeLimit = limit <= 0 ? 20 : limit;
+    final dbFeed = await _fetchDbFeed(
+      initial,
+      limit: safeLimit,
+      offset: safeOffset,
+    );
     final legacyBundle = await _fetchLegacyBundle(initial);
-    if (legacyBundle != null) {
+    if (dbFeed != null || legacyBundle != null) {
       final merged = _mergeFeeds(
         initial: initial,
-        dbFeed: null,
+        dbFeed: dbFeed,
         legacyBundle: legacyBundle,
         limit: safeLimit,
         offset: safeOffset,
@@ -391,10 +396,11 @@ class FacultyReviewService {
   Future<FacultySummary?> getFacultyByInitial(String facultyInitial) async {
     final initial = facultyInitial.trim().toUpperCase();
     if (initial.isEmpty) return null;
+    final dbFeed = await _fetchDbFeed(initial, limit: 1, offset: 0);
     final legacyBundle = await _fetchLegacyBundle(initial);
     final merged = _mergeFacultySummary(
       initial: initial,
-      dbSummary: null,
+      dbSummary: dbFeed?.faculty,
       legacySummary: legacyBundle?.summary,
     );
     if (merged != null) {
@@ -406,6 +412,22 @@ class FacultyReviewService {
     if (cachedSummary != null) return cachedSummary;
     final cachedFeed = await _readCachedFeed(initial);
     return cachedFeed?.faculty;
+  }
+
+  Future<FacultyReviewFeed?> _fetchDbFeed(
+    String initial, {
+    required int limit,
+    required int offset,
+  }) async {
+    try {
+      final response = await _client.publicGet(
+        '$_base/v1/faculty-reviews/${Uri.encodeComponent(initial)}'
+        '?limit=$limit&offset=$offset',
+      );
+      return FacultyReviewFeed.fromJson(_decodeMap(response.body));
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<FacultyReviewFeed?> _readCachedFeed(String initial) async {

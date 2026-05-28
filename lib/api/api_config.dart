@@ -9,12 +9,12 @@ class ApiConfig {
   static const String logoutEndpoint = '$ssoBase/logout';
   static const String authEndpoint = '$ssoBase/auth';
 
-  static const String cdnApiBase = 'https://cdn.preconnect.app';
+  static const String cdnApiBase = 'https://cdn.preconnect.app/api';
   static const String realtimeApiBase = 'https://api.preconnect.app';
   static const String seatStatusProxyBase = realtimeApiBase;
   static const String publicJsonBase = cdnApiBase;
-  static const String seatStatusDataUrl = '$realtimeApiBase/connect.json';
-  static const String busDataUrl = '$realtimeApiBase/data/bus';
+  static const String seatStatusDataUrl = '$cdnApiBase/connect.json';
+  static const String busDataUrl = '$cdnApiBase/data/bus.json';
   static const String freeLabsDataUrl = '$cdnApiBase/freelabs.json';
   static const String examMapIndexUrl = '$cdnApiBase/data/exammap.json';
   static const String facultyReviewsDataUrl =
@@ -22,7 +22,7 @@ class ApiConfig {
   static const String announcementFeedUrl =
       '$cdnApiBase/data/announcements.json';
   static const String newsFeedUrl = '$cdnApiBase/data/news.json';
-  static const String academicDatesUrl = '$cdnApiBase/data/academic_dates.json';
+  static const String academicDatesUrl = '$cdnApiBase/data/academic-dates.json';
   static const String campusMapUrl = '$cdnApiBase/data/map.json';
   static const String transportUrl = '$cdnApiBase/data/transport.json';
   static const String connectApiBase = 'https://connect.bracu.ac.bd/api';

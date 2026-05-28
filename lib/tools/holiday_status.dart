@@ -155,8 +155,6 @@ class HolidayTiming {
 
   static List<String> get _statusUrls => <String>[
     '${ApiConfig.publicJsonBase}/holiday.json',
-    '${ApiConfig.publicJsonBase}/data/holiday.json',
-    '${ApiConfig.seatStatusProxyBase}/holiday',
   ];
   static const Duration _requestTimeout = Duration(seconds: 3);
 
