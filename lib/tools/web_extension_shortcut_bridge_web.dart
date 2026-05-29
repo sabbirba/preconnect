@@ -1,8 +1,7 @@
 import 'dart:async';
+import 'dart:js_interop';
 
 import 'package:chrome_extension/runtime.dart';
-// ignore: implementation_imports
-import 'package:chrome_extension/src/internal_helpers.dart';
 
 class WebExtensionShortcutBridge {
   WebExtensionShortcutBridge({required this.onShortcut}) {

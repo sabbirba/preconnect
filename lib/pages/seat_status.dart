@@ -147,6 +147,11 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     _updatePollingStrategy();
   }
 
+  void _updateSeatStatusState(VoidCallback update) {
+    if (!mounted) return;
+    setState(update);
+  }
+
   Future<void> _loadPins() async {
     final pins = await CoursePinStore.load(_pinScope);
     if (!mounted) return;

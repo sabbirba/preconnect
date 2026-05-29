@@ -5,8 +5,8 @@ import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/foundation.dart'
     show ValueListenable, TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/api/notification_service.dart';
@@ -16,9 +16,7 @@ import 'package:preconnect/api/grade_sheet_service.dart';
 import 'package:preconnect/model/progress_info.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/cgpa_calculator.dart';
-import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/reward_support_controller.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/storage_keys.dart';
@@ -565,238 +563,11 @@ Future<void> showBracuFundingSupportSheet(BuildContext context) async {
             ),
           ),
           const SizedBox(height: 8),
-          const BracuRewardVideoSection(),
-          const SizedBox(height: 8),
           const BracuFundingSupportContent(),
         ],
       );
     },
   );
-}
-
-class BracuRewardVideoSection extends StatefulWidget {
-  const BracuRewardVideoSection({
-    super.key,
-    this.activeTitle = 'Support PreConnect',
-    this.activeSubtitle = 'Watch short video to support',
-    this.inactiveTitle = 'Support PreConnect',
-    this.inactiveSubtitle = 'Watch short video to support',
-    this.buttonLabel = 'Watch',
-    this.padding = const EdgeInsets.symmetric(vertical: 2),
-  });
-
-  final String activeTitle;
-  final String activeSubtitle;
-  final String inactiveTitle;
-  final String inactiveSubtitle;
-  final String buttonLabel;
-  final EdgeInsetsGeometry padding;
-
-  @override
-  State<BracuRewardVideoSection> createState() =>
-      _BracuRewardVideoSectionState();
-}
-
-class _BracuRewardVideoSectionState extends State<BracuRewardVideoSection> {
-  bool _isLoading = false;
-
-  Future<void> _watchRewardAd() async {
-    if (_isLoading) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      if (!mounted) return;
-      final earned = await showRewardSupportFlow(context);
-      if (earned && mounted) {
-        setState(() {});
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
-
-    return ValueListenableBuilder<bool>(
-      valueListenable: AdsPreferences.instance.adsVisible,
-      builder: (context, adsVisible, _) {
-        if (!adsVisible || !AdsBridge.isSupportedPlatform) {
-          return const SizedBox.shrink();
-        }
-        return ValueListenableBuilder<int>(
-          valueListenable: RewardSupportController.instance.supportCount,
-          builder: (context, supportCount, _) {
-            return Padding(
-              padding: widget.padding,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          supportCount > 0
-                              ? widget.activeTitle
-                              : widget.inactiveTitle,
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          supportCount > 0
-                              ? widget.activeSubtitle
-                              : widget.inactiveSubtitle,
-                          style: TextStyle(
-                            color: textSecondary,
-                            fontSize: 12,
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(minWidth: 118),
-                    child: BracuActionButton(
-                      onPressed: _isLoading ? null : _watchRewardAd,
-                      isLoading: _isLoading,
-                      label: supportCount > 0
-                          ? '${widget.buttonLabel} #$supportCount'
-                          : widget.buttonLabel,
-                      borderRadius: 10,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-class BracuInterstitialAdSection extends StatefulWidget {
-  const BracuInterstitialAdSection({super.key});
-
-  @override
-  State<BracuInterstitialAdSection> createState() =>
-      _BracuInterstitialAdSectionState();
-}
-
-class _BracuInterstitialAdSectionState
-    extends State<BracuInterstitialAdSection> {
-  bool _isLoading = false;
-
-  Future<void> _showInterstitial() async {
-    if (_isLoading) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final shown = await AdsBridge.showInterstitial();
-      if (!mounted) return;
-      showAppSnackBar(context, shown ? 'Shown' : 'Not ready');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: AdsPreferences.instance.adsVisible,
-      builder: (context, adsVisible, _) {
-        if (!adsVisible || !AdsBridge.isSupportedPlatform) {
-          return const SizedBox.shrink();
-        }
-        final textPrimary = BracuPalette.textPrimary(context);
-        final textSecondary = BracuPalette.textSecondary(context);
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Interstitial',
-                      style: TextStyle(
-                        color: textPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Show a full-screen ad before support actions',
-                      style: TextStyle(
-                        color: textSecondary,
-                        fontSize: 12,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 118),
-                child: BracuActionButton(
-                  onPressed: _isLoading ? null : _showInterstitial,
-                  isLoading: _isLoading,
-                  label: 'Show',
-                  borderRadius: 10,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class BracuAdRewardSupportContent extends StatelessWidget {
-  const BracuAdRewardSupportContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const BracuRewardVideoSection();
-  }
 }
 
 class BracuCountdownDigital extends StatelessWidget {
@@ -992,11 +763,11 @@ PopupMenuItem<T> compactPopupMenuItem<T>({
   );
 }
 
+const String kPreconnectDiscordUrl = 'https://discord.gg/HwrgeFrvaz';
 const String _kPreconnectSupportNumber = '01865493144';
 const String _kPreconnectSupportReference = 'PreConnect App';
 const String _kPreconnectSupportQrData =
     'https://qr.bka.sh/281014021P3BymAwed3CDD8CFE';
-const String kPreconnectDiscordUrl = 'https://discord.gg/HwrgeFrvaz';
 const String _kPreconnectWhatsAppUrl =
     'https://api.whatsapp.com/send?phone=8801865493144&text=Hi%20PreConnect%2C%20I%20want%20to%20support%20the%20app.';
 const String kPreconnectRepositoryUrl =
@@ -1039,7 +810,7 @@ class BracuCommunityLink extends StatelessWidget {
 
   final bool compact;
 
-  static const String _title = 'PreConnect Discord';
+  static const String _title = 'Discord Community';
   static const String _subtitle = 'Connect, share ideas, and get support.';
   static const String _label = 'Discord';
 
@@ -1047,8 +818,8 @@ class BracuCommunityLink extends StatelessWidget {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<bool>(
       valueListenable: HomeCardPreferences.communityLinkNotifier,
-      builder: (context, showSponsoredContent, _) {
-        if (!showSponsoredContent) return const SizedBox.shrink();
+      builder: (context, showCommunityLink, _) {
+        if (!showCommunityLink) return const SizedBox.shrink();
 
         if (compact) {
           return _BracuSponsorActionChip(

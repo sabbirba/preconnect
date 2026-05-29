@@ -1,19 +1,23 @@
-// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
 import 'dart:async';
-import 'dart:html' as html;
+import 'dart:js_interop';
 import 'dart:typed_data';
+
+import 'package:web/web.dart' as web;
 
 Future<void> openPdfInBrowser({
   required Uint8List bytes,
   required String fileName,
 }) async {
-  final blob = html.Blob(<dynamic>[bytes], 'application/pdf');
-  final objectUrl = html.Url.createObjectUrlFromBlob(blob);
+  final blob = web.Blob(
+    [bytes.toJS].toJS,
+    web.BlobPropertyBag(type: 'application/pdf'),
+  );
+  final objectUrl = web.URL.createObjectURL(blob);
   try {
-    html.window.open(objectUrl, '_blank');
+    web.window.open(objectUrl, '_blank');
   } catch (_) {
-    html.window.location.assign(objectUrl);
+    web.window.location.assign(objectUrl);
     return;
   }
-  Timer(const Duration(seconds: 15), () => html.Url.revokeObjectUrl(objectUrl));
+  Timer(const Duration(seconds: 15), () => web.URL.revokeObjectURL(objectUrl));
 }

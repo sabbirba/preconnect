@@ -1,7 +1,5 @@
 import 'dart:async';
 
-// ignore_for_file: use_build_context_synchronously
-
 import 'package:flutter/material.dart';
 
 class HighlightScrollCoordinator {
@@ -56,7 +54,7 @@ class HighlightScrollCoordinator {
         await WidgetsBinding.instance.endOfFrame;
 
         final targetContext = highlightKey?.currentContext;
-        if (targetContext != null) {
+        if (targetContext != null && targetContext.mounted) {
           Scrollable.ensureVisible(
             targetContext,
             alignment: alignment,

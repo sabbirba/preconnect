@@ -1,14 +1,10 @@
 import Flutter
-import GoogleMobileAds
 import UIKit
 
 let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
-  private let adsBridge = PreconnectAdsBridge()
-  
-
   private func cacheShortcutAction(_ type: String) {
     UserDefaults.standard.set(type, forKey: preconnectPendingShortcutActionKey)
   }
@@ -38,12 +34,6 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
-    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreconnectAdsBridge") {
-      adsBridge.register(with: registrar)
-    }
-    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreconnectBannerAd") {
-      registrar.register(BannerAdViewFactory(), withId: "preconnect/banner_ad_ios")
-    }
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreconnectBuildInfo") {
       registerBuildInfoChannel(binaryMessenger: registrar.messenger())
     }
@@ -53,7 +43,7 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreconnectNativePrint") {
       registerNativePrintChannel(binaryMessenger: registrar.messenger())
     }
-    
+
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
   }
 
@@ -268,197 +258,6 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
   }
 }
 
-
-
-private final class BannerAdViewFactory: NSObject, FlutterPlatformViewFactory {
-  func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
-    FlutterStandardMessageCodec.sharedInstance()
-  }
-
-  func create(
-    withFrame frame: CGRect,
-    viewIdentifier viewId: Int64,
-    arguments args: Any?
-  ) -> any FlutterPlatformView {
-    BannerAdPlatformView(frame: frame, arguments: args)
-  }
-}
-
-private final class BannerAdPlatformView: NSObject, FlutterPlatformView {
-  private let containerView = UIView()
-
-  init(frame: CGRect, arguments: Any?) {
-    super.init()
-    containerView.frame = frame
-    containerView.backgroundColor = .clear
-    let adUnitId = Self.resolveAdUnitId(arguments: arguments)
-    let bannerWidth = Self.resolveBannerWidth(arguments: arguments, fallback: frame.width)
-    guard !adUnitId.isEmpty else { return }
-
-    let bannerSize = currentOrientationAnchoredAdaptiveBanner(width: bannerWidth)
-    let bannerView = BannerView(adSize: bannerSize)
-    bannerView.translatesAutoresizingMaskIntoConstraints = false
-    bannerView.adUnitID = adUnitId
-    bannerView.rootViewController = UIApplication.preconnectTopViewController()
-    containerView.addSubview(bannerView)
-    NSLayoutConstraint.activate([
-      bannerView.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
-      bannerView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-      bannerView.widthAnchor.constraint(equalToConstant: bannerSize.size.width),
-      bannerView.heightAnchor.constraint(equalToConstant: bannerSize.size.height),
-    ])
-    bannerView.load(Request())
-  }
-
-  func view() -> UIView {
-    containerView
-  }
-
-  private static func resolveAdUnitId(arguments: Any?) -> String {
-    let rawUnitId = (arguments as? [String: Any])?["adUnitId"] as? String
-    let trimmed = rawUnitId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    if !trimmed.isEmpty {
-      return trimmed
-    }
-    return resolvedEnvValue(forKey: "BANNER_AD_UNIT_ID") ?? ""
-  }
-
-  private static func resolveBannerWidth(arguments: Any?, fallback: CGFloat) -> CGFloat {
-    let rawWidth = (arguments as? [String: Any])?["width"]
-    if let number = rawWidth as? NSNumber {
-      return max(CGFloat(truncating: number), 1)
-    }
-    if let string = rawWidth as? String, let value = Double(string) {
-      return max(CGFloat(value), 1)
-    }
-    return max(fallback, 1)
-  }
-}
-
-private final class PreconnectAdsBridge: NSObject {
-  private var rewardedCoordinator: RewardedCoordinator?
-  private var interstitialCoordinator: InterstitialCoordinator?
-
-  func register(with registrar: FlutterPluginRegistrar) {
-    let channel = FlutterMethodChannel(
-      name: "preconnect/ads",
-      binaryMessenger: registrar.messenger()
-    )
-    channel.setMethodCallHandler { [weak self] call, result in
-      self?.handle(call: call, result: result)
-    }
-  }
-
-  private func handle(call: FlutterMethodCall, result: @escaping FlutterResult) {
-    let args = call.arguments as? [String: Any] ?? [:]
-    switch call.method {
-    case "initialize":
-      initialize(args: args, result: result)
-    case "showRewarded":
-      showRewarded(args: args, result: result)
-    case "showInterstitial":
-      showInterstitial(args: args, result: result)
-    default:
-      result(FlutterMethodNotImplemented)
-    }
-  }
-
-  private func initialize(args: [String: Any], result: @escaping FlutterResult) {
-    if let testDeviceIds = args["testDeviceIds"] as? [String], !testDeviceIds.isEmpty {
-      MobileAds.shared.requestConfiguration.testDeviceIdentifiers = testDeviceIds
-    }
-    MobileAds.shared.start { _ in }
-    result(nil)
-  }
-
-  private func showRewarded(args: [String: Any], result: @escaping FlutterResult) {
-    guard let presenter = UIApplication.preconnectTopViewController() else {
-      result(
-        FlutterError(
-          code: "ADS_REWARDED_CONTEXT",
-          message: "No presenter available",
-          details: nil
-        )
-      )
-      return
-    }
-    let rawAdUnitId = (args["adUnitId"] as? String)?
-      .trimmingCharacters(in: .whitespacesAndNewlines)
-    let adUnitId = (rawAdUnitId?.isEmpty == false)
-      ? rawAdUnitId!
-      : resolvedEnvValue(forKey: "REWARDED_AD_UNIT_ID")
-    guard let adUnitId else {
-      result(
-        FlutterError(
-          code: "ADS_REWARDED_CONFIG",
-          message: "Missing REWARDED_AD_UNIT_ID",
-          details: nil
-        )
-      )
-      return
-    }
-    let coordinator = RewardedCoordinator(
-      adUnitId: adUnitId,
-      presenter: presenter,
-      onSuccess: { [weak self] payload in
-        self?.rewardedCoordinator = nil
-        result(payload)
-      },
-      onError: { [weak self] code, message in
-        self?.rewardedCoordinator = nil
-        result(FlutterError(code: code, message: message, details: nil))
-      }
-    )
-    rewardedCoordinator = coordinator
-    coordinator.loadAndShow()
-  }
-
-  private func showInterstitial(args: [String: Any], result: @escaping FlutterResult) {
-    guard let presenter = UIApplication.preconnectTopViewController() else {
-      result(
-        FlutterError(
-          code: "ADS_INTERSTITIAL_CONTEXT",
-          message: "No presenter available",
-          details: nil
-        )
-      )
-      return
-    }
-    let rawAdUnitId = (args["adUnitId"] as? String)?
-      .trimmingCharacters(in: .whitespacesAndNewlines)
-    let adUnitId = (rawAdUnitId?.isEmpty == false)
-      ? rawAdUnitId!
-      : resolvedEnvValue(forKey: "INTERSTITIAL_AD_UNIT_ID")
-    guard let adUnitId else {
-      result(
-        FlutterError(
-          code: "ADS_INTERSTITIAL_CONFIG",
-          message: "Missing INTERSTITIAL_AD_UNIT_ID",
-          details: nil
-        )
-      )
-      return
-    }
-    let nonPersonalizedAds = args["nonPersonalizedAds"] as? Bool ?? false
-
-    let coordinator = InterstitialCoordinator(
-      adUnitId: adUnitId,
-      presenter: presenter,
-      onSuccess: { [weak self] in
-        self?.interstitialCoordinator = nil
-        result(true)
-      },
-      onError: { [weak self] code, message in
-        self?.interstitialCoordinator = nil
-        result(FlutterError(code: code, message: message, details: nil))
-      }
-    )
-    interstitialCoordinator = coordinator
-    coordinator.loadAndShow()
-  }
-
-}
-
 private func resolvedEnvValue(forKey key: String) -> String? {
   let plistValue = (Bundle.main.object(forInfoDictionaryKey: key) as? String)?
     .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -478,119 +277,6 @@ private func resolvedEnvValue(forKey key: String) -> String? {
     return envValue
   }
   return nil
-}
-
-private final class RewardedCoordinator: NSObject, FullScreenContentDelegate {
-  private let adUnitId: String
-  private weak var presenter: UIViewController?
-  private let onSuccess: ([String: Any]) -> Void
-  private let onError: (String, String) -> Void
-  private var ad: RewardedAd?
-  private var rewardAmount = 0
-  private var rewardType = ""
-
-  init(
-    adUnitId: String,
-    presenter: UIViewController,
-    onSuccess: @escaping ([String: Any]) -> Void,
-    onError: @escaping (String, String) -> Void
-  ) {
-    self.adUnitId = adUnitId
-    self.presenter = presenter
-    self.onSuccess = onSuccess
-    self.onError = onError
-  }
-
-  func loadAndShow() {
-    RewardedAd.load(
-      with: adUnitId,
-      request: Request()
-    ) { [weak self] ad, error in
-      guard let self else { return }
-      if let error {
-        self.onError("ADS_REWARDED_LOAD", error.localizedDescription)
-        return
-      }
-      guard let ad, let presenter = self.presenter else {
-        self.onError("ADS_REWARDED_CONTEXT", "No presenter available")
-        return
-      }
-      self.ad = ad
-      ad.fullScreenContentDelegate = self
-      ad.present(from: presenter) {
-        let reward = ad.adReward
-        self.rewardAmount = reward.amount.intValue
-        self.rewardType = reward.type
-      }
-    }
-  }
-
-  func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
-    onSuccess([
-      "shown": true,
-      "rewardEarned": rewardAmount > 0 || !rewardType.isEmpty,
-      "amount": rewardAmount,
-      "type": rewardType,
-    ])
-  }
-
-  func ad(
-    _ ad: FullScreenPresentingAd,
-    didFailToPresentFullScreenContentWithError error: Error
-  ) {
-    onError("ADS_REWARDED_SHOW", error.localizedDescription)
-  }
-}
-
-private final class InterstitialCoordinator: NSObject, FullScreenContentDelegate {
-  private let adUnitId: String
-  private weak var presenter: UIViewController?
-  private let onSuccess: () -> Void
-  private let onError: (String, String) -> Void
-  private var ad: InterstitialAd?
-
-  init(
-    adUnitId: String,
-    presenter: UIViewController,
-    onSuccess: @escaping () -> Void,
-    onError: @escaping (String, String) -> Void
-  ) {
-    self.adUnitId = adUnitId
-    self.presenter = presenter
-    self.onSuccess = onSuccess
-    self.onError = onError
-  }
-
-  func loadAndShow() {
-    InterstitialAd.load(
-      with: adUnitId,
-      request: Request()
-    ) { [weak self] ad, error in
-      guard let self else { return }
-      if let error {
-        self.onError("ADS_INTERSTITIAL_LOAD", error.localizedDescription)
-        return
-      }
-      guard let ad, let presenter = self.presenter else {
-        self.onError("ADS_INTERSTITIAL_CONTEXT", "No presenter available")
-        return
-      }
-      self.ad = ad
-      ad.fullScreenContentDelegate = self
-      ad.present(from: presenter)
-    }
-  }
-
-  func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
-    onSuccess()
-  }
-
-  func ad(
-    _ ad: FullScreenPresentingAd,
-    didFailToPresentFullScreenContentWithError error: Error
-  ) {
-    onError("ADS_INTERSTITIAL_SHOW", error.localizedDescription)
-  }
 }
 
 private extension UIApplication {

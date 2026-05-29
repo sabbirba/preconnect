@@ -1,5 +1,3 @@
-// ignore_for_file: invalid_use_of_protected_member
-
 part of 'package:preconnect/pages/seat_status.dart';
 
 class SeatTimetable {
@@ -387,7 +385,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         !_areCardListsDifferent(_visibleCards, nextVisible)) {
       return;
     }
-    setState(() {
+    _updateSeatStatusState(() {
       _availableOnly = resolvedAvailableOnly;
       _selectedDayFilter = resolvedDayFilter;
       _selectedTimeFilter = resolvedTimeFilter;
@@ -453,7 +451,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     if (!cardsChanged && !visibleChanged && !loadingChanged) {
       return;
     }
-    setState(() {
+    _updateSeatStatusState(() {
       _cards
         ..clear()
         ..addAll(nextCards);
@@ -561,7 +559,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     if (_pollInFlight || _isDetailsRefreshing) return;
     _pollInFlight = true;
     if (mounted && _cards.isEmpty) {
-      setState(() {
+      _updateSeatStatusState(() {
         _isDetailsRefreshing = true;
       });
     } else {
@@ -576,14 +574,14 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       }
     } catch (_) {
       if (_isInitialLoading && mounted) {
-        setState(() {
+        _updateSeatStatusState(() {
           _isInitialLoading = false;
         });
       }
     } finally {
       _pollInFlight = false;
       if (mounted && _cards.isEmpty) {
-        setState(() {
+        _updateSeatStatusState(() {
           _isDetailsRefreshing = false;
         });
       } else {

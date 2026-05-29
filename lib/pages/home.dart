@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth_service.dart';
@@ -31,7 +30,6 @@ import 'package:preconnect/pages/custom_schedules_sections/custom_schedules_shar
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/settings.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/home_sections/exam_countdown.dart';
 import 'package:preconnect/pages/home_sections/student_overview.dart';
@@ -41,7 +39,6 @@ import 'package:preconnect/pages/shared_widgets/course_section_exam_filter.dart'
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/android_network_assist.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/cached_image.dart';
@@ -815,7 +812,6 @@ class _HomeData {
         'showRamadanCard': cardVisibility.showRamadanCard,
         'showTodaySchedule': cardVisibility.showTodaySchedule,
         'showExamCountdownCard': cardVisibility.showExamCountdownCard,
-        'showSponsoredContent': cardVisibility.showSponsoredContent,
         'showDecorations': cardVisibility.showDecorations,
       },
       'sections': scheduleJson,
@@ -873,8 +869,6 @@ class _HomeData {
             showTodaySchedule: visibilityJson['showTodaySchedule'] == true,
             showExamCountdownCard:
                 visibilityJson['showExamCountdownCard'] == true,
-            showSponsoredContent:
-                visibilityJson['showSponsoredContent'] == true,
             showCommunityLink: visibilityJson['showCommunityLink'] == true,
             showCampusMapContacts:
                 visibilityJson['showCampusMapContacts'] == true,

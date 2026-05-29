@@ -1,8 +1,6 @@
 @JS()
 library;
 
-// ignore_for_file: avoid_web_libraries_in_flutter
-
 import 'dart:js_interop';
 
 import 'package:file_selector/file_selector.dart';

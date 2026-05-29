@@ -21,8 +21,6 @@ import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.provider.AlarmClock
 import android.provider.Settings
-import com.android.installreferrer.api.InstallReferrerClient
-import com.android.installreferrer.api.InstallReferrerStateListener
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -54,7 +52,6 @@ class MainActivity : FlutterFragmentActivity() {
     private val networkPrefs by lazy {
         getSharedPreferences("preconnect.network_assist", Context.MODE_PRIVATE)
     }
-    private lateinit var adsBridge: AdsBridge
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,19 +86,6 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        adsBridge = AdsBridge(this)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AdsBridge.channelName)
-            .setMethodCallHandler { call, result ->
-                adsBridge.handle(call, result)
-            }
-        flutterEngine
-            .platformViewsController
-            .registry
-            .registerViewFactory(
-                "preconnect/banner_ad_android",
-                BannerAdViewFactory(this),
-            )
-        configureInstallReferrerChannel(flutterEngine)
         configureBuildInfoChannel(flutterEngine)
         configureAndroidAlarmChannel(flutterEngine)
         configureNetworkAssistChannels(flutterEngine)
@@ -176,64 +160,6 @@ class MainActivity : FlutterFragmentActivity() {
         return mapOf(
             "version" to (packageInfo.versionName ?: ""),
             "buildNumber" to buildNumber,
-        )
-    }
-
-    private fun configureInstallReferrerChannel(flutterEngine: FlutterEngine) {
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "preconnect/play_install_referrer")
-            .setMethodCallHandler { call, result ->
-                if (call.method == "getInstallReferrer") {
-                    getInstallReferrer(result)
-                } else {
-                    result.notImplemented()
-                }
-            }
-    }
-
-    private fun getInstallReferrer(result: MethodChannel.Result) {
-        val client = InstallReferrerClient.newBuilder(applicationContext).build()
-        var completed = false
-        fun complete(payload: Map<String, Any>) {
-            if (completed) return
-            completed = true
-            deliverOnMainThread {
-                result.success(payload)
-            }
-        }
-
-        client.startConnection(
-            object : InstallReferrerStateListener {
-                override fun onInstallReferrerSetupFinished(responseCode: Int) {
-                    try {
-                        if (responseCode != InstallReferrerClient.InstallReferrerResponse.OK) {
-                            complete(emptyMap<String, Any>())
-                            return
-                        }
-
-                        val details = client.installReferrer
-                        val payload = mutableMapOf<String, Any>(
-                            "installReferrer" to details.installReferrer,
-                            "referrerClickTimestampSeconds" to details.referrerClickTimestampSeconds,
-                            "installBeginTimestampSeconds" to details.installBeginTimestampSeconds,
-                            "googlePlayInstantParam" to details.googlePlayInstantParam,
-                        )
-                        val installVersion = details.installVersion
-                        if (!installVersion.isNullOrBlank()) {
-                            payload["installVersion"] = installVersion
-                        }
-                        complete(payload)
-                    } catch (_: Exception) {
-                        complete(emptyMap<String, Any>())
-                    } finally {
-                        client.endConnection()
-                    }
-                }
-
-                override fun onInstallReferrerServiceDisconnected() {
-                    complete(emptyMap<String, Any>())
-                    client.endConnection()
-                }
-            },
         )
     }
 

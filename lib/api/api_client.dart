@@ -4,7 +4,6 @@ import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/tools/http/http_service.dart';
-import 'package:preconnect/tools/play_install_referrer.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_refresh_flow.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -299,11 +298,6 @@ class ApiClient {
     if (uri != null && uri.host == 'connect.bracu.ac.bd') {
       headers['Origin'] = ApiConfig.connectOrigin;
     }
-
-    try {
-      final installReferrerHeaders = await PlayInstallReferrer.headers();
-      headers.addAll(installReferrerHeaders);
-    } catch (_) {}
 
     return headers;
   }

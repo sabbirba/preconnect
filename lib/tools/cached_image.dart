@@ -94,10 +94,7 @@ class _CachedImageState extends State<CachedImage> {
           'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
         };
         headers.addAll(compressionHeadersForUri(uri));
-        final response =
-            uri.toString().contains(
-              "api.github.com",
-            ) // avoid rhttp if fetching from GitHub
+        final response = uri.toString().contains("api.github.com")
             ? await HttpService.client.get(uri, headers: headers)
             : await http.get(uri, headers: headers);
 

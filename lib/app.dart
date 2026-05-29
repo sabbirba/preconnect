@@ -20,10 +20,7 @@ import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
-import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
-import 'package:preconnect/tools/play_install_referrer.dart';
-import 'package:preconnect/tools/reward_support_controller.dart';
 import 'package:preconnect/tools/quiet_mode_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
@@ -136,10 +133,8 @@ class MyApp extends StatefulWidget {
         HomeCardPreferences.showRamadanCardKey,
         HomeCardPreferences.showExamCountdownCardKey,
         HomeCardPreferences.showTodayScheduleKey,
-        HomeCardPreferences.showSponsoredContentKey,
         HomeCardPreferences.showDecorationsKey,
         HomeCardPreferences.showCampusMapContactsKey,
-        AdsPreferences.hideAdsKey,
       };
       await AppPreferencesStore().clearAllExcept(keepKeys);
     }
@@ -316,12 +311,6 @@ class _MyAppState extends State<MyApp>
 
   Future<void> _loadDeferredServices() async {
     if (kIsWeb) return;
-    unawaited(AdsPreferences.instance.load());
-    if (AdsBridge.isSupportedPlatform) {
-      unawaited(AdsBridge.initialize());
-    }
-    unawaited(RewardSupportController.instance.load());
-    PlayInstallReferrer.prefetch().catchError((_) {});
   }
 
   Future<void> _warmPublicCdnCaches() async {
@@ -524,7 +513,6 @@ class _MyAppState extends State<MyApp>
     }
   }
 
-  // App lock
   Future<void> _initializeAppLock() async {
     final enabled = await AppLockService().isEnabled();
     if (!mounted) return;

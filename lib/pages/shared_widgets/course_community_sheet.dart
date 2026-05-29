@@ -794,7 +794,7 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                                 if (!_isValidHttpUrl(url)) {
                                   showAppSnackBar(
                                     context,
-                                    'Enter a valid rhttp/rhttps link',
+                                    'Enter a valid http or https link',
                                   );
                                   return;
                                 }

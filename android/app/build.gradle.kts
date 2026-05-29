@@ -28,10 +28,6 @@ fun envFromDotEnv(name: String): String? {
     }
     return null
 }
-val androidAdAppId = "ca-app-pub-3940256099942544~1458002511"
-val rewardedAdUnitId = envOrProp("REWARDED_AD_UNIT_ID").orEmpty()
-val bannerAdUnitId = envOrProp("BANNER_AD_UNIT_ID").orEmpty()
-val interstitialAdUnitId = envOrProp("INTERSTITIAL_AD_UNIT_ID").orEmpty()
 
 android {
     val keystoreProperties = Properties()
@@ -86,10 +82,6 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        manifestPlaceholders["adAppId"] = androidAdAppId
-        buildConfigField("String", "REWARDED_AD_UNIT_ID", "\"$rewardedAdUnitId\"")
-        buildConfigField("String", "BANNER_AD_UNIT_ID", "\"$bannerAdUnitId\"")
-        buildConfigField("String", "INTERSTITIAL_AD_UNIT_ID", "\"$interstitialAdUnitId\"")
 
     }
 
@@ -130,11 +122,4 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
-    implementation("com.google.android.play:feature-delivery:2.1.0")
-    implementation("com.google.android.play:feature-delivery-ktx:2.1.0")
-    implementation("com.google.android.play:app-update:2.1.0")
-    implementation("com.google.android.play:app-update-ktx:2.1.0")
-    implementation("com.android.installreferrer:installreferrer:2.2")
-    implementation("com.google.android.play:core-common:2.0.4")
-    implementation("com.google.android.gms:play-services-ads:25.1.0")
 }

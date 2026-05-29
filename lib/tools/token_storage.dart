@@ -26,32 +26,6 @@ class TokenPersistenceException implements Exception {
   String toString() => 'TokenPersistenceException: $message';
 }
 
-class AdsPreferences {
-  AdsPreferences._();
-
-  static final AdsPreferences instance = AdsPreferences._();
-  static const String hideAdsKey = 'hide_ads';
-  final ValueNotifier<bool> adsVisible = ValueNotifier<bool>(true);
-
-  Future<void> load() async {
-    try {
-      final hidden = await AppStorage.instance.getBool(hideAdsKey) ?? false;
-      adsVisible.value = !hidden;
-    } catch (_) {}
-  }
-
-  bool get isVisible => adsVisible.value;
-  bool get isHidden => !adsVisible.value;
-
-  Future<void> setHidden(bool hidden) async {
-    try {
-      await load();
-      await AppStorage.instance.setBool(hideAdsKey, hidden);
-      adsVisible.value = !hidden;
-    } catch (_) {}
-  }
-}
-
 class TokenStorage {
   TokenStorage._();
 
@@ -201,7 +175,6 @@ class HomeCardPreferences {
   HomeCardPreferences._();
 
   static final decorationNotifier = ValueNotifier(true);
-  static final sponsoredContentNotifier = ValueNotifier(true);
   static final communityLinkNotifier = ValueNotifier(true);
 
   static const String showQuickAccessSectionKey =
@@ -210,7 +183,6 @@ class HomeCardPreferences {
   static const String showExamCountdownCardKey =
       'home_show_exam_countdown_card';
   static const String showTodayScheduleKey = 'home_show_today_schedule';
-  static const String showSponsoredContentKey = 'home_show_sponsored_content';
   static const String showDecorationsKey = 'home_show_decorations';
   static const String showCommunityLinkKey = 'home_show_community_link';
   static const String showCampusMapContactsKey =
@@ -223,7 +195,6 @@ class HomeCardPreferences {
     showExamCountdownCard: true,
     showDecorations: true,
     showTodaySchedule: true,
-    showSponsoredContent: true,
     showCommunityLink: true,
     showCampusMapContacts: true,
     showNotificationsIcon: true,
@@ -233,8 +204,6 @@ class HomeCardPreferences {
     try {
       final bool showDecorations =
           await AppStorage.instance.getBool(showDecorationsKey) ?? true;
-      final bool showSponsoredContent =
-          await AppStorage.instance.getBool(showSponsoredContentKey) ?? true;
       final bool showCommunityLink =
           await AppStorage.instance.getBool(showCommunityLinkKey) ?? true;
       final bool showCampusMapContacts =
@@ -243,7 +212,6 @@ class HomeCardPreferences {
           await AppStorage.instance.getBool(showNotificationsIconKey) ?? true;
 
       decorationNotifier.value = showDecorations;
-      sponsoredContentNotifier.value = showSponsoredContent;
       communityLinkNotifier.value = showCommunityLink;
 
       return HomeCardVisibility(
@@ -257,7 +225,6 @@ class HomeCardPreferences {
             await AppStorage.instance.getBool(showExamCountdownCardKey) ?? true,
         showTodaySchedule:
             await AppStorage.instance.getBool(showTodayScheduleKey) ?? true,
-        showSponsoredContent: showSponsoredContent,
         showCommunityLink: showCommunityLink,
         showCampusMapContacts: showCampusMapContacts,
         showNotificationsIcon: showNotificationsIcon,
@@ -305,13 +272,6 @@ class HomeCardPreferences {
     } catch (_) {}
   }
 
-  static Future<void> setShowSponsoredContent(bool value) async {
-    try {
-      sponsoredContentNotifier.value = value;
-      await AppStorage.instance.setBool(showSponsoredContentKey, value);
-    } catch (_) {}
-  }
-
   static Future<void> setShowCampusMapContacts(bool value) async {
     try {
       await AppStorage.instance.setBool(showCampusMapContactsKey, value);
@@ -332,7 +292,6 @@ class HomeCardVisibility {
     required this.showDecorations,
     required this.showExamCountdownCard,
     required this.showTodaySchedule,
-    required this.showSponsoredContent,
     required this.showCommunityLink,
     required this.showCampusMapContacts,
     required this.showNotificationsIcon,
@@ -343,7 +302,6 @@ class HomeCardVisibility {
   final bool showRamadanCard;
   final bool showExamCountdownCard;
   final bool showTodaySchedule;
-  final bool showSponsoredContent;
   final bool showCommunityLink;
   final bool showCampusMapContacts;
   final bool showNotificationsIcon;

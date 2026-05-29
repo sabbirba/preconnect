@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-// ignore: implementation_imports
 import 'package:chrome_extension/src/internal_helpers.dart';
 
 import 'package:chrome_extension/cookies.dart' as ck;

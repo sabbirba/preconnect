@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/ads_bridge.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
 class StudentOverviewCard extends StatelessWidget {
@@ -43,38 +42,36 @@ class StudentOverviewCard extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Overview',
-                    style: TextStyle(
-                      color: titleColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
+            ValueListenableBuilder<bool>(
+              valueListenable: HomeCardPreferences.communityLinkNotifier,
+              builder: (context, showCommunityLink, _) {
+                return Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Overview',
+                        style: TextStyle(
+                          color: titleColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ValueListenableBuilder<bool>(
-                  valueListenable: AdsPreferences.instance.adsVisible,
-                  builder: (context, showSupport, _) {
-                    if (!showSupport) return const SizedBox.shrink();
-                    return Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [_SupportButton(onTap: onOpenSupport)],
-                    );
-                  },
-                ),
-                const SizedBox(width: 8),
-                _IconButton(
-                  icon: Icons.settings_outlined,
-                  onTap: onOpenSettings,
-                ),
-                const SizedBox(width: 8),
-                _IconButton(icon: Icons.logout, onTap: onLogout),
-              ],
+                    if (showCommunityLink) ...[
+                      const SizedBox(width: 8),
+                      _SupportButton(onTap: onOpenSupport),
+                    ],
+                    const SizedBox(width: 8),
+                    _IconButton(
+                      icon: Icons.settings_outlined,
+                      onTap: onOpenSettings,
+                    ),
+                    const SizedBox(width: 8),
+                    _IconButton(icon: Icons.logout, onTap: onLogout),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 10),
             Column(
@@ -175,16 +172,11 @@ class _SupportButtonState extends State<_SupportButton> {
 
   Future<void> _handleTap() async {
     if (_isLoading) return;
-
     setState(() {
       _isLoading = true;
     });
-
     try {
-      if (mounted) {
-        await widget.onTap();
-      }
-      await AdsBridge.showInterstitial();
+      await widget.onTap();
     } finally {
       if (mounted) {
         setState(() {
@@ -198,45 +190,34 @@ class _SupportButtonState extends State<_SupportButton> {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: _isLoading ? null : _handleTap,
-      borderRadius: BorderRadius.circular(14),
-      child: _buildButtonTile(),
-    );
-  }
-
-  Widget _buildButtonTile() {
-    return _buildTile(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.favorite_border_rounded,
-            size: 16,
-            color: BracuPalette.primary,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            'Support',
-            style: TextStyle(
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 9),
+        decoration: BoxDecoration(
+          color: BracuPalette.primary.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.volunteer_activism_rounded,
+              size: 16,
               color: BracuPalette.primary,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.1,
             ),
-          ),
-        ],
+            const SizedBox(width: 6),
+            Text(
+              'Support',
+              style: TextStyle(
+                color: BracuPalette.primary,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildTile({required Widget child}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: BracuPalette.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      alignment: Alignment.center,
-      child: child,
     );
   }
 }

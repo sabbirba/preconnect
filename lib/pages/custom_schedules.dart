@@ -1,5 +1,3 @@
-// ignore_for_file: use_build_context_synchronously
-
 import 'dart:async';
 
 import 'package:flutter/foundation.dart'
@@ -371,6 +369,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
           notes: draft.notes,
           isDone: draft.isDone,
         );
+        if (!currentContext.mounted) return;
         showAppSnackBar(currentContext, '$kindLabel added');
       } else {
         await CustomSchedulesService().updateItem(
@@ -387,12 +386,13 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
           notes: draft.notes,
           isDone: draft.isDone,
         );
+        if (!currentContext.mounted) return;
         showAppSnackBar(currentContext, '$kindLabel updated');
       }
       RefreshBus.instance.notify(reason: 'schedule');
       await _refresh(forceRefresh: true, notify: false);
     } catch (_) {
-      if (!mounted) return;
+      if (!currentContext.mounted) return;
       showAppSnackBar(
         currentContext,
         'Unable to save ${kindLabel.toLowerCase()}',
@@ -455,7 +455,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
           _latestItems = merged;
         });
       }
-      if (!mounted) return;
+      if (!currentContext.mounted) return;
       showAppSnackBar(
         currentContext,
         done ? 'Marked as done' : 'Marked as pending',
@@ -468,7 +468,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
           _latestItems = previousItems;
         });
       }
-      if (!mounted) return;
+      if (!currentContext.mounted) return;
       showAppSnackBar(
         currentContext,
         'Unable to update ${personalSchedulesFormatKind(item.kind).toLowerCase()}',
@@ -498,7 +498,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
       },
     );
 
-    if (!deleted || !mounted) return;
+    if (!deleted || !currentContext.mounted) return;
 
     try {
       showAppSnackBar(
@@ -508,7 +508,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
       RefreshBus.instance.notify(reason: 'schedule');
       await _refresh(forceRefresh: true, notify: false);
     } catch (_) {
-      if (!mounted) return;
+      if (!currentContext.mounted) return;
       showAppSnackBar(currentContext, 'Unable to refresh after delete');
     }
   }

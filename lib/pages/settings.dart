@@ -30,7 +30,6 @@ class _SettingsPageState extends State<SettingsPage>
   bool _showCampusMapContacts = true;
   bool _showNotificationsIcon = true;
   bool _appLockEnabled = false;
-  bool _showSupport = true;
   bool _quietModeEnabled = false;
   bool _quietModeNeedsSetup = false;
   String? _quietModeSetupPermission;
@@ -59,7 +58,6 @@ class _SettingsPageState extends State<SettingsPage>
 
   Future<void> _load() async {
     final visibility = await HomeCardPreferences.load();
-    await AdsPreferences.instance.load();
     final appLockEnabled = await AppLockService().isEnabled();
     await QuietModeController.instance.load();
     final quietModeResult = await QuietModeController.instance.refresh();
@@ -74,8 +72,6 @@ class _SettingsPageState extends State<SettingsPage>
       _showExamCountdownCard = visibility.showExamCountdownCard;
       _showTodaySchedule = visibility.showTodaySchedule;
       _appLockEnabled = appLockEnabled;
-      _showSupport =
-          visibility.showSponsoredContent && AdsPreferences.instance.isVisible;
       _quietModeEnabled = QuietModeController.instance.isEnabled;
       _quietModeNeedsSetup = quietModeResult.status == 'permission_required';
       _quietModeSetupPermission = quietModeResult.permission;
@@ -155,17 +151,6 @@ class _SettingsPageState extends State<SettingsPage>
       applyLocal: () => _showTodaySchedule = value,
       persist: HomeCardPreferences.setShowTodaySchedule,
     );
-  }
-
-  Future<void> _setShowSupport(bool value) async {
-    setState(() {
-      _showSupport = value;
-    });
-    await AdsPreferences.instance.setHidden(!value);
-    await HomeCardPreferences.setShowSponsoredContent(value);
-    RefreshBus.instance.notify(reason: 'home_card_settings_changed');
-    if (!mounted) return;
-    showAppSnackBar(context, value ? 'Support shown' : 'Support hidden');
   }
 
   Future<void> _setVisibility({
@@ -265,11 +250,9 @@ class _SettingsPageState extends State<SettingsPage>
         HomeCardPreferences.showRamadanCardKey,
         HomeCardPreferences.showExamCountdownCardKey,
         HomeCardPreferences.showTodayScheduleKey,
-        HomeCardPreferences.showSponsoredContentKey,
         HomeCardPreferences.showDecorationsKey,
         HomeCardPreferences.showCampusMapContactsKey,
         HomeCardPreferences.showNotificationsIconKey,
-        AdsPreferences.hideAdsKey,
       };
       await AppPreferencesStore().clearAllExcept(keepKeys);
     } finally {
@@ -356,7 +339,7 @@ class _SettingsPageState extends State<SettingsPage>
                 divider,
                 _ToggleRow(
                   title: 'Community Link',
-                  subtitle: 'Show Discord banner on home',
+                  subtitle: 'Show community banner on home',
                   value: _showCommunityLink,
                   onChanged: _setShowCommunityLink,
                 ),
@@ -396,12 +379,6 @@ class _SettingsPageState extends State<SettingsPage>
                   onChanged: _setShowQuickAccessSection,
                 ),
                 divider,
-                _ToggleRow(
-                  title: 'Support Content',
-                  subtitle: 'Show support content and ads',
-                  value: _showSupport,
-                  onChanged: _setShowSupport,
-                ),
               ],
             ),
           ),

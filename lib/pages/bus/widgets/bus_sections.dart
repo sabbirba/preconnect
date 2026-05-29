@@ -69,14 +69,14 @@ class _FareCard extends StatelessWidget {
                       Expanded(
                         child: _InfoChip(
                           icon: Icons.login_rounded,
-                          text: 'Per trip: ${entry.value.amountPerTrip}',
+                          text: 'Per: ${entry.value.amountPerTrip}',
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: _InfoChip(
                           icon: Icons.repeat_rounded,
-                          text: 'Round trip: ${entry.value.roundTrip}',
+                          text: 'Round: ${entry.value.roundTrip}',
                         ),
                       ),
                     ],

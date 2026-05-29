@@ -71,6 +71,11 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
     bindRefreshBus(_onRefreshSignal);
   }
 
+  void _updateDegreeProgressState(VoidCallback update) {
+    if (!mounted) return;
+    setState(update);
+  }
+
   static Future<ProgressInfo?> preloadData({bool forceRefresh = false}) async {
     final info = await cache.load(forceRefresh: forceRefresh);
     if (info != null) {

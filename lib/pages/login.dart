@@ -74,7 +74,7 @@ class LoginPage extends StatefulWidget {
   static Future<void> clearSessionArtifacts() async {
     _preloadedWebViewController = null;
     _isPreloadingWebView = false;
-    _pkceVerifier = null; // FIX: also clear stale verifier on logout
+    _pkceVerifier = null;
     if (kIsWeb) return;
     try {
       final manager = WebViewCookieManager();
@@ -104,14 +104,12 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   WebViewController _buildMobileWebView() {
-    // Reuse existing verifier if already generated (e.g. partial preload)
     LoginPage._pkceVerifier ??= generatePkceVerifier();
     final codeChallenge = codeChallengeS256(LoginPage._pkceVerifier!);
     final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setUserAgent(kPreconnectUserAgent)
       ..loadRequest(Uri.parse(ApiConfig.authUrlWithPkce(codeChallenge)));
-    // Fire-and-forget; cookie config doesn't affect initial page load
     unawaited(LoginPage._configureCookies(controller));
     return controller;
   }
@@ -120,7 +118,6 @@ class _LoginPageState extends State<LoginPage> {
     controller.setNavigationDelegate(
       NavigationDelegate(
         onNavigationRequest: (request) {
-          // PERF: Single intercept point - removed onPageStarted duplicate
           if (_isRedirectUrl(request.url)) {
             _handleRedirect(request.url);
             return NavigationDecision.prevent;
@@ -137,7 +134,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _handleRedirect(String url) {
-    // PERF: Idempotency guard — prevents double-fire from simultaneous callbacks
     if (_handledRedirect || _isLoggingIn) return;
 
     final uri = Uri.parse(url);
@@ -211,9 +207,6 @@ class _LoginPageState extends State<LoginPage> {
       } on TokenPersistenceException {
         return false;
       }
-
-      // PERF: Removed redundant read-back verification — write failure is
-      // already surfaced via TokenPersistenceException above.
 
       RefreshBus.instance.notify(reason: 'auth');
       if (mounted) {
@@ -311,7 +304,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    _webViewController = null; // Release reference; platform cleans up
+    _webViewController = null;
     super.dispose();
   }
 }

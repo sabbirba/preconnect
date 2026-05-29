@@ -80,10 +80,6 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="${adAppId}" />
-
         <receiver
             android:name=".WifiSuggestionPostConnectionReceiver"
             android:exported="true">

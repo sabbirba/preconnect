@@ -271,10 +271,6 @@ Use the Chrome extension from the latest release assets. Contributor build instr
 
 The app uses the hosted PreConnect API (`api.preconnect.app`) for cached seat-status data, stream updates, and alerts.
 
-### What if ads do not load locally?
-
-Ad env values are optional. Leave them blank unless you are specifically working on ad behavior.
-
 ## Acknowledgements
 
 - BRAC University student community for continuous feedback and testing

@@ -1,5 +1,3 @@
-// ignore_for_file: invalid_use_of_protected_member
-
 part of 'package:preconnect/pages/degree_progress.dart';
 
 extension _DegreeProgressPageStateHelpers on _DegreeProgressPageState {
@@ -13,7 +11,7 @@ extension _DegreeProgressPageStateHelpers on _DegreeProgressPageState {
     if (!mounted) return;
     final sections = section.parseSectionsFromScheduleJson(scheduleJson);
     if (_sameSections(_currentSemesterSections, sections)) return;
-    setState(() {
+    _updateDegreeProgressState(() {
       _currentSemesterSections = sections;
     });
   }

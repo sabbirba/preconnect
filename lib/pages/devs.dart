@@ -457,16 +457,16 @@ class _ContributorsGrid extends StatelessWidget {
             ? constraints.maxWidth
             : 0.0;
         final maxExtent = width < 360
-            ? 148.0
+            ? 160.0
             : width < 560
-            ? 170.0
-            : 190.0;
+            ? 182.0
+            : 202.0;
         return GridView.builder(
           gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
             maxCrossAxisExtent: maxExtent,
-            mainAxisExtent: 122,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
+            mainAxisExtent: 160,
+            mainAxisSpacing: 14,
+            crossAxisSpacing: 14,
           ),
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -513,7 +513,7 @@ class _SponsoredStrip extends StatelessWidget {
         padding: EdgeInsets.zero,
         children: const [
           _SponsoredTile(
-            title: 'Google Admob',
+            title: 'Google AdSense',
             subtitle: 'Ads Support Provider',
             leading: _AdSenseLogoImage(),
             url: 'https://admob.google.com/',
@@ -696,9 +696,9 @@ class _DevGridTile extends StatelessWidget {
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         final compact = width < 165;
-        final avatarSize = (width * 0.40).clamp(44.0, 68.0);
-        final nameSize = compact ? 12.5 : 14.0;
-        final roleSize = compact ? 11.0 : 12.0;
+        final avatarSize = (width * 0.54).clamp(68.0, 96.0);
+        final nameSize = compact ? 14.5 : 16.8;
+        final roleSize = compact ? 12.4 : 13.8;
         return InkWell(
           onTap: () => openExternalUrl(context, contributor.url),
           borderRadius: BorderRadius.circular(12),
@@ -711,7 +711,7 @@ class _DevGridTile extends StatelessWidget {
                 url: contributor.avatarUrl,
                 size: avatarSize,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 10),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.center,
@@ -726,7 +726,7 @@ class _DevGridTile extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.center,
@@ -903,7 +903,6 @@ Future<http.Response> _githubGet(Uri uri) async {
   final authenticated = token.isNotEmpty;
 
   if (authenticated) {
-    // rhttp does weird things when used with GitHub APIs
     final response = await http.get(uri, headers: _githubHeaders());
     if (response.statusCode != 401 && response.statusCode != 403) {
       return response;

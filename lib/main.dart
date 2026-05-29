@@ -3,14 +3,12 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:rhttp/rhttp.dart';
 import 'app.dart';
 import 'tools/app_storage.dart';
 
 Future<void> main() async {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
-    await Rhttp.init();
 
     FlutterError.onError = (details) {
       FlutterError.presentError(details);

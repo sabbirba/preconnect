@@ -1,5 +1,3 @@
-// ignore_for_file: use_build_context_synchronously
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/model/custom_schedule.dart';
@@ -16,6 +14,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
   CustomSchedulesToggleDoneCallback? onToggleDone,
 }) async {
   final isRamadan = await RamadanTiming.isRamadan();
+  if (!context.mounted) return null;
   var titleValue = item?.title.trim().isNotEmpty == true
       ? personalSchedulesNormalizeTitle(item!.title.trim())
       : '';

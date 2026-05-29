@@ -9,9 +9,6 @@ Use this guide when you want to build, test, or contribute to the app. You do no
 ## What You Need
 
 - Git
-- Rust (v1.80.0 or later)
-  > [!NOTE]
-  > Only the `minimal`-profile toolchain is necessary for this project as it does not require any debugging/linting features.
 - Flutter stable, using Dart from the Flutter SDK
 - Android Studio with Android SDK
 - An Android emulator or physical Android device
@@ -67,10 +64,6 @@ Only fill env values when you are testing the related feature:
 
 | Key | Needed for |
 | --- | ---------- |
-| `REWARDED_AD_UNIT_ID` | rewarded ad testing |
-| `BANNER_AD_UNIT_ID` | banner ad testing |
-| `INTERSTITIAL_AD_UNIT_ID` | interstitial ad testing |
-| `ADS_APP_ID_IOS` | iOS ad configuration |
 | `DEVELOPMENT_TEAM` | iOS signing |
 | `storeFile` | Android release signing |
 | `storePassword` | Android release signing |
@@ -118,32 +111,6 @@ Examples:
 - `test/seat-status-parser`
 
 ## Run the App
-
-Start an emulator or connect a device, then run:
-
-```bash
-flutter run
-```
-
-If you need local env values:
-
-```bash
-flutter run --dart-define-from-file=.env
-```
-
-If Flutter cannot find a device:
-
-```bash
-flutter devices
-```
-
-> [!WARNING]
-> Flutter does not work with `sccache` with the current stack of the project, so when you are contributing, make sure you have any related environment variables disabled (e.g. `CC`/`CXX`/`RUSTC_WRAPPER`). Global Rust `[build]` configurations in this case might also conflict if you
-have `rustc_wrapper = "sccache"` in it.
-
-Then start an Android emulator from Android Studio or enable USB debugging on a physical Android device.
-
-## Run a Specific Target
 
 Use `flutter run` and pick the target when Flutter prompts you, or use your IDE's run target selector.
 
@@ -208,7 +175,7 @@ flutter build apk --release
 Android APK with env values:
 
 ```bash
-flutter build apk --release --dart-define-from-file=.env
+flutter build apk --release --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env
 ```
 
 Android app bundle:
@@ -220,7 +187,8 @@ flutter build appbundle --release
 Android app bundle with env values:
 
 ```bash
-flutter build appbundle --release --dart-define-from-file=.env
+flutter build appbundle --release --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --dart-define-from-file=.env
+./tool/strip_android_bundle_symbols.sh build/app/outputs/bundle/release/app-release.aab
 ```
 
 iOS no-codesign build:

@@ -1,43 +1,5 @@
 part of 'package:preconnect/pages/ui_kit.dart';
 
-Future<bool> showRewardSupportFlow(BuildContext context) async {
-  if (!AdsPreferences.instance.isVisible) {
-    showAppSnackBar(context, 'Hidden in settings');
-    return false;
-  }
-  if (!AdsBridge.isSupportedPlatform) {
-    showAppSnackBar(context, 'Available on mobile only');
-    return false;
-  }
-
-  try {
-    final result = await AdsBridge.showRewarded();
-    if (!context.mounted) return false;
-    if (!result.rewardEarned) {
-      showAppSnackBar(
-        context,
-        result.shown
-            ? 'Watch the full video to support PreConnect'
-            : 'Support video is not ready yet',
-      );
-      return false;
-    }
-
-    final count = await RewardSupportController.instance.recordReward();
-    if (!context.mounted) return false;
-    await AdsBridge.showInterstitial();
-    if (!context.mounted) return false;
-    HapticFeedback.lightImpact();
-    showAppSnackBar(context, 'Thanks! Support #$count added.');
-    return true;
-  } catch (_) {
-    if (context.mounted) {
-      showAppSnackBar(context, 'Support video could not be shown');
-    }
-    return false;
-  }
-}
-
 Future<bool> openExternalUrl(
   BuildContext context,
   String rawUrl, {
