@@ -143,6 +143,8 @@ extension _HomeDashboardView on _HomeDashboardState {
                                 _TopBar(
                                   name: profile['fullName'] ?? 'BRACU Student',
                                   photoUrl: photoUrl,
+                                  showNotificationsIcon:
+                                      cardVisibility.showNotificationsIcon,
                                   onOpenNotifications: () =>
                                       widget.onNavigate(HomeTab.notifications),
                                   onProfileTap: () =>
@@ -546,14 +548,15 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     padding: EdgeInsets.only(bottom: 12),
                                     child: _LoadingLine(),
                                   ),
-                                BracuActionBannerCard(
-                                  icon: Icons.location_on_rounded,
-                                  title: 'Campus Map & Contacts',
-                                  subtitle: 'Location and emergency contacts',
-                                  iconColor: const Color(0xFF22B573),
-                                  iconDecoration: false,
-                                  onTap: _openCampusMapSheet,
-                                ),
+                                if (cardVisibility.showCampusMapContacts)
+                                  BracuActionBannerCard(
+                                    icon: Icons.location_on_rounded,
+                                    title: 'Campus Map & Contacts',
+                                    subtitle: 'Location and emergency contacts',
+                                    iconColor: const Color(0xFF22B573),
+                                    iconDecoration: false,
+                                    onTap: _openCampusMapSheet,
+                                  ),
                                 if (cardVisibility.showSponsoredContent) ...[
                                   const SizedBox(height: 12),
                                   const _InlineBannerAd(),

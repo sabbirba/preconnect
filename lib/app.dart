@@ -9,11 +9,10 @@ import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/custom_schedules_service.dart';
 import 'package:preconnect/api/profile_service.dart';
-import 'package:preconnect/api/seat_status_service.dart';
 import 'package:preconnect/api/schedule_service.dart';
+import 'package:preconnect/api/cdn_warmup_service.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/home_tab.dart';
-import 'package:preconnect/pages/bus.dart';
 import 'package:preconnect/pages/class_schedule.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
 import 'package:preconnect/pages/login.dart';
@@ -139,6 +138,7 @@ class MyApp extends StatefulWidget {
         HomeCardPreferences.showTodayScheduleKey,
         HomeCardPreferences.showSponsoredContentKey,
         HomeCardPreferences.showDecorationsKey,
+        HomeCardPreferences.showCampusMapContactsKey,
         AdsPreferences.hideAdsKey,
       };
       await AppPreferencesStore().clearAllExcept(keepKeys);
@@ -186,8 +186,6 @@ class MyApp extends StatefulWidget {
           semesterSessionId: semesterSessionId,
         );
       }(),
-      SeatStatusService.preload(),
-      BusPage.preload(),
       ClassSchedule.preload(),
       ExamSchedule.preload(),
     ];
@@ -275,6 +273,7 @@ class _MyAppState extends State<MyApp>
       bindRefreshBus(_onRefreshSignal);
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_warmPublicCdnCaches());
       if (_supportsInAppUpdates) {
         unawaited(_maybeCheckForUpdates());
       }
@@ -323,6 +322,10 @@ class _MyAppState extends State<MyApp>
     }
     unawaited(RewardSupportController.instance.load());
     PlayInstallReferrer.prefetch().catchError((_) {});
+  }
+
+  Future<void> _warmPublicCdnCaches() async {
+    await CdnWarmupService.instance.warmPublicCdnData();
   }
 
   Future<void> _consumePendingShortcutAction() async {

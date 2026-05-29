@@ -292,6 +292,7 @@ class _SeatStatusCard extends StatelessWidget {
     final facultyName = faculty?.staffName.trim() ?? '';
     final facultyEmail = faculty?.email.trim() ?? '';
     final classLines = _scheduleLines(item.classSchedule);
+    final labLines = _scheduleLines(item.labSchedule);
     final hasMidExam = _hasExam(
       item.midExamDate,
       item.midExamStartTime,
@@ -438,6 +439,10 @@ class _SeatStatusCard extends StatelessWidget {
           if (classLines.isNotEmpty) ...[
             const SizedBox(height: 14),
             _SeatScheduleBlock(title: 'Class', lines: classLines),
+          ],
+          if (labLines.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _SeatScheduleBlock(title: 'Lab', lines: labLines),
           ],
           if (item.room.isNotEmpty || item.labRoom.isNotEmpty) ...[
             const SizedBox(height: 12),

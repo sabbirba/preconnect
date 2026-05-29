@@ -1008,7 +1008,6 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
     final textPrimary = BracuPalette.textPrimary(context);
     final textSecondary = BracuPalette.textSecondary(context);
     final roomLabel = (widget.roomNumber ?? '').trim();
-    final facultyLabel = (widget.faculties ?? '').trim();
     final consumedLabel = (widget.consumedSeat ?? 0) > 0
         ? '(${widget.consumedSeat})'
         : '';
@@ -1065,10 +1064,10 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                if (facultyLabel.isNotEmpty || consumedLabel.isNotEmpty) ...[
+                if (consumedLabel.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
-                    '$facultyLabel${facultyLabel.isNotEmpty && consumedLabel.isNotEmpty ? ' ' : ''}$consumedLabel',
+                    consumedLabel,
                     textAlign: TextAlign.right,
                     style: TextStyle(
                       color: textSecondary,
@@ -1311,31 +1310,36 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
     final hasReviews = totalReviews > 0 || orderedReviews.isNotEmpty;
     final hasMyReview = myOwnedReview != null;
     final facultyFullName = (_reviewFeed?.faculty.name ?? '').trim();
-    final reviewHeaderTitle = facultyFullName.isNotEmpty
-        ? facultyFullName
-        : _facultyInitial;
+    final reviewHeaderTitle = facultyFullName;
+    final hasReviewHeader = reviewHeaderTitle.isNotEmpty;
+    final hasMaterialsSection = _materialsLoading || allMaterials.isNotEmpty;
+    final isAnyLoading = _reviewsLoading || _materialsLoading;
     return ListView(
       controller: sheetScroll,
       children: [
         _buildSummaryCard(),
-        const SizedBox(height: 8),
-        _buildReviewSectionHeader(
-          context: context,
-          title: reviewHeaderTitle,
-          actionLabel: widget.showActions
-              ? (hasMyReview ? 'Edit' : 'Write')
-              : null,
-          onAction: widget.showActions && !_busyWriteAction
-              ? _writeReview
-              : null,
-        ),
-        if (_reviewsLoading)
-          _buildCompactLoading()
-        else if (_reviewsError != null)
+        if (isAnyLoading) ...[
+          const SizedBox(height: 8),
+          _buildCompactLoading(),
+        ],
+        if (hasReviewHeader) ...[
+          const SizedBox(height: 8),
+          _buildReviewSectionHeader(
+            context: context,
+            title: reviewHeaderTitle,
+            actionLabel: widget.showActions
+                ? (hasMyReview ? 'Edit' : 'Write')
+                : null,
+            onAction: widget.showActions && !_busyWriteAction
+                ? _writeReview
+                : null,
+          ),
+        ],
+        if (!_reviewsLoading && _reviewsError != null)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 2),
             child: Text(
-              'No reviews yet for ${_facultyInitial.isEmpty ? 'this faculty' : _facultyInitial}.',
+              'No reviews yet.',
               style: TextStyle(color: textSecondary, fontSize: 12),
             ),
           )
@@ -1389,88 +1393,91 @@ class _CourseCommunitySheetState extends State<CourseCommunitySheet> {
             ],
           ],
         ],
-        const SizedBox(height: 2),
-        Row(
-          children: [
-            const Expanded(child: BracuSectionTitle(title: 'Course Materials')),
-            if (widget.showActions)
-              TextButton(
-                onPressed: _busyWriteAction ? null : _openAddMaterialSheet,
-                child: const Text('Add'),
-              ),
-          ],
-        ),
-        if (_materialsLoading)
-          _buildCompactLoading()
-        else if (_materialsError != null || allMaterials.isEmpty)
-          const SizedBox.shrink()
-        else ...[
-          ...displayMaterials.asMap().entries.map((entry) {
-            final index = entry.key;
-            final item = entry.value;
-            final displayTitle = item.title.trim();
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: BracuCard(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: () => _openMaterial(item),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${index + 1}. $displayTitle',
-                                style: TextStyle(
-                                  color: textPrimary,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
+        if (hasMaterialsSection) ...[
+          const SizedBox(height: 2),
+          if (allMaterials.isNotEmpty)
+            Row(
+              children: [
+                const Expanded(
+                  child: BracuSectionTitle(title: 'Course Materials'),
+                ),
+                if (widget.showActions)
+                  TextButton(
+                    onPressed: _busyWriteAction ? null : _openAddMaterialSheet,
+                    child: const Text('Add'),
+                  ),
+              ],
+            ),
+          if (!_materialsLoading && _materialsError != null)
+            const SizedBox.shrink()
+          else if (allMaterials.isNotEmpty) ...[
+            ...displayMaterials.asMap().entries.map((entry) {
+              final index = entry.key;
+              final item = entry.value;
+              final displayTitle = item.title.trim();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: BracuCard(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => _openMaterial(item),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${index + 1}. $displayTitle',
+                                  style: TextStyle(
+                                    color: textPrimary,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _materialSubtitle(item),
-                                style: TextStyle(
-                                  color: textSecondary,
-                                  fontSize: 11,
+                                const SizedBox(height: 2),
+                                Text(
+                                  _materialSubtitle(item),
+                                  style: TextStyle(
+                                    color: textSecondary,
+                                    fontSize: 11,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    if (item.canDelete == true)
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        tooltip: 'Delete',
-                        onPressed: _busyWriteAction
-                            ? null
-                            : () => _deleteMaterial(item),
-                        icon: const Icon(
-                          Icons.delete_outline_rounded,
-                          size: 18,
+                      if (item.canDelete == true)
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          tooltip: 'Delete',
+                          onPressed: _busyWriteAction
+                              ? null
+                              : () => _deleteMaterial(item),
+                          icon: const Icon(
+                            Icons.delete_outline_rounded,
+                            size: 18,
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
+              );
+            }),
+            if (allMaterials.length > 3)
+              buildCenteredOutlinedActionButton(
+                label: _showAllMaterials ? 'Show Less' : 'Show More',
+                onPressed: () {
+                  setState(() {
+                    _showAllMaterials = !_showAllMaterials;
+                  });
+                },
+                padding: const EdgeInsets.only(top: 2, bottom: 8),
               ),
-            );
-          }),
-          if (allMaterials.length > 3)
-            buildCenteredOutlinedActionButton(
-              label: _showAllMaterials ? 'Show Less' : 'Show More',
-              onPressed: () {
-                setState(() {
-                  _showAllMaterials = !_showAllMaterials;
-                });
-              },
-              padding: const EdgeInsets.only(top: 2, bottom: 8),
-            ),
+          ],
         ],
         const SizedBox(height: 8),
       ],

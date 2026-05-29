@@ -1174,26 +1174,23 @@ class _BracuFundingSupportContentBodyState
                     key: _qrShareKey,
                     child: SizedBox.square(
                       dimension: qrSize,
-                      child: ColoredBox(
-                        color: Colors.black,
-                        child: BarcodeWidget(
-                          barcode: Barcode.qrCode(),
-                          data: _kPreconnectSupportQrData,
-                          color: const Color(0xFFE91E63),
-                          backgroundColor: Colors.black,
-                          drawText: false,
-                          errorBuilder: (context, error) {
-                            return Container(
-                              alignment: Alignment.center,
-                              color: Colors.transparent,
-                              child: Icon(
-                                Icons.qr_code_2_rounded,
-                                color: BracuPalette.primary,
-                                size: 44,
-                              ),
-                            );
-                          },
-                        ),
+                      child: BarcodeWidget(
+                        barcode: Barcode.qrCode(),
+                        data: _kPreconnectSupportQrData,
+                        color: const Color(0xFFE91E63),
+                        backgroundColor: Colors.transparent,
+                        drawText: false,
+                        errorBuilder: (context, error) {
+                          return Container(
+                            alignment: Alignment.center,
+                            color: Colors.transparent,
+                            child: Icon(
+                              Icons.qr_code_2_rounded,
+                              color: BracuPalette.primary,
+                              size: 44,
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),

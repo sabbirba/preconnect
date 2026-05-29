@@ -344,9 +344,6 @@ Map<String, String> compressionHeaders() {
 }
 
 Map<String, String> compressionHeadersForUri(Uri? uri) {
-  if (uri != null && uri.host == 'cdn.preconnect.app') {
-    return const <String, String>{};
-  }
   return compressionHeaders();
 }
 

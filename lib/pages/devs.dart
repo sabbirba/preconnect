@@ -451,21 +451,31 @@ class _ContributorsGrid extends StatelessWidget {
     final all = _orderContributors(
       _dedupeContributors([...contributors, ..._manualContributors]),
     );
-    return Column(
-      children: [
-        GridView.count(
-          crossAxisCount: 1,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : 0.0;
+        final maxExtent = width < 360
+            ? 148.0
+            : width < 560
+            ? 170.0
+            : 190.0;
+        return GridView.builder(
+          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: maxExtent,
+            mainAxisExtent: 122,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+          ),
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 0,
-          childAspectRatio: 4.7,
-          children: [
-            for (final contributor in all)
-              _DevGridTile(contributor: contributor),
-          ],
-        ),
-      ],
+          itemCount: all.length,
+          itemBuilder: (context, index) {
+            return _DevGridTile(contributor: all[index]);
+          },
+        );
+      },
     );
   }
 }
@@ -684,14 +694,16 @@ class _DevGridTile extends StatelessWidget {
     final textSecondary = BracuPalette.textSecondary(context);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 150;
-        final avatarSize = compact ? 46.0 : 58.0;
-        final nameSize = compact ? 17.0 : 19.5;
-        final roleSize = compact ? 12.0 : 14.0;
+        final width = constraints.maxWidth;
+        final compact = width < 165;
+        final avatarSize = (width * 0.40).clamp(44.0, 68.0);
+        final nameSize = compact ? 12.5 : 14.0;
+        final roleSize = compact ? 11.0 : 12.0;
         return InkWell(
           onTap: () => openExternalUrl(context, contributor.url),
-          borderRadius: BorderRadius.circular(10),
-          child: Row(
+          borderRadius: BorderRadius.circular(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _ContributorAvatar(
@@ -699,40 +711,34 @@ class _DevGridTile extends StatelessWidget {
                 url: contributor.avatarUrl,
                 size: avatarSize,
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        contributor.name,
-                        maxLines: 1,
-                        style: TextStyle(
-                          fontSize: nameSize,
-                          fontWeight: FontWeight.w600,
-                          height: 1.05,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        contributor.role,
-                        maxLines: 1,
-                        style: TextStyle(
-                          color: textSecondary,
-                          fontSize: roleSize,
-                          height: 1.05,
-                        ),
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: Text(
+                  contributor.name,
+                  maxLines: 1,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: nameSize,
+                    fontWeight: FontWeight.w700,
+                    height: 1.05,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: Text(
+                  contributor.role,
+                  maxLines: 1,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: textSecondary,
+                    fontSize: roleSize,
+                    height: 1.05,
+                  ),
                 ),
               ),
             ],

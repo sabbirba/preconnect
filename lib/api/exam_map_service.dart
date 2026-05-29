@@ -34,6 +34,15 @@ class ExamMapService {
     return '$course|$section';
   }
 
+  Future<void> preloadIndex({bool forceRefresh = false}) async {
+    await _fetchJsonWithCache(
+      url: ApiConfig.examMapIndexUrl,
+      cacheKey: _indexCacheKey,
+      ttl: _indexCacheTtl,
+      forceRefresh: forceRefresh,
+    );
+  }
+
   Future<Map<String, ExamScheduleOverride>> getOverridesForSemester({
     required int semesterSessionId,
     bool forceRefresh = false,

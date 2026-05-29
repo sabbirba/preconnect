@@ -1,0 +1,167 @@
+name: PR CI
+
+on:
+  pull_request_target:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: pr-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    name: Auto Format
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2.21.0
+        with:
+          channel: "stable"
+          cache: true
+
+      - name: Format Dart
+        shell: bash
+        run: dart format .
+
+      - name: Create Patch
+        id: patch
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          git diff --binary > formatting.patch
+          git diff --stat > formatting.stat
+
+      - name: Upload Formatting Patch
+        if: steps.patch.outputs.has_changes == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-formatting-patch
+          path: |
+            formatting.patch
+            formatting.stat
+          if-no-files-found: error
+
+      - name: Comment Formatting Needed
+        if: steps.patch.outputs.has_changes == 'true' && github.event.pull_request.head.repo.full_name != github.repository
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = [
+              'Formatting needed.',
+              '',
+              'I generated a patch artifact you can download from this workflow run.',
+              '',
+              'Please run:',
+              '',
+              '```bash',
+              'dart format .',
+              '```',
+              '',
+              'If you want to apply the patch artifact locally, download `formatting.patch` and run:',
+              '',
+              '```bash',
+              'git apply formatting.patch',
+              '```',
+              '',
+              'Then push the formatting update to your branch.',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      - name: Commit Formatting
+        if: steps.patch.outputs.has_changes == 'true' && github.event.pull_request.head.repo.full_name == github.repository
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: format PR #${{ github.event.pull_request.number }}"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+
+  validate:
+    name: Flutter Checks
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2.21.0
+        with:
+          channel: "stable"
+          cache: true
+
+      - name: Cache Pub
+        uses: actions/cache@v5.0.5
+        with:
+          path: |
+            ~/.pub-cache
+            C:\Users\runneradmin\AppData\Local\Pub\Cache
+          key: ${{ runner.os }}-flutter-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-pub-
+
+      - name: Flutter Pub Get
+        shell: bash
+        run: flutter pub get
+
+      - name: Format Dart
+        shell: bash
+        run: dart format --set-exit-if-changed .
+
+      - name: Flutter Analyze
+        shell: bash
+        run: flutter analyze
+
+      - name: Flutter Test
+        shell: bash
+        run: flutter test

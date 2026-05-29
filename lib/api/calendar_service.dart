@@ -35,6 +35,10 @@ class CalendarService {
     return _readCache();
   }
 
+  Future<void> preloadAcademicDates({bool forceRefresh = false}) async {
+    await _fetchAcademicDates(forceRefresh: forceRefresh);
+  }
+
   Future<CalendarFeed?> fetchCalendar({
     CalendarFeed? fallback,
     ({String startDate, String endDate, String sourceFingerprint})?

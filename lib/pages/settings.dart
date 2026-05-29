@@ -27,6 +27,8 @@ class _SettingsPageState extends State<SettingsPage>
   bool _showTodaySchedule = true;
   bool _showDecorations = true;
   bool _showCommunityLink = true;
+  bool _showCampusMapContacts = true;
+  bool _showNotificationsIcon = true;
   bool _appLockEnabled = false;
   bool _showSupport = true;
   bool _quietModeEnabled = false;
@@ -67,6 +69,8 @@ class _SettingsPageState extends State<SettingsPage>
       _showRamadanCard = visibility.showRamadanCard;
       _showDecorations = visibility.showDecorations;
       _showCommunityLink = visibility.showCommunityLink;
+      _showCampusMapContacts = visibility.showCampusMapContacts;
+      _showNotificationsIcon = visibility.showNotificationsIcon;
       _showExamCountdownCard = visibility.showExamCountdownCard;
       _showTodaySchedule = visibility.showTodaySchedule;
       _appLockEnabled = appLockEnabled;
@@ -105,6 +109,24 @@ class _SettingsPageState extends State<SettingsPage>
       value: value,
       applyLocal: () => _showCommunityLink = value,
       persist: HomeCardPreferences.setShowCommunityLink,
+    );
+  }
+
+  Future<void> _setShowCampusMapContacts(bool value) async {
+    await _setVisibility(
+      label: 'Campus Map & Contacts',
+      value: value,
+      applyLocal: () => _showCampusMapContacts = value,
+      persist: HomeCardPreferences.setShowCampusMapContacts,
+    );
+  }
+
+  Future<void> _setShowNotificationsIcon(bool value) async {
+    await _setVisibility(
+      label: 'Notifications Icon',
+      value: value,
+      applyLocal: () => _showNotificationsIcon = value,
+      persist: HomeCardPreferences.setShowNotificationsIcon,
     );
   }
 
@@ -245,6 +267,8 @@ class _SettingsPageState extends State<SettingsPage>
         HomeCardPreferences.showTodayScheduleKey,
         HomeCardPreferences.showSponsoredContentKey,
         HomeCardPreferences.showDecorationsKey,
+        HomeCardPreferences.showCampusMapContactsKey,
+        HomeCardPreferences.showNotificationsIconKey,
         AdsPreferences.hideAdsKey,
       };
       await AppPreferencesStore().clearAllExcept(keepKeys);
@@ -332,9 +356,23 @@ class _SettingsPageState extends State<SettingsPage>
                 divider,
                 _ToggleRow(
                   title: 'Community Link',
-                  subtitle: 'Show Discord banner on homepage',
+                  subtitle: 'Show Discord banner on home',
                   value: _showCommunityLink,
                   onChanged: _setShowCommunityLink,
+                ),
+                divider,
+                _ToggleRow(
+                  title: 'Campus Map & Contacts',
+                  subtitle: 'Show contacts card on home',
+                  value: _showCampusMapContacts,
+                  onChanged: _setShowCampusMapContacts,
+                ),
+                divider,
+                _ToggleRow(
+                  title: 'Notifications Icon',
+                  subtitle: 'Show bell icon on home',
+                  value: _showNotificationsIcon,
+                  onChanged: _setShowNotificationsIcon,
                 ),
                 divider,
                 _ToggleRow(

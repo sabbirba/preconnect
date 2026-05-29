@@ -342,12 +342,14 @@ class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.name,
     required this.photoUrl,
+    required this.showNotificationsIcon,
     required this.onOpenNotifications,
     required this.onProfileTap,
   });
 
   final String name;
   final String? photoUrl;
+  final bool showNotificationsIcon;
   final VoidCallback onOpenNotifications;
   final VoidCallback onProfileTap;
 
@@ -407,11 +409,12 @@ class _TopBar extends StatelessWidget {
             ),
           ),
         ),
-        BracuNotificationsIconButton(
-          onTap: onOpenNotifications,
-          iconSize: 22,
-          padding: 8,
-        ),
+        if (showNotificationsIcon)
+          BracuNotificationsIconButton(
+            onTap: onOpenNotifications,
+            iconSize: 22,
+            padding: 8,
+          ),
       ],
     );
   }
@@ -873,6 +876,10 @@ class _HomeData {
             showSponsoredContent:
                 visibilityJson['showSponsoredContent'] == true,
             showCommunityLink: visibilityJson['showCommunityLink'] == true,
+            showCampusMapContacts:
+                visibilityJson['showCampusMapContacts'] == true,
+            showNotificationsIcon:
+                visibilityJson['showNotificationsIcon'] == true,
           )
         : HomeCardPreferences.defaults;
     final overridesJson = json['examOverrides'];

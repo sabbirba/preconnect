@@ -20,6 +20,9 @@ class ProgressService {
   static const String _curriculumCacheKey = 'student_progress_curriculum_v1';
   static const String _coursePrerequisitesCacheKey =
       'student_progress_course_prerequisites_v1';
+  static const List<String> _coursePrerequisitesUrls = <String>[
+    '${ApiConfig.publicJsonBase}/data/course-prerequisites.json',
+  ];
   static const String _majorMinorsEtagKey = 'student_progress_major_etag_v1';
   static const String _completedCoursesEtagKey =
       'student_progress_completed_etag_v1';
@@ -66,9 +69,6 @@ class ProgressService {
           '${ApiConfig.connectApiBase}${ApiConfig.completedCoursesPath(portfolioId)}';
       final curriculumUrl =
           '${ApiConfig.connectApiBase}${ApiConfig.programCurriculumsPath(portfolioId)}';
-      final coursePrerequisitesUrls = <String>[
-        '${ApiConfig.publicJsonBase}/data/course-prerequisites.json',
-      ];
       final cache = AppPreferencesStore();
 
       final etags = await Future.wait<String?>([
@@ -119,7 +119,7 @@ class ProgressService {
         ),
         _resolvePublicComponent(
           cache: cache,
-          urls: coursePrerequisitesUrls,
+          urls: _coursePrerequisitesUrls,
           dataKey: _coursePrerequisitesCacheKey,
         ),
       ]);
@@ -199,6 +199,15 @@ class ProgressService {
     final cached = await cache.getString(dataKey);
     if (cached == null || cached.trim().isEmpty) return null;
     return jsonDecode(cached);
+  }
+
+  Future<void> preloadCoursePrerequisites() async {
+    final cache = AppPreferencesStore();
+    await _resolvePublicComponent(
+      cache: cache,
+      urls: _coursePrerequisitesUrls,
+      dataKey: _coursePrerequisitesCacheKey,
+    );
   }
 
   Future<dynamic> _readCachedComponent(

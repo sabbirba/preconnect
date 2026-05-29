@@ -213,6 +213,9 @@ class HomeCardPreferences {
   static const String showSponsoredContentKey = 'home_show_sponsored_content';
   static const String showDecorationsKey = 'home_show_decorations';
   static const String showCommunityLinkKey = 'home_show_community_link';
+  static const String showCampusMapContactsKey =
+      'home_show_campus_map_contacts';
+  static const String showNotificationsIconKey = 'home_show_notifications_icon';
 
   static const HomeCardVisibility defaults = HomeCardVisibility(
     showQuickAccessSection: true,
@@ -222,6 +225,8 @@ class HomeCardPreferences {
     showTodaySchedule: true,
     showSponsoredContent: true,
     showCommunityLink: true,
+    showCampusMapContacts: true,
+    showNotificationsIcon: true,
   );
 
   static Future<HomeCardVisibility> load() async {
@@ -232,6 +237,10 @@ class HomeCardPreferences {
           await AppStorage.instance.getBool(showSponsoredContentKey) ?? true;
       final bool showCommunityLink =
           await AppStorage.instance.getBool(showCommunityLinkKey) ?? true;
+      final bool showCampusMapContacts =
+          await AppStorage.instance.getBool(showCampusMapContactsKey) ?? true;
+      final bool showNotificationsIcon =
+          await AppStorage.instance.getBool(showNotificationsIconKey) ?? true;
 
       decorationNotifier.value = showDecorations;
       sponsoredContentNotifier.value = showSponsoredContent;
@@ -250,6 +259,8 @@ class HomeCardPreferences {
             await AppStorage.instance.getBool(showTodayScheduleKey) ?? true,
         showSponsoredContent: showSponsoredContent,
         showCommunityLink: showCommunityLink,
+        showCampusMapContacts: showCampusMapContacts,
+        showNotificationsIcon: showNotificationsIcon,
       );
     } catch (_) {
       return defaults;
@@ -300,6 +311,18 @@ class HomeCardPreferences {
       await AppStorage.instance.setBool(showSponsoredContentKey, value);
     } catch (_) {}
   }
+
+  static Future<void> setShowCampusMapContacts(bool value) async {
+    try {
+      await AppStorage.instance.setBool(showCampusMapContactsKey, value);
+    } catch (_) {}
+  }
+
+  static Future<void> setShowNotificationsIcon(bool value) async {
+    try {
+      await AppStorage.instance.setBool(showNotificationsIconKey, value);
+    } catch (_) {}
+  }
 }
 
 class HomeCardVisibility {
@@ -311,6 +334,8 @@ class HomeCardVisibility {
     required this.showTodaySchedule,
     required this.showSponsoredContent,
     required this.showCommunityLink,
+    required this.showCampusMapContacts,
+    required this.showNotificationsIcon,
   });
 
   final bool showDecorations;
@@ -320,6 +345,8 @@ class HomeCardVisibility {
   final bool showTodaySchedule;
   final bool showSponsoredContent;
   final bool showCommunityLink;
+  final bool showCampusMapContacts;
+  final bool showNotificationsIcon;
 }
 
 class InAppReviewPrompt {

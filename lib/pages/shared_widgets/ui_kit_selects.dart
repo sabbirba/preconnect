@@ -205,6 +205,9 @@ class _BracuNotificationsIconButtonState
       future: _future,
       builder: (context, snapshot) {
         final newCount = snapshot.data ?? _cachedCount ?? 0;
+        final bellIcon = newCount > 0
+            ? Icons.notifications
+            : Icons.notifications_outlined;
         return Stack(
           clipBehavior: Clip.none,
           children: [
@@ -214,7 +217,7 @@ class _BracuNotificationsIconButtonState
               child: Padding(
                 padding: EdgeInsets.all(widget.padding),
                 child: Icon(
-                  Icons.notifications_outlined,
+                  bellIcon,
                   size: widget.iconSize,
                   color: BracuPalette.primary,
                 ),
@@ -222,13 +225,13 @@ class _BracuNotificationsIconButtonState
             ),
             if (newCount > 0)
               Positioned(
-                top: -4,
-                right: -4,
+                top: 0,
+                right: 0,
                 child: Container(
-                  constraints: const BoxConstraints(minWidth: 18),
+                  constraints: const BoxConstraints(minWidth: 14),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 5,
-                    vertical: 2,
+                    horizontal: 3,
+                    vertical: 0,
                   ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFD63B3B),
@@ -239,7 +242,7 @@ class _BracuNotificationsIconButtonState
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 10,
+                      fontSize: 8,
                       fontWeight: FontWeight.w800,
                     ),
                   ),

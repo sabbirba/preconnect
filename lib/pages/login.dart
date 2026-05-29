@@ -14,15 +14,12 @@ import 'package:preconnect/api/custom_schedules_service.dart';
 import 'package:preconnect/api/friend_schedule_store.dart';
 import 'package:preconnect/api/notification_service.dart';
 import 'package:preconnect/api/progress_service.dart';
-import 'package:preconnect/api/seat_status_service.dart';
 import 'package:preconnect/pages/alarms.dart';
-import 'package:preconnect/pages/bus.dart';
 import 'package:preconnect/pages/class_schedule.dart';
 import 'package:preconnect/pages/custom_schedules.dart';
 import 'package:preconnect/pages/degree_progress.dart';
 import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
-import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/tools/pkce.dart';
@@ -255,9 +252,6 @@ class _LoginPageState extends State<LoginPage> {
         FriendScheduleStore().loadSnapshot().then((_) {}),
         CalendarService().getCalendar().then((_) {}),
         NotificationService().getRecentNotifications().then((_) {}),
-        SeatStatusService.preload(),
-        BusPage.preload(),
-        NotificationsPage.preload(),
         DegreeProgressPage.preload(),
         StudentProfile.preload(),
         DevsPage.preload(),

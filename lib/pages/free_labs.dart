@@ -15,6 +15,27 @@ import 'package:preconnect/tools/time_utils.dart';
 class FreeLabsPage extends StatefulWidget {
   const FreeLabsPage({super.key});
 
+  static Future<void> preload() async {
+    final cache = AppPreferencesStore();
+    try {
+      final cachedRaw = await cache.getString(
+        _FreeLabsPageState._freeLabsCacheKey,
+      );
+      if (cachedRaw != null && cachedRaw.trim().isNotEmpty) return;
+
+      final response = await HttpService.client
+          .get(Uri.parse(_FreeLabsPageState._freeLabsUrl))
+          .timeout(const Duration(seconds: 12));
+      if (response.statusCode != 200 || response.body.trim().isEmpty) {
+        return;
+      }
+      await cache.setString(
+        _FreeLabsPageState._freeLabsCacheKey,
+        response.body,
+      );
+    } catch (_) {}
+  }
+
   @override
   State<FreeLabsPage> createState() => _FreeLabsPageState();
 }
