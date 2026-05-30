@@ -54,8 +54,8 @@ flutter build web \
   --release \
   --tree-shake-icons \
   --csp \
+  --no-wasm-dry-run \
   --no-web-resources-cdn \
-  --no-wasm \
   --dart-define-from-file="${ENV_FILE}" \
   --dart-define="APP_VERSION=${APP_VERSION}" \
   --dart-define="APP_BUILD_NUMBER=${APP_BUILD_NUMBER}" \
