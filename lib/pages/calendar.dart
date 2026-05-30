@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:preconnect/api/calendar_service.dart';
+import 'package:preconnect/api/calendar.dart';
 import 'package:preconnect/model/calendar_info.dart';
 import 'package:preconnect/pages/shared_widgets/highlight_scroll_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';

@@ -1,4 +1,4 @@
-import 'package:preconnect/api/exam_map_service.dart';
+import 'package:preconnect/api/exam_map.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/tools/time_utils.dart';
 

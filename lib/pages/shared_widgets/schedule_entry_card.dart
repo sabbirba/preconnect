@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/ramadan_timing.dart';
+import 'package:preconnect/tools/ramadan.dart';
 
 class ScheduleEntryCard extends StatelessWidget {
   const ScheduleEntryCard({

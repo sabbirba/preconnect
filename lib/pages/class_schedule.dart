@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:preconnect/api/exam_map_service.dart';
-import 'package:preconnect/api/schedule_service.dart';
+import 'package:preconnect/api/exam_map.dart';
+import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/shared_widgets/course_community_sheet.dart';
 import 'package:preconnect/pages/shared_widgets/course_section_exam_filter.dart';
@@ -11,7 +11,7 @@ import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
-import 'package:preconnect/tools/ramadan_timing.dart';
+import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 class ClassSchedule extends StatefulWidget {

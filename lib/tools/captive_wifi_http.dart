@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/android_network_assist.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
@@ -18,10 +19,10 @@ class CaptiveWifiHttpResult {
   final Uri? location;
 }
 
-class CaptiveWifiHttpService {
-  CaptiveWifiHttpService._();
+class CaptiveWifiHttp {
+  CaptiveWifiHttp._();
 
-  static final CaptiveWifiHttpService instance = CaptiveWifiHttpService._();
+  static final CaptiveWifiHttp instance = CaptiveWifiHttp._();
   static final Uri defaultProbeUri = Uri.parse(
     'http://connectivitycheck.gstatic.com/generate_204',
   );
@@ -116,6 +117,61 @@ class CaptiveWifiHttpService {
         continue;
       }
 
+      if (status == 200) {
+        final metaReg = RegExp(
+          r'''<meta\b([^>]*http-equiv\s*=\s*["']refresh["'][^>]*)>''',
+          caseSensitive: false,
+        );
+        final metaMatch = metaReg.firstMatch(body);
+        if (metaMatch != null) {
+          final attrs = metaMatch.group(1) ?? '';
+          final contentReg = RegExp(
+            r'''content\s*=\s*["']\s*(?:\d+\s*;\s*)?url\s*=\s*([^"']+)["']''',
+            caseSensitive: false,
+          );
+          final contentMatch = contentReg.firstMatch(attrs);
+          if (contentMatch != null) {
+            final targetUrl = contentMatch.group(1)?.trim();
+            if (targetUrl != null && targetUrl.isNotEmpty) {
+              current = Uri.parse(targetUrl).isAbsolute
+                  ? Uri.parse(targetUrl)
+                  : current.resolve(targetUrl);
+              continue;
+            }
+          }
+        }
+
+        final jsReg = RegExp(
+          r'''(?:window\.)?location(?:\.href|\.replace)?\s*=\s*["']([^"']+)["']''',
+          caseSensitive: false,
+        );
+        final jsMatch = jsReg.firstMatch(body);
+        if (jsMatch != null) {
+          final targetUrl = jsMatch.group(1)?.trim();
+          if (targetUrl != null && targetUrl.isNotEmpty) {
+            current = Uri.parse(targetUrl).isAbsolute
+                ? Uri.parse(targetUrl)
+                : current.resolve(targetUrl);
+            continue;
+          }
+        }
+
+        final jsAssignReg = RegExp(
+          r'''(?:window\.)?location\.assign\s*\(\s*["']([^"']+)["']\s*\)''',
+          caseSensitive: false,
+        );
+        final jsAssignMatch = jsAssignReg.firstMatch(body);
+        if (jsAssignMatch != null) {
+          final targetUrl = jsAssignMatch.group(1)?.trim();
+          if (targetUrl != null && targetUrl.isNotEmpty) {
+            current = Uri.parse(targetUrl).isAbsolute
+                ? Uri.parse(targetUrl)
+                : current.resolve(targetUrl);
+            continue;
+          }
+        }
+      }
+
       return CaptiveWifiHttpResult(
         statusCode: status,
         uri: current,
@@ -168,6 +224,8 @@ class CaptiveWifiHttpService {
 
   String? _cookieHeader(Map<String, Cookie> jar) {
     if (jar.isEmpty) return null;
-    return jar.values.map((c) => '${c.name}=${c.value}').join('; ');
+    return HttpUtils.cookieHeader(<String, String>{
+      for (final cookie in jar.values) cookie.name: cookie.value,
+    });
   }
 }

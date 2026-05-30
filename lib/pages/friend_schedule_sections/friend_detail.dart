@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/schedule_service.dart';
+import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/friend_schedule_sections/compare_schedules.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
@@ -10,7 +10,7 @@ import 'package:preconnect/pages/shared_widgets/highlight_scroll_helper.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/ramadan_timing.dart';
+import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/time_utils.dart';
 

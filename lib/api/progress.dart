@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/profile_service.dart';
-import 'package:preconnect/api/app_preferences_store.dart';
+import 'package:preconnect/api/profile.dart';
+import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/model/progress_info.dart';
 
 class ProgressService {
@@ -69,12 +69,12 @@ class ProgressService {
           '${ApiConfig.connectApiBase}${ApiConfig.completedCoursesPath(portfolioId)}';
       final curriculumUrl =
           '${ApiConfig.connectApiBase}${ApiConfig.programCurriculumsPath(portfolioId)}';
-      final cache = AppPreferencesStore();
+      final repo = RepositoryCache.instance;
 
       final etags = await Future.wait<String?>([
-        cache.getString(_majorMinorsEtagKey),
-        cache.getString(_completedCoursesEtagKey),
-        cache.getString(_curriculumEtagKey),
+        repo.readString(_majorMinorsEtagKey),
+        repo.readString(_completedCoursesEtagKey),
+        repo.readString(_curriculumEtagKey),
       ]);
       final majorEtag = etags[0];
       final completedEtag = etags[1];
@@ -85,40 +85,43 @@ class ProgressService {
           majorMinorsUrl,
           additionalHeaders: ifNoneMatchHeader(majorEtag),
           acceptedStatusCodes: const <int>{200, 304},
+          cacheDuration: const Duration(seconds: 30),
         ),
         _client.authenticatedGet(
           completedCoursesUrl,
           additionalHeaders: ifNoneMatchHeader(completedEtag),
           acceptedStatusCodes: const <int>{200, 304},
+          cacheDuration: const Duration(seconds: 30),
         ),
         _client.authenticatedGet(
           curriculumUrl,
           additionalHeaders: ifNoneMatchHeader(curriculumEtag),
           acceptedStatusCodes: const <int>{200, 304},
+          cacheDuration: const Duration(seconds: 30),
         ),
       ]);
 
       final resolved = await Future.wait<dynamic>([
         _resolveComponent(
-          cache: cache,
+          repo: repo,
           response: responses[0],
           dataKey: _majorMinorsCacheKey,
           etagKey: _majorMinorsEtagKey,
         ),
         _resolveComponent(
-          cache: cache,
+          repo: repo,
           response: responses[1],
           dataKey: _completedCoursesCacheKey,
           etagKey: _completedCoursesEtagKey,
         ),
         _resolveComponent(
-          cache: cache,
+          repo: repo,
           response: responses[2],
           dataKey: _curriculumCacheKey,
           etagKey: _curriculumEtagKey,
         ),
         _resolvePublicComponent(
-          cache: cache,
+          repo: repo,
           urls: _coursePrerequisitesUrls,
           dataKey: _coursePrerequisitesCacheKey,
         ),
@@ -143,8 +146,8 @@ class ProgressService {
       };
       final info = ProgressInfo.fromPayload(payload);
       final summary = ProgressSummary.fromProgressInfo(info);
-      await cache.setJson(_cacheKey, payload);
-      await cache.setJson(_summaryCacheKey, summary.toJson());
+      await repo.writeJson(_cacheKey, payload);
+      await repo.writeJson(_summaryCacheKey, summary.toJson());
       return info;
     } catch (_) {
       if (fromGet) return null;
@@ -153,68 +156,71 @@ class ProgressService {
   }
 
   Future<dynamic> _resolveComponent({
-    required AppPreferencesStore cache,
+    required RepositoryCache repo,
     required dynamic response,
     required String dataKey,
     required String etagKey,
   }) async {
     if (response.statusCode == 304) {
-      final cached = await cache.getString(dataKey);
+      final cached = await repo.readString(dataKey);
       if (cached == null || cached.trim().isEmpty) return null;
       try {
         return jsonDecode(cached);
       } catch (e) {
-        return await _readCachedComponent(cache, dataKey);
+        return await _readCachedComponent(repo, dataKey);
       }
     }
     if (response.statusCode != 200) return null;
     try {
       final decoded = jsonDecode(response.body);
-      await cache.setJson(dataKey, decoded);
+      await repo.writeJson(dataKey, decoded);
       final etag = extractEtagFromHeaders(response.headers);
       if (etag != null && etag.isNotEmpty) {
-        await cache.setString(etagKey, etag);
+        await repo.writeString(etagKey, etag);
       }
       return decoded;
     } catch (e) {
-      return await _readCachedComponent(cache, dataKey);
+      return await _readCachedComponent(repo, dataKey);
     }
   }
 
   Future<dynamic> _resolvePublicComponent({
-    required AppPreferencesStore cache,
+    required RepositoryCache repo,
     required List<String> urls,
     required String dataKey,
   }) async {
     for (final url in urls) {
       try {
-        final response = await _client.publicGet(url);
+        final response = await _client.publicGet(
+          url,
+          cacheDuration: const Duration(minutes: 10),
+        );
         final decoded = jsonDecode(response.body);
-        await cache.setJson(dataKey, decoded);
+        await repo.writeJson(dataKey, decoded);
         return decoded;
       } catch (_) {
         continue;
       }
     }
-    final cached = await cache.getString(dataKey);
+    final cached = await repo.readString(dataKey);
     if (cached == null || cached.trim().isEmpty) return null;
     return jsonDecode(cached);
   }
 
   Future<void> preloadCoursePrerequisites() async {
-    final cache = AppPreferencesStore();
+    final repo = RepositoryCache.instance;
     await _resolvePublicComponent(
-      cache: cache,
+      repo: repo,
       urls: _coursePrerequisitesUrls,
       dataKey: _coursePrerequisitesCacheKey,
     );
   }
 
   Future<dynamic> _readCachedComponent(
-    AppPreferencesStore cache,
+    RepositoryCache repo,
     String dataKey,
   ) async {
-    final cached = await cache.getString(dataKey);
+    final cached = await repo.readString(dataKey);
     if (cached == null || cached.trim().isEmpty) return null;
     try {
       return jsonDecode(cached);
@@ -224,7 +230,7 @@ class ProgressService {
   }
 
   Future<ProgressInfo?> getProgress({bool fromFetch = false}) async {
-    return readStoredJsonMapWithFallback<ProgressInfo>(
+    return RepositoryCache.instance.readJsonMapWithFallback<ProgressInfo>(
       key: _cacheKey,
       fromFetch: fromFetch,
       decoder: ProgressInfo.fromPayload,
@@ -236,14 +242,14 @@ class ProgressService {
   }
 
   Future<ProgressSummary?> getProgressSummary({bool fromFetch = false}) async {
-    return readStoredJsonMapWithFallback<ProgressSummary>(
+    return RepositoryCache.instance.readJsonMapWithFallback<ProgressSummary>(
       key: _summaryCacheKey,
       fromFetch: fromFetch,
       decoder: ProgressSummary.fromJson,
       onCacheMiss: () async {
         await fetchProgress(fromGet: true);
-        return AppPreferencesStore()
-            .getJsonMap(_summaryCacheKey)
+        return RepositoryCache.instance
+            .readJsonMap(_summaryCacheKey)
             .then(
               (value) => value == null ? null : ProgressSummary.fromJson(value),
             );

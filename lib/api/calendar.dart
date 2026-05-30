@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/notification_service.dart';
-import 'package:preconnect/api/app_preferences_store.dart';
-import 'package:preconnect/api/schedule_service.dart';
+import 'package:preconnect/api/notification.dart';
+import 'package:preconnect/api/repository_cache.dart';
+import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/calendar_info.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 
@@ -16,6 +16,7 @@ class CalendarService {
 
   final ApiClient _client = ApiClient();
   final ScraperDataService _scraper = ScraperDataService();
+  final RepositoryCache _repo = RepositoryCache.instance;
 
   static const String _cacheKey = 'calendar_feed_json';
   static const String _rangeStartKey = 'calendar_range_start';
@@ -48,7 +49,10 @@ class CalendarService {
     final url =
         '${ApiConfig.connectApiBase}${ApiConfig.calendarPath(0, startDate: range.startDate, endDate: range.endDate)}';
     try {
-      final response = await _client.authenticatedGet(url);
+      final response = await _client.authenticatedGet(
+        url,
+        cacheDuration: const Duration(seconds: 15),
+      );
       dynamic decoded;
       try {
         decoded = jsonDecode(response.body);
@@ -151,12 +155,11 @@ class CalendarService {
   }
 
   Future<CalendarFeed?> _readCache() async {
-    final cache = AppPreferencesStore();
-    final decoded = await cache.getJsonMap(_cacheKey);
+    final decoded = await _repo.readJsonMap(_cacheKey);
     if (decoded == null) return null;
     try {
       final feed = CalendarFeed.fromJson(decoded);
-      final meta = await cache.getStringMap(<String>{
+      final meta = await _repo.readStringMap(<String>{
         _rangeStartKey,
         _rangeEndKey,
         _sourceFingerprintKey,
@@ -174,9 +177,8 @@ class CalendarService {
   }
 
   Future<void> _writeCache(CalendarFeed feed) async {
-    final cache = AppPreferencesStore();
-    await cache.setJsonIfChanged(_cacheKey, feed.toJson());
-    await cache.setStringMap(<String, String>{
+    await _repo.writeJsonIfChanged(_cacheKey, feed.toJson());
+    await _repo.writeStringMap(<String, String>{
       _rangeStartKey: feed.rangeStart,
       _rangeEndKey: feed.rangeEnd,
       _sourceFingerprintKey: feed.sourceFingerprint,

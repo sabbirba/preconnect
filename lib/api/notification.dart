@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/app_preferences_store.dart';
+import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/image_url_utils.dart';
 
 class RecentConnectNotification {
@@ -56,7 +56,8 @@ class ScraperDataService {
   factory ScraperDataService() => _instance;
 
   final ApiClient _client = ApiClient();
-  final AppPreferencesStore _store = AppPreferencesStore();
+  final RepositoryCache _repo = RepositoryCache.instance;
+  static const Duration _requestCacheTtl = Duration(seconds: 30);
 
   Future<List<Map<String, dynamic>>> fetchList({
     required String path,
@@ -100,7 +101,7 @@ class ScraperDataService {
     required bool forceRefresh,
   }) async {
     if (!forceRefresh) {
-      final cached = await _store.getJsonMap(cacheKey);
+      final cached = await _repo.readJsonMap(cacheKey);
       final ts = cached?['ts'];
       final data = cached?['data'];
       if (ts is int && data != null) {
@@ -115,15 +116,18 @@ class ScraperDataService {
         ? path
         : '${ApiConfig.publicJsonBase}${path.startsWith('/') ? path : '/$path'}';
     try {
-      final response = await _client.publicGet(url);
+      final response = await _client.publicGet(
+        url,
+        cacheDuration: _requestCacheTtl,
+      );
       final decoded = jsonDecode(response.body);
-      await _store.setJson(cacheKey, <String, dynamic>{
+      await _repo.writeJson(cacheKey, <String, dynamic>{
         'ts': DateTime.now().millisecondsSinceEpoch,
         'data': decoded,
       });
       return decoded;
     } catch (_) {
-      final cached = await _store.getJsonMap(cacheKey);
+      final cached = await _repo.readJsonMap(cacheKey);
       return cached?['data'];
     }
   }
@@ -264,6 +268,7 @@ class NotificationService {
 
   final ApiClient _client = ApiClient();
   final ScraperDataService _scraper = ScraperDataService();
+  final RepositoryCache _repo = RepositoryCache.instance;
 
   static const String _recentFeedEtagKey = 'recent_notifications_etag_v1';
   static const String _recentFeedKey = 'RecentNotificationsFeed';
@@ -308,9 +313,7 @@ class NotificationService {
   }
 
   Future<Set<String>> getSeenScraperNotificationIds() async {
-    final cached = await AppPreferencesStore().getJsonMap(
-      _scraperSeenIdsCacheKey,
-    );
+    final cached = await _repo.readJsonMap(_scraperSeenIdsCacheKey);
     final raw = cached?['ids'];
     if (raw is! List) return <String>{};
     return raw
@@ -354,14 +357,13 @@ class NotificationService {
   Future<NotificationsFeed?> fetchRecentNotifications({
     bool fromGet = false,
   }) async {
-    final store = AppPreferencesStore();
-    return _client.fetchWithFallback<NotificationsFeed>(
+    return _repo.fetchWithStoredEtag<NotificationsFeed>(
       url: '${ApiConfig.connectApiBase}${ApiConfig.recentNotificationsPath}',
       fromGet: fromGet,
-      etag: await store.getString(_recentFeedEtagKey),
-      cacheEtag: (etag) => store.setString(_recentFeedEtagKey, etag),
+      etagKey: _recentFeedEtagKey,
+      cacheDuration: const Duration(seconds: 10),
       cacheResponse: (response) async {
-        await store.setString(_recentFeedKey, response.body);
+        await _repo.writeString(_recentFeedKey, response.body);
       },
       readCache: ({required bool fromFetch}) async {
         final cached = await _readCachedFeed();
@@ -382,6 +384,7 @@ class NotificationService {
   Future<ConnectNotificationDetail> fetchNotificationDetail(int id) async {
     final response = await _client.authenticatedGet(
       '${ApiConfig.connectApiBase}${ApiConfig.notificationViewPath(id)}',
+      cacheDuration: const Duration(seconds: 10),
     );
     final decoded = jsonDecode(response.body);
     if (decoded is! Map<String, dynamic>) {
@@ -411,12 +414,12 @@ class NotificationService {
           )
           .toList(),
     );
-    await AppPreferencesStore().setJson(_recentFeedKey, _feedToJson(updated));
+    await _repo.writeJson(_recentFeedKey, _feedToJson(updated));
     return updated;
   }
 
   Future<NotificationsFeed?> _readCachedFeed() async {
-    return readStoredJsonMapWithFallback<NotificationsFeed>(
+    return _repo.readJsonMapWithFallback<NotificationsFeed>(
       key: _recentFeedKey,
       fromFetch: true,
       decoder: NotificationsFeed.fromJson,
@@ -467,7 +470,7 @@ class NotificationService {
   }
 
   Future<List<ScraperContentItem>?> _readCachedScraperFeed() async {
-    final cached = await AppPreferencesStore().getJsonMap(_scraperFeedCacheKey);
+    final cached = await _repo.readJsonMap(_scraperFeedCacheKey);
     if (cached == null) return null;
     final rawItems = cached['items'];
     if (rawItems is! List) return null;
@@ -528,7 +531,7 @@ class NotificationService {
   }
 
   Future<void> _writeCachedScraperFeed(List<ScraperContentItem> items) async {
-    await AppPreferencesStore().setJson(_scraperFeedCacheKey, <String, dynamic>{
+    await _repo.writeJson(_scraperFeedCacheKey, <String, dynamic>{
       'ts': DateTime.now().millisecondsSinceEpoch,
       'items': items
           .map(
@@ -548,10 +551,9 @@ class NotificationService {
   }
 
   Future<void> _writeSeenScraperNotificationIds(Set<String> ids) async {
-    await AppPreferencesStore().setJson(
-      _scraperSeenIdsCacheKey,
-      <String, dynamic>{'ids': ids.toList()..sort()},
-    );
+    await _repo.writeJson(_scraperSeenIdsCacheKey, <String, dynamic>{
+      'ids': ids.toList()..sort(),
+    });
   }
 
   DateTime? _parseScraperPublishedDate(String raw) {

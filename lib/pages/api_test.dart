@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/auth_service.dart';
+import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
-import 'package:preconnect/tools/token_refresh_flow.dart';
+import 'package:preconnect/tools/token_refresh.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
 class ApiTestPage extends StatefulWidget {

@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/tools/http/http_service.dart';
 
 typedef HolidayItem = ({String startDate, String endDate, String label});
 
@@ -157,7 +156,6 @@ class HolidayTiming {
   static List<String> get _statusUrls => <String>[
     '${ApiConfig.publicJsonBase}/holiday.json',
   ];
-  static const Duration _requestTimeout = Duration(seconds: 3);
 
   static Future<HolidayStatus>? _inflight;
 
@@ -192,16 +190,11 @@ class HolidayTiming {
   _fetchTodayStatus() async {
     for (final url in _statusUrls) {
       try {
-        final uri = Uri.parse(url);
-        final response = await HttpService.client
-            .get(
-              uri,
-              headers: <String, String>{
-                'Accept': 'application/json',
-                ...compressionHeadersForUri(uri),
-              },
-            )
-            .timeout(_requestTimeout);
+        final response = await ApiClient().publicGet(
+          url,
+          acceptedStatusCodes: const <int>{200},
+          cacheDuration: const Duration(minutes: 5),
+        );
 
         if (response.statusCode != 200 || response.body.trim().isEmpty) {
           continue;

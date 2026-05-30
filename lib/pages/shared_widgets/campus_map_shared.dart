@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/notification_service.dart';
+import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/image_url_utils.dart';
 

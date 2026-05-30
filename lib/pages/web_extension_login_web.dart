@@ -3,7 +3,7 @@ import 'dart:js_interop';
 
 import 'package:chrome_extension/runtime.dart';
 import 'package:flutter/material.dart';
-import 'package:preconnect/api/auth_service.dart';
+import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/token_storage.dart';

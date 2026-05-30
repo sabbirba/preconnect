@@ -11,6 +11,30 @@ class AppPreferencesStore {
     await AppStorage.instance.setString(key, value);
   }
 
+  Future<bool?> getBool(String key) async {
+    return AppStorage.instance.getBool(key);
+  }
+
+  Future<void> setBool(String key, bool value) async {
+    await AppStorage.instance.setBool(key, value);
+  }
+
+  Future<int?> getInt(String key) async {
+    return AppStorage.instance.getInt(key);
+  }
+
+  Future<void> setInt(String key, int value) async {
+    await AppStorage.instance.setInt(key, value);
+  }
+
+  Future<List<String>?> getStringList(String key) async {
+    return AppStorage.instance.getStringList(key);
+  }
+
+  Future<void> setStringList(String key, List<String> values) async {
+    await AppStorage.instance.setStringList(key, values);
+  }
+
   Future<void> setStringMap(Map<String, String> values) async {
     if (values.isEmpty) return;
     for (final entry in values.entries) {

@@ -7,28 +7,35 @@ import 'package:dart_pdf_reader/dart_pdf_reader.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:preconnect/api/api_client.dart';
-import 'package:preconnect/api/auth_service.dart';
-import 'package:preconnect/api/profile_service.dart';
+import 'package:preconnect/api/auth.dart';
+import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/android_network_assist.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/http/http_service.dart';
+import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 
 class CampusPrinterPage extends StatefulWidget {
   const CampusPrinterPage({super.key});
 
+  static const String whitePageUrl =
+      'https://cdn.preconnect.app/api/WhitePage.pdf';
+  static Uint8List? cachedWhitePageBytes;
+
   static _CampusPrinterBootstrap? _cachedBootstrap;
   static Future<_CampusPrinterBootstrap>? _preloadFuture;
 
   static Future<void> preload() async {
-    await _preloadBootstrap();
+    await Future.wait([
+      _preloadBootstrap(),
+      _preloadWhitePage(),
+    ]);
   }
 
   static void invalidateCache() {
     _cachedBootstrap = null;
     _preloadFuture = null;
+    cachedWhitePageBytes = null;
   }
 
   static Future<void> clearStoredState() async {
@@ -40,10 +47,39 @@ class CampusPrinterPage extends StatefulWidget {
     await AppStorage.instance.remove(StorageKeys.fullName);
     await AppStorage.instance.remove(StorageKeys.shortCode);
     await AppStorage.instance.remove(StorageKeys.currentSemester);
+    await AppStorage.instance.remove('cached_white_page_pdf');
     invalidateCache();
   }
 
+  static Future<void> _preloadWhitePage() async {
+    if (cachedWhitePageBytes != null) return;
+    try {
+      final cachedBase64 =
+          await AppStorage.instance.getString('cached_white_page_pdf');
+      if (cachedBase64 != null && cachedBase64.isNotEmpty) {
+        cachedWhitePageBytes = base64Decode(cachedBase64);
+        return;
+      }
+    } catch (_) {}
+
+    try {
+      final uri = Uri.parse(whitePageUrl);
+      final response = await HttpUtils.client
+          .get(uri, headers: const <String, String>{'Accept-Encoding': 'gzip'})
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
+        final bytes = response.bodyBytes;
+        cachedWhitePageBytes = bytes;
+        await AppStorage.instance.setString(
+          'cached_white_page_pdf',
+          base64Encode(bytes),
+        );
+      }
+    } catch (_) {}
+  }
+
   static Future<_CampusPrinterBootstrap> _preloadBootstrap() async {
+    unawaited(_preloadWhitePage());
     final cached = _cachedBootstrap;
     if (cached != null) return cached;
     final inFlight = _preloadFuture;
@@ -160,8 +196,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const String _snackPrintFailed = 'Print failed';
   static const String _snackPrinterConnectionFailed =
       'Printer connection failed';
-  static const String _whitePageUrl =
-      'https://cdn.preconnect.app/api/WhitePage.pdf';
 
   Uint8List? _fileBytes;
   String _fileName = '';
@@ -468,19 +502,36 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   Future<void> _loadWhitePage() async {
     if (_busy || _loadingPreset) return;
+
+    final cached = CampusPrinterPage.cachedWhitePageBytes;
+    if (cached != null && cached.isNotEmpty) {
+      setState(() {
+        _fileBytes = cached;
+        _fileName = 'WhitePage.pdf';
+        _filePageCount = 1;
+      });
+      return;
+    }
+
     setState(() {
       _loadingPreset = true;
     });
     try {
-      final uri = Uri.parse(_whitePageUrl);
-      final response = await HttpService.client
-          .get(uri, headers: compressionHeadersForUri(uri))
+      final uri = Uri.parse(CampusPrinterPage.whitePageUrl);
+      final response = await HttpUtils.client
+          .get(uri, headers: const <String, String>{'Accept-Encoding': 'gzip'})
           .timeout(const Duration(seconds: 15));
       if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
         throw const FormatException('Unexpected response');
       }
 
       final bytes = response.bodyBytes;
+      CampusPrinterPage.cachedWhitePageBytes = bytes;
+      unawaited(AppStorage.instance.setString(
+        'cached_white_page_pdf',
+        base64Encode(bytes),
+      ));
+
       if (!mounted) return;
       setState(() {
         _fileBytes = bytes;
@@ -1257,7 +1308,7 @@ class _LprPrintClient {
 
     final printerQueue = queue;
     final owner = user;
-    final client = _lprSafeToken(
+    final client = HttpUtils.sanitizeLprToken(
       clientName.trim().isEmpty ? user : clientName,
       fallback: user,
     );
@@ -1278,23 +1329,31 @@ class _LprPrintClient {
           : bytes;
       onStatus?.call(_jobStartMessage(copies, duplexMode));
       final jobSuffix = _jobSuffix();
-      final controlFileName = _jobFileName(client, jobSuffix: jobSuffix);
-      final dataFileName = _jobFileName(
+      final controlFileName = HttpUtils.lprJobFileName(
+        client,
+        prefix: 'cf',
+        suffix: jobSuffix,
+      );
+      final dataFileName = HttpUtils.lprJobFileName(
         client,
         prefix: 'df',
-        jobSuffix: jobSuffix,
+        suffix: jobSuffix,
       );
-      final control = _ascii(
-        [
-          'H$client',
-          'P$owner',
-          'J$printableJobName',
-          'C$printableJobName',
-          '$dataCommand$dataFileName',
-          'U$dataFileName',
-          'N$safeFileName',
-          '',
-        ].join('\n'),
+      final controlText = HttpUtils.lprControlFile(
+        client: client,
+        owner: owner,
+        printableJobName: printableJobName,
+        dataCommand: dataCommand,
+        dataFileName: dataFileName,
+        safeFileName: safeFileName,
+      );
+      final control = _ascii(controlText);
+      final pjlPrefix = HttpUtils.pjlPrefix(
+        jobName: printableJobName,
+        copies: copies,
+        duplexMode: duplexMode,
+        collateMode: collateMode,
+        isPostScript: isPostScript,
       );
 
       await _sendLprJob(
@@ -1303,14 +1362,7 @@ class _LprPrintClient {
         controlFileName: controlFileName,
         dataFileName: dataFileName,
         control: control,
-        payload: _buildPjlPayload(
-          bytes: sendBytes,
-          jobName: printableJobName,
-          copies: copies,
-          duplexMode: duplexMode,
-          collateMode: collateMode,
-          isPostScript: isPostScript,
-        ),
+        payload: _buildPjlPayload(bytes: sendBytes, prefix: pjlPrefix),
       );
     } on _LprPrintException {
       rethrow;
@@ -1335,46 +1387,12 @@ class _LprPrintClient {
     return number.toString().padLeft(3, '0');
   }
 
-  String _jobFileName(
-    String client, {
-    String prefix = 'cf',
-    String? jobSuffix,
-  }) {
-    final suffix = jobSuffix ?? _jobSuffix();
-    return '${prefix}A$suffix$client';
-  }
-
   Uint8List _buildPjlPayload({
     required Uint8List bytes,
-    required String jobName,
-    required int copies,
-    required String duplexMode,
-    required String collateMode,
-    required bool isPostScript,
+    required String prefix,
   }) {
-    final language = isPostScript ? 'POSTSCRIPT' : 'PDF';
-    final duplex = duplexMode.trim().toUpperCase();
-    final collate = collateMode.trim().toUpperCase();
-    final useDuplex = duplex != 'OFF';
     final builder = BytesBuilder(copy: false);
-    builder.add(_ascii('\x1B%-12345X'));
-    builder.add(_ascii('@PJL JOB NAME = "${_escapePjlValue(jobName)}"\r\n'));
-    builder.add(_ascii('@PJL SET COPIES = $copies\r\n'));
-    builder.add(
-      _ascii('@PJL SET COLLATE = ${collate == 'OFF' ? 'OFF' : 'ON'}\r\n'),
-    );
-    builder.add(_ascii('@PJL SET PAPER = A4\r\n'));
-    builder.add(_ascii('@PJL SET ORIENTATION = PORTRAIT\r\n'));
-    builder.add(_ascii('@PJL SET RESOLUTION = 600\r\n'));
-    builder.add(_ascii('@PJL SET MANUALFEED = OFF\r\n'));
-    builder.add(_ascii('@PJL SET MPTRAY = CASSETTE\r\n'));
-    builder.add(_ascii('@PJL SET PERSONALITY = AUTO\r\n'));
-    builder.add(_ascii('@PJL SET PAGEPROTECT = A4\r\n'));
-    builder.add(_ascii('@PJL SET DUPLEX = ${useDuplex ? 'ON' : 'OFF'}\r\n'));
-    if (useDuplex) {
-      builder.add(_ascii('@PJL SET BINDING = LONGEDGE\r\n'));
-    }
-    builder.add(_ascii('@PJL ENTER LANGUAGE = $language\r\n'));
+    builder.add(_ascii(prefix));
     builder.add(bytes);
     builder.add(_ascii('\r\n\x1B%-12345X@PJL EOJ\r\n\x1B%-12345X'));
     return builder.takeBytes();
@@ -1445,26 +1463,6 @@ class _LprPrintClient {
     if (ack != 0) {
       throw const _LprPrintException(_errPrinterRejectedJob);
     }
-  }
-
-  String _lprSafeToken(String value, {required String fallback}) {
-    final normalized = value
-        .trim()
-        .replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '_')
-        .replaceAll(RegExp(r'_+'), '_')
-        .replaceAll(RegExp(r'^_+|_+$'), '');
-    final safeFallback = fallback
-        .trim()
-        .replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '_')
-        .replaceAll(RegExp(r'_+'), '_')
-        .replaceAll(RegExp(r'^_+|_+$'), '');
-    final token = normalized.isNotEmpty ? normalized : safeFallback;
-    if (token.isEmpty) return 'preconnect';
-    return token.length > 31 ? token.substring(0, 31) : token;
-  }
-
-  String _escapePjlValue(String value) {
-    return value.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
   }
 }
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:preconnect/api/notification_service.dart';
+import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/pages/notifications_sections/notification_list_widgets.dart';
 import 'package:preconnect/pages/notifications_sections/notification_text_formatter.dart';
 import 'package:preconnect/pages/ui_kit.dart';

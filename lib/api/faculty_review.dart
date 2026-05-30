@@ -3,7 +3,7 @@ import 'dart:async';
 
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/app_preferences_store.dart';
+import 'package:preconnect/api/repository_cache.dart';
 
 class FacultyRatingStats {
   const FacultyRatingStats({
@@ -323,7 +323,7 @@ class FacultyReviewService {
   factory FacultyReviewService() => _instance;
 
   final ApiClient _client = ApiClient();
-  final AppPreferencesStore _store = AppPreferencesStore();
+  final RepositoryCache _repo = RepositoryCache.instance;
   static final Map<String, FacultyReviewFeed> _feedCache =
       <String, FacultyReviewFeed>{};
   static final Map<String, FacultySummary> _summaryCache =
@@ -423,6 +423,7 @@ class FacultyReviewService {
       final response = await _client.publicGet(
         '$_base/v1/faculty-reviews/${Uri.encodeComponent(initial)}'
         '?limit=$limit&offset=$offset',
+        cacheDuration: const Duration(minutes: 1),
       );
       return FacultyReviewFeed.fromJson(_decodeMap(response.body));
     } catch (_) {
@@ -433,7 +434,7 @@ class FacultyReviewService {
   Future<FacultyReviewFeed?> _readCachedFeed(String initial) async {
     final cached = _feedCache[initial];
     if (cached != null) return cached;
-    final raw = await _store.getJsonMap('${_feedCachePrefix}_$initial');
+    final raw = await _repo.readJsonMap('${_feedCachePrefix}_$initial');
     if (raw == null) return null;
     try {
       final feed = FacultyReviewFeed.fromJson(raw);
@@ -447,8 +448,8 @@ class FacultyReviewService {
 
   Future<void> _writeCachedFeed(String initial, FacultyReviewFeed feed) async {
     try {
-      await _store.setJson('${_feedCachePrefix}_$initial', feed.toJson());
-      await _store.setJson(
+      await _repo.writeJson('${_feedCachePrefix}_$initial', feed.toJson());
+      await _repo.writeJson(
         '${_summaryCachePrefix}_$initial',
         feed.faculty.toJson(),
       );
@@ -478,6 +479,7 @@ class FacultyReviewService {
       additionalHeaders: const <String, String>{
         'Content-Type': 'application/json',
       },
+      cacheDuration: Duration.zero,
     );
     final map = _decodeMap(response.body);
     final item =
@@ -490,6 +492,7 @@ class FacultyReviewService {
     await _client.authenticatedRequest(
       'DELETE',
       '$_base/v1/faculty-reviews/$reviewId',
+      cacheDuration: Duration.zero,
     );
   }
 
@@ -501,6 +504,7 @@ class FacultyReviewService {
       additionalHeaders: const <String, String>{
         'Content-Type': 'application/json',
       },
+      cacheDuration: Duration.zero,
     );
     final map = _decodeMap(response.body);
     return map['reported'] == true;
@@ -670,7 +674,10 @@ class FacultyReviewService {
 
   Future<_ApiFacultyBundle?> _fetchLegacyBundle(String initial) async {
     try {
-      final response = await _client.publicGet(ApiConfig.facultyReviewsDataUrl);
+      final response = await _client.publicGet(
+        ApiConfig.facultyReviewsDataUrl,
+        cacheDuration: const Duration(minutes: 1),
+      );
       final root = _decodeMap(response.body);
       final scoped = _scopedFacultyData(root, initial);
       if (scoped == null || scoped.isEmpty) return null;

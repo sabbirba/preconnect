@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:preconnect/api/seat_status_service.dart';
+import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
 import 'package:preconnect/pages/shared_widgets/course_community_sheet.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/ramadan_timing.dart';
+import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/time_utils.dart';
 part 'shared_widgets/seat_status_methods.dart';

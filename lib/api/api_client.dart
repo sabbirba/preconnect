@@ -2,10 +2,10 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/auth_service.dart';
-import 'package:preconnect/tools/http/http_service.dart';
+import 'package:preconnect/api/auth.dart';
+import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
-import 'package:preconnect/tools/token_refresh_flow.dart';
+import 'package:preconnect/tools/token_refresh.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
 class ApiClient {
@@ -16,30 +16,87 @@ class ApiClient {
   final TokenStorage _storage = TokenStorage.instance;
   final Map<String, Future<http.Response>> _inFlightRequests =
       <String, Future<http.Response>>{};
+  final Map<String, _CachedHttpResponse> _cachedResponses =
+      <String, _CachedHttpResponse>{};
   static const Duration _requestTimeout = Duration(seconds: 12);
   static const Duration _connectivityProbeTimeout = Duration(seconds: 3);
+  static const Duration _defaultGetCacheTtl = Duration(seconds: 3);
+  static const Duration _accessTokenCacheTtl = Duration(seconds: 3);
+  static const Duration _connectionCacheTtl = Duration(seconds: 5);
+
+  String? _cachedAccessToken;
+  DateTime? _cachedAccessTokenAt;
+  bool? _cachedHasConnection;
+  DateTime? _cachedHasConnectionAt;
+
+  void clearTransientCaches() {
+    _cachedResponses.clear();
+    _cachedAccessToken = null;
+    _cachedAccessTokenAt = null;
+    _cachedHasConnection = null;
+    _cachedHasConnectionAt = null;
+  }
+
+  void _purgeExpiredResponseCache() {
+    _cachedResponses.removeWhere(
+      (_, cachedResponse) => cachedResponse.isExpired,
+    );
+    if (_cachedResponses.length <= 200) return;
+
+    final excess = _cachedResponses.length - 150;
+    final keysToRemove = _cachedResponses.keys.take(excess).toList();
+    for (final key in keysToRemove) {
+      _cachedResponses.remove(key);
+    }
+  }
 
   Future<bool> hasConnection({bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      final cached = _cachedHasConnection;
+      final cachedAt = _cachedHasConnectionAt;
+      if (cached != null &&
+          cachedAt != null &&
+          DateTime.now().difference(cachedAt) <= _connectionCacheTtl) {
+        return cached;
+      }
+    }
+
     try {
-      final response = await HttpService.client
+      final response = await HttpUtils.client
           .get(
             Uri.parse(ApiConfig.connectApiBase),
             headers: compressionHeaders(),
           )
           .timeout(_connectivityProbeTimeout);
-      return response.statusCode < 500;
+      final connected = response.statusCode < 500;
+      _cachedHasConnection = connected;
+      _cachedHasConnectionAt = DateTime.now();
+      return connected;
     } catch (_) {
+      _cachedHasConnection = false;
+      _cachedHasConnectionAt = DateTime.now();
       return false;
     }
   }
 
   Future<String?> getAccessToken({int retries = 3}) async {
+    final cachedToken = _cachedAccessToken;
+    final cachedAt = _cachedAccessTokenAt;
+    if (cachedToken != null &&
+        cachedToken.isNotEmpty &&
+        cachedAt != null &&
+        DateTime.now().difference(cachedAt) <= _accessTokenCacheTtl) {
+      return cachedToken;
+    }
+
     for (int i = 0; i < retries; i++) {
       try {
         final token = await _storage.read(
           key: PreconnectStorageKeys.accessToken,
         );
         if (token != null && token.isNotEmpty) {
+          _cachedAccessToken = token;
+          _cachedAccessTokenAt = DateTime.now();
           return token;
         }
       } catch (_) {}
@@ -48,6 +105,8 @@ class ApiClient {
         continue;
       }
     }
+    _cachedAccessToken = null;
+    _cachedAccessTokenAt = DateTime.now();
     return null;
   }
 
@@ -60,6 +119,7 @@ class ApiClient {
     String url, {
     Map<String, String> additionalHeaders = const <String, String>{},
     Set<int> acceptedStatusCodes = const <int>{200},
+    Duration cacheDuration = _defaultGetCacheTtl,
   }) async {
     final token = await getAccessToken();
     if (token == null || token.isEmpty) {
@@ -71,7 +131,12 @@ class ApiClient {
       headers.addAll(additionalHeaders);
     }
 
-    final response = await _sendSharedRequest('GET', url, headers: headers);
+    final response = await _sendSharedRequest(
+      'GET',
+      url,
+      headers: headers,
+      cacheDuration: cacheDuration,
+    );
     if (acceptedStatusCodes.contains(response.statusCode)) {
       return response;
     }
@@ -114,6 +179,7 @@ class ApiClient {
         'GET',
         url,
         headers: retryHeaders,
+        cacheDuration: cacheDuration,
       );
       if (acceptedStatusCodes.contains(retryResponse.statusCode)) {
         return retryResponse;
@@ -137,6 +203,7 @@ class ApiClient {
     String body = '',
     Map<String, String> additionalHeaders = const <String, String>{},
     Set<int> acceptedStatusCodes = const <int>{200},
+    Duration cacheDuration = _defaultGetCacheTtl,
   }) async {
     final normalizedMethod = method.trim().toUpperCase();
 
@@ -145,6 +212,7 @@ class ApiClient {
         url,
         additionalHeaders: additionalHeaders,
         acceptedStatusCodes: acceptedStatusCodes,
+        cacheDuration: cacheDuration,
       );
     }
     final token = await getAccessToken();
@@ -166,6 +234,7 @@ class ApiClient {
       url,
       headers: headers,
       body: body,
+      cacheDuration: cacheDuration,
     );
     if (acceptedStatusCodes.contains(response.statusCode)) {
       return response;
@@ -208,6 +277,7 @@ class ApiClient {
         url,
         headers: retryHeaders,
         body: body,
+        cacheDuration: cacheDuration,
       );
       if (acceptedStatusCodes.contains(retryResponse.statusCode)) {
         return retryResponse;
@@ -225,6 +295,7 @@ class ApiClient {
     String url, {
     Map<String, String> headers = const <String, String>{},
     Set<int> acceptedStatusCodes = const <int>{200},
+    Duration cacheDuration = _defaultGetCacheTtl,
   }) async {
     final uri = Uri.parse(url);
     final mergedHeaders = <String, String>{
@@ -236,6 +307,7 @@ class ApiClient {
       'GET',
       url,
       headers: mergedHeaders,
+      cacheDuration: cacheDuration,
     );
     if (acceptedStatusCodes.contains(response.statusCode)) {
       return response;
@@ -248,6 +320,7 @@ class ApiClient {
     String? etag,
     Map<String, String> additionalHeaders = const <String, String>{},
     Set<int> acceptedStatusCodes = const <int>{200, 304},
+    Duration cacheDuration = _defaultGetCacheTtl,
   }) {
     final headers = <String, String>{...additionalHeaders};
     final normalized = (etag ?? '').trim();
@@ -258,6 +331,7 @@ class ApiClient {
       url,
       additionalHeaders: headers,
       acceptedStatusCodes: acceptedStatusCodes,
+      cacheDuration: cacheDuration,
     );
   }
 
@@ -268,6 +342,7 @@ class ApiClient {
     required bool fromGet,
     String? etag,
     Future<void> Function(String etag)? cacheEtag,
+    Duration cacheDuration = _defaultGetCacheTtl,
   }) async {
     if (!await hasConnection()) {
       return fromGet ? null : readCache(fromFetch: true);
@@ -278,6 +353,7 @@ class ApiClient {
         url,
         etag: etag,
         acceptedStatusCodes: const <int>{200, 304},
+        cacheDuration: cacheDuration,
       );
       if (response.statusCode == 304) {
         final cached = await readCache(fromFetch: true);
@@ -288,6 +364,7 @@ class ApiClient {
         final refreshedResponse = await authenticatedGet(
           url,
           acceptedStatusCodes: const <int>{200},
+          cacheDuration: cacheDuration,
         );
         if (refreshedResponse.statusCode != 200) {
           return fromGet ? null : readCache(fromFetch: true);
@@ -341,8 +418,15 @@ class ApiClient {
     String url, {
     required Map<String, String> headers,
     required String body,
+    Duration cacheDuration = Duration.zero,
   }) {
-    return _sendSharedRequest(method, url, headers: headers, body: body);
+    return _sendSharedRequest(
+      method,
+      url,
+      headers: headers,
+      body: body,
+      cacheDuration: cacheDuration,
+    );
   }
 
   Future<http.Response> _sendSharedRequest(
@@ -350,6 +434,7 @@ class ApiClient {
     String url, {
     required Map<String, String> headers,
     String body = '',
+    Duration cacheDuration = Duration.zero,
   }) {
     final normalizedMethod = method.trim().toUpperCase();
     if (normalizedMethod != 'GET') {
@@ -367,6 +452,11 @@ class ApiClient {
       headers: headers,
       body: body,
     );
+    _purgeExpiredResponseCache();
+    final cachedResponse = _cachedResponses[inFlightKey];
+    if (cachedResponse != null && !cachedResponse.isExpired) {
+      return Future<http.Response>.value(cachedResponse.response);
+    }
     final inFlight = _inFlightRequests[inFlightKey];
     if (inFlight != null) return inFlight;
 
@@ -377,7 +467,17 @@ class ApiClient {
       body: body,
     );
     _inFlightRequests[inFlightKey] = request;
-    return request.whenComplete(() => _inFlightRequests.remove(inFlightKey));
+    return request
+        .then((response) {
+          if (cacheDuration > Duration.zero && response.statusCode == 200) {
+            _cachedResponses[inFlightKey] = _CachedHttpResponse(
+              response: response,
+              expiresAt: DateTime.now().add(cacheDuration),
+            );
+          }
+          return response;
+        })
+        .whenComplete(() => _inFlightRequests.remove(inFlightKey));
   }
 
   Future<http.Response> _sendRawRequest(
@@ -389,23 +489,23 @@ class ApiClient {
     final uri = Uri.parse(url);
     switch (method) {
       case 'GET':
-        return HttpService.client
+        return HttpUtils.client
             .get(uri, headers: headers)
             .timeout(_requestTimeout);
       case 'POST':
-        return HttpService.client
+        return HttpUtils.client
             .post(uri, headers: headers, body: body)
             .timeout(_requestTimeout);
       case 'PUT':
-        return HttpService.client
+        return HttpUtils.client
             .put(uri, headers: headers, body: body)
             .timeout(_requestTimeout);
       case 'PATCH':
-        return HttpService.client
+        return HttpUtils.client
             .patch(uri, headers: headers, body: body)
             .timeout(_requestTimeout);
       case 'DELETE':
-        return HttpService.client
+        return HttpUtils.client
             .delete(uri, headers: headers, body: body.isEmpty ? null : body)
             .timeout(_requestTimeout);
       default:
@@ -431,6 +531,15 @@ class ApiClient {
       body,
     ].join('\n');
   }
+}
+
+class _CachedHttpResponse {
+  _CachedHttpResponse({required this.response, required this.expiresAt});
+
+  final http.Response response;
+  final DateTime expiresAt;
+
+  bool get isExpired => DateTime.now().isAfter(expiresAt);
 }
 
 Map<String, String> compressionHeaders() {

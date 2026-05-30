@@ -15,3 +15,7 @@ strip = "symbols"
 panic = "abort"
 
 [dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+aes-gcm = "0.10"
+rand = "0.8"

@@ -1,7 +1,8 @@
 import 'dart:convert';
 
+import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
-import 'package:preconnect/tools/token_refresh_flow.dart';
+import 'package:preconnect/tools/token_refresh.dart';
 import 'package:preconnect/tools/web_extension_token_storage.dart';
 
 const Duration _refreshLeadTime = Duration(minutes: 5);
@@ -37,9 +38,11 @@ Future<bool> ensureFreshWebExtensionSession({bool forceRefresh = false}) async {
         key: PreconnectStorageKeys.refreshToken,
         value: refreshToken,
       );
+      ApiClient().clearTransientCaches();
     },
     clearTokens: () async {
       await storage.deleteAll();
+      ApiClient().clearTransientCaches();
     },
   );
   return status == TokenRefreshStatus.refreshed;

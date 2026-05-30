@@ -1,15 +1,15 @@
 import 'dart:async';
 
-import 'package:preconnect/api/calendar_service.dart';
-import 'package:preconnect/api/exam_map_service.dart';
-import 'package:preconnect/api/notification_service.dart';
-import 'package:preconnect/api/progress_service.dart';
-import 'package:preconnect/api/seat_status_service.dart';
+import 'package:preconnect/api/calendar.dart';
+import 'package:preconnect/api/exam_map.dart';
+import 'package:preconnect/api/notification.dart';
+import 'package:preconnect/api/progress.dart';
+import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/pages/bus.dart';
 import 'package:preconnect/pages/free_labs.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
-import 'package:preconnect/tools/holiday_status.dart';
-import 'package:preconnect/tools/ramadan_timing.dart';
+import 'package:preconnect/tools/holiday.dart';
+import 'package:preconnect/tools/ramadan.dart';
 
 class CdnWarmupService {
   CdnWarmupService._();
@@ -38,7 +38,7 @@ class CdnWarmupService {
       _runTask('cdn:transport_schedule', () async {
         await fetchTransportScheduleUrl(forceRefresh: forceRefresh);
       }, forceRefresh: forceRefresh),
-      _runTask('cdn:holiday_status', () async {
+      _runTask('cdn:holiday', () async {
         await HolidayTiming.getTodayStatus(forceRefresh: forceRefresh);
       }, forceRefresh: forceRefresh),
       _runTask('cdn:ramadan_status', () async {

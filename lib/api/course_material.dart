@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:preconnect/tools/http/http_service.dart';
+import 'package:preconnect/tools/http/http_utils.dart';
 
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/app_preferences_store.dart';
+import 'package:preconnect/api/repository_cache.dart';
 
 class CourseMaterialItem {
   const CourseMaterialItem({
@@ -279,7 +279,7 @@ class CourseMaterialService {
   factory CourseMaterialService() => _instance;
 
   final ApiClient _client = ApiClient();
-  final AppPreferencesStore _store = AppPreferencesStore();
+  final RepositoryCache _repo = RepositoryCache.instance;
   static const Duration _uploadTimeout = Duration(seconds: 40);
   static final Uri _filesBaseUri = Uri.parse(ApiConfig.filesBase);
   static final Map<String, List<CourseMaterialItem>> _cachedLists =
@@ -316,6 +316,7 @@ class CourseMaterialService {
     }
     final response = await _client.publicGet(
       '$_realtimeBase/v1/course-materials?$query',
+      cacheDuration: const Duration(minutes: 1),
     );
     final map = _decodeMap(response.body);
     final items = parseCourseMaterialItemsFromResponse(map);
@@ -340,7 +341,7 @@ class CourseMaterialService {
   Future<List<CourseMaterialItem>?> _readCachedList(String cacheKey) async {
     final inMemory = _cachedLists[cacheKey];
     if (inMemory != null) return inMemory;
-    final raw = await _store.getJsonMap(cacheKey);
+    final raw = await _repo.readJsonMap(cacheKey);
     if (raw == null) return null;
     final itemsRaw = raw['items'];
     if (itemsRaw is! List) return null;
@@ -357,7 +358,7 @@ class CourseMaterialService {
     List<CourseMaterialItem> items,
   ) async {
     try {
-      await _store.setJson(cacheKey, <String, dynamic>{
+      await _repo.writeJson(cacheKey, <String, dynamic>{
         'items': items.map((item) => item.toJson()).toList(),
       });
     } catch (_) {}
@@ -373,7 +374,10 @@ class CourseMaterialService {
         '${Uri.encodeComponent(semester.trim())}/'
         '${Uri.encodeComponent(courseCode.trim().toUpperCase())}/'
         '${Uri.encodeComponent(fileName.trim())}';
-    final response = await _client.publicGet('$_realtimeBase$path');
+    final response = await _client.publicGet(
+      '$_realtimeBase$path',
+      cacheDuration: const Duration(minutes: 1),
+    );
     return CourseMaterialDetail.fromJson(_decodeMap(response.body));
   }
 
@@ -407,6 +411,7 @@ class CourseMaterialService {
       additionalHeaders: const <String, String>{
         'Content-Type': 'application/json',
       },
+      cacheDuration: Duration.zero,
     );
     return CourseMaterialUploadUrlResponse.fromJson(_decodeMap(response.body));
   }
@@ -417,7 +422,7 @@ class CourseMaterialService {
     required Uint8List bytes,
   }) async {
     final uri = Uri.parse(uploadUrl);
-    final response = await HttpService.client
+    final response = await HttpUtils.client
         .put(
           uri,
           headers: <String, String>{
@@ -443,6 +448,7 @@ class CourseMaterialService {
       additionalHeaders: const <String, String>{
         'Content-Type': 'application/json',
       },
+      cacheDuration: Duration.zero,
     );
     final map = _decodeMap(response.body);
     final item =
@@ -461,7 +467,11 @@ class CourseMaterialService {
         '${Uri.encodeComponent(semester.trim())}/'
         '${Uri.encodeComponent(courseCode.trim().toUpperCase())}/'
         '${Uri.encodeComponent(fileName.trim())}';
-    await _client.authenticatedRequest('DELETE', '$_realtimeBase$path');
+    await _client.authenticatedRequest(
+      'DELETE',
+      '$_realtimeBase$path',
+      cacheDuration: Duration.zero,
+    );
   }
 
   Future<bool> report({
@@ -482,6 +492,7 @@ class CourseMaterialService {
       additionalHeaders: const <String, String>{
         'Content-Type': 'application/json',
       },
+      cacheDuration: Duration.zero,
     );
     final map = _decodeMap(response.body);
     return map['reported'] == true;
