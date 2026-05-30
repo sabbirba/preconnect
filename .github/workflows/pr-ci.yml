@@ -44,7 +44,7 @@ jobs:
           persist-credentials: true
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2.21.0
+        uses: subosito/flutter-action@v2.23.0
         with:
           channel: "stable"
           cache: true
@@ -78,7 +78,7 @@ jobs:
 
       - name: Comment Formatting Needed
         if: steps.patch.outputs.has_changes == 'true' && github.event.pull_request.head.repo.full_name != github.repository
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const body = [
@@ -131,7 +131,7 @@ jobs:
         uses: actions/checkout@v6.0.2
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2.21.0
+        uses: subosito/flutter-action@v2.23.0
         with:
           channel: "stable"
           cache: true

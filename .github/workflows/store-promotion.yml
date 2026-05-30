@@ -62,7 +62,7 @@ jobs:
 
       - name: Setup Ruby
         if: matrix.run_play && steps.play_auth.outputs.enabled == 'true'
-        uses: ruby/setup-ruby@v1.268.0
+        uses: ruby/setup-ruby@v1.310.0
         with:
           ruby-version: "3.3"
           bundler-cache: true
@@ -89,7 +89,7 @@ jobs:
 
       - name: Setup Flutter
         if: matrix.run_chrome
-        uses: subosito/flutter-action@v2.21.0
+        uses: subosito/flutter-action@v2.23.0
         with:
           channel: "stable"
           cache: true
