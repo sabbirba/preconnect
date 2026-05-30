@@ -16,8 +16,11 @@ class ScheduleService {
       <String, Future<String?>>{};
 
   static const String _scheduleKey = 'student_schedule_v1';
+  static const String _scheduleEtagKey = 'student_schedule_etag_v1';
   String _cacheKeyForSemester(int semesterSessionId) =>
       '${_scheduleKey}_$semesterSessionId';
+  String _etagKeyForSemester(int semesterSessionId) =>
+      '${_scheduleEtagKey}_$semesterSessionId';
 
   List<section.Section> parseStudentSections(
     String? scheduleJson, {
@@ -70,6 +73,7 @@ class ScheduleService {
     required bool fromGet,
   }) async {
     final cacheKey = _cacheKeyForSemester(semesterSessionId);
+    final etagKey = _etagKeyForSemester(semesterSessionId);
     final store = AppPreferencesStore();
     final asyncPrefs = AppStorage.instance;
     final id = await resolvePortfolioId(
@@ -91,6 +95,8 @@ class ScheduleService {
     return _client.fetchWithFallback<String>(
       url: url,
       fromGet: fromGet,
+      etag: await store.getString(etagKey),
+      cacheEtag: (etag) => store.setString(etagKey, etag),
       cacheResponse: (response) async {
         final data = jsonDecode(response.body);
         await store.setJson(cacheKey, data);

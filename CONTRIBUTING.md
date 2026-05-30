@@ -62,13 +62,13 @@ Blank values are okay for most development:
 
 Only fill env values when you are testing the related feature:
 
-| Key | Needed for |
-| --- | ---------- |
-| `DEVELOPMENT_TEAM` | iOS signing |
-| `storeFile` | Android release signing |
-| `storePassword` | Android release signing |
-| `keyAlias` | Android release signing |
-| `keyPassword` | Android release signing |
+| Key                | Needed for              |
+| ------------------ | ----------------------- |
+| `DEVELOPMENT_TEAM` | iOS signing             |
+| `storeFile`        | Android release signing |
+| `storePassword`    | Android release signing |
+| `keyAlias`         | Android release signing |
+| `keyPassword`      | Android release signing |
 
 Do not commit `.env`, `android/key.properties`, keystores, tokens, or real credentials.
 
@@ -169,13 +169,13 @@ These are useful before changes that touch platform config, release scripts, ext
 Android APK:
 
 ```bash
-flutter build apk --release
+flutter build apk --release --split-per-abi
 ```
 
 Android APK with env values:
 
 ```bash
-flutter build apk --release --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env
+flutter build apk --release --split-per-abi --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env
 ```
 
 Android app bundle:

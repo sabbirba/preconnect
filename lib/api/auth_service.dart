@@ -97,21 +97,24 @@ class AuthService {
   }) async {
     try {
       if (kIsWeb) {
+        final uri = Uri.parse(
+          '${ApiConfig.connectWebApiBase}${ApiConfig.connectMercureLogoutPath}',
+        );
         await HttpService.client
-            .delete(
-              Uri.parse(
-                '${ApiConfig.connectWebApiBase}${ApiConfig.connectMercureLogoutPath}',
-              ),
-            )
+            .delete(uri, headers: compressionHeadersForUri(uri))
             .timeout(_authRequestTimeout);
         return;
       }
 
       if (refreshToken != null && refreshToken.isNotEmpty) {
+        final uri = Uri.parse(ApiConfig.logoutEndpoint);
         await HttpService.client
             .post(
-              Uri.parse(ApiConfig.logoutEndpoint),
-              headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+              uri,
+              headers: <String, String>{
+                'Content-Type': 'application/x-www-form-urlencoded',
+                ...compressionHeadersForUri(uri),
+              },
               body: {
                 'client_id': ApiConfig.clientId,
                 'refresh_token': refreshToken,

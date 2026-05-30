@@ -416,10 +416,14 @@ class CourseMaterialService {
     required String contentType,
     required Uint8List bytes,
   }) async {
+    final uri = Uri.parse(uploadUrl);
     final response = await HttpService.client
         .put(
-          Uri.parse(uploadUrl),
-          headers: <String, String>{'Content-Type': contentType},
+          uri,
+          headers: <String, String>{
+            'Content-Type': contentType,
+            ...compressionHeadersForUri(uri),
+          },
           body: bytes,
         )
         .timeout(_uploadTimeout);

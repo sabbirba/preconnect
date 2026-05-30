@@ -265,6 +265,7 @@ class NotificationService {
   final ApiClient _client = ApiClient();
   final ScraperDataService _scraper = ScraperDataService();
 
+  static const String _recentFeedEtagKey = 'recent_notifications_etag_v1';
   static const String _recentFeedKey = 'RecentNotificationsFeed';
   static const String _scraperFeedCacheKey = 'scraper_notifications_feed_v1';
   static const String _scraperSeenIdsCacheKey = 'scraper_notifications_seen_v1';
@@ -350,12 +351,17 @@ class NotificationService {
     return (connect?.newCount ?? 0) + scraperUnread;
   }
 
-  Future<NotificationsFeed?> fetchRecentNotifications({bool fromGet = false}) {
+  Future<NotificationsFeed?> fetchRecentNotifications({
+    bool fromGet = false,
+  }) async {
+    final store = AppPreferencesStore();
     return _client.fetchWithFallback<NotificationsFeed>(
       url: '${ApiConfig.connectApiBase}${ApiConfig.recentNotificationsPath}',
       fromGet: fromGet,
+      etag: await store.getString(_recentFeedEtagKey),
+      cacheEtag: (etag) => store.setString(_recentFeedEtagKey, etag),
       cacheResponse: (response) async {
-        await AppPreferencesStore().setString(_recentFeedKey, response.body);
+        await store.setString(_recentFeedKey, response.body);
       },
       readCache: ({required bool fromFetch}) async {
         final cached = await _readCachedFeed();

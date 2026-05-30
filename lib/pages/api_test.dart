@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -124,6 +125,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
       'Authorization': 'Bearer $accessToken',
       'X-REALM': 'bracu',
       'Accept': 'application/json',
+      ...compressionHeadersForUri(uri),
     });
 
     final streamed = await req.send().timeout(const Duration(seconds: 20));

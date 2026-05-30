@@ -14,6 +14,8 @@ class ApiClient {
   ApiClient._internal();
 
   final TokenStorage _storage = TokenStorage.instance;
+  final Map<String, Future<http.Response>> _inFlightRequests =
+      <String, Future<http.Response>>{};
   static const Duration _requestTimeout = Duration(seconds: 12);
   static const Duration _connectivityProbeTimeout = Duration(seconds: 3);
 
@@ -69,9 +71,11 @@ class ApiClient {
       headers.addAll(additionalHeaders);
     }
 
-    final response = await HttpService.client
-        .get(Uri.parse(url), headers: headers)
-        .timeout(_requestTimeout);
+    final response = await _sendSharedRequest(
+      'GET',
+      url,
+      headers: headers,
+    );
     if (acceptedStatusCodes.contains(response.statusCode)) {
       return response;
     }
@@ -110,9 +114,11 @@ class ApiClient {
         retryHeaders.addAll(additionalHeaders);
       }
 
-      final retryResponse = await HttpService.client
-          .get(Uri.parse(url), headers: retryHeaders)
-          .timeout(_requestTimeout);
+      final retryResponse = await _sendSharedRequest(
+        'GET',
+        url,
+        headers: retryHeaders,
+      );
       if (acceptedStatusCodes.contains(retryResponse.statusCode)) {
         return retryResponse;
       }
@@ -230,9 +236,11 @@ class ApiClient {
       ...headers,
     };
     mergedHeaders.addAll(compressionHeadersForUri(uri));
-    final response = await http
-        .get(uri, headers: mergedHeaders)
-        .timeout(_requestTimeout);
+    final response = await _sendSharedRequest(
+      'GET',
+      url,
+      headers: mergedHeaders,
+    );
     if (acceptedStatusCodes.contains(response.statusCode)) {
       return response;
     }
@@ -262,14 +270,27 @@ class ApiClient {
     required Future<void> Function(http.Response response) cacheResponse,
     required Future<T?> Function({required bool fromFetch}) readCache,
     required bool fromGet,
+    String? etag,
+    Future<void> Function(String etag)? cacheEtag,
   }) async {
     if (!await hasConnection()) {
       return fromGet ? null : readCache(fromFetch: true);
     }
 
     try {
-      final response = await authenticatedGet(url);
+      final response = await authenticatedGetWithEtag(
+        url,
+        etag: etag,
+        acceptedStatusCodes: const <int>{200, 304},
+      );
+      if (response.statusCode == 304) {
+        return readCache(fromFetch: true);
+      }
       await cacheResponse(response);
+      final nextEtag = extractEtagFromResponse(response);
+      if (nextEtag != null && nextEtag.isNotEmpty && cacheEtag != null) {
+        await cacheEtag(nextEtag);
+      }
       return readCache(fromFetch: true);
     } on UnauthenticatedException {
       return fromGet ? null : readCache(fromFetch: true);
@@ -308,33 +329,99 @@ class ApiClient {
     required Map<String, String> headers,
     required String body,
   }) {
+    return _sendSharedRequest(method, url, headers: headers, body: body);
+  }
+
+  Future<http.Response> _sendSharedRequest(
+    String method,
+    String url, {
+    required Map<String, String> headers,
+    String body = '',
+  }) {
+    final normalizedMethod = method.trim().toUpperCase();
+    if (normalizedMethod != 'GET') {
+      return _sendRawRequest(
+        normalizedMethod,
+        url,
+        headers: headers,
+        body: body,
+      );
+    }
+
+    final inFlightKey = _inFlightRequestKey(
+      normalizedMethod,
+      url,
+      headers: headers,
+      body: body,
+    );
+    final inFlight = _inFlightRequests[inFlightKey];
+    if (inFlight != null) return inFlight;
+
+    final request = _sendRawRequest(
+      normalizedMethod,
+      url,
+      headers: headers,
+      body: body,
+    );
+    _inFlightRequests[inFlightKey] = request;
+    return request.whenComplete(() => _inFlightRequests.remove(inFlightKey));
+  }
+
+  Future<http.Response> _sendRawRequest(
+    String method,
+    String url, {
+    required Map<String, String> headers,
+    required String body,
+  }) {
     final uri = Uri.parse(url);
     switch (method) {
+      case 'GET':
+        return HttpService.client
+            .get(uri, headers: headers)
+            .timeout(_requestTimeout);
       case 'POST':
-        return http
+        return HttpService.client
             .post(uri, headers: headers, body: body)
             .timeout(_requestTimeout);
       case 'PUT':
-        return http
+        return HttpService.client
             .put(uri, headers: headers, body: body)
             .timeout(_requestTimeout);
       case 'PATCH':
-        return http
+        return HttpService.client
             .patch(uri, headers: headers, body: body)
             .timeout(_requestTimeout);
       case 'DELETE':
-        return http
+        return HttpService.client
             .delete(uri, headers: headers, body: body.isEmpty ? null : body)
             .timeout(_requestTimeout);
       default:
         throw ArgumentError.value(method, 'method', 'Unsupported HTTP method');
     }
   }
+
+  String _inFlightRequestKey(
+    String method,
+    String url, {
+    required Map<String, String> headers,
+    required String body,
+  }) {
+    final headerKey = headers.entries
+        .map((entry) => MapEntry(entry.key.toLowerCase(), entry.value))
+        .toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    return <String>[
+      method,
+      url,
+      for (final entry in headerKey) '${entry.key}:${entry.value}',
+      body,
+    ].join('\n');
+  }
 }
 
 Map<String, String> compressionHeaders() {
   if (kIsWeb) return const <String, String>{};
-  return const <String, String>{'Accept-Encoding': 'gzip, deflate'};
+  return const <String, String>{'Accept-Encoding': 'br, gzip'};
 }
 
 Map<String, String> compressionHeadersForUri(Uri? uri) {

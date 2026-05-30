@@ -9,6 +9,7 @@ import 'package:preconnect/pages/api_test.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/tools/cached_image.dart';
+import 'package:preconnect/tools/http/http_service.dart';
 
 const String _githubToken = String.fromEnvironment('GITHUB_TOKEN');
 
@@ -697,8 +698,8 @@ class _DevGridTile extends StatelessWidget {
         final width = constraints.maxWidth;
         final compact = width < 165;
         final avatarSize = (width * 0.54).clamp(68.0, 96.0);
-        final nameSize = compact ? 14.5 : 16.8;
-        final roleSize = compact ? 12.4 : 13.8;
+        final nameSize = compact ? 13.4 : 15.2;
+        final roleSize = compact ? 11.4 : 12.6;
         return InkWell(
           onTap: () => openExternalUrl(context, contributor.url),
           borderRadius: BorderRadius.circular(12),
@@ -903,11 +904,17 @@ Future<http.Response> _githubGet(Uri uri) async {
   final authenticated = token.isNotEmpty;
 
   if (authenticated) {
-    final response = await http.get(uri, headers: _githubHeaders());
+    final response = await HttpService.client.get(
+      uri,
+      headers: _githubHeaders(),
+    );
     if (response.statusCode != 401 && response.statusCode != 403) {
       return response;
     }
   }
 
-  return http.get(uri, headers: _githubHeadersWithToken(includeToken: false));
+  return HttpService.client.get(
+    uri,
+    headers: _githubHeadersWithToken(includeToken: false),
+  );
 }
