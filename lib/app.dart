@@ -134,7 +134,6 @@ class MyApp extends StatefulWidget {
         HomeCardPreferences.showExamCountdownCardKey,
         HomeCardPreferences.showTodayScheduleKey,
         HomeCardPreferences.showDecorationsKey,
-        HomeCardPreferences.showSponsoredContentKey,
         HomeCardPreferences.showCampusMapContactsKey,
       };
       await AppPreferencesStore().clearAllExcept(keepKeys);

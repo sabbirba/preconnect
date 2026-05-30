@@ -815,7 +815,6 @@ class _HomeData {
         'showExamCountdownCard': cardVisibility.showExamCountdownCard,
         'showDecorations': cardVisibility.showDecorations,
         'showCommunityLink': cardVisibility.showCommunityLink,
-        'showSponsoredContent': cardVisibility.showSponsoredContent,
         'showCampusMapContacts': cardVisibility.showCampusMapContacts,
         'showNotificationsIcon': cardVisibility.showNotificationsIcon,
       },
@@ -875,8 +874,6 @@ class _HomeData {
             showExamCountdownCard:
                 visibilityJson['showExamCountdownCard'] == true,
             showCommunityLink: visibilityJson['showCommunityLink'] == true,
-            showSponsoredContent:
-                visibilityJson['showSponsoredContent'] != false,
             showCampusMapContacts:
                 visibilityJson['showCampusMapContacts'] == true,
             showNotificationsIcon:

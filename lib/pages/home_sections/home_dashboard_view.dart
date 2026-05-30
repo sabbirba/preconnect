@@ -415,7 +415,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                       ),
                                       ValueListenableBuilder<bool>(
                                         valueListenable: HomeCardPreferences
-                                            .sponsoredContentNotifier,
+                                            .communityLinkNotifier,
                                         builder: (context, enabled, child) {
                                           if (!enabled) {
                                             return const SizedBox.shrink();
