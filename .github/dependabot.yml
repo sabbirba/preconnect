@@ -15,6 +15,7 @@ multi-ecosystem-groups:
 updates:
   - package-ecosystem: "pub"
     directory: "/"
+    target-branch: "main"
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
@@ -24,6 +25,7 @@ updates:
 
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "main"
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
@@ -33,6 +35,7 @@ updates:
 
   - package-ecosystem: "bundler"
     directory: "/"
+    target-branch: "main"
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
@@ -42,6 +45,7 @@ updates:
 
   - package-ecosystem: "gradle"
     directory: "/android"
+    target-branch: "main"
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
