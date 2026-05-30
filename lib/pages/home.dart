@@ -1091,7 +1091,7 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
                     ),
                     QuickAccessCard(
                       width: layout.itemWidth,
-                      icon: Icons.developer_mode_outlined,
+                      icon: Icons.library_books_outlined,
                       title: 'Leaks',
                       subtitle: 'Materials',
                       color: const Color(0xFF482CFF),
