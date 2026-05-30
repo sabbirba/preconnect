@@ -1,32 +1,33 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:preconnect/tools/http/http_service.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/profile_service.dart';
-import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/api/calendar_service.dart';
 import 'package:preconnect/api/custom_schedules_service.dart';
 import 'package:preconnect/api/friend_schedule_store.dart';
 import 'package:preconnect/api/notification_service.dart';
+import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/api/progress_service.dart';
+import 'package:preconnect/api/schedule_service.dart';
 import 'package:preconnect/pages/alarms.dart';
 import 'package:preconnect/pages/class_schedule.dart';
 import 'package:preconnect/pages/custom_schedules.dart';
 import 'package:preconnect/pages/degree_progress.dart';
 import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
-import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
+import 'package:preconnect/pages/student_profile.dart';
+import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/http/http_service.dart';
 import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/token_storage.dart';
-import 'package:preconnect/pages/ui_kit.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -165,10 +166,14 @@ class _LoginPageState extends State<LoginPage> {
       final verifier = LoginPage._pkceVerifier;
       if (verifier == null || verifier.isEmpty) return false;
 
+      final uri = Uri.parse(ApiConfig.tokenEndpoint);
       final response = await HttpService.client
           .post(
-            Uri.parse(ApiConfig.tokenEndpoint),
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            uri,
+            headers: <String, String>{
+              'Content-Type': 'application/x-www-form-urlencoded',
+              ...compressionHeadersForUri(uri),
+            },
             body: {
               'grant_type': 'authorization_code',
               'client_id': ApiConfig.clientId,

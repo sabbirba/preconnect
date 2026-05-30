@@ -1,0 +1,17 @@
+[package]
+name = "preconnect_native"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "preconnect_native"
+crate-type = ["cdylib", "staticlib"]
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = "symbols"
+panic = "abort"
+
+[dependencies]

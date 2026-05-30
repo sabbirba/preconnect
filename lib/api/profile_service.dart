@@ -14,6 +14,8 @@ class ProfileService {
   final ApiClient _client = ApiClient();
   final Map<String, Future<Map<String, String?>?>> _profileFetchInFlight =
       <String, Future<Map<String, String?>?>>{};
+  static const String _profileEtagKey = 'profile_etag_v1';
+  static const String _advisingEtagKey = 'advising_etag_v1';
   static const Map<String, String> _bloodTypeIdToLabel = {
     '7157': 'A+',
     '7158': 'B+',
@@ -152,14 +154,16 @@ class ProfileService {
   }) async {
     final url = '${ApiConfig.connectApiBase}${ApiConfig.profilePath}';
 
+    final store = AppPreferencesStore();
     return _client.fetchWithFallback<Map<String, String?>>(
       url: url,
       fromGet: fromGet,
+      etag: await store.getString(_profileEtagKey),
+      cacheEtag: (etag) => store.setString(_profileEtagKey, etag),
       cacheResponse: (response) async {
         final data = jsonDecode(response.body);
         if (data is List && data.isNotEmpty) {
           final profile = data[0];
-          final store = AppPreferencesStore();
           await store.setStringMap(<String, String>{
             'id': profile['id']?.toString() ?? '',
             'studentId': profile['studentId']?.toString() ?? '',
@@ -525,9 +529,12 @@ class AdvisingService {
 
     final url = ApiConfig.advisingUrl(studentId);
 
+    final store = AppPreferencesStore();
     return _client.fetchWithFallback<Map<String, String?>>(
       url: url,
       fromGet: fromGet,
+      etag: await store.getString(_advisingEtagKey),
+      cacheEtag: (etag) => store.setString(_advisingEtagKey, etag),
       cacheResponse: (response) async {
         try {
           final decoded = jsonDecode(response.body);
@@ -539,7 +546,7 @@ class AdvisingService {
               : null;
           if (data == null) return;
 
-          await AppPreferencesStore().setStringMap(<String, String>{
+          await store.setStringMap(<String, String>{
             'advisingStartDate': '${data['startDate'] ?? ''}',
             'advisingEndDate': '${data['endDate'] ?? ''}',
             'activeSemesterSessionId':
@@ -581,6 +588,7 @@ class AttendanceService {
   final ApiClient _client = ApiClient();
 
   static const String _attendanceKey = 'attendance';
+  static const String _attendanceEtagKey = 'attendance_etag_v1';
 
   Future<String?> fetchAttendanceInfo({bool fromGet = false}) async {
     final asyncPrefs = AppStorage.instance;
@@ -595,11 +603,14 @@ class AttendanceService {
 
     final url = '${ApiConfig.connectApiBase}${ApiConfig.attendancePath(id)}';
 
+    final store = AppPreferencesStore();
     return _client.fetchWithFallback<String>(
       url: url,
       fromGet: fromGet,
+      etag: await store.getString(_attendanceEtagKey),
+      cacheEtag: (etag) => store.setString(_attendanceEtagKey, etag),
       cacheResponse: (response) async {
-        await AppPreferencesStore().setString(_attendanceKey, response.body);
+        await store.setString(_attendanceKey, response.body);
       },
       readCache: ({required bool fromFetch}) =>
           getAttendanceInfo(fromFetch: fromFetch),
@@ -622,6 +633,7 @@ class PaymentService {
   final ApiClient _client = ApiClient();
 
   static const String _paymentInfoKey = 'SemesterPaymentInfo';
+  static const String _paymentInfoEtagKey = 'SemesterPaymentInfo_etag_v1';
 
   Future<String?> fetchPaymentInfo({bool fromGet = false}) async {
     final asyncPrefs = AppStorage.instance;
@@ -636,11 +648,14 @@ class PaymentService {
 
     final url = ApiConfig.paymentUrl(id);
 
+    final store = AppPreferencesStore();
     return _client.fetchWithFallback<String>(
       url: url,
       fromGet: fromGet,
+      etag: await store.getString(_paymentInfoEtagKey),
+      cacheEtag: (etag) => store.setString(_paymentInfoEtagKey, etag),
       cacheResponse: (response) async {
-        await AppPreferencesStore().setString(_paymentInfoKey, response.body);
+        await store.setString(_paymentInfoKey, response.body);
       },
       readCache: ({required bool fromFetch}) =>
           getPaymentInfo(fromFetch: fromFetch),

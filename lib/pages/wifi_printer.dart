@@ -3,16 +3,17 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:dart_pdf_reader/dart_pdf_reader.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:preconnect/tools/http/http_service.dart';
-import 'package:dart_pdf_reader/dart_pdf_reader.dart';
+import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/auth_service.dart';
 import 'package:preconnect/api/profile_service.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/android_network_assist.dart';
+import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/http/http_service.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 
 class CampusPrinterPage extends StatefulWidget {
@@ -471,8 +472,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _loadingPreset = true;
     });
     try {
+      final uri = Uri.parse(_whitePageUrl);
       final response = await HttpService.client
-          .get(Uri.parse(_whitePageUrl))
+          .get(uri, headers: compressionHeadersForUri(uri))
           .timeout(const Duration(seconds: 15));
       if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
         throw const FormatException('Unexpected response');

@@ -64,7 +64,7 @@ android {
     }
 
     buildFeatures {
-        buildConfig = true
+        buildConfig = false
     }
 
     kotlin {
