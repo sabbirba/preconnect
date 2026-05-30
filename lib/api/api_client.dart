@@ -71,11 +71,7 @@ class ApiClient {
       headers.addAll(additionalHeaders);
     }
 
-    final response = await _sendSharedRequest(
-      'GET',
-      url,
-      headers: headers,
-    );
+    final response = await _sendSharedRequest('GET', url, headers: headers);
     if (acceptedStatusCodes.contains(response.statusCode)) {
       return response;
     }
@@ -406,10 +402,11 @@ class ApiClient {
     required Map<String, String> headers,
     required String body,
   }) {
-    final headerKey = headers.entries
-        .map((entry) => MapEntry(entry.key.toLowerCase(), entry.value))
-        .toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+    final headerKey =
+        headers.entries
+            .map((entry) => MapEntry(entry.key.toLowerCase(), entry.value))
+            .toList()
+          ..sort((a, b) => a.key.compareTo(b.key));
     return <String>[
       method,
       url,

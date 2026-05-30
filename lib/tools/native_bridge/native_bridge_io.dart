@@ -47,10 +47,9 @@ class NativeBridge {
 
   static _NativeBackendName? _lookupBackendName() {
     try {
-      return _library
-          ?.lookupFunction<_NativeBackendName, _NativeBackendName>(
-            'preconnect_native_backend_name',
-          );
+      return _library?.lookupFunction<_NativeBackendName, _NativeBackendName>(
+        'preconnect_native_backend_name',
+      );
     } catch (_) {
       return null;
     }

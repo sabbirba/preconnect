@@ -1,0 +1,51 @@
+diff --git a/lib/api/api_client.dart b/lib/api/api_client.dart
+index 25ee9f7..5dc62c4 100644
+--- a/lib/api/api_client.dart
++++ b/lib/api/api_client.dart
+@@ -71,11 +71,7 @@ class ApiClient {
+       headers.addAll(additionalHeaders);
+     }
+ 
+-    final response = await _sendSharedRequest(
+-      'GET',
+-      url,
+-      headers: headers,
+-    );
++    final response = await _sendSharedRequest('GET', url, headers: headers);
+     if (acceptedStatusCodes.contains(response.statusCode)) {
+       return response;
+     }
+@@ -406,10 +402,11 @@ class ApiClient {
+     required Map<String, String> headers,
+     required String body,
+   }) {
+-    final headerKey = headers.entries
+-        .map((entry) => MapEntry(entry.key.toLowerCase(), entry.value))
+-        .toList()
+-      ..sort((a, b) => a.key.compareTo(b.key));
++    final headerKey =
++        headers.entries
++            .map((entry) => MapEntry(entry.key.toLowerCase(), entry.value))
++            .toList()
++          ..sort((a, b) => a.key.compareTo(b.key));
+     return <String>[
+       method,
+       url,
+diff --git a/lib/tools/native_bridge/native_bridge_io.dart b/lib/tools/native_bridge/native_bridge_io.dart
+index 7b487f6..2d2e9a8 100644
+--- a/lib/tools/native_bridge/native_bridge_io.dart
++++ b/lib/tools/native_bridge/native_bridge_io.dart
+@@ -47,10 +47,9 @@ class NativeBridge {
+ 
+   static _NativeBackendName? _lookupBackendName() {
+     try {
+-      return _library
+-          ?.lookupFunction<_NativeBackendName, _NativeBackendName>(
+-            'preconnect_native_backend_name',
+-          );
++      return _library?.lookupFunction<_NativeBackendName, _NativeBackendName>(
++        'preconnect_native_backend_name',
++      );
+     } catch (_) {
+       return null;
+     }
