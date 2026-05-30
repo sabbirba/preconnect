@@ -24,6 +24,15 @@ class LeaksPage extends StatelessWidget {
       resourceUrl: 'https://connect-dumps.itzmrz.xyz',
       maintainerUrl: 'https://github.com/itzMRZ',
     ),
+    (
+      description: 'For generic, open-source resources (dept. agnostic):',
+      title: 'Sharminscloud-BRACUResources',
+      subtitle: 'Maintained by @Sharminscloud',
+      icon: Icons.cloud,
+      iconColor: null,
+      resourceUrl: 'https://github.com/Sharminscloud-BRACUResources',
+      maintainerUrl: 'https://github.com/Sharminscloud-BRACUResources',
+    ),
   ];
 
   static const _legacyRepos = [
