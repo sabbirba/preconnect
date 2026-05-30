@@ -55,7 +55,7 @@ flutter build web \
   --tree-shake-icons \
   --csp \
   --no-web-resources-cdn \
-  --no-wasm-dry-run \
+  --no-wasm \
   --dart-define-from-file="${ENV_FILE}" \
   --dart-define="APP_VERSION=${APP_VERSION}" \
   --dart-define="APP_BUILD_NUMBER=${APP_BUILD_NUMBER}" \
@@ -79,9 +79,7 @@ perl -0pi -e 's/"renderer":"canvaskit"/"renderer":"html"/g' \
 rm -f "${OUT_DIR}/flutter_service_worker.js"
 
 perl -0pi -e 's#https://www\.gstatic\.com/flutter-canvaskit#canvaskit#g' \
-  "${OUT_DIR}/flutter_bootstrap.js" \
-  "${OUT_DIR}/flutter.js" \
-  "${OUT_DIR}/main.dart.js"
+  "${OUT_DIR}"/*.js
 
 if rg -n "unpkg\.com|gstatic\.com/flutter-canvaskit|eval\\(|new Function" "${OUT_DIR}"/*.js >/dev/null 2>&1; then
   echo "Unexpected remote code reference found in Chrome extension JS output" >&2

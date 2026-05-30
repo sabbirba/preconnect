@@ -20,17 +20,53 @@ ensure_target() {
   fi
 }
 
-build_android() {
-  local ndk_root="${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}"
-  if [[ -z "$ndk_root" ]]; then
-    ndk_root="$(find "${HOME}/Library/Android/sdk/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+android_ndk_root() {
+  if [[ -n "${ANDROID_NDK_HOME:-}" && -d "${ANDROID_NDK_HOME}" ]]; then
+    printf '%s\n' "${ANDROID_NDK_HOME}"
+    return 0
   fi
-  if [[ -z "$ndk_root" || ! -d "$ndk_root" ]]; then
+  if [[ -n "${ANDROID_NDK_ROOT:-}" && -d "${ANDROID_NDK_ROOT}" ]]; then
+    printf '%s\n' "${ANDROID_NDK_ROOT}"
+    return 0
+  fi
+
+  local sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+  if [[ -n "$sdk_root" && -d "${sdk_root}/ndk" ]]; then
+    find "${sdk_root}/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1
+    return 0
+  fi
+
+  return 1
+}
+
+ndk_host_tag() {
+  case "$(uname -s)" in
+    Linux)
+      printf 'linux-x86_64\n'
+      ;;
+    Darwin)
+      printf 'darwin-x86_64\n'
+      ;;
+    *)
+      echo "Unsupported Android NDK host OS: $(uname -s)" >&2
+      return 1
+      ;;
+  esac
+}
+
+build_android() {
+  local ndk_root
+  if ! ndk_root="$(android_ndk_root)" || [[ -z "$ndk_root" || ! -d "$ndk_root" ]]; then
     echo "Unable to locate the Android NDK." >&2
     exit 1
   fi
 
-  local ndk_bin="${ndk_root}/toolchains/llvm/prebuilt/darwin-x86_64/bin"
+  local ndk_bin
+  ndk_bin="${ndk_root}/toolchains/llvm/prebuilt/$(ndk_host_tag)/bin"
+  if [[ ! -d "$ndk_bin" ]]; then
+    echo "Unable to locate the Android NDK LLVM toolchain: ${ndk_bin}" >&2
+    exit 1
+  fi
   local api=24
 
   local triples=(
@@ -46,6 +82,7 @@ build_android() {
     env_name="$(printf '%s' "$triple" | tr '[:lower:]-' '[:upper:]_')"
     local out_dir="${CRATE_DIR}/target/android/${abi}/release"
     mkdir -p "$out_dir"
+    ensure_target "$triple"
     env "CARGO_TARGET_${env_name}_LINKER=${ndk_bin}/${linker}" \
       cargo build \
         --manifest-path "$MANIFEST" \

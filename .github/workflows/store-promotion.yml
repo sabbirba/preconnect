@@ -107,7 +107,7 @@ jobs:
           path: |
             build
             .dart_tool
-          key: ${{ runner.os }}-store-promotion-build-${{ hashFiles('pubspec.lock', 'tool/build_chrome_extension.sh', 'web/**', 'lib/**') }}
+          key: ${{ runner.os }}-store-promotion-build-${{ hashFiles('pubspec.yaml', 'pubspec.lock', 'tool/build_chrome_extension.sh', 'tool/sync_versions.sh', 'web/**', 'lib/**') }}
           restore-keys: |
             ${{ runner.os }}-store-promotion-build-
 
@@ -144,8 +144,6 @@ jobs:
         run: |
           cat > .env <<'EOF'
           GITHUB_TOKEN=${{ secrets.GH_TOKEN }}
-          BANNER_AD_UNIT_ID=${{ secrets.BANNER_AD_UNIT_ID }}
-          INTERSTITIAL_AD_UNIT_ID=${{ secrets.INTERSTITIAL_AD_UNIT_ID }}
           EOF
 
       - name: Chrome Extension

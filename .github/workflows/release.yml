@@ -80,6 +80,7 @@ jobs:
     outputs:
       version_name: ${{ steps.version.outputs.version_name }}
       version_code: ${{ steps.version.outputs.version_code }}
+      release_sha: ${{ steps.commit.outputs.release_sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6.0.2
@@ -105,6 +106,7 @@ jobs:
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
       - name: Commit Version Bump
+        id: commit
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -114,10 +116,11 @@ jobs:
           git add pubspec.yaml web/manifest.json
           if git diff --cached --quiet; then
             echo "No version bump changes to commit."
-            exit 0
+          else
+            git commit -m "chore: bump version to ${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}"
+            git push origin HEAD:${{ github.ref_name }}
           fi
-          git commit -m "chore: bump version to ${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}"
-          git push origin HEAD:${{ github.ref_name }}
+          echo "release_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   create-release:
     name: Create Release
@@ -132,6 +135,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.2
         with:
+          ref: ${{ needs.prepare-version.outputs.release_sha }}
           fetch-depth: 0
 
       - name: Prepare Release Metadata
@@ -154,7 +158,7 @@ jobs:
             echo
             echo "## Version"
             echo "- Version: ${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}"
-            echo "- Commit: ${{ github.sha }}"
+            echo "- Commit: ${{ needs.prepare-version.outputs.release_sha }}"
             echo
             echo "## Changes"
             if [ "$RANGE" = "HEAD" ]; then
@@ -173,10 +177,11 @@ jobs:
           gh release create "${{ steps.meta.outputs.release_tag }}" \
             --title "PreConnect ${{ steps.meta.outputs.release_tag }}" \
             --notes-file release-notes.md \
-            --target "${{ github.sha }}" || \
+            --target "${{ needs.prepare-version.outputs.release_sha }}" || \
           gh release edit "${{ steps.meta.outputs.release_tag }}" \
             --title "PreConnect ${{ steps.meta.outputs.release_tag }}" \
-            --notes-file release-notes.md
+            --notes-file release-notes.md \
+            --target "${{ needs.prepare-version.outputs.release_sha }}"
 
   build:
     name: Build ${{ matrix.name }}
@@ -218,6 +223,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.2
         with:
+          ref: ${{ needs.prepare-version.outputs.release_sha }}
           fetch-depth: 0
 
       - name: Setup Java
@@ -295,7 +301,7 @@ jobs:
           path: |
             build
             .dart_tool
-          key: ${{ runner.os }}-${{ matrix.platform }}-flutter-build-${{ hashFiles('pubspec.lock', 'tool/build_chrome_extension.sh', 'web/**', 'lib/**') }}
+          key: ${{ runner.os }}-${{ matrix.platform }}-flutter-build-${{ hashFiles('pubspec.yaml', 'pubspec.lock', 'tool/**', 'web/**', 'lib/**', 'android/**', 'ios/**', 'macos/**', 'native/**') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.platform }}-flutter-build-
 
@@ -581,6 +587,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.2
         with:
+          ref: ${{ needs.prepare-version.outputs.release_sha }}
           fetch-depth: 0
 
       - name: Read Package
