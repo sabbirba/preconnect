@@ -9,13 +9,16 @@ on:
 jobs:
   analyze-test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        flutter-version: ['stable', 'latest']
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.44.0'
+          flutter-version: ${{ matrix.flutter-version }}
 
       - name: Cache pub packages
         uses: actions/cache@v4
@@ -23,7 +26,7 @@ jobs:
           path: |
             ~/.pub-cache
             ~/.flutter
-          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.yaml') }}
+          key: ${{ runner.os }}-pub-${{ matrix.flutter-version }}-${{ hashFiles('**/pubspec.yaml') }}
 
       - name: Install dependencies
         run: flutter pub get
