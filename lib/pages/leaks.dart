@@ -29,7 +29,7 @@ class LeaksPage extends StatelessWidget {
       title: 'Sharminscloud-BRACUResources',
       subtitle: 'Maintained by @Sharminscloud',
       icon: Icons.cloud,
-      iconColor: null,
+      iconColor: Color(0xFFF26822),
       resourceUrl: 'https://github.com/Sharminscloud-BRACUResources',
       maintainerUrl: 'https://github.com/Sharminscloud-BRACUResources',
     ),
