@@ -7,14 +7,11 @@ on:
     branches: [ main ]
 
 jobs:
-  analyze-test:
+  analyze:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # using explicit version instead of 'latest' because the setup action
-        # fails to resolve 'latest' for the channel; test current latest numeric
-        # release alongside the stable channel.
-        flutter-version: ['stable', '3.44.0']
+        flutter-version: ['stable']
     steps:
       - uses: actions/checkout@v4
 

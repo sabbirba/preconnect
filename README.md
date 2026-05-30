@@ -126,7 +126,7 @@ assets/              Icons & SVGs
 
 Want to build, test, or contribute locally? Follow the full setup guide in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-### Developer Quickstart (recommended)
+### Developer Quickstart (Recommended)
 
 These commands are the shortest path to a working developer environment. They are
 idempotent and safe to run multiple times.
@@ -148,7 +148,6 @@ Windows users (PowerShell):
 
 ```powershell
 .\tool\dev_setup.ps1
-# then run commands with the PowerShell wrapper
 .\dev.ps1 flutter run --dart-define-from-file=.env
 ```
 
@@ -178,39 +177,9 @@ Notes:
 - The script will accept SDK licenses automatically and may take several
   minutes depending on network speed.
 
-### Developer Container (no manual setup)
-
-If you prefer zero local setup, use the included DevContainer configuration
-with VS Code (Remote - Containers) or GitHub Codespaces. By default the
-DevContainer will pull the prebuilt image from GitHub Container Registry
-(`ghcr.io/sabbirba/preconnect-devcontainer:latest`) so contributors don't
-need to build the image locally.
-
-To use it in VS Code: open the repo, click the green "Open in Container" button
-or select "Remote-Containers: Reopen in Container". If the image is present on
-GHCR the container will be ready quickly. If it is not yet published, you can
-either publish it (see below) or rebuild from the Dockerfile locally (advanced).
-
-Publish the DevContainer image
-
-Maintainers can publish the prebuilt DevContainer image via the included
-GitHub Actions workflow or locally using GitHub CLI. The workflow is named
-`Publish DevContainer Image` and is configured in
-`.github/workflows/publish-devcontainer.yml`.
-
-To dispatch the workflow locally with GitHub CLI:
-
-```bash
-gh auth login
-./scripts/trigger_publish.sh
-```
-
-Or open the repository Actions tab and manually dispatch the `Publish DevContainer Image`
-workflow.
-
 ## Community
 
-New students and first-time contributors are welcome to ask questions in [GitHub issues](https://github.com/sabbirba/preconnect/issues).
+New students and first-time contributors are welcome to ask questions in [Issues](https://github.com/sabbirba/preconnect/issues).
 Please also review the community and safety guidance in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and the private reporting process in [SECURITY.md](SECURITY.md).
 
 ## Platform Support

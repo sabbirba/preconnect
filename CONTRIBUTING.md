@@ -31,20 +31,20 @@ cd preconnect
 flutter pub get
 ```
 
-### Automated developer setup (recommended)
+### Automated Developer Setup (Recommended)
 
 To reduce manual setup and avoid guesswork for contributors, the repo includes
 an automated bootstrap script and convenient Makefile + wrapper. The script
 handles installing Android command-line tools, a recommended NDK and CMake,
 accepts SDK licenses, and prepares local environment helpers.
 
-Quick start (short):
+Quick Start (Short):
 
 ```bash
 git clone https://github.com/sabbirba/preconnect.git
 cd preconnect
-make setup   # runs tool/dev_setup.sh (idempotent, may download SDK components)
-make run     # runs the app using the dev wrapper that loads env vars automatically
+make setup
+make run
 ```
 
 What the setup does:
@@ -67,11 +67,10 @@ source .env.local.sh  # or use ./dev to run commands with the env loaded
 ./dev flutter run --dart-define-from-file=.env
 ```
 
-Windows PowerShell alternative:
+Windows PowerShell Alternative:
 
 ```powershell
 .\tool\dev_setup.ps1
-# load env and run commands
 .\dev.ps1 flutter run --dart-define-from-file=.env
 ```
 
