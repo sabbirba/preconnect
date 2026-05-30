@@ -68,7 +68,7 @@ class LeaksPage extends StatelessWidget {
                       resourceUrl: s.resourceUrl,
                       maintainerUrl: s.maintainerUrl,
                     ),
-                    const SizedBox(height: 25),
+                    const SizedBox(height: 15),
                   ],
                 ),
                 const SizedBox(height: 10),
