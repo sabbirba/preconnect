@@ -125,18 +125,7 @@ jobs:
       - name: Flutter Pub Get
         if: matrix.run_chrome
         shell: bash
-        run: |
-          attempt=1
-          until [ $attempt -gt 3 ]; do
-            flutter pub get && break
-            echo "flutter pub get failed (attempt $attempt)."
-            attempt=$((attempt+1))
-            sleep $((5 * attempt))
-          done
-          if [ $attempt -gt 3 ]; then
-            echo "flutter pub get failed after 3 attempts."
-            exit 1
-          fi
+        run: flutter pub get
 
       - name: Chrome Env
         if: matrix.run_chrome
@@ -149,18 +138,7 @@ jobs:
       - name: Chrome Extension
         if: matrix.run_chrome
         shell: bash
-        run: |
-          attempt=1
-          until [ $attempt -gt 3 ]; do
-            ./tool/build_chrome_extension.sh && break
-            echo "Chrome extension build failed (attempt $attempt)."
-            attempt=$((attempt+1))
-            sleep $((10 * attempt))
-          done
-          if [ $attempt -gt 3 ]; then
-            echo "Chrome extension build failed after 3 attempts."
-            exit 1
-          fi
+        run: ./tool/build_chrome_extension.sh
 
       - name: Chrome Artifact
         if: matrix.run_chrome
