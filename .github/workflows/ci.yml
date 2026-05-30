@@ -33,7 +33,7 @@ jobs:
             git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$FLUTTER_DIR"
           fi
           echo "$FLUTTER_DIR/bin" >> $GITHUB_PATH
-          flutter --version
+          "$FLUTTER_DIR/bin/flutter" --version
 
       - name: Cache pub packages
         uses: actions/cache@v4
