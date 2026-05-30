@@ -9,7 +9,6 @@ import 'package:preconnect/pages/api_test.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/tools/cached_image.dart';
-import 'package:preconnect/tools/http/http_service.dart';
 
 const String _githubToken = String.fromEnvironment('GITHUB_TOKEN');
 
@@ -514,10 +513,10 @@ class _SponsoredStrip extends StatelessWidget {
         padding: EdgeInsets.zero,
         children: const [
           _SponsoredTile(
-            title: 'Google Admob',
+            title: 'Google Adsense',
             subtitle: 'Ads Support Provider',
             leading: _AdSenseLogoImage(),
-            url: 'https://admob.google.com/',
+            url: 'https://adsense.google.com/',
           ),
           SizedBox(width: 25),
           _SponsoredTile(
@@ -904,17 +903,21 @@ Future<http.Response> _githubGet(Uri uri) async {
   final authenticated = token.isNotEmpty;
 
   if (authenticated) {
-    final response = await HttpService.client.get(
-      uri,
+    final response = await ApiClient().publicGet(
+      uri.toString(),
       headers: _githubHeaders(),
+      acceptedStatusCodes: const <int>{200, 401, 403},
+      cacheDuration: const Duration(minutes: 1),
     );
     if (response.statusCode != 401 && response.statusCode != 403) {
       return response;
     }
   }
 
-  return HttpService.client.get(
-    uri,
+  return ApiClient().publicGet(
+    uri.toString(),
     headers: _githubHeadersWithToken(includeToken: false),
+    acceptedStatusCodes: const <int>{200},
+    cacheDuration: const Duration(minutes: 1),
   );
 }

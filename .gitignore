@@ -53,6 +53,7 @@ coverage/
 **/android/GeneratedPluginRegistrant.java
 android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
 **/android/local.properties
+android/app/src/main/jniLibs/
 
 # iOS/Xcode related
 **/ios/**/*.mode1v3
@@ -85,6 +86,9 @@ chruby-0.3.9
 **/macos/**/Flutter/GeneratedPluginRegistrant.swift
 **/macos/**/Flutter/ephemeral/
 **/macos/**/Pods/
+
+# Rust build outputs
+native/preconnect_native/target/
 
 # Crashlytics
 crashlytics-build.properties

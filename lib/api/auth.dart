@@ -1,20 +1,20 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:preconnect/tools/http/http_service.dart';
+import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/friend_schedule_store.dart';
-import 'package:preconnect/api/custom_schedules_service.dart';
+import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/storage_keys.dart';
-import 'package:preconnect/tools/token_refresh_flow.dart';
+import 'package:preconnect/tools/token_refresh.dart';
 import 'package:preconnect/tools/web_shared.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
@@ -100,7 +100,7 @@ class AuthService {
         final uri = Uri.parse(
           '${ApiConfig.connectWebApiBase}${ApiConfig.connectMercureLogoutPath}',
         );
-        await HttpService.client
+        await HttpUtils.client
             .delete(uri, headers: compressionHeadersForUri(uri))
             .timeout(_authRequestTimeout);
         return;
@@ -108,17 +108,18 @@ class AuthService {
 
       if (refreshToken != null && refreshToken.isNotEmpty) {
         final uri = Uri.parse(ApiConfig.logoutEndpoint);
-        await HttpService.client
+        final body = HttpUtils.formBody(<String, String>{
+          'client_id': ApiConfig.clientId,
+          'refresh_token': refreshToken,
+        });
+        await HttpUtils.client
             .post(
               uri,
               headers: <String, String>{
                 'Content-Type': 'application/x-www-form-urlencoded',
                 ...compressionHeadersForUri(uri),
               },
-              body: {
-                'client_id': ApiConfig.clientId,
-                'refresh_token': refreshToken,
-              },
+              body: body,
             )
             .timeout(_authRequestTimeout);
       }
@@ -127,6 +128,7 @@ class AuthService {
 
   Future<void> _clearAuthSessionData() async {
     await _storage.deleteAll();
+    ApiClient().clearTransientCaches();
     await LoginPage.clearSessionArtifacts();
     await CampusPrinterPage.clearStoredState();
   }
@@ -239,9 +241,11 @@ class AuthService {
             key: PreconnectStorageKeys.refreshToken,
             value: refreshToken,
           );
+          ApiClient().clearTransientCaches();
         },
         clearTokens: () async {
           await _storage.deleteAll();
+          ApiClient().clearTransientCaches();
         },
       );
       _cacheRefreshResult(status);

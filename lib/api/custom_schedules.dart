@@ -1,4 +1,4 @@
-import 'package:preconnect/api/app_preferences_store.dart';
+import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/model/custom_schedule.dart';
 
 class CustomSchedulesService {
@@ -8,12 +8,12 @@ class CustomSchedulesService {
       CustomSchedulesService._internal();
   factory CustomSchedulesService() => _instance;
 
-  final AppPreferencesStore _store = AppPreferencesStore();
+  final RepositoryCache _repo = RepositoryCache.instance;
 
   static const String cacheKey = 'custom_schedules_v1';
 
   Future<void> clearCache() async {
-    await _store.remove(cacheKey);
+    await _repo.remove(cacheKey);
   }
 
   Future<List<CustomSchedule>> getItems({bool forceRefresh = false}) async {
@@ -144,7 +144,7 @@ class CustomSchedulesService {
 
   Future<List<CustomSchedule>?> _readCachedItems() async {
     try {
-      final raw = await _store.getJsonMap(cacheKey);
+      final raw = await _repo.readJsonMap(cacheKey);
       final items = raw?['items'];
       if (items is! List) return null;
       return items
@@ -160,7 +160,7 @@ class CustomSchedulesService {
 
   Future<void> _writeCache(List<CustomSchedule> items) async {
     try {
-      await _store.setJson(cacheKey, <String, dynamic>{
+      await _repo.writeJson(cacheKey, <String, dynamic>{
         'ts': DateTime.now().millisecondsSinceEpoch,
         'items': items.map((item) => item.toJson()).toList(growable: false),
       });

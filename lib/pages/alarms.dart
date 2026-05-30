@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_alarmkit/flutter_alarmkit.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:preconnect/api/exam_map_service.dart';
-import 'package:preconnect/api/schedule_service.dart';
+import 'package:preconnect/api/exam_map.dart';
+import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/shared_widgets/highlight_scroll_helper.dart';
@@ -18,7 +18,7 @@ import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/exam_sorting.dart';
 import 'package:preconnect/tools/exam_visibility.dart';
-import 'package:preconnect/tools/ramadan_timing.dart';
+import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 class AlarmPage extends StatefulWidget {

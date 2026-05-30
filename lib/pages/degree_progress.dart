@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:preconnect/api/progress_service.dart';
-import 'package:preconnect/api/schedule_service.dart';
+import 'package:preconnect/api/progress.dart';
+import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/progress_info.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/all_courses.dart';
@@ -11,7 +11,7 @@ import 'package:preconnect/pages/requirement_courses.dart';
 import 'package:preconnect/pages/shared_widgets/grade_sheet_card.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/storage_keys.dart';
@@ -123,10 +123,12 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
 
   Future<void> _loadCgpa() async {
     if (!mounted) return;
-    final value = (await AppStorage.instance.getString(StorageKeys.cgpa) ?? '')
-        .trim();
+    final value =
+        (await RepositoryCache.instance.readString(StorageKeys.cgpa) ?? '')
+            .trim();
     final resolvedProgram =
-        (await AppStorage.instance.getString(StorageKeys.program) ?? '').trim();
+        (await RepositoryCache.instance.readString(StorageKeys.program) ?? '')
+            .trim();
     final nextCgpa = value.isEmpty ? '--' : value;
     if (_cgpa == nextCgpa && _fullProgramName == resolvedProgram) return;
     setState(() {

@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/app_preferences_store.dart';
+import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/model/section_info.dart';
 
 class ExamMapService {
@@ -11,7 +11,7 @@ class ExamMapService {
   factory ExamMapService() => _instance;
 
   final ApiClient _client = ApiClient();
-  final AppPreferencesStore _store = AppPreferencesStore();
+  final RepositoryCache _repo = RepositoryCache.instance;
 
   static const Duration _indexCacheTtl = Duration(hours: 6);
   static const Duration _examJsonCacheTtl = Duration(hours: 12);
@@ -101,7 +101,7 @@ class ExamMapService {
     required bool forceRefresh,
   }) async {
     if (!forceRefresh) {
-      final cached = await _store.getJsonMap(cacheKey);
+      final cached = await _repo.readJsonMap(cacheKey);
       final ts = cached?['ts'];
       final data = cached?['data'];
       if (ts is int && data != null) {
@@ -117,15 +117,18 @@ class ExamMapService {
     }
 
     try {
-      final response = await _client.publicGet(url);
+      final response = await _client.publicGet(
+        url,
+        cacheDuration: const Duration(seconds: 30),
+      );
       final decoded = jsonDecode(response.body);
-      await _store.setJson(cacheKey, <String, dynamic>{
+      await _repo.writeJson(cacheKey, <String, dynamic>{
         'ts': DateTime.now().millisecondsSinceEpoch,
         'data': decoded,
       });
       return decoded;
     } catch (e) {
-      final cached = await _store.getJsonMap(cacheKey);
+      final cached = await _repo.readJsonMap(cacheKey);
       return cached?['data'];
     }
   }

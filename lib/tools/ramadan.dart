@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/tools/http/http_service.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 class RamadanStatus {
@@ -43,7 +42,6 @@ class RamadanTiming {
   static List<String> get _statusUrls => <String>[
     '${ApiConfig.publicJsonBase}/ramadan.json',
   ];
-  static const Duration _requestTimeout = Duration(seconds: 2);
   static final ({DateTime start, DateTime end}) _knownRamadanWindow2026 = (
     start: DateTime(2026, 2, 18),
     end: DateTime(2026, 3, 19),
@@ -123,16 +121,11 @@ class RamadanTiming {
   static Future<Map<String, dynamic>?> _fetchPayload() async {
     for (final url in _statusUrls) {
       try {
-        final uri = Uri.parse(url);
-        final response = await HttpService.client
-            .get(
-              uri,
-              headers: <String, String>{
-                'Accept': 'application/json',
-                ...compressionHeadersForUri(uri),
-              },
-            )
-            .timeout(_requestTimeout);
+        final response = await ApiClient().publicGet(
+          url,
+          acceptedStatusCodes: const <int>{200},
+          cacheDuration: const Duration(minutes: 5),
+        );
 
         if (response.statusCode != 200 || response.body.trim().isEmpty) {
           continue;

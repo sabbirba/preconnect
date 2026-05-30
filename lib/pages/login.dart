@@ -5,13 +5,13 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/calendar_service.dart';
-import 'package:preconnect/api/custom_schedules_service.dart';
+import 'package:preconnect/api/calendar.dart';
+import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/api/friend_schedule_store.dart';
-import 'package:preconnect/api/notification_service.dart';
-import 'package:preconnect/api/profile_service.dart';
-import 'package:preconnect/api/progress_service.dart';
-import 'package:preconnect/api/schedule_service.dart';
+import 'package:preconnect/api/notification.dart';
+import 'package:preconnect/api/profile.dart';
+import 'package:preconnect/api/progress.dart';
+import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/pages/alarms.dart';
 import 'package:preconnect/pages/class_schedule.dart';
 import 'package:preconnect/pages/custom_schedules.dart';
@@ -21,7 +21,7 @@ import 'package:preconnect/pages/exam_schedule.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/http/http_service.dart';
+import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
@@ -167,20 +167,21 @@ class _LoginPageState extends State<LoginPage> {
       if (verifier == null || verifier.isEmpty) return false;
 
       final uri = Uri.parse(ApiConfig.tokenEndpoint);
-      final response = await HttpService.client
+      final body = HttpUtils.formBody(<String, String>{
+        'grant_type': 'authorization_code',
+        'client_id': ApiConfig.clientId,
+        'code': code,
+        'redirect_uri': ApiConfig.redirectUri,
+        'code_verifier': verifier,
+      });
+      final response = await HttpUtils.client
           .post(
             uri,
             headers: <String, String>{
               'Content-Type': 'application/x-www-form-urlencoded',
               ...compressionHeadersForUri(uri),
             },
-            body: {
-              'grant_type': 'authorization_code',
-              'client_id': ApiConfig.clientId,
-              'code': code,
-              'redirect_uri': ApiConfig.redirectUri,
-              'code_verifier': verifier,
-            },
+            body: body,
           )
           .timeout(_loginRequestTimeout);
 

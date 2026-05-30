@@ -5,11 +5,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/auth_service.dart';
-import 'package:preconnect/api/exam_map_service.dart';
-import 'package:preconnect/api/profile_service.dart';
-import 'package:preconnect/api/custom_schedules_service.dart';
-import 'package:preconnect/api/schedule_service.dart';
+import 'package:preconnect/api/auth.dart';
+import 'package:preconnect/api/exam_map.dart';
+import 'package:preconnect/api/profile.dart';
+import 'package:preconnect/api/custom_schedules.dart';
+import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/class_schedule.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
@@ -40,15 +40,15 @@ import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/android_network_assist.dart';
-import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/quiet_mode_controller.dart';
+import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/token_storage.dart';
-import 'package:preconnect/tools/captive_wifi_http_service.dart';
+import 'package:preconnect/tools/captive_wifi_http.dart';
 import 'package:preconnect/tools/exam_sorting.dart';
 import 'package:preconnect/tools/exam_visibility.dart';
-import 'package:preconnect/tools/holiday_status.dart';
-import 'package:preconnect/tools/ramadan_timing.dart';
+import 'package:preconnect/tools/holiday.dart';
+import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/time_utils.dart';
@@ -200,7 +200,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
 
   Future<void> _persistSelectedTab(HomeTab tab) async {
     try {
-      await AppStorage.instance.setString(StorageKeys.homeTab, tab.name);
+      await RepositoryCache.instance.writeString(StorageKeys.homeTab, tab.name);
     } catch (_) {}
   }
 

@@ -123,3 +123,13 @@ flutter {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
+
+val buildRustNative = tasks.register<Exec>("buildRustNative") {
+    val repoRoot = rootProject.projectDir.parentFile
+    workingDir = repoRoot
+    commandLine("bash", repoRoot.resolve("tool/build_rust_native.sh").absolutePath, "android")
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(buildRustNative)
+}

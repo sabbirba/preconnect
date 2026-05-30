@@ -1,12 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/api/profile_service.dart';
+import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/tools/android_network_assist.dart';
-import 'package:preconnect/tools/captive_wifi_http_service.dart';
+import 'package:preconnect/tools/captive_wifi_http.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/storage_keys.dart';
@@ -256,8 +257,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     bool allowAutoExtend = true,
   }) async {
     final networkStatus = await AndroidNetworkAssist.getNetworkStatus();
-    final status = _statusFromNetwork(networkStatus);
-    if (status == null) {
+    final initialStatus = _statusFromNetwork(networkStatus);
+    if (initialStatus == null) {
       if (showSuccessSnackBar) {
         _showLocalSnackBar('Session data unavailable.');
       }
@@ -271,14 +272,46 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       });
     }
     try {
+      var currentStatus = initialStatus;
+      if (currentStatus.sessionUrl != null) {
+        try {
+          final client = await CaptiveWifiHttp.instance.newClient();
+          final res = await CaptiveWifiHttp.instance.getWithRedirects(
+            client: client,
+            uri: currentStatus.sessionUrl!,
+            cookies: const {},
+          );
+          client.close(force: true);
+          if (res.statusCode == 200) {
+            final dynamic decoded = jsonDecode(res.body);
+            if (decoded is Map) {
+              final secondsRemaining = decoded['seconds-remaining'] ?? decoded['secondsRemaining'];
+              final canExtend = decoded['can-extend-session'] ?? decoded['canExtendSession'];
+              final userPortalUrl = decoded['user-portal-url'] ?? decoded['userPortalUrl'];
+              int? seconds;
+              if (secondsRemaining is num) {
+                seconds = secondsRemaining.toInt();
+              }
+              currentStatus = CaptiveWifiApiStatus(
+                secondsRemaining: seconds ?? currentStatus.secondsRemaining,
+                canExtendSession: canExtend == true,
+                sessionUrl: userPortalUrl is String && userPortalUrl.isNotEmpty
+                    ? Uri.tryParse(userPortalUrl) ?? currentStatus.sessionUrl
+                    : currentStatus.sessionUrl,
+              );
+            }
+          }
+        } catch (_) {}
+      }
+
       if (!mounted) return;
       setState(() {
-        _sessionStatus = status;
-        _liveRemainingSeconds = status.secondsRemaining;
+        _sessionStatus = currentStatus;
+        _liveRemainingSeconds = currentStatus.secondsRemaining;
       });
       _restartLiveSessionTicker();
       if (allowAutoExtend) {
-        await _maybeAutoExtend(status);
+        await _maybeAutoExtend(currentStatus);
       }
       if (showSuccessSnackBar) {
         _showLocalSnackBar('Session status updated.');
@@ -327,7 +360,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
 
   CaptiveWifiApiStatus? _statusFromNetwork(AndroidNetworkStatus? status) {
     if (status == null) return null;
-    final parsedUrl = CaptiveWifiHttpService.resolvePortalUri(status);
+    final parsedUrl = CaptiveWifiHttp.resolvePortalUri(status);
     if (parsedUrl == null) return null;
 
     final expiry = status.sessionExpiryTimeMillis;
@@ -347,7 +380,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
   Future<void> _openExtendSession(CaptiveWifiApiStatus status) async {
     if (!status.canExtendSession || status.sessionUrl == null) return;
     try {
-      await CaptiveWifiHttpService.instance.requestSessionExtension(
+      await CaptiveWifiHttp.instance.requestSessionExtension(
         status.sessionUrl!,
       );
       if (!mounted) return;
@@ -430,7 +463,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     _isAutoExtending = true;
     _lastAutoExtendAt = now;
     try {
-      await CaptiveWifiHttpService.instance.requestSessionExtension(
+      await CaptiveWifiHttp.instance.requestSessionExtension(
         status.sessionUrl!,
       );
       if (!mounted) return;
@@ -465,57 +498,141 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
         ? 'Expired'
         : _formatSeconds(expiresIn);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
+    final statusColor = expired
+        ? BracuPalette.danger
+        : (expiresIn != null && expiresIn < 600)
+            ? BracuPalette.warning
+            : BracuPalette.accent;
+
+    final statusIcon = expired
+        ? Icons.error_outline_rounded
+        : (expiresIn != null && expiresIn < 600)
+            ? Icons.warning_amber_rounded
+            : Icons.wifi_tethering_rounded;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(statusIcon, color: statusColor, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Captive Wi-Fi Session',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        expired ? 'Session expired' : 'Session active',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: statusColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Remaining Time',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: textSecondary,
+                  ),
+                ),
+                Text(
+                  remainingLabel,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    canExtend
+                        ? 'Session can be extended.'
+                        : 'Session extension not available.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (expired) ...[
+              const SizedBox(height: 12),
               Text(
-                'Captive Wi-Fi Session',
+                'Please re-login or extend the session to continue using Wi-Fi.',
                 style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: textPrimary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: textSecondary,
                 ),
               ),
-              const Spacer(),
             ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Remaining: $remainingLabel',
-            style: TextStyle(fontSize: 13, color: textPrimary),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            canExtend
-                ? 'Session can be extended.'
-                : 'Session extension is not available.',
-            style: TextStyle(fontSize: 12, color: textSecondary),
-          ),
-          if (expired) ...[
-            const SizedBox(height: 6),
-            Text(
-              'Session has expired. Re-login or extend to continue Wi-Fi access.',
-              style: TextStyle(fontSize: 12, color: textSecondary),
-            ),
-          ],
-          if (showExtend) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 34,
-              child: BracuActionButton(
-                onPressed: _isCheckingSession
-                    ? null
-                    : () => unawaited(_openExtendSession(status!)),
-                icon: Icons.open_in_new_rounded,
-                label: 'Extend Session',
+            if (showExtend) ...[
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                height: 38,
+                child: BracuActionButton(
+                  onPressed: _isCheckingSession
+                      ? null
+                      : () => unawaited(_openExtendSession(status!)),
+                  icon: Icons.open_in_new_rounded,
+                  label: 'Extend Session',
+                  foregroundColor: statusColor,
+                  borderRadius: 12,
+                ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -548,7 +665,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     required String studentId,
     required String password,
   }) async {
-    final httpService = CaptiveWifiHttpService.instance;
+    final httpService = CaptiveWifiHttp.instance;
     final captiveWifiUrl = await _currentCaptiveWifiApiUri();
     if (captiveWifiUrl == null) {
       return false;
@@ -557,7 +674,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     final cookies = <String, Cookie>{};
 
     try {
-      final first = await httpService.getWithRedirects(
+      var first = await httpService.getWithRedirects(
         client: client,
         uri: captiveWifiUrl,
         cookies: cookies,
@@ -566,7 +683,26 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
         return true;
       }
 
-      final form = _extractLoginForm(html: first.body, pageUri: first.uri);
+      var loginUri = first.uri;
+      var htmlBody = first.body;
+      try {
+        final dynamic decoded = jsonDecode(first.body);
+        if (decoded is Map) {
+          final userPortalUrl = decoded['user-portal-url'] ?? decoded['userPortalUrl'];
+          if (userPortalUrl is String && userPortalUrl.isNotEmpty) {
+            loginUri = Uri.parse(userPortalUrl);
+            final second = await httpService.getWithRedirects(
+              client: client,
+              uri: loginUri,
+              cookies: cookies,
+            );
+            htmlBody = second.body;
+            loginUri = second.uri;
+          }
+        }
+      } catch (_) {}
+
+      final form = _extractLoginForm(html: htmlBody, pageUri: loginUri);
       if (form == null) {
         return false;
       }
@@ -611,7 +747,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     if (!AndroidNetworkAssist.isSupported) return null;
     final status = await AndroidNetworkAssist.getNetworkStatus();
     if (status == null) return null;
-    return CaptiveWifiHttpService.resolvePortalUri(status);
+    return CaptiveWifiHttp.resolvePortalUri(status);
   }
 
   _CaptiveWifiForm? _extractLoginForm({

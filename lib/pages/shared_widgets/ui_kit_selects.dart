@@ -225,26 +225,15 @@ class _BracuNotificationsIconButtonState
             ),
             if (newCount > 0)
               Positioned(
-                top: 0,
-                right: 0,
-                child: Container(
-                  constraints: const BoxConstraints(minWidth: 14),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 3,
-                    vertical: 0,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD63B3B),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    newCount > 9 ? '9+' : '$newCount',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 8,
-                      fontWeight: FontWeight.w800,
-                    ),
+                top: -3,
+                right: -3,
+                child: Text(
+                  newCount > 9 ? '9+' : '$newCount',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: BracuPalette.primary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),

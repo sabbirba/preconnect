@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
-import 'package:preconnect/api/app_preferences_store.dart';
+import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 
 class ProfileService {
@@ -154,17 +154,17 @@ class ProfileService {
   }) async {
     final url = '${ApiConfig.connectApiBase}${ApiConfig.profilePath}';
 
-    final store = AppPreferencesStore();
-    return _client.fetchWithFallback<Map<String, String?>>(
+    final repo = RepositoryCache.instance;
+    return repo.fetchWithStoredEtag<Map<String, String?>>(
       url: url,
       fromGet: fromGet,
-      etag: await store.getString(_profileEtagKey),
-      cacheEtag: (etag) => store.setString(_profileEtagKey, etag),
+      etagKey: _profileEtagKey,
+      cacheDuration: const Duration(seconds: 15),
       cacheResponse: (response) async {
         final data = jsonDecode(response.body);
         if (data is List && data.isNotEmpty) {
           final profile = data[0];
-          await store.setStringMap(<String, String>{
+          await repo.writeStringMap(<String, String>{
             'id': profile['id']?.toString() ?? '',
             'studentId': profile['studentId']?.toString() ?? '',
             'program': profile['programOrCourse'] ?? '',
@@ -257,7 +257,10 @@ class ProfileService {
           try {
             final miscUrl =
                 '${ApiConfig.connectApiBase}${ApiConfig.miscellaneousInfoPath}';
-            final miscResponse = await _client.authenticatedGet(miscUrl);
+            final miscResponse = await _client.authenticatedGet(
+              miscUrl,
+              cacheDuration: const Duration(seconds: 15),
+            );
             final miscData = jsonDecode(miscResponse.body);
             if (miscData is Map<String, dynamic>) {
               final resolvedBloodGroup = _normalizeBloodType(
@@ -265,7 +268,7 @@ class ProfileService {
                 bloodGroupName: miscData['bloodGroupName'],
                 bloodType: miscData['bloodType'],
               );
-              await store.setStringMap(<String, String>{
+              await repo.writeStringMap(<String, String>{
                 if (resolvedBloodGroup.isNotEmpty)
                   'bloodGroup': resolvedBloodGroup,
                 'permanentAddress':
@@ -388,10 +391,17 @@ class ProfileService {
   }
 
   Future<Map<String, String?>?> getProfile({bool fromFetch = false}) async {
-    final profileData = await AppPreferencesStore().getStringMap(
-      profileFields.toSet(),
-    );
-
+    final profileData = await RepositoryCache.instance
+        .readStringMapWithFallback(
+          keys: profileFields.toSet(),
+          fromFetch: fromFetch,
+          decoder: (value) => value,
+          onCacheMiss: () async {
+            final fetched = await fetchProfile(fromGet: true);
+            return fetched;
+          },
+        );
+    if (profileData == null) return null;
     final anyRequiredMissing = _requiredKeys.any((key) {
       final value = profileData[key];
       return value == null || value.isEmpty;
@@ -500,8 +510,6 @@ class AdvisingService {
   factory AdvisingService() => _instance;
   AdvisingService._internal();
 
-  final ApiClient _client = ApiClient();
-
   static const List<String> storedProfileKeys = [
     'advisingStartDate',
     'advisingEndDate',
@@ -516,7 +524,8 @@ class AdvisingService {
     bool fromGet = false,
   }) async {
     final asyncPrefs = AppStorage.instance;
-    String? studentId = await AppPreferencesStore().getString('studentId');
+    final repo = RepositoryCache.instance;
+    String? studentId = await repo.readString('studentId');
     studentId ??= await asyncPrefs.getString('studentId');
     if (studentId == null || studentId.isEmpty) {
       final profile = await ProfileService().getProfile(fromFetch: true);
@@ -529,13 +538,10 @@ class AdvisingService {
 
     final url = ApiConfig.advisingUrl(studentId);
 
-    final store = AppPreferencesStore();
-    return _client.fetchWithFallback<Map<String, String?>>(
+    return repo.fetchWithStoredEtag<Map<String, String?>>(
       url: url,
       fromGet: fromGet,
-      etag: await store.getString(ProfileService._advisingEtagKey),
-      cacheEtag: (etag) =>
-          store.setString(ProfileService._advisingEtagKey, etag),
+      etagKey: ProfileService._advisingEtagKey,
       cacheResponse: (response) async {
         try {
           final decoded = jsonDecode(response.body);
@@ -547,7 +553,7 @@ class AdvisingService {
               : null;
           if (data == null) return;
 
-          await store.setStringMap(<String, String>{
+          await repo.writeStringMap(<String, String>{
             'advisingStartDate': '${data['startDate'] ?? ''}',
             'advisingEndDate': '${data['endDate'] ?? ''}',
             'activeSemesterSessionId':
@@ -567,9 +573,16 @@ class AdvisingService {
   Future<Map<String, String?>?> getAdvisingInfo({
     bool fromFetch = false,
   }) async {
-    final data = await AppPreferencesStore().getStringMap(
-      storedProfileKeys.toSet(),
+    final data = await RepositoryCache.instance.readStringMapWithFallback(
+      keys: storedProfileKeys.toSet(),
+      fromFetch: fromFetch,
+      decoder: (value) => value,
+      onCacheMiss: () async {
+        final fetched = await fetchAdvisingInfo(fromGet: true);
+        return fetched;
+      },
     );
+    if (data == null) return null;
     final isIncomplete = data.values.any(
       (value) => value == null || value == '',
     );
@@ -585,8 +598,6 @@ class AttendanceService {
   static final AttendanceService _instance = AttendanceService._internal();
   factory AttendanceService() => _instance;
   AttendanceService._internal();
-
-  final ApiClient _client = ApiClient();
 
   static const String _attendanceKey = 'attendance';
   static const String _attendanceEtagKey = 'attendance_etag_v1';
@@ -604,14 +615,13 @@ class AttendanceService {
 
     final url = '${ApiConfig.connectApiBase}${ApiConfig.attendancePath(id)}';
 
-    final store = AppPreferencesStore();
-    return _client.fetchWithFallback<String>(
+    final repo = RepositoryCache.instance;
+    return repo.fetchWithStoredEtag<String>(
       url: url,
       fromGet: fromGet,
-      etag: await store.getString(_attendanceEtagKey),
-      cacheEtag: (etag) => store.setString(_attendanceEtagKey, etag),
+      etagKey: _attendanceEtagKey,
       cacheResponse: (response) async {
-        await store.setString(_attendanceKey, response.body);
+        await repo.writeString(_attendanceKey, response.body);
       },
       readCache: ({required bool fromFetch}) =>
           getAttendanceInfo(fromFetch: fromFetch),
@@ -619,10 +629,12 @@ class AttendanceService {
   }
 
   Future<String?> getAttendanceInfo({bool fromFetch = false}) async {
-    final value = await AppPreferencesStore().getString(_attendanceKey);
-    if (value != null && value.isNotEmpty) return value;
-    if (fromFetch) return null;
-    return fetchAttendanceInfo(fromGet: true);
+    return RepositoryCache.instance.readStringWithFallback<String>(
+      key: _attendanceKey,
+      fromFetch: fromFetch,
+      decoder: (value) => value,
+      onCacheMiss: () => fetchAttendanceInfo(fromGet: true),
+    );
   }
 }
 
@@ -630,8 +642,6 @@ class PaymentService {
   static final PaymentService _instance = PaymentService._internal();
   factory PaymentService() => _instance;
   PaymentService._internal();
-
-  final ApiClient _client = ApiClient();
 
   static const String _paymentInfoKey = 'SemesterPaymentInfo';
   static const String _paymentInfoEtagKey = 'SemesterPaymentInfo_etag_v1';
@@ -649,14 +659,13 @@ class PaymentService {
 
     final url = ApiConfig.paymentUrl(id);
 
-    final store = AppPreferencesStore();
-    return _client.fetchWithFallback<String>(
+    final repo = RepositoryCache.instance;
+    return repo.fetchWithStoredEtag<String>(
       url: url,
       fromGet: fromGet,
-      etag: await store.getString(_paymentInfoEtagKey),
-      cacheEtag: (etag) => store.setString(_paymentInfoEtagKey, etag),
+      etagKey: _paymentInfoEtagKey,
       cacheResponse: (response) async {
-        await store.setString(_paymentInfoKey, response.body);
+        await repo.writeString(_paymentInfoKey, response.body);
       },
       readCache: ({required bool fromFetch}) =>
           getPaymentInfo(fromFetch: fromFetch),
@@ -664,9 +673,11 @@ class PaymentService {
   }
 
   Future<String?> getPaymentInfo({bool fromFetch = false}) async {
-    final value = await AppPreferencesStore().getString(_paymentInfoKey);
-    if (value != null && value.isNotEmpty) return value;
-    if (fromFetch) return null;
-    return fetchPaymentInfo(fromGet: true);
+    return RepositoryCache.instance.readStringWithFallback<String>(
+      key: _paymentInfoKey,
+      fromFetch: fromFetch,
+      decoder: (value) => value,
+      onCacheMiss: () => fetchPaymentInfo(fromGet: true),
+    );
   }
 }

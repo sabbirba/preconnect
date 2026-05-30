@@ -87,7 +87,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
   Future<void> _loadHomeDashboardSnapshot() async {
     try {
-      final raw = await AppStorage.instance.getString(
+      final raw = await RepositoryCache.instance.readString(
         _homeDashboardSnapshotCacheKey,
       );
       if (raw == null || raw.isEmpty) return;
@@ -116,7 +116,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   Future<void> _saveHomeDashboardSnapshot(_HomeData data) async {
     if (!data.hasRequiredProfileFields) return;
     try {
-      await AppStorage.instance.setString(
+      await RepositoryCache.instance.writeString(
         _homeDashboardSnapshotCacheKey,
         jsonEncode(data.toCacheJson()),
       );
@@ -443,7 +443,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   Future<void> _maybeAutoExtendSession(AndroidNetworkStatus status) async {
     if (!mounted || _isAutoExtendingSession) return;
     if (status.canExtendSession != true) return;
-    final captiveWifiUri = CaptiveWifiHttpService.resolvePortalUri(status);
+    final captiveWifiUri = CaptiveWifiHttp.resolvePortalUri(status);
     if (captiveWifiUri == null) return;
 
     final expiryMillis = status.sessionExpiryTimeMillis;
@@ -462,9 +462,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     _isAutoExtendingSession = true;
     _lastAutoSessionExtendAt = now;
     try {
-      await CaptiveWifiHttpService.instance.requestSessionExtension(
-        captiveWifiUri,
-      );
+      await CaptiveWifiHttp.instance.requestSessionExtension(captiveWifiUri);
       if (!mounted) return;
       unawaited(_refreshCaptiveStatus());
     } catch (_) {

@@ -6,8 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_alarmkit/flutter_alarmkit.dart';
 import 'package:intl/intl.dart';
-import 'package:preconnect/api/schedule_service.dart';
-import 'package:preconnect/api/custom_schedules_service.dart';
+import 'package:preconnect/api/schedule.dart';
+import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/custom_schedules_sections/custom_schedules_editor_sheet.dart'

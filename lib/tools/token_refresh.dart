@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:preconnect/tools/http/http_service.dart';
+import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/web_extension_api_config.dart';
 
 enum TokenRefreshStatus { refreshed, invalidSession, retryableFailure }
@@ -19,18 +19,19 @@ Future<TokenRefreshStatus> refreshBracuSessionTokens({
 
   try {
     final uri = Uri.parse(WebExtensionApiConfig.tokenEndpoint);
-    final response = await HttpService.client
+    final body = HttpUtils.formBody(<String, String>{
+      'grant_type': 'refresh_token',
+      'refresh_token': cleanedRefreshToken,
+      'client_id': WebExtensionApiConfig.clientId,
+    });
+    final response = await HttpUtils.client
         .post(
           uri,
           headers: <String, String>{
             'Content-Type': 'application/x-www-form-urlencoded',
             ..._compressionHeadersForUri(uri),
           },
-          body: {
-            'grant_type': 'refresh_token',
-            'refresh_token': cleanedRefreshToken,
-            'client_id': WebExtensionApiConfig.clientId,
-          },
+          body: body,
         )
         .timeout(timeout);
 

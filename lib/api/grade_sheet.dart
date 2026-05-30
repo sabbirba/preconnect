@@ -5,7 +5,7 @@ import 'dart:typed_data';
 
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/profile_service.dart';
+import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/app_storage.dart';
@@ -43,6 +43,7 @@ class GradeSheetService {
         additionalHeaders: const <String, String>{
           'Accept': 'application/pdf, text/plain, */*',
         },
+        cacheDuration: const Duration(seconds: 15),
       );
       final bytes = _extractPdfBytes(response.bodyBytes, response.body);
       if (bytes != null && bytes.isNotEmpty) return bytes;
@@ -69,6 +70,7 @@ class GradeSheetService {
         additionalHeaders: const <String, String>{
           'Accept': 'application/pdf, text/plain, */*',
         },
+        cacheDuration: const Duration(seconds: 15),
       );
       final bytes = _extractPdfBytes(response.bodyBytes, response.body);
       if (bytes == null || bytes.isEmpty) {

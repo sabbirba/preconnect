@@ -1,10 +1,10 @@
-import 'package:preconnect/api/custom_schedules_service.dart';
-import 'package:preconnect/api/exam_map_service.dart';
-import 'package:preconnect/api/schedule_service.dart';
+import 'package:preconnect/api/custom_schedules.dart';
+import 'package:preconnect/api/exam_map.dart';
+import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
-import 'package:preconnect/tools/ramadan_timing.dart';
+import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 class QuietModeScheduleWindow {

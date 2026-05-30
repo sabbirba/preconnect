@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
-import 'package:preconnect/api/profile_service.dart';
-import 'package:preconnect/api/app_preferences_store.dart';
+import 'package:preconnect/api/profile.dart';
+import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 
 class ScheduleService {
@@ -11,7 +11,6 @@ class ScheduleService {
   factory ScheduleService() => _instance;
   ScheduleService._internal();
 
-  final ApiClient _client = ApiClient();
   final Map<String, Future<String?>> _scheduleFetchInFlight =
       <String, Future<String?>>{};
 
@@ -74,7 +73,7 @@ class ScheduleService {
   }) async {
     final cacheKey = _cacheKeyForSemester(semesterSessionId);
     final etagKey = _etagKeyForSemester(semesterSessionId);
-    final store = AppPreferencesStore();
+    final repo = RepositoryCache.instance;
     final asyncPrefs = AppStorage.instance;
     final id = await resolvePortfolioId(
       prefs: asyncPrefs,
@@ -92,14 +91,13 @@ class ScheduleService {
         '${ApiConfig.connectApiBase}'
         '${ApiConfig.schedulePath(id, semesterSessionId: semesterSessionId)}';
 
-    return _client.fetchWithFallback<String>(
+    return repo.fetchWithStoredEtag<String>(
       url: url,
       fromGet: fromGet,
-      etag: await store.getString(etagKey),
-      cacheEtag: (etag) => store.setString(etagKey, etag),
+      etagKey: etagKey,
       cacheResponse: (response) async {
         final data = jsonDecode(response.body);
-        await store.setJson(cacheKey, data);
+        await repo.writeJson(cacheKey, data);
       },
       readCache: ({required bool fromFetch}) => getStudentScheduleForSemester(
         semesterSessionId: semesterSessionId,
@@ -113,9 +111,10 @@ class ScheduleService {
     bool fromFetch = false,
   }) async {
     final cacheKey = _cacheKeyForSemester(semesterSessionId);
-    return readStoredStringWithFallback(
+    return RepositoryCache.instance.readStringWithFallback<String>(
       key: cacheKey,
       fromFetch: fromFetch,
+      decoder: (value) => value,
       onCacheMiss: () => fetchStudentScheduleForSemester(
         semesterSessionId: semesterSessionId,
         fromGet: true,
@@ -126,7 +125,7 @@ class ScheduleService {
   Future<String?> getCachedStudentScheduleForSemester({
     required int semesterSessionId,
   }) async {
-    return AppPreferencesStore().getString(
+    return RepositoryCache.instance.readString(
       _cacheKeyForSemester(semesterSessionId),
     );
   }

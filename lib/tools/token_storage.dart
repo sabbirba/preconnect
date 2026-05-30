@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart'
     show ValueNotifier, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart' show TargetPlatform;
 import 'package:flutter/services.dart';
-import 'package:preconnect/tools/http/http_service.dart';
+import 'package:preconnect/tools/http/http_utils.dart';
 
 import 'package:in_app_review/in_app_review.dart';
 import 'package:local_auth/local_auth.dart';
@@ -79,6 +79,7 @@ class TokenStorage {
     await AppStorage.instance.remove(PreconnectStorageKeys.accessToken);
     await AppStorage.instance.remove(PreconnectStorageKeys.refreshToken);
     await AppStorage.instance.setBool(_cachedHasSessionKey, false);
+    ApiClient().clearTransientCaches();
 
     if (kIsWeb) {
       await webExtensionStorageRemoveKeys(const [
@@ -483,7 +484,7 @@ class ProfileImageCache {
 
     try {
       final uri = Uri.parse(photoUrl);
-      final response = await HttpService.client.get(
+      final response = await HttpUtils.client.get(
         uri,
         headers: compressionHeadersForUri(uri),
       );

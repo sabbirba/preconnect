@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
-import 'package:preconnect/api/custom_schedules_service.dart';
+import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';

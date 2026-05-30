@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:preconnect/api/seat_status_service.dart';
+import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/model/section_info.dart';
 
 void main() {

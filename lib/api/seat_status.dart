@@ -72,6 +72,7 @@ class SeatStatusService {
     final response = await _client.publicGet(
       url,
       acceptedStatusCodes: const <int>{200},
+      cacheDuration: const Duration(seconds: 15),
     );
     try {
       return jsonDecode(response.body);

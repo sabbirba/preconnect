@@ -6,11 +6,10 @@ import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
-import 'package:preconnect/api/seat_status_service.dart';
+import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/shared_widgets/highlight_scroll_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/http/http_service.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 class FreeLabsPage extends StatefulWidget {
@@ -24,10 +23,10 @@ class FreeLabsPage extends StatefulWidget {
       );
       if (cachedRaw != null && cachedRaw.trim().isNotEmpty) return;
 
-      final uri = Uri.parse(_FreeLabsPageState._freeLabsUrl);
-      final response = await HttpService.client
-          .get(uri, headers: compressionHeadersForUri(uri))
-          .timeout(const Duration(seconds: 12));
+      final response = await ApiClient().publicGet(
+        _FreeLabsPageState._freeLabsUrl,
+        cacheDuration: const Duration(minutes: 5),
+      );
       if (response.statusCode != 200 || response.body.trim().isEmpty) {
         return;
       }
@@ -443,10 +442,10 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     }
 
     try {
-      final uri = Uri.parse(_freeLabsUrl);
-      final response = await HttpService.client
-          .get(uri, headers: compressionHeadersForUri(uri))
-          .timeout(const Duration(seconds: 12));
+      final response = await ApiClient().publicGet(
+        _freeLabsUrl,
+        cacheDuration: const Duration(minutes: 5),
+      );
       if (response.statusCode != 200) {
         return await _readCachedFreeLabsDetails(cache);
       }
