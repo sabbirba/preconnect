@@ -17,6 +17,7 @@ import 'package:preconnect/pages/degree_progress.dart';
 import 'package:preconnect/pages/alarms.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/free_labs.dart';
+import 'package:preconnect/pages/leaks.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/share_schedule.dart';
 import 'package:preconnect/pages/scan_schedule.dart';
@@ -116,6 +117,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
     HomeTab.campusPrinter: (_) => const CampusPrinterPage(),
     HomeTab.devs: (_) => const DevsPage(),
     HomeTab.personalSchedules: (_) => const CustomSchedulesPage(),
+    HomeTab.leaks: (_) => const LeaksPage(),
   };
   late final List<HomeTab> _tabOrder = HomeTab.values;
   final Set<HomeTab> _builtTabs = {HomeTab.dashboard};
@@ -1085,6 +1087,14 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
                       title: 'Devs',
                       subtitle: 'Support',
                       color: const Color(0xFF2C9DFF),
+                      onTap: () => widget.onNavigate(HomeTab.devs),
+                    ),
+                    QuickAccessCard(
+                      width: layout.itemWidth,
+                      icon: Icons.developer_mode_outlined,
+                      title: 'Leaks',
+                      subtitle: 'Materials',
+                      color: const Color(0xFF482CFF),
                       onTap: () => widget.onNavigate(HomeTab.devs),
                     ),
                   ],
