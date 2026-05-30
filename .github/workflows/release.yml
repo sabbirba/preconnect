@@ -8,8 +8,8 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    # Promotion to Production releases every Friday at 10:00 PM (Bangladesh Time)
-    - cron: "00 16 * * 5"
+    # Promotion to Production runs every Friday at 12:00 AM Bangladesh time (Thursday 18:00 UTC).
+    - cron: "00 18 * * 4"
 
 permissions:
   contents: write
@@ -579,7 +579,7 @@ jobs:
           echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Download Android artifacts
-        uses: actions/download-artifact@v5.0.0
+        uses: actions/download-artifact@v7.0.0
         continue-on-error: true
         with:
           name: android-artifacts

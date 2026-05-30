@@ -2,8 +2,8 @@ name: Store Promotion
 
 on:
   schedule:
-    # Weekly Update on Thursday 10:00 PM Bangladesh Time.
-    - cron: "00 16 * * 4"
+    # Weekly store promotion runs every Thursday at 12:00 AM Bangladesh time (Wednesday 18:00 UTC).
+    - cron: "00 18 * * 3"
   workflow_dispatch:
 
 permissions:
