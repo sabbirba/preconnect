@@ -8,6 +8,9 @@ multi-ecosystem-groups:
       timezone: "Asia/Dhaka"
     labels:
       - "dependencies"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
 
 updates:
   - package-ecosystem: "pub"
@@ -15,45 +18,33 @@ updates:
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
-    open-pull-requests-limit: 10
     labels:
       - "dependencies"
       - "dart"
-    commit-message:
-      prefix: "chore(deps)"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
-    open-pull-requests-limit: 10
     labels:
       - "dependencies"
       - "github-actions"
-    commit-message:
-      prefix: "chore(deps)"
 
   - package-ecosystem: "bundler"
     directory: "/"
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
-    open-pull-requests-limit: 10
     labels:
       - "dependencies"
       - "ruby"
-    commit-message:
-      prefix: "chore(deps)"
 
   - package-ecosystem: "gradle"
     directory: "/android"
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
-    open-pull-requests-limit: 10
     labels:
       - "dependencies"
       - "android"
-    commit-message:
-      prefix: "chore(deps)"
