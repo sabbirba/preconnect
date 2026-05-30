@@ -68,7 +68,7 @@ class NativeBridge {
 
   static String _stringFromNativeUtf8(ffi.Pointer<ffi.Uint8> pointer) {
     var length = 0;
-    while (pointer.elementAt(length).value != 0) {
+    while (pointer[length] != 0) {
       length++;
     }
     return String.fromCharCodes(pointer.asTypedList(length));

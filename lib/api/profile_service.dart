@@ -533,8 +533,8 @@ class AdvisingService {
     return _client.fetchWithFallback<Map<String, String?>>(
       url: url,
       fromGet: fromGet,
-      etag: await store.getString(_advisingEtagKey),
-      cacheEtag: (etag) => store.setString(_advisingEtagKey, etag),
+      etag: await store.getString(ProfileService._advisingEtagKey),
+      cacheEtag: (etag) => store.setString(ProfileService._advisingEtagKey, etag),
       cacheResponse: (response) async {
         try {
           final decoded = jsonDecode(response.body);
