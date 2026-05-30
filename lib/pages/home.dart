@@ -30,6 +30,7 @@ import 'package:preconnect/pages/custom_schedules_sections/custom_schedules_shar
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/settings.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/home_sections/exam_countdown.dart';
 import 'package:preconnect/pages/home_sections/student_overview.dart';
@@ -813,6 +814,10 @@ class _HomeData {
         'showTodaySchedule': cardVisibility.showTodaySchedule,
         'showExamCountdownCard': cardVisibility.showExamCountdownCard,
         'showDecorations': cardVisibility.showDecorations,
+        'showCommunityLink': cardVisibility.showCommunityLink,
+        'showSponsoredContent': cardVisibility.showSponsoredContent,
+        'showCampusMapContacts': cardVisibility.showCampusMapContacts,
+        'showNotificationsIcon': cardVisibility.showNotificationsIcon,
       },
       'sections': scheduleJson,
       'examOverrides': examOverrides.map(
@@ -870,6 +875,8 @@ class _HomeData {
             showExamCountdownCard:
                 visibilityJson['showExamCountdownCard'] == true,
             showCommunityLink: visibilityJson['showCommunityLink'] == true,
+            showSponsoredContent:
+                visibilityJson['showSponsoredContent'] != false,
             showCampusMapContacts:
                 visibilityJson['showCampusMapContacts'] == true,
             showNotificationsIcon:

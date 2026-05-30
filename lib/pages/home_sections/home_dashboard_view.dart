@@ -413,6 +413,120 @@ extension _HomeDashboardView on _HomeDashboardState {
                                           title: 'Quick Access',
                                         ),
                                       ),
+                                      ValueListenableBuilder<bool>(
+                                        valueListenable: HomeCardPreferences
+                                            .sponsoredContentNotifier,
+                                        builder: (context, enabled, child) {
+                                          if (!enabled) {
+                                            return const SizedBox.shrink();
+                                          }
+                                          return Row(
+                                            children: [
+                                              InkWell(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                onTap: () async {
+                                                  await InAppReviewPrompt
+                                                      .openStoreListing();
+                                                },
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2,
+                                                      ),
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      SizedBox(
+                                                        width: 16,
+                                                        child: Icon(
+                                                          Icons
+                                                              .star_border_rounded,
+                                                          size: 17,
+                                                          color: BracuPalette
+                                                              .textPrimary(
+                                                                context,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 6),
+                                                      Text(
+                                                        'Rate',
+                                                        softWrap: false,
+                                                        style: TextStyle(
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          color: BracuPalette
+                                                              .textPrimary(
+                                                                context,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              InkWell(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                onTap: () async {
+                                                  await SharePlus.instance.share(
+                                                    ShareParams(
+                                                      uri: Uri.parse(
+                                                        'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
+                                                      ),
+                                                      subject:
+                                                          'PreConnect • Prepare. Connect. Succeed.',
+                                                    ),
+                                                  );
+                                                },
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2,
+                                                      ),
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      SizedBox(
+                                                        width: 16,
+                                                        child: Icon(
+                                                          Icons.share_outlined,
+                                                          size: 14,
+                                                          color: BracuPalette
+                                                              .textPrimary(
+                                                                context,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 6),
+                                                      Text(
+                                                        'Share',
+                                                        softWrap: false,
+                                                        style: TextStyle(
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          color: BracuPalette
+                                                              .textPrimary(
+                                                                context,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 12),
