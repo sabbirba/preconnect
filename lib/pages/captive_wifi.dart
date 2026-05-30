@@ -285,9 +285,12 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
           if (res.statusCode == 200) {
             final dynamic decoded = jsonDecode(res.body);
             if (decoded is Map) {
-              final secondsRemaining = decoded['seconds-remaining'] ?? decoded['secondsRemaining'];
-              final canExtend = decoded['can-extend-session'] ?? decoded['canExtendSession'];
-              final userPortalUrl = decoded['user-portal-url'] ?? decoded['userPortalUrl'];
+              final secondsRemaining =
+                  decoded['seconds-remaining'] ?? decoded['secondsRemaining'];
+              final canExtend =
+                  decoded['can-extend-session'] ?? decoded['canExtendSession'];
+              final userPortalUrl =
+                  decoded['user-portal-url'] ?? decoded['userPortalUrl'];
               int? seconds;
               if (secondsRemaining is num) {
                 seconds = secondsRemaining.toInt();
@@ -501,14 +504,14 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     final statusColor = expired
         ? BracuPalette.danger
         : (expiresIn != null && expiresIn < 600)
-            ? BracuPalette.warning
-            : BracuPalette.accent;
+        ? BracuPalette.warning
+        : BracuPalette.accent;
 
     final statusIcon = expired
         ? Icons.error_outline_rounded
         : (expiresIn != null && expiresIn < 600)
-            ? Icons.warning_amber_rounded
-            : Icons.wifi_tethering_rounded;
+        ? Icons.warning_amber_rounded
+        : Icons.wifi_tethering_rounded;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -688,7 +691,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       try {
         final dynamic decoded = jsonDecode(first.body);
         if (decoded is Map) {
-          final userPortalUrl = decoded['user-portal-url'] ?? decoded['userPortalUrl'];
+          final userPortalUrl =
+              decoded['user-portal-url'] ?? decoded['userPortalUrl'];
           if (userPortalUrl is String && userPortalUrl.isNotEmpty) {
             loginUri = Uri.parse(userPortalUrl);
             final second = await httpService.getWithRedirects(
