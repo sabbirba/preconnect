@@ -426,8 +426,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                 borderRadius:
                                                     BorderRadius.circular(8),
                                                 onTap: () async {
-                                                  await InAppReviewPrompt
-                                                      .openStoreListing();
+                                                  await InAppReviewPrompt.openStoreListing();
                                                 },
                                                 child: Padding(
                                                   padding:
@@ -445,8 +444,8 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                           Icons
                                                               .star_border_rounded,
                                                           size: 17,
-                                                          color: BracuPalette
-                                                              .textPrimary(
+                                                          color:
+                                                              BracuPalette.textPrimary(
                                                                 context,
                                                               ),
                                                         ),
@@ -459,8 +458,8 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                           fontSize: 16,
                                                           fontWeight:
                                                               FontWeight.w600,
-                                                          color: BracuPalette
-                                                              .textPrimary(
+                                                          color:
+                                                              BracuPalette.textPrimary(
                                                                 context,
                                                               ),
                                                         ),
@@ -499,8 +498,8 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                         child: Icon(
                                                           Icons.share_outlined,
                                                           size: 14,
-                                                          color: BracuPalette
-                                                              .textPrimary(
+                                                          color:
+                                                              BracuPalette.textPrimary(
                                                                 context,
                                                               ),
                                                         ),
@@ -513,8 +512,8 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                           fontSize: 16,
                                                           fontWeight:
                                                               FontWeight.w600,
-                                                          color: BracuPalette
-                                                              .textPrimary(
+                                                          color:
+                                                              BracuPalette.textPrimary(
                                                                 context,
                                                               ),
                                                         ),
