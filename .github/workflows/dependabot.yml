@@ -17,19 +17,23 @@ env:
 
 jobs:
   auto-merge:
-    name: Enable Auto Merge
+    name: Approve and Auto Merge
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'sabbirba/preconnect'
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      PR_URL: ${{ github.event.pull_request.html_url }}
     steps:
       - name: Fetch Dependabot metadata
         id: metadata
-        uses: dependabot/fetch-metadata@v2
+        uses: dependabot/fetch-metadata@v3
+
+      - name: Approve Dependabot PR
+        if: contains(fromJson('["version-update:semver-patch","version-update:semver-minor"]'), steps.metadata.outputs.update-type)
+        shell: bash
+        run: gh pr review "$PR_URL" --approve
 
       - name: Enable auto merge
         if: contains(fromJson('["version-update:semver-patch","version-update:semver-minor"]'), steps.metadata.outputs.update-type)
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
         shell: bash
-        run: |
-          gh pr merge "$PR_URL" --auto --squash
+        run: gh pr merge "$PR_URL" --auto --squash
