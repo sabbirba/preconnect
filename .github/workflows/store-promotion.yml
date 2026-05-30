@@ -65,7 +65,13 @@ jobs:
         uses: ruby/setup-ruby@v1.310.0
         with:
           ruby-version: "3.3"
-          bundler-cache: true
+
+      - name: Install Fastlane
+        if: matrix.run_play && steps.play_auth.outputs.enabled == 'true'
+        shell: bash
+        env:
+          FASTLANE_OPT_OUT_USAGE: "1"
+        run: gem install fastlane --no-document
 
       - name: Promote Beta
         if: matrix.run_play && steps.play_auth.outputs.enabled == 'true'
@@ -74,7 +80,7 @@ jobs:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           FASTLANE_OPT_OUT_USAGE: "1"
         run: |
-          bundle exec fastlane supply \
+          fastlane supply \
             --package_name "${{ steps.android_meta.outputs.package_name }}" \
             --json_key_data "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" \
             --track "beta" \
