@@ -83,18 +83,30 @@ class LeaksPage extends StatelessWidget {
                 const SizedBox(height: 10),
                 const BracuSectionTitle(title: 'Legacy Repos / Profiles'),
                 const SizedBox(height: 12),
-                GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  shrinkWrap: true,
-                  childAspectRatio: 4,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    ..._legacyRepos.map(
-                      (r) => _LegacyRepoLink(label: r.label, url: r.url),
-                    ),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final width = constraints.maxWidth;
+                    final crossAxisCount = width < 500
+                        ? 1
+                        : width < 700
+                        ? 2
+                        : 3;
+                    final childAspectRatio = crossAxisCount == 1 ? 5.5 : 4.0;
+
+                    return GridView.count(
+                      crossAxisCount: crossAxisCount,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      shrinkWrap: true,
+                      childAspectRatio: childAspectRatio,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [
+                        ..._legacyRepos.map(
+                          (r) => _LegacyRepoLink(label: r.label, url: r.url),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -206,7 +218,10 @@ class _LegacyRepoLink extends StatelessWidget {
               style: const TextStyle(
                 fontWeight: FontWeight.w600,
                 color: BracuPalette.primary,
+                overflow: TextOverflow.ellipsis,
               ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ],
         ),
