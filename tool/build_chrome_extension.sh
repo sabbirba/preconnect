@@ -33,6 +33,9 @@ CHROME_VERSION="${APP_MAJOR}.${APP_MINOR}.${APP_PATCH}.${CHROME_VERSION_SUFFIX}"
 CHROME_VERSION_NAME="${CHROME_VERSION}"
 ENV_FILE="${ROOT_DIR}/.env"
 TEMP_ENV_FILE=""
+FLUTTER_WEB_PWA_STRATEGY="${FLUTTER_WEB_PWA_STRATEGY:-none}"
+FLUTTER_WEB_BASE_HREF="${FLUTTER_WEB_BASE_HREF:-/}"
+FLUTTER_WEB_OPTIMIZATION_LEVEL="${FLUTTER_WEB_OPTIMIZATION_LEVEL:-4}"
 
 cleanup() {
   if [[ -n "${TEMP_ENV_FILE}" ]]; then
@@ -47,6 +50,25 @@ if [[ ! -f "${ENV_FILE}" ]]; then
   echo "No .env file found; continuing with empty optional dart defines." >&2
 fi
 
+if [[ ! "${FLUTTER_WEB_OPTIMIZATION_LEVEL}" =~ ^[0-4]$ ]]; then
+  echo "FLUTTER_WEB_OPTIMIZATION_LEVEL must be an integer from 0 to 4" >&2
+  exit 1
+fi
+
+if [[ "${FLUTTER_WEB_BASE_HREF}" != /* || "${FLUTTER_WEB_BASE_HREF}" != */ ]]; then
+  echo "FLUTTER_WEB_BASE_HREF must start and end with /" >&2
+  exit 1
+fi
+
+case "${FLUTTER_WEB_PWA_STRATEGY}" in
+  none|offline-first)
+    ;;
+  *)
+    echo "FLUTTER_WEB_PWA_STRATEGY must be one of: none, offline-first" >&2
+    exit 1
+    ;;
+esac
+
 mkdir -p "${OUT_DIR}"
 rm -rf "${ROOT_DIR}/.dart_tool/flutter_build"
 
@@ -56,6 +78,11 @@ flutter build web \
   --csp \
   --no-wasm-dry-run \
   --no-web-resources-cdn \
+  --pwa-strategy="${FLUTTER_WEB_PWA_STRATEGY}" \
+  --base-href="${FLUTTER_WEB_BASE_HREF}" \
+  --build-name="${APP_VERSION}" \
+  --build-number="${APP_BUILD_NUMBER}" \
+  --optimization-level="${FLUTTER_WEB_OPTIMIZATION_LEVEL}" \
   --dart-define-from-file="${ENV_FILE}" \
   --dart-define="APP_VERSION=${APP_VERSION}" \
   --dart-define="APP_BUILD_NUMBER=${APP_BUILD_NUMBER}" \
