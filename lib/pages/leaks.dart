@@ -41,6 +41,15 @@ class LeaksPage extends StatelessWidget {
       label: 'badhon495/BRACU_Life',
       url: 'https://github.com/badhon495/BRACU_Life',
     ),
+    (label: "ShababAhmedd (Profile)", url: "https://github.com/ShababAhmedd"),
+    (label: "F3uR0n", url: "https://github.com/F3uR0n"),
+    (label: "mazidzomader", url: "https://github.com/mazidzomader"),
+    (label: "sabbirba/bracu", url: "https://github.com/sabbirba/bracu"),
+    (label: "Sami-HC", url: "https://github.com/Sami-HC"),
+    (
+      url: "https://github.com/mebmrauf/CSE111-Programming-Language-II",
+      label: "mebmrauf/CSE111",
+    ),
   ];
 
   @override
