@@ -22,13 +22,14 @@ jobs:
         run: |
           set -eux
           FLUTTER_DIR="$HOME/flutter"
+          FLUTTER_VERSION="${{ matrix.flutter-version }}"
           # Remove any previous install
           rm -rf "$FLUTTER_DIR"
           # Try to clone the requested branch/tag; fall back to stable if not found
-          if git clone --depth 1 --branch "${{ matrix.flutter-version }}" https://github.com/flutter/flutter.git "$FLUTTER_DIR"; then
-            echo "Cloned flutter ${matrix.flutter-version}"
+          if git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/flutter.git "$FLUTTER_DIR"; then
+            echo "Cloned flutter $FLUTTER_VERSION"
           else
-            echo "Requested ${matrix.flutter-version} not found; cloning stable"
+            echo "Requested $FLUTTER_VERSION not found; cloning stable"
             git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$FLUTTER_DIR"
           fi
           echo "$FLUTTER_DIR/bin" >> $GITHUB_PATH
