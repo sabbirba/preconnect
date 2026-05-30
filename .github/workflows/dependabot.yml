@@ -2,6 +2,8 @@ name: Dependabot
 
 on:
   pull_request_target:
+    branches:
+      - main
     types:
       - opened
       - synchronize
@@ -19,21 +21,15 @@ jobs:
   auto-merge:
     name: Approve and Auto Merge
     runs-on: ubuntu-latest
-    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'sabbirba/preconnect'
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.base.ref == 'main' && github.repository == 'sabbirba/preconnect'
     env:
       GITHUB_TOKEN: ${{ github.token }}
       PR_URL: ${{ github.event.pull_request.html_url }}
     steps:
-      - name: Fetch Dependabot metadata
-        id: metadata
-        uses: dependabot/fetch-metadata@v3
-
       - name: Approve Dependabot PR
-        if: contains(fromJson('["version-update:semver-patch","version-update:semver-minor"]'), steps.metadata.outputs.update-type)
         shell: bash
         run: gh pr review "$PR_URL" --approve
 
       - name: Enable auto merge
-        if: contains(fromJson('["version-update:semver-patch","version-update:semver-minor"]'), steps.metadata.outputs.update-type)
         shell: bash
         run: gh pr merge "$PR_URL" --auto --squash
