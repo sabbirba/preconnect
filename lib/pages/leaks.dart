@@ -41,7 +41,7 @@ class LeaksPage extends StatelessWidget {
       label: 'badhon495/BRACU_Life',
       url: 'https://github.com/badhon495/BRACU_Life',
     ),
-    (label: "ShababAhmedd (Profile)", url: "https://github.com/ShababAhmedd"),
+    (label: "ShababAhmedd", url: "https://github.com/ShababAhmedd"),
     (label: "F3uR0n", url: "https://github.com/F3uR0n"),
     (label: "mazidzomader", url: "https://github.com/mazidzomader"),
     (label: "sabbirba/bracu", url: "https://github.com/sabbirba/bracu"),
@@ -81,13 +81,20 @@ class LeaksPage extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
-                const BracuSectionTitle(title: 'Legacy Repositories'),
+                const BracuSectionTitle(title: 'Legacy Repos / Profiles'),
                 const SizedBox(height: 12),
-                ..._legacyRepos.map(
-                  (r) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12.0),
-                    child: _LegacyRepoLink(label: r.label, url: r.url),
-                  ),
+                GridView.count(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  shrinkWrap: true,
+                  childAspectRatio: 4,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    ..._legacyRepos.map(
+                      (r) => _LegacyRepoLink(label: r.label, url: r.url),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -192,21 +199,14 @@ class _LegacyRepoLink extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(Icons.bookmark, color: BracuPalette.primary),
+            const Icon(Icons.circle, size: 12, color: BracuPalette.primary),
             const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: BracuPalette.primary,
-                ),
+            Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: BracuPalette.primary,
               ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 14,
-              color: BracuPalette.primary.withValues(alpha: 0.7),
             ),
           ],
         ),
