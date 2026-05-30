@@ -992,9 +992,10 @@ class _BracuFundingSupportContentBodyState
                             const SizedBox(height: 2),
                             const Align(
                               alignment: Alignment.center,
-                              child: BracuSupportNumberRow(
-                                number: _kPreconnectSupportNumber,
+                              child: BracuCopyableValueRow(
+                                value: _kPreconnectSupportNumber,
                                 textScale: 1.0,
+                                copyMessage: 'bKash number copied',
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -1010,54 +1011,12 @@ class _BracuFundingSupportContentBodyState
                               ),
                             ),
                             const SizedBox(height: 0),
-                            Center(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 6,
-                                ),
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        _kPreconnectSupportReference,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      InkWell(
-                                        onTap: () async {
-                                          await Clipboard.setData(
-                                            const ClipboardData(
-                                              text:
-                                                  _kPreconnectSupportReference,
-                                            ),
-                                          );
-                                          if (context.mounted) {
-                                            showAppSnackBar(
-                                              context,
-                                              'Reference copied',
-                                            );
-                                          }
-                                        },
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(2),
-                                          child: Icon(
-                                            Icons.content_copy_rounded,
-                                            size: 14,
-                                            color: BracuPalette.textSecondary(
-                                              context,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                            const Align(
+                              alignment: Alignment.center,
+                              child: BracuCopyableValueRow(
+                                value: _kPreconnectSupportReference,
+                                textScale: 1.0,
+                                copyMessage: 'Reference copied',
                               ),
                             ),
                           ],
@@ -1186,15 +1145,17 @@ class _BracuSponsorActionChip extends StatelessWidget {
   }
 }
 
-class BracuSupportNumberRow extends StatelessWidget {
-  const BracuSupportNumberRow({
+class BracuCopyableValueRow extends StatelessWidget {
+  const BracuCopyableValueRow({
     super.key,
-    required this.number,
+    required this.value,
     this.textScale = 1.0,
+    this.copyMessage = 'Copied to clipboard',
   });
 
-  final String number;
+  final String value;
   final double textScale;
+  final String copyMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -1202,9 +1163,9 @@ class BracuSupportNumberRow extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(10),
       onTap: () async {
-        await Clipboard.setData(ClipboardData(text: number));
+        await Clipboard.setData(ClipboardData(text: value));
         if (!context.mounted) return;
-        showAppSnackBar(context, 'Copied to clipboard');
+        showAppSnackBar(context, copyMessage);
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -1217,7 +1178,7 @@ class BracuSupportNumberRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    number,
+                    value,
                     style: TextStyle(
                       color: BracuPalette.textPrimary(context),
                       fontSize: 16 * textScale,

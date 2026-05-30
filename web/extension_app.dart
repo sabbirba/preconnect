@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:preconnect/app.dart';
@@ -14,7 +12,7 @@ Future<void> main() async {
     FlutterError.onError = (details) {
       FlutterError.presentError(details);
     };
-    PlatformDispatcher.instance.onError = (error, stackTrace) {
+    WidgetsBinding.instance.platformDispatcher.onError = (error, stackTrace) {
       return true;
     };
 

@@ -514,11 +514,7 @@ class CourseMaterialService {
     final host = uri.host.toLowerCase();
     final filesHost = _filesBaseUri.host.toLowerCase();
     final fromFilesHost = host == filesHost || host.endsWith('.$filesHost');
-    final fromR2Host =
-        host.endsWith('.r2.cloudflarestorage.com') ||
-        host.endsWith('.r2.dev') ||
-        host.contains('.r2.');
-    if (!fromFilesHost && !fromR2Host) return const <String>[];
+    if (!fromFilesHost) return const <String>[];
     return _storageKeySegmentsFromUri(uri);
   }
 

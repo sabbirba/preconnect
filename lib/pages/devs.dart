@@ -514,7 +514,7 @@ class _SponsoredStrip extends StatelessWidget {
         padding: EdgeInsets.zero,
         children: const [
           _SponsoredTile(
-            title: 'Google AdSense',
+            title: 'Google Admob',
             subtitle: 'Ads Support Provider',
             leading: _AdSenseLogoImage(),
             url: 'https://admob.google.com/',

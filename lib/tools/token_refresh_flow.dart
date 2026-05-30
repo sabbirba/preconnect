@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/tools/http/http_service.dart';
 import 'package:preconnect/tools/web_extension_api_config.dart';
 
@@ -25,7 +24,7 @@ Future<TokenRefreshStatus> refreshBracuSessionTokens({
           uri,
           headers: <String, String>{
             'Content-Type': 'application/x-www-form-urlencoded',
-            ...compressionHeadersForUri(uri),
+            ..._compressionHeadersForUri(uri),
           },
           body: {
             'grant_type': 'refresh_token',
@@ -60,4 +59,8 @@ Future<TokenRefreshStatus> refreshBracuSessionTokens({
   } catch (_) {
     return TokenRefreshStatus.retryableFailure;
   }
+}
+
+Map<String, String> _compressionHeadersForUri(Uri? uri) {
+  return const <String, String>{};
 }

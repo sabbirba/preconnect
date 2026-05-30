@@ -465,14 +465,13 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
         ? 'Expired'
         : _formatSeconds(expiresIn);
 
-    return BracuCard(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.timer_outlined, size: 18),
-              const SizedBox(width: 8),
               Text(
                 'Captive Wi-Fi Session',
                 style: TextStyle(
@@ -499,7 +498,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
           if (expired) ...[
             const SizedBox(height: 6),
             Text(
-              'Session has expired. Re-login or extend to continue internet access.',
+              'Session has expired. Re-login or extend to continue Wi-Fi access.',
               style: TextStyle(fontSize: 12, color: textSecondary),
             ),
           ],

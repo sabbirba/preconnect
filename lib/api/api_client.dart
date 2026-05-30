@@ -280,6 +280,23 @@ class ApiClient {
         acceptedStatusCodes: const <int>{200, 304},
       );
       if (response.statusCode == 304) {
+        final cached = await readCache(fromFetch: true);
+        if (cached != null) {
+          return cached;
+        }
+
+        final refreshedResponse = await authenticatedGet(
+          url,
+          acceptedStatusCodes: const <int>{200},
+        );
+        if (refreshedResponse.statusCode != 200) {
+          return fromGet ? null : readCache(fromFetch: true);
+        }
+        await cacheResponse(refreshedResponse);
+        final nextEtag = extractEtagFromResponse(refreshedResponse);
+        if (nextEtag != null && nextEtag.isNotEmpty && cacheEtag != null) {
+          await cacheEtag(nextEtag);
+        }
         return readCache(fromFetch: true);
       }
       await cacheResponse(response);
@@ -418,7 +435,7 @@ class ApiClient {
 
 Map<String, String> compressionHeaders() {
   if (kIsWeb) return const <String, String>{};
-  return const <String, String>{'Accept-Encoding': 'br, gzip'};
+  return const <String, String>{'Accept-Encoding': 'gzip'};
 }
 
 Map<String, String> compressionHeadersForUri(Uri? uri) {

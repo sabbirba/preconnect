@@ -534,7 +534,8 @@ class AdvisingService {
       url: url,
       fromGet: fromGet,
       etag: await store.getString(ProfileService._advisingEtagKey),
-      cacheEtag: (etag) => store.setString(ProfileService._advisingEtagKey, etag),
+      cacheEtag: (etag) =>
+          store.setString(ProfileService._advisingEtagKey, etag),
       cacheResponse: (response) async {
         try {
           final decoded = jsonDecode(response.body);
