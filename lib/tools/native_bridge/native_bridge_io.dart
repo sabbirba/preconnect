@@ -202,37 +202,36 @@ typedef _NativeFreeString = void Function(ffi.Pointer<ffi.Uint8>);
 typedef _NativeValidateJsonNative = ffi.Int32 Function(ffi.Pointer<ffi.Char>);
 typedef _NativeValidateJson = int Function(ffi.Pointer<ffi.Char>);
 
-typedef _NativeEncryptNative = ffi.Pointer<ffi.Uint8> Function(
-  ffi.Pointer<ffi.Uint8> key,
-  ffi.Pointer<ffi.Uint8> data,
-  ffi.Int32 dataLen,
-  ffi.Pointer<ffi.Int32> outLen,
-);
-typedef _NativeEncrypt = ffi.Pointer<ffi.Uint8> Function(
-  ffi.Pointer<ffi.Uint8> key,
-  ffi.Pointer<ffi.Uint8> data,
-  int dataLen,
-  ffi.Pointer<ffi.Int32> outLen,
-);
+typedef _NativeEncryptNative =
+    ffi.Pointer<ffi.Uint8> Function(
+      ffi.Pointer<ffi.Uint8> key,
+      ffi.Pointer<ffi.Uint8> data,
+      ffi.Int32 dataLen,
+      ffi.Pointer<ffi.Int32> outLen,
+    );
+typedef _NativeEncrypt =
+    ffi.Pointer<ffi.Uint8> Function(
+      ffi.Pointer<ffi.Uint8> key,
+      ffi.Pointer<ffi.Uint8> data,
+      int dataLen,
+      ffi.Pointer<ffi.Int32> outLen,
+    );
 
-typedef _NativeDecryptNative = ffi.Pointer<ffi.Uint8> Function(
-  ffi.Pointer<ffi.Uint8> key,
-  ffi.Pointer<ffi.Uint8> data,
-  ffi.Int32 dataLen,
-  ffi.Pointer<ffi.Int32> outLen,
-);
-typedef _NativeDecrypt = ffi.Pointer<ffi.Uint8> Function(
-  ffi.Pointer<ffi.Uint8> key,
-  ffi.Pointer<ffi.Uint8> data,
-  int dataLen,
-  ffi.Pointer<ffi.Int32> outLen,
-);
+typedef _NativeDecryptNative =
+    ffi.Pointer<ffi.Uint8> Function(
+      ffi.Pointer<ffi.Uint8> key,
+      ffi.Pointer<ffi.Uint8> data,
+      ffi.Int32 dataLen,
+      ffi.Pointer<ffi.Int32> outLen,
+    );
+typedef _NativeDecrypt =
+    ffi.Pointer<ffi.Uint8> Function(
+      ffi.Pointer<ffi.Uint8> key,
+      ffi.Pointer<ffi.Uint8> data,
+      int dataLen,
+      ffi.Pointer<ffi.Int32> outLen,
+    );
 
-typedef _NativeFreeBytesNative = ffi.Void Function(
-  ffi.Pointer<ffi.Uint8> ptr,
-  ffi.Int32 len,
-);
-typedef _NativeFreeBytes = void Function(
-  ffi.Pointer<ffi.Uint8> ptr,
-  int len,
-);
+typedef _NativeFreeBytesNative =
+    ffi.Void Function(ffi.Pointer<ffi.Uint8> ptr, ffi.Int32 len);
+typedef _NativeFreeBytes = void Function(ffi.Pointer<ffi.Uint8> ptr, int len);

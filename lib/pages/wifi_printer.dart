@@ -26,10 +26,7 @@ class CampusPrinterPage extends StatefulWidget {
   static Future<_CampusPrinterBootstrap>? _preloadFuture;
 
   static Future<void> preload() async {
-    await Future.wait([
-      _preloadBootstrap(),
-      _preloadWhitePage(),
-    ]);
+    await Future.wait([_preloadBootstrap(), _preloadWhitePage()]);
   }
 
   static void invalidateCache() {
@@ -54,8 +51,9 @@ class CampusPrinterPage extends StatefulWidget {
   static Future<void> _preloadWhitePage() async {
     if (cachedWhitePageBytes != null) return;
     try {
-      final cachedBase64 =
-          await AppStorage.instance.getString('cached_white_page_pdf');
+      final cachedBase64 = await AppStorage.instance.getString(
+        'cached_white_page_pdf',
+      );
       if (cachedBase64 != null && cachedBase64.isNotEmpty) {
         cachedWhitePageBytes = base64Decode(cachedBase64);
         return;
@@ -527,10 +525,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
       final bytes = response.bodyBytes;
       CampusPrinterPage.cachedWhitePageBytes = bytes;
-      unawaited(AppStorage.instance.setString(
-        'cached_white_page_pdf',
-        base64Encode(bytes),
-      ));
+      unawaited(
+        AppStorage.instance.setString(
+          'cached_white_page_pdf',
+          base64Encode(bytes),
+        ),
+      );
 
       if (!mounted) return;
       setState(() {
