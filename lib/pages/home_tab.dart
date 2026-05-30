@@ -19,6 +19,7 @@ enum HomeTab {
   friendSchedule,
   campusPrinter,
   devs,
+  leaks,
   personalSchedules,
 }
 
