@@ -18,10 +18,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ matrix.flutter-version }}
+      - name: Install Flutter SDK
+        run: |
+          set -eux
+          FLUTTER_DIR="$HOME/flutter"
+          # Remove any previous install
+          rm -rf "$FLUTTER_DIR"
+          # Try to clone the requested branch/tag; fall back to stable if not found
+          if git clone --depth 1 --branch "${{ matrix.flutter-version }}" https://github.com/flutter/flutter.git "$FLUTTER_DIR"; then
+            echo "Cloned flutter ${matrix.flutter-version}"
+          else
+            echo "Requested ${matrix.flutter-version} not found; cloning stable"
+            git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$FLUTTER_DIR"
+          fi
+          echo "$FLUTTER_DIR/bin" >> $GITHUB_PATH
+          flutter --version
 
       - name: Cache pub packages
         uses: actions/cache@v4
