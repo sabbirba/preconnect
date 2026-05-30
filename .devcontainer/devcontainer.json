@@ -1,0 +1,17 @@
+{
+  "name": "PreConnect Dev Container",
+  "image": "ghcr.io/sabbirba/preconnect-devcontainer:latest",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "Dart-Code.flutter",
+        "ms-vscode.cpptools"
+      ]
+    }
+  },
+  "settings": {
+    "terminal.integrated.shell.linux": "/bin/bash"
+  },
+  "postCreateCommand": "make analyze",
+  "remoteUser": "root"
+}

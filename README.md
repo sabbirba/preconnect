@@ -126,6 +126,88 @@ assets/              Icons & SVGs
 
 Want to build, test, or contribute locally? Follow the full setup guide in [CONTRIBUTING.md](CONTRIBUTING.md).
 
+### Developer Quickstart (recommended)
+
+These commands are the shortest path to a working developer environment. They are
+idempotent and safe to run multiple times.
+
+1. Clone and install packages:
+
+```bash
+git clone https://github.com/sabbirba/preconnect.git
+cd preconnect
+```
+
+2. Bootstrap the machine (installs SDK tools, NDK, CMake, Rust targets):
+
+```bash
+make setup
+```
+
+Windows users (PowerShell):
+
+```powershell
+.\tool\dev_setup.ps1
+# then run commands with the PowerShell wrapper
+.\dev.ps1 flutter run --dart-define-from-file=.env
+```
+
+3. Run the app (the `dev` wrapper loads Android SDK/NDK env vars automatically):
+
+```bash
+make run
+```
+
+4. Common checks:
+
+```bash
+make analyze
+make test
+```
+
+If you prefer to skip the Makefile, you can run the dev wrapper directly:
+
+```bash
+./dev flutter run --dart-define-from-file=.env
+```
+
+Notes:
+- `make setup` downloads Android command-line tools when necessary and writes a
+  local `android/local.properties` and a helper `.env.local.sh`. Do not commit
+  `android/local.properties` to git; it is local configuration.
+- The script will accept SDK licenses automatically and may take several
+  minutes depending on network speed.
+
+### Developer Container (no manual setup)
+
+If you prefer zero local setup, use the included DevContainer configuration
+with VS Code (Remote - Containers) or GitHub Codespaces. By default the
+DevContainer will pull the prebuilt image from GitHub Container Registry
+(`ghcr.io/sabbirba/preconnect-devcontainer:latest`) so contributors don't
+need to build the image locally.
+
+To use it in VS Code: open the repo, click the green "Open in Container" button
+or select "Remote-Containers: Reopen in Container". If the image is present on
+GHCR the container will be ready quickly. If it is not yet published, you can
+either publish it (see below) or rebuild from the Dockerfile locally (advanced).
+
+Publish the DevContainer image
+
+Maintainers can publish the prebuilt DevContainer image via the included
+GitHub Actions workflow or locally using GitHub CLI. The workflow is named
+`Publish DevContainer Image` and is configured in
+`.github/workflows/publish-devcontainer.yml`.
+
+To dispatch the workflow locally with GitHub CLI:
+
+```bash
+gh auth login
+./scripts/trigger_publish.sh
+```
+
+Or open the repository Actions tab and manually dispatch the `Publish DevContainer Image`
+workflow.
+
 ## Community
 
 New students and first-time contributors are welcome to ask questions in [GitHub issues](https://github.com/sabbirba/preconnect/issues).

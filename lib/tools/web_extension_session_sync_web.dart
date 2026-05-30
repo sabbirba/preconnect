@@ -1,6 +1,5 @@
 import 'dart:convert';
-
-import 'package:preconnect/api/api_client.dart';
+import 'package:preconnect/tools/api_client_bridge.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_refresh.dart';
 import 'package:preconnect/tools/web_extension_token_storage.dart';
@@ -38,11 +37,11 @@ Future<bool> ensureFreshWebExtensionSession({bool forceRefresh = false}) async {
         key: PreconnectStorageKeys.refreshToken,
         value: refreshToken,
       );
-      ApiClient().clearTransientCaches();
+      clearTransientCaches();
     },
     clearTokens: () async {
       await storage.deleteAll();
-      ApiClient().clearTransientCaches();
+      clearTransientCaches();
     },
   );
   return status == TokenRefreshStatus.refreshed;

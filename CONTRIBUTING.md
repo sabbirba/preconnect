@@ -31,6 +31,54 @@ cd preconnect
 flutter pub get
 ```
 
+### Automated developer setup (recommended)
+
+To reduce manual setup and avoid guesswork for contributors, the repo includes
+an automated bootstrap script and convenient Makefile + wrapper. The script
+handles installing Android command-line tools, a recommended NDK and CMake,
+accepts SDK licenses, and prepares local environment helpers.
+
+Quick start (short):
+
+```bash
+git clone https://github.com/sabbirba/preconnect.git
+cd preconnect
+make setup   # runs tool/dev_setup.sh (idempotent, may download SDK components)
+make run     # runs the app using the dev wrapper that loads env vars automatically
+```
+
+What the setup does:
+- Installs Android cmdline-tools (if missing), NDK, and CMake using `sdkmanager`.
+- Writes `android/local.properties` with `sdk.dir` and `ndk.dir` (a .bak is kept if it existed).
+- Creates `.env.local.sh` that exports `ANDROID_SDK_ROOT` and `ANDROID_NDK_HOME` — the `dev` wrapper sources this automatically.
+- Adds Rust Android targets (via `rustup`) if rustup is available.
+- Runs `flutter pub get` to fetch Dart dependencies.
+
+Important notes:
+- `android/local.properties` is local machine configuration. Do NOT commit it.
+- The script accepts SDK licenses automatically; ensure you are comfortable with that before running it on shared machines.
+- The script downloads binaries from Google's official URLs; it requires network access and may take several minutes.
+
+If you prefer not to use `make`, you can run the setup script directly:
+
+```bash
+./tool/dev_setup.sh
+source .env.local.sh  # or use ./dev to run commands with the env loaded
+./dev flutter run --dart-define-from-file=.env
+```
+
+Windows PowerShell alternative:
+
+```powershell
+.\tool\dev_setup.ps1
+# load env and run commands
+.\dev.ps1 flutter run --dart-define-from-file=.env
+```
+
+If you encounter issues, open an issue describing your OS, the step that failed,
+and the output printed by the script.
+
+
 Check your local Flutter setup:
 
 ```bash

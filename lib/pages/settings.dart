@@ -339,7 +339,7 @@ class _SettingsPageState extends State<SettingsPage>
                 divider,
                 _ToggleRow(
                   title: 'Community Link',
-                  subtitle: 'Show community banner on home',
+                  subtitle: 'Show community block on home',
                   value: _showCommunityLink,
                   onChanged: _setShowCommunityLink,
                 ),
