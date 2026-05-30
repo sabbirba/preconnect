@@ -177,6 +177,7 @@ class HomeCardPreferences {
 
   static final decorationNotifier = ValueNotifier(true);
   static final communityLinkNotifier = ValueNotifier(true);
+  static final sponsoredContentNotifier = ValueNotifier(true);
 
   static const String showQuickAccessSectionKey =
       'home_show_quick_access_section';
@@ -186,6 +187,7 @@ class HomeCardPreferences {
   static const String showTodayScheduleKey = 'home_show_today_schedule';
   static const String showDecorationsKey = 'home_show_decorations';
   static const String showCommunityLinkKey = 'home_show_community_link';
+  static const String showSponsoredContentKey = 'home_show_sponsored_content';
   static const String showCampusMapContactsKey =
       'home_show_campus_map_contacts';
   static const String showNotificationsIconKey = 'home_show_notifications_icon';
@@ -197,6 +199,7 @@ class HomeCardPreferences {
     showDecorations: true,
     showTodaySchedule: true,
     showCommunityLink: true,
+    showSponsoredContent: true,
     showCampusMapContacts: true,
     showNotificationsIcon: true,
   );
@@ -209,11 +212,14 @@ class HomeCardPreferences {
           await AppStorage.instance.getBool(showCommunityLinkKey) ?? true;
       final bool showCampusMapContacts =
           await AppStorage.instance.getBool(showCampusMapContactsKey) ?? true;
+      final bool showSponsoredContent =
+          await AppStorage.instance.getBool(showSponsoredContentKey) ?? true;
       final bool showNotificationsIcon =
           await AppStorage.instance.getBool(showNotificationsIconKey) ?? true;
 
       decorationNotifier.value = showDecorations;
       communityLinkNotifier.value = showCommunityLink;
+      sponsoredContentNotifier.value = showSponsoredContent;
 
       return HomeCardVisibility(
         showQuickAccessSection:
@@ -227,6 +233,7 @@ class HomeCardPreferences {
         showTodaySchedule:
             await AppStorage.instance.getBool(showTodayScheduleKey) ?? true,
         showCommunityLink: showCommunityLink,
+        showSponsoredContent: showSponsoredContent,
         showCampusMapContacts: showCampusMapContacts,
         showNotificationsIcon: showNotificationsIcon,
       );
@@ -252,6 +259,13 @@ class HomeCardPreferences {
     try {
       communityLinkNotifier.value = value;
       await AppStorage.instance.setBool(showCommunityLinkKey, value);
+    } catch (_) {}
+  }
+
+  static Future<void> setShowSponsoredContent(bool value) async {
+    try {
+      sponsoredContentNotifier.value = value;
+      await AppStorage.instance.setBool(showSponsoredContentKey, value);
     } catch (_) {}
   }
 
@@ -294,6 +308,7 @@ class HomeCardVisibility {
     required this.showExamCountdownCard,
     required this.showTodaySchedule,
     required this.showCommunityLink,
+    required this.showSponsoredContent,
     required this.showCampusMapContacts,
     required this.showNotificationsIcon,
   });
@@ -304,6 +319,7 @@ class HomeCardVisibility {
   final bool showExamCountdownCard;
   final bool showTodaySchedule;
   final bool showCommunityLink;
+  final bool showSponsoredContent;
   final bool showCampusMapContacts;
   final bool showNotificationsIcon;
 }

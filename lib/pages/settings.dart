@@ -27,6 +27,7 @@ class _SettingsPageState extends State<SettingsPage>
   bool _showTodaySchedule = true;
   bool _showDecorations = true;
   bool _showCommunityLink = true;
+  bool _showSupport = true;
   bool _showCampusMapContacts = true;
   bool _showNotificationsIcon = true;
   bool _appLockEnabled = false;
@@ -67,6 +68,7 @@ class _SettingsPageState extends State<SettingsPage>
       _showRamadanCard = visibility.showRamadanCard;
       _showDecorations = visibility.showDecorations;
       _showCommunityLink = visibility.showCommunityLink;
+      _showSupport = visibility.showSponsoredContent;
       _showCampusMapContacts = visibility.showCampusMapContacts;
       _showNotificationsIcon = visibility.showNotificationsIcon;
       _showExamCountdownCard = visibility.showExamCountdownCard;
@@ -105,6 +107,15 @@ class _SettingsPageState extends State<SettingsPage>
       value: value,
       applyLocal: () => _showCommunityLink = value,
       persist: HomeCardPreferences.setShowCommunityLink,
+    );
+  }
+
+  Future<void> _setShowSupport(bool value) async {
+    await _setVisibility(
+      label: 'Support',
+      value: value,
+      applyLocal: () => _showSupport = value,
+      persist: HomeCardPreferences.setShowSponsoredContent,
     );
   }
 
@@ -251,6 +262,7 @@ class _SettingsPageState extends State<SettingsPage>
         HomeCardPreferences.showExamCountdownCardKey,
         HomeCardPreferences.showTodayScheduleKey,
         HomeCardPreferences.showDecorationsKey,
+        HomeCardPreferences.showSponsoredContentKey,
         HomeCardPreferences.showCampusMapContactsKey,
         HomeCardPreferences.showNotificationsIconKey,
       };
@@ -342,6 +354,13 @@ class _SettingsPageState extends State<SettingsPage>
                   subtitle: 'Show community banner on home',
                   value: _showCommunityLink,
                   onChanged: _setShowCommunityLink,
+                ),
+                divider,
+                _ToggleRow(
+                  title: 'Show Support',
+                  subtitle: 'Show support actions on quick access',
+                  value: _showSupport,
+                  onChanged: _setShowSupport,
                 ),
                 divider,
                 _ToggleRow(
