@@ -25,10 +25,6 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-concurrency:
-  group: pr-ci-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   format:
     name: Auto Format
@@ -72,7 +68,7 @@ jobs:
 
       - name: Upload Formatting Patch
         if: steps.patch.outputs.has_changes == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: pr-formatting-patch
           path: |
@@ -82,7 +78,7 @@ jobs:
 
       - name: Comment Formatting Needed
         if: steps.patch.outputs.has_changes == 'true' && github.event.pull_request.head.repo.full_name != github.repository
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const body = [
