@@ -6,31 +6,36 @@ class LeaksPage extends StatelessWidget {
 
   static const _sections = [
     (
-      description: 'For CS/CSE/MAT courses, you may use this:',
+      description: 'For CS / CSE / MAT courses',
       title: 'BRACULeaks',
-      subtitle: 'Maintained by @reynep (work-in-progress)',
-      icon: Icons.import_contacts,
+      subtitle: 'Maintained by @reynep · work-in-progress',
+      icon: Icons.menu_book_rounded,
+      iconBg: null,
       iconColor: null,
       resourceUrl: 'https://github.com/braculeaks',
+      maintainerHandle: '@reynep',
       maintainerUrl: 'https://github.com/reynep',
     ),
     (
-      description:
-          'For course dumps, potential faculty analysis and more, use this:',
+      description: 'For course dumps & faculty analysis',
       title: 'Connect Dump Analyzer',
       subtitle: 'Maintained by @itzMRZ',
-      icon: Icons.web,
-      iconColor: Color(0xFF4822E3),
+      icon: Icons.language_rounded,
+      iconBg: Color(0xFFEEE9FD),
+      iconColor: Color(0xFF534AB7),
       resourceUrl: 'https://connect-dumps.itzmrz.xyz',
+      maintainerHandle: '@itzMRZ',
       maintainerUrl: 'https://github.com/itzMRZ',
     ),
     (
-      description: 'For generic, open-source resources (dept. agnostic):',
-      title: 'Sharminscloud-BRACUResources',
+      description: 'For generic, open-source resources (dept. agnostic)',
+      title: 'Sharminscloud BRACUResources',
       subtitle: 'Maintained by @Sharminscloud',
-      icon: Icons.cloud,
-      iconColor: Color(0xFFF26822),
+      icon: Icons.cloud_rounded,
+      iconBg: Color(0xFFFEF0E6),
+      iconColor: Color(0xFF993C1D),
       resourceUrl: 'https://github.com/Sharminscloud-BRACUResources',
+      maintainerHandle: '@Sharminscloud',
       maintainerUrl: 'https://github.com/Sharminscloud-BRACUResources',
     ),
   ];
@@ -41,14 +46,14 @@ class LeaksPage extends StatelessWidget {
       label: 'badhon495/BRACU_Life',
       url: 'https://github.com/badhon495/BRACU_Life',
     ),
-    (label: "ShababAhmedd", url: "https://github.com/ShababAhmedd"),
-    (label: "F3uR0n", url: "https://github.com/F3uR0n"),
-    (label: "mazidzomader", url: "https://github.com/mazidzomader"),
-    (label: "sabbirba/bracu", url: "https://github.com/sabbirba/bracu"),
-    (label: "Sami-HC", url: "https://github.com/Sami-HC"),
+    (label: 'ShababAhmedd', url: 'https://github.com/ShababAhmedd'),
+    (label: 'F3uR0n', url: 'https://github.com/F3uR0n'),
+    (label: 'mazidzomader', url: 'https://github.com/mazidzomader'),
+    (label: 'sabbirba/bracu', url: 'https://github.com/sabbirba/bracu'),
+    (label: 'Sami-HC', url: 'https://github.com/Sami-HC'),
     (
-      url: "https://github.com/mebmrauf/CSE111-Programming-Language-II",
-      label: "mebmrauf/CSE111",
+      label: 'mebmrauf/CSE111',
+      url: 'https://github.com/mebmrauf/CSE111-Programming-Language-II',
     ),
   ];
 
@@ -68,46 +73,32 @@ class LeaksPage extends StatelessWidget {
               children: [
                 ..._sections.expand(
                   (s) => [
-                    _LeakSection(
+                    _LeakCard(
                       description: s.description,
                       title: s.title,
                       subtitle: s.subtitle,
                       icon: s.icon,
+                      iconBg: s.iconBg,
                       iconColor: s.iconColor,
                       resourceUrl: s.resourceUrl,
+                      maintainerHandle: s.maintainerHandle,
                       maintainerUrl: s.maintainerUrl,
                     ),
-                    const SizedBox(height: 15),
+                    const SizedBox(height: 12),
                   ],
                 ),
-                const SizedBox(height: 10),
-                const BracuSectionTitle(title: 'Legacy Repos / Profiles'),
-                const SizedBox(height: 12),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final width = constraints.maxWidth;
-                    final crossAxisCount = width < 500
-                        ? 1
-                        : width < 700
-                        ? 2
-                        : 3;
-                    final childAspectRatio = crossAxisCount == 1 ? 5.5 : 4.0;
-
-                    return GridView.count(
-                      crossAxisCount: crossAxisCount,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      shrinkWrap: true,
-                      childAspectRatio: childAspectRatio,
-                      physics: const NeverScrollableScrollPhysics(),
-                      children: [
-                        ..._legacyRepos.map(
-                          (r) => _LegacyRepoLink(label: r.label, url: r.url),
-                        ),
-                      ],
-                    );
-                  },
+                const SizedBox(height: 16),
+                Text(
+                  'LEGACY REPOS & PROFILES',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: BracuPalette.textSecondary(context),
+                    letterSpacing: 0.8,
+                  ),
                 ),
+                const SizedBox(height: 10),
+                _LegacyRepoGrid(repos: _legacyRepos),
               ],
             ),
           ),
@@ -117,14 +108,16 @@ class LeaksPage extends StatelessWidget {
   }
 }
 
-class _LeakSection extends StatelessWidget {
-  const _LeakSection({
+class _LeakCard extends StatelessWidget {
+  const _LeakCard({
     required this.description,
     required this.title,
     required this.subtitle,
     required this.icon,
     required this.resourceUrl,
+    required this.maintainerHandle,
     required this.maintainerUrl,
+    this.iconBg,
     this.iconColor,
   });
 
@@ -133,64 +126,193 @@ class _LeakSection extends StatelessWidget {
   final String subtitle;
   final IconData icon;
   final String resourceUrl;
+  final String maintainerHandle;
   final String maintainerUrl;
+  final Color? iconBg;
   final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          description,
-          style: TextStyle(color: BracuPalette.textSecondary(context)),
-        ),
-        const SizedBox(height: 12),
-        BracuActionBannerCard(
-          title: title,
-          subtitle: subtitle,
-          icon: icon,
-          iconColor: iconColor ?? BracuPalette.primary,
-          onTap: () => openExternalUrl(context, resourceUrl),
-        ),
-        _MaintainerGitHub(url: maintainerUrl),
-      ],
+    final colorScheme = Theme.of(context).colorScheme;
+    final borderColor = colorScheme.outline.withValues(alpha: 0.18);
+    final resolvedIconBg = iconBg ?? BracuPalette.textSecondary(context);
+    final resolvedIconColor = iconColor ?? BracuPalette.textPrimary(context);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: BracuPalette.textSecondary(context),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: resolvedIconBg,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(icon, size: 18, color: resolvedIconColor),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            subtitle,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: BracuPalette.textSecondary(context),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _OpenButton(
+                      onTap: () => openExternalUrl(context, resourceUrl),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, thickness: 0.5, color: borderColor),
+          InkWell(
+            onTap: () => openExternalUrl(context, maintainerUrl),
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(14),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.code_rounded,
+                    size: 14,
+                    color: BracuPalette.textSecondary(context),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    maintainerHandle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: BracuPalette.textSecondary(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _MaintainerGitHub extends StatelessWidget {
-  const _MaintainerGitHub({required this.url});
+class _OpenButton extends StatelessWidget {
+  const _OpenButton({required this.onTap});
 
-  final String url;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 20, top: 10),
-      child: InkWell(
-        onTap: () => openExternalUrl(context, url),
-        borderRadius: BorderRadius.circular(14),
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-          child: Row(
-            children: [
-              Icon(Icons.code_rounded, size: 18),
-              SizedBox(width: 8),
-              Text(
-                'Maintainer Handle',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ],
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
           ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Open',
+              style: TextStyle(
+                fontSize: 13,
+                color: BracuPalette.textSecondary(context),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.open_in_new_rounded,
+              size: 13,
+              color: BracuPalette.textSecondary(context),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _LegacyRepoLink extends StatelessWidget {
-  const _LegacyRepoLink({required this.label, required this.url});
+class _LegacyRepoGrid extends StatelessWidget {
+  const _LegacyRepoGrid({required this.repos});
+
+  final List<({String label, String url})> repos;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final crossAxisCount = width < 400
+            ? 1
+            : width < 640
+            ? 2
+            : 3;
+
+        return GridView.count(
+          crossAxisCount: crossAxisCount,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+          childAspectRatio: crossAxisCount == 1 ? 6.0 : 4.5,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: repos
+              .map((r) => _LegacyRepoTile(label: r.label, url: r.url))
+              .toList(),
+        );
+      },
+    );
+  }
+}
+
+class _LegacyRepoTile extends StatelessWidget {
+  const _LegacyRepoTile({required this.label, required this.url});
 
   final String label;
   final String url;
@@ -199,29 +321,36 @@ class _LegacyRepoLink extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () => openExternalUrl(context, url),
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
-          color: BracuPalette.primary.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: BracuPalette.primary.withValues(alpha: 0.18),
+            color: Theme.of(
+              context,
+            ).colorScheme.outline.withValues(alpha: 0.18),
           ),
         ),
         child: Row(
           children: [
-            const Icon(Icons.circle, size: 12, color: BracuPalette.primary),
-            const SizedBox(width: 12),
-            Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: BracuPalette.primary,
+            Icon(
+              Icons.code_rounded,
+              size: 15,
+              color: BracuPalette.textSecondary(context),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
             ),
           ],
         ),
