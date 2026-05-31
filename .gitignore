@@ -12,6 +12,13 @@
 android/key.properties
 *.jks
 
+# Local env helpers created by dev_setup
+.env.local.sh
+.env.local.ps1
+
+# Local properties backups
+android/local.properties.bak
+
 # IntelliJ related
 *.iml
 *.ipr

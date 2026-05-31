@@ -9,6 +9,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
+import 'dart:io';
 import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/api/progress.dart';
 import 'package:preconnect/api/schedule.dart';
@@ -17,6 +18,7 @@ import 'package:preconnect/model/progress_info.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/cgpa_calculator.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/storage_keys.dart';
@@ -898,7 +900,7 @@ class _BracuFundingSupportContentBodyState
       }
 
       final bytes = byteData.buffer.asUint8List();
-      const fileName = 'preconnect_support_qr.png';
+      const fileName = 'preconnect_support_bkash_qr.png';
       const shareText =
           'Scan this QR to support PreConnect.\n'
           'Reference: $_kPreconnectSupportReference';
@@ -910,9 +912,13 @@ class _BracuFundingSupportContentBodyState
         return;
       }
 
+      final tempDir = await AppPaths.temporaryDirectory();
+      final file = File('${tempDir.path}/$fileName');
+      await file.writeAsBytes(bytes, flush: true);
+
       await SharePlus.instance.share(
         ShareParams(
-          files: [XFile.fromData(bytes, name: fileName, mimeType: 'image/png')],
+          files: [XFile(file.path)],
           text: shareText,
           subject: 'PreConnect Support QR',
         ),

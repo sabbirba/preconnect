@@ -341,23 +341,14 @@ class _CardBack extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Unauthorized Virtual ID card of BRACU.',
+                  'Unauthorized Virtual ID card of BRACU.\nDo not accept this card as a valid ID card.',
                   style: TextStyle(
-                    fontSize: 8,
+                    fontSize: 9,
                     fontWeight: FontWeight.w700,
                     color: Colors.black,
                   ),
                 ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Do not accept this card as a valid ID card.',
-                  style: TextStyle(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 16),
                 const Text(
                   'Contact:',
                   style: TextStyle(
@@ -366,7 +357,7 @@ class _CardBack extends StatelessWidget {
                     color: Colors.black,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 const Text(
                   'BRAC University\n'
                   'Kha 224 Bir Uttam Rafiqul Islam Ave,\n'

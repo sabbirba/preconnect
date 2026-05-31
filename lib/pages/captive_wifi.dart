@@ -501,141 +501,56 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
         ? 'Expired'
         : _formatSeconds(expiresIn);
 
-    final statusColor = expired
-        ? BracuPalette.danger
-        : (expiresIn != null && expiresIn < 600)
-        ? BracuPalette.warning
-        : BracuPalette.accent;
-
-    final statusIcon = expired
-        ? Icons.error_outline_rounded
-        : (expiresIn != null && expiresIn < 600)
-        ? Icons.warning_amber_rounded
-        : Icons.wifi_tethering_rounded;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: statusColor.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(statusIcon, color: statusColor, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Captive Wi-Fi Session',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        expired ? 'Session expired' : 'Session active',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: statusColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Remaining Time',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: textSecondary,
-                  ),
-                ),
-                Text(
-                  remainingLabel,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: textPrimary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    canExtend
-                        ? 'Session can be extended.'
-                        : 'Session extension not available.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: textSecondary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (expired) ...[
-              const SizedBox(height: 12),
+    return BracuCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
               Text(
-                'Please re-login or extend the session to continue using Wi-Fi.',
+                'Captive Wi-Fi Session',
                 style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: textSecondary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: textPrimary,
                 ),
               ),
+              const Spacer(),
             ],
-            if (showExtend) ...[
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                height: 38,
-                child: BracuActionButton(
-                  onPressed: _isCheckingSession
-                      ? null
-                      : () => unawaited(_openExtendSession(status!)),
-                  icon: Icons.open_in_new_rounded,
-                  label: 'Extend Session',
-                  foregroundColor: statusColor,
-                  borderRadius: 12,
-                ),
-              ),
-            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Remaining: $remainingLabel',
+            style: TextStyle(fontSize: 13, color: textPrimary),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            canExtend
+                ? 'Session can be extended.'
+                : 'Session extension is not available.',
+            style: TextStyle(fontSize: 12, color: textSecondary),
+          ),
+          if (expired) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Session has expired. Re-login or extend to continue Wi-Fi access.',
+              style: TextStyle(fontSize: 12, color: textSecondary),
+            ),
           ],
-        ),
+          if (showExtend) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 34,
+              child: BracuActionButton(
+                onPressed: _isCheckingSession
+                    ? null
+                    : () => unawaited(_openExtendSession(status!)),
+                icon: Icons.open_in_new_rounded,
+                label: 'Extend Session',
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
