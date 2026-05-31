@@ -87,7 +87,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Auto bump pubspec versionCode
+      - name: Auto Bump Version
         shell: bash
         run: |
           mapfile -t VERSION_PARTS < <(./tool/sync_versions.sh bump-release)
@@ -204,7 +204,7 @@ jobs:
           ref: ${{ needs.prepare-version.outputs.release_sha }}
           fetch-depth: 0
 
-      - name: Auto bump version locally
+      - name: Auto Bump Version
         shell: bash
         run: |
           ./tool/sync_versions.sh bump-release
