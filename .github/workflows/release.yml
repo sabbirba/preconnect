@@ -568,8 +568,30 @@ jobs:
           rm -rf "$NOTES_DIR"
           mkdir -p "$CHANGELOG_DIR"
 
-          NOTES="$(git log -1 --pretty=%B)"
-          if [ -z "$(printf '%s' "$NOTES" | tr -d '[:space:]')" ]; then
+          # Read the first versioned section from CHANGELOG.md (skip [Unreleased]).
+          # Falls back to the git commit message if CHANGELOG.md is absent or empty.
+          if [ -f CHANGELOG.md ]; then
+            NOTES="$(
+              awk '
+                /^## \[/ && !/\[Unreleased\]/ {
+                  if (found) exit
+                  found = 1
+                  next
+                }
+                found && /^## \[/ { exit }
+                found { print }
+              ' CHANGELOG.md \
+              | sed '/^[[:space:]]*$/d' \
+              | sed 's/^[-*] //' \
+              | sed 's/^#\+[[:space:]]*//'
+            )"
+          fi
+
+          if [ -z "$(printf '%s' "${NOTES:-}" | tr -d '[:space:]')" ]; then
+            NOTES="$(git log -1 --pretty=%B)"
+          fi
+
+          if [ -z "$(printf '%s' "${NOTES:-}" | tr -d '[:space:]')" ]; then
             NOTES="PreConnect ${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}"
           fi
 
@@ -594,6 +616,7 @@ jobs:
           printf '%s' "$NOTES" > "$CHANGELOG_DIR/${{ needs.prepare-version.outputs.version_code }}.txt"
 
           echo "dir=$NOTES_DIR" >> "$GITHUB_OUTPUT"
+
 
       - name: Setup Ruby
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
