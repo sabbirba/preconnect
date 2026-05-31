@@ -32,7 +32,6 @@ class ApiConfig {
   static const String connectMercureLogoutPath = '/ns/mercure/logout';
   static const String websiteBase = 'https://preconnect.app';
   static const String websiteMueenAvatarUrl = '$websiteBase/Mueen-Ahmmed.jpeg';
-  static const String websiteAdSenseLogoUrl = '$websiteBase/google-adsense.png';
   static const String filesBase = 'https://cdn.preconnect.app';
 
   static const String clientId = 'slm';
