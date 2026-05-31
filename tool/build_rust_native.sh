@@ -84,6 +84,7 @@ build_android() {
     mkdir -p "$out_dir"
     ensure_target "$triple"
     env "CARGO_TARGET_${env_name}_LINKER=${ndk_bin}/${linker}" \
+      "RUSTFLAGS=-C link-arg=-Wl,-z,max-page-size=16384" \
       cargo build \
         --manifest-path "$MANIFEST" \
         --release \

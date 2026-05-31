@@ -55,7 +55,16 @@ android {
 
     namespace = "com.sabbirba.preconnect"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = run {
+        val localProps = Properties()
+        val localPropsFile = rootProject.file("local.properties")
+        if (localPropsFile.exists()) {
+            FileInputStream(localPropsFile).use { localProps.load(it) }
+        }
+        val ndkDir = (localProps["ndk.dir"] as? String)?.trim() ?: ""
+        val autoVersion = if (ndkDir.isNotEmpty()) ndkDir.substringAfterLast('/') else ""
+        if (autoVersion.isNotBlank()) autoVersion else flutter.ndkVersion
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -82,6 +91,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        resConfigs("en")
 
     }
 
@@ -105,12 +115,21 @@ android {
             } else {
                 signingConfig = signingConfigs.getByName("debug")
             }
+            isDebuggable = false
+            isPseudoLocalesEnabled = false
             isMinifyEnabled = true
             isShrinkResources = true
+            isCrunchPngs = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+        }
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
         }
     }
 
@@ -126,7 +145,21 @@ dependencies {
 
 val buildRustNative = tasks.register<Exec>("buildRustNative") {
     val repoRoot = rootProject.projectDir.parentFile
+    val localProps = Properties()
+    val localPropsFile = rootProject.file("local.properties")
+    if (localPropsFile.exists()) {
+        FileInputStream(localPropsFile).use { localProps.load(it) }
+    }
+    val ndkDir: String = (localProps["ndk.dir"] as? String)
+        ?: System.getenv("ANDROID_NDK_HOME")
+        ?: System.getenv("ANDROID_NDK_ROOT")
+        ?: ""
+    val sdkDir: String = (localProps["sdk.dir"] as? String)
+        ?: System.getenv("ANDROID_HOME")
+        ?: ""
     workingDir = repoRoot
+    if (ndkDir.isNotEmpty()) environment("ANDROID_NDK_HOME", ndkDir)
+    if (sdkDir.isNotEmpty()) environment("ANDROID_HOME", sdkDir)
     commandLine("bash", repoRoot.resolve("tool/build_rust_native.sh").absolutePath, "android")
 }
 
