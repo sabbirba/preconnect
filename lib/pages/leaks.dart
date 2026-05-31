@@ -10,7 +10,6 @@ class LeaksPage extends StatelessWidget {
       title: 'BRACULeaks',
       subtitle: 'Maintained by @reynep · work-in-progress',
       icon: Icons.menu_book_rounded,
-      iconBg: null,
       iconColor: null,
       resourceUrl: 'https://github.com/braculeaks',
       maintainerHandle: '@reynep',
@@ -21,7 +20,6 @@ class LeaksPage extends StatelessWidget {
       title: 'Connect Dump Analyzer',
       subtitle: 'Maintained by @itzMRZ',
       icon: Icons.language_rounded,
-      iconBg: Color(0xFFEEE9FD),
       iconColor: Color(0xFF534AB7),
       resourceUrl: 'https://connect-dumps.itzmrz.xyz',
       maintainerHandle: '@itzMRZ',
@@ -32,8 +30,7 @@ class LeaksPage extends StatelessWidget {
       title: 'Sharminscloud BRACUResources',
       subtitle: 'Maintained by @Sharminscloud',
       icon: Icons.cloud_rounded,
-      iconBg: Color(0xFFFEF0E6),
-      iconColor: Color(0xFF993C1D),
+      iconColor: Color(0xFFF26822),
       resourceUrl: 'https://github.com/Sharminscloud-BRACUResources',
       maintainerHandle: '@Sharminscloud',
       maintainerUrl: 'https://github.com/Sharminscloud-BRACUResources',
@@ -78,7 +75,6 @@ class LeaksPage extends StatelessWidget {
                       title: s.title,
                       subtitle: s.subtitle,
                       icon: s.icon,
-                      iconBg: s.iconBg,
                       iconColor: s.iconColor,
                       resourceUrl: s.resourceUrl,
                       maintainerHandle: s.maintainerHandle,
@@ -117,7 +113,6 @@ class _LeakCard extends StatelessWidget {
     required this.resourceUrl,
     required this.maintainerHandle,
     required this.maintainerUrl,
-    this.iconBg,
     this.iconColor,
   });
 
@@ -128,14 +123,12 @@ class _LeakCard extends StatelessWidget {
   final String resourceUrl;
   final String maintainerHandle;
   final String maintainerUrl;
-  final Color? iconBg;
   final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final borderColor = colorScheme.outline.withValues(alpha: 0.18);
-    final resolvedIconBg = iconBg ?? BracuPalette.textSecondary(context);
     final resolvedIconColor = iconColor ?? BracuPalette.textPrimary(context);
 
     return DecoratedBox(
@@ -165,7 +158,7 @@ class _LeakCard extends StatelessWidget {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: resolvedIconBg,
+                        color: resolvedIconColor.withAlpha(50),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(icon, size: 18, color: resolvedIconColor),
