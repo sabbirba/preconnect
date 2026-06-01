@@ -93,17 +93,9 @@ android {
         versionName = flutter.versionName
         resConfigs("en")
 
-        ndk {
-            abiFilters += setOf("arm64-v8a", "armeabi-v7a")
-        }
 
     }
 
-    splits {
-        abi {
-            isEnable = false
-        }
-    }
 
     signingConfigs {
         if (hasReleaseSigningConfig) {
