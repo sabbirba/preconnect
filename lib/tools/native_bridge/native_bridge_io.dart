@@ -13,6 +13,8 @@ class NativeBridge {
   static final _NativeEncrypt? _encrypt = _lookupEncrypt();
   static final _NativeDecrypt? _decrypt = _lookupDecrypt();
   static final _NativeFreeBytes? _freeBytes = _lookupFreeBytes();
+  static final _NativeExpandAndMergeSchedules? _expandAndMergeSchedules =
+      _lookupExpandAndMergeSchedules();
 
   static bool get isSupported => _library != null;
 
@@ -108,6 +110,43 @@ class NativeBridge {
     }
   }
 
+  static String? expandAndMergeSchedules({
+    required String sectionsJson,
+    required String extraWindowsJson,
+    required int semesterSessionId,
+    required bool isRamadan,
+    required int nowMs,
+    required int timezoneOffsetMs,
+  }) {
+    final func = _expandAndMergeSchedules;
+    final free = _freeString;
+    if (func == null || free == null) return null;
+
+    final nativeSections = sectionsJson.toNativeUtf8();
+    final nativeExtra = extraWindowsJson.toNativeUtf8();
+    try {
+      final resultPtr = func(
+        nativeSections.cast<ffi.Char>(),
+        nativeExtra.cast<ffi.Char>(),
+        semesterSessionId,
+        isRamadan ? 1 : 0,
+        nowMs,
+        timezoneOffsetMs,
+      );
+      if (resultPtr == ffi.nullptr) return null;
+      try {
+        return _stringFromNativeUtf8(resultPtr);
+      } finally {
+        free(resultPtr);
+      }
+    } catch (_) {
+      return null;
+    } finally {
+      malloc.free(nativeSections);
+      malloc.free(nativeExtra);
+    }
+  }
+
   static ffi.DynamicLibrary? _openLibrary() {
     try {
       if (Platform.isAndroid || Platform.isLinux) {
@@ -187,6 +226,17 @@ class NativeBridge {
     }
   }
 
+  static _NativeExpandAndMergeSchedules? _lookupExpandAndMergeSchedules() {
+    try {
+      return _library?.lookupFunction<
+        _NativeExpandAndMergeSchedulesNative,
+        _NativeExpandAndMergeSchedules
+      >('preconnect_native_expand_and_merge_class_schedules');
+    } catch (_) {
+      return null;
+    }
+  }
+
   static String _stringFromNativeUtf8(ffi.Pointer<ffi.Uint8> pointer) {
     var length = 0;
     while (pointer[length] != 0) {
@@ -235,3 +285,22 @@ typedef _NativeDecrypt =
 typedef _NativeFreeBytesNative =
     ffi.Void Function(ffi.Pointer<ffi.Uint8> ptr, ffi.Int32 len);
 typedef _NativeFreeBytes = void Function(ffi.Pointer<ffi.Uint8> ptr, int len);
+
+typedef _NativeExpandAndMergeSchedulesNative =
+    ffi.Pointer<ffi.Uint8> Function(
+      ffi.Pointer<ffi.Char> sectionsJson,
+      ffi.Pointer<ffi.Char> extraWindowsJson,
+      ffi.Int32 semesterSessionId,
+      ffi.Int32 isRamadan,
+      ffi.Int64 nowMs,
+      ffi.Int64 timezoneOffsetMs,
+    );
+typedef _NativeExpandAndMergeSchedules =
+    ffi.Pointer<ffi.Uint8> Function(
+      ffi.Pointer<ffi.Char> sectionsJson,
+      ffi.Pointer<ffi.Char> extraWindowsJson,
+      int semesterSessionId,
+      int isRamadan,
+      int nowMs,
+      int timezoneOffsetMs,
+    );

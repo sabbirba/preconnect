@@ -300,6 +300,11 @@ jobs:
           DEVELOPMENT_TEAM=${{ secrets.DEVELOPMENT_TEAM }}
           EOF
 
+      - name: Build Rust Native (iOS)
+        if: matrix.platform == 'ios'
+        shell: bash
+        run: ./tool/build_rust_native.sh apple iphoneos
+
       - name: Chrome Extension
         if: matrix.platform == 'chrome_extension'
         shell: bash

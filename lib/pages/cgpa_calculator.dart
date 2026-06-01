@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:preconnect/model/progress_info.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/string_utils.dart';
 
 part 'shared_widgets/cgpa_calculator_models.dart';
 

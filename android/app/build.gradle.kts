@@ -54,7 +54,7 @@ android {
     ).all { !keystoreValue(it).isNullOrBlank() } && releaseKeystoreFile?.exists() == true
 
     namespace = "com.sabbirba.preconnect"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = run {
         val localProps = Properties()
         val localPropsFile = rootProject.file("local.properties")
@@ -88,7 +88,7 @@ android {
 
 
         minSdk = 24
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         resConfigs("en")
@@ -127,14 +127,14 @@ android {
                 "proguard-rules.pro",
             )
             ndk {
-                debugSymbolLevel = "SYMBOL_TABLE"
+                debugSymbolLevel = "none"
             }
         }
     }
 
     packaging {
         jniLibs {
-            useLegacyPackaging = true
+            useLegacyPackaging = false
         }
     }
 
@@ -171,3 +171,5 @@ val buildRustNative = tasks.register<Exec>("buildRustNative") {
 tasks.named("preBuild").configure {
     dependsOn(buildRustNative)
 }
+
+

@@ -1,4 +1,0 @@
- formatting.patch                                 | 401 +++++++++++++----------
- formatting.stat                                  |   4 -
- lib/pages/home_sections/home_dashboard_view.dart |  19 +-
- 3 files changed, 241 insertions(+), 183 deletions(-)
