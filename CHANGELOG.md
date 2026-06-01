@@ -13,7 +13,8 @@ Entries are written for students, not developers — plain language, no commit h
 ## [1.6.6] — 2026-06-01
 
 - Improved captive Wi-Fi detection: now supports modern RFC 8908 JSON portal responses and handles more campus router redirect patterns
-- Fixed student card display glitch on some Android devices
+- Massive reduced download and install size by over 58% (saving ~14 MB of space) through optimized native library packaging and aggressive R8 code shrinking
+- Optimized memory and launch footprint by implemented lazy-loading for the PDF module
 - CI and build pipeline improvements (faster releases for you)
 
 ---

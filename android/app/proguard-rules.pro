@@ -1,13 +1,6 @@
 # ── Kotlin ──────────────────────────────────────────────────────────────────
--keep class kotlin.Metadata { *; }
 -dontwarn kotlin.**
 -dontwarn kotlinx.**
-
-# ── Flutter / Dart JNI bridge ────────────────────────────────────────────────
--keep class io.flutter.** { *; }
--keep class io.flutter.embedding.** { *; }
--dontwarn io.flutter.embedding.**
--dontwarn io.flutter.**
 
 # ── WebView (webview_flutter_android) ───────────────────────────────────────
 -keepclassmembers class * {
@@ -15,27 +8,11 @@
 }
 -dontwarn android.webkit.**
 
-# ── Mobile Scanner (ML Kit Barcode / ZXing) ──────────────────────────────────
--keep class com.google.mlkit.** { *; }
+# ── Don't warn for other transient packages ──────────────────────────────────
+-dontwarn io.flutter.**
 -dontwarn com.google.mlkit.**
--keep class com.google.android.gms.** { *; }
 -dontwarn com.google.android.gms.**
-
-# ── Image Picker / File Selector ─────────────────────────────────────────────
--keep class androidx.activity.result.** { *; }
-
-# ── Local Auth (BiometricPrompt) ──────────────────────────────────────────────
--keep class androidx.biometric.** { *; }
-
-# ── Share Plus ────────────────────────────────────────────────────────────────
--keep class androidx.core.content.FileProvider { *; }
-
-# ── In-App Update / Review (Play Core) ───────────────────────────────────────
--keep class com.google.android.play.** { *; }
 -dontwarn com.google.android.play.**
-
-# ── Open Filex ────────────────────────────────────────────────────────────────
--keep class com.crazecoder.openfile.** { *; }
 
 # ── R8 Aggressive: Strip all Android Log calls from release ──────────────────
 -assumenosideeffects class android.util.Log {

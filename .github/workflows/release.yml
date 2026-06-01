@@ -581,8 +581,7 @@ jobs:
                 found && /^## \[/ { exit }
                 found { print }
               ' CHANGELOG.md \
-              | sed '/^[[:space:]]*$/d' \
-              | sed 's/^[-*] //' \
+              | sed 's/^[-*] /• /' \
               | sed 's/^#\+[[:space:]]*//'
             )"
           fi
