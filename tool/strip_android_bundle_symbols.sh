@@ -38,6 +38,16 @@ latest_glob_match() {
   printf '%s\n' "${matches[@]}" | sort | tail -n1
 }
 
+find_llvm_strip() {
+  local llvm_strip
+  llvm_strip="$(latest_glob_match "${android_sdk_root}/ndk"/*/toolchains/llvm/prebuilt/*/bin/llvm-strip || true)"
+  if [ -z "$llvm_strip" ]; then
+    echo "Could not find llvm-strip under ${android_sdk_root}/ndk" >&2
+    exit 1
+  fi
+  printf '%s\n' "$llvm_strip"
+}
+
 resolve_keystore() {
   local store_file=""
 
@@ -72,18 +82,28 @@ strip_aab() {
   local bundle_path="$1"
   local tmp_dir
   tmp_dir="$(mktemp -d)"
-  local tmp_bundle="$tmp_dir/$(basename "$bundle_path")"
+  local bundle_dir="$tmp_dir/bundle"
+  local unsigned_bundle="$tmp_dir/$(basename "$bundle_path").unsigned"
   local signed_bundle="$tmp_dir/$(basename "$bundle_path").signed"
-  cp "$bundle_path" "$tmp_bundle"
+  mkdir -p "$bundle_dir"
+  unzip -oq "$bundle_path" -d "$bundle_dir"
 
-  zip -q -d "$tmp_bundle" 'BUNDLE-METADATA/com.android.tools.build.debugsymbols/*' >/dev/null 2>&1 || true
-  zip -q -d \
-    "$tmp_bundle" \
-    'META-INF/MANIFEST.MF' \
-    'META-INF/*.SF' \
-    'META-INF/*.RSA' \
-    'META-INF/*.DSA' \
-    'META-INF/*.EC' >/dev/null 2>&1 || true
+  rm -rf \
+    "$bundle_dir/BUNDLE-METADATA/com.android.tools.build.debugsymbols" \
+    "$bundle_dir/META-INF"
+
+  local llvm_strip
+  llvm_strip="$(find_llvm_strip)"
+  while IFS= read -r -d '' so_file; do
+    local stripped_so="$so_file.stripped"
+    "$llvm_strip" --strip-unneeded -o "$stripped_so" "$so_file"
+    mv "$stripped_so" "$so_file"
+  done < <(find "$bundle_dir/base/lib" -type f -name '*.so' -print0)
+
+  (
+    cd "$bundle_dir"
+    find . -type f -print | sed 's#^\./##' | zip -q -@ "$unsigned_bundle"
+  )
 
   resolve_keystore
 
@@ -94,7 +114,7 @@ strip_aab() {
     -sigalg SHA256withRSA \
     -digestalg SHA-256 \
     -signedjar "$signed_bundle" \
-    "$tmp_bundle" \
+    "$unsigned_bundle" \
     "$key_alias" \
     >/dev/null
 
@@ -117,11 +137,7 @@ strip_apk() {
   unzip -oq "$apk_path" -d "$apk_dir"
 
   local llvm_strip
-  llvm_strip="$(latest_glob_match "${android_sdk_root}/ndk"/*/toolchains/llvm/prebuilt/*/bin/llvm-strip || true)"
-  if [ -z "$llvm_strip" ]; then
-    echo "Could not find llvm-strip under ${android_sdk_root}/ndk" >&2
-    exit 1
-  fi
+  llvm_strip="$(find_llvm_strip)"
 
   while IFS= read -r -d '' so_file; do
     local stripped_so="$so_file.stripped"

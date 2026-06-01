@@ -513,13 +513,6 @@ class _SponsoredStrip extends StatelessWidget {
         padding: EdgeInsets.zero,
         children: const [
           _SponsoredTile(
-            title: 'Google Adsense',
-            subtitle: 'Ads Support Provider',
-            leading: _AdSenseLogoImage(),
-            url: 'https://adsense.google.com/',
-          ),
-          SizedBox(width: 25),
-          _SponsoredTile(
             width: 220,
             title: 'Become a Sponsor',
             subtitle: 'Tap to chat on WhatsApp',
@@ -543,7 +536,6 @@ class _SponsoredTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     this.iconWidget,
-    this.leading,
     this.url,
   });
 
@@ -551,7 +543,6 @@ class _SponsoredTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final Widget? iconWidget;
-  final Widget? leading;
   final String? url;
 
   @override
@@ -559,7 +550,7 @@ class _SponsoredTile extends StatelessWidget {
     final row = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        leading ?? (iconWidget ?? const SizedBox.shrink()),
+        iconWidget ?? const SizedBox.shrink(),
         const SizedBox(width: 10),
         Column(
           mainAxisSize: MainAxisSize.min,
@@ -614,23 +605,6 @@ class _SponsoredTile extends StatelessWidget {
   }
 }
 
-class _AdSenseLogoImage extends StatelessWidget {
-  const _AdSenseLogoImage();
-
-  static const String _logoUrl = ApiConfig.websiteAdSenseLogoUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    return CachedImage(
-      url: _logoUrl,
-      width: 24,
-      height: 24,
-      fit: BoxFit.contain,
-      placeholder: const SizedBox.shrink(),
-      error: const SizedBox.shrink(),
-    );
-  }
-}
 
 List<_ContributorProfile> _dedupeContributors(List<_ContributorProfile> items) {
   final seen = <String>{};

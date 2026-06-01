@@ -72,8 +72,6 @@ build_android() {
   local triples=(
     "aarch64-linux-android:arm64-v8a:aarch64-linux-android${api}-clang"
     "armv7-linux-androideabi:armeabi-v7a:armv7a-linux-androideabi${api}-clang"
-    "i686-linux-android:x86:i686-linux-android${api}-clang"
-    "x86_64-linux-android:x86_64:x86_64-linux-android${api}-clang"
   )
 
   for entry in "${triples[@]}"; do
@@ -84,6 +82,7 @@ build_android() {
     mkdir -p "$out_dir"
     ensure_target "$triple"
     env "CARGO_TARGET_${env_name}_LINKER=${ndk_bin}/${linker}" \
+      "RUSTFLAGS=-C link-arg=-Wl,-z,max-page-size=16384" \
       cargo build \
         --manifest-path "$MANIFEST" \
         --release \

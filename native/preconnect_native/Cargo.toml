@@ -9,6 +9,7 @@ name = "preconnect_native"
 crate-type = ["cdylib", "staticlib"]
 
 [profile.release]
+opt-level = "z"
 lto = true
 codegen-units = 1
 strip = "symbols"

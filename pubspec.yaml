@@ -42,5 +42,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  assets:
-    - web/icons/Icon-512.png

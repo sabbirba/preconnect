@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:dart_pdf_reader/dart_pdf_reader.dart';
+import 'package:dart_pdf_reader/dart_pdf_reader.dart' deferred as pdf_reader;
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -595,8 +595,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   Future<({int? pageCount})> _readPdfInfo(Uint8List bytes) async {
     try {
-      final stream = ByteStream(bytes);
-      final document = await PDFParser(stream).parse();
+      await pdf_reader.loadLibrary();
+      final stream = pdf_reader.ByteStream(bytes);
+      final document = await pdf_reader.PDFParser(stream).parse();
       final catalog = await document.catalog;
       final pages = await catalog.getPages();
       var count = 0;
