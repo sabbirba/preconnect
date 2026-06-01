@@ -72,7 +72,6 @@ build_android() {
   local triples=(
     "aarch64-linux-android:arm64-v8a:aarch64-linux-android${api}-clang"
     "armv7-linux-androideabi:armeabi-v7a:armv7a-linux-androideabi${api}-clang"
-    "x86_64-linux-android:x86_64:x86_64-linux-android${api}-clang"
   )
 
   for entry in "${triples[@]}"; do

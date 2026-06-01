@@ -1,2 +1,10 @@
 #include "../../Flutter/Flutter-Release.xcconfig"
 #include "Warnings.xcconfig"
+
+// Enable post-processing symbol stripping natively in Xcode
+DEPLOYMENT_POSTPROCESSING = YES
+STRIP_INSTALLED_PRODUCT = YES
+STRIP_STYLE = non-global
+DEAD_CODE_STRIPPING = YES
+GCC_GENERATE_DEBUGGING_SYMBOLS = NO
+STRIP_SWIFT_SYMBOLS = YES

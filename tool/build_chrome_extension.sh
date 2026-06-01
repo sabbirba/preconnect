@@ -104,8 +104,12 @@ perl -0pi -e 's/serviceWorkerSettings:\s*\{\s*serviceWorkerVersion:\s*"[^"]+"[^}
 perl -0pi -e 's/"renderer":"canvaskit"/"renderer":"html"/g' \
   "${OUT_DIR}/flutter_bootstrap.js"
 rm -f "${OUT_DIR}/flutter_service_worker.js"
+rm -rf "${OUT_DIR}/canvaskit"
 
 perl -0pi -e 's#https://www\.gstatic\.com/flutter-canvaskit#canvaskit#g' \
+  "${OUT_DIR}"/*.js
+
+perl -pi -e 's/new Function\(s\)\(\)/throw new Error("Deferred loading not supported")/g' \
   "${OUT_DIR}"/*.js
 
 if rg -n "unpkg\.com|gstatic\.com/flutter-canvaskit|eval\\(|new Function" "${OUT_DIR}"/*.js >/dev/null 2>&1; then
