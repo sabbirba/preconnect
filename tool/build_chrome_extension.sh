@@ -103,8 +103,11 @@ perl -0pi -e 's/serviceWorkerSettings:\s*\{\s*serviceWorkerVersion:\s*"[^"]+"[^}
   "${OUT_DIR}/flutter_bootstrap.js"
 perl -0pi -e 's/"renderer":"canvaskit"/"renderer":"html"/g' \
   "${OUT_DIR}/flutter_bootstrap.js"
+perl -pi -e 's/_flutter\.loader\.load\(\)/_flutter.loader.load({config:{renderer:"html"}})/g' \
+  "${OUT_DIR}/flutter_bootstrap.js"
 rm -f "${OUT_DIR}/flutter_service_worker.js"
 rm -rf "${OUT_DIR}/canvaskit"
+
 
 perl -0pi -e 's#https://www\.gstatic\.com/flutter-canvaskit#canvaskit#g' \
   "${OUT_DIR}"/*.js
