@@ -12,4 +12,14 @@
       sw.getRegistrations = async () => [];
     } catch (_) {}
   }
+
+  window.flutterConfiguration = Object.assign(
+    window.flutterConfiguration || {},
+    {
+      renderer: 'html',
+      canvasKitBaseUrl: '',
+      canvasKitForceCpuOnly: true,
+      fontFallbackBaseUrl: '',
+    }
+  );
 })();

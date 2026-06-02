@@ -42,47 +42,51 @@ class BracuTime {
     if (raw == null) return null;
     final cleaned = raw.trim();
     if (cleaned.isEmpty) return null;
-    final normalized = cleaned.toUpperCase();
 
+    final match = RegExp(
+      r'^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$',
+      caseSensitive: false,
+    ).firstMatch(cleaned);
+    if (match != null) {
+      var hour = int.tryParse(match.group(1) ?? '');
+      final minute = int.tryParse(match.group(2) ?? '');
+      final meridiem = match.group(3)?.toUpperCase();
+      if (hour != null && minute != null && hour <= 23 && minute <= 59) {
+        if (meridiem != null) {
+          if (hour == 12) {
+            hour = meridiem == 'AM' ? 0 : 12;
+          } else if (meridiem == 'PM') {
+            hour += 12;
+          }
+        }
+        return DateTime(0, 1, 1, hour, minute);
+      }
+    }
+
+    final normalized = cleaned.toUpperCase();
     for (final f in _timeFormats) {
       try {
         final parsed = f.parseStrict(normalized);
         return DateTime(0, 1, 1, parsed.hour, parsed.minute);
       } catch (_) {}
     }
-
-    final match = RegExp(
-      r'^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$',
-      caseSensitive: false,
-    ).firstMatch(cleaned);
-    if (match == null) return null;
-
-    var hour = int.tryParse(match.group(1) ?? '');
-    final minute = int.tryParse(match.group(2) ?? '');
-    final meridiem = match.group(3)?.toUpperCase();
-    if (hour == null || minute == null || hour > 23 || minute > 59) {
-      return null;
-    }
-    if (meridiem != null) {
-      if (hour == 12) {
-        hour = meridiem == 'AM' ? 0 : 12;
-      } else if (meridiem == 'PM') {
-        hour += 12;
-      }
-    }
-    return DateTime(0, 1, 1, hour, minute);
+    return null;
   }
 
   static DateTime? parseDate(String? raw) {
     if (raw == null) return null;
     final cleaned = raw.trim();
     if (cleaned.isEmpty) return null;
+
+    final fastParsed = DateTime.tryParse(cleaned);
+    if (fastParsed != null) return fastParsed;
+
     for (final f in _dateFormats) {
       try {
         return f.parseStrict(cleaned);
       } catch (_) {}
     }
-    return DateTime.tryParse(cleaned);
+    return null;
   }
 
   static DateTime? parseDateTime(String? date, String? time) {

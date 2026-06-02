@@ -216,7 +216,7 @@ These are useful before changes that touch platform config, release scripts, ext
 Android APK:
 
 ```bash
-flutter build apk --release --split-per-abi
+flutter build apk --release --split-per-abi --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env
 ```
 
 Android APK with env values:
@@ -225,30 +225,36 @@ Android APK with env values:
 flutter build apk --release --split-per-abi --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env
 ```
 
+If you prefer the Makefile wrapper, `make build` uses the same Android APK release flags.
+
 Android app bundle:
 
 ```bash
-flutter build appbundle --release
+flutter build appbundle --release --target-platform android-arm,android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --dart-define-from-file=.env
 ```
 
 Android app bundle with env values:
 
 ```bash
-flutter build appbundle --release --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --dart-define-from-file=.env
-./tool/strip_android_bundle_symbols.sh build/app/outputs/bundle/release/app-release.aab
+flutter build appbundle --release --target-platform android-arm,android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --dart-define-from-file=.env
 ```
+
+The release AAB includes Android native debug metadata at `SYMBOL_TABLE` level for
+Play Console crash/ANR symbolication without bundling full debug symbols.
 
 iOS no-codesign build:
 
 ```bash
-flutter build ipa --no-codesign
+flutter build ipa --no-codesign --tree-shake-icons --obfuscate --split-debug-info=build/symbols/ios --extra-gen-snapshot-options=--strip --dart-define-from-file=.env
 ```
 
 iOS no-codesign build with env values:
 
 ```bash
-flutter build ipa --no-codesign --dart-define-from-file=.env
+flutter build ipa --no-codesign --tree-shake-icons --obfuscate --split-debug-info=build/symbols/ios --extra-gen-snapshot-options=--strip --dart-define-from-file=.env
 ```
+
+You can also keep the same size-saving flags in your Xcode/CI release flow.
 
 Chrome extension:
 

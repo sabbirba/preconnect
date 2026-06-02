@@ -295,7 +295,6 @@
 			buildConfigurationList = 97C147051CF9000F007C117D /* Build configuration list for PBXNativeTarget "Runner" */;
 			buildPhases = (
 				0F9C55DDB7CC6B8A36FC3BEC /* [CP] Check Pods Manifest.lock */,
-				A1B2C3D4E5F60718293A4B5C /* Build Rust Native */,
 				9740EEB61CF901F6004384FC /* Run Script */,
 				97C146EA1CF9000F007C117D /* Sources */,
 				97C146EB1CF9000F007C117D /* Frameworks */,

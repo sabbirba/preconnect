@@ -12,7 +12,6 @@ crate-type = ["cdylib", "staticlib"]
 opt-level = "z"
 lto = true
 codegen-units = 1
-strip = "symbols"
 panic = "abort"
 
 [dependencies]

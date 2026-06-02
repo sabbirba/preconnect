@@ -15,6 +15,7 @@ import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/storage_keys.dart';
+import 'package:preconnect/tools/string_utils.dart';
 
 part 'student_profile_sections/degree_progress_helpers.dart';
 

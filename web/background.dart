@@ -555,7 +555,7 @@ Future<void> _maybeNotifyUnreadChange() async {
       'preconnect-unread-$current',
       notifications.NotificationOptions(
         type: notifications.TemplateType.basic,
-        iconUrl: chrome.runtime.getURL('icons/Icon-128.png'),
+        iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
         title: 'New notification update',
         message:
             'You have $current unread notification${current == 1 ? '' : 's'}.',

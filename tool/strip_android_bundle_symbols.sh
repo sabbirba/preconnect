@@ -179,6 +179,19 @@ strip_apk() {
 
 case "$artifact_ext" in
   aab)
+    if [ "${ALLOW_ANDROID_AAB_SYMBOL_STRIP:-}" != "1" ]; then
+      cat >&2 <<'EOF'
+Refusing to strip native debug metadata from an Android App Bundle.
+
+Play Console uses the AAB's BUNDLE-METADATA/com.android.tools.build.debugsymbols
+entries for native crash and ANR symbolication. Stripping them can reintroduce
+the "native code without debug symbols" warning.
+
+If this is not a Play Store artifact and you intentionally want to remove that
+metadata, rerun with ALLOW_ANDROID_AAB_SYMBOL_STRIP=1.
+EOF
+      exit 1
+    fi
     strip_aab "$artifact_path"
     ;;
   apk)

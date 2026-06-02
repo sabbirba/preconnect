@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:preconnect/model/progress_info.dart';
+import 'package:preconnect/tools/string_utils.dart';
 
 class SectionFaculty {
   final String id;

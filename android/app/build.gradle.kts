@@ -54,17 +54,8 @@ android {
     ).all { !keystoreValue(it).isNullOrBlank() } && releaseKeystoreFile?.exists() == true
 
     namespace = "com.sabbirba.preconnect"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = run {
-        val localProps = Properties()
-        val localPropsFile = rootProject.file("local.properties")
-        if (localPropsFile.exists()) {
-            FileInputStream(localPropsFile).use { localProps.load(it) }
-        }
-        val ndkDir = (localProps["ndk.dir"] as? String)?.trim() ?: ""
-        val autoVersion = if (ndkDir.isNotEmpty()) ndkDir.substringAfterLast('/') else ""
-        if (autoVersion.isNotBlank()) autoVersion else flutter.ndkVersion
-    }
+    compileSdk = 36
+    ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -88,11 +79,10 @@ android {
 
 
         minSdk = 24
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         resConfigs("en")
-
 
     }
 
@@ -134,7 +124,7 @@ android {
 
     packaging {
         jniLibs {
-            useLegacyPackaging = true
+            useLegacyPackaging = false
         }
     }
 

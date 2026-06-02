@@ -415,8 +415,8 @@ class _HeroCard extends StatelessWidget {
     return Column(
       children: [
         Center(
-          child: Image.asset(
-            'web/icons/Icon-512.png',
+          child: Image.network(
+            'https://preconnect.app/icon-round.png',
             width: 96,
             height: 96,
             filterQuality: FilterQuality.high,

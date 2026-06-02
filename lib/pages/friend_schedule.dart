@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/auth.dart';
@@ -14,6 +13,7 @@ import 'package:preconnect/pages/scan_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan.dart';
+import 'package:preconnect/tools/system_image_picker_utils.dart';
 import 'package:preconnect/tools/system_image_picker_shared.dart';
 import 'package:mobile_scanner/mobile_scanner.dart'
     if (dart.library.html) 'package:preconnect/tools/mobile_scanner_stub.dart';
@@ -167,7 +167,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       final picked = await pickSystemImage();
       if (picked == null) return;
 
-      final imagePath = await _ensureReadableImagePath(picked);
+      final imagePath = await ensureReadableSystemImagePath(picked);
       if (imagePath.isEmpty) {
         if (!mounted) return;
         showAppSnackBar(context, 'Unable to read selected image');
@@ -195,28 +195,6 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       if (mounted) {
         setState(() => _isPicking = false);
       }
-    }
-  }
-
-  Future<String> _ensureReadableImagePath(SystemPickedImage file) async {
-    final path = file.path?.trim() ?? '';
-    if (path.isNotEmpty && (!Platform.isIOS && !Platform.isMacOS)) {
-      return path;
-    }
-    try {
-      final bytes = file.bytes;
-      if (bytes.isEmpty) return path;
-      final ext = file.name.contains('.')
-          ? file.name.split('.').last.trim()
-          : '';
-      final safeExt = ext.isEmpty ? 'png' : ext;
-      final tempFile = File(
-        '${Directory.systemTemp.path}/preconnect_scan_${DateTime.now().millisecondsSinceEpoch}.$safeExt',
-      );
-      await tempFile.writeAsBytes(bytes, flush: true);
-      return tempFile.path;
-    } catch (_) {
-      return path;
     }
   }
 
