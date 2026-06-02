@@ -228,15 +228,17 @@ flutter build apk --release --split-per-abi --tree-shake-icons --obfuscate --spl
 Android app bundle:
 
 ```bash
-flutter build appbundle --release
+flutter build appbundle --release --target-platform android-arm,android-arm64
 ```
 
 Android app bundle with env values:
 
 ```bash
-flutter build appbundle --release --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --dart-define-from-file=.env
-./tool/strip_android_bundle_symbols.sh build/app/outputs/bundle/release/app-release.aab
+flutter build appbundle --release --target-platform android-arm,android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --dart-define-from-file=.env
 ```
+
+The release AAB includes Android native debug metadata at `SYMBOL_TABLE` level for
+Play Console crash/ANR symbolication without bundling full debug symbols.
 
 iOS no-codesign build:
 

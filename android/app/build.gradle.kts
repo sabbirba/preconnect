@@ -84,7 +84,6 @@ android {
         versionName = flutter.versionName
         resConfigs("en")
 
-
     }
 
 
@@ -118,7 +117,7 @@ android {
                 "proguard-rules.pro",
             )
             ndk {
-                debugSymbolLevel = "FULL"
+                debugSymbolLevel = "SYMBOL_TABLE"
             }
         }
     }

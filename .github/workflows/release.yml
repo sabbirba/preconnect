@@ -404,7 +404,7 @@ jobs:
         if: matrix.platform == 'android'
         shell: bash
         run: |
-          flutter build apk --release --target-platform android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
+          flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
 
       - name: Android AAB
         if: matrix.platform == 'android'
@@ -412,17 +412,11 @@ jobs:
         run: |
           set -euo pipefail
           AAB_PATH="build/app/outputs/bundle/release/app-release.aab"
-          if ! flutter build appbundle --release --target-platform android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}; then
+          if ! flutter build appbundle --release --target-platform android-arm,android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}; then
             echo "Flutter appbundle validation failed; retrying bundle packaging with Gradle." >&2
             cd android
             ./gradlew bundleRelease --no-daemon --stacktrace --info
           fi
-
-      - name: Strip Android AAB Symbols
-        if: matrix.platform == 'android'
-        shell: bash
-        run: |
-          ./tool/strip_android_bundle_symbols.sh build/app/outputs/bundle/release/app-release.aab
 
       - name: iOS App
         if: matrix.platform == 'ios'
@@ -496,13 +490,18 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
-          if [ ! -f "$APK_PATH" ]; then
-            echo "No APK found at ${APK_PATH}." >&2
+          shopt -s nullglob
+          apk_paths=(build/app/outputs/flutter-apk/app-*-release.apk)
+          shopt -u nullglob
+          if [ "${#apk_paths[@]}" -eq 0 ]; then
+            echo "No ABI split APKs found in build/app/outputs/flutter-apk." >&2
             exit 1
           fi
-          cp "$APK_PATH" \
-            "artifacts/PreConnect-android-arm64-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.apk"
+          for apk_path in "${apk_paths[@]}"; do
+            abi="$(basename "$apk_path" | sed -E 's/^app-(.*)-release\.apk$/\1/')"
+            cp "$apk_path" \
+              "artifacts/PreConnect-android-${abi}-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.apk"
+          done
           cp build/app/outputs/bundle/release/app-release.aab \
             artifacts/PreConnect-android-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.aab
 
