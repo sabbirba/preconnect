@@ -13,12 +13,15 @@ class FCMService {
     print("Background message: ${message.messageId}");
   }
 
+  Future<void> _sendTokenToBackend(String token) async {
+    // complete code here
+  }
+
   Future<void> _syncToken() async {
     final token = await FirebaseMessaging.instance.getToken();
 
     if (token != null) {
-      print("Initial token: $token");
-      // send to backend here
+      await _sendTokenToBackend(token);
     }
   }
 
@@ -36,9 +39,8 @@ class FCMService {
       print("Foreground message: ${message.notification?.title}");
     });
 
-    messaging.onTokenRefresh.listen((token) {
-      print("New device token: $token");
-      // send to backend here
+    messaging.onTokenRefresh.listen((token) async {
+      await _sendTokenToBackend(token);
     });
 
     for (String seat in pinnedSeats) {
