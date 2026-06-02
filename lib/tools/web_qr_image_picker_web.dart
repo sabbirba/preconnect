@@ -25,7 +25,10 @@ extension type DetectedBarcode._(JSObject _) implements JSObject {
 Future<String?> pickQrFromSystemImage() async {
   final XFile? picked = await openFile(
     acceptedTypeGroups: [
-      XTypeGroup(mimeTypes: ['image/*']),
+      XTypeGroup(
+        label: 'Images',
+        extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic'],
+      ),
     ],
   );
   if (picked == null) return null;

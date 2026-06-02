@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -33,6 +34,8 @@ class _ApiTestPageState extends State<ApiTestPage> {
   String _method = 'GET';
   bool _isLoading = false;
   String _responseText = '';
+  String? _accessToken;
+  String? _refreshToken;
 
   @override
   void dispose() {
@@ -40,11 +43,32 @@ class _ApiTestPageState extends State<ApiTestPage> {
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadTokens());
+  }
+
+  Future<void> _loadTokens() async {
+    final accessToken = await TokenStorage.instance.read(
+      key: PreconnectStorageKeys.accessToken,
+    );
+    final refreshToken = await TokenStorage.instance.read(
+      key: PreconnectStorageKeys.refreshToken,
+    );
+    if (!mounted) return;
+    setState(() {
+      _accessToken = accessToken?.trim().isEmpty == true ? null : accessToken;
+      _refreshToken = refreshToken?.trim().isEmpty == true
+          ? null
+          : refreshToken;
+    });
+  }
+
   Future<void> _sendRequest() async {
     if (_isLoading) return;
     final rawUrl = _urlController.text.trim();
     if (rawUrl.isEmpty) {
-      showAppSnackBar(context, 'Enter an endpoint or URL');
       return;
     }
 
@@ -60,7 +84,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
         key: PreconnectStorageKeys.accessToken,
       );
       if (accessToken == null || accessToken.isEmpty) {
-        throw Exception('No access token found. Login first.');
+        return;
       }
 
       final uri = _resolveUri(rawUrl);
@@ -88,15 +112,14 @@ class _ApiTestPageState extends State<ApiTestPage> {
 
       final tookMs = DateTime.now().difference(startedAt).inMilliseconds;
       final prettyBody = _prettyBody(response.body);
+      await _loadTokens();
       setState(() {
         _responseText = prettyBody.isEmpty
             ? '${response.statusCode} ${response.reasonPhrase ?? ''} • ${tookMs}ms'
             : prettyBody;
       });
-    } catch (e) {
-      setState(() {
-        _responseText = '$e';
-      });
+    } catch (_) {
+      return;
     } finally {
       if (mounted) {
         setState(() {
@@ -144,74 +167,161 @@ class _ApiTestPageState extends State<ApiTestPage> {
     }
   }
 
+  _JwtSnapshot _snapshotJwt(String? token) {
+    final raw = token?.trim() ?? '';
+    if (raw.isEmpty) return const _JwtSnapshot();
+
+    final parts = raw.split('.');
+    if (parts.length != 3) return const _JwtSnapshot();
+
+    try {
+      final payloadJson = utf8.decode(
+        base64Url.decode(base64Url.normalize(parts[1])),
+      );
+      final decoded = jsonDecode(payloadJson);
+      if (decoded is! Map) return const _JwtSnapshot();
+
+      final claims = decoded.cast<String, dynamic>();
+      final expSeconds = int.tryParse('${claims['exp'] ?? ''}');
+      final expiry = expSeconds == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(expSeconds * 1000);
+      return _JwtSnapshot(expiry: expiry, claims: claims);
+    } catch (_) {
+      return const _JwtSnapshot();
+    }
+  }
+
+  String _formatClaims(Map<String, dynamic>? claims) {
+    if (claims == null || claims.isEmpty) return '';
+    const encoder = JsonEncoder.withIndent('  ');
+    return encoder.convert(claims);
+  }
+
+  Widget _buildAccessTokenSnapshot(BuildContext context) {
+    final snapshot = _snapshotJwt(_accessToken);
+    final claims = _formatClaims(snapshot.claims);
+    if (claims.isEmpty) return const SizedBox.shrink();
+
+    return _TokenField(label: 'Access Token Details', value: claims);
+  }
+
   @override
   Widget build(BuildContext context) {
     return BracuPageScaffold(
       title: 'Connect API Test',
-      subtitle: 'BRACU SSO Session',
+      subtitle: 'BRACU SSO Auth Session',
       icon: Icons.science_outlined,
       body: BracuRefreshList(
         onRefresh: _sendRequest,
         children: [
-          BracuCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DropdownButtonFormField<String>(
-                  initialValue: _method,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                  items: _methods
-                      .map(
-                        (m) =>
-                            DropdownMenuItem<String>(value: m, child: Text(m)),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() {
-                      _method = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _urlController,
-                  decoration: const InputDecoration(
-                    hintText: '${ApiConfig.connectApiBase}/adp/v1/staffs/7487',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: BracuActionButton(
-                    onPressed: _isLoading ? null : _sendRequest,
-                    icon: Icons.play_arrow_rounded,
-                    label: 'Send',
-                    isLoading: _isLoading,
-                  ),
-                ),
-              ],
+          _buildAccessTokenSnapshot(context),
+          const SizedBox(height: 12),
+          _TokenField(label: 'Access Token', value: _accessToken),
+          const SizedBox(height: 12),
+          _TokenField(label: 'Refresh Token', value: _refreshToken),
+          const SizedBox(height: 20),
+          DropdownButtonFormField<String>(
+            initialValue: _method,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            items: _methods
+                .map((m) => DropdownMenuItem<String>(value: m, child: Text(m)))
+                .toList(),
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() {
+                _method = value;
+              });
+            },
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _urlController,
+            decoration: const InputDecoration(
+              hintText: '${ApiConfig.connectApiBase}/adp/v1/staffs/7487',
+              border: OutlineInputBorder(),
+              isDense: true,
             ),
           ),
-          if (_responseText.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            BracuCard(
-              child: SelectableText(
-                _responseText,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: BracuPalette.textPrimary(context),
-                ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: BracuActionButton(
+              onPressed: _isLoading ? null : _sendRequest,
+              icon: Icons.play_arrow_rounded,
+              label: 'Send',
+              isLoading: _isLoading,
+            ),
+          ),
+          const SizedBox(height: 20),
+          if (_responseText.isNotEmpty)
+            SelectableText(
+              _responseText,
+              style: TextStyle(
+                fontSize: 12,
+                color: BracuPalette.textPrimary(context),
               ),
             ),
-          ],
         ],
       ),
+    );
+  }
+}
+
+class _JwtSnapshot {
+  const _JwtSnapshot({this.expiry, this.claims});
+
+  final DateTime? expiry;
+  final Map<String, dynamic>? claims;
+}
+
+class _TokenField extends StatelessWidget {
+  const _TokenField({required this.label, required this.value});
+
+  final String label;
+  final String? value;
+
+  @override
+  Widget build(BuildContext context) {
+    final displayValue = value?.trim() ?? '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: BracuPalette.textSecondary(context),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: BracuPalette.textSecondary(
+                context,
+              ).withValues(alpha: 0.22),
+            ),
+            color: BracuPalette.card(context).withValues(alpha: 0.35),
+          ),
+          child: SelectableText(
+            displayValue,
+            style: TextStyle(
+              fontSize: 11,
+              fontFamily: 'monospace',
+              color: BracuPalette.textPrimary(context),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -9,6 +9,8 @@ import 'package:preconnect/pages/api_test.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/tools/cached_image.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
+import 'package:preconnect/tools/token_storage.dart';
 
 const String _githubToken = String.fromEnvironment('GITHUB_TOKEN');
 
@@ -30,7 +32,6 @@ class _DevsPageState extends State<DevsPage> {
   int _secretTapCount = 0;
   static List<_ContributorProfile>? _cachedContributors;
   static Future<List<_ContributorProfile>>? _preloadFuture;
-
   @override
   void initState() {
     super.initState();
@@ -221,9 +222,20 @@ class _DevsPageState extends State<DevsPage> {
     if (_secretTapCount < 10) return;
     _secretTapCount = 0;
     if (!mounted) return;
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const ApiTestPage()));
+
+    final verified = await AppLockService().authenticate();
+    if (!verified) return;
+
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        settings: const RouteSettings(
+          name: '/secure_access',
+          arguments: PreconnectRouteTokens.privateAccess,
+        ),
+        builder: (_) => const ApiTestPage(),
+      ),
+    );
   }
 
   @override
@@ -604,7 +616,6 @@ class _SponsoredTile extends StatelessWidget {
     );
   }
 }
-
 
 List<_ContributorProfile> _dedupeContributors(List<_ContributorProfile> items) {
   final seen = <String>{};

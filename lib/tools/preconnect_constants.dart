@@ -7,6 +7,12 @@ class PreconnectStorageKeys {
   static const String pendingShortcutAction = 'pending_shortcut_action';
 }
 
+class PreconnectRouteTokens {
+  PreconnectRouteTokens._();
+
+  static const String privateAccess = 'secure_access_gate_v1';
+}
+
 class PreconnectBrowserActionIds {
   PreconnectBrowserActionIds._();
 

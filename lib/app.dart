@@ -227,6 +227,7 @@ class _MyAppState extends State<MyApp>
     with WidgetsBindingObserver, RefreshBusState {
   late final ValueNotifier<ThemeMode> _themeMode;
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  final _RouteTrackingObserver _routeObserver = _RouteTrackingObserver();
   late bool _initialLoggedIn;
   late bool _canOpenOffline;
   AppBootstrapState? _resolvedBootstrapState;
@@ -777,6 +778,8 @@ class _MyAppState extends State<MyApp>
             theme: lightTheme,
             darkTheme: darkTheme,
             themeMode: mode,
+            navigatorKey: _navigatorKey,
+            navigatorObservers: [_routeObserver],
             builder: (context, child) {
               final isDark = Theme.of(context).brightness == Brightness.dark;
               final mediaQuery = MediaQuery.of(context);
@@ -798,7 +801,9 @@ class _MyAppState extends State<MyApp>
               final content = Stack(
                 children: [
                   child ?? const SizedBox.shrink(),
-                  if (_appLockEnabled && !_isUnlocked)
+                  if (_appLockEnabled &&
+                      !_isUnlocked &&
+                      !_routeObserver.isBypassedRoute)
                     Positioned.fill(child: _buildLockLayer(context)),
                 ],
               );
@@ -898,7 +903,6 @@ class _MyAppState extends State<MyApp>
                 ),
               );
             },
-            navigatorKey: _navigatorKey,
             routes: {
               '/login': (context) => const LoginPage(),
               '/home': (context) => HomePage(
@@ -921,6 +925,44 @@ class _MyAppState extends State<MyApp>
         );
       },
     );
+  }
+}
+
+class _RouteTrackingObserver extends NavigatorObserver {
+  Route<dynamic>? _currentRoute;
+
+  bool get isBypassedRoute {
+    return _currentRoute?.settings.name == '/secure_access' &&
+        _currentRoute?.settings.arguments ==
+            PreconnectRouteTokens.privateAccess;
+  }
+
+  void _update(Route<dynamic>? route) {
+    _currentRoute = route;
+  }
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _update(route);
+    super.didPush(route, previousRoute);
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _update(previousRoute);
+    super.didPop(route, previousRoute);
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    _update(newRoute);
+    super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
+  }
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _update(previousRoute);
+    super.didRemove(route, previousRoute);
   }
 }
 

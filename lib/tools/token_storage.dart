@@ -60,8 +60,38 @@ class TokenStorage {
 
     final seedBytes = base64Decode(rawSeed);
     final salt = <int>[
-      104, 23, 99, 142, 88, 12, 45, 96, 201, 88, 77, 43, 11, 84, 95, 23,
-      2, 9, 87, 65, 32, 91, 102, 19, 222, 54, 11, 98, 76, 54, 32, 1
+      104,
+      23,
+      99,
+      142,
+      88,
+      12,
+      45,
+      96,
+      201,
+      88,
+      77,
+      43,
+      11,
+      84,
+      95,
+      23,
+      2,
+      9,
+      87,
+      65,
+      32,
+      91,
+      102,
+      19,
+      222,
+      54,
+      11,
+      98,
+      76,
+      54,
+      32,
+      1,
     ];
     final derivedKey = Uint8List(32);
     for (var i = 0; i < 32; i++) {
@@ -86,7 +116,9 @@ class TokenStorage {
   static Future<String?> _decryptValue(String encryptedText) async {
     try {
       if (!encryptedText.startsWith('[aes-gcm]')) return encryptedText;
-      final cipherText = base64Decode(encryptedText.substring('[aes-gcm]'.length));
+      final cipherText = base64Decode(
+        encryptedText.substring('[aes-gcm]'.length),
+      );
       final key = await _getOrCreateStorageKey();
       final decrypted = NativeBridge.decryptBytes(key, cipherText);
       if (decrypted == null) return null;
@@ -514,7 +546,7 @@ class AppLockService {
     await AppStorage.instance.setBool(_prefsKey, value);
   }
 
-  Future<bool> authenticate({required String reason}) async {
+  Future<bool> authenticate({String reason = 'Authenticate'}) async {
     try {
       return await _auth.authenticate(
         localizedReason: reason,

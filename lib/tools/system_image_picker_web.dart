@@ -7,7 +7,10 @@ import 'system_image_picker_types.dart';
 Future<SystemPickedImage?> pickSystemImage() async {
   final XFile? picked = await openFile(
     acceptedTypeGroups: [
-      XTypeGroup(mimeTypes: ['image/*']),
+      XTypeGroup(
+        label: 'Images',
+        extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic'],
+      ),
     ],
   );
   if (picked == null) return null;

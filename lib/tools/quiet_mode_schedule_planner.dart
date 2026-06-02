@@ -111,17 +111,24 @@ class QuietModeSchedulePlanner {
           if (decoded is List) {
             final windows = decoded.map((item) {
               return QuietModeScheduleWindow(
-                startAt: DateTime.fromMillisecondsSinceEpoch(item['startAt'] as int),
-                endAt: DateTime.fromMillisecondsSinceEpoch(item['endAt'] as int),
+                startAt: DateTime.fromMillisecondsSinceEpoch(
+                  item['startAt'] as int,
+                ),
+                endAt: DateTime.fromMillisecondsSinceEpoch(
+                  item['endAt'] as int,
+                ),
                 source: item['source'] as String,
                 label: item['label'] as String,
               );
             }).toList();
 
             final activeNow = windows.any(
-              (window) => !now.isBefore(window.startAt) && now.isBefore(window.endAt),
+              (window) =>
+                  !now.isBefore(window.startAt) && now.isBefore(window.endAt),
             );
-            final futureWindows = windows.where((window) => window.endAt.isAfter(now));
+            final futureWindows = windows.where(
+              (window) => window.endAt.isAfter(now),
+            );
 
             return QuietModeSchedulePlan(
               windows: futureWindows.toList(growable: false),
