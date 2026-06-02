@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:in_app_update/in_app_update.dart';
+import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/auth.dart';
@@ -275,6 +276,7 @@ class _MyAppState extends State<MyApp>
       }
       unawaited(_runDeferredStartupWork());
     });
+    unawaited(FCMService.instance.init());
   }
 
   Future<void> _bootstrapInBackground() async {
