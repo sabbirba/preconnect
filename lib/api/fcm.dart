@@ -34,7 +34,6 @@ class FCMService {
 
     FirebaseMessaging.onMessage.listen((message) {
       print("Foreground message: ${message.notification?.title}");
-      // bg message
     });
 
     messaging.onTokenRefresh.listen((token) {
