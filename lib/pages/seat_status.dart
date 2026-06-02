@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/pages/home_tab.dart';
@@ -171,10 +173,14 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     final key = sectionId.toString();
     final willPin = !_pinnedSections.contains(key);
     setState(() {
+      String topic = "seat_$key";
+      FirebaseMessaging instance = FirebaseMessaging.instance;
       if (willPin) {
         _pinnedSections.add(key);
+        instance.subscribeToTopic(topic);
       } else {
         _pinnedSections.remove(key);
+        instance.unsubscribeFromTopic(topic);
       }
     });
     await CoursePinStore.save(_pinScope, _pinnedSections);
