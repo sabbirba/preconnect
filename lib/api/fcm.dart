@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/widgets.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
 class FCMService {
@@ -10,7 +11,7 @@ class FCMService {
 
   static Future<void> _backgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp();
-    print("Background message: ${message.messageId}");
+    debugPrint("Background message: ${message.messageId}");
   }
 
   Future<void> _sendTokenToBackend(String token) async {
@@ -36,7 +37,7 @@ class FCMService {
     FirebaseMessaging.onBackgroundMessage(_backgroundHandler);
 
     FirebaseMessaging.onMessage.listen((message) {
-      print("Foreground message: ${message.notification?.title}");
+      debugPrint("Foreground message: ${message.notification?.title}");
     });
 
     messaging.onTokenRefresh.listen((token) async {
