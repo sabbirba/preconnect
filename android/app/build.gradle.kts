@@ -55,16 +55,7 @@ android {
 
     namespace = "com.sabbirba.preconnect"
     compileSdk = 36
-    ndkVersion = run {
-        val localProps = Properties()
-        val localPropsFile = rootProject.file("local.properties")
-        if (localPropsFile.exists()) {
-            FileInputStream(localPropsFile).use { localProps.load(it) }
-        }
-        val ndkDir = (localProps["ndk.dir"] as? String)?.trim() ?: ""
-        val autoVersion = if (ndkDir.isNotEmpty()) ndkDir.substringAfterLast('/') else ""
-        if (autoVersion.isNotBlank()) autoVersion else flutter.ndkVersion
-    }
+    ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -127,7 +118,7 @@ android {
                 "proguard-rules.pro",
             )
             ndk {
-                debugSymbolLevel = "none"
+                debugSymbolLevel = "FULL"
             }
         }
     }
@@ -171,5 +162,3 @@ val buildRustNative = tasks.register<Exec>("buildRustNative") {
 tasks.named("preBuild").configure {
     dependsOn(buildRustNative)
 }
-
-

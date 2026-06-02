@@ -225,6 +225,49 @@ jobs:
       - name: Flutter Version
         run: flutter --version
 
+      - name: Setup Android NDK
+        if: matrix.platform == 'android'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          FLUTTER_NDK_VERSION="$(
+            sed -nE 's/.*val ndkVersion: String = "([^"]+)".*/\1/p' \
+              "$FLUTTER_ROOT/packages/flutter_tools/gradle/src/main/kotlin/FlutterExtension.kt" | head -n1
+          )"
+          if [ -z "$FLUTTER_NDK_VERSION" ]; then
+            echo "Unable to determine Flutter's Android NDK version." >&2
+            exit 1
+          fi
+
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          if [ -z "$SDK_ROOT" ]; then
+            echo "ANDROID_SDK_ROOT or ANDROID_HOME must be set." >&2
+            exit 1
+          fi
+
+          if command -v sdkmanager >/dev/null 2>&1; then
+            SDKMANAGER="$(command -v sdkmanager)"
+          elif [ -x "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+            SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          else
+            echo "Unable to locate sdkmanager." >&2
+            exit 1
+          fi
+
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "ndk;${FLUTTER_NDK_VERSION}"
+
+          NDK_DIR="$SDK_ROOT/ndk/$FLUTTER_NDK_VERSION"
+          if [ ! -d "$NDK_DIR" ]; then
+            echo "Installed Android NDK was not found at ${NDK_DIR}." >&2
+            exit 1
+          fi
+
+          echo "ANDROID_NDK_HOME=$NDK_DIR" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_ROOT=$NDK_DIR" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_VERSION=$FLUTTER_NDK_VERSION" >> "$GITHUB_ENV"
+
       - name: Setup Xcode
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
         uses: maxim-lobanov/setup-xcode@v1.7.0
@@ -270,17 +313,21 @@ jobs:
               printf 'sdk.dir=%s\n' "$ANDROID_HOME"
             fi
             NDK_DIR="${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}"
-            if [ -z "$NDK_DIR" ] && [ -n "${ANDROID_SDK_ROOT:-}" ] && [ -d "${ANDROID_SDK_ROOT}/ndk" ]; then
-              NDK_DIR=$(find "${ANDROID_SDK_ROOT}/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)
+            if [ -n "$NDK_DIR" ] && [ ! -d "$NDK_DIR" ]; then
+              echo "Configured Android NDK path does not exist: ${NDK_DIR}" >&2
+              exit 1
             fi
-            [ -n "$NDK_DIR" ] && printf 'ndk.dir=%s\n' "$NDK_DIR"
           } > android/local.properties
 
       - name: Refresh Gradle
         if: matrix.platform == 'android'
         shell: bash
         run: |
+          set -euo pipefail
           cd android
+          ./gradlew --stop
+          rm -rf .gradle/caches
+          ./gradlew clean --no-daemon --stacktrace --info
           ./gradlew --no-daemon help --refresh-dependencies
 
       - name: Cache Build
@@ -289,7 +336,7 @@ jobs:
           path: |
             build
             .dart_tool
-          key: ${{ runner.os }}-${{ matrix.platform }}-flutter-build-${{ hashFiles('pubspec.yaml', 'pubspec.lock', 'tool/**', 'web/**', 'lib/**', 'android/**', 'ios/**', 'macos/**', 'native/**') }}
+          key: ${{ runner.os }}-${{ matrix.platform }}-flutter-build-${{ hashFiles('pubspec.yaml', 'pubspec.lock', 'android/build.gradle.kts', 'android/app/build.gradle.kts', 'android/settings.gradle.kts', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties', 'tool/**', 'web/**', 'lib/**', 'ios/**', 'macos/**', 'native/**') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.platform }}-flutter-build-
 
@@ -363,7 +410,13 @@ jobs:
         if: matrix.platform == 'android'
         shell: bash
         run: |
-          flutter build appbundle --release --target-platform android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
+          set -euo pipefail
+          AAB_PATH="build/app/outputs/bundle/release/app-release.aab"
+          if ! flutter build appbundle --release --target-platform android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}; then
+            echo "Flutter appbundle validation failed; retrying bundle packaging with Gradle." >&2
+            cd android
+            ./gradlew bundleRelease --no-daemon --stacktrace --info
+          fi
 
       - name: Strip Android AAB Symbols
         if: matrix.platform == 'android'

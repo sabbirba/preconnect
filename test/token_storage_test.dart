@@ -28,10 +28,8 @@ void main() {
       const key = PreconnectStorageKeys.accessToken;
       const legacyPlainToken = 'legacy_plain_text_token_value_123';
 
-      // Manually seed the plain text value into AppStorage
       await AppStorage.instance.setString(key, legacyPlainToken);
 
-      // Read via TokenStorage (should detect it lacks [aes-gcm] prefix and return plain text)
       final readVal = await storage.read(key: key);
       expect(readVal, legacyPlainToken);
     });
@@ -44,7 +42,6 @@ void main() {
       await storage.write(key: key, value: token);
       final readVal = await storage.read(key: key);
 
-      // Should return the exact plaintext value to the caller
       expect(readVal, token);
     });
   });
