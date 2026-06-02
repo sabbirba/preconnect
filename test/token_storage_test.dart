@@ -23,18 +23,21 @@ void main() {
       expect(readVal, value);
     });
 
-    test('falls back transparently to plain text for legacy stored tokens', () async {
-      final storage = TokenStorage.instance;
-      const key = PreconnectStorageKeys.accessToken;
-      const legacyPlainToken = 'legacy_plain_text_token_value_123';
+    test(
+      'falls back transparently to plain text for legacy stored tokens',
+      () async {
+        final storage = TokenStorage.instance;
+        const key = PreconnectStorageKeys.accessToken;
+        const legacyPlainToken = 'legacy_plain_text_token_value_123';
 
-      // Manually seed the plain text value into AppStorage
-      await AppStorage.instance.setString(key, legacyPlainToken);
+        // Manually seed the plain text value into AppStorage
+        await AppStorage.instance.setString(key, legacyPlainToken);
 
-      // Read via TokenStorage (should detect it lacks [aes-gcm] prefix and return plain text)
-      final readVal = await storage.read(key: key);
-      expect(readVal, legacyPlainToken);
-    });
+        // Read via TokenStorage (should detect it lacks [aes-gcm] prefix and return plain text)
+        final readVal = await storage.read(key: key);
+        expect(readVal, legacyPlainToken);
+      },
+    );
 
     test('saves sensitive keys securely and returns correct values', () async {
       final storage = TokenStorage.instance;

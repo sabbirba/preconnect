@@ -605,7 +605,6 @@ class _SponsoredTile extends StatelessWidget {
   }
 }
 
-
 List<_ContributorProfile> _dedupeContributors(List<_ContributorProfile> items) {
   final seen = <String>{};
   final output = <_ContributorProfile>[];
