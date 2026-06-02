@@ -19,7 +19,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
     with WidgetsBindingObserver {
   final FriendScheduleStore _store = FriendScheduleStore();
   final MobileScannerController _controller = MobileScannerController(
-    autoStart: false,
+    autoStart: true,
   );
   String? scannedValue;
   bool? _cameraGranted;
@@ -64,9 +64,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
     final granted = await PlatformPermissions.requestScannerCameraPermission();
     if (!mounted) return;
     setState(() => _cameraGranted = granted);
-    if (granted) {
-      _startScanner();
-    } else if (openSettingsOnDeny) {
+    if (!granted && openSettingsOnDeny) {
       await openAppSettings();
     }
     if (mounted) {
@@ -81,9 +79,12 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
     if (_controller.value.isRunning) {
       return;
     }
-    try {
-      await _controller.start();
-    } catch (_) {}
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || _controller.value.isRunning) return;
+      try {
+        await _controller.start();
+      } catch (_) {}
+    });
   }
 
   Future<void> _saveScannedValue(String value) async {
