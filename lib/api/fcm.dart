@@ -1,10 +1,12 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:preconnect/tools/token_storage.dart';
 
 class FCMService {
   FCMService._();
 
   static final FCMService instance = FCMService._();
+  static final String _pinScope = "seat_status";
 
   static Future<void> _backgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp();
@@ -23,6 +25,8 @@ class FCMService {
   Future<void> init() async {
     await _syncToken();
 
+    Set<String> pinnedSeats = await CoursePinStore.load(_pinScope);
+
     final messaging = FirebaseMessaging.instance;
     await messaging.requestPermission();
 
@@ -35,7 +39,11 @@ class FCMService {
 
     messaging.onTokenRefresh.listen((token) {
       print("New device token: $token");
-      // token refresh
+      // send to backend here
     });
+
+    for (String seat in pinnedSeats) {
+      messaging.subscribeToTopic("seat_$seat");
+    }
   }
 }
