@@ -48,3 +48,11 @@
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
+
+# ── Mobile Scanner (ML Kit Barcode / ZXing) ──────────────────────────────────
+-keep class com.google.mlkit.** { *; }
+-dontwarn com.google.mlkit.**
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.android.gms.**
+-keep class dev.steenbakker.mobile_scanner.** { *; }
+-dontwarn dev.steenbakker.mobile_scanner.**
