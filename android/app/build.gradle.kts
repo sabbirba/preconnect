@@ -3,13 +3,12 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    // START: FlutterFire Configuration
     id("com.google.gms.google-services")
-    // END: FlutterFire Configuration
 
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val projectNdkVersion = "28.2.13676358"
 
 fun envOrProp(name: String): String? =
     envFromDotEnv(name)
@@ -58,7 +57,7 @@ android {
 
     namespace = "com.sabbirba.preconnect"
     compileSdk = 36
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = projectNdkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -148,13 +147,17 @@ val buildRustNative = tasks.register<Exec>("buildRustNative") {
     if (localPropsFile.exists()) {
         FileInputStream(localPropsFile).use { localProps.load(it) }
     }
-    val ndkDir: String = (localProps["ndk.dir"] as? String)
-        ?: System.getenv("ANDROID_NDK_HOME")
-        ?: System.getenv("ANDROID_NDK_ROOT")
-        ?: ""
     val sdkDir: String = (localProps["sdk.dir"] as? String)
         ?: System.getenv("ANDROID_HOME")
+        ?: System.getenv("ANDROID_SDK_ROOT")
         ?: ""
+    val ndkDir: String = System.getenv("ANDROID_NDK_HOME")
+        ?: System.getenv("ANDROID_NDK_ROOT")
+        ?: if (sdkDir.isNotEmpty()) {
+            "$sdkDir/ndk/$projectNdkVersion"
+        } else {
+            ""
+        }
     workingDir = repoRoot
     if (ndkDir.isNotEmpty()) environment("ANDROID_NDK_HOME", ndkDir)
     if (sdkDir.isNotEmpty()) environment("ANDROID_HOME", sdkDir)

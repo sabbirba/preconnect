@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Dev environment setup helper for contributors.
 # - Installs Android cmdline-tools, NDK and CMake using sdkmanager when available
-# - Ensures android/local.properties contains sdk.dir and ndk.dir pointing at SDK/NDK
+# - Ensures android/local.properties contains sdk.dir pointing at the SDK
 # - Adds Rust android targets if rustup is available
 #
 # Usage:
@@ -115,12 +115,11 @@ fi
 
 echo "Detected NDK: $chosen_ndk"
 
-# update android/local.properties with sdk.dir and ndk.dir
+# update android/local.properties with sdk.dir
 LOCAL_PROPERTIES="$ROOT_DIR/android/local.properties"
 echo "Updating $LOCAL_PROPERTIES"
 mkdir -p "$(dirname "$LOCAL_PROPERTIES")"
 sdk_prop="sdk.dir=$SDK_DIR"
-ndk_prop="ndk.dir=$chosen_ndk"
 
 if [ -f "$LOCAL_PROPERTIES" ]; then
   # replace or append
@@ -129,15 +128,10 @@ if [ -f "$LOCAL_PROPERTIES" ]; then
   else
     echo "$sdk_prop" >> "$LOCAL_PROPERTIES"
   fi
-  if grep -q "^ndk.dir=" "$LOCAL_PROPERTIES"; then
-    sed -i.bak "s#^ndk.dir=.*#${ndk_prop}#" "$LOCAL_PROPERTIES"
-  else
-    echo "$ndk_prop" >> "$LOCAL_PROPERTIES"
-  fi
+  sed -i.bak "/^ndk.dir=/d" "$LOCAL_PROPERTIES"
 else
   cat > "$LOCAL_PROPERTIES" <<EOF
 $sdk_prop
-$ndk_prop
 flutter.sdk=${FLUTTER_SDK:-$(which flutter 2>/dev/null || echo "/usr/local/flutter")}
 flutter.buildMode=release
 EOF

@@ -1,14 +1,6 @@
 name: PR CI
 
 on:
-  pull_request_target:
-    branches:
-      - main
-    types:
-      - opened
-      - synchronize
-      - reopened
-      - ready_for_review
   pull_request:
     branches:
       - main
@@ -17,6 +9,10 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+
+concurrency:
+  group: pr-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -28,11 +24,10 @@ env:
 jobs:
   format:
     name: Auto Format
-    if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
 
     steps:
@@ -41,7 +36,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2.23.0
@@ -77,7 +72,7 @@ jobs:
           if-no-files-found: error
 
       - name: Comment Formatting Needed
-        if: steps.patch.outputs.has_changes == 'true' && github.event.pull_request.head.repo.full_name != github.repository
+        if: steps.patch.outputs.has_changes == 'true'
         uses: actions/github-script@v9
         with:
           script: |
@@ -107,19 +102,8 @@ jobs:
               body,
             });
 
-      - name: Commit Formatting
-        if: steps.patch.outputs.has_changes == 'true' && github.event.pull_request.head.repo.full_name == github.repository
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "chore: format PR #${{ github.event.pull_request.number }}"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
-
   validate:
     name: Flutter Checks
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
