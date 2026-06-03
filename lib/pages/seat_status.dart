@@ -12,6 +12,7 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/time_utils.dart';
+import 'package:preconnect/api/fcm.dart';
 part 'shared_widgets/seat_status_methods.dart';
 
 String seatStatusFacultySummaryLabel(section.SectionFaculty? faculty) {
@@ -172,12 +173,22 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   Future<void> _togglePin(int sectionId) async {
     final key = sectionId.toString();
     final willPin = !_pinnedSections.contains(key);
+    _SeatStatusCardData? card;
+    for (final c in _cards) {
+      if (c.sectionId == sectionId) {
+        card = c;
+        break;
+      }
+    }
     setState(() {
       String topic = "seat_$key";
       FirebaseMessaging instance = FirebaseMessaging.instance;
       if (willPin) {
         _pinnedSections.add(key);
         instance.subscribeToTopic(topic);
+        if (card != null) {
+          unawaited(FCMService.instance.sendConfirmationNotification(card.courseCode, card.sectionName));
+        }
       } else {
         _pinnedSections.remove(key);
         instance.unsubscribeFromTopic(topic);
@@ -185,12 +196,17 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     });
     await CoursePinStore.save(_pinScope, _pinnedSections);
     if (!mounted) return;
+    final status = willPin ? 'alerts enabled' : 'alerts disabled';
+    final message = card != null
+        ? '${card.courseCode} Section ${card.sectionName} $status'
+        : 'Seat alerts ${willPin ? 'enabled' : 'disabled'}';
+
     final refreshed = List<_SeatStatusCardData>.from(_cards);
     _sortCardsByCourseAndSection(refreshed);
     _applyCardsSnapshot(refreshed, isInitialLoading: false);
     showAppSnackBar(
       context,
-      willPin ? 'Section pinned to top' : 'Section unpinned',
+      message,
     );
   }
 
@@ -739,12 +755,12 @@ class _PinIconButton extends StatelessWidget {
     return IconButton(
       onPressed: onTap,
       padding: EdgeInsets.zero,
-      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+      constraints: const BoxConstraints.tightFor(width: 36, height: 36),
       visualDensity: VisualDensity.compact,
       splashRadius: 18,
       icon: Icon(
-        pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
-        size: 18,
+        pinned ? Icons.notifications_rounded : Icons.notifications_none_rounded,
+        size: 22,
         color: pinned
             ? BracuPalette.primary
             : BracuPalette.textSecondary(context),

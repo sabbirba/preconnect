@@ -329,7 +329,7 @@ const _manualContributors = <_ContributorProfile>[
   _ContributorProfile.github(handle: 'Zamiul-rashid', role: 'Friends Schedule'),
   _ContributorProfile.github(handle: 'shakilofficial0', role: 'Live Bus Data'),
   _ContributorProfile.github(handle: 'rez1-dev', role: 'Testing & Feedback'),
-  _ContributorProfile.github(handle: 'hitblast', role: 'UI/UX & Community'),
+  _ContributorProfile.github(handle: 'hitblast', role: 'Developer & Community'),
 ];
 
 class _IntroCard extends StatelessWidget {
