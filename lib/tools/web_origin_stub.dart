@@ -1,2 +1,2 @@
-String getWebAppOrigin() => 'https://preconnect.app';
+String getWebAppOrigin() => 'https://web.preconnect.app';
 

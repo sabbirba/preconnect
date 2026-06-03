@@ -1,7 +1,8 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:preconnect/tools/web_origin_stub.dart'
     if (dart.library.html) 'package:preconnect/tools/web_origin_web.dart';
+
+const bool _kIsWeb = identical(0, 0.0);
 
 
 class ApiConfig {
@@ -34,13 +35,13 @@ class ApiConfig {
   static const String connectCdnBase = 'https://connect.bracu.ac.bd/cdn';
   static const String connectOrigin = 'https://connect.bracu.ac.bd';
   static const String connectMercureLogoutPath = '/ns/mercure/logout';
-  static String get websiteBase => kIsWeb ? getWebAppOrigin() : 'https://preconnect.app';
+  static String get websiteBase => _kIsWeb ? getWebAppOrigin() : 'https://web.preconnect.app';
   static String get websiteMueenAvatarUrl =>
       '$websiteBase/Mueen-Ahmmed.jpeg';
   static const String filesBase = 'https://cdn.preconnect.app';
 
   static const String clientId = 'slm';
-  static String get redirectUri => kIsWeb
+  static String get redirectUri => _kIsWeb
       ? '${getWebAppOrigin()}/student/profile/overview'
       : 'https://connect.bracu.ac.bd/student/profile/overview';
 

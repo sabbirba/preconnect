@@ -5,6 +5,6 @@ String getWebAppOrigin() {
   if (origin.isNotEmpty && origin != 'null') {
     return origin;
   }
-  return 'https://preconnect.app';
+  return 'https://web.preconnect.app';
 }
 
