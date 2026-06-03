@@ -34,7 +34,9 @@ class FCMService {
           defaultTargetPlatform == TargetPlatform.macOS) {
         String? apnsToken;
         int retries = 0;
-        final maxRetries = (defaultTargetPlatform == TargetPlatform.macOS && kDebugMode) ? 1 : 10;
+        final isAppleDebug = (defaultTargetPlatform == TargetPlatform.macOS ||
+            defaultTargetPlatform == TargetPlatform.iOS) && kDebugMode;
+        final maxRetries = isAppleDebug ? 1 : 10;
 
         while (apnsToken == null && retries < maxRetries) {
           apnsToken = await FirebaseMessaging.instance.getAPNSToken();
@@ -193,6 +195,20 @@ class FCMService {
     }
   }
 
+  Future<void> _subscribeToDefaultTopics() async {
+    try {
+      await subscribeToTopic("announcements");
+      await subscribeToTopic("news");
+
+      Set<String> pinnedSeats = await CoursePinStore.load(_pinScope);
+      for (String seat in pinnedSeats) {
+        await subscribeToTopic("seat_$seat");
+      }
+    } catch (e) {
+      debugPrint("Failed to subscribe to topics: $e");
+    }
+  }
+
   Future<void> _initNative() async {
     final messaging = FirebaseMessaging.instance;
 
@@ -223,26 +239,15 @@ class FCMService {
 
     messaging.onTokenRefresh.listen((token) async {
       debugPrint("FCM token refreshed: $token");
+      final wasUnavailable = !_apnsAvailable;
+      _apnsAvailable = true;
       await _sendTokenToBackend(token);
+      if (wasUnavailable) {
+        await _subscribeToDefaultTopics();
+      }
     });
 
-    try {
-      if ((defaultTargetPlatform != TargetPlatform.iOS &&
-              defaultTargetPlatform != TargetPlatform.macOS) ||
-          _apnsAvailable) {
-        await messaging.subscribeToTopic("announcements");
-        await messaging.subscribeToTopic("news");
-
-        Set<String> pinnedSeats = await CoursePinStore.load(_pinScope);
-        for (String seat in pinnedSeats) {
-          await messaging.subscribeToTopic("seat_$seat");
-        }
-      } else {
-        debugPrint("FCM warning: Skipping startup topic subscriptions because APNS is unavailable.");
-      }
-    } catch (e) {
-      debugPrint("Failed to subscribe to topics: $e");
-    }
+    await _subscribeToDefaultTopics();
   }
 
   Future<void> _setupLocalNotifications() async {
@@ -276,7 +281,10 @@ class FCMService {
           try {
             final Map<String, dynamic> data =
                 jsonDecode(payload) as Map<String, dynamic>;
-            final url = data['url'] as String?;
+            var url = data['url'] as String?;
+            if ((url == null || url.isEmpty) && data['courseCode'] != null) {
+              url = '${ApiConfig.websiteBase}/student/advising/seat-status';
+            }
             if (url != null && url.isNotEmpty) {
               try {
                 final uri = Uri.parse(url);
@@ -334,7 +342,7 @@ class FCMService {
     final notification = message.notification;
     if (notification != null) {
       _localNotifications.show(
-        id: notification.hashCode,
+        id: notification.hashCode & 0x7FFFFFFF,
         title: notification.title,
         body: notification.body,
         payload: jsonEncode(message.data),
@@ -361,7 +369,10 @@ class FCMService {
   }
 
   void _handleMessageTap(RemoteMessage message) {
-    final url = message.data['url'] as String?;
+    var url = message.data['url'] as String?;
+    if ((url == null || url.isEmpty) && message.data['courseCode'] != null) {
+      url = '${ApiConfig.websiteBase}/student/advising/seat-status';
+    }
     if (url != null && url.isNotEmpty) {
       try {
         final uri = Uri.parse(url);
