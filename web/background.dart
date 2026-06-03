@@ -15,6 +15,7 @@ import 'package:chrome_extension/web_navigation.dart';
 import 'package:chrome_extension/gcm.dart';
 import 'package:web/web.dart' show Headers, RequestInit, Response;
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/tools/bracu_logout.dart';
 import 'package:preconnect/tools/web_extension_api_config.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/web_extension_session_sync.dart';
@@ -78,6 +79,14 @@ const String _ssoCookieUrl =
 
 @JS('fetch')
 external JSPromise<Response> _fetch(String input, [RequestInit? init]);
+
+Headers _headersFromMap(Map<String, String> values) {
+  final headers = Headers();
+  for (final entry in values.entries) {
+    headers.append(entry.key, entry.value);
+  }
+  return headers;
+}
 
 Future<void> main() async {
   await _guarded(_configureBrowserSurfaces);
@@ -716,26 +725,20 @@ Future<void> _startLogout() async {
     QueryInfo(active: true, currentWindow: true),
   );
   final appTabId = activeTabs.isNotEmpty ? activeTabs.first.id : null;
-
-  final logoutUrl =
-      Uri.parse(
-        'https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect/logout',
-      ).replace(
-        queryParameters: {
-          'client_id': WebExtensionApiConfig.clientId,
-          'post_logout_redirect_uri': WebExtensionApiConfig.redirectUri,
-        },
-      );
+  await ensureFreshWebExtensionSession(forceRefresh: true);
+  await _revokeMercureSession();
+  final values = await chrome.storage.local.get(PreconnectStorageKeys.idToken);
+  final idToken = '${values[PreconnectStorageKeys.idToken] ?? ''}'.trim();
+  final logoutUrl = BracuLogout.ssoLogoutUri(idToken: idToken);
 
   final tab = await chrome.tabs.create(
     CreateProperties(url: logoutUrl.toString(), active: true),
   );
   final logoutTabId = tab.id;
   if (appTabId == null || logoutTabId == null) {
+    await _completeMercureLogout(appTabId);
     return;
   }
-
-  await _autoClickLogoutIfNeeded(logoutTabId, url: logoutUrl.toString());
 
   await chrome.storage.session.set({
     _pendingLogoutKey: {
@@ -744,6 +747,51 @@ Future<void> _startLogout() async {
       'startedAtMillis': DateTime.now().millisecondsSinceEpoch,
     },
   });
+
+  await _autoClickLogoutIfNeeded(logoutTabId, url: logoutUrl.toString());
+}
+
+Future<void> _revokeMercureSession() async {
+  try {
+    final values = await chrome.storage.local.get(
+      PreconnectStorageKeys.accessToken,
+    );
+    final accessToken = '${values[PreconnectStorageKeys.accessToken] ?? ''}'
+        .trim();
+    final uri = BracuLogout.mercureLogoutUri;
+    final headers = _headersFromMap(
+      BracuLogout.mercureLogoutHeaders(accessToken: accessToken),
+    );
+    await _fetch(
+      uri.toString(),
+      RequestInit(method: 'DELETE', credentials: 'include', headers: headers),
+    ).toDart;
+  } catch (_) {}
+}
+
+Future<void> _completeMercureLogout(int? appTabId) async {
+  unawaited(_unregisterGcmToken());
+  await _clearPendingLogout();
+  await chrome.storage.local.remove([
+    PreconnectStorageKeys.accessToken,
+    PreconnectStorageKeys.refreshToken,
+    PreconnectStorageKeys.idToken,
+    PreconnectStorageKeys.cachedHasAuthSession,
+    _cookieSnapshotConnectKey,
+    _cookieSnapshotSsoKey,
+    _cookieSnapshotUpdatedAtKey,
+    _cachedUnreadCountKey,
+  ]);
+  if (chrome.action.isAvailable) {
+    await chrome.action.setBadgeText(action.SetBadgeTextDetails(text: ''));
+    await chrome.action.setTitle(action.SetTitleDetails(title: 'PreConnect'));
+  }
+  if (appTabId != null) {
+    try {
+      await chrome.tabs.update(appTabId, UpdateProperties(active: true));
+    } catch (_) {}
+  }
+  unawaited(_broadcastRuntimeMessage({'type': _logoutCompleteType}));
 }
 
 Future<void> _handleNavigation(OnCommittedDetails details) async {
@@ -781,6 +829,8 @@ Future<void> _handleNavigation(OnCommittedDetails details) async {
     await chrome.storage.local.set({
       PreconnectStorageKeys.accessToken: tokens.accessToken,
       PreconnectStorageKeys.refreshToken: tokens.refreshToken,
+      if (tokens.idToken.isNotEmpty)
+        PreconnectStorageKeys.idToken: tokens.idToken,
       PreconnectStorageKeys.cachedHasAuthSession: 'true',
     });
     await _syncBracuCookieSnapshot();
@@ -840,15 +890,15 @@ Future<bool> _handleLogoutNavigation(OnCommittedDetails details) async {
   final pending = await _loadPendingLogout();
   if (pending == null || pending.logoutTabId != details.tabId) return false;
 
-  final uri = Uri.tryParse(details.url);
-  if (uri == null) return false;
-  if (uri.scheme != 'https') return false;
-  if (uri.host != 'connect.bracu.ac.bd') return false;
-  if (!uri.path.contains('/student/profile/overview')) return false;
+  if (!BracuLogout.isConnectLogoutRedirect(details.url)) return false;
 
   unawaited(_unregisterGcmToken());
   await _clearPendingLogout();
   await chrome.storage.local.remove([
+    PreconnectStorageKeys.accessToken,
+    PreconnectStorageKeys.refreshToken,
+    PreconnectStorageKeys.idToken,
+    PreconnectStorageKeys.cachedHasAuthSession,
     _cookieSnapshotConnectKey,
     _cookieSnapshotSsoKey,
     _cookieSnapshotUpdatedAtKey,
@@ -929,10 +979,15 @@ Future<void> _clearPendingLogout() async {
 }
 
 class _TokenResponse {
-  const _TokenResponse({required this.accessToken, required this.refreshToken});
+  const _TokenResponse({
+    required this.accessToken,
+    required this.refreshToken,
+    required this.idToken,
+  });
 
   final String accessToken;
   final String refreshToken;
+  final String idToken;
 }
 
 Future<_TokenResponse> _exchangeCodeForTokens({
@@ -968,12 +1023,17 @@ Future<_TokenResponse> _exchangeCodeForTokens({
   }
   final accessToken = '${decoded['access_token'] ?? ''}';
   final refreshToken = '${decoded['refresh_token'] ?? ''}';
+  final idToken = '${decoded['id_token'] ?? ''}';
   if (accessToken.isEmpty || refreshToken.isEmpty) {
     throw const FormatException(
       'Token response missing access or refresh token',
     );
   }
-  return _TokenResponse(accessToken: accessToken, refreshToken: refreshToken);
+  return _TokenResponse(
+    accessToken: accessToken,
+    refreshToken: refreshToken,
+    idToken: idToken,
+  );
 }
 
 Future<void> _registerGcmAndSyncToken() async {

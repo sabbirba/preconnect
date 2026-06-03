@@ -404,7 +404,7 @@ class FCMService {
               notification: RemoteNotification(
                 title: "Seat Alerts Enabled",
                 body:
-                    "You will be notified immediately when a seat becomes available in $courseCode Section $sectionName.",
+                    "You'll be notified when a seat becomes available in $courseCode Section $sectionName.",
               ),
               data: <String, dynamic>{
                 'url': '${ApiConfig.websiteBase}/student/advising/seat-status',

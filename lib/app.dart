@@ -18,6 +18,7 @@ import 'package:preconnect/pages/class_schedule.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/onboarding.dart';
+import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
@@ -182,6 +183,7 @@ class MyApp extends StatefulWidget {
           semesterSessionId: semesterSessionId,
         );
       }(),
+      StudentProfile.preload(),
       ClassSchedule.preload(),
       ExamSchedule.preload(),
     ];

@@ -141,12 +141,11 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
       _setTab(tab);
     });
     unawaited(_persistSelectedTab(selectedTab));
+    unawaited(_preloadPrimaryHomeTabs());
     if (!kIsWeb) {
       unawaited(
         Future.wait(<Future<void>>[
           AlarmPage.preload().catchError((_) {}),
-          ClassSchedule.preload().catchError((_) {}),
-          ExamSchedule.preload().catchError((_) {}),
           CustomSchedulesPage.preload().catchError((_) {}),
           CampusPrinterPage.preload().catchError((_) {}),
         ]).then((_) async {
@@ -154,6 +153,14 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
         }),
       );
     }
+  }
+
+  Future<void> _preloadPrimaryHomeTabs() async {
+    await Future.wait(<Future<void>>[
+      StudentProfile.preload().catchError((_) {}),
+      ClassSchedule.preload().catchError((_) {}),
+      ExamSchedule.preload().catchError((_) {}),
+    ]);
   }
 
   @override
@@ -235,7 +242,9 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
     if (!mounted) return;
 
     if (shouldLogout) {
-      await AuthService().logout(instant: true, force: true);
+      final logoutContext = context;
+      if (!logoutContext.mounted) return;
+      await AuthService().logout(context: logoutContext, force: true);
       if (!mounted) return;
       themeNotifier.value = ThemeMode.system;
       RefreshBus.instance.notify(reason: 'auth');

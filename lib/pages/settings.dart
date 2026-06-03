@@ -243,6 +243,7 @@ class _SettingsPageState extends State<SettingsPage>
       final keepKeys = <String>{
         PreconnectStorageKeys.accessToken,
         PreconnectStorageKeys.refreshToken,
+        PreconnectStorageKeys.idToken,
         PreconnectStorageKeys.cachedHasAuthSession,
         StorageKeys.currentSessionSemesterId,
         CustomSchedulesService.cacheKey,

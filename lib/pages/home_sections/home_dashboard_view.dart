@@ -80,6 +80,44 @@ extension _HomeDashboardView on _HomeDashboardState {
                           final profile =
                               data?.profile ?? const <String, String?>{};
                           final photoUrl = data?.photoUrl;
+                          final cardVisibility =
+                              data?.cardVisibility ??
+                              HomeCardPreferences.defaults;
+                          final fullName = (profile['fullName'] ?? '').trim();
+                          final hasOverviewProfileData =
+                              (profile['studentId'] ?? '').trim().isNotEmpty ||
+                              (profile['shortCode'] ?? '').trim().isNotEmpty ||
+                              (profile['departmentName'] ?? '')
+                                  .trim()
+                                  .isNotEmpty ||
+                              (profile['currentSemester'] ?? '')
+                                  .trim()
+                                  .isNotEmpty ||
+                              (profile['currentSessionSemesterId'] ?? '')
+                                  .trim()
+                                  .isNotEmpty;
+                          final isOverviewLoading =
+                              !hasOverviewProfileData ||
+                              snapshot.connectionState ==
+                                  ConnectionState.waiting ||
+                              _isWarmingHomeData;
+                          final hasTopBarData =
+                              fullName.isNotEmpty ||
+                              (photoUrl ?? '').trim().isNotEmpty;
+                          final isTopBarLoading =
+                              !hasTopBarData ||
+                              snapshot.connectionState ==
+                                  ConnectionState.waiting ||
+                              _isWarmingHomeData;
+                          final hasScheduleData = (data?.scheduleJson ?? '')
+                              .trim()
+                              .isNotEmpty;
+                          final isTodayScheduleLoading =
+                              cardVisibility.showTodaySchedule &&
+                              (!hasScheduleData ||
+                                  snapshot.connectionState ==
+                                      ConnectionState.waiting ||
+                                  _isWarmingHomeData);
                           final ramadan =
                               data?.ramadan ??
                               const RamadanStatus(isRamadan: false);
@@ -90,9 +128,6 @@ extension _HomeDashboardView on _HomeDashboardState {
                           );
                           final holidayStatus =
                               data?.holiday ?? HolidayStatus.empty;
-                          final cardVisibility =
-                              data?.cardVisibility ??
-                              HomeCardPreferences.defaults;
                           final isTodayHoliday = holidayStatus.isTodayHoliday;
                           final today = _todayName();
                           final todayDate = DateFormat(
@@ -140,16 +175,21 @@ extension _HomeDashboardView on _HomeDashboardState {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _TopBar(
-                                  name: profile['fullName'] ?? 'BRACU Student',
-                                  photoUrl: photoUrl,
-                                  showNotificationsIcon:
-                                      cardVisibility.showNotificationsIcon,
-                                  onOpenNotifications: () =>
-                                      widget.onNavigate(HomeTab.notifications),
-                                  onProfileTap: () =>
-                                      widget.onNavigate(HomeTab.profile),
-                                ),
+                                if (isTopBarLoading)
+                                  const Shimmer(
+                                    child: _HomeTopBarLoadingSkeleton(),
+                                  )
+                                else
+                                  _TopBar(
+                                    name: fullName,
+                                    photoUrl: photoUrl,
+                                    showNotificationsIcon:
+                                        cardVisibility.showNotificationsIcon,
+                                    onOpenNotifications: () => widget
+                                        .onNavigate(HomeTab.notifications),
+                                    onProfileTap: () =>
+                                        widget.onNavigate(HomeTab.profile),
+                                  ),
                                 if (_captiveStatus?.state ==
                                     CaptiveWifiState.captive) ...[
                                   const SizedBox(height: 12),
@@ -172,6 +212,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   onOpenSettings: () =>
                                       widget.onNavigate(HomeTab.settings),
                                   onLogout: widget.onLogout,
+                                  isLoading: isOverviewLoading,
                                   countdown:
                                       !cardVisibility.showExamCountdownCard ||
                                           nextCountdown == null
@@ -192,7 +233,13 @@ extension _HomeDashboardView on _HomeDashboardState {
                                 ),
                                 const SizedBox(height: 12),
                                 const BracuCommunityLink(),
-                                if (cardVisibility.showTodaySchedule) ...[
+                                if (isTodayScheduleLoading) ...[
+                                  const SizedBox(height: 12),
+                                  const Shimmer(
+                                    child: _TodayScheduleLoadingSkeleton(),
+                                  ),
+                                ] else if (cardVisibility
+                                    .showTodaySchedule) ...[
                                   const SizedBox(height: 12),
                                   InkWell(
                                     onTap: () => widget.onNavigate(
@@ -541,7 +588,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                 if (data == null)
                                   const Padding(
                                     padding: EdgeInsets.only(bottom: 12),
-                                    child: _LoadingLine(),
+                                    child: _CampusMapLoadingSkeleton(),
                                   ),
                                 if (cardVisibility.showCampusMapContacts)
                                   BracuActionBannerCard(
@@ -683,32 +730,7 @@ class _HomeDashboardLoadingShell extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
-            children: [
-              ShimmerContainer(
-                width: 42,
-                height: 42,
-                borderRadius: BorderRadius.all(Radius.circular(14)),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ShimmerContainer(width: 92, height: 10),
-                    SizedBox(height: 8),
-                    ShimmerContainer(width: 148, height: 18),
-                  ],
-                ),
-              ),
-              SizedBox(width: 12),
-              ShimmerContainer(
-                width: 44,
-                height: 44,
-                borderRadius: BorderRadius.all(Radius.circular(999)),
-              ),
-            ],
-          ),
+          const _HomeTopBarLoadingSkeleton(),
           const SizedBox(height: 18),
           StudentOverviewCard(
             studentId: '',
@@ -719,34 +741,155 @@ class _HomeDashboardLoadingShell extends StatelessWidget {
             onOpenSupport: onOpenSupport,
             onOpenSettings: onOpenSettings,
             onLogout: onLogout,
-            countdown: const _LoadingLine(),
+            isLoading: true,
           ),
           const SizedBox(height: 12),
-          const _LoadingLine(),
+          const _CommunityLinkLoadingSkeleton(),
           const SizedBox(height: 12),
-          const _LoadingLine(),
+          const _TodayScheduleLoadingSkeleton(),
           const SizedBox(height: 12),
-          const _LoadingLine(),
+          const _QuickAccessLoadingSkeleton(),
+          const SizedBox(height: 12),
+          const _CampusMapLoadingSkeleton(),
         ],
       ),
     );
   }
 }
 
-class _LoadingLine extends StatelessWidget {
-  const _LoadingLine();
+class _HomeTopBarLoadingSkeleton extends StatelessWidget {
+  const _HomeTopBarLoadingSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        ShimmerContainer(
+          width: 42,
+          height: 42,
+          borderRadius: BorderRadius.all(Radius.circular(14)),
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ShimmerContainer(width: 92, height: 10),
+              SizedBox(height: 8),
+              ShimmerContainer(width: 148, height: 18),
+            ],
+          ),
+        ),
+        SizedBox(width: 12),
+        ShimmerContainer(
+          width: 44,
+          height: 44,
+          borderRadius: BorderRadius.all(Radius.circular(999)),
+        ),
+      ],
+    );
+  }
+}
+
+class _CommunityLinkLoadingSkeleton extends StatelessWidget {
+  const _CommunityLinkLoadingSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _ActionBannerLoadingSkeleton(showTrailingIcon: false);
+  }
+}
+
+class _ActionBannerLoadingSkeleton extends StatelessWidget {
+  const _ActionBannerLoadingSkeleton({required this.showTrailingIcon});
+
+  final bool showTrailingIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: BracuPalette.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final textWidth =
+                constraints.maxWidth - 30 - 12 - (showTrailingIcon ? 36 : 0);
+            final safeTextWidth = textWidth < 0 ? 0.0 : textWidth;
+            final titleWidth = safeTextWidth * 0.58;
+            final subtitleWidth = safeTextWidth * 0.82;
+            return Row(
+              children: [
+                const ShimmerContainer(
+                  width: 30,
+                  height: 30,
+                  borderRadius: BorderRadius.all(Radius.circular(10)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ShimmerContainer(width: titleWidth, height: 15),
+                      const SizedBox(height: 5),
+                      ShimmerContainer(width: subtitleWidth, height: 11),
+                    ],
+                  ),
+                ),
+                if (showTrailingIcon) ...[
+                  const SizedBox(width: 12),
+                  const ShimmerContainer(
+                    width: 24,
+                    height: 24,
+                    borderRadius: BorderRadius.all(Radius.circular(8)),
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _TodayScheduleLoadingSkeleton extends StatelessWidget {
+  const _TodayScheduleLoadingSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: const [
+        Row(
+          children: [
+            Expanded(child: ShimmerContainer(width: 140, height: 18)),
+            SizedBox(width: 16),
+            ShimmerContainer(width: 116, height: 18),
+          ],
+        ),
+        SizedBox(height: 12),
+        _ScheduleTileLoadingSkeleton(),
+      ],
+    );
+  }
+}
+
+class _ScheduleTileLoadingSkeleton extends StatelessWidget {
+  const _ScheduleTileLoadingSkeleton();
 
   @override
   Widget build(BuildContext context) {
     return BracuCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final rightColumnWidth = (constraints.maxWidth * 0.30).clamp(
-            96.0,
-            128.0,
-          );
+          final maxWidth = constraints.maxWidth;
           return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const ShimmerContainer(
                 width: 40,
@@ -754,25 +897,13 @@ class _LoadingLine extends StatelessWidget {
                 borderRadius: BorderRadius.all(Radius.circular(12)),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ShimmerContainer(width: 120, height: 14),
-                    SizedBox(height: 6),
-                    ShimmerContainer(width: 80, height: 11),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: rightColumnWidth,
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    ShimmerContainer(width: 60, height: 14),
-                    SizedBox(height: 6),
-                    ShimmerContainer(width: 40, height: 11),
+                    ShimmerContainer(width: maxWidth * 0.46, height: 14),
+                    const SizedBox(height: 6),
+                    ShimmerContainer(width: maxWidth * 0.58, height: 11),
                   ],
                 ),
               ),
@@ -781,5 +912,86 @@ class _LoadingLine extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+class _QuickAccessLoadingSkeleton extends StatelessWidget {
+  const _QuickAccessLoadingSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Row(
+          children: [
+            Expanded(child: ShimmerContainer(width: 128, height: 20)),
+            SizedBox(width: 16),
+            ShimmerContainer(width: 68, height: 18),
+            SizedBox(width: 14),
+            ShimmerContainer(width: 74, height: 18),
+          ],
+        ),
+        const SizedBox(height: 18),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final layout = quickAccessGridLayout(constraints.maxWidth);
+            return Center(
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                runAlignment: WrapAlignment.center,
+                spacing: layout.spacing,
+                runSpacing: 22,
+                children: List<Widget>.generate(
+                  8,
+                  (_) =>
+                      _QuickAccessItemLoadingSkeleton(width: layout.itemWidth),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _QuickAccessItemLoadingSkeleton extends StatelessWidget {
+  const _QuickAccessItemLoadingSkeleton({required this.width});
+
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final itemWidth = width - 18;
+    return SizedBox(
+      width: width,
+      child: Padding(
+        padding: const EdgeInsets.all(9),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const ShimmerContainer(
+              width: 38,
+              height: 38,
+              borderRadius: BorderRadius.all(Radius.circular(12)),
+            ),
+            const SizedBox(height: 12),
+            ShimmerContainer(width: itemWidth * 0.76, height: 14),
+            const SizedBox(height: 2),
+            ShimmerContainer(width: itemWidth * 0.62, height: 11),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CampusMapLoadingSkeleton extends StatelessWidget {
+  const _CampusMapLoadingSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _ActionBannerLoadingSkeleton(showTrailingIcon: true);
   }
 }

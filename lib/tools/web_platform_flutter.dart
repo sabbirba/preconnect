@@ -14,13 +14,6 @@ String normalizeWebPageTitle(String title) {
 
 void setWebPageTitle(String title) {}
 
-class WebExtensionLoginPage extends StatelessWidget {
-  const WebExtensionLoginPage({super.key});
-
-  @override
-  Widget build(BuildContext context) => const SizedBox.shrink();
-}
-
 class WebSafeNetworkImage extends StatelessWidget {
   const WebSafeNetworkImage({
     super.key,
@@ -96,7 +89,7 @@ Future<bool> ensureFreshWebExtensionSession({bool forceRefresh = false}) async {
 }
 
 class WebLogoutFlow {
-  static Future<void> openConnectLogoutPage() async {}
+  static Future<bool> openConnectLogoutPage() async => false;
 }
 
 Future<String?> webExtensionStorageGet(String key) async => null;

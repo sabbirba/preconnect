@@ -57,19 +57,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
     await prefs.setBool(OnboardingPage.seenKey, true);
     if (!context.mounted) return;
     if (kIsWeb && !widget.isLoggedIn && isChromeRuntimeAvailable()) {
-      if (_isStartingWebLogin) return;
-      setState(() {
-        _isStartingWebLogin = true;
-      });
-      try {
-        MyApp.warmStartupCaches();
-        await _webExtensionLoginFlow?.start();
-      } catch (e) {
-        if (!mounted) return;
-        setState(() {
-          _isStartingWebLogin = false;
-        });
-      }
+      await _startWebExtensionLogin();
+      return;
+    }
+    if (kIsWeb && !widget.isLoggedIn) {
+      await _openWebLoginSheet();
       return;
     }
     if (widget.isLoggedIn) {
@@ -108,6 +100,33 @@ class _OnboardingPageState extends State<OnboardingPage> {
     await Navigator.of(
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => page));
+  }
+
+  Future<void> _openWebLoginSheet() async {
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _WebLoginSheet(),
+    );
+  }
+
+  Future<void> _startWebExtensionLogin() async {
+    if (_isStartingWebLogin) return;
+    setState(() {
+      _isStartingWebLogin = true;
+    });
+    try {
+      MyApp.warmStartupCaches();
+      await _webExtensionLoginFlow?.start();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isStartingWebLogin = false;
+      });
+    }
   }
 
   Future<void> _handleWebLogin(WebExtensionLoginState state) async {
@@ -399,6 +418,134 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   ),
                 ],
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WebLoginSheet extends StatefulWidget {
+  const _WebLoginSheet();
+
+  @override
+  State<_WebLoginSheet> createState() => _WebLoginSheetState();
+}
+
+class _WebLoginSheetState extends State<_WebLoginSheet> {
+  bool _busy = false;
+
+  Future<void> _openLogin() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+    });
+    await openExternalUrl(context, ApiConfig.authUrl);
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bodyColor = BracuPalette.textSecondary(context);
+    final bottomPadding = MediaQuery.viewInsetsOf(context).bottom;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.14),
+              blurRadius: 30,
+              offset: const Offset(0, -14),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 430),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Align(
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: bodyColor.withValues(alpha: 0.26),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Align(
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: BracuPalette.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Icon(
+                      Icons.login_rounded,
+                      color: BracuPalette.primary,
+                      size: 31,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Sign in with BRACU SSO',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: BracuPalette.textPrimary(context),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Open the BRACU login page in this browser.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: bodyColor,
+                    height: 1.4,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                BracuActionButton(
+                  onPressed: _busy ? null : _openLogin,
+                  label: _busy ? 'Opening...' : 'Continue',
+                  outlined: false,
+                  isLoading: _busy,
+                  backgroundColor: BracuPalette.primary.withValues(alpha: 0.12),
+                  foregroundColor: BracuPalette.primary,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'You will be redirected to BRACU SSO.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: bodyColor.withValues(alpha: 0.82),
+                    fontSize: 12.5,
+                    height: 1.45,
+                  ),
+                ),
+              ],
             ),
           ),
         ),

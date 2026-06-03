@@ -23,8 +23,7 @@ import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
-import 'package:preconnect/tools/chrome_runtime_available_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/chrome_runtime_available_web.dart';
+import 'package:preconnect/tools/bracu_logout.dart';
 import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
@@ -86,8 +85,93 @@ class LoginPage extends StatefulWidget {
     } catch (_) {}
   }
 
+  static Future<void> openLogoutWebView(
+    BuildContext context, {
+    required String idToken,
+  }) async {
+    if (kIsWeb || idToken.trim().isEmpty || !context.mounted) return;
+    final logoutUrl = BracuLogout.ssoLogoutUri(idToken: idToken);
+    await Navigator.of(context, rootNavigator: true).push<void>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _MobileLogoutWebViewPage(logoutUrl: logoutUrl),
+      ),
+    );
+  }
+
   @override
   State<LoginPage> createState() => _LoginPageState();
+}
+
+class _MobileLogoutWebViewPage extends StatefulWidget {
+  const _MobileLogoutWebViewPage({required this.logoutUrl});
+
+  final Uri logoutUrl;
+
+  @override
+  State<_MobileLogoutWebViewPage> createState() =>
+      _MobileLogoutWebViewPageState();
+}
+
+class _MobileLogoutWebViewPageState extends State<_MobileLogoutWebViewPage> {
+  static const Duration _logoutTimeout = Duration(seconds: 12);
+
+  late final WebViewController _controller;
+  Timer? _timeoutTimer;
+  bool _didComplete = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent(kPreconnectUserAgent)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onNavigationRequest: (request) {
+            if (_isLogoutRedirect(request.url)) {
+              _complete();
+              return NavigationDecision.prevent;
+            }
+            return NavigationDecision.navigate;
+          },
+          onPageStarted: (url) {
+            if (_isLogoutRedirect(url)) {
+              _complete();
+            }
+          },
+        ),
+      )
+      ..loadRequest(widget.logoutUrl);
+    unawaited(LoginPage._configureCookies(_controller));
+    _timeoutTimer = Timer(_logoutTimeout, _complete);
+  }
+
+  bool _isLogoutRedirect(String url) {
+    return BracuLogout.isConnectLogoutRedirect(url);
+  }
+
+  void _complete() {
+    if (_didComplete) return;
+    _didComplete = true;
+    _timeoutTimer?.cancel();
+    if (mounted) {
+      Navigator.of(context).maybePop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _timeoutTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(child: WebViewWidget(controller: _controller)),
+    );
+  }
 }
 
 class _LoginPageState extends State<LoginPage> {
@@ -195,6 +279,7 @@ class _LoginPageState extends State<LoginPage> {
 
       final accessToken = data['access_token'] as String?;
       final refreshToken = data['refresh_token'] as String?;
+      final idToken = data['id_token'] as String?;
       if (accessToken == null ||
           accessToken.isEmpty ||
           refreshToken == null ||
@@ -212,6 +297,11 @@ class _LoginPageState extends State<LoginPage> {
             key: PreconnectStorageKeys.refreshToken,
             value: refreshToken,
           ),
+          if (idToken != null && idToken.isNotEmpty)
+            TokenStorage.instance.write(
+              key: PreconnectStorageKeys.idToken,
+              value: idToken,
+            ),
         ]);
       } on TokenPersistenceException {
         return false;
@@ -268,9 +358,6 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     if (kIsWeb) {
-      if (isChromeRuntimeAvailable()) {
-        return const WebExtensionLoginPage();
-      }
       return _WebLoginPage(onOpenLogin: _launchWebLogin);
     }
 

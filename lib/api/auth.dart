@@ -10,6 +10,7 @@ import 'package:preconnect/api/friend_schedule_store.dart';
 import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
+import 'package:preconnect/tools/bracu_logout.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/app_storage.dart';
@@ -42,7 +43,11 @@ class AuthService {
     Navigator.pushNamed(context, '/login');
   }
 
-  Future<void> logout({bool instant = false, bool force = false}) async {
+  Future<void> logout({
+    BuildContext? context,
+    bool instant = false,
+    bool force = false,
+  }) async {
     if (_isLoggingOut) {
       return;
     }
@@ -58,18 +63,56 @@ class AuthService {
         }
       }
 
-      final refreshToken = await _storage.read(
+      var refreshToken = await _storage.read(
         key: PreconnectStorageKeys.refreshToken,
       );
-      final accessToken = await _storage.read(
+      var accessToken = await _storage.read(
         key: PreconnectStorageKeys.accessToken,
       );
+      var idToken = await _storage.read(key: PreconnectStorageKeys.idToken);
       if (accessToken == null && refreshToken == null) {
         return;
       }
 
+      final logoutContext = context;
+      if (!kIsWeb &&
+          logoutContext != null &&
+          logoutContext.mounted &&
+          refreshToken != null &&
+          refreshToken.isNotEmpty &&
+          (idToken == null || idToken.isEmpty)) {
+        await _performTokenRefresh();
+        refreshToken = await _storage.read(
+          key: PreconnectStorageKeys.refreshToken,
+        );
+        accessToken = await _storage.read(
+          key: PreconnectStorageKeys.accessToken,
+        );
+        idToken = await _storage.read(key: PreconnectStorageKeys.idToken);
+      }
+
+      final canShowMobileLogoutWebView =
+          !kIsWeb &&
+          logoutContext != null &&
+          logoutContext.mounted &&
+          idToken != null &&
+          idToken.isNotEmpty;
+      if (canShowMobileLogoutWebView) {
+        await _revokeMercureSession(accessToken);
+        if (logoutContext.mounted) {
+          await LoginPage.openLogoutWebView(logoutContext, idToken: idToken);
+        }
+        await _clearAuthSessionData();
+        await _clearLocalCaches();
+        return;
+      }
+
       if (kIsWeb) {
-        unawaited(WebLogoutFlow.openConnectLogoutPage());
+        final extensionLogoutStarted =
+            await WebLogoutFlow.openConnectLogoutPage();
+        if (extensionLogoutStarted) {
+          return;
+        }
       }
 
       await _clearAuthSessionData();
@@ -97,14 +140,14 @@ class AuthService {
   }) async {
     try {
       if (kIsWeb) {
-        final uri = Uri.parse(
-          '${ApiConfig.connectWebApiBase}${ApiConfig.connectMercureLogoutPath}',
-        );
+        final uri = BracuLogout.mercureLogoutUri;
         await HttpUtils.client
             .delete(uri, headers: compressionHeadersForUri(uri))
             .timeout(_authRequestTimeout);
         return;
       }
+
+      await _revokeMercureSession(accessToken);
 
       if (refreshToken != null && refreshToken.isNotEmpty) {
         final uri = Uri.parse(ApiConfig.logoutEndpoint);
@@ -123,6 +166,22 @@ class AuthService {
             )
             .timeout(_authRequestTimeout);
       }
+    } catch (_) {}
+  }
+
+  Future<void> _revokeMercureSession(String? accessToken) async {
+    if (accessToken == null || accessToken.isEmpty) return;
+    try {
+      final uri = BracuLogout.mercureLogoutUri;
+      await HttpUtils.client
+          .delete(
+            uri,
+            headers: <String, String>{
+              ...BracuLogout.mercureLogoutHeaders(accessToken: accessToken),
+              ...compressionHeadersForUri(uri),
+            },
+          )
+          .timeout(_authRequestTimeout);
     } catch (_) {}
   }
 
@@ -232,7 +291,7 @@ class AuthService {
       final status = await refreshBracuSessionTokens(
         refreshToken: refreshToken,
         timeout: _authRequestTimeout,
-        persistTokens: (accessToken, refreshToken) async {
+        persistTokens: (accessToken, refreshToken, idToken) async {
           await _storage.write(
             key: PreconnectStorageKeys.accessToken,
             value: accessToken,
@@ -241,6 +300,12 @@ class AuthService {
             key: PreconnectStorageKeys.refreshToken,
             value: refreshToken,
           );
+          if (idToken != null && idToken.isNotEmpty) {
+            await _storage.write(
+              key: PreconnectStorageKeys.idToken,
+              value: idToken,
+            );
+          }
           ApiClient().clearTransientCaches();
         },
         clearTokens: () async {

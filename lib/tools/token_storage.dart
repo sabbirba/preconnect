@@ -185,6 +185,7 @@ class TokenStorage {
   Future<void> deleteAll() async {
     await AppStorage.instance.remove(PreconnectStorageKeys.accessToken);
     await AppStorage.instance.remove(PreconnectStorageKeys.refreshToken);
+    await AppStorage.instance.remove(PreconnectStorageKeys.idToken);
     await AppStorage.instance.setBool(_cachedHasSessionKey, false);
     ApiClient().clearTransientCaches();
 
@@ -192,6 +193,7 @@ class TokenStorage {
       await webExtensionStorageRemoveKeys(const [
         PreconnectStorageKeys.accessToken,
         PreconnectStorageKeys.refreshToken,
+        PreconnectStorageKeys.idToken,
         _cachedHasSessionKey,
       ]);
     }

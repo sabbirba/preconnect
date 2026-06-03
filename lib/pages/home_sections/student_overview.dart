@@ -14,6 +14,7 @@ class StudentOverviewCard extends StatelessWidget {
     required this.onOpenSettings,
     required this.onLogout,
     this.countdown,
+    this.isLoading = false,
   });
 
   final String studentId;
@@ -25,6 +26,7 @@ class StudentOverviewCard extends StatelessWidget {
   final VoidCallback onOpenSettings;
   final Future<void> Function() onLogout;
   final Widget? countdown;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -77,7 +79,7 @@ class StudentOverviewCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (hasProfileData)
+                if (hasProfileData && !isLoading)
                   _OverviewHeader(
                     isDark: isDark,
                     studentId: studentId,
@@ -87,7 +89,9 @@ class StudentOverviewCard extends StatelessWidget {
                     currentSessionSemesterId: currentSessionSemesterId,
                   )
                 else
-                  _OverviewLoadingCard(isDark: isDark),
+                  _OverviewLoadingShimmer(
+                    child: _OverviewLoadingCard(isDark: isDark),
+                  ),
                 if (countdown != null) ...[
                   const SizedBox(height: 10),
                   countdown!,
@@ -98,6 +102,17 @@ class StudentOverviewCard extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class _OverviewLoadingShimmer extends StatelessWidget {
+  const _OverviewLoadingShimmer({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.of(context) == null ? Shimmer(child: child) : child;
   }
 }
 
@@ -112,22 +127,28 @@ class _OverviewLoadingCard extends StatelessWidget {
       context,
     ).withValues(alpha: isDark ? 0.35 : 0.18);
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         color: BracuPalette.card(context),
         border: Border.all(color: borderColor),
       ),
-      child: const SizedBox(
+      child: SizedBox(
         height: 54,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ShimmerContainer(width: 140, height: 14),
-            SizedBox(height: 6),
-            ShimmerContainer(width: 200, height: 11),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final maxWidth = constraints.maxWidth;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ShimmerContainer(width: maxWidth * 0.62, height: 14),
+                const SizedBox(height: 6),
+                ShimmerContainer(width: maxWidth * 0.88, height: 11),
+              ],
+            );
+          },
         ),
       ),
     );

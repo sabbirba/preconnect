@@ -18,6 +18,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
   late Future<_HomeData> _future;
   _HomeData? _latestData;
+  bool _isWarmingHomeData = true;
   bool _isRefreshing = false;
   CaptiveWifiStatus? _captiveStatus;
   bool _isCheckingCaptive = false;
@@ -105,12 +106,20 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   }
 
   Future<void> _warmAndBind({bool forceRefresh = false}) async {
-    final data = await preloadData(forceRefresh: forceRefresh);
-    if (!mounted) return;
-    setState(() {
-      _latestData = data;
-      _future = Future<_HomeData>.value(data);
-    });
+    try {
+      final data = await preloadData(forceRefresh: forceRefresh);
+      if (!mounted) return;
+      setState(() {
+        _latestData = data;
+        _future = Future<_HomeData>.value(data);
+        _isWarmingHomeData = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isWarmingHomeData = false;
+      });
+    }
   }
 
   Future<void> _saveHomeDashboardSnapshot(_HomeData data) async {

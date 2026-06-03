@@ -28,7 +28,7 @@ Future<bool> ensureFreshWebExtensionSession({bool forceRefresh = false}) async {
 
   final status = await refreshBracuSessionTokens(
     refreshToken: refreshToken,
-    persistTokens: (accessToken, refreshToken) async {
+    persistTokens: (accessToken, refreshToken, idToken) async {
       await storage.write(
         key: PreconnectStorageKeys.accessToken,
         value: accessToken,
@@ -37,6 +37,9 @@ Future<bool> ensureFreshWebExtensionSession({bool forceRefresh = false}) async {
         key: PreconnectStorageKeys.refreshToken,
         value: refreshToken,
       );
+      if (idToken != null && idToken.isNotEmpty) {
+        await storage.write(key: PreconnectStorageKeys.idToken, value: idToken);
+      }
       clearTransientCaches();
     },
     clearTokens: () async {

@@ -256,6 +256,12 @@ flutter build ipa --no-codesign --tree-shake-icons --obfuscate --split-debug-inf
 
 You can also keep the same size-saving flags in your Xcode/CI release flow.
 
+Flutter web build:
+
+```bash
+flutter build web --release --tree-shake-icons --no-wasm-dry-run --no-web-resources-cdn --dart-define-from-file=.env
+```
+
 Chrome extension:
 
 ```bash

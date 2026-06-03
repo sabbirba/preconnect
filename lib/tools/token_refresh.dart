@@ -7,7 +7,11 @@ enum TokenRefreshStatus { refreshed, invalidSession, retryableFailure }
 
 Future<TokenRefreshStatus> refreshBracuSessionTokens({
   required String refreshToken,
-  required Future<void> Function(String accessToken, String refreshToken)
+  required Future<void> Function(
+    String accessToken,
+    String refreshToken,
+    String? idToken,
+  )
   persistTokens,
   required Future<void> Function() clearTokens,
   Duration timeout = const Duration(seconds: 12),
@@ -23,6 +27,7 @@ Future<TokenRefreshStatus> refreshBracuSessionTokens({
       'grant_type': 'refresh_token',
       'refresh_token': cleanedRefreshToken,
       'client_id': WebExtensionApiConfig.clientId,
+      'scope': 'openid offline_access',
     });
     final response = await HttpUtils.client
         .post(
@@ -43,11 +48,16 @@ Future<TokenRefreshStatus> refreshBracuSessionTokens({
 
       final newAccessToken = '${decoded['access_token'] ?? ''}'.trim();
       final newRefreshToken = '${decoded['refresh_token'] ?? ''}'.trim();
+      final newIdToken = '${decoded['id_token'] ?? ''}'.trim();
       if (newAccessToken.isEmpty || newRefreshToken.isEmpty) {
         return TokenRefreshStatus.invalidSession;
       }
 
-      await persistTokens(newAccessToken, newRefreshToken);
+      await persistTokens(
+        newAccessToken,
+        newRefreshToken,
+        newIdToken.isEmpty ? null : newIdToken,
+      );
       return TokenRefreshStatus.refreshed;
     }
 

@@ -1,14 +1,19 @@
 import 'package:chrome_extension/runtime.dart';
 
 class WebLogoutFlow {
-  static Future<void> openConnectLogoutPage() async {
+  static Future<bool> openConnectLogoutPage() async {
     try {
-      if (!chrome.runtime.isAvailable) return;
+      if (!chrome.runtime.isAvailable) return false;
     } catch (_) {
-      return;
+      return false;
     }
-    await chrome.runtime.sendMessage(null, {
-      'type': 'preconnect.startLogout',
-    }, null);
+    try {
+      await chrome.runtime.sendMessage(null, {
+        'type': 'preconnect.startLogout',
+      }, null);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 }
