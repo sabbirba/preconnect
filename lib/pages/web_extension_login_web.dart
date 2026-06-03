@@ -23,7 +23,9 @@ class _WebExtensionLoginPageState extends State<WebExtensionLoginPage> {
   @override
   void initState() {
     super.initState();
-    _messageSub = chrome.runtime.onMessage.listen(_handleMessage);
+    if (_isChromeRuntimeAvailable()) {
+      _messageSub = chrome.runtime.onMessage.listen(_handleMessage);
+    }
     unawaited(_bootstrap());
   }
 
@@ -105,6 +107,14 @@ class _WebExtensionLoginPageState extends State<WebExtensionLoginPage> {
     });
     try {
       MyApp.warmStartupCaches();
+      if (!_isChromeRuntimeAvailable()) {
+        if (!mounted) return;
+        setState(() {
+          _busy = false;
+          _status = 'Browser extension features are not available here.';
+        });
+        return;
+      }
       await chrome.runtime.sendMessage(null, {
         'type': 'preconnect.startLogin',
       }, null);
@@ -218,5 +228,13 @@ class _WebExtensionLoginPageState extends State<WebExtensionLoginPage> {
         ),
       ),
     );
+  }
+}
+
+bool _isChromeRuntimeAvailable() {
+  try {
+    return chrome.runtime.isAvailable;
+  } catch (_) {
+    return false;
   }
 }

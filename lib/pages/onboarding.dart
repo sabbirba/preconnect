@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:chrome_extension/runtime.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/devs.dart';
@@ -54,7 +55,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     final prefs = AppStorage.instance;
     await prefs.setBool(OnboardingPage.seenKey, true);
     if (!context.mounted) return;
-    if (kIsWeb && !widget.isLoggedIn) {
+    if (kIsWeb && !widget.isLoggedIn && _isChromeRuntimeAvailable()) {
       if (_isStartingWebLogin) return;
       setState(() {
         _isStartingWebLogin = true;
@@ -86,6 +87,14 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   Future<void> _openLink(BuildContext context, String url) async {
     await openExternalUrl(context, url);
+  }
+
+  bool _isChromeRuntimeAvailable() {
+    try {
+      return chrome.runtime.isAvailable;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _openCampusMapBottomSheet() async {
@@ -415,11 +424,15 @@ class _HeroCard extends StatelessWidget {
     return Column(
       children: [
         Center(
-          child: Image.network(
-            'https://preconnect.app/icon-round.png',
-            width: 96,
-            height: 96,
-            filterQuality: FilterQuality.high,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: Image.network(
+              '/favicon.png',
+              width: 96,
+              height: 96,
+              fit: BoxFit.cover,
+              filterQuality: FilterQuality.high,
+            ),
           ),
         ),
         const SizedBox(height: 14),

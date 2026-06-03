@@ -1,1 +1,54 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"preconnect-bracu","appId":"1:53508941136:android:02312f60ae1ad0ee86f855","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"preconnect-bracu","appId":"1:53508941136:ios:daf88e3b91c5941386f855","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"macos":{"default":{"projectId":"preconnect-bracu","appId":"1:53508941136:ios:daf88e3b91c5941386f855","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"preconnect-bracu","configurations":{"android":"1:53508941136:android:02312f60ae1ad0ee86f855","ios":"1:53508941136:ios:daf88e3b91c5941386f855","macos":"1:53508941136:ios:daf88e3b91c5941386f855","web":"1:53508941136:web:c8bcc291d6b619f886f855"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "preconnect-bracu",
+          "appId": "1:53508941136:android:02312f60ae1ad0ee86f855",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "preconnect-bracu",
+          "appId": "1:53508941136:ios:daf88e3b91c5941386f855",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "preconnect-bracu",
+          "appId": "1:53508941136:ios:daf88e3b91c5941386f855",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "preconnect-bracu",
+          "configurations": {
+            "android": "1:53508941136:android:02312f60ae1ad0ee86f855",
+            "ios": "1:53508941136:ios:daf88e3b91c5941386f855",
+            "macos": "1:53508941136:ios:daf88e3b91c5941386f855",
+            "web": "1:53508941136:web:c8bcc291d6b619f886f855"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

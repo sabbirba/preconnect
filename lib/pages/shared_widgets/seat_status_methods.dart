@@ -180,7 +180,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
               ),
             );
           },
-          iconSize: 24,
+          iconSize: 28,
           padding: 8,
         ),
       ],

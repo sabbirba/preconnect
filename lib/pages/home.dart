@@ -410,7 +410,7 @@ class _TopBar extends StatelessWidget {
         if (showNotificationsIcon)
           BracuNotificationsIconButton(
             onTap: onOpenNotifications,
-            iconSize: 22,
+            iconSize: 28,
             padding: 8,
           ),
       ],

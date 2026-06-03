@@ -317,7 +317,7 @@ const _pinnedGitHubContributors = <_ContributorProfile>[
   _ContributorProfile.github(handle: 'sabbirba', role: 'Developer & UI/UX'),
 ];
 
-const _manualContributors = <_ContributorProfile>[
+final _manualContributors = <_ContributorProfile>[
   _ContributorProfile(
     name: 'Mueen Ahmmed',
     handle: 'mueen-ahmmed',

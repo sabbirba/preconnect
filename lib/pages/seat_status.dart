@@ -180,20 +180,30 @@ class _SeatStatusPageState extends State<SeatStatusPage>
         break;
       }
     }
+
     setState(() {
-      String topic = "seat_$key";
-      FirebaseMessaging instance = FirebaseMessaging.instance;
       if (willPin) {
         _pinnedSections.add(key);
-        instance.subscribeToTopic(topic);
-        if (card != null) {
-          unawaited(FCMService.instance.sendConfirmationNotification(card.courseCode, card.sectionName));
-        }
       } else {
         _pinnedSections.remove(key);
-        instance.unsubscribeFromTopic(topic);
       }
     });
+
+    final topic = 'seat_$key';
+    if (willPin) {
+      unawaited(FirebaseMessaging.instance.subscribeToTopic(topic));
+      if (card != null) {
+        unawaited(
+          FCMService.instance.sendConfirmationNotification(
+            card.courseCode,
+            card.sectionName,
+          ),
+        );
+      }
+    } else {
+      unawaited(FirebaseMessaging.instance.unsubscribeFromTopic(topic));
+    }
+
     await CoursePinStore.save(_pinScope, _pinnedSections);
     if (!mounted) return;
     final status = willPin ? 'alerts enabled' : 'alerts disabled';
@@ -204,10 +214,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     final refreshed = List<_SeatStatusCardData>.from(_cards);
     _sortCardsByCourseAndSection(refreshed);
     _applyCardsSnapshot(refreshed, isInitialLoading: false);
-    showAppSnackBar(
-      context,
-      message,
-    );
+    showAppSnackBar(context, message);
   }
 
   Future<void> _reloadAll() async {
@@ -755,12 +762,12 @@ class _PinIconButton extends StatelessWidget {
     return IconButton(
       onPressed: onTap,
       padding: EdgeInsets.zero,
-      constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+      constraints: const BoxConstraints.tightFor(width: 44, height: 44),
       visualDensity: VisualDensity.compact,
-      splashRadius: 18,
+      splashRadius: 22,
       icon: Icon(
         pinned ? Icons.notifications_rounded : Icons.notifications_none_rounded,
-        size: 22,
+        size: 28,
         color: pinned
             ? BracuPalette.primary
             : BracuPalette.textSecondary(context),

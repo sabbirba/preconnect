@@ -21,6 +21,8 @@ import 'package:preconnect/pages/exam_schedule.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:chrome_extension/runtime.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
@@ -264,7 +266,16 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (kIsWeb) return const WebExtensionLoginPage();
+    if (kIsWeb) {
+      try {
+        if (!chrome.runtime.isAvailable) {
+          return _WebLoginPage(onOpenLogin: _launchWebLogin);
+        }
+      } catch (_) {
+        return _WebLoginPage(onOpenLogin: _launchWebLogin);
+      }
+      return const WebExtensionLoginPage();
+    }
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -312,5 +323,59 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _webViewController = null;
     super.dispose();
+  }
+
+  Future<void> _launchWebLogin() async {
+    final uri = Uri.parse(ApiConfig.authUrl);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+}
+
+class _WebLoginPage extends StatelessWidget {
+  const _WebLoginPage({required this.onOpenLogin});
+
+  final Future<void> Function() onOpenLogin;
+
+  @override
+  Widget build(BuildContext context) {
+    final bodyColor = Theme.of(context).colorScheme.onSurfaceVariant;
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.login_rounded, size: 52, color: BracuPalette.primary),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Sign in to PreConnect',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Open the BRACU login page in this browser.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: bodyColor),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => onOpenLogin(),
+                      child: const Text('Continue'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

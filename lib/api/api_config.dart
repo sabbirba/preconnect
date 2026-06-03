@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:preconnect/tools/web_origin_stub.dart'
+    if (dart.library.html) 'package:preconnect/tools/web_origin_web.dart';
 
 class ApiConfig {
   ApiConfig._();
@@ -30,12 +32,14 @@ class ApiConfig {
   static const String connectCdnBase = 'https://connect.bracu.ac.bd/cdn';
   static const String connectOrigin = 'https://connect.bracu.ac.bd';
   static const String connectMercureLogoutPath = '/ns/mercure/logout';
-  static const String websiteBase = 'https://preconnect.app';
-  static const String websiteMueenAvatarUrl = '$websiteBase/Mueen-Ahmmed.jpeg';
+  static String get websiteBase => getWebAppOrigin();
+  static String get websiteMueenAvatarUrl =>
+      '$websiteBase/Mueen-Ahmmed.jpeg';
   static const String filesBase = 'https://cdn.preconnect.app';
 
   static const String clientId = 'slm';
-  static const String redirectUri = '$connectOrigin/student/profile/overview';
+  static String get redirectUri =>
+      '${getWebAppOrigin()}/student/profile/overview';
 
   static const String profilePath = '/mds/v1/portfolios';
   static const String miscellaneousInfoPath =
@@ -117,7 +121,7 @@ class ApiConfig {
     return '$connectApiBase${advisingPath(studentId)}?$phasesQuery';
   }
 
-  static final String authUrl =
+  static String get authUrl =>
       '$authEndpoint'
       '?client_id=$clientId'
       '&redirect_uri=${Uri.encodeQueryComponent(redirectUri)}'

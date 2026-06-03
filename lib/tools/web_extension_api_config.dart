@@ -8,7 +8,7 @@ class WebExtensionApiConfig {
   static const String tokenEndpoint = '$ssoBase/token';
   static const String authEndpoint = '$ssoBase/auth';
   static const String clientId = 'slm';
-  static const String redirectUri = ApiConfig.redirectUri;
+  static String get redirectUri => ApiConfig.redirectUri;
 
   static String authUrlWithPkce(String codeChallenge) {
     final encodedChallenge = Uri.encodeQueryComponent(codeChallenge);
