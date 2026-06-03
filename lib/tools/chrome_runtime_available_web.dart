@@ -7,4 +7,3 @@ bool isChromeRuntimeAvailable() {
     return false;
   }
 }
-

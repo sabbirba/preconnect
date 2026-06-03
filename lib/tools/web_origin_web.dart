@@ -7,4 +7,3 @@ String getWebAppOrigin() {
   }
   return 'https://web.preconnect.app';
 }
-
