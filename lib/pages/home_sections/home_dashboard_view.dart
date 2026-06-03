@@ -679,106 +679,56 @@ class _HomeDashboardLoadingShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: BracuPalette.card(context),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: BracuPalette.textSecondary(
-                    context,
-                  ).withValues(alpha: 0.18),
+    return Shimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              ShimmerContainer(
+                width: 42,
+                height: 42,
+                borderRadius: BorderRadius.all(Radius.circular(14)),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ShimmerContainer(width: 92, height: 10),
+                    SizedBox(height: 8),
+                    ShimmerContainer(width: 148, height: 18),
+                  ],
                 ),
               ),
-              alignment: Alignment.center,
-              child: SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.4,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    BracuPalette.primary,
-                  ),
-                ),
+              SizedBox(width: 12),
+              ShimmerContainer(
+                width: 44,
+                height: 44,
+                borderRadius: BorderRadius.all(Radius.circular(999)),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 92,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: BracuPalette.card(context),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: 148,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: BracuPalette.card(context),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: BracuPalette.card(context),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: BracuPalette.textSecondary(
-                    context,
-                  ).withValues(alpha: 0.18),
-                ),
-              ),
-              alignment: Alignment.center,
-              child: SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.4,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    BracuPalette.primary,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-        StudentOverviewCard(
-          studentId: '',
-          shortCode: '',
-          department: '',
-          currentSemester: '',
-          currentSessionSemesterId: '',
-          onOpenSupport: onOpenSupport,
-          onOpenSettings: onOpenSettings,
-          onLogout: onLogout,
-          countdown: const _LoadingLine(),
-        ),
-        const SizedBox(height: 12),
-        const _LoadingLine(),
-        const SizedBox(height: 12),
-        const _LoadingLine(),
-        const SizedBox(height: 12),
-        const _LoadingLine(),
-      ],
+            ],
+          ),
+          const SizedBox(height: 18),
+          StudentOverviewCard(
+            studentId: '',
+            shortCode: '',
+            department: '',
+            currentSemester: '',
+            currentSessionSemesterId: '',
+            onOpenSupport: onOpenSupport,
+            onOpenSettings: onOpenSettings,
+            onLogout: onLogout,
+            countdown: const _LoadingLine(),
+          ),
+          const SizedBox(height: 12),
+          const _LoadingLine(),
+          const SizedBox(height: 12),
+          const _LoadingLine(),
+          const SizedBox(height: 12),
+          const _LoadingLine(),
+        ],
+      ),
     );
   }
 }
@@ -788,25 +738,47 @@ class _LoadingLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: 56,
-      decoration: BoxDecoration(
-        color: BracuPalette.card(context),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: BracuPalette.textSecondary(context).withValues(alpha: 0.18),
-        ),
-      ),
-      child: Center(
-        child: SizedBox(
-          width: 22,
-          height: 22,
-          child: CircularProgressIndicator(
-            strokeWidth: 2.6,
-            valueColor: AlwaysStoppedAnimation<Color>(BracuPalette.primary),
-          ),
-        ),
+    return BracuCard(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final rightColumnWidth = (constraints.maxWidth * 0.30).clamp(
+            96.0,
+            128.0,
+          );
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const ShimmerContainer(
+                width: 40,
+                height: 40,
+                borderRadius: BorderRadius.all(Radius.circular(12)),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ShimmerContainer(width: 120, height: 14),
+                    SizedBox(height: 6),
+                    ShimmerContainer(width: 80, height: 11),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: rightColumnWidth,
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    ShimmerContainer(width: 60, height: 14),
+                    SizedBox(height: 6),
+                    ShimmerContainer(width: 40, height: 11),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

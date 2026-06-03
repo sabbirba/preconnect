@@ -152,9 +152,6 @@ class _WebExtensionLoginPageState extends State<WebExtensionLoginPage> {
         });
       }
 
-      
-      
-      
       if (!mounted) return;
       setState(() {
         _busy = false;

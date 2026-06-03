@@ -118,17 +118,16 @@ class _OverviewLoadingCard extends StatelessWidget {
         color: BracuPalette.card(context),
         border: Border.all(color: borderColor),
       ),
-      child: SizedBox(
+      child: const SizedBox(
         height: 54,
-        child: Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.4,
-              valueColor: AlwaysStoppedAnimation<Color>(BracuPalette.primary),
-            ),
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ShimmerContainer(width: 140, height: 14),
+            SizedBox(height: 6),
+            ShimmerContainer(width: 200, height: 11),
+          ],
         ),
       ),
     );

@@ -25,7 +25,9 @@ class FCMService {
 
   Future<String?> _getToken() async {
     if (kIsWeb) {
-      final token = await TokenStorage.instance.read(key: 'preconnect.gcmToken');
+      final token = await TokenStorage.instance.read(
+        key: 'preconnect.gcmToken',
+      );
       debugPrint("FCM Web Token: $token");
       return token;
     }
@@ -34,8 +36,10 @@ class FCMService {
           defaultTargetPlatform == TargetPlatform.macOS) {
         String? apnsToken;
         int retries = 0;
-        final isAppleDebug = (defaultTargetPlatform == TargetPlatform.macOS ||
-            defaultTargetPlatform == TargetPlatform.iOS) && kDebugMode;
+        final isAppleDebug =
+            (defaultTargetPlatform == TargetPlatform.macOS ||
+                defaultTargetPlatform == TargetPlatform.iOS) &&
+            kDebugMode;
         final maxRetries = isAppleDebug ? 1 : 10;
 
         while (apnsToken == null && retries < maxRetries) {
@@ -49,7 +53,9 @@ class FCMService {
 
         if (apnsToken == null) {
           _apnsAvailable = false;
-          debugPrint("FCM Error: Failed to get APNS token after retries. Push notifications will not work.");
+          debugPrint(
+            "FCM Error: Failed to get APNS token after retries. Push notifications will not work.",
+          );
           return null;
         } else {
           _apnsAvailable = true;
@@ -78,6 +84,9 @@ class FCMService {
               ? 'chrome_extension'
               : defaultTargetPlatform.name.toLowerCase(),
         }),
+        additionalHeaders: const <String, String>{
+          'Content-Type': 'application/json',
+        },
       );
     } catch (e) {
       debugPrint("FCM token registration failed: $e");
@@ -101,6 +110,9 @@ class FCMService {
         'POST',
         url,
         body: jsonEncode(<String, dynamic>{'token': token, 'topic': topic}),
+        additionalHeaders: const <String, String>{
+          'Content-Type': 'application/json',
+        },
       );
     } catch (e) {
       debugPrint("FCM subscribe topic web failed: $e");
@@ -116,6 +128,9 @@ class FCMService {
         'POST',
         url,
         body: jsonEncode(<String, dynamic>{'token': token, 'topic': topic}),
+        additionalHeaders: const <String, String>{
+          'Content-Type': 'application/json',
+        },
       );
     } catch (e) {
       debugPrint("FCM unsubscribe topic web failed: $e");
@@ -132,7 +147,9 @@ class FCMService {
     if ((defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.macOS) &&
         !_apnsAvailable) {
-      debugPrint("FCM warning: Skipping subscribeToTopic($topic) because APNS is unavailable.");
+      debugPrint(
+        "FCM warning: Skipping subscribeToTopic($topic) because APNS is unavailable.",
+      );
       return;
     }
     await FirebaseMessaging.instance.subscribeToTopic(topic);
@@ -148,7 +165,9 @@ class FCMService {
     if ((defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.macOS) &&
         !_apnsAvailable) {
-      debugPrint("FCM warning: Skipping unsubscribeFromTopic($topic) because APNS is unavailable.");
+      debugPrint(
+        "FCM warning: Skipping unsubscribeFromTopic($topic) because APNS is unavailable.",
+      );
       return;
     }
     await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
@@ -256,22 +275,21 @@ class FCMService {
 
     const DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(
-      requestAlertPermission: false,
-      requestBadgePermission: false,
-      requestSoundPermission: false,
-    );
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
+        );
 
     const LinuxInitializationSettings initializationSettingsLinux =
-        LinuxInitializationSettings(
-      defaultActionName: 'Open notification',
-    );
+        LinuxInitializationSettings(defaultActionName: 'Open notification');
 
-    const InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsDarwin,
-      macOS: initializationSettingsDarwin,
-      linux: initializationSettingsLinux,
-    );
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
+          android: initializationSettingsAndroid,
+          iOS: initializationSettingsDarwin,
+          macOS: initializationSettingsDarwin,
+          linux: initializationSettingsLinux,
+        );
 
     await _localNotifications.initialize(
       settings: initializationSettings,
@@ -306,35 +324,27 @@ class FCMService {
 
       await _localNotifications
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin
+            AndroidFlutterLocalNotificationsPlugin
           >()
           ?.createNotificationChannel(channel);
 
       await _localNotifications
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin
+            AndroidFlutterLocalNotificationsPlugin
           >()
           ?.requestNotificationsPermission();
     } else if (defaultTargetPlatform == TargetPlatform.iOS) {
       await _localNotifications
           .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin
+            IOSFlutterLocalNotificationsPlugin
           >()
-          ?.requestPermissions(
-            alert: true,
-            badge: true,
-            sound: true,
-          );
+          ?.requestPermissions(alert: true, badge: true, sound: true);
     } else if (defaultTargetPlatform == TargetPlatform.macOS) {
       await _localNotifications
           .resolvePlatformSpecificImplementation<
-              MacOSFlutterLocalNotificationsPlugin
+            MacOSFlutterLocalNotificationsPlugin
           >()
-          ?.requestPermissions(
-            alert: true,
-            badge: true,
-            sound: true,
-          );
+          ?.requestPermissions(alert: true, badge: true, sound: true);
     }
   }
 
@@ -389,15 +399,18 @@ class FCMService {
       final token = await _getToken();
       if (token == null) {
         if (kDebugMode) {
-          _showLocalNotification(RemoteMessage(
-            notification: RemoteNotification(
-              title: "Seat Alerts Enabled",
-              body: "You will be notified immediately when a seat becomes available in $courseCode Section $sectionName.",
+          _showLocalNotification(
+            RemoteMessage(
+              notification: RemoteNotification(
+                title: "Seat Alerts Enabled",
+                body:
+                    "You will be notified immediately when a seat becomes available in $courseCode Section $sectionName.",
+              ),
+              data: <String, dynamic>{
+                'url': '${ApiConfig.websiteBase}/student/advising/seat-status',
+              },
             ),
-            data: <String, dynamic>{
-              'url': '${ApiConfig.websiteBase}/student/advising/seat-status',
-            },
-          ));
+          );
         }
         return;
       }
@@ -412,6 +425,9 @@ class FCMService {
           'courseCode': courseCode,
           'sectionName': sectionName,
         }),
+        additionalHeaders: const <String, String>{
+          'Content-Type': 'application/json',
+        },
       );
     } catch (e) {
       debugPrint("FCM confirmation push failed: $e");

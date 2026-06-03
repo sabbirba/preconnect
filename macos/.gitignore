@@ -13,6 +13,13 @@
 **/Pods/
 **/.symlinks/
 
+# Swift Package Manager (SPM)
+**/.swiftpm/
+**/swiftpm/
+**/Package.resolved
+**/SourcePackages/
+**/.build/
+
 # Flutter
 **/Flutter/ephemeral/
 **/Flutter/Flutter.framework

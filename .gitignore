@@ -107,6 +107,15 @@ chruby-0.3.9
 **/macos/**/Pods/
 **/macos/**/Flutter/Generated.xcconfig
 **/macos/**/*.xcresult
+**/macos/**/xcuserdata/
+**/macos/**/DerivedData/
+**/macos/**/SourcePackages/
+
+# Swift Package Manager (SPM)
+**/.swiftpm/
+**/swiftpm/
+**/Package.resolved
+**/.build/
 
 # Rust
 native/preconnect_native/target/

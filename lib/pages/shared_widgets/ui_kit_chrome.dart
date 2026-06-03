@@ -782,3 +782,114 @@ class FriendActionCard extends StatelessWidget {
     );
   }
 }
+
+class Shimmer extends StatefulWidget {
+  const Shimmer({super.key, required this.child});
+
+  final Widget child;
+
+  static ShimmerState? of(BuildContext context) {
+    return context.findAncestorStateOfType<ShimmerState>();
+  }
+
+  @override
+  State<Shimmer> createState() => ShimmerState();
+}
+
+class ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  Listenable get animation => _controller;
+  double get value => _controller.value;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
+  }
+}
+
+class ShimmerContainer extends StatelessWidget {
+  const ShimmerContainer({
+    super.key,
+    required this.width,
+    required this.height,
+    this.borderRadius,
+  });
+
+  final double width;
+  final double height;
+  final BorderRadius? borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    final shimmer = Shimmer.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark
+        ? const Color(0xFF2C2C2C)
+        : const Color(0xFFE0E0E0);
+    final highlightColor = isDark
+        ? const Color(0xFF3D3D3D)
+        : const Color(0xFFF5F5F5);
+
+    if (shimmer == null) {
+      return Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: baseColor,
+          borderRadius: borderRadius ?? BorderRadius.circular(8),
+        ),
+      );
+    }
+
+    return AnimatedBuilder(
+      animation: shimmer.animation,
+      builder: (context, child) {
+        return Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            borderRadius: borderRadius ?? BorderRadius.circular(8),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [baseColor, highlightColor, baseColor],
+              stops: const [0.3, 0.5, 0.7],
+              transform: _SlidingGradientTransform(slidePercent: shimmer.value),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SlidingGradientTransform extends GradientTransform {
+  const _SlidingGradientTransform({required this.slidePercent});
+
+  final double slidePercent;
+
+  @override
+  Matrix4? transform(Rect bounds, {ui.TextDirection? textDirection}) {
+    return Matrix4.translationValues(
+      bounds.width * (slidePercent - 0.5) * 2,
+      0.0,
+      0.0,
+    );
+  }
+}
