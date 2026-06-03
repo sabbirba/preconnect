@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:chrome_extension/runtime.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/devs.dart';
@@ -11,6 +10,8 @@ import 'package:preconnect/pages/friend_schedule.dart';
 import 'package:preconnect/pages/seat_status.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
+import 'package:preconnect/tools/chrome_runtime_available_stub.dart'
+    if (dart.library.html) 'package:preconnect/tools/chrome_runtime_available_web.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -55,7 +56,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     final prefs = AppStorage.instance;
     await prefs.setBool(OnboardingPage.seenKey, true);
     if (!context.mounted) return;
-    if (kIsWeb && !widget.isLoggedIn && _isChromeRuntimeAvailable()) {
+    if (kIsWeb && !widget.isLoggedIn && isChromeRuntimeAvailable()) {
       if (_isStartingWebLogin) return;
       setState(() {
         _isStartingWebLogin = true;
@@ -87,14 +88,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   Future<void> _openLink(BuildContext context, String url) async {
     await openExternalUrl(context, url);
-  }
-
-  bool _isChromeRuntimeAvailable() {
-    try {
-      return chrome.runtime.isAvailable;
-    } catch (_) {
-      return false;
-    }
   }
 
   Future<void> _openCampusMapBottomSheet() async {

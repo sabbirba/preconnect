@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/pages/home_tab.dart';
@@ -191,7 +190,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
 
     final topic = 'seat_$key';
     if (willPin) {
-      unawaited(FirebaseMessaging.instance.subscribeToTopic(topic));
+      unawaited(FCMService.instance.subscribeToTopic(topic));
       if (card != null) {
         unawaited(
           FCMService.instance.sendConfirmationNotification(
@@ -201,7 +200,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
         );
       }
     } else {
-      unawaited(FirebaseMessaging.instance.unsubscribeFromTopic(topic));
+      unawaited(FCMService.instance.unsubscribeFromTopic(topic));
     }
 
     await CoursePinStore.save(_pinScope, _pinnedSections);

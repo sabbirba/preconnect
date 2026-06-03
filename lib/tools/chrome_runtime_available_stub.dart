@@ -1,0 +1,2 @@
+bool isChromeRuntimeAvailable() => false;
+

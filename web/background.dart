@@ -12,6 +12,7 @@ import 'package:chrome_extension/scripting.dart' as scripting;
 import 'package:chrome_extension/tabs.dart';
 import 'package:chrome_extension/side_panel.dart';
 import 'package:chrome_extension/web_navigation.dart';
+import 'package:chrome_extension/gcm.dart';
 import 'package:web/web.dart' show Headers, RequestInit, Response;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/web_extension_api_config.dart';
@@ -180,7 +181,20 @@ Future<void> main() async {
     });
   }
 
+  if (chrome.gcm.isAvailable) {
+    chrome.gcm.onMessage.listen((event) {
+      unawaited(_guarded(() => _handleGcmMessage(event)));
+    });
+  }
+
+  if (chrome.notifications.isAvailable) {
+    chrome.notifications.onClicked.listen((notificationId) {
+      unawaited(_guarded(() => _handleNotificationClick(notificationId)));
+    });
+  }
+
   unawaited(_guarded(_bootstrapSessionSync));
+  unawaited(_guarded(_registerGcmAndSyncToken));
 }
 
 Future<void> _guarded(Future<void> Function() task) async {
@@ -648,8 +662,21 @@ Future<void> _startLogin() async {
   }
   final pending = await _loadPendingLogin();
   if (pending != null) {
-    await _broadcastFailure('A login flow is already running.');
-    return;
+    bool tabExists = false;
+    if (pending.tabId > 0) {
+      try {
+        final tab = await chrome.tabs.get(pending.tabId);
+        if (tab.id != null) {
+          tabExists = true;
+        }
+      } catch (_) {}
+    }
+    if (tabExists) {
+      await _broadcastFailure('A login flow is already running.');
+      return;
+    } else {
+      await _clearPendingLogin();
+    }
   }
 
   final verifier = generatePkceVerifier();
@@ -759,6 +786,7 @@ Future<void> _handleNavigation(OnCommittedDetails details) async {
     await _syncBracuCookieSnapshot();
     await _refreshBadgeAndNotifyIfNeeded();
     await _clearPendingLogin();
+    unawaited(_registerGcmAndSyncToken());
     if (!chrome.sidePanel.isAvailable) {
       unawaited(_openOrFocusAppTab());
     }
@@ -818,6 +846,7 @@ Future<bool> _handleLogoutNavigation(OnCommittedDetails details) async {
   if (uri.host != 'connect.bracu.ac.bd') return false;
   if (!uri.path.contains('/student/profile/overview')) return false;
 
+  unawaited(_unregisterGcmToken());
   await _clearPendingLogout();
   await chrome.storage.local.remove([
     _cookieSnapshotConnectKey,
@@ -946,3 +975,102 @@ Future<_TokenResponse> _exchangeCodeForTokens({
   }
   return _TokenResponse(accessToken: accessToken, refreshToken: refreshToken);
 }
+
+Future<void> _registerGcmAndSyncToken() async {
+  if (!chrome.gcm.isAvailable) return;
+  final hasSession = await _hasStoredAuthSession();
+  if (!hasSession) return;
+
+  try {
+    final token = await chrome.gcm.register(['53508941136']);
+    if (token.isNotEmpty) {
+      await chrome.storage.local.set({'preconnect.gcmToken': token});
+      await _registerFcmTokenWithBackend(token);
+    }
+  } catch (_) {}
+}
+
+Future<void> _registerFcmTokenWithBackend(String token) async {
+  try {
+    final values = await chrome.storage.local.get(PreconnectStorageKeys.accessToken);
+    final accessToken = '${values[PreconnectStorageKeys.accessToken] ?? ''}'.trim();
+    if (accessToken.isEmpty) return;
+
+    final body = jsonEncode(<String, dynamic>{
+      'token': token,
+      'platform': 'chrome_extension',
+    });
+
+    await _fetch(
+      '${ApiConfig.realtimeApiBase}/push/device/register',
+      RequestInit(
+        method: 'POST',
+        headers: Headers()
+          ..append('Content-Type', 'application/json')
+          ..append('Authorization', 'Bearer $accessToken'),
+        body: body.toJS,
+      ),
+    ).toDart;
+  } catch (_) {}
+}
+
+Future<void> _unregisterGcmToken() async {
+  if (!chrome.gcm.isAvailable) return;
+  try {
+    final token = await chrome.gcm.register(['53508941136']);
+    if (token.isNotEmpty) {
+      final values = await chrome.storage.local.get(PreconnectStorageKeys.accessToken);
+      final accessToken = '${values[PreconnectStorageKeys.accessToken] ?? ''}'.trim();
+      if (accessToken.isNotEmpty) {
+        final body = jsonEncode(<String, dynamic>{'token': token});
+        await _fetch(
+          '${ApiConfig.realtimeApiBase}/push/device/unregister',
+          RequestInit(
+            method: 'POST',
+            headers: Headers()
+              ..append('Content-Type', 'application/json')
+              ..append('Authorization', 'Bearer $accessToken'),
+            body: body.toJS,
+          ),
+        ).toDart;
+      }
+    }
+  } catch (_) {}
+  try {
+    await chrome.gcm.unregister();
+  } catch (_) {}
+  try {
+    await chrome.storage.local.remove('preconnect.gcmToken');
+  } catch (_) {}
+}
+
+Future<void> _handleGcmMessage(OnMessageMessage event) async {
+  final data = event.data;
+  final title = '${data['title'] ?? data['gcm.notification.title'] ?? 'PreConnect'}'.trim();
+  final body = '${data['body'] ?? data['message'] ?? data['gcm.notification.body'] ?? ''}'.trim();
+
+  if (body.isEmpty) return;
+
+  if (chrome.notifications.isAvailable) {
+    final notificationId = 'fcm-${DateTime.now().millisecondsSinceEpoch}';
+    await chrome.notifications.create(
+      notificationId,
+      notifications.NotificationOptions(
+        type: notifications.TemplateType.basic,
+        iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
+        title: title,
+        message: body,
+        priority: 0,
+        requireInteraction: true,
+      ),
+    );
+  }
+}
+
+Future<void> _handleNotificationClick(String notificationId) async {
+  try {
+    await chrome.notifications.clear(notificationId);
+  } catch (_) {}
+  await _openSidePanel();
+}
+

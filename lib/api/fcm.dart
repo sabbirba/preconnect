@@ -19,6 +19,13 @@ class FCMService {
     debugPrint("Background message: ${message.messageId}");
   }
 
+  Future<String?> _getToken() async {
+    if (kIsWeb) {
+      return await TokenStorage.instance.read(key: 'preconnect.gcmToken');
+    }
+    return await FirebaseMessaging.instance.getToken();
+  }
+
   Future<void> _sendTokenToBackend(String token) async {
     try {
       final client = ApiClient();
@@ -29,7 +36,7 @@ class FCMService {
         url,
         body: jsonEncode(<String, dynamic>{
           'token': token,
-          'platform': defaultTargetPlatform.name.toLowerCase(),
+          'platform': kIsWeb ? 'chrome_extension' : defaultTargetPlatform.name.toLowerCase(),
         }),
       );
     } catch (e) {
@@ -38,11 +45,67 @@ class FCMService {
   }
 
   Future<void> _syncToken() async {
-    final token = await FirebaseMessaging.instance.getToken();
+    final token = await _getToken();
 
     if (token != null) {
       await _sendTokenToBackend(token);
     }
+  }
+
+  Future<void> _subscribeToTopicWeb(String token, String topic) async {
+    try {
+      final client = ApiClient();
+      if (!await client.hasAccessToken()) return;
+      final url = '${ApiConfig.realtimeApiBase}/push/topic/subscribe';
+      await client.authenticatedRequest(
+        'POST',
+        url,
+        body: jsonEncode(<String, dynamic>{
+          'token': token,
+          'topic': topic,
+        }),
+      );
+    } catch (e) {
+      debugPrint("FCM subscribe topic web failed: $e");
+    }
+  }
+
+  Future<void> _unsubscribeFromTopicWeb(String token, String topic) async {
+    try {
+      final client = ApiClient();
+      if (!await client.hasAccessToken()) return;
+      final url = '${ApiConfig.realtimeApiBase}/push/topic/unsubscribe';
+      await client.authenticatedRequest(
+        'POST',
+        url,
+        body: jsonEncode(<String, dynamic>{
+          'token': token,
+          'topic': topic,
+        }),
+      );
+    } catch (e) {
+      debugPrint("FCM unsubscribe topic web failed: $e");
+    }
+  }
+
+  Future<void> subscribeToTopic(String topic) async {
+    if (kIsWeb) {
+      final token = await _getToken();
+      if (token == null) return;
+      await _subscribeToTopicWeb(token, topic);
+      return;
+    }
+    await FirebaseMessaging.instance.subscribeToTopic(topic);
+  }
+
+  Future<void> unsubscribeFromTopic(String topic) async {
+    if (kIsWeb) {
+      final token = await _getToken();
+      if (token == null) return;
+      await _unsubscribeFromTopicWeb(token, topic);
+      return;
+    }
+    await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
   }
 
   Future<void> init() async {
@@ -53,6 +116,19 @@ class FCMService {
     });
 
     await _syncToken();
+
+    if (kIsWeb) {
+      final token = await _getToken();
+      if (token != null) {
+        await _subscribeToTopicWeb(token, "announcements");
+        await _subscribeToTopicWeb(token, "news");
+        Set<String> pinnedSeats = await CoursePinStore.load(_pinScope);
+        for (String seat in pinnedSeats) {
+          await _subscribeToTopicWeb(token, "seat_$seat");
+        }
+      }
+      return;
+    }
 
     Set<String> pinnedSeats = await CoursePinStore.load(_pinScope);
 
@@ -100,7 +176,7 @@ class FCMService {
 
   Future<void> sendConfirmationNotification(String courseCode, String sectionName) async {
     try {
-      final token = await FirebaseMessaging.instance.getToken();
+      final token = await _getToken();
       if (token == null) return;
       final client = ApiClient();
       if (!await client.hasAccessToken()) return;

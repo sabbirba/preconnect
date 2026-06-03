@@ -21,9 +21,10 @@ import 'package:preconnect/pages/exam_schedule.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:chrome_extension/runtime.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
+import 'package:preconnect/tools/chrome_runtime_available_stub.dart'
+    if (dart.library.html) 'package:preconnect/tools/chrome_runtime_available_web.dart';
 import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
@@ -267,14 +268,10 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     if (kIsWeb) {
-      try {
-        if (!chrome.runtime.isAvailable) {
-          return _WebLoginPage(onOpenLogin: _launchWebLogin);
-        }
-      } catch (_) {
-        return _WebLoginPage(onOpenLogin: _launchWebLogin);
+      if (isChromeRuntimeAvailable()) {
+        return const WebExtensionLoginPage();
       }
-      return const WebExtensionLoginPage();
+      return _WebLoginPage(onOpenLogin: _launchWebLogin);
     }
 
     return Scaffold(

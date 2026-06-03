@@ -1,12 +1,16 @@
 import 'dart:async';
 import 'dart:js_interop';
 
+import 'package:chrome_extension/storage.dart';
+import 'package:chrome_extension/tabs.dart';
 import 'package:chrome_extension/runtime.dart';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/tools/token_storage.dart';
+import 'package:preconnect/tools/web_extension_api_config.dart';
 
 class WebExtensionLoginPage extends StatefulWidget {
   const WebExtensionLoginPage({super.key});
@@ -16,6 +20,8 @@ class WebExtensionLoginPage extends StatefulWidget {
 }
 
 class _WebExtensionLoginPageState extends State<WebExtensionLoginPage> {
+  static const String _pendingLoginKey = 'preconnect.pendingLogin';
+
   StreamSubscription<OnMessageEvent>? _messageSub;
   bool _busy = false;
   String? _status;
@@ -115,12 +121,44 @@ class _WebExtensionLoginPageState extends State<WebExtensionLoginPage> {
         });
         return;
       }
-      await chrome.runtime.sendMessage(null, {
-        'type': 'preconnect.startLogin',
-      }, null);
+      final verifier = generatePkceVerifier();
+      final challenge = codeChallengeS256(verifier);
+      final authUrl = WebExtensionApiConfig.authUrlWithPkce(challenge);
+
+      if (chrome.storage.isAvailable) {
+        await chrome.storage.session.set({
+          _pendingLoginKey: <String, Object>{
+            'tabId': -1,
+            'verifier': verifier,
+            'startedAtMillis': DateTime.now().millisecondsSinceEpoch,
+          },
+        });
+      }
+
+      final tab = await chrome.tabs.create(
+        CreateProperties(url: authUrl, active: true),
+      );
+      if (tab.id == null) {
+        throw StateError('Unable to open the login tab.');
+      }
+
+      if (chrome.storage.isAvailable) {
+        await chrome.storage.session.set({
+          _pendingLoginKey: <String, Object>{
+            'tabId': tab.id!,
+            'verifier': verifier,
+            'startedAtMillis': DateTime.now().millisecondsSinceEpoch,
+          },
+        });
+      }
+
+      // The tab is already opened and pendingLogin is already written above.
+      // Do NOT send 'preconnect.startLogin' to the background worker — it would
+      // find the existing pendingLogin entry and broadcast a failure.
       if (!mounted) return;
       setState(() {
-        _status = 'Waiting for BRACU SSO approval...';
+        _busy = false;
+        _status = 'BRACU SSO opened in a new tab.';
       });
     } catch (e) {
       if (!mounted) return;

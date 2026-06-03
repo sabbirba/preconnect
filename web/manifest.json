@@ -27,7 +27,8 @@
     "unlimitedStorage",
     "storage",
     "tabs",
-    "webNavigation"
+    "webNavigation",
+    "gcm"
   ],
   "side_panel": {
     "default_path": "index.html"
