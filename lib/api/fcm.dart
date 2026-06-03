@@ -14,6 +14,9 @@ class FCMService {
 
   static final FCMService instance = FCMService._();
   static final String _pinScope = "seat_status";
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
+  bool _apnsAvailable = true;
 
   static Future<void> _backgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp();
@@ -22,31 +25,41 @@ class FCMService {
 
   Future<String?> _getToken() async {
     if (kIsWeb) {
-      return await TokenStorage.instance.read(key: 'preconnect.gcmToken');
+      final token = await TokenStorage.instance.read(key: 'preconnect.gcmToken');
+      debugPrint("FCM Web Token: $token");
+      return token;
     }
+    try {
+      if (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.macOS) {
+        String? apnsToken;
+        int retries = 0;
+        final maxRetries = (defaultTargetPlatform == TargetPlatform.macOS && kDebugMode) ? 1 : 10;
 
-    // iOS: Wait for APNS token to be available
-    if (defaultTargetPlatform == TargetPlatform.macOS ||
-        defaultTargetPlatform == TargetPlatform.iOS) {
-      String? apnsToken;
-      int retries = 0;
-      const maxRetries = 10;
+        while (apnsToken == null && retries < maxRetries) {
+          apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+          debugPrint("FCM APNS Token try $retries: $apnsToken");
+          if (apnsToken == null) {
+            await Future.delayed(const Duration(seconds: 1));
+            retries++;
+          }
+        }
 
-      while (apnsToken == null && retries < maxRetries) {
-        apnsToken = await FirebaseMessaging.instance.getAPNSToken();
         if (apnsToken == null) {
-          await Future.delayed(const Duration(seconds: 1));
-          retries++;
+          _apnsAvailable = false;
+          debugPrint("FCM Error: Failed to get APNS token after retries. Push notifications will not work.");
+          return null;
+        } else {
+          _apnsAvailable = true;
         }
       }
-
-      if (apnsToken == null) {
-        debugPrint("Failed to get APNS token after retries");
-        return null;
-      }
+      final token = await FirebaseMessaging.instance.getToken();
+      debugPrint("FCM Token: $token");
+      return token;
+    } catch (e) {
+      debugPrint("FCM Error getting token: $e");
+      return null;
     }
-
-    return await FirebaseMessaging.instance.getToken();
   }
 
   Future<void> _sendTokenToBackend(String token) async {
@@ -114,6 +127,12 @@ class FCMService {
       await _subscribeToTopicWeb(token, topic);
       return;
     }
+    if ((defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.macOS) &&
+        !_apnsAvailable) {
+      debugPrint("FCM warning: Skipping subscribeToTopic($topic) because APNS is unavailable.");
+      return;
+    }
     await FirebaseMessaging.instance.subscribeToTopic(topic);
   }
 
@@ -124,10 +143,20 @@ class FCMService {
       await _unsubscribeFromTopicWeb(token, topic);
       return;
     }
+    if ((defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.macOS) &&
+        !_apnsAvailable) {
+      debugPrint("FCM warning: Skipping unsubscribeFromTopic($topic) because APNS is unavailable.");
+      return;
+    }
     await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
   }
 
   Future<void> init() async {
+    if (!kIsWeb) {
+      await _setupLocalNotifications();
+    }
+
     RefreshBus.instance.addListener(() {
       if (RefreshBus.instance.reason == 'auth') {
         _syncToken();
@@ -151,11 +180,9 @@ class FCMService {
       return;
     }
 
-    // Subscribe to default topics
     await _subscribeToTopicWeb(token, "announcements");
     await _subscribeToTopicWeb(token, "news");
 
-    // Subscribe to pinned seats
     try {
       Set<String> pinnedSeats = await CoursePinStore.load(_pinScope);
       for (String seat in pinnedSeats) {
@@ -169,7 +196,6 @@ class FCMService {
   Future<void> _initNative() async {
     final messaging = FirebaseMessaging.instance;
 
-    // Request permissions
     final settings = await messaging.requestPermission(
       alert: true,
       badge: true,
@@ -181,19 +207,13 @@ class FCMService {
       return;
     }
 
-    // Setup local notifications for foreground messages
-    await _setupLocalNotifications();
-
-    // Background message handler
     FirebaseMessaging.onBackgroundMessage(_backgroundHandler);
 
-    // Foreground message handler - DISPLAY THE NOTIFICATION
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint("Foreground message: ${message.notification?.title}");
       _showLocalNotification(message);
     });
 
-    // Handle notification taps
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageTap);
     FirebaseMessaging.instance.getInitialMessage().then((message) {
       if (message != null) {
@@ -201,20 +221,24 @@ class FCMService {
       }
     });
 
-    // Token refresh listener
     messaging.onTokenRefresh.listen((token) async {
       debugPrint("FCM token refreshed: $token");
       await _sendTokenToBackend(token);
     });
 
-    // Subscribe to topics
     try {
-      await messaging.subscribeToTopic("announcements");
-      await messaging.subscribeToTopic("news");
+      if ((defaultTargetPlatform != TargetPlatform.iOS &&
+              defaultTargetPlatform != TargetPlatform.macOS) ||
+          _apnsAvailable) {
+        await messaging.subscribeToTopic("announcements");
+        await messaging.subscribeToTopic("news");
 
-      Set<String> pinnedSeats = await CoursePinStore.load(_pinScope);
-      for (String seat in pinnedSeats) {
-        await messaging.subscribeToTopic("seat_$seat");
+        Set<String> pinnedSeats = await CoursePinStore.load(_pinScope);
+        for (String seat in pinnedSeats) {
+          await messaging.subscribeToTopic("seat_$seat");
+        }
+      } else {
+        debugPrint("FCM warning: Skipping startup topic subscriptions because APNS is unavailable.");
       }
     } catch (e) {
       debugPrint("Failed to subscribe to topics: $e");
@@ -222,7 +246,48 @@ class FCMService {
   }
 
   Future<void> _setupLocalNotifications() async {
-    // Create Android notification channel
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    const DarwinInitializationSettings initializationSettingsDarwin =
+        DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+
+    const LinuxInitializationSettings initializationSettingsLinux =
+        LinuxInitializationSettings(
+      defaultActionName: 'Open notification',
+    );
+
+    const InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsDarwin,
+      macOS: initializationSettingsDarwin,
+      linux: initializationSettingsLinux,
+    );
+
+    await _localNotifications.initialize(
+      settings: initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        final payload = response.payload;
+        if (payload != null && payload.isNotEmpty) {
+          try {
+            final Map<String, dynamic> data =
+                jsonDecode(payload) as Map<String, dynamic>;
+            final url = data['url'] as String?;
+            if (url != null && url.isNotEmpty) {
+              try {
+                final uri = Uri.parse(url);
+                launchUrl(uri, mode: LaunchMode.externalApplication);
+              } catch (_) {}
+            }
+          } catch (_) {}
+        }
+      },
+    );
+
     if (defaultTargetPlatform == TargetPlatform.android) {
       const AndroidNotificationChannel channel = AndroidNotificationChannel(
         'high_importance_channel',
@@ -231,21 +296,48 @@ class FCMService {
         importance: Importance.max,
       );
 
-      await FlutterLocalNotificationsPlugin()
+      await _localNotifications
           .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
+              AndroidFlutterLocalNotificationsPlugin
           >()
           ?.createNotificationChannel(channel);
+
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.requestNotificationsPermission();
+    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin
+          >()
+          ?.requestPermissions(
+            alert: true,
+            badge: true,
+            sound: true,
+          );
+    } else if (defaultTargetPlatform == TargetPlatform.macOS) {
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+              MacOSFlutterLocalNotificationsPlugin
+          >()
+          ?.requestPermissions(
+            alert: true,
+            badge: true,
+            sound: true,
+          );
     }
   }
 
   void _showLocalNotification(RemoteMessage message) {
     final notification = message.notification;
     if (notification != null) {
-      FlutterLocalNotificationsPlugin().show(
+      _localNotifications.show(
         id: notification.hashCode,
         title: notification.title,
         body: notification.body,
+        payload: jsonEncode(message.data),
         notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             'high_importance_channel',
@@ -253,7 +345,16 @@ class FCMService {
             importance: Importance.max,
             priority: Priority.high,
           ),
-          iOS: DarwinNotificationDetails(),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+          macOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
         ),
       );
     }
@@ -275,7 +376,20 @@ class FCMService {
   ) async {
     try {
       final token = await _getToken();
-      if (token == null) return;
+      if (token == null) {
+        if (kDebugMode) {
+          _showLocalNotification(RemoteMessage(
+            notification: RemoteNotification(
+              title: "Seat Alerts Enabled",
+              body: "You will be notified immediately when a seat becomes available in $courseCode Section $sectionName.",
+            ),
+            data: <String, dynamic>{
+              'url': '${ApiConfig.websiteBase}/student/advising/seat-status',
+            },
+          ));
+        }
+        return;
+      }
       final client = ApiClient();
       if (!await client.hasAccessToken()) return;
       final url = '${ApiConfig.realtimeApiBase}/push/device/send-confirmation';

@@ -152,9 +152,9 @@ class _WebExtensionLoginPageState extends State<WebExtensionLoginPage> {
         });
       }
 
-      // The tab is already opened and pendingLogin is already written above.
-      // Do NOT send 'preconnect.startLogin' to the background worker — it would
-      // find the existing pendingLogin entry and broadcast a failure.
+      
+      
+      
       if (!mounted) return;
       setState(() {
         _busy = false;
