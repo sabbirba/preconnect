@@ -4,7 +4,6 @@ import 'package:preconnect/tools/web_origin_stub.dart'
 
 const bool _kIsWeb = identical(0, 0.0);
 
-
 class ApiConfig {
   ApiConfig._();
 
@@ -35,9 +34,9 @@ class ApiConfig {
   static const String connectCdnBase = 'https://connect.bracu.ac.bd/cdn';
   static const String connectOrigin = 'https://connect.bracu.ac.bd';
   static const String connectMercureLogoutPath = '/ns/mercure/logout';
-  static String get websiteBase => _kIsWeb ? getWebAppOrigin() : 'https://web.preconnect.app';
-  static String get websiteMueenAvatarUrl =>
-      '$websiteBase/Mueen-Ahmmed.jpeg';
+  static String get websiteBase =>
+      _kIsWeb ? getWebAppOrigin() : 'https://web.preconnect.app';
+  static String get websiteMueenAvatarUrl => '$websiteBase/Mueen-Ahmmed.jpeg';
   static const String filesBase = 'https://cdn.preconnect.app';
 
   static const String clientId = 'slm';

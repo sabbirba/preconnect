@@ -1,4 +1,3 @@
-
 class WebExtensionApiConfig {
   WebExtensionApiConfig._();
 

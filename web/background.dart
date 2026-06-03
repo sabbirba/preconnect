@@ -992,8 +992,11 @@ Future<void> _registerGcmAndSyncToken() async {
 
 Future<void> _registerFcmTokenWithBackend(String token) async {
   try {
-    final values = await chrome.storage.local.get(PreconnectStorageKeys.accessToken);
-    final accessToken = '${values[PreconnectStorageKeys.accessToken] ?? ''}'.trim();
+    final values = await chrome.storage.local.get(
+      PreconnectStorageKeys.accessToken,
+    );
+    final accessToken = '${values[PreconnectStorageKeys.accessToken] ?? ''}'
+        .trim();
     if (accessToken.isEmpty) return;
 
     final body = jsonEncode(<String, dynamic>{
@@ -1019,8 +1022,11 @@ Future<void> _unregisterGcmToken() async {
   try {
     final token = await chrome.gcm.register(['53508941136']);
     if (token.isNotEmpty) {
-      final values = await chrome.storage.local.get(PreconnectStorageKeys.accessToken);
-      final accessToken = '${values[PreconnectStorageKeys.accessToken] ?? ''}'.trim();
+      final values = await chrome.storage.local.get(
+        PreconnectStorageKeys.accessToken,
+      );
+      final accessToken = '${values[PreconnectStorageKeys.accessToken] ?? ''}'
+          .trim();
       if (accessToken.isNotEmpty) {
         final body = jsonEncode(<String, dynamic>{'token': token});
         await _fetch(
@@ -1046,8 +1052,12 @@ Future<void> _unregisterGcmToken() async {
 
 Future<void> _handleGcmMessage(OnMessageMessage event) async {
   final data = event.data;
-  final title = '${data['title'] ?? data['gcm.notification.title'] ?? 'PreConnect'}'.trim();
-  final body = '${data['body'] ?? data['message'] ?? data['gcm.notification.body'] ?? ''}'.trim();
+  final title =
+      '${data['title'] ?? data['gcm.notification.title'] ?? 'PreConnect'}'
+          .trim();
+  final body =
+      '${data['body'] ?? data['message'] ?? data['gcm.notification.body'] ?? ''}'
+          .trim();
 
   if (body.isEmpty) return;
 
@@ -1073,4 +1083,3 @@ Future<void> _handleNotificationClick(String notificationId) async {
   } catch (_) {}
   await _openSidePanel();
 }
-

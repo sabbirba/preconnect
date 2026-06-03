@@ -346,7 +346,11 @@ class _WebLoginPage extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.login_rounded, size: 52, color: BracuPalette.primary),
+                  Icon(
+                    Icons.login_rounded,
+                    size: 52,
+                    color: BracuPalette.primary,
+                  ),
                   const SizedBox(height: 18),
                   Text(
                     'Sign in to PreConnect',
