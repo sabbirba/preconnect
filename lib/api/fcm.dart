@@ -24,6 +24,28 @@ class FCMService {
     if (kIsWeb) {
       return await TokenStorage.instance.read(key: 'preconnect.gcmToken');
     }
+
+    // iOS: Wait for APNS token to be available
+    if (defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.iOS) {
+      String? apnsToken;
+      int retries = 0;
+      const maxRetries = 10;
+
+      while (apnsToken == null && retries < maxRetries) {
+        apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+        if (apnsToken == null) {
+          await Future.delayed(const Duration(seconds: 1));
+          retries++;
+        }
+      }
+
+      if (apnsToken == null) {
+        debugPrint("Failed to get APNS token after retries");
+        return null;
+      }
+    }
+
     return await FirebaseMessaging.instance.getToken();
   }
 
