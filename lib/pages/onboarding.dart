@@ -420,7 +420,7 @@ class _HeroCard extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(28),
             child: Image.network(
-              '/favicon.png',
+              kIsWeb ? '/favicon.png' : 'https://preconnect.app/icon-round.png',
               width: 96,
               height: 96,
               fit: BoxFit.cover,
