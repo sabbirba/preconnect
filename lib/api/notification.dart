@@ -472,6 +472,13 @@ class NotificationService {
   Future<List<ScraperContentItem>?> _readCachedScraperFeed() async {
     final cached = await _repo.readJsonMap(_scraperFeedCacheKey);
     if (cached == null) return null;
+    final ts = cached['ts'];
+    if (ts is int) {
+      final age = DateTime.now().difference(
+        DateTime.fromMillisecondsSinceEpoch(ts),
+      );
+      if (age > const Duration(hours: 3)) return null;
+    }
     final rawItems = cached['items'];
     if (rawItems is! List) return null;
     return rawItems
@@ -588,23 +595,8 @@ class NotificationService {
     required String baseUrl,
   }) {
     final candidates = <String>[];
-
-    final imageFields = [
-      'image_url',
-      'image_urls',
-      'image',
-      'images',
-      'thumbnail',
-      'thumbnailUrl',
-      'imageUrl',
-      'featured_image',
-      'featuredImage',
-    ];
-
-    for (final field in imageFields) {
-      final value = row[field];
-      if (value == null) continue;
-
+    final value = row['image_url'];
+    if (value != null) {
       if (value is String) {
         final trimmed = value.trim();
         if (trimmed.isNotEmpty) {

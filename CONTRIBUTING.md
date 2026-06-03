@@ -49,7 +49,7 @@ make run
 
 What the setup does:
 - Installs Android cmdline-tools (if missing), NDK, and CMake using `sdkmanager`.
-- Writes `android/local.properties` with `sdk.dir` and `ndk.dir` (a .bak is kept if it existed).
+- Writes `android/local.properties` with `sdk.dir` and removes deprecated `ndk.dir` if present (a .bak is kept if it existed).
 - Creates `.env.local.sh` that exports `ANDROID_SDK_ROOT` and `ANDROID_NDK_HOME` — the `dev` wrapper sources this automatically.
 - Adds Rust Android targets (via `rustup`) if rustup is available.
 - Runs `flutter pub get` to fetch Dart dependencies.

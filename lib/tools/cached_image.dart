@@ -11,6 +11,7 @@ import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/image_url_utils.dart';
+import 'package:preconnect/tools/web_safe_network_image_shared.dart';
 
 class CachedImage extends StatefulWidget {
   const CachedImage({
@@ -355,6 +356,16 @@ class _CachedImageState extends State<CachedImage> {
     final normalizedRemoteUrl = normalizeImageUrl(url);
     final remoteUrl = normalizedRemoteUrl;
     final isRemoteHttp = remoteUrl != null;
+    if (kIsWeb && remoteUrl != null) {
+      return WebSafeNetworkImage(
+        url: remoteUrl,
+        fit: widget.fit,
+        alignment: widget.alignment,
+        width: widget.width,
+        height: widget.height,
+        filterQuality: widget.filterQuality,
+      );
+    }
     if (remoteUrl != null) {
       if (_bytes != null) {
         return Image.memory(

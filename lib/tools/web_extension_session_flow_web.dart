@@ -5,6 +5,7 @@ import 'package:chrome_extension/runtime.dart';
 
 class WebExtensionSessionFlow {
   WebExtensionSessionFlow() {
+    if (!_isChromeRuntimeAvailable()) return;
     _messageSub = chrome.runtime.onMessage.listen(_handleMessage);
   }
 
@@ -28,6 +29,14 @@ class WebExtensionSessionFlow {
   Future<void> dispose() async {
     await _messageSub?.cancel();
     await _events.close();
+  }
+}
+
+bool _isChromeRuntimeAvailable() {
+  try {
+    return chrome.runtime.isAvailable;
+  } catch (_) {
+    return false;
   }
 }
 

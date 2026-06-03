@@ -5,6 +5,7 @@ import 'package:chrome_extension/runtime.dart';
 
 class WebExtensionShortcutBridge {
   WebExtensionShortcutBridge({required this.onShortcut}) {
+    if (!_isChromeRuntimeAvailable()) return;
     _messageSub = chrome.runtime.onMessage.listen(_handleMessage);
   }
 
@@ -26,5 +27,13 @@ class WebExtensionShortcutBridge {
 
   Future<void> dispose() async {
     await _messageSub?.cancel();
+  }
+}
+
+bool _isChromeRuntimeAvailable() {
+  try {
+    return chrome.runtime.isAvailable;
+  } catch (_) {
+    return false;
   }
 }

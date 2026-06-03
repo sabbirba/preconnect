@@ -99,12 +99,16 @@ $local = Join-Path $root 'android\local.properties'
 Write-Log "Updating $local"
 if (-not (Test-Path (Split-Path $local))) { New-Item -ItemType Directory -Path (Split-Path $local) -Force | Out-Null }
 $sdkProp = "sdk.dir=$sdkDir"
-$ndkProp = "ndk.dir=$chosen"
 if (Test-Path $local) {
-  (Get-Content $local) -replace '^sdk.dir=.*', $sdkProp | Set-Content $local
-  (Get-Content $local) -replace '^ndk.dir=.*', $ndkProp | Set-Content $local
+  $content = Get-Content $local
+  if ($content -match '^sdk.dir=') {
+    $content = $content -replace '^sdk.dir=.*', $sdkProp
+  } else {
+    $content += $sdkProp
+  }
+  $content | Where-Object { $_ -notmatch '^ndk.dir=' } | Set-Content $local
 } else {
-  @($sdkProp, $ndkProp, "flutter.sdk=$(Get-Command flutter -ErrorAction SilentlyContinue | ForEach-Object { $_.Source } )", 'flutter.buildMode=release') | Set-Content $local
+  @($sdkProp, "flutter.sdk=$(Get-Command flutter -ErrorAction SilentlyContinue | ForEach-Object { $_.Source } )", 'flutter.buildMode=release') | Set-Content $local
 }
 
 # write env helper

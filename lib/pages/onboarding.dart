@@ -10,6 +10,8 @@ import 'package:preconnect/pages/friend_schedule.dart';
 import 'package:preconnect/pages/seat_status.dart';
 import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
+import 'package:preconnect/tools/chrome_runtime_available_stub.dart'
+    if (dart.library.html) 'package:preconnect/tools/chrome_runtime_available_web.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -54,7 +56,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     final prefs = AppStorage.instance;
     await prefs.setBool(OnboardingPage.seenKey, true);
     if (!context.mounted) return;
-    if (kIsWeb && !widget.isLoggedIn) {
+    if (kIsWeb && !widget.isLoggedIn && isChromeRuntimeAvailable()) {
       if (_isStartingWebLogin) return;
       setState(() {
         _isStartingWebLogin = true;
@@ -415,11 +417,15 @@ class _HeroCard extends StatelessWidget {
     return Column(
       children: [
         Center(
-          child: Image.network(
-            'https://preconnect.app/icon-round.png',
-            width: 96,
-            height: 96,
-            filterQuality: FilterQuality.high,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: Image.network(
+              kIsWeb ? '/favicon.png' : 'https://preconnect.app/icon-round.png',
+              width: 96,
+              height: 96,
+              fit: BoxFit.cover,
+              filterQuality: FilterQuality.high,
+            ),
           ),
         ),
         const SizedBox(height: 14),

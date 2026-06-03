@@ -4,31 +4,35 @@
 *.pyc
 *.swp
 .DS_Store
+**/.DS_Store
 .AppleDouble
 .LSOverride
+*.tmp
+*.temp
 
-# Environment & secrets
+# Environment and secrets
 .env
 android/key.properties
 *.jks
+*.keystore
 
-# Local env helpers created by dev_setup
+# Local env helpers
 .env.local.sh
 .env.local.ps1
 
 # Local properties backups
 android/local.properties.bak
 
-# IntelliJ related
+# JetBrains IDEs
 *.iml
 *.ipr
 *.iws
 .idea/
 
-# Visual Studio Code related
+# Visual Studio Code
 .vscode/
 
-# Flutter/Dart/Pub related
+# Flutter, Dart, Pub, and Node
 **/node_modules/
 **/doc/api/
 .dart_tool/
@@ -38,31 +42,36 @@ android/local.properties.bak
 .pub-cache/
 .pub/
 /build/
+**/build/
 .firebase/
 android/.kotlin/*
 public/*
 
-# Web related
+# Web
 /web/server/
 
-# Symbolication related
+# Symbolication
 app.*.symbols
 
-# Obfuscation related
+# Obfuscation
 app.*.map.json
 
 # Coverage
 coverage/
 
-# Android related
+# Android and Gradle
+.gradle/
 **/android/.gradle
+**/android/.cxx/
 **/android/captures/
 **/android/GeneratedPluginRegistrant.java
 android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
 **/android/local.properties
 android/app/src/main/jniLibs/
+android/app/release/
+android/app/profile/
 
-# iOS/Xcode related
+# iOS and Xcode
 **/ios/**/*.mode1v3
 **/ios/**/*.mode2v3
 **/ios/**/*.moved-aside
@@ -84,28 +93,33 @@ android/app/src/main/jniLibs/
 **/ios/**/Flutter/Flutter.podspec
 **/ios/**/Flutter/Generated.xcconfig
 **/ios/**/Flutter/flutter_export_environment.sh
+**/ios/**/Flutter/.last_build_id
 **/ios/**/ServiceDefinitions.json
 **/ios/**/Runner/GeneratedPluginRegistrant.*
+**/ios/**/SourcePackages/
+**/ios/**/*.xcresult
 ruby-install-0.9.3
 chruby-0.3.9
 
-# macOS
+# macOS and Xcode
 **/macos/**/Flutter/GeneratedPluginRegistrant.swift
 **/macos/**/Flutter/ephemeral/
 **/macos/**/Pods/
+**/macos/**/Flutter/Generated.xcconfig
+**/macos/**/*.xcresult
 
-# Rust build outputs
+# Rust
 native/preconnect_native/target/
 
 # Crashlytics
 crashlytics-build.properties
 
-# wrangler files
+# Wrangler
 .wrangler
 .dev.vars*
 !.dev.vars.example
 !.env.example
 
-# ephemeral
+# Ephemeral
 **/flutter/ephemeral/
 **/ephemeral/
