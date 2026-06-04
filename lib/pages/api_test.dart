@@ -240,9 +240,9 @@ class _ApiTestPageState extends State<ApiTestPage> {
           const SizedBox(height: 10),
           TextField(
             controller: _urlController,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: '${ApiConfig.connectApiBase}/adp/v1/staffs/7487',
-              border: OutlineInputBorder(),
+              border: const OutlineInputBorder(),
               isDense: true,
             ),
           ),

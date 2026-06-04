@@ -592,12 +592,39 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
   Widget _buildPeopleCard(BuildContext context) {
     final textPrimary = BracuPalette.textPrimary(context);
     final textSecondary = BracuPalette.textSecondary(context);
+
+    final myUniqueCount = widget.personalSchedule == null
+        ? 0
+        : widget.personalSchedule!
+              .map((c) {
+                final code = c.courseCode.trim().toUpperCase();
+                if (code.endsWith('L') && code.length > 1) {
+                  return code.substring(0, code.length - 1);
+                }
+                return code;
+              })
+              .where((code) => code.isNotEmpty)
+              .toSet()
+              .length;
+
+    final friendUniqueCount = widget.friendItem.courses
+        .map((c) {
+          final code = c.courseCode.trim().toUpperCase();
+          if (code.endsWith('L') && code.length > 1) {
+            return code.substring(0, code.length - 1);
+          }
+          return code;
+        })
+        .where((code) => code.isNotEmpty)
+        .toSet()
+        .length;
+
     return BracuCard(
       child: Row(
         children: [
           _buildPerson(
             label: 'You',
-            scheduleCount: widget.personalSchedule?.length ?? 0,
+            courseCount: myUniqueCount,
             photoUrl: widget.myPhotoUrl,
             textPrimary: textPrimary,
             textSecondary: textSecondary,
@@ -612,7 +639,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
           ),
           _buildPerson(
             label: 'Friend',
-            scheduleCount: widget.friendItem.courses.length,
+            courseCount: friendUniqueCount,
             photoUrl: widget.friendItem.photoUrl,
             textPrimary: textPrimary,
             textSecondary: textSecondary,
@@ -624,12 +651,12 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
 
   Widget _buildPerson({
     required String label,
-    required int scheduleCount,
+    required int courseCount,
     required String? photoUrl,
     required Color textPrimary,
     required Color textSecondary,
   }) {
-    final scheduleWord = scheduleCount == 1 ? 'Schedule' : 'Schedules';
+    final courseWord = courseCount == 1 ? 'Course' : 'Courses';
     return Expanded(
       child: Row(
         children: [
@@ -649,7 +676,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '$scheduleCount $scheduleWord',
+                  '$courseCount $courseWord',
                   style: TextStyle(fontSize: 11, color: textSecondary),
                 ),
               ],

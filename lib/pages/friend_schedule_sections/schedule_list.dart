@@ -46,7 +46,17 @@ class FriendScheduleSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final friend = item.friend;
-    final courseCount = friend.courses.length;
+    final uniqueCodes = friend.courses
+        .map((c) {
+          final code = c.courseCode.trim().toUpperCase();
+          if (code.endsWith('L') && code.length > 1) {
+            return code.substring(0, code.length - 1);
+          }
+          return code;
+        })
+        .where((code) => code.isNotEmpty)
+        .toSet();
+    final courseCount = uniqueCodes.length;
     final nextClass = _pickNextClassSummary(friend, isRamadan: isRamadan);
 
     return Padding(

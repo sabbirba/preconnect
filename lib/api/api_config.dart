@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:preconnect/tools/chrome_runtime_available_stub.dart'
+    if (dart.library.html) 'package:preconnect/tools/chrome_runtime_available_web.dart';
 import 'package:preconnect/tools/web_origin_stub.dart'
     if (dart.library.html) 'package:preconnect/tools/web_origin_web.dart';
 
@@ -29,14 +31,33 @@ class ApiConfig {
   static const String academicDatesUrl = '$cdnApiBase/data/academic-dates.json';
   static const String campusMapUrl = '$cdnApiBase/data/map.json';
   static const String transportUrl = '$cdnApiBase/data/transport.json';
-  static const String connectApiBase = 'https://connect.bracu.ac.bd/api';
-  static const String connectWebApiBase = 'https://connect.bracu.ac.bd/api';
-  static const String connectCdnBase = 'https://connect.bracu.ac.bd/cdn';
+
+  static String get connectApiBase {
+    if (_kIsWeb && !isChromeRuntimeAvailable()) {
+      return '/api';
+    }
+    return 'https://connect.bracu.ac.bd/api';
+  }
+
+  static String get connectWebApiBase {
+    if (_kIsWeb && !isChromeRuntimeAvailable()) {
+      return '/api';
+    }
+    return 'https://connect.bracu.ac.bd/api';
+  }
+
+  static String get connectCdnBase {
+    if (_kIsWeb && !isChromeRuntimeAvailable()) {
+      return '/cdn';
+    }
+    return 'https://connect.bracu.ac.bd/cdn';
+  }
+
   static const String connectOrigin = 'https://connect.bracu.ac.bd';
   static const String connectMercureLogoutPath = '/ns/mercure/logout';
-  static String get websiteBase =>
-      _kIsWeb ? getWebAppOrigin() : 'https://web.preconnect.app';
-  static String get websiteMueenAvatarUrl => '$websiteBase/Mueen-Ahmmed.jpeg';
+  static const String websiteBase = 'https://preconnect.app';
+  static const String websiteMueenAvatarUrl =
+      'https://preconnect.app/Mueen-Ahmmed.jpeg';
   static const String filesBase = 'https://cdn.preconnect.app';
 
   static const String clientId = 'slm';

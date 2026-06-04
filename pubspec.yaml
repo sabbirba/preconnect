@@ -36,6 +36,7 @@ dependencies:
   ffi: ^2.1.2
   firebase_core: ^4.10.0
   firebase_messaging: ^16.3.0
+  firebase_analytics: ^12.4.2
   flutter_local_notifications: ^21.0.0
 
 dev_dependencies:
@@ -45,3 +46,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icon.png

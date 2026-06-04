@@ -326,37 +326,33 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
                 if (errorMessage != null)
                   BracuEmptyState(message: "Error: $errorMessage")
                 else ...[
-                  BracuCard(
-                    child: RepaintBoundary(
-                      key: _qrKey,
-                      child: Container(
-                        decoration: const BoxDecoration(color: Colors.white),
-                        padding: const EdgeInsets.all(12),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final size = constraints.maxWidth;
-                            return SizedBox(
-                              width: size,
-                              height: size,
-                              child: BarcodeWidget(
-                                barcode: Barcode.qrCode(),
-                                data: _base64Data!,
-                                color: const Color(0xFF000000),
-                                backgroundColor: const Color(0xFFFFFFFF),
-                                errorBuilder: (context, error) => Center(
-                                  child: Text(
-                                    'Unable to generate QR',
-                                    style: TextStyle(
-                                      color: BracuPalette.textSecondary(
-                                        context,
-                                      ),
-                                    ),
+                  RepaintBoundary(
+                    key: _qrKey,
+                    child: Container(
+                      decoration: const BoxDecoration(color: Colors.white),
+                      padding: const EdgeInsets.all(12),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final size = constraints.maxWidth;
+                          return SizedBox(
+                            width: size,
+                            height: size,
+                            child: BarcodeWidget(
+                              barcode: Barcode.qrCode(),
+                              data: _base64Data!,
+                              color: const Color(0xFF000000),
+                              backgroundColor: const Color(0xFFFFFFFF),
+                              errorBuilder: (context, error) => Center(
+                                child: Text(
+                                  'Unable to generate QR',
+                                  style: TextStyle(
+                                    color: BracuPalette.textSecondary(context),
                                   ),
                                 ),
                               ),
-                            );
-                          },
-                        ),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),

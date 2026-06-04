@@ -19,6 +19,7 @@ import 'package:preconnect/pages/degree_progress.dart';
 import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
+import 'package:preconnect/pages/shared_widgets/import_session_dialog.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -358,7 +359,10 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     if (kIsWeb) {
-      return _WebLoginPage(onOpenLogin: _launchWebLogin);
+      return _WebLoginPage(
+        onOpenLogin: _launchWebLogin,
+        onImportPressed: _handleImportSession,
+      );
     }
 
     return Scaffold(
@@ -413,53 +417,40 @@ class _LoginPageState extends State<LoginPage> {
     final uri = Uri.parse(ApiConfig.authUrl);
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
+
+  Future<void> _handleImportSession() async {
+    final result = await ImportSessionDialog.show(context);
+    if (result == true) {
+      RefreshBus.instance.notify(reason: 'auth');
+      if (mounted) {
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/home', (route) => false);
+      }
+      unawaited(_warmAuthenticatedData());
+    }
+  }
 }
 
 class _WebLoginPage extends StatelessWidget {
-  const _WebLoginPage({required this.onOpenLogin});
+  const _WebLoginPage({
+    required this.onOpenLogin,
+    required this.onImportPressed,
+  });
 
   final Future<void> Function() onOpenLogin;
+  final VoidCallback onImportPressed;
 
   @override
   Widget build(BuildContext context) {
-    final bodyColor = Theme.of(context).colorScheme.onSurfaceVariant;
-    return Scaffold(
+    return const Scaffold(
       body: SafeArea(
         child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.login_rounded,
-                    size: 52,
-                    color: BracuPalette.primary,
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Sign in to PreConnect',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Open the BRACU login page in this browser.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: bodyColor),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () => onOpenLogin(),
-                      child: const Text('Continue'),
-                    ),
-                  ),
-                ],
-              ),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(24),
+            child: ImportSessionDialog(
+              showCancelButton: false,
+              showCloseButton: false,
             ),
           ),
         ),

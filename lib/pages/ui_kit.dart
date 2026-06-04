@@ -457,6 +457,7 @@ class BracuActionBannerCard extends StatelessWidget {
   const BracuActionBannerCard({
     super.key,
     this.icon,
+    this.iconWidget,
     required this.title,
     required this.subtitle,
     required this.onTap,
@@ -466,6 +467,7 @@ class BracuActionBannerCard extends StatelessWidget {
   });
 
   final IconData? icon;
+  final Widget? iconWidget;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
@@ -492,7 +494,10 @@ class BracuActionBannerCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              if (icon != null) ...[
+              if (iconWidget != null) ...[
+                iconWidget!,
+                const SizedBox(width: 12),
+              ] else if (icon != null) ...[
                 if (iconDecoration)
                   Container(
                     width: 36,
@@ -839,7 +844,7 @@ class BracuCommunityLink extends StatelessWidget {
         }
 
         return BracuActionBannerCard(
-          icon: Icons.discord,
+          iconWidget: const PreconnectDiscordIcon(size: 30),
           iconColor: Color.fromRGBO(88, 101, 242, 1),
           iconDecoration: false,
           showTrailingIcon: false,

@@ -26,9 +26,395 @@
           "Segoe UI",
           sans-serif;
       }
+
+      :root {
+        --bg-top: #EAF4FF;
+        --bg-bottom: #F3FFF4;
+        --card-bg: #ffffff;
+        --shimmer-base: #E0E0E0;
+        --shimmer-highlight: #F5F5F5;
+        --border-color: rgba(0, 0, 0, 0.12);
+        --banner-bg: rgba(30, 107, 227, 0.08);
+        --title-color: #0d0d0d;
+        --subtitle-color: #555555;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg-top: #111111;
+          --bg-bottom: #111111;
+          --card-bg: #1a1a1a;
+          --shimmer-base: #2a2a2a;
+          --shimmer-highlight: #404040;
+          --border-color: rgba(255, 255, 255, 0.12);
+          --banner-bg: rgba(255, 255, 255, 0.06);
+          --title-color: #f0f0f0;
+          --subtitle-color: #999999;
+        }
+        body {
+          background: #111111;
+        }
+      }
+
+      #loading-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 99999;
+        background: linear-gradient(to bottom, var(--bg-top), var(--bg-bottom));
+        overflow-y: auto;
+        box-sizing: border-box;
+        display: flex;
+        justify-content: center;
+        opacity: 1;
+        transition: opacity 0.4s ease-out;
+      }
+
+      #loading-container.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .loading-content {
+        width: 100%;
+        max-width: 480px;
+        padding: 12px 20px 20px 20px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .app-title-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 0 6px 0;
+        margin-bottom: 6px;
+      }
+
+      .app-title-bar img {
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+        flex-shrink: 0;
+      }
+
+      .app-title-text {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--title-color);
+        letter-spacing: -0.3px;
+      }
+
+      .app-title-sub {
+        font-size: 11px;
+        color: var(--subtitle-color);
+        margin-top: 1px;
+      }
+
+      .shimmer {
+        background: linear-gradient(
+          115deg,
+          var(--shimmer-base) 35%,
+          var(--shimmer-highlight) 50%,
+          var(--shimmer-base) 65%
+        );
+        background-size: 200% 100%;
+        animation: shimmer-animation 1.5s infinite linear;
+      }
+
+      @keyframes shimmer-animation {
+        0% {
+          background-position: -200% 0;
+        }
+        100% {
+          background-position: 200% 0;
+        }
+      }
+
+      .top-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 42px;
+      }
+
+      .avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 14px;
+      }
+
+      .title-col {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex-grow: 1;
+      }
+
+      .subtitle {
+        width: 92px;
+        height: 10px;
+        border-radius: 4px;
+      }
+
+      .title {
+        width: 148px;
+        height: 18px;
+        border-radius: 4px;
+      }
+
+      .action-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+      }
+
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .icon-btn {
+        width: 30px;
+        height: 30px;
+        border-radius: 12px;
+      }
+
+      .card {
+        box-sizing: border-box;
+        border-radius: 18px;
+        border: 1px solid var(--border-color);
+        background-color: var(--card-bg);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.04);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .card {
+          box-shadow: none;
+        }
+      }
+
+      .overview-card {
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        height: 76px;
+      }
+
+      .banner-card {
+        padding: 14px 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background-color: var(--banner-bg);
+        border: none;
+        box-shadow: none;
+        border-radius: 18px;
+      }
+
+      .banner-text {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+      }
+
+      .schedule-card {
+        padding: 14px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .quick-access-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        justify-items: center;
+        align-items: center;
+      }
+
+      .grid-item {
+        width: 100%;
+        padding: 9px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .grid-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+      }
+
+      .spacing-10 { height: 10px; }
+      .spacing-12 { height: 12px; }
+      .spacing-18 { height: 18px; }
     </style>
   </head>
   <body>
+    <div id="loading-container">
+      <div class="loading-content">
+        <div class="app-title-bar">
+          <img src="icons/icon-128.png" alt="PreConnect" onerror="this.style.display='none'" />
+          <div>
+            <div class="app-title-text">PreConnect</div>
+            <div class="app-title-sub">Academic Companion for BRAC University</div>
+          </div>
+        </div>
+
+        <div class="spacing-12"></div>
+
+        <div class="top-bar">
+          <div class="avatar shimmer"></div>
+          <div class="title-col">
+            <div class="subtitle shimmer"></div>
+            <div class="title shimmer"></div>
+          </div>
+          <div class="action-btn shimmer"></div>
+        </div>
+
+        <div class="spacing-18"></div>
+
+        <div class="section-header">
+          <div class="shimmer" style="width: 80px; height: 18px; border-radius: 4px;"></div>
+          <div style="display: flex; gap: 8px;">
+            <div class="icon-btn shimmer"></div>
+            <div class="icon-btn shimmer"></div>
+            <div class="icon-btn shimmer"></div>
+          </div>
+        </div>
+
+        <div class="spacing-10"></div>
+
+        <div class="card overview-card">
+          <div class="shimmer" style="width: 62%; height: 14px; border-radius: 4px; margin-bottom: 6px;"></div>
+          <div class="shimmer" style="width: 88%; height: 11px; border-radius: 3px;"></div>
+        </div>
+
+        <div class="spacing-12"></div>
+
+        <div class="banner-card">
+          <div class="shimmer" style="width: 30px; height: 30px; border-radius: 10px; flex-shrink: 0;"></div>
+          <div class="banner-text">
+            <div class="shimmer" style="width: 58%; height: 15px; border-radius: 4px; margin-bottom: 5px;"></div>
+            <div class="shimmer" style="width: 82%; height: 11px; border-radius: 3px;"></div>
+          </div>
+        </div>
+
+        <div class="spacing-12"></div>
+
+        <div class="section-header">
+          <div class="shimmer" style="width: 140px; height: 18px; border-radius: 4px;"></div>
+          <div class="shimmer" style="width: 116px; height: 18px; border-radius: 4px;"></div>
+        </div>
+
+        <div class="spacing-12"></div>
+
+        <div class="card schedule-card">
+          <div class="shimmer" style="width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;"></div>
+          <div class="banner-text">
+            <div class="shimmer" style="width: 46%; height: 14px; border-radius: 4px; margin-bottom: 6px;"></div>
+            <div class="shimmer" style="width: 58%; height: 11px; border-radius: 3px;"></div>
+          </div>
+        </div>
+
+        <div class="spacing-12"></div>
+
+        <div class="section-header">
+          <div class="shimmer" style="width: 128px; height: 20px; border-radius: 4px;"></div>
+          <div style="display: flex; gap: 14px; align-items: center;">
+            <div class="shimmer" style="width: 68px; height: 18px; border-radius: 4px;"></div>
+            <div class="shimmer" style="width: 74px; height: 18px; border-radius: 4px;"></div>
+          </div>
+        </div>
+
+        <div class="spacing-18"></div>
+
+        <div class="quick-access-grid">
+          <div class="grid-item">
+            <div class="grid-icon shimmer"></div>
+            <div class="shimmer" style="width: 76%; height: 14px; border-radius: 3px; margin-top: 12px;"></div>
+            <div class="shimmer" style="width: 62%; height: 11px; border-radius: 3px; margin-top: 2px;"></div>
+          </div>
+          <div class="grid-item">
+            <div class="grid-icon shimmer"></div>
+            <div class="shimmer" style="width: 76%; height: 14px; border-radius: 3px; margin-top: 12px;"></div>
+            <div class="shimmer" style="width: 62%; height: 11px; border-radius: 3px; margin-top: 2px;"></div>
+          </div>
+          <div class="grid-item">
+            <div class="grid-icon shimmer"></div>
+            <div class="shimmer" style="width: 76%; height: 14px; border-radius: 3px; margin-top: 12px;"></div>
+            <div class="shimmer" style="width: 62%; height: 11px; border-radius: 3px; margin-top: 2px;"></div>
+          </div>
+          <div class="grid-item">
+            <div class="grid-icon shimmer"></div>
+            <div class="shimmer" style="width: 76%; height: 14px; border-radius: 3px; margin-top: 12px;"></div>
+            <div class="shimmer" style="width: 62%; height: 11px; border-radius: 3px; margin-top: 2px;"></div>
+          </div>
+          <div class="grid-item">
+            <div class="grid-icon shimmer"></div>
+            <div class="shimmer" style="width: 76%; height: 14px; border-radius: 3px; margin-top: 12px;"></div>
+            <div class="shimmer" style="width: 62%; height: 11px; border-radius: 3px; margin-top: 2px;"></div>
+          </div>
+          <div class="grid-item">
+            <div class="grid-icon shimmer"></div>
+            <div class="shimmer" style="width: 76%; height: 14px; border-radius: 3px; margin-top: 12px;"></div>
+            <div class="shimmer" style="width: 62%; height: 11px; border-radius: 3px; margin-top: 2px;"></div>
+          </div>
+          <div class="grid-item">
+            <div class="grid-icon shimmer"></div>
+            <div class="shimmer" style="width: 76%; height: 14px; border-radius: 3px; margin-top: 12px;"></div>
+            <div class="shimmer" style="width: 62%; height: 11px; border-radius: 3px; margin-top: 2px;"></div>
+          </div>
+          <div class="grid-item">
+            <div class="grid-icon shimmer"></div>
+            <div class="shimmer" style="width: 76%; height: 14px; border-radius: 3px; margin-top: 12px;"></div>
+            <div class="shimmer" style="width: 62%; height: 11px; border-radius: 3px; margin-top: 2px;"></div>
+          </div>
+        </div>
+
+        <div class="spacing-12"></div>
+
+        <div class="banner-card">
+          <div class="shimmer" style="width: 30px; height: 30px; border-radius: 10px; flex-shrink: 0;"></div>
+          <div class="banner-text">
+            <div class="shimmer" style="width: 58%; height: 15px; border-radius: 4px; margin-bottom: 5px;"></div>
+            <div class="shimmer" style="width: 82%; height: 11px; border-radius: 3px;"></div>
+          </div>
+          <div class="shimmer" style="width: 24px; height: 24px; border-radius: 8px; flex-shrink: 0; margin-left: 12px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        function removeLoader() {
+          var loader = document.getElementById('loading-container');
+          if (loader && !loader.classList.contains('fade-out')) {
+            loader.classList.add('fade-out');
+            setTimeout(function () {
+              if (loader.parentNode) {
+                loader.parentNode.removeChild(loader);
+              }
+            }, 400);
+          }
+        }
+        window.addEventListener('flutter-first-frame', function () {
+          removeLoader();
+        });
+        setTimeout(function () {
+          removeLoader();
+        }, 15000);
+      })();
+    </script>
+
     <script src="flutter_bootstrap.js" async></script>
   </body>
 </html>

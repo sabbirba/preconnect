@@ -588,11 +588,38 @@ class AppLockService {
     await AppStorage.instance.setBool(_prefsKey, value);
   }
 
-  Future<bool> authenticate({String reason = 'Authenticate'}) async {
+  Future<bool> authenticate({String reason = ''}) async {
     try {
       return await _auth.authenticate(
         localizedReason: reason,
         biometricOnly: false,
+        sensitiveTransaction: true,
+        persistAcrossBackgrounding: true,
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> isBiometricAvailable() async {
+    try {
+      final canCheck = await _auth.canCheckBiometrics;
+      final isSupported = await _auth.isDeviceSupported();
+      if (!canCheck && !isSupported) return false;
+
+      final available = await _auth.getAvailableBiometrics();
+      return available.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> authenticateBiometricOnly({String reason = ''}) async {
+    try {
+      if (!await isBiometricAvailable()) return false;
+      return await _auth.authenticate(
+        localizedReason: reason,
+        biometricOnly: true,
         sensitiveTransaction: true,
         persistAcrossBackgrounding: true,
       );

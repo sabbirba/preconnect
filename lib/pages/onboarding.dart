@@ -15,6 +15,8 @@ import 'package:preconnect/tools/chrome_runtime_available_stub.dart'
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/pages/shared_widgets/import_session_dialog.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key, this.isLoggedIn = false});
@@ -32,14 +34,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
   WebExtensionLoginFlow? _webExtensionLoginFlow;
   StreamSubscription<WebExtensionLoginState>? _webLoginSub;
   bool _isStartingWebLogin = false;
-  late final String _remoteIconUrl;
-
   @override
   void initState() {
     super.initState();
-    _remoteIconUrl = kIsWeb
-        ? '/favicon.png'
-        : 'https://preconnect.app/icon-round.png?t=${DateTime.now().millisecondsSinceEpoch}';
     if (!widget.isLoggedIn) {
       unawaited(LoginPage.preloadNextPage());
     }
@@ -108,13 +105,18 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   Future<void> _openWebLoginSheet() async {
     if (!mounted) return;
-    await showModalBottomSheet<void>(
+    final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (_) => const _WebLoginSheet(),
     );
+    if (result == true) {
+      if (!mounted) return;
+      RefreshBus.instance.notify(reason: 'auth');
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+    }
   }
 
   Future<void> _startWebExtensionLogin() async {
@@ -198,7 +200,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       child: Column(
                         children: [
                           const SizedBox(height: 10),
-                          _HeroCard(isDark: isDark, iconUrl: _remoteIconUrl),
+                          _HeroCard(isDark: isDark),
                           const SizedBox(height: 28),
                           Text(
                             'Welcome to PreConnect',
@@ -255,40 +257,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                 'PreConnect is actively improved by students with open-source contributions, feedback, and community support.',
                             color: const Color(0xFF0EA5A4),
                           ),
-                          const SizedBox(height: 10),
-                          InkWell(
-                            onTap: () =>
-                                _openLink(context, ApiConfig.websiteBase),
-                            borderRadius: BorderRadius.circular(14),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: 6,
-                              ),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(
-                                      Icons.public_rounded,
-                                      size: 18,
-                                      color: BracuPalette.accent,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Open PreConnect Website',
-                                      style: TextStyle(
-                                        color: BracuPalette.accent,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
                           InkWell(
                             onTap: () => _openLink(
                               context,
@@ -300,23 +268,34 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                 horizontal: 4,
                                 vertical: 6,
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.code_rounded,
-                                    size: 18,
-                                    color: BracuPalette.primary,
+                              child: Text(
+                                'Open GitHub Repository',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: BracuPalette.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () =>
+                                _openLink(context, ApiConfig.websiteBase),
+                            borderRadius: BorderRadius.circular(14),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 6,
+                              ),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  'Open PreConnect Website',
+                                  style: TextStyle(
+                                    color: BracuPalette.accent,
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Open GitHub Repository',
-                                    style: TextStyle(
-                                      color: BracuPalette.primary,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
                             ),
                           ),
@@ -430,126 +409,30 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 }
 
-class _WebLoginSheet extends StatefulWidget {
+class _WebLoginSheet extends StatelessWidget {
   const _WebLoginSheet();
 
   @override
-  State<_WebLoginSheet> createState() => _WebLoginSheetState();
-}
-
-class _WebLoginSheetState extends State<_WebLoginSheet> {
-  bool _busy = false;
-
-  Future<void> _openLogin() async {
-    if (_busy) return;
-    setState(() {
-      _busy = true;
-    });
-    await openExternalUrl(context, ApiConfig.authUrl);
-    if (!mounted) return;
-    setState(() {
-      _busy = false;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final bodyColor = BracuPalette.textSecondary(context);
     final bottomPadding = MediaQuery.viewInsetsOf(context).bottom;
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomPadding),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.14),
-              blurRadius: 30,
-              offset: const Offset(0, -14),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          top: false,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Align(
-                  alignment: Alignment.center,
-                  child: Container(
-                    width: 44,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: bodyColor.withValues(alpha: 0.26),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        child: Material(
+          color: BracuPalette.card(context),
+          child: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 430),
+                child: const ImportSessionDialog(
+                  showCancelButton: true,
+                  showCloseButton: true,
                 ),
-                const SizedBox(height: 20),
-                Align(
-                  alignment: Alignment.center,
-                  child: Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: BracuPalette.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Icon(
-                      Icons.login_rounded,
-                      color: BracuPalette.primary,
-                      size: 31,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Sign in with BRACU SSO',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: BracuPalette.textPrimary(context),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Open the BRACU login page in this browser.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: bodyColor,
-                    height: 1.4,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                BracuActionButton(
-                  onPressed: _busy ? null : _openLogin,
-                  label: _busy ? 'Opening...' : 'Continue',
-                  outlined: false,
-                  isLoading: _busy,
-                  backgroundColor: BracuPalette.primary.withValues(alpha: 0.12),
-                  foregroundColor: BracuPalette.primary,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'You will be redirected to BRACU SSO.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: bodyColor.withValues(alpha: 0.82),
-                    fontSize: 12.5,
-                    height: 1.45,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -559,10 +442,9 @@ class _WebLoginSheetState extends State<_WebLoginSheet> {
 }
 
 class _HeroCard extends StatelessWidget {
-  const _HeroCard({required this.isDark, required this.iconUrl});
+  const _HeroCard({required this.isDark});
 
   final bool isDark;
-  final String iconUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -571,8 +453,8 @@ class _HeroCard extends StatelessWidget {
         Center(
           child: ClipRRect(
             borderRadius: BorderRadius.circular(28),
-            child: Image.network(
-              iconUrl,
+            child: Image.asset(
+              'assets/icon.png',
               width: 96,
               height: 96,
               fit: BoxFit.cover,

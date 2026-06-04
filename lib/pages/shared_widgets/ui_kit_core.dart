@@ -215,9 +215,6 @@ class BracuActionButton extends StatelessWidget {
       overlayColor: Colors.transparent,
       enableFeedback: false,
       padding: padding,
-      minimumSize: Size.zero,
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      visualDensity: VisualDensity.compact,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(borderRadius),
       ),
@@ -234,7 +231,10 @@ class BracuActionButton extends StatelessWidget {
   }
 
   Widget _label() {
-    return Text(label, style: TextStyle(fontSize: fontSize));
+    return Text(
+      label,
+      style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w700),
+    );
   }
 }
 
@@ -242,6 +242,7 @@ class BracuActionCard extends StatelessWidget {
   const BracuActionCard({
     super.key,
     required this.title,
+    this.subtitle,
     this.leadingIcon,
     this.trailing,
     this.onTap,
@@ -249,6 +250,7 @@ class BracuActionCard extends StatelessWidget {
   });
 
   final String title;
+  final String? subtitle;
   final IconData? leadingIcon;
   final Widget? trailing;
   final VoidCallback? onTap;
@@ -277,13 +279,29 @@ class BracuActionCard extends StatelessWidget {
                 const SizedBox(width: 12),
               ],
               Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    color: BracuPalette.textPrimary(context),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: BracuPalette.textPrimary(context),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle!,
+                        style: TextStyle(
+                          color: BracuPalette.textSecondary(context),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               trailing ??
@@ -340,9 +358,6 @@ class _LoadingButton extends StatelessWidget {
           overlayColor: Colors.transparent,
           enableFeedback: false,
           padding: padding,
-          minimumSize: Size.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          visualDensity: VisualDensity.compact,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(borderRadius),
           ),

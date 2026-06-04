@@ -10,6 +10,8 @@ import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/web_extension_push_sync_stub.dart'
     if (dart.library.html) 'package:preconnect/tools/web_extension_push_sync_web.dart';
+import 'package:preconnect/tools/chrome_runtime_available_stub.dart'
+    if (dart.library.html) 'package:preconnect/tools/chrome_runtime_available_web.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class FCMService {
@@ -19,6 +21,14 @@ class FCMService {
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
   bool _apnsAvailable = true;
+
+  bool get isSupported {
+    if (kIsWeb) {
+      return isChromeRuntimeAvailable();
+    }
+    return defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+  }
 
   static Future<void> _backgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp();
@@ -153,6 +163,7 @@ class FCMService {
   }
 
   Future<void> subscribeToTopic(String topic) async {
+    if (!isSupported) return;
     if (kIsWeb) {
       final token = await _getToken();
       if (token == null) return;
@@ -171,6 +182,7 @@ class FCMService {
   }
 
   Future<void> unsubscribeFromTopic(String topic) async {
+    if (!isSupported) return;
     if (kIsWeb) {
       final token = await _getToken();
       if (token == null) return;
@@ -189,6 +201,7 @@ class FCMService {
   }
 
   Future<void> init() async {
+    if (!isSupported) return;
     if (!kIsWeb) {
       await _setupLocalNotifications();
     }
@@ -416,6 +429,7 @@ class FCMService {
     String courseCode,
     String sectionName,
   ) async {
+    if (!isSupported) return;
     try {
       final token = await _getToken();
       if (token == null) {

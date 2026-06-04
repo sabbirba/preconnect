@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:in_app_update/in_app_update.dart';
+import 'package:preconnect/api/analytics.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
@@ -90,6 +91,16 @@ class AppRestartState extends State<AppRestart> {
     return FutureBuilder<AppBootstrapState>(
       future: _bootstrapFuture,
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return widget.builder(
+            const AppBootstrapState(
+              themeMode: ThemeMode.system,
+              isLoggedIn: false,
+              canOpenOffline: false,
+              initialHomeTab: HomeTab.dashboard,
+            ),
+          );
+        }
         if (!snapshot.hasData) {
           return widget.child;
         }
@@ -103,9 +114,10 @@ class AppRestartState extends State<AppRestart> {
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key, this.bootstrapState});
+  const MyApp({super.key, this.bootstrapState, this.isPreBoot = false});
 
   final AppBootstrapState? bootstrapState;
+  final bool isPreBoot;
 
   static Future<AppBootstrapState> bootstrap() async {
     final prefs = AppStorage.instance;
@@ -252,32 +264,34 @@ class _MyAppState extends State<MyApp>
       widget.bootstrapState?.themeMode ?? ThemeMode.system,
     );
     WidgetsBinding.instance.addObserver(this);
-    if (_resolvedBootstrapState == null) {
-      unawaited(_bootstrapInBackground());
-    }
-    if (kIsWeb) {
-      _webExtensionSessionFlow = WebExtensionSessionFlow();
-      _webSessionSub = _webExtensionSessionFlow!.events.listen(
-        _handleWebExtensionSessionEvent,
-      );
-      _webShortcutBridge = WebExtensionShortcutBridge(
-        onShortcut: _handleShortcutAction,
-      );
-    }
-    if (!kIsWeb) {
-      unawaited(_initializeAppLock());
-    }
-    if (!kIsWeb) {
-      bindRefreshBus(_onRefreshSignal);
-    }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_warmPublicCdnCaches());
-      if (_supportsInAppUpdates) {
-        unawaited(_maybeCheckForUpdates());
+    if (!widget.isPreBoot) {
+      if (_resolvedBootstrapState == null) {
+        unawaited(_bootstrapInBackground());
       }
-      unawaited(_runDeferredStartupWork());
-    });
-    unawaited(FCMService.instance.init());
+      if (kIsWeb) {
+        _webExtensionSessionFlow = WebExtensionSessionFlow();
+        _webSessionSub = _webExtensionSessionFlow!.events.listen(
+          _handleWebExtensionSessionEvent,
+        );
+        _webShortcutBridge = WebExtensionShortcutBridge(
+          onShortcut: _handleShortcutAction,
+        );
+      }
+      if (!kIsWeb) {
+        unawaited(_initializeAppLock());
+      }
+      if (!kIsWeb) {
+        bindRefreshBus(_onRefreshSignal);
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_warmPublicCdnCaches());
+        if (_supportsInAppUpdates) {
+          unawaited(_maybeCheckForUpdates());
+        }
+        unawaited(_runDeferredStartupWork());
+      });
+      unawaited(FCMService.instance.init());
+    }
   }
 
   Future<void> _bootstrapInBackground() async {
@@ -289,7 +303,19 @@ class _MyAppState extends State<MyApp>
       _canOpenOffline = next.canOpenOffline;
       _themeMode.value = next.themeMode;
       setState(() {});
-    } catch (_) {}
+    } catch (_) {
+      if (!mounted) return;
+      _resolvedBootstrapState = const AppBootstrapState(
+        themeMode: ThemeMode.system,
+        isLoggedIn: false,
+        canOpenOffline: false,
+        initialHomeTab: HomeTab.dashboard,
+      );
+      _initialLoggedIn = false;
+      _canOpenOffline = false;
+      _themeMode.value = ThemeMode.system;
+      setState(() {});
+    }
   }
 
   Future<void> _setupQuickAccessShortcuts() async {
@@ -390,11 +416,13 @@ class _MyAppState extends State<MyApp>
 
   @override
   void dispose() {
-    _webSessionSub?.cancel();
-    _webExtensionSessionFlow?.dispose();
-    unawaited(_webShortcutBridge?.dispose());
-    if (!kIsWeb) {
-      unbindRefreshBus(_onRefreshSignal);
+    if (!widget.isPreBoot) {
+      _webSessionSub?.cancel();
+      _webExtensionSessionFlow?.dispose();
+      unawaited(_webShortcutBridge?.dispose());
+      if (!kIsWeb) {
+        unbindRefreshBus(_onRefreshSignal);
+      }
     }
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -575,9 +603,7 @@ class _MyAppState extends State<MyApp>
   Future<void> _unlockApp() async {
     if (_isUnlocking) return;
     _isUnlocking = true;
-    final unlocked = await AppLockService().authenticate(
-      reason: 'Unlock PreConnect',
-    );
+    final unlocked = await AppLockService().authenticate();
     _isUnlocking = false;
     if (!mounted) return;
     setState(() {
@@ -798,12 +824,13 @@ class _MyAppState extends State<MyApp>
           notifier: _themeMode,
           onChanged: _persistTheme,
           child: MaterialApp(
+            title: 'PreConnect',
             debugShowCheckedModeBanner: false,
             theme: lightTheme,
             darkTheme: darkTheme,
             themeMode: mode,
-            navigatorKey: AuthService.navigatorKey,
-            navigatorObservers: [_routeObserver],
+            navigatorKey: widget.isPreBoot ? null : AuthService.navigatorKey,
+            navigatorObservers: [_routeObserver, AnalyticsService.observer],
             builder: (context, child) {
               final isDark = Theme.of(context).brightness == Brightness.dark;
               final mediaQuery = MediaQuery.of(context);
@@ -937,7 +964,7 @@ class _MyAppState extends State<MyApp>
               '/onboarding': (context) => const OnboardingPage(),
             },
             home: _resolvedBootstrapState == null
-                ? const _StartupFrame()
+                ? const StartupFrame()
                 : (_initialLoggedIn || _canOpenOffline)
                 ? HomePage(
                     initialTab:
@@ -990,8 +1017,8 @@ class _RouteTrackingObserver extends NavigatorObserver {
   }
 }
 
-class _StartupFrame extends StatelessWidget {
-  const _StartupFrame();
+class StartupFrame extends StatelessWidget {
+  const StartupFrame({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -1027,18 +1054,13 @@ class _StartupFrame extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.school_outlined,
-                  size: 30,
-                  color: BracuPalette.primary,
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'PreConnect',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: BracuPalette.textSecondary(context),
-                    fontWeight: FontWeight.w600,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.asset(
+                    'assets/icon.png',
+                    width: 96,
+                    height: 96,
+                    fit: BoxFit.cover,
                   ),
                 ),
               ],

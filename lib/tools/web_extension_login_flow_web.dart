@@ -54,7 +54,7 @@ class WebExtensionLoginFlow {
 
 bool _isChromeRuntimeAvailable() {
   try {
-    return chrome.runtime.isAvailable;
+    return chrome.runtime.isAvailable && Uri.base.scheme == 'chrome-extension';
   } catch (_) {
     return false;
   }

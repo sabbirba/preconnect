@@ -223,7 +223,12 @@ class _DevsPageState extends State<DevsPage> {
     _secretTapCount = 0;
     if (!mounted) return;
 
-    final verified = await AppLockService().authenticate();
+    final lockService = AppLockService();
+    final isBiometricAvailable = await lockService.isBiometricAvailable();
+    if (!isBiometricAvailable) {
+      return;
+    }
+    final verified = await lockService.authenticateBiometricOnly();
     if (!verified) return;
 
     if (!mounted) return;

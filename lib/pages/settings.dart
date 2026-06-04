@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:preconnect/app.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
 import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/pages/shared_widgets/export_session_bottom_sheet.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/quiet_mode_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/storage_keys.dart';
+import 'package:preconnect/tools/chrome_runtime_available_stub.dart'
+    if (dart.library.html) 'package:preconnect/tools/chrome_runtime_available_web.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -170,9 +174,7 @@ class _SettingsPageState extends State<SettingsPage>
 
   Future<void> _setAppLockEnabled(bool value) async {
     if (value) {
-      final confirmed = await AppLockService().authenticate(
-        reason: 'Confirm to enable app lock',
-      );
+      final confirmed = await AppLockService().authenticate();
       if (!confirmed) {
         if (!mounted) return;
         showAppSnackBar(context, 'Verification failed. App lock not enabled');
@@ -269,6 +271,10 @@ class _SettingsPageState extends State<SettingsPage>
     showAppSnackBar(context, 'Cached data cleared');
     await Future.delayed(const Duration(milliseconds: 250));
     AppRestart.restart();
+  }
+
+  Future<void> _exportSessionForWeb() async {
+    await ExportSessionBottomSheet.show(context);
   }
 
   @override
@@ -437,6 +443,15 @@ class _SettingsPageState extends State<SettingsPage>
               onChanged: _setAppLockEnabled,
             ),
           ),
+          if (!kIsWeb || isChromeRuntimeAvailable()) ...[
+            const SizedBox(height: _sectionGap),
+            BracuActionCard(
+              title: 'Sync Session with Web',
+              subtitle: 'Scan QR or copy code to log in on Web.',
+              onTap: _exportSessionForWeb,
+              trailing: const SizedBox.shrink(),
+            ),
+          ],
           const SizedBox(height: _sectionGap),
           BracuActionButton(
             onPressed: _isClearingCache ? null : _clearCacheKeepingLoginData,

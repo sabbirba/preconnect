@@ -162,9 +162,19 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
     final nameToShow = _displayName?.trim().isNotEmpty == true
         ? _displayName!
         : widget.friend.name;
-    final courseCount = widget.friend.courses.length;
+    final uniqueCodes = widget.friend.courses
+        .map((c) {
+          final code = c.courseCode.trim().toUpperCase();
+          if (code.endsWith('L') && code.length > 1) {
+            return code.substring(0, code.length - 1);
+          }
+          return code;
+        })
+        .where((code) => code.isNotEmpty)
+        .toSet();
+    final courseCount = uniqueCodes.length;
     final headerTitle =
-        '$courseCount ${courseCount == 1 ? 'Schedule' : 'Schedules'}';
+        '$courseCount ${courseCount == 1 ? 'Course' : 'Courses'}';
 
     return Scaffold(
       body: BracuPageScaffold(
