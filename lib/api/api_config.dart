@@ -11,9 +11,21 @@ class ApiConfig {
 
   static const String ssoBase =
       'https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect';
-  static const String tokenEndpoint = '$ssoBase/token';
-  static const String logoutEndpoint = '$ssoBase/logout';
-  static const String authEndpoint = '$ssoBase/auth';
+  static String get tokenEndpoint {
+    if (_kIsWeb && !isChromeRuntimeAvailable()) {
+      return '$realtimeApiBase/proxy/sso/token';
+    }
+    return '$ssoBase/token';
+  }
+
+  static String get logoutEndpoint {
+    if (_kIsWeb && !isChromeRuntimeAvailable()) {
+      return '$realtimeApiBase/proxy/sso/logout';
+    }
+    return '$ssoBase/logout';
+  }
+
+  static String get authEndpoint => '$ssoBase/auth';
 
   static const String cdnApiBase = 'https://cdn.preconnect.app/api';
   static const String realtimeApiBase = 'https://api.preconnect.app';
@@ -34,21 +46,21 @@ class ApiConfig {
 
   static String get connectApiBase {
     if (_kIsWeb && !isChromeRuntimeAvailable()) {
-      return '/api';
+      return '$realtimeApiBase/proxy/api';
     }
     return 'https://connect.bracu.ac.bd/api';
   }
 
   static String get connectWebApiBase {
     if (_kIsWeb && !isChromeRuntimeAvailable()) {
-      return '/api';
+      return '$realtimeApiBase/proxy/api';
     }
     return 'https://connect.bracu.ac.bd/api';
   }
 
   static String get connectCdnBase {
     if (_kIsWeb && !isChromeRuntimeAvailable()) {
-      return '/cdn';
+      return '$realtimeApiBase/proxy/cdn';
     }
     return 'https://connect.bracu.ac.bd/cdn';
   }

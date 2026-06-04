@@ -30,6 +30,7 @@ class FCMService {
         defaultTargetPlatform == TargetPlatform.iOS;
   }
 
+  @pragma('vm:entry-point')
   static Future<void> _backgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp();
     debugPrint("Background message: ${message.messageId}");

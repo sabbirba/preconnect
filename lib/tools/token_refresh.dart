@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/web_extension_api_config.dart';
 
@@ -22,7 +23,7 @@ Future<TokenRefreshStatus> refreshBracuSessionTokens({
   }
 
   try {
-    final uri = Uri.parse(WebExtensionApiConfig.tokenEndpoint);
+    final uri = Uri.parse(ApiConfig.tokenEndpoint);
     final body = HttpUtils.formBody(<String, String>{
       'grant_type': 'refresh_token',
       'refresh_token': cleanedRefreshToken,
