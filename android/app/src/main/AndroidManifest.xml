@@ -141,6 +141,10 @@
               android:resource="@style/NormalTheme"
               />
             <intent-filter>
+                <action android:name="FLUTTER_NOTIFICATION_CLICK" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
                 <action android:name="android.app.action.AUTOMATIC_ZEN_RULE" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>

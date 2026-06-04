@@ -31,7 +31,7 @@ class FCMService {
   }
 
   @pragma('vm:entry-point')
-  static Future<void> _backgroundHandler(RemoteMessage message) async {
+  static Future<void> backgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp();
     debugPrint("Background message: ${message.messageId}");
   }
@@ -276,9 +276,6 @@ class FCMService {
       debugPrint("Notification permissions denied");
       return;
     }
-
-    FirebaseMessaging.onBackgroundMessage(_backgroundHandler);
-
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint("Foreground message: ${message.notification?.title}");
       _showLocalNotification(message);

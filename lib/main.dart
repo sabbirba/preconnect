@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/firebase_options.dart';
 import 'app.dart';
 import 'tools/app_storage.dart';
@@ -24,6 +26,7 @@ Future<void> main() async {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
+      FirebaseMessaging.onBackgroundMessage(FCMService.backgroundHandler);
 
       await AppStorage.initialize();
       PaintingBinding.instance.imageCache.maximumSize = 200;
