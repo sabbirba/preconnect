@@ -187,6 +187,9 @@ jobs:
           - os: ubuntu-latest
             platform: chrome_extension
             name: Chrome Extension
+          - os: ubuntu-latest
+            platform: web
+            name: Web
           - os: ubuntu-22.04
             platform: android
             name: Android
@@ -368,6 +371,28 @@ jobs:
           mkdir -p artifacts
           cd build/chrome-extension
           zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-chrome-extension-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
+
+      - name: Build Web
+        if: matrix.platform == 'web'
+        shell: bash
+        run: |
+          flutter build web --release --tree-shake-icons --csp --no-wasm-dry-run --no-web-resources-cdn --dart-define-from-file=.env
+
+      - name: Web Package
+        if: matrix.platform == 'web'
+        run: |
+          mkdir -p artifacts
+          cd build/web
+          zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-web-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
+
+      - name: Deploy to Firebase Hosting
+        if: matrix.platform == 'web'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PRECONNECT_BRACU }}
+          projectId: preconnect-bracu
+          channelId: live
 
       - name: Clean Build
         if: matrix.platform == 'android' || matrix.platform == 'ios' || matrix.platform == 'macos'
