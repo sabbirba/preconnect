@@ -1033,11 +1033,11 @@ class StartupFrame extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(7),
                   child: Image.asset(
                     'assets/icon.png',
-                    width: 96,
-                    height: 96,
+                    width: 30,
+                    height: 30,
                     fit: BoxFit.cover,
                   ),
                 ),
