@@ -3,8 +3,9 @@ import 'package:preconnect/tools/preconnect_constants.dart';
 
 Future<void> requestWebExtensionPushTokenSync() async {
   try {
-    if (!chrome.runtime.isAvailable || Uri.base.scheme != 'chrome-extension')
+    if (!chrome.runtime.isAvailable || Uri.base.scheme != 'chrome-extension') {
       return;
+    }
   } catch (_) {
     return;
   }

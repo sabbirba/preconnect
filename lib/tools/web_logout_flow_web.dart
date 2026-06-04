@@ -3,8 +3,9 @@ import 'package:chrome_extension/runtime.dart';
 class WebLogoutFlow {
   static Future<bool> openConnectLogoutPage() async {
     try {
-      if (!chrome.runtime.isAvailable || Uri.base.scheme != 'chrome-extension')
+      if (!chrome.runtime.isAvailable || Uri.base.scheme != 'chrome-extension') {
         return false;
+      }
     } catch (_) {
       return false;
     }
