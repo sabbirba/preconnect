@@ -18,8 +18,11 @@ import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/token_refresh.dart';
 import 'package:preconnect/tools/web_shared.dart';
 import 'package:preconnect/tools/token_storage.dart';
+import 'package:preconnect/tools/refresh_bus.dart';
 
 class AuthService {
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal() {
@@ -104,6 +107,7 @@ class AuthService {
         }
         await _clearAuthSessionData();
         await _clearLocalCaches();
+        RefreshBus.instance.notify(reason: 'auth');
         return;
       }
 
@@ -118,9 +122,11 @@ class AuthService {
       await _clearAuthSessionData();
       if (instant) {
         unawaited(_finishLogout(refreshToken, accessToken: accessToken));
+        RefreshBus.instance.notify(reason: 'auth');
         return;
       }
       await _finishLogout(refreshToken, accessToken: accessToken);
+      RefreshBus.instance.notify(reason: 'auth');
     } finally {
       _isLoggingOut = false;
     }

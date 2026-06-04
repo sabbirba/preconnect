@@ -32,10 +32,14 @@ class _OnboardingPageState extends State<OnboardingPage> {
   WebExtensionLoginFlow? _webExtensionLoginFlow;
   StreamSubscription<WebExtensionLoginState>? _webLoginSub;
   bool _isStartingWebLogin = false;
+  late final String _remoteIconUrl;
 
   @override
   void initState() {
     super.initState();
+    _remoteIconUrl = kIsWeb
+        ? '/favicon.png'
+        : 'https://preconnect.app/icon-round.png?t=${DateTime.now().millisecondsSinceEpoch}';
     if (!widget.isLoggedIn) {
       unawaited(LoginPage.preloadNextPage());
     }
@@ -194,7 +198,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       child: Column(
                         children: [
                           const SizedBox(height: 10),
-                          _HeroCard(isDark: isDark),
+                          _HeroCard(isDark: isDark, iconUrl: _remoteIconUrl),
                           const SizedBox(height: 28),
                           Text(
                             'Welcome to PreConnect',
@@ -555,9 +559,10 @@ class _WebLoginSheetState extends State<_WebLoginSheet> {
 }
 
 class _HeroCard extends StatelessWidget {
-  const _HeroCard({required this.isDark});
+  const _HeroCard({required this.isDark, required this.iconUrl});
 
   final bool isDark;
+  final String iconUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -567,7 +572,7 @@ class _HeroCard extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(28),
             child: Image.network(
-              kIsWeb ? '/favicon.png' : 'https://preconnect.app/icon-round.png',
+              iconUrl,
               width: 96,
               height: 96,
               fit: BoxFit.cover,

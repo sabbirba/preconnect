@@ -229,7 +229,6 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp>
     with WidgetsBindingObserver, RefreshBusState {
   late final ValueNotifier<ThemeMode> _themeMode;
-  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   final _RouteTrackingObserver _routeObserver = _RouteTrackingObserver();
   late bool _initialLoggedIn;
   late bool _canOpenOffline;
@@ -408,7 +407,7 @@ class _MyAppState extends State<MyApp>
       _initialLoggedIn = false;
       _canOpenOffline = false;
     });
-    _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+    AuthService.navigatorKey.currentState?.pushNamedAndRemoveUntil(
       '/onboarding',
       (route) => false,
     );
@@ -418,6 +417,24 @@ class _MyAppState extends State<MyApp>
     if (!mounted) return;
     if (isRefreshingFrom('app_lock_settings_changed')) {
       unawaited(_refreshAndUnlockIfNeeded());
+    }
+    if (isRefreshingFrom('auth')) {
+      unawaited(() async {
+        final loggedIn = await AuthService().isLoggedIn();
+        if (mounted) {
+          setState(() {
+            _initialLoggedIn = loggedIn;
+            _canOpenOffline = loggedIn;
+          });
+          if (!loggedIn) {
+            _themeMode.value = ThemeMode.system;
+            AuthService.navigatorKey.currentState?.pushNamedAndRemoveUntil(
+              '/onboarding',
+              (route) => false,
+            );
+          }
+        }
+      }());
     }
     if (isRefreshingFromAny(<String>{
       'auth',
@@ -455,13 +472,13 @@ class _MyAppState extends State<MyApp>
   void _openHomeTab(HomeTab tab) {
     if (!_initialLoggedIn && !_canOpenOffline) return;
     HomePage.requestShortcutTab(tab);
-    final navigator = _navigatorKey.currentState;
+    final navigator = AuthService.navigatorKey.currentState;
     if (navigator != null) {
       navigator.pushNamedAndRemoveUntil('/home', (route) => false);
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+      AuthService.navigatorKey.currentState?.pushNamedAndRemoveUntil(
         '/home',
         (route) => false,
       );
@@ -675,7 +692,7 @@ class _MyAppState extends State<MyApp>
       );
       if (!signedIn && mounted) {
         _themeMode.value = ThemeMode.system;
-        _navigatorKey.currentState?.pushAndRemoveUntil(
+        AuthService.navigatorKey.currentState?.pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const OnboardingPage()),
           (route) => false,
         );
@@ -785,7 +802,7 @@ class _MyAppState extends State<MyApp>
             theme: lightTheme,
             darkTheme: darkTheme,
             themeMode: mode,
-            navigatorKey: _navigatorKey,
+            navigatorKey: AuthService.navigatorKey,
             navigatorObservers: [_routeObserver],
             builder: (context, child) {
               final isDark = Theme.of(context).brightness == Brightness.dark;

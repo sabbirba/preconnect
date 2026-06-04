@@ -15,6 +15,7 @@
 android/key.properties
 *.jks
 *.keystore
+service-account.json
 
 # Local env helpers
 .env.local.sh

@@ -10,7 +10,6 @@ import 'package:preconnect/api/exam_map.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/api/schedule.dart';
-import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/class_schedule.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
 import 'package:preconnect/pages/degree_progress.dart';
@@ -227,8 +226,6 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
   }
 
   Future<void> _confirmLogout(BuildContext context) async {
-    final navigator = Navigator.of(context);
-    final themeNotifier = ThemeController.of(context);
     final shouldLogout = await showBracuConfirmationWithActionDialog(
       context,
       icon: Icons.logout,
@@ -245,11 +242,6 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
       final logoutContext = context;
       if (!logoutContext.mounted) return;
       await AuthService().logout(context: logoutContext, force: true);
-      if (!mounted) return;
-      themeNotifier.value = ThemeMode.system;
-      RefreshBus.instance.notify(reason: 'auth');
-      if (!mounted) return;
-      navigator.pushNamedAndRemoveUntil('/onboarding', (route) => false);
     }
   }
 
