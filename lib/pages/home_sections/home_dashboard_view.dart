@@ -590,7 +590,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     padding: EdgeInsets.only(bottom: 12),
                                     child: _CampusMapLoadingSkeleton(),
                                   ),
-                                if (cardVisibility.showCampusMapContacts)
+                                if (cardVisibility.showCampusMapContacts) ...[
                                   BracuActionBannerCard(
                                     icon: Icons.location_on_rounded,
                                     title: 'Campus Map & Contacts',
@@ -599,6 +599,16 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     iconDecoration: false,
                                     onTap: _openCampusMapSheet,
                                   ),
+                                  const SizedBox(height: 12),
+                                  BracuActionBannerCard(
+                                    icon: Icons.apple,
+                                    title: 'Help PreConnect iOS',
+                                    subtitle: 'Support funding for the iOS release',
+                                    iconColor: const Color(0xFF007AFF),
+                                    iconDecoration: false,
+                                    onTap: () => showBracuFundingSupportSheet(context),
+                                  ),
+                                ],
                               ],
                             ),
                           );

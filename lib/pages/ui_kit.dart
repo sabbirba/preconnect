@@ -554,19 +554,35 @@ Future<void> showBracuFundingSupportSheet(BuildContext context) async {
     context,
     title: 'Support PreConnect',
     subtitle: 'Choose how you want to help',
-    initialChildSize: 0.60,
+    initialChildSize: 0.70,
     builder: (sheetContext, textPrimary, textSecondary) {
       final sheetScroll = bracuBottomSheetScrollController(sheetContext);
       return ListView(
         controller: sheetScroll,
         children: [
-          Text(
-            'PreConnect is built by BRACU students. We keep it free, maintain the app, and add new features from community feedback. Your support helps keep it running.',
-            style: TextStyle(
-              color: textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              height: 1.45,
+          Text.rich(
+            TextSpan(
+              style: TextStyle(
+                color: textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                height: 1.45,
+              ),
+              children: const [
+                TextSpan(
+                  text:
+                      'PreConnect is built by BRACU students. We keep it free, no ads, maintain the app, and add new features from community feedback. Your support helps keep it running.\n',
+                ),
+                TextSpan(
+                  text:
+                      'Currently, we are working on the iOS release, so we need 99 dollar which is about 12300 Taka to purchase Apple Developer Membership.',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                TextSpan(
+                  text:
+                      ' Your support means everything to us. Thank you for being part of this journey!',
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 8),
