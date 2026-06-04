@@ -862,30 +862,8 @@ class _MyAppState extends State<MyApp>
                 value: overlayStyle,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    if (!kIsWeb && constraints.maxWidth >= 700) {
-                      const shellWidth = 700.0;
-                      final shellSize = Size(
-                        shellWidth,
-                        mediaQuery.size.height,
-                      );
-                      final shellMediaQuery = mediaQuery.copyWith(
-                        size: shellSize,
-                      );
-                      return Container(
-                        color: Theme.of(context).scaffoldBackgroundColor,
-                        alignment: Alignment.center,
-                        child: SizedBox(
-                          width: shellWidth,
-                          height: mediaQuery.size.height,
-                          child: MediaQuery(
-                            data: shellMediaQuery,
-                            child: content,
-                          ),
-                        ),
-                      );
-                    }
-
-                    final shellWidth = constraints.maxWidth;
+                    final isWide = constraints.maxWidth >= 480.0;
+                    final shellWidth = isWide ? 480.0 : constraints.maxWidth;
                     final shellHeight = mediaQuery.size.height;
                     final shellSize = Size(shellWidth, shellHeight);
                     final shellMediaQuery = mediaQuery.copyWith(
@@ -925,9 +903,9 @@ class _MyAppState extends State<MyApp>
                                     context,
                                   ).scaffoldBackgroundColor,
                                   borderRadius: BorderRadius.circular(
-                                    kIsWeb ? 32 : 0,
+                                    isWide ? 32 : 0,
                                   ),
-                                  boxShadow: kIsWeb
+                                  boxShadow: isWide
                                       ? [
                                           BoxShadow(
                                             color: Colors.black.withValues(
