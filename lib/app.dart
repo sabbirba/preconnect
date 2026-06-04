@@ -496,6 +496,9 @@ class _MyAppState extends State<MyApp>
       case 'seatStatus':
       case 'seat_status':
         return HomeTab.seatStatus;
+      case PreconnectBrowserActionIds.shortcutNotifications:
+      case 'notifications':
+        return HomeTab.notifications;
       default:
         return null;
     }

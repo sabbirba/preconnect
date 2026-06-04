@@ -1,0 +1,15 @@
+import 'package:chrome_extension/chrome.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
+
+Future<void> requestWebExtensionPushTokenSync() async {
+  try {
+    if (!chrome.runtime.isAvailable) return;
+  } catch (_) {
+    return;
+  }
+  try {
+    await chrome.runtime.sendMessage(null, {
+      'type': PreconnectPushConfig.syncPushTokenMessageType,
+    }, null);
+  } catch (_) {}
+}

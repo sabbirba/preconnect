@@ -9,6 +9,7 @@ import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
 import 'package:preconnect/pages/shared_widgets/course_community_sheet.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ramadan.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/api/fcm.dart';
@@ -188,7 +189,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       }
     });
 
-    final topic = 'seat_$key';
+    final topic = PreconnectPushConfig.seatTopic(key);
     if (willPin) {
       unawaited(FCMService.instance.subscribeToTopic(topic));
       if (card != null) {

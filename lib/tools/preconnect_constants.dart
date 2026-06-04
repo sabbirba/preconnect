@@ -46,4 +46,25 @@ class PreconnectBrowserActionIds {
   static const String shortcutShare = 'quick.share';
   static const String shortcutScan = 'quick.scan';
   static const String shortcutSeatStatus = 'quick.seatStatus';
+  static const String shortcutNotifications = 'quick.notifications';
+}
+
+class PreconnectPushConfig {
+  PreconnectPushConfig._();
+
+  static const String gcmSenderId = '53508941136';
+  static const String gcmTokenKey = 'preconnect.gcmToken';
+  static const String chromeExtensionPlatform = 'chrome_extension';
+  static const String syncPushTokenMessageType = 'preconnect.syncPushToken';
+  static const String seatStatusPinScope = 'seat_status';
+  static const List<String> defaultTopics = <String>['announcements', 'news'];
+
+  static const String registerDevicePath = '/push/device/register';
+  static const String unregisterDevicePath = '/push/device/unregister';
+  static const String subscribeTopicPath = '/push/topic/subscribe';
+  static const String unsubscribeTopicPath = '/push/topic/unsubscribe';
+  static const String sendConfirmationPath = '/push/device/send-confirmation';
+
+  static String coursePinsKey(String scope) => 'course_pins_$scope';
+  static String seatTopic(String sectionId) => 'seat_${sectionId.trim()}';
 }

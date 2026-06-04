@@ -258,16 +258,25 @@ class CaptiveLoginStore {
 }
 
 class CoursePinStore {
-  static String _key(String scope) => 'course_pins_$scope';
+  static String _key(String scope) => PreconnectPushConfig.coursePinsKey(scope);
 
   static Future<Set<String>> load(String scope) async {
-    final values =
+    final localValues =
         (await AppStorage.instance.getStringList(_key(scope))) ??
         const <String>[];
-    return values
+    final values = <String>[...localValues];
+    if (kIsWeb) {
+      final mirrored = await _loadMirroredWebExtensionPins(scope);
+      values.addAll(mirrored);
+    }
+    final normalized = values
         .map((e) => e.trim().toUpperCase())
         .where((e) => e.isNotEmpty)
         .toSet();
+    if (kIsWeb && normalized.isNotEmpty) {
+      await _saveMirroredWebExtensionPins(scope, normalized);
+    }
+    return normalized;
   }
 
   static Future<void> save(String scope, Set<String> pins) async {
@@ -278,6 +287,37 @@ class CoursePinStore {
             .toList()
           ..sort();
     await AppStorage.instance.setStringList(_key(scope), values);
+    if (kIsWeb) {
+      await webExtensionStorageSet(_key(scope), jsonEncode(values));
+    }
+  }
+
+  static Future<Set<String>> _loadMirroredWebExtensionPins(String scope) async {
+    final raw = await webExtensionStorageGet(_key(scope));
+    if (raw == null || raw.isEmpty) return const <String>{};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return const <String>{};
+      return decoded
+          .map((value) => '$value'.trim().toUpperCase())
+          .where((value) => value.isNotEmpty)
+          .toSet();
+    } catch (_) {
+      return const <String>{};
+    }
+  }
+
+  static Future<void> _saveMirroredWebExtensionPins(
+    String scope,
+    Set<String> pins,
+  ) async {
+    final values =
+        pins
+            .map((e) => e.trim().toUpperCase())
+            .where((e) => e.isNotEmpty)
+            .toList()
+          ..sort();
+    await webExtensionStorageSet(_key(scope), jsonEncode(values));
   }
 }
 

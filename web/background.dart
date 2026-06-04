@@ -72,6 +72,11 @@ const String _cookieSnapshotConnectKey = 'preconnect.cookies.connect';
 const String _cookieSnapshotSsoKey = 'preconnect.cookies.sso';
 const String _cookieSnapshotUpdatedAtKey = 'preconnect.cookies.updatedAt';
 const String _cachedUnreadCountKey = 'preconnect.cachedUnreadCount';
+const String _notificationPayloadsKey = 'preconnect.notificationPayloads';
+const String _gcmLastRegisteredAtKey = 'preconnect.gcmLastRegisteredAt';
+const String _gcmLastMessageAtKey = 'preconnect.gcmLastMessageAt';
+const String _gcmLastDeletedAtKey = 'preconnect.gcmLastDeletedAt';
+const String _gcmLastSendErrorKey = 'preconnect.gcmLastSendError';
 const String _extensionAlarmId = 'preconnect.syncAlarm';
 const String _connectCookieUrl = 'https://connect.bracu.ac.bd/';
 const String _ssoCookieUrl =
@@ -89,11 +94,6 @@ Headers _headersFromMap(Map<String, String> values) {
 }
 
 Future<void> main() async {
-  await _guarded(_configureBrowserSurfaces);
-  await _guarded(_syncBracuCookieSnapshot);
-  await _guarded(_configureAlarms);
-  await _guarded(_refreshBadgeAndNotifyIfNeeded);
-
   if (chrome.cookies.isAvailable) {
     chrome.cookies.onChanged.listen((changeInfo) {
       final cookie = changeInfo.cookie;
@@ -113,6 +113,7 @@ Future<void> main() async {
         await _bootstrapSessionSync();
         await _configureAlarms();
         await _refreshBadgeAndNotifyIfNeeded();
+        await _registerGcmAndSyncToken();
         await _restoreAppTabAfterStartup();
       }),
     );
@@ -123,6 +124,7 @@ Future<void> main() async {
         await _bootstrapSessionSync();
         await _configureAlarms();
         await _refreshBadgeAndNotifyIfNeeded();
+        await _registerGcmAndSyncToken();
       }),
     );
   });
@@ -148,27 +150,7 @@ Future<void> main() async {
     );
   });
 
-  chrome.runtime.onMessage.listen((event) {
-    final message = event.message;
-    if (message is! Map) return;
-    final type = '${message['type'] ?? ''}';
-    if (type != _startLoginType) return;
-    try {
-      event.sendResponse.callAsFunction(null, {'ok': true}.jsify());
-    } catch (_) {}
-    unawaited(_guarded(_startLogin));
-  });
-
-  chrome.runtime.onMessage.listen((event) {
-    final message = event.message;
-    if (message is! Map) return;
-    final type = '${message['type'] ?? ''}';
-    if (type != _startLogoutType) return;
-    try {
-      event.sendResponse.callAsFunction(null, {'ok': true}.jsify());
-    } catch (_) {}
-    unawaited(_guarded(_startLogout));
-  });
+  chrome.runtime.onMessage.listen(_handleRuntimeMessage);
 
   chrome.webNavigation.onCommitted.listen((details) {
     unawaited(_guarded(() => _handleNavigation(details)));
@@ -185,6 +167,7 @@ Future<void> main() async {
         _guarded(() async {
           await _syncLatestSession();
           await _refreshBadgeAndNotifyIfNeeded();
+          await _registerGcmAndSyncToken();
         }),
       );
     });
@@ -194,14 +177,29 @@ Future<void> main() async {
     chrome.gcm.onMessage.listen((event) {
       unawaited(_guarded(() => _handleGcmMessage(event)));
     });
+    chrome.gcm.onMessagesDeleted.listen((_) {
+      unawaited(_guarded(_handleGcmMessagesDeleted));
+    });
+    chrome.gcm.onSendError.listen((error) {
+      unawaited(_guarded(() => _handleGcmSendError(error)));
+    });
   }
 
   if (chrome.notifications.isAvailable) {
     chrome.notifications.onClicked.listen((notificationId) {
       unawaited(_guarded(() => _handleNotificationClick(notificationId)));
     });
+    chrome.notifications.onClosed.listen((event) {
+      unawaited(
+        _guarded(() => _clearNotificationPayload(event.notificationId)),
+      );
+    });
   }
 
+  unawaited(_guarded(_configureBrowserSurfaces));
+  unawaited(_guarded(_syncBracuCookieSnapshot));
+  unawaited(_guarded(_configureAlarms));
+  unawaited(_guarded(_refreshBadgeAndNotifyIfNeeded));
   unawaited(_guarded(_bootstrapSessionSync));
   unawaited(_guarded(_registerGcmAndSyncToken));
 }
@@ -210,6 +208,30 @@ Future<void> _guarded(Future<void> Function() task) async {
   try {
     await task();
   } catch (_) {}
+}
+
+void _handleRuntimeMessage(dynamic event) {
+  final message = event.message;
+  if (message is! Map) return;
+  final type = '${message['type'] ?? ''}';
+  Future<void> Function()? action;
+  switch (type) {
+    case _startLoginType:
+      action = _startLogin;
+      break;
+    case _startLogoutType:
+      action = _startLogout;
+      break;
+    case PreconnectPushConfig.syncPushTokenMessageType:
+      action = _registerGcmAndSyncToken;
+      break;
+    default:
+      return;
+  }
+  try {
+    event.sendResponse.callAsFunction(null, {'ok': true}.jsify());
+  } catch (_) {}
+  unawaited(_guarded(action));
 }
 
 Future<void> _syncBracuCookieSnapshot() async {
@@ -574,17 +596,13 @@ Future<void> _maybeNotifyUnreadChange() async {
     await chrome.storage.local.set({_cachedUnreadCountKey: current});
     final permission = await chrome.notifications.getPermissionLevel();
     if (permission != notifications.PermissionLevel.granted) return;
-    await chrome.notifications.create(
+    await _createChromeNotification(
       'preconnect-unread-$current',
-      notifications.NotificationOptions(
-        type: notifications.TemplateType.basic,
-        iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
-        title: 'New notification update',
-        message:
-            'You have $current unread notification${current == 1 ? '' : 's'}.',
-        priority: 0,
-        requireInteraction: false,
-      ),
+      title: 'New notification update',
+      message:
+          'You have $current unread notification${current == 1 ? '' : 's'}.',
+      requireInteraction: false,
+      payload: const <String, String>{'route': 'notifications'},
     );
   } catch (_) {}
 }
@@ -770,7 +788,7 @@ Future<void> _revokeMercureSession() async {
 }
 
 Future<void> _completeMercureLogout(int? appTabId) async {
-  unawaited(_unregisterGcmToken());
+  await _unregisterGcmToken();
   await _clearPendingLogout();
   await chrome.storage.local.remove([
     PreconnectStorageKeys.accessToken,
@@ -781,7 +799,12 @@ Future<void> _completeMercureLogout(int? appTabId) async {
     _cookieSnapshotSsoKey,
     _cookieSnapshotUpdatedAtKey,
     _cachedUnreadCountKey,
+    _gcmLastRegisteredAtKey,
+    _gcmLastMessageAtKey,
+    _gcmLastDeletedAtKey,
+    _gcmLastSendErrorKey,
   ]);
+  await chrome.storage.session.remove(_notificationPayloadsKey);
   if (chrome.action.isAvailable) {
     await chrome.action.setBadgeText(action.SetBadgeTextDetails(text: ''));
     await chrome.action.setTitle(action.SetTitleDetails(title: 'PreConnect'));
@@ -892,7 +915,7 @@ Future<bool> _handleLogoutNavigation(OnCommittedDetails details) async {
 
   if (!BracuLogout.isConnectLogoutRedirect(details.url)) return false;
 
-  unawaited(_unregisterGcmToken());
+  await _unregisterGcmToken();
   await _clearPendingLogout();
   await chrome.storage.local.remove([
     PreconnectStorageKeys.accessToken,
@@ -903,7 +926,12 @@ Future<bool> _handleLogoutNavigation(OnCommittedDetails details) async {
     _cookieSnapshotSsoKey,
     _cookieSnapshotUpdatedAtKey,
     _cachedUnreadCountKey,
+    _gcmLastRegisteredAtKey,
+    _gcmLastMessageAtKey,
+    _gcmLastDeletedAtKey,
+    _gcmLastSendErrorKey,
   ]);
+  await chrome.storage.session.remove(_notificationPayloadsKey);
   if (chrome.action.isAvailable) {
     await chrome.action.setBadgeText(action.SetBadgeTextDetails(text: ''));
     await chrome.action.setTitle(action.SetTitleDetails(title: 'PreConnect'));
@@ -1038,40 +1066,97 @@ Future<_TokenResponse> _exchangeCodeForTokens({
 
 Future<void> _registerGcmAndSyncToken() async {
   if (!chrome.gcm.isAvailable) return;
+  await ensureFreshWebExtensionSession();
   final hasSession = await _hasStoredAuthSession();
   if (!hasSession) return;
 
   try {
-    final token = await chrome.gcm.register(['53508941136']);
+    final token = await chrome.gcm.register([PreconnectPushConfig.gcmSenderId]);
     if (token.isNotEmpty) {
-      await chrome.storage.local.set({'preconnect.gcmToken': token});
+      await chrome.storage.local.set({PreconnectPushConfig.gcmTokenKey: token});
+      await chrome.storage.local.set({
+        _gcmLastRegisteredAtKey: DateTime.now().toIso8601String(),
+      });
       await _registerFcmTokenWithBackend(token);
+      await _syncPushTopics(token);
     }
   } catch (_) {}
 }
 
 Future<void> _registerFcmTokenWithBackend(String token) async {
-  try {
-    final values = await chrome.storage.local.get(
-      PreconnectStorageKeys.accessToken,
-    );
-    final accessToken = '${values[PreconnectStorageKeys.accessToken] ?? ''}'
-        .trim();
-    if (accessToken.isEmpty) return;
-
-    final body = jsonEncode(<String, dynamic>{
+  await _postPushJson(
+    PreconnectPushConfig.registerDevicePath,
+    <String, dynamic>{
       'token': token,
-      'platform': 'chrome_extension',
-    });
+      'platform': PreconnectPushConfig.chromeExtensionPlatform,
+    },
+  );
+}
+
+Future<void> _syncPushTopics(String token) async {
+  final topics = <String>{
+    ...PreconnectPushConfig.defaultTopics,
+    ...await _loadPinnedSeatTopics(),
+  };
+  for (final topic in topics) {
+    await _postPushJson(
+      PreconnectPushConfig.subscribeTopicPath,
+      <String, dynamic>{'token': token, 'topic': topic},
+    );
+  }
+}
+
+Future<Set<String>> _loadPinnedSeatTopics() async {
+  try {
+    final key = PreconnectPushConfig.coursePinsKey(
+      PreconnectPushConfig.seatStatusPinScope,
+    );
+    final values = await chrome.storage.local.get(key);
+    final raw = values[key];
+    final pins = <String>{};
+    if (raw is String && raw.trim().isNotEmpty) {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        pins.addAll(decoded.map((value) => '$value'));
+      }
+    } else if (raw is List) {
+      pins.addAll(raw.map((value) => '$value'));
+    }
+    return pins
+        .map((pin) => pin.trim().toUpperCase())
+        .where((pin) => pin.isNotEmpty)
+        .map(PreconnectPushConfig.seatTopic)
+        .toSet();
+  } catch (_) {
+    return const <String>{};
+  }
+}
+
+Future<void> _postPushJson(
+  String path,
+  Map<String, dynamic> body, {
+  String? accessToken,
+}) async {
+  try {
+    var token = accessToken?.trim() ?? '';
+    if (token.isEmpty) {
+      final values = await chrome.storage.local.get(
+        PreconnectStorageKeys.accessToken,
+      );
+      token = '${values[PreconnectStorageKeys.accessToken] ?? ''}'.trim();
+    }
+    if (token.isEmpty) return;
 
     await _fetch(
-      '${ApiConfig.realtimeApiBase}/push/device/register',
+      '${ApiConfig.realtimeApiBase}$path',
       RequestInit(
         method: 'POST',
-        headers: Headers()
-          ..append('Content-Type', 'application/json')
-          ..append('Authorization', 'Bearer $accessToken'),
-        body: body.toJS,
+        headers: _headersFromMap(<String, String>{
+          ...ApiConfig.apiHeaders,
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        }),
+        body: jsonEncode(body).toJS,
       ),
     ).toDart;
   } catch (_) {}
@@ -1080,7 +1165,14 @@ Future<void> _registerFcmTokenWithBackend(String token) async {
 Future<void> _unregisterGcmToken() async {
   if (!chrome.gcm.isAvailable) return;
   try {
-    final token = await chrome.gcm.register(['53508941136']);
+    final storedValues = await chrome.storage.local.get(
+      PreconnectPushConfig.gcmTokenKey,
+    );
+    var token = '${storedValues[PreconnectPushConfig.gcmTokenKey] ?? ''}'
+        .trim();
+    if (token.isEmpty) {
+      token = await chrome.gcm.register([PreconnectPushConfig.gcmSenderId]);
+    }
     if (token.isNotEmpty) {
       final values = await chrome.storage.local.get(
         PreconnectStorageKeys.accessToken,
@@ -1088,17 +1180,11 @@ Future<void> _unregisterGcmToken() async {
       final accessToken = '${values[PreconnectStorageKeys.accessToken] ?? ''}'
           .trim();
       if (accessToken.isNotEmpty) {
-        final body = jsonEncode(<String, dynamic>{'token': token});
-        await _fetch(
-          '${ApiConfig.realtimeApiBase}/push/device/unregister',
-          RequestInit(
-            method: 'POST',
-            headers: Headers()
-              ..append('Content-Type', 'application/json')
-              ..append('Authorization', 'Bearer $accessToken'),
-            body: body.toJS,
-          ),
-        ).toDart;
+        await _postPushJson(
+          PreconnectPushConfig.unregisterDevicePath,
+          <String, dynamic>{'token': token},
+          accessToken: accessToken,
+        );
       }
     }
   } catch (_) {}
@@ -1106,34 +1192,210 @@ Future<void> _unregisterGcmToken() async {
     await chrome.gcm.unregister();
   } catch (_) {}
   try {
-    await chrome.storage.local.remove('preconnect.gcmToken');
+    await chrome.storage.local.remove(PreconnectPushConfig.gcmTokenKey);
   } catch (_) {}
 }
 
 Future<void> _handleGcmMessage(OnMessageMessage event) async {
-  final data = event.data;
-  final title =
-      '${data['title'] ?? data['gcm.notification.title'] ?? 'PreConnect'}'
-          .trim();
-  final body =
-      '${data['body'] ?? data['message'] ?? data['gcm.notification.body'] ?? ''}'
-          .trim();
+  await chrome.storage.local.set({
+    _gcmLastMessageAtKey: DateTime.now().toIso8601String(),
+  });
+  final data = _normalizeGcmPayload(event.data);
+  final title = _firstPayloadText(data, const <String>[
+    'title',
+    'notification.title',
+    'gcm.notification.title',
+  ], fallback: 'PreConnect');
+  var body = _firstPayloadText(data, const <String>[
+    'body',
+    'message',
+    'notification.body',
+    'gcm.notification.body',
+  ]);
+  final courseCode = _firstPayloadText(data, const <String>['courseCode']);
+  final sectionName = _firstPayloadText(data, const <String>['sectionName']);
+  if (body.isEmpty && courseCode.isNotEmpty) {
+    final section = sectionName.isEmpty ? '' : ' Section $sectionName';
+    body = 'Seat update available for $courseCode$section.';
+  }
 
   if (body.isEmpty) return;
 
-  if (chrome.notifications.isAvailable) {
-    final notificationId = 'fcm-${DateTime.now().millisecondsSinceEpoch}';
-    await chrome.notifications.create(
-      notificationId,
-      notifications.NotificationOptions(
-        type: notifications.TemplateType.basic,
-        iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
-        title: title,
-        message: body,
-        priority: 0,
-        requireInteraction: true,
-      ),
+  final notificationId = 'fcm-${DateTime.now().millisecondsSinceEpoch}';
+  await _createChromeNotification(
+    notificationId,
+    title: title,
+    message: body,
+    requireInteraction: true,
+    payload: data,
+  );
+  unawaited(_refreshBadge());
+}
+
+Future<void> _handleGcmMessagesDeleted() async {
+  await chrome.storage.local.set({
+    _gcmLastDeletedAtKey: DateTime.now().toIso8601String(),
+  });
+  await _refreshBadgeAndNotifyIfNeeded();
+}
+
+Future<void> _handleGcmSendError(OnSendErrorError error) async {
+  await chrome.storage.local.set({
+    _gcmLastSendErrorKey: jsonEncode(<String, String>{
+      'at': DateTime.now().toIso8601String(),
+      'messageId': error.messageId ?? '',
+      'errorMessage': error.errorMessage,
+    }),
+  });
+}
+
+Map<String, String> _normalizeGcmPayload(Map data) {
+  final normalized = <String, String>{};
+  for (final entry in data.entries) {
+    final key = '${entry.key}'.trim();
+    if (key.isEmpty) continue;
+    normalized[key] = '${entry.value ?? ''}'.trim();
+  }
+  return normalized;
+}
+
+String _firstPayloadText(
+  Map<String, String> data,
+  List<String> keys, {
+  String fallback = '',
+}) {
+  for (final key in keys) {
+    final value = data[key]?.trim();
+    if (value != null && value.isNotEmpty) return value;
+  }
+  return fallback;
+}
+
+Future<void> _createChromeNotification(
+  String notificationId, {
+  required String title,
+  required String message,
+  required bool requireInteraction,
+  Map<String, String> payload = const <String, String>{},
+}) async {
+  if (!chrome.notifications.isAvailable) return;
+  try {
+    final permission = await chrome.notifications.getPermissionLevel();
+    if (permission != notifications.PermissionLevel.granted) return;
+  } catch (_) {}
+  if (payload.isNotEmpty) {
+    await _saveNotificationPayload(notificationId, payload);
+  }
+  await chrome.notifications.create(
+    notificationId,
+    notifications.NotificationOptions(
+      type: notifications.TemplateType.basic,
+      iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
+      title: title,
+      message: message,
+      priority: 0,
+      requireInteraction: requireInteraction,
+    ),
+  );
+}
+
+Future<void> _saveNotificationPayload(
+  String notificationId,
+  Map<String, String> payload,
+) async {
+  try {
+    final values = await chrome.storage.session.get(_notificationPayloadsKey);
+    final raw = values[_notificationPayloadsKey];
+    final payloads = <String, Object?>{};
+    if (raw is Map) {
+      for (final entry in raw.entries) {
+        payloads['${entry.key}'] = entry.value;
+      }
+    }
+    payloads[notificationId] = payload;
+    await _writeNotificationPayloads(payloads);
+  } catch (_) {}
+}
+
+Future<Map<String, String>> _takeNotificationPayload(
+  String notificationId,
+) async {
+  try {
+    final values = await chrome.storage.session.get(_notificationPayloadsKey);
+    final raw = values[_notificationPayloadsKey];
+    if (raw is! Map) return const <String, String>{};
+    final payloads = <String, Object?>{};
+    for (final entry in raw.entries) {
+      payloads['${entry.key}'] = entry.value;
+    }
+    final payload = payloads.remove(notificationId);
+    await _writeNotificationPayloads(payloads);
+    if (payload is! Map) return const <String, String>{};
+    final normalized = <String, String>{};
+    for (final entry in payload.entries) {
+      normalized['${entry.key}'] = '${entry.value ?? ''}'.trim();
+    }
+    return normalized;
+  } catch (_) {
+    return const <String, String>{};
+  }
+}
+
+Future<void> _clearNotificationPayload(String notificationId) async {
+  try {
+    final values = await chrome.storage.session.get(_notificationPayloadsKey);
+    final raw = values[_notificationPayloadsKey];
+    if (raw is! Map) return;
+    final payloads = <String, Object?>{};
+    for (final entry in raw.entries) {
+      payloads['${entry.key}'] = entry.value;
+    }
+    payloads.remove(notificationId);
+    await _writeNotificationPayloads(payloads);
+  } catch (_) {}
+}
+
+Future<void> _writeNotificationPayloads(Map<String, Object?> payloads) async {
+  if (payloads.isEmpty) {
+    await chrome.storage.session.remove(_notificationPayloadsKey);
+    return;
+  }
+  await chrome.storage.session.set({_notificationPayloadsKey: payloads});
+}
+
+String _notificationShortcutForPayload(Map<String, String> payload) {
+  final explicitRoute = _firstPayloadText(payload, const <String>['route']);
+  if (explicitRoute == 'notifications') {
+    return PreconnectBrowserActionIds.shortcutNotifications;
+  }
+  final courseCode = _firstPayloadText(payload, const <String>['courseCode']);
+  if (courseCode.isNotEmpty) {
+    return PreconnectBrowserActionIds.shortcutSeatStatus;
+  }
+  return PreconnectBrowserActionIds.shortcutNotifications;
+}
+
+String _notificationUrlForPayload(Map<String, String> payload) {
+  return _firstPayloadText(payload, const <String>[
+    'url',
+    'link',
+    'click_action',
+    'gcm.notification.click_action',
+  ]);
+}
+
+Future<bool> _openNotificationUrl(String url) async {
+  final uri = Uri.tryParse(url);
+  if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) {
+    return false;
+  }
+  try {
+    await chrome.tabs.create(
+      CreateProperties(url: uri.toString(), active: true),
     );
+    return true;
+  } catch (_) {
+    return false;
   }
 }
 
@@ -1141,5 +1403,8 @@ Future<void> _handleNotificationClick(String notificationId) async {
   try {
     await chrome.notifications.clear(notificationId);
   } catch (_) {}
-  await _openSidePanel();
+  final payload = await _takeNotificationPayload(notificationId);
+  final url = _notificationUrlForPayload(payload);
+  if (url.isNotEmpty && await _openNotificationUrl(url)) return;
+  await _activateBrowserShortcut(_notificationShortcutForPayload(payload));
 }

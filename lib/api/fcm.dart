@@ -5,15 +5,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/token_storage.dart';
+import 'package:preconnect/tools/web_extension_push_sync_stub.dart'
+    if (dart.library.html) 'package:preconnect/tools/web_extension_push_sync_web.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class FCMService {
   FCMService._();
 
   static final FCMService instance = FCMService._();
-  static final String _pinScope = "seat_status";
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
   bool _apnsAvailable = true;
@@ -25,9 +27,19 @@ class FCMService {
 
   Future<String?> _getToken() async {
     if (kIsWeb) {
-      final token = await TokenStorage.instance.read(
-        key: 'preconnect.gcmToken',
+      var token = await TokenStorage.instance.read(
+        key: PreconnectPushConfig.gcmTokenKey,
       );
+      if (token == null || token.isEmpty) {
+        await requestWebExtensionPushTokenSync();
+        for (var attempt = 0; attempt < 5; attempt++) {
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+          token = await TokenStorage.instance.read(
+            key: PreconnectPushConfig.gcmTokenKey,
+          );
+          if (token != null && token.isNotEmpty) break;
+        }
+      }
       debugPrint("FCM Web Token: $token");
       return token;
     }
@@ -74,14 +86,15 @@ class FCMService {
     try {
       final client = ApiClient();
       if (!await client.hasAccessToken()) return;
-      final url = '${ApiConfig.realtimeApiBase}/push/device/register';
+      final url =
+          '${ApiConfig.realtimeApiBase}${PreconnectPushConfig.registerDevicePath}';
       await client.authenticatedRequest(
         'POST',
         url,
         body: jsonEncode(<String, dynamic>{
           'token': token,
           'platform': kIsWeb
-              ? 'chrome_extension'
+              ? PreconnectPushConfig.chromeExtensionPlatform
               : defaultTargetPlatform.name.toLowerCase(),
         }),
         additionalHeaders: const <String, String>{
@@ -105,7 +118,8 @@ class FCMService {
     try {
       final client = ApiClient();
       if (!await client.hasAccessToken()) return;
-      final url = '${ApiConfig.realtimeApiBase}/push/topic/subscribe';
+      final url =
+          '${ApiConfig.realtimeApiBase}${PreconnectPushConfig.subscribeTopicPath}';
       await client.authenticatedRequest(
         'POST',
         url,
@@ -123,7 +137,8 @@ class FCMService {
     try {
       final client = ApiClient();
       if (!await client.hasAccessToken()) return;
-      final url = '${ApiConfig.realtimeApiBase}/push/topic/unsubscribe';
+      final url =
+          '${ApiConfig.realtimeApiBase}${PreconnectPushConfig.unsubscribeTopicPath}';
       await client.authenticatedRequest(
         'POST',
         url,
@@ -201,13 +216,16 @@ class FCMService {
       return;
     }
 
-    await _subscribeToTopicWeb(token, "announcements");
-    await _subscribeToTopicWeb(token, "news");
+    for (final topic in PreconnectPushConfig.defaultTopics) {
+      await _subscribeToTopicWeb(token, topic);
+    }
 
     try {
-      Set<String> pinnedSeats = await CoursePinStore.load(_pinScope);
+      Set<String> pinnedSeats = await CoursePinStore.load(
+        PreconnectPushConfig.seatStatusPinScope,
+      );
       for (String seat in pinnedSeats) {
-        await _subscribeToTopicWeb(token, "seat_$seat");
+        await _subscribeToTopicWeb(token, PreconnectPushConfig.seatTopic(seat));
       }
     } catch (e) {
       debugPrint("Failed to load pinned seats: $e");
@@ -216,12 +234,15 @@ class FCMService {
 
   Future<void> _subscribeToDefaultTopics() async {
     try {
-      await subscribeToTopic("announcements");
-      await subscribeToTopic("news");
+      for (final topic in PreconnectPushConfig.defaultTopics) {
+        await subscribeToTopic(topic);
+      }
 
-      Set<String> pinnedSeats = await CoursePinStore.load(_pinScope);
+      Set<String> pinnedSeats = await CoursePinStore.load(
+        PreconnectPushConfig.seatStatusPinScope,
+      );
       for (String seat in pinnedSeats) {
-        await subscribeToTopic("seat_$seat");
+        await subscribeToTopic(PreconnectPushConfig.seatTopic(seat));
       }
     } catch (e) {
       debugPrint("Failed to subscribe to topics: $e");
@@ -271,7 +292,7 @@ class FCMService {
 
   Future<void> _setupLocalNotifications() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('ic_stat_preconnect');
 
     const DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(
@@ -416,7 +437,8 @@ class FCMService {
       }
       final client = ApiClient();
       if (!await client.hasAccessToken()) return;
-      final url = '${ApiConfig.realtimeApiBase}/push/device/send-confirmation';
+      final url =
+          '${ApiConfig.realtimeApiBase}${PreconnectPushConfig.sendConfirmationPath}';
       await client.authenticatedRequest(
         'POST',
         url,
