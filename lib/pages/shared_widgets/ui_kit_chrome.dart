@@ -277,7 +277,7 @@ class BracuCard extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: backgroundColor ?? BracuPalette.card(context),
+        color: backgroundColor ?? Colors.transparent,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isHighlighted
@@ -285,17 +285,6 @@ class BracuCard extends StatelessWidget {
               : baseBorderColor,
           width: isHighlighted ? 1.6 : 1,
         ),
-        boxShadow: Theme.of(context).brightness == Brightness.dark
-            ? const []
-            : [
-                BoxShadow(
-                  color: isHighlighted
-                      ? highlight.withValues(alpha: 0.18)
-                      : Colors.black.withValues(alpha: 0.06),
-                  blurRadius: isHighlighted ? 20 : 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
       ),
       child: child,
     );

@@ -233,6 +233,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                 ),
                                 const SizedBox(height: 12),
                                 const BracuCommunityLink(),
+                                const BracuFundingPromoDivider(),
                                 if (isTodayScheduleLoading) ...[
                                   const SizedBox(height: 12),
                                   const Shimmer(
@@ -603,10 +604,12 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   BracuActionBannerCard(
                                     icon: Icons.apple,
                                     title: 'Help PreConnect iOS',
-                                    subtitle: 'Support funding for the iOS release',
+                                    subtitle:
+                                        'Support funding for the iOS release',
                                     iconColor: const Color(0xFF007AFF),
                                     iconDecoration: false,
-                                    onTap: () => showBracuFundingSupportSheet(context),
+                                    onTap: () =>
+                                        showBracuFundingSupportSheet(context),
                                   ),
                                 ],
                               ],
