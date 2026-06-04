@@ -37,6 +37,17 @@
       }
     }
   },
+  "functions": {
+    "source": "functions",
+    "codebase": "default",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firestore-debug.log",
+      "pubsub-debug.log"
+    ]
+  },
   "hosting": {
     "public": "build/web",
     "ignore": [
@@ -45,6 +56,18 @@
       "**/node_modules/**"
     ],
     "rewrites": [
+      {
+        "source": "/api/**",
+        "function": "api"
+      },
+      {
+        "source": "/cdn/**",
+        "function": "api"
+      },
+      {
+        "source": "/sso/**",
+        "function": "api"
+      },
       {
         "source": "**",
         "destination": "/index.html"

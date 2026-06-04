@@ -13,14 +13,14 @@ class ApiConfig {
       'https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect';
   static String get tokenEndpoint {
     if (_kIsWeb && !isChromeRuntimeAvailable()) {
-      return '$realtimeApiBase/proxy/sso/token';
+      return '/sso/token';
     }
     return '$ssoBase/token';
   }
 
   static String get logoutEndpoint {
     if (_kIsWeb && !isChromeRuntimeAvailable()) {
-      return '$realtimeApiBase/proxy/sso/logout';
+      return '/sso/logout';
     }
     return '$ssoBase/logout';
   }
@@ -46,21 +46,21 @@ class ApiConfig {
 
   static String get connectApiBase {
     if (_kIsWeb && !isChromeRuntimeAvailable()) {
-      return '$realtimeApiBase/proxy/api';
+      return '/api';
     }
     return 'https://connect.bracu.ac.bd/api';
   }
 
   static String get connectWebApiBase {
     if (_kIsWeb && !isChromeRuntimeAvailable()) {
-      return '$realtimeApiBase/proxy/api';
+      return '/api';
     }
     return 'https://connect.bracu.ac.bd/api';
   }
 
   static String get connectCdnBase {
     if (_kIsWeb && !isChromeRuntimeAvailable()) {
-      return '$realtimeApiBase/proxy/cdn';
+      return '/cdn';
     }
     return 'https://connect.bracu.ac.bd/cdn';
   }
