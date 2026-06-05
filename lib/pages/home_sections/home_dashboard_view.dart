@@ -284,14 +284,9 @@ extension _HomeDashboardView on _HomeDashboardState {
                                             now.isBefore(startDate)
                                             ? startDate
                                             : endDate;
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            bottom: 12,
-                                          ),
-                                          child: ExamCountdownCard(
-                                            title: title,
-                                            targetDateTime: target,
-                                          ),
+                                        return ExamCountdownCard(
+                                          title: title,
+                                          targetDateTime: target,
                                         );
                                       },
                                     ),
