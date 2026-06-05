@@ -234,8 +234,8 @@ extension _HomeDashboardView on _HomeDashboardState {
                                 const SizedBox(height: 12),
                                 const BracuCommunityLink(),
                                 const BracuFundingPromoDivider(),
+                                const SizedBox(height: 12),
                                 if (isTodayScheduleLoading) ...[
-                                  const SizedBox(height: 12),
                                   const Shimmer(
                                     child: _TodayScheduleLoadingSkeleton(),
                                   ),
