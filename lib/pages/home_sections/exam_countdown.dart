@@ -6,10 +6,12 @@ class ExamCountdownCard extends StatelessWidget {
     super.key,
     required this.title,
     required this.targetDateTime,
+    this.subtitle,
   });
 
   final String title;
   final DateTime targetDateTime;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +20,7 @@ class ExamCountdownCard extends StatelessWidget {
       builder: (context, snapshot) {
         final now = DateTime.now();
         final remaining = targetDateTime.difference(now);
-        final dateTimeLabel = _formatSubtitle(targetDateTime, now);
+        final dateTimeLabel = subtitle ?? _formatSubtitle(targetDateTime, now);
         return BracuCard(
           child: Row(
             children: [

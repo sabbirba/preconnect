@@ -43,6 +43,7 @@ import 'package:preconnect/tools/android_network_assist.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/quiet_mode_controller.dart';
 import 'package:preconnect/api/repository_cache.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/captive_wifi_http.dart';
 import 'package:preconnect/tools/exam_sorting.dart';
@@ -821,7 +822,6 @@ class _HomeData {
         'showTodaySchedule': cardVisibility.showTodaySchedule,
         'showExamCountdownCard': cardVisibility.showExamCountdownCard,
         'showDecorations': cardVisibility.showDecorations,
-        'showCommunityLink': cardVisibility.showCommunityLink,
         'showCampusMapContacts': cardVisibility.showCampusMapContacts,
         'showNotificationsIcon': cardVisibility.showNotificationsIcon,
       },
@@ -881,7 +881,6 @@ class _HomeData {
             showTodaySchedule: visibilityJson['showTodaySchedule'] == true,
             showExamCountdownCard:
                 visibilityJson['showExamCountdownCard'] == true,
-            showCommunityLink: visibilityJson['showCommunityLink'] == true,
             showCampusMapContacts:
                 visibilityJson['showCampusMapContacts'] == true,
             showNotificationsIcon:
@@ -956,11 +955,13 @@ class _CountdownCardData {
     required this.title,
     required this.targetDateTime,
     required this.tab,
+    this.subtitle,
   });
 
   final String title;
   final DateTime targetDateTime;
   final HomeTab tab;
+  final String? subtitle;
 }
 
 class _TodayExamEntry {

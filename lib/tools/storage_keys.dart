@@ -35,6 +35,12 @@ class StorageKeys {
   static const String awards = 'awards';
   static const String hasDisability = 'hasDisability';
   static const String disabilityDetails = 'disabilityDetails';
+  static const String dateOfBirth = 'dateOfBirth';
+  static const String nationalIdNo = 'nationalIdNo';
+  static const String passportNo = 'passportNo';
+  static const String birthCertificateNo = 'birthCertificateNo';
+  static const String emergencyContactNo = 'emergencyContactNo';
+  static const String emergencyContactName = 'emergencyContactName';
   static const String themeMode = 'themeMode';
   static const String homeTab = 'home_tab';
   static const String studentSchedule = 'student_schedule_v1';

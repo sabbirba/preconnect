@@ -97,27 +97,18 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   .trim()
                                   .isNotEmpty;
                           final isOverviewLoading =
-                              !hasOverviewProfileData ||
-                              snapshot.connectionState ==
-                                  ConnectionState.waiting ||
-                              _isWarmingHomeData;
+                              data == null || !hasOverviewProfileData;
                           final hasTopBarData =
                               fullName.isNotEmpty ||
                               (photoUrl ?? '').trim().isNotEmpty;
                           final isTopBarLoading =
-                              !hasTopBarData ||
-                              snapshot.connectionState ==
-                                  ConnectionState.waiting ||
-                              _isWarmingHomeData;
+                              data == null || !hasTopBarData;
                           final hasScheduleData = (data?.scheduleJson ?? '')
                               .trim()
                               .isNotEmpty;
                           final isTodayScheduleLoading =
                               cardVisibility.showTodaySchedule &&
-                              (!hasScheduleData ||
-                                  snapshot.connectionState ==
-                                      ConnectionState.waiting ||
-                                  _isWarmingHomeData);
+                              (data == null || !hasScheduleData);
                           final ramadan =
                               data?.ramadan ??
                               const RamadanStatus(isRamadan: false);
@@ -157,6 +148,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                             data?.examOverrides ??
                                 const <String, ExamScheduleOverride>{},
                             data?.personalSchedules ?? const <CustomSchedule>[],
+                            data?.advisingInfo,
                           );
                           final todayExams = _todayExamEntries(
                             data?.sections ?? const <section.Section>[],
@@ -198,7 +190,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     onOpenLogin: _openWifiLoginAssistant,
                                   ),
                                 ],
-                                const SizedBox(height: 18),
+                                const SizedBox(height: 12),
                                 StudentOverviewCard(
                                   studentId: profile['studentId'] ?? '',
                                   shortCode: profile['shortCode'] ?? '',
@@ -228,11 +220,11 @@ extension _HomeDashboardView on _HomeDashboardState {
                                             title: nextCountdown.title,
                                             targetDateTime:
                                                 nextCountdown.targetDateTime,
+                                            subtitle: nextCountdown.subtitle,
                                           ),
                                         ),
                                 ),
                                 const SizedBox(height: 12),
-                                const BracuCommunityLink(),
                                 const BracuFundingPromoDivider(),
                                 const SizedBox(height: 12),
                                 if (isTodayScheduleLoading) ...[
@@ -241,57 +233,6 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   ),
                                 ] else if (cardVisibility
                                     .showTodaySchedule) ...[
-                                  if (data?.advisingInfo != null) ...[
-                                    Builder(
-                                      builder: (context) {
-                                        final info = data!.advisingInfo!;
-                                        final startDate = DateTime.tryParse(
-                                          info['advisingStartDate'] ?? '',
-                                        );
-                                        final endDate = DateTime.tryParse(
-                                          info['advisingEndDate'] ?? '',
-                                        );
-                                        final now = DateTime.now();
-                                        if (startDate == null ||
-                                            endDate == null ||
-                                            now.isAfter(endDate)) {
-                                          return const SizedBox.shrink();
-                                        }
-                                        final phase =
-                                            info['advisingPhase'] ?? '';
-                                        final semester =
-                                            info['semesterSession'] ?? '';
-                                        final phaseLabel =
-                                            phase.isEmpty
-                                            ? 'Advising'
-                                            : phase
-                                                  .split('_')
-                                                  .map(
-                                                    (w) =>
-                                                        w.isEmpty
-                                                        ? ''
-                                                        : w[0].toUpperCase() +
-                                                              w
-                                                                  .substring(1)
-                                                                  .toLowerCase(),
-                                                  )
-                                                  .join(' ');
-                                        final title =
-                                            semester.isEmpty
-                                            ? phaseLabel
-                                            : '$phaseLabel - $semester';
-                                        final target =
-                                            now.isBefore(startDate)
-                                            ? startDate
-                                            : endDate;
-                                        return ExamCountdownCard(
-                                          title: title,
-                                          targetDateTime: target,
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                  const SizedBox(height: 12),
                                   InkWell(
                                     onTap: () => widget.onNavigate(
                                       (todayExams.isNotEmpty ||
@@ -333,7 +274,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                         .map(
                                           (exam) => Padding(
                                             padding: const EdgeInsets.only(
-                                              bottom: 10,
+                                              bottom: 12,
                                             ),
                                             child: InkWell(
                                               onTap: () => widget.onNavigate(
@@ -358,15 +299,12 @@ extension _HomeDashboardView on _HomeDashboardState {
                                             ),
                                           ),
                                         ),
-                                  if (todayExams.isNotEmpty &&
-                                      visibleEntries.isNotEmpty)
-                                    const SizedBox(height: 10),
                                   if (todayExams.isEmpty &&
                                       (isTodayHoliday ||
                                           visibleEntries.isEmpty))
                                     Padding(
                                       padding: const EdgeInsets.only(
-                                        bottom: 10,
+                                        bottom: 12,
                                       ),
                                       child: InkWell(
                                         onTap: () => widget.onNavigate(
@@ -400,7 +338,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                         .map(
                                           (entry) => Padding(
                                             padding: const EdgeInsets.only(
-                                              bottom: 10,
+                                              bottom: 12,
                                             ),
                                             child: InkWell(
                                               onTap: () => widget.onNavigate(
@@ -427,7 +365,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                 ],
                                 if (cardVisibility.showRamadanCard && isRamadan)
                                   Padding(
-                                    padding: const EdgeInsets.only(bottom: 8),
+                                    padding: const EdgeInsets.only(bottom: 12),
                                     child: BracuCard(
                                       child: Column(
                                         crossAxisAlignment:
@@ -495,13 +433,6 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     ),
                                   ),
                                 if (cardVisibility.showQuickAccessSection) ...[
-                                  SizedBox(
-                                    height:
-                                        cardVisibility.showRamadanCard &&
-                                            isRamadan
-                                        ? 0
-                                        : 10,
-                                  ),
                                   Row(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.center,
@@ -511,118 +442,109 @@ extension _HomeDashboardView on _HomeDashboardState {
                                           title: 'Quick Access',
                                         ),
                                       ),
-                                      ValueListenableBuilder<bool>(
-                                        valueListenable: HomeCardPreferences
-                                            .communityLinkNotifier,
-                                        builder: (context, enabled, child) {
-                                          if (!enabled) {
-                                            return const SizedBox.shrink();
-                                          }
-                                          return Row(
-                                            children: [
-                                              InkWell(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                onTap: () async {
-                                                  await InAppReviewPrompt.openStoreListing();
-                                                },
-                                                child: Padding(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 2,
-                                                      ),
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      SizedBox(
-                                                        width: 16,
-                                                        child: Icon(
-                                                          Icons
-                                                              .star_border_rounded,
-                                                          size: 17,
-                                                          color:
-                                                              BracuPalette.textPrimary(
-                                                                context,
-                                                              ),
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 6),
-                                                      Text(
-                                                        'Rate',
-                                                        softWrap: false,
-                                                        style: TextStyle(
-                                                          fontSize: 16,
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                          color:
-                                                              BracuPalette.textPrimary(
-                                                                context,
-                                                              ),
-                                                        ),
-                                                      ),
-                                                    ],
+                                      Row(
+                                        children: [
+                                          InkWell(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            onTap: () async {
+                                              await InAppReviewPrompt.openStoreListing();
+                                            },
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 2,
                                                   ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 4),
-                                              InkWell(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                onTap: () async {
-                                                  await SharePlus.instance.share(
-                                                    ShareParams(
-                                                      uri: Uri.parse(
-                                                        'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
-                                                      ),
-                                                      subject:
-                                                          'PreConnect • Prepare. Connect. Succeed.',
+                                              child: Row(
+                                                mainAxisSize:
+                                                    MainAxisSize.min,
+                                                children: [
+                                                  SizedBox(
+                                                    width: 16,
+                                                    child: Icon(
+                                                      Icons
+                                                          .star_border_rounded,
+                                                      size: 17,
+                                                      color:
+                                                          BracuPalette.textPrimary(
+                                                            context,
+                                                          ),
                                                     ),
-                                                  );
-                                                },
-                                                child: Padding(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 2,
-                                                      ),
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      SizedBox(
-                                                        width: 16,
-                                                        child: Icon(
-                                                          Icons.share_outlined,
-                                                          size: 14,
-                                                          color:
-                                                              BracuPalette.textPrimary(
-                                                                context,
-                                                              ),
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 6),
-                                                      Text(
-                                                        'Share',
-                                                        softWrap: false,
-                                                        style: TextStyle(
-                                                          fontSize: 16,
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                          color:
-                                                              BracuPalette.textPrimary(
-                                                                context,
-                                                              ),
-                                                        ),
-                                                      ),
-                                                    ],
                                                   ),
-                                                ),
+                                                  const SizedBox(width: 6),
+                                                  Text(
+                                                    'Rate',
+                                                    softWrap: false,
+                                                    style: TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color:
+                                                          BracuPalette.textPrimary(
+                                                            context,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                            ],
-                                          );
-                                        },
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          InkWell(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            onTap: () async {
+                                              await SharePlus.instance.share(
+                                                ShareParams(
+                                                  uri: Uri.parse(
+                                                    'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
+                                                  ),
+                                                  subject:
+                                                      'PreConnect • Prepare. Connect. Succeed.',
+                                                ),
+                                              );
+                                            },
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 2,
+                                                  ),
+                                              child: Row(
+                                                mainAxisSize:
+                                                    MainAxisSize.min,
+                                                children: [
+                                                  SizedBox(
+                                                    width: 16,
+                                                    child: Icon(
+                                                      Icons.share_outlined,
+                                                      size: 14,
+                                                      color:
+                                                          BracuPalette.textPrimary(
+                                                            context,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Text(
+                                                    'Share',
+                                                    softWrap: false,
+                                                    style: TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color:
+                                                          BracuPalette.textPrimary(
+                                                            context,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
@@ -794,7 +716,7 @@ class _HomeDashboardLoadingShell extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _HomeTopBarLoadingSkeleton(),
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
           StudentOverviewCard(
             studentId: '',
             shortCode: '',
@@ -807,10 +729,7 @@ class _HomeDashboardLoadingShell extends StatelessWidget {
             isLoading: true,
           ),
           const SizedBox(height: 12),
-          const _CommunityLinkLoadingSkeleton(),
-          const SizedBox(height: 12),
           const _TodayScheduleLoadingSkeleton(),
-          const SizedBox(height: 12),
           const _QuickAccessLoadingSkeleton(),
           const SizedBox(height: 12),
           const _CampusMapLoadingSkeleton(),
@@ -851,15 +770,6 @@ class _HomeTopBarLoadingSkeleton extends StatelessWidget {
         ),
       ],
     );
-  }
-}
-
-class _CommunityLinkLoadingSkeleton extends StatelessWidget {
-  const _CommunityLinkLoadingSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return const _ActionBannerLoadingSkeleton(showTrailingIcon: false);
   }
 }
 
@@ -927,18 +837,21 @@ class _TodayScheduleLoadingSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: const [
-        Row(
-          children: [
-            Expanded(child: ShimmerContainer(width: 140, height: 18)),
-            SizedBox(width: 16),
-            ShimmerContainer(width: 116, height: 18),
-          ],
-        ),
-        SizedBox(height: 12),
-        _ScheduleTileLoadingSkeleton(),
-      ],
+    return const Padding(
+      padding: EdgeInsets.only(bottom: 12),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: ShimmerContainer(width: 140, height: 18)),
+              SizedBox(width: 16),
+              ShimmerContainer(width: 116, height: 18),
+            ],
+          ),
+          SizedBox(height: 12),
+          _ScheduleTileLoadingSkeleton(),
+        ],
+      ),
     );
   }
 }
@@ -995,7 +908,7 @@ class _QuickAccessLoadingSkeleton extends StatelessWidget {
             ShimmerContainer(width: 74, height: 18),
           ],
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
             final layout = quickAccessGridLayout(constraints.maxWidth);
@@ -1004,7 +917,7 @@ class _QuickAccessLoadingSkeleton extends StatelessWidget {
                 alignment: WrapAlignment.center,
                 runAlignment: WrapAlignment.center,
                 spacing: layout.spacing,
-                runSpacing: 22,
+                runSpacing: layout.spacing,
                 children: List<Widget>.generate(
                   8,
                   (_) =>

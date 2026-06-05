@@ -325,7 +325,6 @@ class HomeCardPreferences {
   HomeCardPreferences._();
 
   static final decorationNotifier = ValueNotifier(true);
-  static final communityLinkNotifier = ValueNotifier(true);
 
   static const String showQuickAccessSectionKey =
       'home_show_quick_access_section';
@@ -334,7 +333,7 @@ class HomeCardPreferences {
       'home_show_exam_countdown_card';
   static const String showTodayScheduleKey = 'home_show_today_schedule';
   static const String showDecorationsKey = 'home_show_decorations';
-  static const String showCommunityLinkKey = 'home_show_community_link';
+
   static const String showCampusMapContactsKey =
       'home_show_campus_map_contacts';
   static const String showNotificationsIconKey = 'home_show_notifications_icon';
@@ -345,37 +344,36 @@ class HomeCardPreferences {
     showExamCountdownCard: true,
     showDecorations: true,
     showTodaySchedule: true,
-    showCommunityLink: true,
     showCampusMapContacts: true,
     showNotificationsIcon: true,
   );
 
   static Future<HomeCardVisibility> load() async {
+    return loadSync();
+  }
+
+  static HomeCardVisibility loadSync() {
     try {
       final bool showDecorations =
-          await AppStorage.instance.getBool(showDecorationsKey) ?? true;
-      final bool showCommunityLink =
-          await AppStorage.instance.getBool(showCommunityLinkKey) ?? true;
+          AppStorage.instance.getBoolSync(showDecorationsKey) ?? true;
       final bool showCampusMapContacts =
-          await AppStorage.instance.getBool(showCampusMapContactsKey) ?? true;
+          AppStorage.instance.getBoolSync(showCampusMapContactsKey) ?? true;
       final bool showNotificationsIcon =
-          await AppStorage.instance.getBool(showNotificationsIconKey) ?? true;
+          AppStorage.instance.getBoolSync(showNotificationsIconKey) ?? true;
 
       decorationNotifier.value = showDecorations;
-      communityLinkNotifier.value = showCommunityLink;
 
       return HomeCardVisibility(
         showQuickAccessSection:
-            await AppStorage.instance.getBool(showQuickAccessSectionKey) ??
+            AppStorage.instance.getBoolSync(showQuickAccessSectionKey) ??
             true,
         showDecorations: showDecorations,
         showRamadanCard:
-            await AppStorage.instance.getBool(showRamadanCardKey) ?? true,
+            AppStorage.instance.getBoolSync(showRamadanCardKey) ?? true,
         showExamCountdownCard:
-            await AppStorage.instance.getBool(showExamCountdownCardKey) ?? true,
+            AppStorage.instance.getBoolSync(showExamCountdownCardKey) ?? true,
         showTodaySchedule:
-            await AppStorage.instance.getBool(showTodayScheduleKey) ?? true,
-        showCommunityLink: showCommunityLink,
+            AppStorage.instance.getBoolSync(showTodayScheduleKey) ?? true,
         showCampusMapContacts: showCampusMapContacts,
         showNotificationsIcon: showNotificationsIcon,
       );
@@ -397,12 +395,6 @@ class HomeCardPreferences {
     } catch (_) {}
   }
 
-  static Future<void> setShowCommunityLink(bool value) async {
-    try {
-      communityLinkNotifier.value = value;
-      await AppStorage.instance.setBool(showCommunityLinkKey, value);
-    } catch (_) {}
-  }
 
   static Future<void> setShowExamCountdownCard(bool value) async {
     try {
@@ -442,7 +434,6 @@ class HomeCardVisibility {
     required this.showDecorations,
     required this.showExamCountdownCard,
     required this.showTodaySchedule,
-    required this.showCommunityLink,
     required this.showCampusMapContacts,
     required this.showNotificationsIcon,
   });
@@ -452,7 +443,6 @@ class HomeCardVisibility {
   final bool showRamadanCard;
   final bool showExamCountdownCard;
   final bool showTodaySchedule;
-  final bool showCommunityLink;
   final bool showCampusMapContacts;
   final bool showNotificationsIcon;
 }

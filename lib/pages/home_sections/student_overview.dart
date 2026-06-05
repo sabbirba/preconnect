@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/token_storage.dart';
 
 class StudentOverviewCard extends StatelessWidget {
   const StudentOverviewCard({
@@ -44,38 +43,31 @@ class StudentOverviewCard extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ValueListenableBuilder<bool>(
-              valueListenable: HomeCardPreferences.communityLinkNotifier,
-              builder: (context, showCommunityLink, _) {
-                return Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Overview',
-                        style: TextStyle(
-                          color: titleColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Overview',
+                    style: TextStyle(
+                      color: titleColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
                     ),
-                    if (showCommunityLink) ...[
-                      const SizedBox(width: 8),
-                      _SupportButton(onTap: onOpenSupport),
-                    ],
-                    const SizedBox(width: 8),
-                    _IconButton(
-                      icon: Icons.settings_outlined,
-                      onTap: onOpenSettings,
-                    ),
-                    const SizedBox(width: 8),
-                    _IconButton(icon: Icons.logout, onTap: onLogout),
-                  ],
-                );
-              },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _SupportButton(onTap: onOpenSupport),
+                const SizedBox(width: 8),
+                _IconButton(
+                  icon: Icons.settings_outlined,
+                  onTap: onOpenSettings,
+                ),
+                const SizedBox(width: 8),
+                _IconButton(icon: Icons.logout, onTap: onLogout),
+              ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -93,7 +85,7 @@ class StudentOverviewCard extends StatelessWidget {
                     child: _OverviewLoadingCard(isDark: isDark),
                   ),
                 if (countdown != null) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   countdown!,
                 ],
               ],

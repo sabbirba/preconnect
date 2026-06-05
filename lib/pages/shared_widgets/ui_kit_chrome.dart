@@ -557,14 +557,7 @@ class SectionBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final normalized = label.trim();
-    final displayLabel =
-        normalized.isEmpty ||
-            normalized == '--' ||
-            normalized == '-' ||
-            normalized.toUpperCase() == 'N/A'
-        ? '?'
-        : normalized;
+    final displayLabel = formatSectionBadge(label);
     return Container(
       width: size,
       height: size,

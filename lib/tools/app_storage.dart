@@ -86,4 +86,31 @@ class AppStorage {
       await prefs.remove(key);
     }
   }
+
+  String? getStringSync(String key) {
+    return _prefs?.getString(key);
+  }
+
+  bool? getBoolSync(String key) {
+    final raw = getStringSync(key);
+    if (raw == null || raw.isEmpty) return null;
+    return raw == 'true';
+  }
+
+  int? getIntSync(String key) {
+    final raw = getStringSync(key);
+    return raw == null ? null : int.tryParse(raw);
+  }
+
+  List<String>? getStringListSync(String key) {
+    final raw = getStringSync(key);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return null;
+      return decoded.map((e) => '$e').toList();
+    } catch (_) {
+      return null;
+    }
+  }
 }

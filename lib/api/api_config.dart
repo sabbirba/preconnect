@@ -80,6 +80,7 @@ class ApiConfig {
   static const String profilePath = '/mds/v1/portfolios';
   static const String miscellaneousInfoPath =
       '/adp/v1/students/miscellaneous-info';
+  static const String studentPath = '/mds/v1/student/info';
 
   static String paymentPath(String portfolioId) =>
       '/fin/v1/payment/portfolio/$portfolioId';

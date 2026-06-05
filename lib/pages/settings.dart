@@ -30,7 +30,6 @@ class _SettingsPageState extends State<SettingsPage>
   bool _showExamCountdownCard = true;
   bool _showTodaySchedule = true;
   bool _showDecorations = true;
-  bool _showCommunityLink = true;
   bool _showCampusMapContacts = true;
   bool _showNotificationsIcon = true;
   bool _appLockEnabled = false;
@@ -70,7 +69,6 @@ class _SettingsPageState extends State<SettingsPage>
       _showQuickAccessSection = visibility.showQuickAccessSection;
       _showRamadanCard = visibility.showRamadanCard;
       _showDecorations = visibility.showDecorations;
-      _showCommunityLink = visibility.showCommunityLink;
       _showCampusMapContacts = visibility.showCampusMapContacts;
       _showNotificationsIcon = visibility.showNotificationsIcon;
       _showExamCountdownCard = visibility.showExamCountdownCard;
@@ -103,14 +101,6 @@ class _SettingsPageState extends State<SettingsPage>
     );
   }
 
-  Future<void> _setShowCommunityLink(bool value) async {
-    await _setVisibility(
-      label: 'Community Link',
-      value: value,
-      applyLocal: () => _showCommunityLink = value,
-      persist: HomeCardPreferences.setShowCommunityLink,
-    );
-  }
 
   Future<void> _setShowCampusMapContacts(bool value) async {
     await _setVisibility(
@@ -343,13 +333,7 @@ class _SettingsPageState extends State<SettingsPage>
                   value: _showDecorations,
                   onChanged: _setShowDecorations,
                 ),
-                divider,
-                _ToggleRow(
-                  title: 'Community Link',
-                  subtitle: 'Show community block on home',
-                  value: _showCommunityLink,
-                  onChanged: _setShowCommunityLink,
-                ),
+
                 divider,
                 _ToggleRow(
                   title: 'Campus Map & Contacts',

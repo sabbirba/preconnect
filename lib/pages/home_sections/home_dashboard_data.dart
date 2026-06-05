@@ -18,8 +18,8 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
   late Future<_HomeData> _future;
   _HomeData? _latestData;
-  bool _isWarmingHomeData = true;
   bool _isRefreshing = false;
+  bool _refreshInFlight = false;
   CaptiveWifiStatus? _captiveStatus;
   bool _isCheckingCaptive = false;
   StreamSubscription<AndroidNetworkStatus>? _networkStatusSubscription;
@@ -53,6 +53,8 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     if (forceRefresh) {
       _cachedData = null;
       _preloadFuture = null;
+    } else {
+      _loadHomeDashboardSnapshotSync();
     }
     _future = _initializeHomeData(forceRefresh: forceRefresh);
     unawaited(_warmAndBind(forceRefresh: forceRefresh));
@@ -86,6 +88,39 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     super.dispose();
   }
 
+  static _HomeData _withCurrentVisibilitySync(_HomeData data) {
+    final visibility = HomeCardPreferences.loadSync();
+    return data.copyWith(cardVisibility: visibility);
+  }
+
+  static _HomeData? _loadHomeDashboardSnapshotSyncHelper() {
+    try {
+      final raw = AppStorage.instance.getStringSync(
+        _homeDashboardSnapshotCacheKey,
+      );
+      if (raw == null || raw.isEmpty) return null;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      final cached = _HomeData.fromCache(Map<String, dynamic>.from(decoded));
+      if (cached == null) return null;
+      return _withCurrentVisibilitySync(cached);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _loadHomeDashboardSnapshotSync() {
+    if (_cachedData != null) {
+      _latestData = _cachedData;
+      return;
+    }
+    final cached = _loadHomeDashboardSnapshotSyncHelper();
+    if (cached != null) {
+      _latestData = cached;
+      _cachedData = cached;
+    }
+  }
+
   Future<void> _loadHomeDashboardSnapshot() async {
     try {
       final raw = await RepositoryCache.instance.readString(
@@ -105,6 +140,25 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     } catch (_) {}
   }
 
+  Future<void> _backgroundRefresh() async {
+    if (_refreshInFlight || _isRefreshing) return;
+    _refreshInFlight = true;
+    try {
+      final fresh = await _loadData(forceRefresh: true);
+      if (!mounted) return;
+      setState(() {
+        _latestData = fresh;
+        _cachedData = fresh;
+        _future = Future<_HomeData>.value(fresh);
+      });
+      unawaited(_saveHomeDashboardSnapshot(fresh));
+      unawaited(_refreshCaptiveStatus());
+    } catch (_) {
+    } finally {
+      _refreshInFlight = false;
+    }
+  }
+
   Future<void> _warmAndBind({bool forceRefresh = false}) async {
     try {
       final data = await preloadData(forceRefresh: forceRefresh);
@@ -112,13 +166,13 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       setState(() {
         _latestData = data;
         _future = Future<_HomeData>.value(data);
-        _isWarmingHomeData = false;
       });
+      if (!forceRefresh) {
+        unawaited(_backgroundRefresh());
+      }
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _isWarmingHomeData = false;
-      });
+      setState(() {});
     }
   }
 
@@ -133,6 +187,9 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   }
 
   Future<_HomeData> _initializeHomeData({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedData != null) {
+      return _cachedData!;
+    }
     if (!forceRefresh) {
       await _loadHomeDashboardSnapshot();
     }
@@ -177,8 +234,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   }
 
   static Future<_HomeData> _withCurrentVisibility(_HomeData data) async {
-    final visibility = await HomeCardPreferences.load();
-    return data.copyWith(cardVisibility: visibility);
+    return _withCurrentVisibilitySync(data);
   }
 
   Future<_HomeData> _loadData({bool forceRefresh = false}) async {
@@ -637,14 +693,57 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     List<section.Section> sections,
     Map<String, ExamScheduleOverride> overrides,
     List<CustomSchedule> personalSchedules,
+    Map<String, String?>? advisingInfo,
   ) {
     final nextExam = _nextExamCountdown(sections, overrides);
     final nextMy = _nextMyCountdown(personalSchedules);
-    if (nextExam == null) return nextMy;
-    if (nextMy == null) return nextExam;
-    return nextMy.targetDateTime.isBefore(nextExam.targetDateTime)
-        ? nextMy
-        : nextExam;
+    _CountdownCardData? nextAdvising;
+
+    if (advisingInfo != null) {
+      final startStr = advisingInfo['advisingStartDate'];
+      final endStr = advisingInfo['advisingEndDate'];
+      final phase = advisingInfo['advisingPhase'] ?? '';
+      final semester = advisingInfo['semesterSession'] ?? '';
+
+      if (startStr != null && endStr != null) {
+        final startDate = DateTime.tryParse(startStr);
+        final endDate = DateTime.tryParse(endStr);
+        if (startDate != null && endDate != null) {
+          final now = DateTime.now();
+          if (now.isBefore(endDate)) {
+            final target = now.isBefore(startDate) ? startDate : endDate;
+            final phaseLabel = phase.isEmpty
+                ? 'Advising'
+                : phase
+                    .split('_')
+                    .map((w) => w.isEmpty
+                        ? ''
+                        : w[0].toUpperCase() + w.substring(1).toLowerCase())
+                    .join(' ');
+            final title = semester.isEmpty ? phaseLabel : '$phaseLabel - $semester';
+            nextAdvising = _CountdownCardData(
+              title: title,
+              targetDateTime: target,
+              tab: HomeTab.alarms,
+              subtitle: formatDateTimeRange(
+                startDate,
+                endDate,
+                includeYear: false,
+              ),
+            );
+          }
+        }
+      }
+    }
+
+    final candidates = <_CountdownCardData>[];
+    if (nextExam != null) candidates.add(nextExam);
+    if (nextMy != null) candidates.add(nextMy);
+    if (nextAdvising != null) candidates.add(nextAdvising);
+
+    if (candidates.isEmpty) return null;
+    candidates.sort((a, b) => a.targetDateTime.compareTo(b.targetDateTime));
+    return candidates.first;
   }
 
   bool _isSameDate(DateTime a, DateTime b) {
@@ -860,9 +959,16 @@ Future<void> preloadHomeDashboardData({bool forceRefresh = false}) async {
 
 Future<_HomeData> _preloadHomeDashboardData({bool forceRefresh = false}) async {
   if (!forceRefresh && _HomeDashboardState._cachedData != null) {
-    return _HomeDashboardState._withCurrentVisibility(
+    return _HomeDashboardState._withCurrentVisibilitySync(
       _HomeDashboardState._cachedData!,
     );
+  }
+  if (!forceRefresh) {
+    final cached = _HomeDashboardState._loadHomeDashboardSnapshotSyncHelper();
+    if (cached != null) {
+      _HomeDashboardState._cachedData = cached;
+      return cached;
+    }
   }
   if (!forceRefresh) {
     final inFlight = _HomeDashboardState._preloadFuture;
@@ -876,7 +982,7 @@ Future<_HomeData> _preloadHomeDashboardData({bool forceRefresh = false}) async {
   _HomeDashboardState._preloadFuture = future;
   try {
     final data = await future;
-    final merged = await _HomeDashboardState._withCurrentVisibility(data);
+    final merged = _HomeDashboardState._withCurrentVisibilitySync(data);
     _HomeDashboardState._cachedData = merged;
     return merged;
   } finally {

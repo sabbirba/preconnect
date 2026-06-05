@@ -111,6 +111,25 @@ String formatDateTimeLabel(
   return '$date$separator${BracuTime.formatDateTime(localDateTime)}';
 }
 
+String formatDateTimeRange(
+  DateTime start,
+  DateTime end, {
+  bool includeYear = true,
+}) {
+  final startLocal = start.toLocal();
+  final endLocal = end.toLocal();
+  final sameDay = startLocal.year == endLocal.year &&
+      startLocal.month == endLocal.month &&
+      startLocal.day == endLocal.day;
+
+  final startLabel = formatDateTimeLabel(start, includeYear: includeYear);
+  if (sameDay) {
+    return '$startLabel – ${BracuTime.formatDateTime(endLocal)}';
+  } else {
+    return '$startLabel – ${formatDateTimeLabel(end, includeYear: includeYear)}';
+  }
+}
+
 void copyToClipboard(BuildContext context, String text) {
   final value = text.trim();
   if (value.isEmpty) return;
@@ -247,7 +266,6 @@ class _BracuImageErrorFallback extends StatelessWidget {
 
 DateTime? _lastSnackAt;
 String? _lastSnackMessage;
-Timer? _snackAutoTimer;
 
 void showAppSnackBar(
   BuildContext context,
@@ -269,7 +287,6 @@ void showAppSnackBar(
   _lastSnackAt = now;
   final isDark = Theme.of(context).brightness == Brightness.dark;
   final messenger = ScaffoldMessenger.of(context);
-  _snackAutoTimer?.cancel();
   messenger.clearSnackBars();
   messenger.showSnackBar(
     SnackBar(
@@ -282,20 +299,10 @@ void showAppSnackBar(
       action: SnackBarAction(
         label: actionLabel,
         textColor: Colors.white,
-        onPressed: () {
-          if (onAction != null) {
-            onAction();
-            messenger.hideCurrentSnackBar();
-            return;
-          }
-          messenger.hideCurrentSnackBar();
-        },
+        onPressed: onAction ?? () {},
       ),
     ),
   );
-  _snackAutoTimer = Timer(duration, () {
-    messenger.hideCurrentSnackBar();
-  });
 }
 
 Future<void> openGradeSheet(BuildContext context) async {
@@ -797,42 +804,35 @@ class BracuCommunityLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: HomeCardPreferences.communityLinkNotifier,
-      builder: (context, showCommunityLink, _) {
-        if (!showCommunityLink) return const SizedBox.shrink();
+    if (compact) {
+      return _BracuSponsorActionChip(
+        iconWidget: const PreconnectDiscordIcon(
+          size: 18,
+          color: BracuPalette.primary,
+        ),
+        label: _label,
+        onTap: () => openExternalUrl(
+          context,
+          kPreconnectDiscordUrl,
+          failureMessage: 'Unable to open Discord.',
+        ),
+      );
+    }
 
-        if (compact) {
-          return _BracuSponsorActionChip(
-            iconWidget: const PreconnectDiscordIcon(
-              size: 18,
-              color: BracuPalette.primary,
-            ),
-            label: _label,
-            onTap: () => openExternalUrl(
-              context,
-              kPreconnectDiscordUrl,
-              failureMessage: 'Unable to open Discord.',
-            ),
-          );
-        }
-
-        return BracuActionBannerCard(
-          iconWidget: const PreconnectDiscordIcon(size: 30),
-          iconColor: Color.fromRGBO(88, 101, 242, 1),
-          iconDecoration: false,
-          showTrailingIcon: false,
-          title: _title,
-          subtitle: _subtitle,
-          onTap: () {
-            openExternalUrl(
-              context,
-              kPreconnectDiscordUrl,
-              failureMessage: 'Unable to open Discord.',
-            );
-            showAppSnackBar(context, 'Opened server link.');
-          },
+    return BracuActionBannerCard(
+      iconWidget: const PreconnectDiscordIcon(size: 30),
+      iconColor: Color.fromRGBO(88, 101, 242, 1),
+      iconDecoration: false,
+      showTrailingIcon: false,
+      title: _title,
+      subtitle: _subtitle,
+      onTap: () {
+        openExternalUrl(
+          context,
+          kPreconnectDiscordUrl,
+          failureMessage: 'Unable to open Discord.',
         );
+        showAppSnackBar(context, 'Opened server link.');
       },
     );
   }
@@ -853,7 +853,7 @@ class BracuFundingPromoDivider extends StatelessWidget {
       ),
       borderRadius: BorderRadius.circular(8),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Row(
           children: [
             Expanded(child: Container(height: 1, color: borderColor)),
