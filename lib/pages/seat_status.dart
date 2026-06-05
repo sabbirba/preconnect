@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:preconnect/api/api_client.dart';
+import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/model/section_info.dart' as section;
@@ -189,31 +192,73 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       }
     });
 
-    final topic = PreconnectPushConfig.seatTopic(key);
+    await CoursePinStore.save(_pinScope, _pinnedSections);
+
+    final initialRefreshed = List<_SeatStatusCardData>.from(_cards);
+    _sortCardsByCourseAndSection(initialRefreshed);
+    _applyCardsSnapshot(initialRefreshed, isInitialLoading: false);
+
     if (willPin) {
-      unawaited(FCMService.instance.subscribeToTopic(topic));
-      if (card != null) {
-        unawaited(
-          FCMService.instance.sendConfirmationNotification(
-            card.courseCode,
-            card.sectionName,
-          ),
-        );
+      try {
+        final hasPerm = await FCMService.instance.isNotificationPermissionGranted();
+        if (!hasPerm) {
+          final granted = await FCMService.instance.requestNotificationPermission();
+          if (!granted && mounted) {
+            showAppSnackBar(
+              context,
+              'Notification permission is disabled. Enable it in Settings to receive push alerts.',
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint("Error handling permission request during pin: $e");
       }
-    } else {
-      unawaited(FCMService.instance.unsubscribeFromTopic(topic));
     }
 
-    await CoursePinStore.save(_pinScope, _pinnedSections);
+    final topic = PreconnectPushConfig.seatTopic(key);
+    bool syncOk = false;
+    try {
+      if (willPin) {
+        syncOk = await FCMService.instance.subscribeToTopic(topic);
+      } else {
+        syncOk = await FCMService.instance.unsubscribeFromTopic(topic);
+      }
+    } catch (_) {
+      syncOk = false;
+    }
+
+    if (!syncOk && willPin) {
+      setState(() {
+        _pinnedSections.remove(key);
+      });
+      await CoursePinStore.save(_pinScope, _pinnedSections);
+
+      if (!mounted) return;
+      final revertRefreshed = List<_SeatStatusCardData>.from(_cards);
+      _sortCardsByCourseAndSection(revertRefreshed);
+      _applyCardsSnapshot(revertRefreshed, isInitialLoading: false);
+
+      showAppSnackBar(
+        context,
+        'Failed to sync seat alert. Please check your internet connection.',
+      );
+      return;
+    }
+
+    if (willPin && card != null) {
+      unawaited(
+        FCMService.instance.sendConfirmationNotification(
+          card.courseCode,
+          card.sectionName,
+        ),
+      );
+    }
+
     if (!mounted) return;
     final status = willPin ? 'alerts enabled' : 'alerts disabled';
     final message = card != null
         ? '${card.courseCode} Section ${card.sectionName} $status'
         : 'Seat alerts ${willPin ? 'enabled' : 'disabled'}';
-
-    final refreshed = List<_SeatStatusCardData>.from(_cards);
-    _sortCardsByCourseAndSection(refreshed);
-    _applyCardsSnapshot(refreshed, isInitialLoading: false);
     showAppSnackBar(context, message);
   }
 

@@ -571,6 +571,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       );
       if (details.isNotEmpty) {
         await _applyDetailsUpdate(details);
+        unawaited(_syncWatchlistPins(details));
       }
     } catch (_) {
       if (_isInitialLoading && mounted) {
@@ -607,5 +608,85 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
 
   bool _isPinnedSection(int sectionId) {
     return _pinnedSections.contains(sectionId.toString());
+  }
+
+  Future<void> _syncWatchlistPins(Map<int, SeatStatusDetailsResponse> details) async {
+    try {
+      final idToken = await TokenStorage.instance.read(key: PreconnectStorageKeys.idToken);
+      if (idToken == null || idToken.isEmpty) return;
+
+      final url = '${ApiConfig.websiteBase}/api/_client/load-snapshot';
+      final client = ApiClient();
+      final response = await client.publicPost(
+        url,
+        body: jsonEncode(<String, dynamic>{
+          'idToken': idToken,
+          'key': 'seat.watchlist',
+        }),
+      );
+
+      if (response.statusCode != 200) return;
+      final map = jsonDecode(response.body) as Map<String, dynamic>;
+      final found = map['found'] as bool? ?? false;
+      if (!found) return;
+      final data = map['data'];
+      if (data is! List) return;
+
+      String normCourse(String code) => code.trim().toUpperCase();
+      String normSection(String sec) {
+        final raw = sec.trim();
+        if (raw.isEmpty) return '';
+        final parsed = int.tryParse(raw);
+        if (parsed != null) return parsed.toString();
+        return raw.toUpperCase();
+      }
+
+      final backendSectionIds = <String>{};
+      for (final item in data) {
+        if (item is! Map) continue;
+        final courseCode = normCourse(item['courseCode']?.toString() ?? '');
+        final sectionName = normSection(item['sectionName']?.toString() ?? '');
+        if (courseCode.isEmpty || sectionName.isEmpty) continue;
+
+        for (final detail in details.values) {
+          if (normCourse(detail.courseCode) == courseCode &&
+              normSection(detail.sectionName) == sectionName) {
+            backendSectionIds.add(detail.sectionId.toString());
+          }
+        }
+      }
+
+      bool changed = false;
+      for (final secId in backendSectionIds) {
+        if (!_pinnedSections.contains(secId)) {
+          final topic = PreconnectPushConfig.seatTopic(secId);
+          unawaited(FCMService.instance.subscribeToTopic(topic, syncEmail: false));
+          _pinnedSections.add(secId);
+          changed = true;
+        }
+      }
+
+      final localCopy = Set<String>.from(_pinnedSections);
+      for (final secId in localCopy) {
+        if (!backendSectionIds.contains(secId)) {
+          final topic = PreconnectPushConfig.seatTopic(secId);
+          unawaited(FCMService.instance.unsubscribeFromTopic(topic, syncEmail: false));
+          _pinnedSections.remove(secId);
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        await CoursePinStore.save(_SeatStatusPageState._pinScope, _pinnedSections);
+        if (mounted) {
+          _updateSeatStatusState(() {});
+          final refreshed = List<_SeatStatusCardData>.from(_cards);
+          _sortCardsByCourseAndSection(refreshed);
+          _applyCardsSnapshot(refreshed, isInitialLoading: false);
+        }
+      }
+    } catch (e) {
+      debugPrint("Failed to sync watchlist pins: $e");
+    }
   }
 }

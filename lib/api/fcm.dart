@@ -1,5 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:preconnect/api/seat_status.dart';
+import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -163,42 +167,167 @@ class FCMService {
     }
   }
 
-  Future<void> subscribeToTopic(String topic) async {
-    if (!isSupported) return;
+  @visibleForTesting
+  Future<String?> resolveEmail() async {
+    final email = await AppStorage.instance.getString(StorageKeys.studentEmail);
+    if (email != null && email.trim().isNotEmpty) {
+      return email.trim().toLowerCase();
+    }
+    return null;
+  }
+
+  Future<bool> _syncEmailSubscription(String topic, bool isSubscribe) async {
+    if (!topic.startsWith('seat_')) return true;
+    try {
+      final sectionIdStr = topic.substring(5);
+      final sectionId = int.tryParse(sectionIdStr);
+      if (sectionId == null) return false;
+
+      if (SeatStatusService().cachedDetails == null) {
+        await SeatStatusService().preloadData();
+      }
+      final details = SeatStatusService().cachedDetails?[sectionId];
+      if (details == null) return false;
+
+      final email = await resolveEmail();
+      if (email == null || email.trim().isEmpty) {
+        debugPrint("FCM email alert sync skipped: email is null or empty.");
+        return true;
+      }
+
+      final name = await AppStorage.instance.getString(StorageKeys.fullName);
+      final courseCode = details.courseCode;
+      final sectionName = details.sectionName;
+
+      final client = ApiClient();
+      if (isSubscribe) {
+        final url = '${ApiConfig.websiteBase}/api/_client/seat-watch/register';
+        final body = jsonEncode(<String, dynamic>{
+          'courseCode': courseCode,
+          'sectionName': sectionName,
+          'email': email.trim(),
+          'name': name?.trim() ?? '',
+          'provider': 'email',
+          'emailAlerts': true,
+        });
+        final response = await client.publicPost(url, body: body);
+        return response.statusCode == 200;
+      } else {
+        final url = '${ApiConfig.websiteBase}/api/_client/seat-watch/unregister';
+        final body = jsonEncode(<String, dynamic>{
+          'courseCode': courseCode,
+          'sectionName': sectionName,
+          'email': email.trim(),
+        });
+        final response = await client.publicPost(url, body: body);
+        return response.statusCode == 200;
+      }
+    } catch (e) {
+      debugPrint("Failed to sync email subscription for topic $topic: $e");
+      return false;
+    }
+  }
+
+  Future<bool> subscribeToTopic(String topic, {bool syncEmail = true}) async {
+    if (!isSupported) return false;
+    bool emailOk = true;
+    if (syncEmail) {
+      emailOk = await _syncEmailSubscription(topic, true);
+    }
+
     if (kIsWeb) {
       final token = await _getToken();
-      if (token == null) return;
+      if (token == null) return false;
       await _subscribeToTopicWeb(token, topic);
-      return;
+      return emailOk;
     }
     if ((defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.macOS) &&
-        !_apnsAvailable) {
+         !_apnsAvailable) {
       debugPrint(
         "FCM warning: Skipping subscribeToTopic($topic) because APNS is unavailable.",
       );
-      return;
+      return emailOk;
     }
-    await FirebaseMessaging.instance.subscribeToTopic(topic);
+    try {
+      await FirebaseMessaging.instance.subscribeToTopic(topic);
+      return emailOk;
+    } catch (e) {
+      debugPrint("FCM error subscribing to topic $topic: $e");
+      return emailOk;
+    }
   }
 
-  Future<void> unsubscribeFromTopic(String topic) async {
-    if (!isSupported) return;
+  Future<bool> unsubscribeFromTopic(String topic, {bool syncEmail = true}) async {
+    if (!isSupported) return false;
+    bool emailOk = true;
+    if (syncEmail) {
+      emailOk = await _syncEmailSubscription(topic, false);
+    }
+
     if (kIsWeb) {
       final token = await _getToken();
-      if (token == null) return;
+      if (token == null) return false;
       await _unsubscribeFromTopicWeb(token, topic);
-      return;
+      return emailOk;
     }
     if ((defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.macOS) &&
-        !_apnsAvailable) {
+         !_apnsAvailable) {
       debugPrint(
         "FCM warning: Skipping unsubscribeFromTopic($topic) because APNS is unavailable.",
       );
-      return;
+      return emailOk;
     }
-    await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
+    try {
+      await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
+      return emailOk;
+    } catch (e) {
+      debugPrint("FCM error unsubscribing from topic $topic: $e");
+      return emailOk;
+    }
+  }
+
+  Future<bool> requestNotificationPermission() async {
+    if (!isSupported) return false;
+    if (kIsWeb) return true;
+
+    try {
+      final messaging = FirebaseMessaging.instance;
+      final settings = await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        await _localNotifications
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >()
+            ?.requestNotificationsPermission();
+      }
+
+      final granted = settings.authorizationStatus == AuthorizationStatus.authorized;
+      debugPrint("Notification permission request result: $granted");
+      return granted;
+    } catch (e) {
+      debugPrint("Error requesting notification permission: $e");
+      return false;
+    }
+  }
+
+  Future<bool> isNotificationPermissionGranted() async {
+    if (!isSupported) return false;
+    if (kIsWeb) return true;
+
+    try {
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      return settings.authorizationStatus == AuthorizationStatus.authorized;
+    } catch (e) {
+      debugPrint("Error checking notification settings: $e");
+      return false;
+    }
   }
 
   Future<void> init() async {
@@ -249,14 +378,14 @@ class FCMService {
   Future<void> _subscribeToDefaultTopics() async {
     try {
       for (final topic in PreconnectPushConfig.defaultTopics) {
-        await subscribeToTopic(topic);
+        await subscribeToTopic(topic, syncEmail: false);
       }
 
       Set<String> pinnedSeats = await CoursePinStore.load(
         PreconnectPushConfig.seatStatusPinScope,
       );
       for (String seat in pinnedSeats) {
-        await subscribeToTopic(PreconnectPushConfig.seatTopic(seat));
+        await subscribeToTopic(PreconnectPushConfig.seatTopic(seat), syncEmail: false);
       }
     } catch (e) {
       debugPrint("Failed to subscribe to topics: $e");
@@ -266,16 +395,16 @@ class FCMService {
   Future<void> _initNative() async {
     final messaging = FirebaseMessaging.instance;
 
-    final settings = await messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-
-    if (settings.authorizationStatus != AuthorizationStatus.authorized) {
-      debugPrint("Notification permissions denied");
-      return;
+    try {
+      await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    } catch (e) {
+      debugPrint("FCM requestPermission error: $e");
     }
+
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint("Foreground message: ${message.notification?.title}");
       _showLocalNotification(message);

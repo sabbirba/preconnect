@@ -315,6 +315,32 @@ class ApiClient {
     throw ApiException(response.statusCode, response.body);
   }
 
+  Future<http.Response> publicPost(
+    String url, {
+    String body = '',
+    Map<String, String> headers = const <String, String>{},
+    Set<int> acceptedStatusCodes = const <int>{200, 201},
+  }) async {
+    final uri = Uri.parse(url);
+    final mergedHeaders = <String, String>{
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      ...headers,
+    };
+    mergedHeaders.addAll(compressionHeadersForUri(uri));
+    final response = await _sendSharedRequest(
+      'POST',
+      url,
+      headers: mergedHeaders,
+      body: body,
+      cacheDuration: Duration.zero,
+    );
+    if (acceptedStatusCodes.contains(response.statusCode)) {
+      return response;
+    }
+    throw ApiException(response.statusCode, response.body);
+  }
+
   Future<http.Response> authenticatedGetWithEtag(
     String url, {
     String? etag,
