@@ -167,8 +167,7 @@ class FCMService {
     }
   }
 
-  @visibleForTesting
-  Future<String?> resolveEmail() async {
+  Future<String?> _resolveEmail() async {
     final email = await AppStorage.instance.getString(StorageKeys.studentEmail);
     if (email != null && email.trim().isNotEmpty) {
       return email.trim().toLowerCase();
@@ -189,7 +188,7 @@ class FCMService {
       final details = SeatStatusService().cachedDetails?[sectionId];
       if (details == null) return false;
 
-      final email = await resolveEmail();
+      final email = await _resolveEmail();
       if (email == null || email.trim().isEmpty) {
         debugPrint("FCM email alert sync skipped: email is null or empty.");
         return true;
