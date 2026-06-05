@@ -241,6 +241,10 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   ),
                                 ] else if (cardVisibility
                                     .showTodaySchedule) ...[
+                                  if (data?.advisingInfo != null)
+                                    _AdvisingCountdownCard(
+                                      advisingInfo: data!.advisingInfo!,
+                                    ),
                                   const SizedBox(height: 12),
                                   InkWell(
                                     onTap: () => widget.onNavigate(
@@ -1006,5 +1010,114 @@ class _CampusMapLoadingSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const _ActionBannerLoadingSkeleton(showTrailingIcon: true);
+  }
+}
+
+class _AdvisingCountdownCard extends StatelessWidget {
+  const _AdvisingCountdownCard({
+    required this.advisingInfo,
+  });
+
+  final Map<String, String?> advisingInfo;
+
+  @override
+  Widget build(BuildContext context) {
+    final startStr = advisingInfo['advisingStartDate'];
+    final endStr = advisingInfo['advisingEndDate'];
+    final phase = advisingInfo['advisingPhase'] ?? '';
+    final semester = advisingInfo['semesterSession'] ?? '';
+
+    if (startStr == null || endStr == null) return const SizedBox.shrink();
+
+    final startDate = DateTime.tryParse(startStr);
+    final endDate = DateTime.tryParse(endStr);
+    if (startDate == null || endDate == null) return const SizedBox.shrink();
+
+    return StreamBuilder<int>(
+      stream: Stream<int>.periodic(const Duration(minutes: 1), (tick) => tick),
+      builder: (context, snapshot) {
+        final now = DateTime.now();
+        if (now.isAfter(endDate)) return const SizedBox.shrink();
+
+        final bool isOngoing = now.isAfter(startDate) && now.isBefore(endDate);
+        final remaining = isOngoing ? endDate.difference(now) : startDate.difference(now);
+
+        final title = _formatPhase(phase);
+        final String statusLabel = isOngoing ? 'Ongoing (Ends in)' : 'Upcoming (Starts in)';
+        final Color cardColor = isOngoing ? BracuPalette.accent : BracuPalette.primary;
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: BracuCard(
+            isHighlighted: isOngoing,
+            highlightColor: cardColor,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.school_outlined,
+                            size: 16,
+                            color: BracuPalette.textPrimary(context),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              '$title - $semester',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: BracuPalette.textPrimary(context),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        statusLabel,
+                        style: TextStyle(
+                          color: isOngoing ? cardColor : BracuPalette.textSecondary(context),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${_formatTime(startDate)} - ${_formatTime(endDate)}',
+                        style: TextStyle(
+                          color: BracuPalette.textSecondary(context),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                BracuCountdownDigital(remaining: remaining),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatPhase(String phase) {
+    if (phase.isEmpty) return 'Advising';
+    return phase.split('_').map((word) {
+      if (word.isEmpty) return '';
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
+  }
+
+  String _formatTime(DateTime dt) {
+    return DateFormat('d MMM, h:mm a').format(dt);
   }
 }

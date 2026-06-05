@@ -518,6 +518,7 @@ class AdvisingService {
     'totalCredit',
     'earnedCredit',
     'noOfSemester',
+    'semesterSession',
   ];
 
   Future<Map<String, String?>?> fetchAdvisingInfo({
@@ -562,6 +563,7 @@ class AdvisingService {
             'totalCredit': '${data['totalCredit'] ?? ''}',
             'earnedCredit': '${data['earnedCredit'] ?? ''}',
             'noOfSemester': '${data['noOfSemester'] ?? ''}',
+            'semesterSession': '${data['semesterSession'] ?? ''}',
           });
         } catch (_) {}
       },

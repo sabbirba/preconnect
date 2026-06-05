@@ -199,17 +199,27 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
                 return const <CustomSchedule>[];
               });
 
+      final advisingFuture =
+          (forceRefresh
+                  ? AdvisingService().fetchAdvisingInfo()
+                  : AdvisingService().getAdvisingInfo())
+              .catchError((e) {
+                return null;
+              });
+
       final prerequisiteResults = await Future.wait<dynamic>([
         HomeCardPreferences.load(),
         resolveCurrentSessionSemesterId(),
         profileFuture,
         customSchedulesFuture,
+        advisingFuture,
       ]);
 
       final cardVisibility = prerequisiteResults[0] as HomeCardVisibility;
       final currentSessionSemesterId = prerequisiteResults[1] as int?;
       var profile = prerequisiteResults[2] as Map<String, String?>?;
       final personalSchedules = prerequisiteResults[3] as List<CustomSchedule>;
+      final advisingInfo = prerequisiteResults[4] as Map<String, String?>?;
 
       final needsSchedule =
           cardVisibility.showTodaySchedule ||
@@ -340,6 +350,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         holiday: holidayStatus,
         cardVisibility: cardVisibility,
         scheduleJson: scheduleJson,
+        advisingInfo: advisingInfo,
       );
       return _withCurrentVisibility(data).catchError((_) => data);
     } catch (error) {
@@ -360,6 +371,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         holiday: HolidayStatus.empty,
         cardVisibility: fallbackVisibility,
         scheduleJson: null,
+        advisingInfo: null,
       );
     }
   }

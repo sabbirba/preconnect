@@ -749,6 +749,7 @@ class _HomeData {
     required this.holiday,
     required this.cardVisibility,
     this.scheduleJson,
+    this.advisingInfo,
   });
 
   final Map<String, String?>? profile;
@@ -762,6 +763,7 @@ class _HomeData {
   final HolidayStatus holiday;
   final HomeCardVisibility cardVisibility;
   final String? scheduleJson;
+  final Map<String, String?>? advisingInfo;
 
   bool get hasRequiredProfileFields {
     final profileData = profile;
@@ -778,7 +780,10 @@ class _HomeData {
         currentSemester.isNotEmpty;
   }
 
-  _HomeData copyWith({HomeCardVisibility? cardVisibility}) {
+  _HomeData copyWith({
+    HomeCardVisibility? cardVisibility,
+    Map<String, String?>? advisingInfo,
+  }) {
     return _HomeData(
       profile: profile,
       entries: entries,
@@ -791,6 +796,7 @@ class _HomeData {
       holiday: holiday,
       cardVisibility: cardVisibility ?? this.cardVisibility,
       scheduleJson: scheduleJson,
+      advisingInfo: advisingInfo ?? this.advisingInfo,
     );
   }
 
@@ -832,6 +838,7 @@ class _HomeData {
           'finalRoomNumber': value.finalRoomNumber,
         }),
       ),
+      'advisingInfo': advisingInfo,
     };
   }
 
@@ -922,6 +929,10 @@ class _HomeData {
         );
       }
     }
+    final advisingJson = json['advisingInfo'];
+    final advisingInfo = advisingJson is Map
+        ? advisingJson.map((key, value) => MapEntry('$key', value?.toString()))
+        : null;
     final data = _HomeData(
       profile: profile,
       entries: entries,
@@ -934,6 +945,7 @@ class _HomeData {
       holiday: holiday,
       cardVisibility: cardVisibility,
       scheduleJson: scheduleJson,
+      advisingInfo: advisingInfo,
     );
     return data.hasRequiredProfileFields ? data : null;
   }
