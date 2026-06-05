@@ -5,6 +5,8 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
+## [1.6.6] — 2026-06-06
+
 - Improved app startup speed with smaller background work on launch
 - Better stability for course schedules, seats, and dashboard loading
 - Cleaner wording and small UI refinements across key screens
