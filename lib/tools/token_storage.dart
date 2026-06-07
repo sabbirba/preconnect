@@ -395,7 +395,6 @@ class HomeCardPreferences {
     } catch (_) {}
   }
 
-
   static Future<void> setShowExamCountdownCard(bool value) async {
     try {
       await AppStorage.instance.setBool(showExamCountdownCardKey, value);

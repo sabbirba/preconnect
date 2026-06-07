@@ -101,7 +101,6 @@ class _SettingsPageState extends State<SettingsPage>
     );
   }
 
-
   Future<void> _setShowCampusMapContacts(bool value) async {
     await _setVisibility(
       label: 'Campus Map & Contacts',

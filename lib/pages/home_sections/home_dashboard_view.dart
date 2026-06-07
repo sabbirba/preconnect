@@ -971,5 +971,3 @@ class _CampusMapLoadingSkeleton extends StatelessWidget {
     return const _ActionBannerLoadingSkeleton(showTrailingIcon: true);
   }
 }
-
-

@@ -181,7 +181,6 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
       'Session code copied. Clipboard will clear in 60s.',
     );
 
-    // Cancel existing clear timer if any, and start new one
     _clipboardClearTimer?.cancel();
     _clipboardClearTimer = Timer(const Duration(seconds: 60), () async {
       await Clipboard.setData(const ClipboardData(text: ''));
