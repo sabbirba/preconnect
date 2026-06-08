@@ -391,7 +391,6 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
       icon: Icons.event_note_outlined,
       actions: [
         BracuSelectChip(
-          label: 'Done',
           icon: Icons.history_rounded,
           selected: !_showUpcomingExams,
           compact: true,

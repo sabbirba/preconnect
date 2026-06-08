@@ -151,6 +151,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
           CampusPrinterPage.preload().catchError((_) {}),
         ]).then((_) async {
           await QuietModeController.instance.refresh();
+          await InAppReviewPrompt.maybePrompt();
         }),
       );
     }
