@@ -839,6 +839,23 @@ class ShimmerContainer extends StatelessWidget {
       );
     }
 
+    if (kIsWeb) {
+      return AnimatedBuilder(
+        animation: shimmer.animation,
+        builder: (context, child) {
+          final opacity = 0.35 + (shimmer.value - 0.5).abs() * 0.4;
+          return Container(
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
+              color: baseColor.withValues(alpha: opacity),
+              borderRadius: borderRadius ?? BorderRadius.circular(8),
+            ),
+          );
+        },
+      );
+    }
+
     return AnimatedBuilder(
       animation: shimmer.animation,
       builder: (context, child) {

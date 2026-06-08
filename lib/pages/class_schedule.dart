@@ -9,6 +9,7 @@ import 'package:preconnect/pages/shared_widgets/highlight_scroll_helper.dart';
 import 'package:preconnect/pages/shared_widgets/schedule_entry_card.dart';
 import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/json_snapshot_store.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan.dart';
@@ -87,9 +88,41 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   static Future<_ScheduleData> _loadScheduleData({
     bool forceRefresh = false,
   }) async {
+    if (!forceRefresh) {
+      final cachedSections = await JsonSnapshotStore.readSections();
+      if (cachedSections != null && cachedSections.isNotEmpty) {
+        final isRamadan = await RamadanTiming.isRamadan(forceRefresh: false);
+        final examOverrides = await ExamScheduleService().getOverridesForSections(
+          cachedSections,
+          forceRefresh: false,
+        );
+        return _buildScheduleDataFromSectionsStatic(
+          cachedSections,
+          shouldHighlightCurrentSemester: true,
+          isRamadan: isRamadan,
+          examOverrides: examOverrides,
+        );
+      }
+    }
+
     final currentSessionSemesterId =
         await resolveCurrentSessionSemesterIdWithRetry();
     if (currentSessionSemesterId == null) {
+      final cachedSections = await JsonSnapshotStore.readSections();
+      if (cachedSections != null && cachedSections.isNotEmpty) {
+        final isRamadan = await RamadanTiming.isRamadan(forceRefresh: false);
+        final examOverrides = await ExamScheduleService().getOverridesForSections(
+          cachedSections,
+          forceRefresh: false,
+        );
+        return _buildScheduleDataFromSectionsStatic(
+          cachedSections,
+          shouldHighlightCurrentSemester: true,
+          isRamadan: isRamadan,
+          examOverrides: examOverrides,
+        );
+      }
+
       final isRamadan = await RamadanTiming.isRamadan(
         forceRefresh: forceRefresh,
       );
@@ -120,6 +153,9 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       semesterSessionId: currentSessionSemesterId,
     );
     final isRamadan = await ramadanFuture;
+    if (sections.isNotEmpty) {
+      unawaited(JsonSnapshotStore.updateSections(sections, isRamadan: isRamadan));
+    }
     final examOverrides = sections.isEmpty
         ? const <String, ExamScheduleOverride>{}
         : await ExamScheduleService().getOverridesForSections(
@@ -178,12 +214,58 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   }
 
   Future<_ScheduleData> _loadSchedule({bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      final cachedSections = await JsonSnapshotStore.readSections();
+      if (cachedSections != null && cachedSections.isNotEmpty) {
+        final isRamadan = await RamadanTiming.isRamadan(forceRefresh: false);
+        final examOverrides = await ExamScheduleService().getOverridesForSections(
+          cachedSections,
+          forceRefresh: false,
+        );
+        final data = _buildScheduleDataFromSections(
+          cachedSections,
+          shouldHighlightCurrentSemester: true,
+          isRamadan: isRamadan,
+          examOverrides: examOverrides,
+        );
+        cache.value = data;
+        if (mounted) {
+          setState(() {
+            _latestData = data;
+          });
+        }
+        return data;
+      }
+    }
+
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
     final service = ScheduleService();
     final currentSessionSemesterId =
         _currentSessionSemesterId ??
         await resolveCurrentSessionSemesterIdWithRetry();
     if (currentSessionSemesterId == null) {
+      final cachedSections = await JsonSnapshotStore.readSections();
+      if (cachedSections != null && cachedSections.isNotEmpty) {
+        final isRamadan = await ramadanFuture;
+        final examOverrides = await ExamScheduleService().getOverridesForSections(
+          cachedSections,
+          forceRefresh: false,
+        );
+        final data = _buildScheduleDataFromSections(
+          cachedSections,
+          shouldHighlightCurrentSemester: true,
+          isRamadan: isRamadan,
+          examOverrides: examOverrides,
+        );
+        cache.value = data;
+        if (mounted) {
+          setState(() {
+            _latestData = data;
+          });
+        }
+        return data;
+      }
+
       final isRamadan = await ramadanFuture;
       final data = _buildScheduleDataFromSections(
         const <section.Section>[],
@@ -217,6 +299,9 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       semesterSessionId: currentSessionSemesterId,
     );
     final isRamadan = await ramadanFuture;
+    if (sections.isNotEmpty) {
+      unawaited(JsonSnapshotStore.updateSections(sections, isRamadan: isRamadan));
+    }
     final examOverrides = sections.isEmpty
         ? const <String, ExamScheduleOverride>{}
         : await ExamScheduleService().getOverridesForSections(
@@ -463,6 +548,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     if (!await ensureOnline(context, notify: notify)) {
       return;
     }
+    if (!mounted) return;
     setState(() {
       _highlightScroll.resetScrollState();
       _visibleWeekCount = _initialVisibleWeekCount;

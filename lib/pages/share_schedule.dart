@@ -76,6 +76,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
     if (!await ensureOnline(context, notify: notify)) {
       return;
     }
+    if (!mounted) return;
     await _fetchAndConvertSchedule(forceRefresh: true);
   }
 
@@ -248,6 +249,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
     if (!await ensureOnline(context)) {
       return;
     }
+    if (!mounted) return;
     if (!kIsWeb) {
       await AppStorage.instance.remove(StorageKeys.qrBase64);
       await AppStorage.instance.remove(StorageKeys.qrHash);

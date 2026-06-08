@@ -25,10 +25,11 @@ class FCMService {
 
   bool get isSupported {
     if (kIsWeb) {
-      return isChromeRuntimeAvailable();
+      return true;
     }
     return defaultTargetPlatform == TargetPlatform.android ||
-        defaultTargetPlatform == TargetPlatform.iOS;
+        defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS;
   }
 
   @pragma('vm:entry-point')
@@ -39,21 +40,34 @@ class FCMService {
 
   Future<String?> _getToken() async {
     if (kIsWeb) {
-      var token = await TokenStorage.instance.read(
-        key: PreconnectPushConfig.gcmTokenKey,
-      );
-      if (token == null || token.isEmpty) {
-        await requestWebExtensionPushTokenSync();
-        for (var attempt = 0; attempt < 5; attempt++) {
-          await Future<void>.delayed(const Duration(milliseconds: 200));
-          token = await TokenStorage.instance.read(
-            key: PreconnectPushConfig.gcmTokenKey,
-          );
-          if (token != null && token.isNotEmpty) break;
+      if (isChromeRuntimeAvailable()) {
+        // Chrome Extension: get GCM token via background service worker sync.
+        var token = await TokenStorage.instance.read(
+          key: PreconnectPushConfig.gcmTokenKey,
+        );
+        if (token == null || token.isEmpty) {
+          await requestWebExtensionPushTokenSync();
+          for (var attempt = 0; attempt < 5; attempt++) {
+            await Future<void>.delayed(const Duration(milliseconds: 200));
+            token = await TokenStorage.instance.read(
+              key: PreconnectPushConfig.gcmTokenKey,
+            );
+            if (token != null && token.isNotEmpty) break;
+          }
+        }
+        debugPrint("FCM Chrome Extension Token: $token");
+        return token;
+      } else {
+        // Standard Web: use native Firebase Messaging getToken().
+        try {
+          final token = await FirebaseMessaging.instance.getToken();
+          debugPrint("FCM Standard Web Token: $token");
+          return token;
+        } catch (e) {
+          debugPrint("FCM Standard Web token fetch error: $e");
+          return null;
         }
       }
-      debugPrint("FCM Web Token: $token");
-      return token;
     }
     try {
       if (defaultTargetPlatform == TargetPlatform.iOS ||
@@ -106,7 +120,9 @@ class FCMService {
         body: jsonEncode(<String, dynamic>{
           'token': token,
           'platform': kIsWeb
-              ? PreconnectPushConfig.chromeExtensionPlatform
+              ? (isChromeRuntimeAvailable()
+                  ? PreconnectPushConfig.chromeExtensionPlatform
+                  : 'web')
               : defaultTargetPlatform.name.toLowerCase(),
         }),
         additionalHeaders: const <String, String>{
@@ -230,7 +246,25 @@ class FCMService {
 
   Future<bool> requestNotificationPermission() async {
     if (!isSupported) return false;
-    if (kIsWeb) return true;
+    // Chrome Extension: permissions are handled via manifest.json.
+    if (kIsWeb && isChromeRuntimeAvailable()) return true;
+    // Standard Web: request via Firebase Messaging.
+    if (kIsWeb) {
+      try {
+        final messaging = FirebaseMessaging.instance;
+        final settings = await messaging.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+        final granted = settings.authorizationStatus == AuthorizationStatus.authorized;
+        debugPrint("Notification permission request result (web): $granted");
+        return granted;
+      } catch (e) {
+        debugPrint("Error requesting notification permission (web): $e");
+        return false;
+      }
+    }
 
     try {
       final messaging = FirebaseMessaging.instance;
@@ -259,8 +293,9 @@ class FCMService {
 
   Future<bool> isNotificationPermissionGranted() async {
     if (!isSupported) return false;
-    if (kIsWeb) return true;
-
+    // Chrome Extension: always considered granted via manifest.
+    if (kIsWeb && isChromeRuntimeAvailable()) return true;
+    // Standard Web and native: check via Firebase Messaging.
     try {
       final settings = await FirebaseMessaging.instance.getNotificationSettings();
       return settings.authorizationStatus == AuthorizationStatus.authorized;
@@ -312,6 +347,19 @@ class FCMService {
       }
     } catch (e) {
       debugPrint("Failed to load pinned seats: $e");
+    }
+
+    // For standard web (non-extension), register a foreground message listener.
+    if (!isChromeRuntimeAvailable()) {
+      try {
+        FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+          debugPrint(
+            "Standard Web foreground message: ${message.notification?.title}",
+          );
+        });
+      } catch (e) {
+        debugPrint("Error registering standard web foreground listener: $e");
+      }
     }
   }
 
@@ -450,6 +498,8 @@ class FCMService {
   }
 
   void _showLocalNotification(RemoteMessage message) {
+    // flutter_local_notifications is not initialized on web platforms.
+    if (kIsWeb) return;
     final notification = message.notification;
     if (notification != null) {
       _localNotifications.show(
@@ -500,7 +550,8 @@ class FCMService {
     try {
       final token = await _getToken();
       if (token == null) {
-        if (kDebugMode) {
+        // Only show local debug notification on native platforms (not web).
+        if (kDebugMode && !kIsWeb) {
           _showLocalNotification(
             RemoteMessage(
               notification: RemoteNotification(

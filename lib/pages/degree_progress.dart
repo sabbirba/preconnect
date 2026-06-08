@@ -170,6 +170,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
   Future<void> _refresh({bool notify = true}) async {
     if (_isRefreshing) return;
     if (!await ensureOnline(context, notify: notify)) return;
+    if (!mounted) return;
     if (_wishlistVisibleCount != _coursesChunkSize ||
         _currentVisibleCount != _coursesChunkSize ||
         _completedVisibleCount != _coursesChunkSize) {

@@ -10,6 +10,7 @@ import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/exam_sorting.dart';
 import 'package:preconnect/tools/exam_visibility.dart';
+import 'package:preconnect/tools/json_snapshot_store.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/time_utils.dart';
@@ -77,9 +78,35 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   static Future<_ExamScheduleData> _loadExamData({
     bool forceRefresh = false,
   }) async {
+    if (!forceRefresh) {
+      final cachedSections = await JsonSnapshotStore.readSections();
+      if (cachedSections != null && cachedSections.isNotEmpty) {
+        final overrides = await ExamScheduleService().getOverridesForSections(
+          cachedSections,
+          forceRefresh: false,
+        );
+        return _ExamScheduleData(
+          sections: cachedSections,
+          overrides: overrides,
+        );
+      }
+    }
+
     final currentSessionSemesterId =
         await resolveCurrentSessionSemesterIdWithRetry();
     if (currentSessionSemesterId == null) {
+      final cachedSections = await JsonSnapshotStore.readSections();
+      if (cachedSections != null && cachedSections.isNotEmpty) {
+        final overrides = await ExamScheduleService().getOverridesForSections(
+          cachedSections,
+          forceRefresh: false,
+        );
+        return _ExamScheduleData(
+          sections: cachedSections,
+          overrides: overrides,
+        );
+      }
+
       return const _ExamScheduleData(
         sections: <Section>[],
         overrides: <String, ExamScheduleOverride>{},
@@ -105,12 +132,25 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
     );
 
     if (sections.isEmpty) {
+      final cachedSections = await JsonSnapshotStore.readSections();
+      if (cachedSections != null && cachedSections.isNotEmpty) {
+        final overrides = await ExamScheduleService().getOverridesForSections(
+          cachedSections,
+          forceRefresh: false,
+        );
+        return _ExamScheduleData(
+          sections: cachedSections,
+          overrides: overrides,
+        );
+      }
+
       return const _ExamScheduleData(
         sections: <Section>[],
         overrides: <String, ExamScheduleOverride>{},
       );
     }
 
+    unawaited(JsonSnapshotStore.updateSections(sections));
     final examService = ExamScheduleService();
     final overrides = await examService.getOverridesForSections(
       sections,
@@ -160,11 +200,45 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   }
 
   Future<_ExamScheduleData> _fetchExamData({bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      final cachedSections = await JsonSnapshotStore.readSections();
+      if (cachedSections != null && cachedSections.isNotEmpty) {
+        final overrides = await ExamScheduleService().getOverridesForSections(
+          cachedSections,
+          forceRefresh: false,
+        );
+        final data = _ExamScheduleData(sections: cachedSections, overrides: overrides);
+        cache.value = data;
+        if (mounted) {
+          setState(() {
+            _latestData = data;
+          });
+        }
+        return data;
+      }
+    }
+
     final service = ScheduleService();
     final currentSessionSemesterId =
         _currentSessionSemesterId ??
         await resolveCurrentSessionSemesterIdWithRetry();
     if (currentSessionSemesterId == null) {
+      final cachedSections = await JsonSnapshotStore.readSections();
+      if (cachedSections != null && cachedSections.isNotEmpty) {
+        final overrides = await ExamScheduleService().getOverridesForSections(
+          cachedSections,
+          forceRefresh: false,
+        );
+        final data = _ExamScheduleData(sections: cachedSections, overrides: overrides);
+        cache.value = data;
+        if (mounted) {
+          setState(() {
+            _latestData = data;
+          });
+        }
+        return data;
+      }
+
       return const _ExamScheduleData(
         sections: <Section>[],
         overrides: <String, ExamScheduleOverride>{},
@@ -183,11 +257,17 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
             : await service.getStudentScheduleForSemester(
                 semesterSessionId: currentSessionSemesterId,
               ));
+    final parsedSections = service.parseStudentSections(
+      jsonString,
+      semesterSessionId: currentSessionSemesterId,
+    );
+
+    if (parsedSections.isNotEmpty) {
+      unawaited(JsonSnapshotStore.updateSections(parsedSections));
+    }
+
     final data = await _buildExamDataFromSections(
-      service.parseStudentSections(
-        jsonString,
-        semesterSessionId: currentSessionSemesterId,
-      ),
+      parsedSections,
       forceRefresh: forceRefresh,
       forcedSemesterSessionId: currentSessionSemesterId,
     );
@@ -236,6 +316,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
     if (!await ensureOnline(context, notify: notify)) {
       return;
     }
+    if (!mounted) return;
     setState(() {
       _future = preloadData(forceRefresh: true);
     });

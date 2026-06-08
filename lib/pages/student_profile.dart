@@ -293,6 +293,7 @@ class _StudentProfileState extends State<StudentProfile>
     if (!await ensureOnline(context, notify: notify)) {
       return;
     }
+    if (!mounted) return;
     setState(() {
       _isRefreshing = true;
     });

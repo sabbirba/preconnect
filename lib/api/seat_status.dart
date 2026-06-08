@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/model/section_info.dart' show SectionFaculty;
+import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
 
 class SeatStatusService {
   SeatStatusService._internal();
@@ -14,7 +16,18 @@ class SeatStatusService {
   static Map<int, SeatStatusDetailsResponse>? _cachedDetails;
   static Future<Map<int, SeatStatusDetailsResponse>>? _preloadFuture;
 
-  Map<int, SeatStatusDetailsResponse>? get cachedDetails => _cachedDetails;
+  Map<int, SeatStatusDetailsResponse>? get cachedDetails {
+    if (_cachedDetails == null) {
+      final cachedJson = AppStorage.instance.getStringSync(PreconnectStorageKeys.seatStatusCacheJson);
+      if (cachedJson != null && cachedJson.trim().isNotEmpty) {
+        try {
+          final decoded = jsonDecode(cachedJson);
+          _cachedDetails = _parseConnectJson(decoded);
+        } catch (_) {}
+      }
+    }
+    return _cachedDetails;
+  }
 
   static Future<void> preload() async {
     await _instance.preloadData();
@@ -29,7 +42,7 @@ class SeatStatusService {
   Future<Map<int, SeatStatusDetailsResponse>> preloadData({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && _cachedDetails != null) {
+    if (!forceRefresh && cachedDetails != null) {
       return _cachedDetails!;
     }
     if (!forceRefresh) {
@@ -58,26 +71,50 @@ class SeatStatusService {
     try {
       return await _loadDetailsRealtimeOnly();
     } catch (_) {
-      return const <int, SeatStatusDetailsResponse>{};
+      final cached = cachedDetails;
+      return cached ?? const <int, SeatStatusDetailsResponse>{};
     }
   }
 
   Future<Map<int, SeatStatusDetailsResponse>> _loadDetailsRealtimeOnly() async {
-    final raw = await _fetchJson(ApiConfig.seatStatusDataUrl);
-    final parsed = _parseConnectJson(raw);
-    return parsed;
-  }
+    final etag = AppStorage.instance.getStringSync(PreconnectStorageKeys.seatStatusEtag);
+    final headers = ifNoneMatchHeader(etag);
 
-  Future<dynamic> _fetchJson(String url) async {
     final response = await _client.publicGet(
-      url,
-      acceptedStatusCodes: const <int>{200},
+      ApiConfig.seatStatusDataUrl,
+      headers: headers,
+      acceptedStatusCodes: const <int>{200, 304},
       cacheDuration: const Duration(seconds: 15),
     );
+
+    if (response.statusCode == 304) {
+      final cached = cachedDetails;
+      return cached ?? const <int, SeatStatusDetailsResponse>{};
+    }
+
     try {
-      return jsonDecode(response.body);
+      final raw = jsonDecode(response.body);
+      final parsed = _parseConnectJson(raw);
+
+      await AppStorage.instance.setString(
+        PreconnectStorageKeys.seatStatusCacheJson,
+        response.body,
+      );
+
+      final newEtag = extractEtagFromResponse(response);
+      if (newEtag != null && newEtag.isNotEmpty) {
+        await AppStorage.instance.setString(
+          PreconnectStorageKeys.seatStatusEtag,
+          newEtag,
+        );
+      } else {
+        await AppStorage.instance.remove(PreconnectStorageKeys.seatStatusEtag);
+      }
+
+      _cachedDetails = parsed;
+      return parsed;
     } catch (e) {
-      throw FormatException('Invalid JSON response from $url: $e');
+      throw FormatException('Invalid JSON response from ${ApiConfig.seatStatusDataUrl}: $e');
     }
   }
 

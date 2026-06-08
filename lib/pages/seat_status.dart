@@ -198,7 +198,9 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     _sortCardsByCourseAndSection(initialRefreshed);
     _applyCardsSnapshot(initialRefreshed, isInitialLoading: false);
 
-    if (willPin) {
+    final fcmSupported = FCMService.instance.isSupported;
+
+    if (willPin && fcmSupported) {
       try {
         final hasPerm = await FCMService.instance.isNotificationPermissionGranted();
         if (!hasPerm) {
@@ -218,10 +220,14 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     final topic = PreconnectPushConfig.seatTopic(key);
     bool syncOk = false;
     try {
-      if (willPin) {
-        syncOk = await FCMService.instance.subscribeToTopic(topic);
+      if (!fcmSupported) {
+        syncOk = true;
       } else {
-        syncOk = await FCMService.instance.unsubscribeFromTopic(topic);
+        if (willPin) {
+          syncOk = await FCMService.instance.subscribeToTopic(topic);
+        } else {
+          syncOk = await FCMService.instance.unsubscribeFromTopic(topic);
+        }
       }
     } catch (_) {
       syncOk = false;
@@ -245,7 +251,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       return;
     }
 
-    if (willPin && card != null) {
+    if (willPin && fcmSupported && card != null) {
       unawaited(
         FCMService.instance.sendConfirmationNotification(
           card.courseCode,
@@ -255,10 +261,23 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     }
 
     if (!mounted) return;
-    final status = willPin ? 'alerts enabled' : 'alerts disabled';
-    final message = card != null
-        ? '${card.courseCode} Section ${card.sectionName} $status'
-        : 'Seat alerts ${willPin ? 'enabled' : 'disabled'}';
+    final String message;
+    if (card != null) {
+      if (!fcmSupported) {
+        message = willPin
+            ? '${card.courseCode} Section ${card.sectionName} pinned locally'
+            : '${card.courseCode} Section ${card.sectionName} unpinned';
+      } else {
+        final status = willPin ? 'alerts enabled' : 'alerts disabled';
+        message = '${card.courseCode} Section ${card.sectionName} $status';
+      }
+    } else {
+      if (!fcmSupported) {
+        message = willPin ? 'Pinned locally' : 'Unpinned';
+      } else {
+        message = 'Seat alerts ${willPin ? 'enabled' : 'disabled'}';
+      }
+    }
     showAppSnackBar(context, message);
   }
 

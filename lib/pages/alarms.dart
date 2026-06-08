@@ -345,6 +345,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     if (!await ensureOnline(context, notify: notify)) {
       return;
     }
+    if (!mounted) return;
     setState(() {
       _latestData = _latestData ?? cache.value;
       _futureData = preloadData(forceRefresh: true);

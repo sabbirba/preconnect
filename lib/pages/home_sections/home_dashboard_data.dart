@@ -364,6 +364,20 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         }
       }
 
+      if (sections.isEmpty) {
+        try {
+          final cachedSections = await JsonSnapshotStore.readSections();
+          if (cachedSections != null && cachedSections.isNotEmpty) {
+            sections.addAll(cachedSections);
+            examOverridesFuture = ExamScheduleService()
+                .getOverridesForSections(sections, forceRefresh: forceRefresh)
+                .catchError((e) {
+                  return const <String, ExamScheduleOverride>{};
+                });
+          }
+        } catch (_) {}
+      }
+
       if (examOverridesFuture != null) {
         examOverrides = await examOverridesFuture;
       }
@@ -437,6 +451,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     if (!await ensureOnline(context, notify: notify)) {
       return;
     }
+    if (!mounted) return;
     _isRefreshing = true;
     try {
       _campusMapFuture = fetchCampusMapData(forceRefresh: true);
