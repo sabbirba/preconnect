@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/profile.dart';
+import 'package:http/http.dart' as http;
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -181,7 +183,43 @@ class FCMService {
   }
 
   Future<bool> _syncEmailSubscription(String topic, bool isSubscribe) async {
-    return true;
+    try {
+      if (!topic.startsWith('seat-')) return true;
+      
+      final parts = topic.split('-');
+      if (parts.length != 3) return true;
+      final courseCode = parts[1];
+      final sectionName = parts[2];
+
+      final profile = await ProfileService().getProfile();
+      final email = profile?['institutionalEmail'] ?? profile?['email'] ?? profile?['studentEmail'];
+      if (email == null || email.isEmpty) return true;
+
+      final url = isSubscribe
+          ? '${ApiConfig.websiteBase}/api/_client/seat-watch/register'
+          : '${ApiConfig.websiteBase}/api/_client/seat-watch/unregister';
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'courseCode': courseCode,
+          'sectionName': sectionName,
+          'provider': 'email',
+          'endpoint': 'email:$email',
+        }),
+      );
+      
+      if (response.statusCode != 200) {
+        debugPrint('Email sync failed: ${response.statusCode} ${response.body}');
+        return false;
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Email sync error: $e');
+      return false;
+    }
   }
 
   Future<bool> subscribeToTopic(String topic, {bool syncEmail = true}) async {
