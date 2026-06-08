@@ -146,51 +146,37 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final labelWidth = (label.length * 7.8).clamp(
-          92.0,
-          constraints.maxWidth * 0.42,
-        );
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: labelWidth,
-              child: Text(
-                label,
-                maxLines: 1,
-                softWrap: false,
-                overflow: TextOverflow.clip,
-                style: TextStyle(
-                  color: BracuPalette.textSecondary(context),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 5,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: BracuPalette.textSecondary(context),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 6,
+          child: GestureDetector(
+            onTap: enableCopy ? () => copyToClipboard(context, value) : null,
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: BracuPalette.textPrimary(context),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: GestureDetector(
-                onTap: enableCopy
-                    ? () => copyToClipboard(context, value)
-                    : null,
-                child: Text(
-                  value,
-                  textAlign: TextAlign.right,
-                  softWrap: true,
-                  textWidthBasis: TextWidthBasis.parent,
-                  style: TextStyle(
-                    color: BracuPalette.textPrimary(context),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+          ),
+        ),
+      ],
     );
   }
 }
