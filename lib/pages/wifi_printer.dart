@@ -725,7 +725,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   Duration _progressSnackDuration(int copies) {
     if (copies >= 10) return const Duration(seconds: 5);
     if (copies >= 5) return const Duration(seconds: 4);
-    if (copies > 1) return const Duration(seconds: 3);
+    if (copies > 1) return const Duration(seconds: 2);
     return const Duration(seconds: 2);
   }
 

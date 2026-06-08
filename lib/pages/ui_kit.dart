@@ -273,7 +273,7 @@ void showAppSnackBar(
   String message, {
   String actionLabel = 'Close',
   VoidCallback? onAction,
-  Duration duration = const Duration(seconds: 3),
+  Duration duration = const Duration(seconds: 2),
 }) {
   if (kIsWeb) return;
   final trimmed = message.trim();

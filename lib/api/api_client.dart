@@ -19,9 +19,9 @@ class ApiClient {
   final Map<String, _CachedHttpResponse> _cachedResponses =
       <String, _CachedHttpResponse>{};
   static const Duration _requestTimeout = Duration(seconds: 12);
-  static const Duration _connectivityProbeTimeout = Duration(seconds: 3);
-  static const Duration _defaultGetCacheTtl = Duration(seconds: 3);
-  static const Duration _accessTokenCacheTtl = Duration(seconds: 3);
+  static const Duration _connectivityProbeTimeout = Duration(seconds: 2);
+  static const Duration _defaultGetCacheTtl = Duration(seconds: 2);
+  static const Duration _accessTokenCacheTtl = Duration(seconds: 2);
   static const Duration _connectionCacheTtl = Duration(seconds: 5);
 
   String? _cachedAccessToken;

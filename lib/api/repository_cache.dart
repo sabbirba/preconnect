@@ -16,7 +16,7 @@ class RepositoryCache {
     required String etagKey,
     required Future<void> Function(http.Response response) cacheResponse,
     required Future<T?> Function({required bool fromFetch}) readCache,
-    Duration cacheDuration = const Duration(seconds: 3),
+    Duration cacheDuration = const Duration(seconds: 2),
   }) async {
     return _client.fetchWithFallback<T>(
       url: url,
