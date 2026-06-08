@@ -28,7 +28,10 @@ class PersonalInfoCard extends StatelessWidget {
       (label: 'Student ID', value: _valueOf('studentId')),
       (label: 'Phone Number', value: _valueOf('mobileNo')),
       (label: 'Email', value: _valueOf('email')),
-      (label: 'Date of Birth', value: _formatDateOfBirth(_valueOf('dateOfBirth'))),
+      (
+        label: 'Date of Birth',
+        value: _formatDateOfBirth(_valueOf('dateOfBirth')),
+      ),
       (label: 'Academic Type', value: _valueOf('academicType')),
       (label: 'Current Semester', value: _valueOf('currentSemester')),
       (label: 'Enrolled Semester', value: _valueOf('enrolledSemester')),
@@ -52,8 +55,14 @@ class PersonalInfoCard extends StatelessWidget {
         value: _valueOf('localGuardianMobileNo'),
       ),
       (label: 'Local Guardian Email', value: _valueOf('localGuardianEmail')),
-      (label: 'Emergency Contact Name', value: _valueOf('emergencyContactName')),
-      (label: 'Emergency Contact Number', value: _valueOf('emergencyContactNo')),
+      (
+        label: 'Emergency Contact Name',
+        value: _valueOf('emergencyContactName'),
+      ),
+      (
+        label: 'Emergency Contact Number',
+        value: _valueOf('emergencyContactNo'),
+      ),
       (label: 'Sponsored By', value: _valueOf('sponsoredBy')),
       (label: 'Country Name', value: _valueOf('countryName')),
       (label: 'Hobbies', value: _valueOf('hobbies')),

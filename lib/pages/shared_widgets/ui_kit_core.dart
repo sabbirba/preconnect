@@ -304,12 +304,7 @@ class BracuActionCard extends StatelessWidget {
                   ],
                 ),
               ),
-              trailing ??
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    size: 20,
-                    color: BracuPalette.textSecondary(context),
-                  ),
+              trailing ?? const SizedBox.shrink(),
             ],
           ),
         ),

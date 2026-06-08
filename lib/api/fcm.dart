@@ -121,8 +121,8 @@ class FCMService {
           'token': token,
           'platform': kIsWeb
               ? (isChromeRuntimeAvailable()
-                  ? PreconnectPushConfig.chromeExtensionPlatform
-                  : 'web')
+                    ? PreconnectPushConfig.chromeExtensionPlatform
+                    : 'web')
               : defaultTargetPlatform.name.toLowerCase(),
         }),
         additionalHeaders: const <String, String>{
@@ -199,7 +199,7 @@ class FCMService {
     }
     if ((defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.macOS) &&
-         !_apnsAvailable) {
+        !_apnsAvailable) {
       debugPrint(
         "FCM warning: Skipping subscribeToTopic($topic) because APNS is unavailable.",
       );
@@ -214,7 +214,10 @@ class FCMService {
     }
   }
 
-  Future<bool> unsubscribeFromTopic(String topic, {bool syncEmail = true}) async {
+  Future<bool> unsubscribeFromTopic(
+    String topic, {
+    bool syncEmail = true,
+  }) async {
     if (!isSupported) return false;
     bool emailOk = true;
     if (syncEmail) {
@@ -229,7 +232,7 @@ class FCMService {
     }
     if ((defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.macOS) &&
-         !_apnsAvailable) {
+        !_apnsAvailable) {
       debugPrint(
         "FCM warning: Skipping unsubscribeFromTopic($topic) because APNS is unavailable.",
       );
@@ -257,7 +260,8 @@ class FCMService {
           badge: true,
           sound: true,
         );
-        final granted = settings.authorizationStatus == AuthorizationStatus.authorized;
+        final granted =
+            settings.authorizationStatus == AuthorizationStatus.authorized;
         debugPrint("Notification permission request result (web): $granted");
         return granted;
       } catch (e) {
@@ -282,7 +286,8 @@ class FCMService {
             ?.requestNotificationsPermission();
       }
 
-      final granted = settings.authorizationStatus == AuthorizationStatus.authorized;
+      final granted =
+          settings.authorizationStatus == AuthorizationStatus.authorized;
       debugPrint("Notification permission request result: $granted");
       return granted;
     } catch (e) {
@@ -297,7 +302,8 @@ class FCMService {
     if (kIsWeb && isChromeRuntimeAvailable()) return true;
     // Standard Web and native: check via Firebase Messaging.
     try {
-      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      final settings = await FirebaseMessaging.instance
+          .getNotificationSettings();
       return settings.authorizationStatus == AuthorizationStatus.authorized;
     } catch (e) {
       debugPrint("Error checking notification settings: $e");
@@ -373,7 +379,10 @@ class FCMService {
         PreconnectPushConfig.seatStatusPinScope,
       );
       for (String seat in pinnedSeats) {
-        await subscribeToTopic(PreconnectPushConfig.seatTopic(seat), syncEmail: false);
+        await subscribeToTopic(
+          PreconnectPushConfig.seatTopic(seat),
+          syncEmail: false,
+        );
       }
     } catch (e) {
       debugPrint("Failed to subscribe to topics: $e");
@@ -384,11 +393,7 @@ class FCMService {
     final messaging = FirebaseMessaging.instance;
 
     try {
-      await messaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+      await messaging.requestPermission(alert: true, badge: true, sound: true);
     } catch (e) {
       debugPrint("FCM requestPermission error: $e");
     }
@@ -420,7 +425,7 @@ class FCMService {
 
   Future<void> _setupLocalNotifications() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('ic_launcher');
+        AndroidInitializationSettings('@mipmap/ic_launcher');
 
     const DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(

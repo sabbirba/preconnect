@@ -123,7 +123,7 @@ class _OverviewLoadingCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
-        color: BracuPalette.card(context),
+        color: Colors.transparent,
         border: Border.all(color: borderColor),
       ),
       child: SizedBox(
@@ -326,7 +326,7 @@ BoxDecoration _overviewCardDecoration(
 }) {
   return BoxDecoration(
     borderRadius: BorderRadius.circular(14),
-    color: BracuPalette.card(context),
+    color: Colors.transparent,
     border: Border.all(color: borderColor),
   );
 }

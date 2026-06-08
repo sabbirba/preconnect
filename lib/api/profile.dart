@@ -294,13 +294,10 @@ class ProfileService {
             bloodType: miscData['bloodType'],
           );
           final updates = <String, String>{
-            if (resolvedBloodGroup.isNotEmpty)
-              'bloodGroup': resolvedBloodGroup,
+            if (resolvedBloodGroup.isNotEmpty) 'bloodGroup': resolvedBloodGroup,
             'permanentAddress': miscData['permanentAddress']?.toString() ?? '',
             'presentAddress': miscData['presentAddress']?.toString() ?? '',
-            'isBothAddressSame': _boolToYesNo(
-              miscData['isBothAddressSame'],
-            ),
+            'isBothAddressSame': _boolToYesNo(miscData['isBothAddressSame']),
             'permanentUpazilaName':
                 miscData['permanentUpazilaName']?.toString() ?? '',
             'presentUpazilaName':

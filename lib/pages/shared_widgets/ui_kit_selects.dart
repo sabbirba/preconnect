@@ -3,7 +3,7 @@ part of 'package:preconnect/pages/ui_kit.dart';
 class BracuSelectChip extends StatelessWidget {
   const BracuSelectChip({
     super.key,
-    required this.label,
+    this.label,
     this.icon,
     this.selected = false,
     this.onTap,
@@ -12,7 +12,7 @@ class BracuSelectChip extends StatelessWidget {
     this.borderRadius = 18,
   });
 
-  final String label;
+  final String? label;
   final IconData? icon;
   final bool selected;
   final VoidCallback? onTap;
@@ -59,12 +59,17 @@ class BracuSelectChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: compact ? 15 : 16, color: primaryColor),
-              const SizedBox(width: 6),
+              Icon(
+                icon,
+                size: label == null ? (compact ? 20 : 22) : (compact ? 15 : 16),
+                color: primaryColor,
+              ),
+              if (label != null || showArrow) const SizedBox(width: 6),
             ],
-            Text(label, style: labelStyle),
+            if (label != null) Text(label!, style: labelStyle),
             if (showArrow) ...[
-              SizedBox(width: compact ? 4 : 6),
+              if (label != null && icon == null)
+                SizedBox(width: compact ? 4 : 6),
               Icon(
                 Icons.expand_more_rounded,
                 size: compact ? 16 : 18,

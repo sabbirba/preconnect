@@ -127,15 +127,22 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
               .toList(growable: false);
           final customSchedules = customRaw is List
               ? customRaw
-                  .whereType<Map>()
-                  .map((entry) => CustomSchedule.fromJson(entry.cast<String, dynamic>()))
-                  .toList(growable: false)
+                    .whereType<Map>()
+                    .map(
+                      (entry) => CustomSchedule.fromJson(
+                        entry.cast<String, dynamic>(),
+                      ),
+                    )
+                    .toList(growable: false)
               : const <CustomSchedule>[];
           return _AlarmData(
             sections: sections,
             examEntries: _pruneExpiredExamEntries(examEntries, now: now),
             isRamadan: isRamadan,
-            customSchedules: _pruneExpiredCustomSchedules(customSchedules, now: now),
+            customSchedules: _pruneExpiredCustomSchedules(
+              customSchedules,
+              now: now,
+            ),
             advisingInfo: advisingInfo,
           );
         },
@@ -144,7 +151,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         return cached;
       }
     }
-    final advisingFuture = AdvisingService().getAdvisingInfo(fromFetch: forceRefresh);
+    final advisingFuture = AdvisingService().getAdvisingInfo(
+      fromFetch: forceRefresh,
+    );
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
     final customSchedules = await CustomSchedulesService()
         .getItems(forceRefresh: forceRefresh)
@@ -157,7 +166,10 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         sections: const [],
         examEntries: const <_ExamAlarmEntry>[],
         isRamadan: isRamadan,
-        customSchedules: _pruneExpiredCustomSchedules(customSchedules, now: now),
+        customSchedules: _pruneExpiredCustomSchedules(
+          customSchedules,
+          now: now,
+        ),
         advisingInfo: advisingInfo,
       );
     }
@@ -192,7 +204,10 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         sections: const [],
         examEntries: _pruneExpiredExamEntries(examEntries, now: now),
         isRamadan: isRamadan,
-        customSchedules: _pruneExpiredCustomSchedules(customSchedules, now: now),
+        customSchedules: _pruneExpiredCustomSchedules(
+          customSchedules,
+          now: now,
+        ),
         advisingInfo: advisingInfo,
       );
     }
@@ -230,9 +245,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     required DateTime now,
   }) {
     return entries
-        .where(
-          (entry) => !entry.isDone && entry.startTime.isAfter(now),
-        )
+        .where((entry) => !entry.isDone && entry.startTime.isAfter(now))
         .toList(growable: false);
   }
 
@@ -248,7 +261,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       'sections': data.sections.map((section) => section.toJson()).toList(),
       'examEntries': data.examEntries.map((entry) => entry.toJson()).toList(),
       'isRamadan': data.isRamadan,
-      'customSchedules': data.customSchedules.map((item) => item.toJson()).toList(),
+      'customSchedules': data.customSchedules
+          .map((item) => item.toJson())
+          .toList(),
       'advisingInfo': data.advisingInfo,
     };
   }
@@ -647,7 +662,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
 
   bool _isAdvisingActive(Map<String, String?>? advisingInfo) {
     if (advisingInfo == null) return false;
-    final startDate = DateTime.tryParse(advisingInfo['advisingStartDate'] ?? '');
+    final startDate = DateTime.tryParse(
+      advisingInfo['advisingStartDate'] ?? '',
+    );
     final endDate = DateTime.tryParse(advisingInfo['advisingEndDate'] ?? '');
     if (startDate == null || endDate == null) return false;
     return !DateTime.now().isAfter(endDate);
@@ -780,7 +797,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                     )
                     .toList(),
               );
-              if (seenOptions.add('${option.courseCode}|${option.sectionName}')) {
+              if (seenOptions.add(
+                '${option.courseCode}|${option.sectionName}',
+              )) {
                 courseOptions.add(option);
               }
             }
@@ -788,7 +807,10 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           final advisingInfo = data?.advisingInfo;
           final advisingActive = _isAdvisingActive(advisingInfo);
 
-          if (sections.isEmpty && exams.isEmpty && custom.isEmpty && !advisingActive) {
+          if (sections.isEmpty &&
+              exams.isEmpty &&
+              custom.isEmpty &&
+              !advisingActive) {
             return buildRefreshEmptyState(
               onRefresh: _handleRefresh,
               message: 'No class, exam, or personal event found',
@@ -805,9 +827,17 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
             _highlightScroll.scrollToTarget(
               targetToken: highlightedExamKey,
               targetIndex: highlightedIndex >= 0
-                  ? (advisingActive ? 1 : 0) + custom.length + sections.length + highlightedIndex
+                  ? (advisingActive ? 1 : 0) +
+                        custom.length +
+                        sections.length +
+                        highlightedIndex
                   : null,
-              itemCount: (advisingActive ? 1 : 0) + custom.length + sections.length + exams.length + 1,
+              itemCount:
+                  (advisingActive ? 1 : 0) +
+                  custom.length +
+                  sections.length +
+                  exams.length +
+                  1,
               onRetryBuild: () {
                 if (mounted) {
                   setState(() {});
@@ -819,24 +849,45 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           return BracuRefreshListBuilder(
             onRefresh: _handleRefresh,
             controller: _scrollController,
-            itemCount: (advisingActive ? 1 : 0) + custom.length + sections.length + exams.length + 1,
+            itemCount:
+                (advisingActive ? 1 : 0) +
+                custom.length +
+                sections.length +
+                exams.length +
+                1,
             itemBuilder: (context, index) {
               if (advisingActive && index == 0) {
                 final info = advisingInfo!;
-                final startDate = DateTime.tryParse(info['advisingStartDate'] ?? '');
-                final endDate = DateTime.tryParse(info['advisingEndDate'] ?? '');
+                final startDate = DateTime.tryParse(
+                  info['advisingStartDate'] ?? '',
+                );
+                final endDate = DateTime.tryParse(
+                  info['advisingEndDate'] ?? '',
+                );
                 if (startDate != null && endDate != null) {
                   final phase = info['advisingPhase'] ?? '';
                   final semester = info['semesterSession'] ?? '';
                   final phaseLabel = phase.isEmpty
                       ? 'Advising'
                       : phase
-                          .split('_')
-                          .map((w) => w.isEmpty ? '' : w[0].toUpperCase() + w.substring(1).toLowerCase())
-                          .join(' ');
-                  final title = semester.isEmpty ? phaseLabel : '$phaseLabel - $semester';
-                  final subtitle = formatDateTimeRange(startDate, endDate, includeYear: false);
-                  final alarmKey = 'advising_${startDate.millisecondsSinceEpoch}';
+                            .split('_')
+                            .map(
+                              (w) => w.isEmpty
+                                  ? ''
+                                  : w[0].toUpperCase() +
+                                        w.substring(1).toLowerCase(),
+                            )
+                            .join(' ');
+                  final title = semester.isEmpty
+                      ? phaseLabel
+                      : '$phaseLabel - $semester';
+                  final subtitle = formatDateTimeRange(
+                    startDate,
+                    endDate,
+                    includeYear: false,
+                  );
+                  final alarmKey =
+                      'advising_${startDate.millisecondsSinceEpoch}';
                   _minutesBefore.putIfAbsent(alarmKey, () => 15);
 
                   return Padding(
@@ -866,7 +917,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                     Text(
                                       subtitle,
                                       style: TextStyle(
-                                        color: BracuPalette.textPrimary(context),
+                                        color: BracuPalette.textPrimary(
+                                          context,
+                                        ),
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -885,7 +938,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                               color: controlBg,
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: BracuPalette.primary.withValues(alpha: 0.2),
+                                color: BracuPalette.primary.withValues(
+                                  alpha: 0.2,
+                                ),
                               ),
                             ),
                             child: Row(
@@ -921,7 +976,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                       '${_minutesBefore[alarmKey]} min before',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
-                                        color: BracuPalette.textPrimary(context),
+                                        color: BracuPalette.textPrimary(
+                                          context,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -989,7 +1046,10 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                 final subtitle = endTime == null
                     ? DateFormat('hh:mm a').format(startTime)
                     : '${DateFormat('hh:mm a').format(startTime)} - ${DateFormat('hh:mm a').format(endTime)}';
-                final dateStr = formatDateTimeLabel(item.startTime, includeYear: false);
+                final dateStr = formatDateTimeLabel(
+                  item.startTime,
+                  includeYear: false,
+                );
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -1079,7 +1139,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             color: controlBg,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: BracuPalette.primary.withValues(alpha: 0.2),
+                              color: BracuPalette.primary.withValues(
+                                alpha: 0.2,
+                              ),
                             ),
                           ),
                           child: Row(

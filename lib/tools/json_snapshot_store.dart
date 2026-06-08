@@ -45,7 +45,10 @@ class JsonSnapshotStore {
     );
   }
 
-  static Future<void> updateSections(List<Section> sections, {bool? isRamadan}) async {
+  static Future<void> updateSections(
+    List<Section> sections, {
+    bool? isRamadan,
+  }) async {
     try {
       final existing = await read<Map<String, dynamic>>(
         key: StorageKeys.alarmsSnapshot,
@@ -56,10 +59,7 @@ class JsonSnapshotStore {
       if (isRamadan != null) {
         next['isRamadan'] = isRamadan;
       }
-      await write(
-        key: StorageKeys.alarmsSnapshot,
-        value: next,
-      );
+      await write(key: StorageKeys.alarmsSnapshot, value: next);
     } catch (_) {}
   }
 }

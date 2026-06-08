@@ -92,10 +92,8 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       final cachedSections = await JsonSnapshotStore.readSections();
       if (cachedSections != null && cachedSections.isNotEmpty) {
         final isRamadan = await RamadanTiming.isRamadan(forceRefresh: false);
-        final examOverrides = await ExamScheduleService().getOverridesForSections(
-          cachedSections,
-          forceRefresh: false,
-        );
+        final examOverrides = await ExamScheduleService()
+            .getOverridesForSections(cachedSections, forceRefresh: false);
         return _buildScheduleDataFromSectionsStatic(
           cachedSections,
           shouldHighlightCurrentSemester: true,
@@ -111,10 +109,8 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       final cachedSections = await JsonSnapshotStore.readSections();
       if (cachedSections != null && cachedSections.isNotEmpty) {
         final isRamadan = await RamadanTiming.isRamadan(forceRefresh: false);
-        final examOverrides = await ExamScheduleService().getOverridesForSections(
-          cachedSections,
-          forceRefresh: false,
-        );
+        final examOverrides = await ExamScheduleService()
+            .getOverridesForSections(cachedSections, forceRefresh: false);
         return _buildScheduleDataFromSectionsStatic(
           cachedSections,
           shouldHighlightCurrentSemester: true,
@@ -154,7 +150,9 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     );
     final isRamadan = await ramadanFuture;
     if (sections.isNotEmpty) {
-      unawaited(JsonSnapshotStore.updateSections(sections, isRamadan: isRamadan));
+      unawaited(
+        JsonSnapshotStore.updateSections(sections, isRamadan: isRamadan),
+      );
     }
     final examOverrides = sections.isEmpty
         ? const <String, ExamScheduleOverride>{}
@@ -218,10 +216,8 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       final cachedSections = await JsonSnapshotStore.readSections();
       if (cachedSections != null && cachedSections.isNotEmpty) {
         final isRamadan = await RamadanTiming.isRamadan(forceRefresh: false);
-        final examOverrides = await ExamScheduleService().getOverridesForSections(
-          cachedSections,
-          forceRefresh: false,
-        );
+        final examOverrides = await ExamScheduleService()
+            .getOverridesForSections(cachedSections, forceRefresh: false);
         final data = _buildScheduleDataFromSections(
           cachedSections,
           shouldHighlightCurrentSemester: true,
@@ -247,10 +243,8 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       final cachedSections = await JsonSnapshotStore.readSections();
       if (cachedSections != null && cachedSections.isNotEmpty) {
         final isRamadan = await ramadanFuture;
-        final examOverrides = await ExamScheduleService().getOverridesForSections(
-          cachedSections,
-          forceRefresh: false,
-        );
+        final examOverrides = await ExamScheduleService()
+            .getOverridesForSections(cachedSections, forceRefresh: false);
         final data = _buildScheduleDataFromSections(
           cachedSections,
           shouldHighlightCurrentSemester: true,
@@ -300,7 +294,9 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     );
     final isRamadan = await ramadanFuture;
     if (sections.isNotEmpty) {
-      unawaited(JsonSnapshotStore.updateSections(sections, isRamadan: isRamadan));
+      unawaited(
+        JsonSnapshotStore.updateSections(sections, isRamadan: isRamadan),
+      );
     }
     final examOverrides = sections.isEmpty
         ? const <String, ExamScheduleOverride>{}
@@ -670,7 +666,6 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
       icon: Icons.schedule_outlined,
       actions: [
         BracuSelectChip(
-          label: 'Done',
           icon: Icons.history_rounded,
           selected: _showDoneSections,
           compact: true,

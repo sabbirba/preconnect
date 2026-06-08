@@ -33,21 +33,18 @@ class _GradeSheetCardState extends State<GradeSheetCard> {
 
   @override
   Widget build(BuildContext context) {
-    return BracuActionCard(
+    return BracuActionBannerCard(
+      icon: Icons.picture_as_pdf_rounded,
       title: widget.title,
-      leadingIcon: Icons.picture_as_pdf_rounded,
-      onTap: _isOpening ? null : _openGradeSheet,
+      subtitle: 'Download your latest transcript',
+      onTap: _isOpening ? () {} : _openGradeSheet,
       trailing: _isOpening
           ? const SizedBox(
               width: 18,
               height: 18,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : Icon(
-              Icons.chevron_right_rounded,
-              size: 20,
-              color: BracuPalette.textSecondary(context),
-            ),
+          : null,
     );
   }
 }

@@ -51,11 +51,13 @@ class AppRestart extends StatefulWidget {
     required this.child,
     required this.bootstrap,
     required this.builder,
+    this.initialData,
   });
 
   final Widget child;
   final Future<AppBootstrapState> Function() bootstrap;
   final Widget Function(AppBootstrapState bootstrapState) builder;
+  final AppBootstrapState? initialData;
 
   static final GlobalKey<AppRestartState> restartKey =
       GlobalKey<AppRestartState>();
@@ -89,6 +91,7 @@ class AppRestartState extends State<AppRestart> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<AppBootstrapState>(
+      initialData: _restartToken == 0 ? widget.initialData : null,
       future: _bootstrapFuture,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -151,9 +154,34 @@ class MyApp extends StatefulWidget {
         HomeCardPreferences.showCampusMapContactsKey,
       };
       await AppPreferencesStore().clearAllExcept(keepKeys);
+    } else {
+      await prefs.setBool(PreconnectStorageKeys.cachedHasAuthSession, true);
     }
 
     final canOpenOffline = hasToken && await _hasOfflineSnapshot();
+    if (hasToken) {
+      unawaited(_warmStartupCaches());
+    }
+
+    return AppBootstrapState(
+      themeMode: _decodeTheme(savedTheme),
+      isLoggedIn: hasToken,
+      canOpenOffline: canOpenOffline,
+      initialHomeTab: initialHomeTab,
+    );
+  }
+
+  static AppBootstrapState bootstrapSync() {
+    final prefs = AppStorage.instance;
+    final savedTheme = prefs.getStringSync(StorageKeys.themeMode) ?? 'system';
+    final initialHomeTab = _decodeHomeTab(
+      prefs.getStringSync(StorageKeys.homeTab),
+    );
+
+    final hasToken =
+        prefs.getBoolSync(PreconnectStorageKeys.cachedHasAuthSession) ?? false;
+    final canOpenOffline = hasToken && _hasOfflineSnapshotSync();
+
     if (hasToken) {
       unawaited(_warmStartupCaches());
     }
@@ -172,6 +200,16 @@ class MyApp extends StatefulWidget {
         .trim();
     final fullName = (await prefs.getString(StorageKeys.fullName) ?? '').trim();
     final schedule = (await prefs.getString(StorageKeys.studentSchedule) ?? '')
+        .trim();
+    if (schedule.isNotEmpty) return true;
+    return studentId.isNotEmpty && fullName.isNotEmpty;
+  }
+
+  static bool _hasOfflineSnapshotSync() {
+    final prefs = AppStorage.instance;
+    final studentId = (prefs.getStringSync(StorageKeys.studentId) ?? '').trim();
+    final fullName = (prefs.getStringSync(StorageKeys.fullName) ?? '').trim();
+    final schedule = (prefs.getStringSync(StorageKeys.studentSchedule) ?? '')
         .trim();
     if (schedule.isNotEmpty) return true;
     return studentId.isNotEmpty && fullName.isNotEmpty;
@@ -1011,38 +1049,6 @@ class StartupFrame extends StatelessWidget {
               BracuPalette.bgTop(context),
               BracuPalette.bgBottom(context),
             ],
-          ),
-        ),
-        child: Center(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20),
-            padding: const EdgeInsets.all(24),
-            constraints: const BoxConstraints(maxWidth: 320),
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.12),
-                  blurRadius: 28,
-                  offset: const Offset(0, 16),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(7),
-                  child: Image.asset(
-                    'assets/icon.png',
-                    width: 30,
-                    height: 30,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
       ),

@@ -118,7 +118,8 @@ String formatDateTimeRange(
 }) {
   final startLocal = start.toLocal();
   final endLocal = end.toLocal();
-  final sameDay = startLocal.year == endLocal.year &&
+  final sameDay =
+      startLocal.year == endLocal.year &&
       startLocal.month == endLocal.month &&
       startLocal.day == endLocal.day;
 
@@ -466,21 +467,27 @@ class BracuActionBannerCard extends StatelessWidget {
     this.icon,
     this.iconWidget,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     required this.onTap,
     this.iconColor = BracuPalette.primary,
-    this.iconDecoration = true,
+    this.iconDecoration = false,
     this.showTrailingIcon = true,
+    this.showBorder = true,
+    this.trailing,
   });
 
   final IconData? icon;
   final Widget? iconWidget;
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final VoidCallback onTap;
   final Color iconColor;
   final bool iconDecoration;
   final bool showTrailingIcon;
+  final bool showBorder;
+
+  /// Custom trailing widget. When provided, takes precedence over [showTrailingIcon].
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -488,52 +495,57 @@ class BracuActionBannerCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
       child: Container(
-        padding: const EdgeInsets.all(2),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: iconColor.withValues(alpha: 0.08),
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(18),
+          border: showBorder
+              ? Border.all(
+                  color: BracuPalette.textSecondary(context).withValues(
+                    alpha: Theme.of(context).brightness == Brightness.dark
+                        ? 0.22
+                        : 0.16,
+                  ),
+                )
+              : null,
         ),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            children: [
-              if (iconWidget != null) ...[
-                iconWidget!,
-                const SizedBox(width: 12),
-              ] else if (icon != null) ...[
-                if (iconDecoration)
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: iconColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
+        child: Row(
+          children: [
+            if (iconWidget != null) ...[
+              iconWidget!,
+              const SizedBox(width: 12),
+            ] else if (icon != null) ...[
+              if (iconDecoration)
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 18),
+                )
+              else
+                Icon(icon, color: iconColor, size: 30),
+              const SizedBox(width: 12),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: BracuPalette.textPrimary(context),
                     ),
-                    child: Icon(icon, color: iconColor, size: 18),
-                  )
-                else
-                  Icon(icon, color: iconColor, size: 30),
-                const SizedBox(width: 12),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: BracuPalette.textPrimary(context),
-                      ),
-                    ),
+                  ),
+                  if (subtitle != null && subtitle!.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(
-                      subtitle,
+                      subtitle!,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
@@ -541,15 +553,17 @@ class BracuActionBannerCard extends StatelessWidget {
                       ),
                     ),
                   ],
-                ),
+                ],
               ),
-              if (showTrailingIcon)
-                Icon(
-                  Icons.chevron_right,
-                  color: BracuPalette.textSecondary(context),
-                ),
-            ],
-          ),
+            ),
+            if (trailing != null)
+              trailing!
+            else if (showTrailingIcon)
+              Icon(
+                Icons.chevron_right,
+                color: BracuPalette.textSecondary(context),
+              ),
+          ],
         ),
       ),
     );
@@ -778,18 +792,69 @@ class PreconnectDiscordIcon extends StatelessWidget {
 }
 
 class PreconnectGithubIcon extends StatelessWidget {
-  const PreconnectGithubIcon({super.key, this.size = 30, this.color});
-
+  const PreconnectGithubIcon({super.key, this.size = 24.0, this.color});
   final double size;
   final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    return Icon(
-      Icons.code_rounded,
-      size: size,
-      color: color ?? BracuPalette.primary,
+    return CustomPaint(
+      size: Size(size, size),
+      painter: _GithubLogoPainter(
+        color: color ?? BracuPalette.primary,
+      ),
     );
+  }
+}
+
+class _GithubLogoPainter extends CustomPainter {
+  _GithubLogoPainter({required this.color});
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    
+    final scale = size.width / 24.0;
+    canvas.scale(scale, scale);
+    
+    final path = Path()
+      ..moveTo(12.0, 0.0)
+      ..cubicTo(5.373, 0.0, 0.0, 5.373, 0.0, 12.0)
+      ..cubicTo(0.0, 17.302, 3.438, 21.8, 8.207, 23.387)
+      ..cubicTo(8.806, 23.498, 9.0, 23.126, 9.0, 22.81)
+      ..cubicTo(9.0, 22.5, 8.988, 21.5, 8.982, 20.25)
+      ..cubicTo(5.644, 20.976, 4.949, 18.834, 4.949, 18.834)
+      ..cubicTo(4.403, 17.447, 3.616, 17.078, 3.616, 17.078)
+      ..cubicTo(2.527, 16.333, 3.699, 16.349, 3.699, 16.349)
+      ..cubicTo(4.904, 16.433, 5.538, 17.586, 5.538, 17.586)
+      ..cubicTo(6.608, 19.42, 8.345, 18.89, 9.03, 18.583)
+      ..cubicTo(9.137, 17.808, 9.448, 17.278, 9.792, 16.979)
+      ..cubicTo(7.127, 16.674, 4.325, 15.645, 4.325, 11.048)
+      ..cubicTo(4.325, 9.737, 4.794, 8.667, 5.561, 7.827)
+      ..cubicTo(5.437, 7.524, 5.026, 6.303, 5.678, 4.651)
+      ..cubicTo(5.678, 4.651, 6.686, 4.329, 8.979, 5.881)
+      ..cubicTo(9.936, 5.615, 10.962, 5.482, 11.982, 5.477)
+      ..cubicTo(13.002, 5.482, 14.029, 5.615, 14.988, 5.881)
+      ..cubicTo(17.279, 4.329, 18.285, 4.651, 18.285, 4.651)
+      ..cubicTo(18.938, 6.303, 18.527, 7.524, 18.403, 7.827)
+      ..cubicTo(19.173, 8.667, 19.638, 9.737, 19.638, 11.048)
+      ..cubicTo(19.638, 15.657, 16.831, 16.672, 14.159, 16.969)
+      ..cubicTo(14.589, 17.341, 14.982, 18.071, 14.982, 19.191)
+      ..cubicTo(14.982, 20.793, 14.968, 22.09, 14.968, 22.81)
+      ..cubicTo(14.968, 23.129, 15.16, 23.504, 15.769, 23.386)
+      ..cubicTo(20.535, 21.796, 23.969, 17.299, 23.969, 11.999)
+      ..cubicTo(24.0, 5.373, 18.627, 0.0, 12.0, 0.0)
+      ..close();
+    
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _GithubLogoPainter oldDelegate) {
+    return oldDelegate.color != color;
   }
 }
 
@@ -820,10 +885,10 @@ class BracuCommunityLink extends StatelessWidget {
     }
 
     return BracuActionBannerCard(
-      iconWidget: const PreconnectDiscordIcon(size: 30),
-      iconColor: Color.fromRGBO(88, 101, 242, 1),
-      iconDecoration: false,
-      showTrailingIcon: false,
+      iconWidget: const PreconnectDiscordIcon(
+        size: 24,
+        color: Color.fromRGBO(88, 101, 242, 1),
+      ),
       title: _title,
       subtitle: _subtitle,
       onTap: () {

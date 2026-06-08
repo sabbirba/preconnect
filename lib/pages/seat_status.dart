@@ -202,9 +202,11 @@ class _SeatStatusPageState extends State<SeatStatusPage>
 
     if (willPin && fcmSupported) {
       try {
-        final hasPerm = await FCMService.instance.isNotificationPermissionGranted();
+        final hasPerm = await FCMService.instance
+            .isNotificationPermissionGranted();
         if (!hasPerm) {
-          final granted = await FCMService.instance.requestNotificationPermission();
+          final granted = await FCMService.instance
+              .requestNotificationPermission();
           if (!granted && mounted) {
             showAppSnackBar(
               context,

@@ -610,9 +610,13 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     return _pinnedSections.contains(sectionId.toString());
   }
 
-  Future<void> _syncWatchlistPins(Map<int, SeatStatusDetailsResponse> details) async {
+  Future<void> _syncWatchlistPins(
+    Map<int, SeatStatusDetailsResponse> details,
+  ) async {
     try {
-      final idToken = await TokenStorage.instance.read(key: PreconnectStorageKeys.idToken);
+      final idToken = await TokenStorage.instance.read(
+        key: PreconnectStorageKeys.idToken,
+      );
       if (idToken == null || idToken.isEmpty) return;
 
       final url = '${ApiConfig.websiteBase}/api/_client/load-snapshot';
@@ -660,7 +664,9 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       for (final secId in backendSectionIds) {
         if (!_pinnedSections.contains(secId)) {
           final topic = PreconnectPushConfig.seatTopic(secId);
-          unawaited(FCMService.instance.subscribeToTopic(topic, syncEmail: false));
+          unawaited(
+            FCMService.instance.subscribeToTopic(topic, syncEmail: false),
+          );
           _pinnedSections.add(secId);
           changed = true;
         }
@@ -670,14 +676,19 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       for (final secId in localCopy) {
         if (!backendSectionIds.contains(secId)) {
           final topic = PreconnectPushConfig.seatTopic(secId);
-          unawaited(FCMService.instance.unsubscribeFromTopic(topic, syncEmail: false));
+          unawaited(
+            FCMService.instance.unsubscribeFromTopic(topic, syncEmail: false),
+          );
           _pinnedSections.remove(secId);
           changed = true;
         }
       }
 
       if (changed) {
-        await CoursePinStore.save(_SeatStatusPageState._pinScope, _pinnedSections);
+        await CoursePinStore.save(
+          _SeatStatusPageState._pinScope,
+          _pinnedSections,
+        );
         if (mounted) {
           _updateSeatStatusState(() {});
           final refreshed = List<_SeatStatusCardData>.from(_cards);

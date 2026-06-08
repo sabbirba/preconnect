@@ -445,8 +445,9 @@ extension _HomeDashboardView on _HomeDashboardState {
                                       Row(
                                         children: [
                                           InkWell(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
                                             onTap: () async {
                                               await InAppReviewPrompt.openStoreListing();
                                             },
@@ -457,14 +458,12 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                     vertical: 2,
                                                   ),
                                               child: Row(
-                                                mainAxisSize:
-                                                    MainAxisSize.min,
+                                                mainAxisSize: MainAxisSize.min,
                                                 children: [
                                                   SizedBox(
                                                     width: 16,
                                                     child: Icon(
-                                                      Icons
-                                                          .star_border_rounded,
+                                                      Icons.star_border_rounded,
                                                       size: 17,
                                                       color:
                                                           BracuPalette.textPrimary(
@@ -492,8 +491,9 @@ extension _HomeDashboardView on _HomeDashboardState {
                                           ),
                                           const SizedBox(width: 4),
                                           InkWell(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
                                             onTap: () async {
                                               await SharePlus.instance.share(
                                                 ShareParams(
@@ -512,8 +512,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                     vertical: 2,
                                                   ),
                                               child: Row(
-                                                mainAxisSize:
-                                                    MainAxisSize.min,
+                                                mainAxisSize: MainAxisSize.min,
                                                 children: [
                                                   SizedBox(
                                                     width: 16,
@@ -569,19 +568,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     title: 'Campus Map & Contacts',
                                     subtitle: 'Location and emergency contacts',
                                     iconColor: const Color(0xFF22B573),
-                                    iconDecoration: false,
                                     onTap: _openCampusMapSheet,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  BracuActionBannerCard(
-                                    icon: Icons.apple,
-                                    title: 'Help PreConnect iOS',
-                                    subtitle:
-                                        'Support funding for the iOS release',
-                                    iconColor: const Color(0xFF007AFF),
-                                    iconDecoration: false,
-                                    onTap: () =>
-                                        showBracuFundingSupportSheet(context),
                                   ),
                                 ],
                               ],
@@ -780,53 +767,44 @@ class _ActionBannerLoadingSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: BracuPalette.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final textWidth =
-                constraints.maxWidth - 30 - 12 - (showTrailingIcon ? 36 : 0);
-            final safeTextWidth = textWidth < 0 ? 0.0 : textWidth;
-            final titleWidth = safeTextWidth * 0.58;
-            final subtitleWidth = safeTextWidth * 0.82;
-            return Row(
-              children: [
-                const ShimmerContainer(
-                  width: 30,
-                  height: 30,
-                  borderRadius: BorderRadius.all(Radius.circular(10)),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final textWidth =
+              constraints.maxWidth - 30 - 12 - (showTrailingIcon ? 36 : 0);
+          final safeTextWidth = textWidth < 0 ? 0.0 : textWidth;
+          final titleWidth = safeTextWidth * 0.58;
+          final subtitleWidth = safeTextWidth * 0.82;
+          return Row(
+            children: [
+              const ShimmerContainer(
+                width: 30,
+                height: 30,
+                borderRadius: BorderRadius.all(Radius.circular(10)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ShimmerContainer(width: titleWidth, height: 15),
+                    const SizedBox(height: 5),
+                    ShimmerContainer(width: subtitleWidth, height: 11),
+                  ],
                 ),
+              ),
+              if (showTrailingIcon) ...[
                 const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ShimmerContainer(width: titleWidth, height: 15),
-                      const SizedBox(height: 5),
-                      ShimmerContainer(width: subtitleWidth, height: 11),
-                    ],
-                  ),
+                const ShimmerContainer(
+                  width: 24,
+                  height: 24,
+                  borderRadius: BorderRadius.all(Radius.circular(8)),
                 ),
-                if (showTrailingIcon) ...[
-                  const SizedBox(width: 12),
-                  const ShimmerContainer(
-                    width: 24,
-                    height: 24,
-                    borderRadius: BorderRadius.all(Radius.circular(8)),
-                  ),
-                ],
               ],
-            );
-          },
-        ),
+            ],
+          );
+        },
       ),
     );
   }

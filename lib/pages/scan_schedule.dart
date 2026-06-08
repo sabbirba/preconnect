@@ -323,13 +323,6 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                                           ),
                                         ),
                                       ),
-                                      Icon(
-                                        Icons.arrow_forward,
-                                        color: BracuPalette.textSecondary(
-                                          context,
-                                        ),
-                                        size: 18,
-                                      ),
                                     ],
                                   ),
                                 ),

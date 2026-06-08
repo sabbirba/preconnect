@@ -730,12 +730,16 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
             final phaseLabel = phase.isEmpty
                 ? 'Advising'
                 : phase
-                    .split('_')
-                    .map((w) => w.isEmpty
-                        ? ''
-                        : w[0].toUpperCase() + w.substring(1).toLowerCase())
-                    .join(' ');
-            final title = semester.isEmpty ? phaseLabel : '$phaseLabel - $semester';
+                      .split('_')
+                      .map(
+                        (w) => w.isEmpty
+                            ? ''
+                            : w[0].toUpperCase() + w.substring(1).toLowerCase(),
+                      )
+                      .join(' ');
+            final title = semester.isEmpty
+                ? phaseLabel
+                : '$phaseLabel - $semester';
             nextAdvising = _CountdownCardData(
               title: title,
               targetDateTime: target,

@@ -409,13 +409,6 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
                                     ),
                                   ),
                                 ),
-                                Icon(
-                                  Icons.arrow_forward_ios,
-                                  size: 14,
-                                  color: BracuPalette.primary.withValues(
-                                    alpha: 0.7,
-                                  ),
-                                ),
                               ],
                             ),
                           ),

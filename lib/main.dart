@@ -33,10 +33,13 @@ Future<void> main() async {
       PaintingBinding.instance.imageCache.maximumSizeBytes = 100 << 20;
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
+      final initialState = MyApp.bootstrapSync();
+
       runApp(
         AppRestart(
           key: AppRestart.restartKey,
           bootstrap: MyApp.bootstrap,
+          initialData: initialState,
           builder: (bootstrapState) => MyApp(bootstrapState: bootstrapState),
           child: const MyApp(isPreBoot: true),
         ),

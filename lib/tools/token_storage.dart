@@ -365,8 +365,7 @@ class HomeCardPreferences {
 
       return HomeCardVisibility(
         showQuickAccessSection:
-            AppStorage.instance.getBoolSync(showQuickAccessSectionKey) ??
-            true,
+            AppStorage.instance.getBoolSync(showQuickAccessSectionKey) ?? true,
         showDecorations: showDecorations,
         showRamadanCard:
             AppStorage.instance.getBoolSync(showRamadanCardKey) ?? true,

@@ -344,13 +344,10 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
               const SizedBox(height: 16),
               BracuActionBannerCard(
                 icon: Icons.language_rounded,
-                iconDecoration: false,
                 title: 'Web App',
-                subtitle: 'preconnect-bracu.web.app',
-                onTap: () => openExternalUrl(
-                  context,
-                  'https://preconnect-bracu.web.app',
-                ),
+                subtitle: 'web.preconnect.app',
+                onTap: () =>
+                    openExternalUrl(context, 'https://web.preconnect.app'),
               ),
               const SizedBox(height: 18),
               Container(

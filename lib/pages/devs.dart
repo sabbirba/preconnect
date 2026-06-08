@@ -375,39 +375,13 @@ class _RepoButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => openExternalUrl(context, kPreconnectRepositoryUrl),
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: BracuPalette.primary.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: BracuPalette.primary.withValues(alpha: 0.18),
-          ),
-        ),
-        child: Row(
-          children: [
-            const PreconnectGithubIcon(size: 24, color: BracuPalette.primary),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'View Repository',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: BracuPalette.primary,
-                ),
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 14,
-              color: BracuPalette.primary.withValues(alpha: 0.7),
-            ),
-          ],
-        ),
+    return BracuActionBannerCard(
+      iconWidget: const PreconnectGithubIcon(
+        size: 24,
       ),
+      title: 'View Repository',
+      subtitle: 'Explore the source code and contribute.',
+      onTap: () => openExternalUrl(context, kPreconnectRepositoryUrl),
     );
   }
 }

@@ -113,7 +113,6 @@ class FriendHeaderCard extends StatelessWidget {
                 onPressed: onDelete,
                 icon: const Icon(Icons.delete_outline_rounded),
               ),
-            const Icon(Icons.chevron_right),
           ],
         ),
       ),

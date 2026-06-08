@@ -18,7 +18,9 @@ class SeatStatusService {
 
   Map<int, SeatStatusDetailsResponse>? get cachedDetails {
     if (_cachedDetails == null) {
-      final cachedJson = AppStorage.instance.getStringSync(PreconnectStorageKeys.seatStatusCacheJson);
+      final cachedJson = AppStorage.instance.getStringSync(
+        PreconnectStorageKeys.seatStatusCacheJson,
+      );
       if (cachedJson != null && cachedJson.trim().isNotEmpty) {
         try {
           final decoded = jsonDecode(cachedJson);
@@ -77,7 +79,9 @@ class SeatStatusService {
   }
 
   Future<Map<int, SeatStatusDetailsResponse>> _loadDetailsRealtimeOnly() async {
-    final etag = AppStorage.instance.getStringSync(PreconnectStorageKeys.seatStatusEtag);
+    final etag = AppStorage.instance.getStringSync(
+      PreconnectStorageKeys.seatStatusEtag,
+    );
     final headers = ifNoneMatchHeader(etag);
 
     final response = await _client.publicGet(
@@ -114,7 +118,9 @@ class SeatStatusService {
       _cachedDetails = parsed;
       return parsed;
     } catch (e) {
-      throw FormatException('Invalid JSON response from ${ApiConfig.seatStatusDataUrl}: $e');
+      throw FormatException(
+        'Invalid JSON response from ${ApiConfig.seatStatusDataUrl}: $e',
+      );
     }
   }
 

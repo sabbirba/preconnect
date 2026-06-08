@@ -408,9 +408,10 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                 ),
               ),
               const SizedBox(height: 14),
-              BracuActionCard(
+              BracuActionBannerCard(
+                icon: Icons.calculate_outlined,
                 title: 'CGPA Calculator',
-                leadingIcon: Icons.calculate_outlined,
+                subtitle: 'Estimate your grade point average',
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -424,9 +425,10 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                 },
               ),
               const SizedBox(height: 14),
-              BracuActionCard(
+              BracuActionBannerCard(
+                icon: Icons.tune,
                 title: 'All Courses',
-                leadingIcon: Icons.tune,
+                subtitle: 'Browse your full course catalogue',
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(

@@ -306,9 +306,10 @@ class _SettingsPageState extends State<SettingsPage>
         onRefresh: _load,
         showScrollTopButton: false,
         children: [
-          BracuActionCard(
+          BracuActionBannerCard(
+            icon: Icons.wifi_rounded,
             title: 'Wi-Fi Setup',
-            leadingIcon: Icons.wifi_rounded,
+            subtitle: 'Connect to campus captive network',
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const CaptiveWifiPage()),
@@ -320,25 +321,24 @@ class _SettingsPageState extends State<SettingsPage>
             child: Column(
               children: [
                 _ToggleRow(
+                  title: 'Today\'s Schedule',
+                  subtitle: 'Show today\'s class schedule',
+                  value: _showTodaySchedule,
+                  onChanged: _setShowTodaySchedule,
+                ),
+                divider,
+                _ToggleRow(
+                  title: 'Quick Access',
+                  subtitle: 'Show quick shortcuts on home',
+                  value: _showQuickAccessSection,
+                  onChanged: _setShowQuickAccessSection,
+                ),
+                divider,
+                _ToggleRow(
                   title: 'Exam Countdown',
                   subtitle: 'Show upcoming exam countdown',
                   value: _showExamCountdownCard,
                   onChanged: _setShowExamCountdownCard,
-                ),
-                divider,
-                _ToggleRow(
-                  title: 'Decorations',
-                  subtitle: 'Show UI background decorations',
-                  value: _showDecorations,
-                  onChanged: _setShowDecorations,
-                ),
-
-                divider,
-                _ToggleRow(
-                  title: 'Campus Map & Contacts',
-                  subtitle: 'Show contacts card on home',
-                  value: _showCampusMapContacts,
-                  onChanged: _setShowCampusMapContacts,
                 ),
                 divider,
                 _ToggleRow(
@@ -356,19 +356,18 @@ class _SettingsPageState extends State<SettingsPage>
                 ),
                 divider,
                 _ToggleRow(
-                  title: 'Today\'s Schedule',
-                  subtitle: 'Show today\'s class schedule',
-                  value: _showTodaySchedule,
-                  onChanged: _setShowTodaySchedule,
+                  title: 'Campus Map & Contacts',
+                  subtitle: 'Show contacts card on home',
+                  value: _showCampusMapContacts,
+                  onChanged: _setShowCampusMapContacts,
                 ),
                 divider,
                 _ToggleRow(
-                  title: 'Quick Access',
-                  subtitle: 'Show quick shortcuts on home',
-                  value: _showQuickAccessSection,
-                  onChanged: _setShowQuickAccessSection,
+                  title: 'Decorations',
+                  subtitle: 'Show UI background decorations',
+                  value: _showDecorations,
+                  onChanged: _setShowDecorations,
                 ),
-                divider,
               ],
             ),
           ),
@@ -428,11 +427,12 @@ class _SettingsPageState extends State<SettingsPage>
           ),
           if (!kIsWeb || isChromeRuntimeAvailable()) ...[
             const SizedBox(height: _sectionGap),
-            BracuActionCard(
+            BracuActionBannerCard(
+              icon: Icons.qr_code_rounded,
               title: 'Sync Session with Web',
-              subtitle: 'Scan QR or copy code to log in on Web.',
+              subtitle: 'Scan QR or copy code to log in on Web',
+              showTrailingIcon: true,
               onTap: _exportSessionForWeb,
-              trailing: const SizedBox.shrink(),
             ),
           ],
           const SizedBox(height: _sectionGap),

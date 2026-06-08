@@ -207,7 +207,10 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           cachedSections,
           forceRefresh: false,
         );
-        final data = _ExamScheduleData(sections: cachedSections, overrides: overrides);
+        final data = _ExamScheduleData(
+          sections: cachedSections,
+          overrides: overrides,
+        );
         cache.value = data;
         if (mounted) {
           setState(() {
@@ -229,7 +232,10 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           cachedSections,
           forceRefresh: false,
         );
-        final data = _ExamScheduleData(sections: cachedSections, overrides: overrides);
+        final data = _ExamScheduleData(
+          sections: cachedSections,
+          overrides: overrides,
+        );
         cache.value = data;
         if (mounted) {
           setState(() {
