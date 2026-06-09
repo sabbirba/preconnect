@@ -712,7 +712,7 @@ jobs:
 
       - name: Setup Ruby
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
-        uses: ruby/setup-ruby@v1.310.0
+        uses: ruby/setup-ruby@v1.312.0
         with:
           ruby-version: "3.3"
           bundler-cache: true
