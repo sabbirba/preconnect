@@ -65,7 +65,13 @@ jobs:
         uses: ruby/setup-ruby@v1.310.0
         with:
           ruby-version: "3.3"
-          bundler-cache: true
+          bundler-cache: false
+
+      - name: Install dependencies
+        if: matrix.run_play && steps.play_auth.outputs.enabled == 'true'
+        run: |
+          bundle config set frozen false
+          bundle install
 
       - name: Promote Beta
         if: matrix.run_play && steps.play_auth.outputs.enabled == 'true'
