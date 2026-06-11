@@ -305,6 +305,7 @@
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				C1A2B3C4D5E6F7890A1B2C3D /* Embed Flutter */,
 				BCE6489811287C8337EE2BF3 /* Embed Foundation Extensions */,
+				D8706E2C1A687A04E13CD75A /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -466,6 +467,23 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "set -e\nset -u\nset -o pipefail\n\nif [ -f \"${SRCROOT}/Flutter/ephemeral/Flutter-Generated.xcconfig\" ]; then\n  source \"${SRCROOT}/Flutter/ephemeral/Flutter-Generated.xcconfig\"\nfi\n\n\"${FLUTTER_ROOT}/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin\n";
+		};
+		D8706E2C1A687A04E13CD75A /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources.sh\"\n";
+			showEnvVarsInLog = 0;
 		};
 		EDAB1BAC048DB637BBD8CBD4 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;

@@ -800,9 +800,7 @@ class PreconnectGithubIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomPaint(
       size: Size(size, size),
-      painter: _GithubLogoPainter(
-        color: color ?? BracuPalette.primary,
-      ),
+      painter: _GithubLogoPainter(color: color ?? BracuPalette.primary),
     );
   }
 }
@@ -816,10 +814,10 @@ class _GithubLogoPainter extends CustomPainter {
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
-    
+
     final scale = size.width / 24.0;
     canvas.scale(scale, scale);
-    
+
     final path = Path()
       ..moveTo(12.0, 0.0)
       ..cubicTo(5.373, 0.0, 0.0, 5.373, 0.0, 12.0)
@@ -848,7 +846,7 @@ class _GithubLogoPainter extends CustomPainter {
       ..cubicTo(20.535, 21.796, 23.969, 17.299, 23.969, 11.999)
       ..cubicTo(24.0, 5.373, 18.627, 0.0, 12.0, 0.0)
       ..close();
-    
+
     canvas.drawPath(path, paint);
   }
 

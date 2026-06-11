@@ -185,14 +185,17 @@ class FCMService {
   Future<bool> _syncEmailSubscription(String topic, bool isSubscribe) async {
     try {
       if (!topic.startsWith('seat-')) return true;
-      
+
       final parts = topic.split('-');
       if (parts.length != 3) return true;
       final courseCode = parts[1];
       final sectionName = parts[2];
 
       final profile = await ProfileService().getProfile();
-      final email = profile?['institutionalEmail'] ?? profile?['email'] ?? profile?['studentEmail'];
+      final email =
+          profile?['institutionalEmail'] ??
+          profile?['email'] ??
+          profile?['studentEmail'];
       if (email == null || email.isEmpty) return true;
 
       final url = isSubscribe
@@ -210,9 +213,11 @@ class FCMService {
           'endpoint': 'email:$email',
         }),
       );
-      
+
       if (response.statusCode != 200) {
-        debugPrint('Email sync failed: ${response.statusCode} ${response.body}');
+        debugPrint(
+          'Email sync failed: ${response.statusCode} ${response.body}',
+        );
         return false;
       }
       return true;
