@@ -96,6 +96,7 @@ class CampusMapData {
                 return normalizeImageUrl('$item', baseUrl: sourceUrl);
               })
               .whereType<String>()
+              .toSet()
               .toList(growable: false)
         : const <String>[];
     if (images.isEmpty) {

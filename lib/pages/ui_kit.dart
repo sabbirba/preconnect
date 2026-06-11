@@ -161,14 +161,14 @@ class BracuImageCarousel extends StatefulWidget {
 class _BracuImageCarouselState extends State<BracuImageCarousel> {
   late final PageController _controller;
   int _index = 0;
-  static const int _virtualPageCount = 10000;
-  static const int _initialVirtualPage = _virtualPageCount ~/ 2;
 
   @override
   void initState() {
     super.initState();
-    _controller = PageController(initialPage: _initialVirtualPage);
-    _index = _initialVirtualPage;
+    final count = widget.imageUrls.length;
+    final initialPage = count > 0 ? (5000 ~/ count) * count : 0;
+    _controller = PageController(initialPage: initialPage);
+    _index = initialPage;
   }
 
   @override
