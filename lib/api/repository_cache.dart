@@ -21,8 +21,6 @@ class RepositoryCache {
     return _client.fetchWithFallback<T>(
       url: url,
       fromGet: fromGet,
-      etag: await _store.getString(etagKey),
-      cacheEtag: (etag) => _store.setString(etagKey, etag),
       cacheResponse: cacheResponse,
       readCache: readCache,
       cacheDuration: cacheDuration,

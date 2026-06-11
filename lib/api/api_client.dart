@@ -345,17 +345,12 @@ class ApiClient {
     String url, {
     String? etag,
     Map<String, String> additionalHeaders = const <String, String>{},
-    Set<int> acceptedStatusCodes = const <int>{200, 304},
+    Set<int> acceptedStatusCodes = const <int>{200},
     Duration cacheDuration = _defaultGetCacheTtl,
   }) {
-    final headers = <String, String>{...additionalHeaders};
-    final normalized = (etag ?? '').trim();
-    if (normalized.isNotEmpty) {
-      headers['If-None-Match'] = normalized;
-    }
     return authenticatedGet(
       url,
-      additionalHeaders: headers,
+      additionalHeaders: additionalHeaders,
       acceptedStatusCodes: acceptedStatusCodes,
       cacheDuration: cacheDuration,
     );
@@ -375,38 +370,12 @@ class ApiClient {
     }
 
     try {
-      final response = await authenticatedGetWithEtag(
+      final response = await authenticatedGet(
         url,
-        etag: etag,
-        acceptedStatusCodes: const <int>{200, 304},
+        acceptedStatusCodes: const <int>{200},
         cacheDuration: cacheDuration,
       );
-      if (response.statusCode == 304) {
-        final cached = await readCache(fromFetch: true);
-        if (cached != null) {
-          return cached;
-        }
-
-        final refreshedResponse = await authenticatedGet(
-          url,
-          acceptedStatusCodes: const <int>{200},
-          cacheDuration: cacheDuration,
-        );
-        if (refreshedResponse.statusCode != 200) {
-          return fromGet ? null : readCache(fromFetch: true);
-        }
-        await cacheResponse(refreshedResponse);
-        final nextEtag = extractEtagFromResponse(refreshedResponse);
-        if (nextEtag != null && nextEtag.isNotEmpty && cacheEtag != null) {
-          await cacheEtag(nextEtag);
-        }
-        return readCache(fromFetch: true);
-      }
       await cacheResponse(response);
-      final nextEtag = extractEtagFromResponse(response);
-      if (nextEtag != null && nextEtag.isNotEmpty && cacheEtag != null) {
-        await cacheEtag(nextEtag);
-      }
       return readCache(fromFetch: true);
     } on UnauthenticatedException {
       return fromGet ? null : readCache(fromFetch: true);
@@ -616,23 +585,15 @@ class MissingDependencyException extends PreConnectException {
 }
 
 Map<String, String> ifNoneMatchHeader(String? etag) {
-  final value = (etag ?? '').trim();
-  if (value.isEmpty) return const <String, String>{};
-  return <String, String>{'If-None-Match': value};
+  return const <String, String>{};
 }
 
 String? extractEtagFromHeaders(Map<String, String> headers) {
-  for (final entry in headers.entries) {
-    if (entry.key.toLowerCase() == 'etag') {
-      final value = entry.value.trim();
-      if (value.isNotEmpty) return value;
-    }
-  }
   return null;
 }
 
 String? extractEtagFromResponse(http.Response response) {
-  return extractEtagFromHeaders(response.headers);
+  return null;
 }
 
 final _portfolioIdResolutionFailures = <DateTime>[];

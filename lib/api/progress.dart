@@ -23,10 +23,6 @@ class ProgressService {
   static const List<String> _coursePrerequisitesUrls = <String>[
     '${ApiConfig.publicJsonBase}/data/course-prerequisites.json',
   ];
-  static const String _majorMinorsEtagKey = 'student_progress_major_etag_v1';
-  static const String _completedCoursesEtagKey =
-      'student_progress_completed_etag_v1';
-  static const String _curriculumEtagKey = 'student_progress_curr_etag_v1';
   final ApiClient _client = ApiClient();
   final Map<String, Future<ProgressInfo?>> _fetchInFlight =
       <String, Future<ProgressInfo?>>{};
@@ -71,32 +67,20 @@ class ProgressService {
           '${ApiConfig.connectApiBase}${ApiConfig.programCurriculumsPath(portfolioId)}';
       final repo = RepositoryCache.instance;
 
-      final etags = await Future.wait<String?>([
-        repo.readString(_majorMinorsEtagKey),
-        repo.readString(_completedCoursesEtagKey),
-        repo.readString(_curriculumEtagKey),
-      ]);
-      final majorEtag = etags[0];
-      final completedEtag = etags[1];
-      final curriculumEtag = etags[2];
-
       final responses = await Future.wait([
         _client.authenticatedGet(
           majorMinorsUrl,
-          additionalHeaders: ifNoneMatchHeader(majorEtag),
-          acceptedStatusCodes: const <int>{200, 304},
+          acceptedStatusCodes: const <int>{200},
           cacheDuration: const Duration(seconds: 30),
         ),
         _client.authenticatedGet(
           completedCoursesUrl,
-          additionalHeaders: ifNoneMatchHeader(completedEtag),
-          acceptedStatusCodes: const <int>{200, 304},
+          acceptedStatusCodes: const <int>{200},
           cacheDuration: const Duration(seconds: 30),
         ),
         _client.authenticatedGet(
           curriculumUrl,
-          additionalHeaders: ifNoneMatchHeader(curriculumEtag),
-          acceptedStatusCodes: const <int>{200, 304},
+          acceptedStatusCodes: const <int>{200},
           cacheDuration: const Duration(seconds: 30),
         ),
       ]);
@@ -106,19 +90,16 @@ class ProgressService {
           repo: repo,
           response: responses[0],
           dataKey: _majorMinorsCacheKey,
-          etagKey: _majorMinorsEtagKey,
         ),
         _resolveComponent(
           repo: repo,
           response: responses[1],
           dataKey: _completedCoursesCacheKey,
-          etagKey: _completedCoursesEtagKey,
         ),
         _resolveComponent(
           repo: repo,
           response: responses[2],
           dataKey: _curriculumCacheKey,
-          etagKey: _curriculumEtagKey,
         ),
         _resolvePublicComponent(
           repo: repo,
@@ -159,25 +140,11 @@ class ProgressService {
     required RepositoryCache repo,
     required dynamic response,
     required String dataKey,
-    required String etagKey,
   }) async {
-    if (response.statusCode == 304) {
-      final cached = await repo.readString(dataKey);
-      if (cached == null || cached.trim().isEmpty) return null;
-      try {
-        return jsonDecode(cached);
-      } catch (e) {
-        return await _readCachedComponent(repo, dataKey);
-      }
-    }
     if (response.statusCode != 200) return null;
     try {
       final decoded = jsonDecode(response.body);
       await repo.writeJson(dataKey, decoded);
-      final etag = extractEtagFromHeaders(response.headers);
-      if (etag != null && etag.isNotEmpty) {
-        await repo.writeString(etagKey, etag);
-      }
       return decoded;
     } catch (e) {
       return await _readCachedComponent(repo, dataKey);

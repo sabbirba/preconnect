@@ -71,30 +71,21 @@ class SeatStatusService {
     bool forceRefresh = false,
   }) async {
     try {
-      return await _loadDetailsRealtimeOnly();
+      return await _loadDetailsRealtimeOnly(forceRefresh: forceRefresh);
     } catch (_) {
       final cached = cachedDetails;
       return cached ?? const <int, SeatStatusDetailsResponse>{};
     }
   }
 
-  Future<Map<int, SeatStatusDetailsResponse>> _loadDetailsRealtimeOnly() async {
-    final etag = AppStorage.instance.getStringSync(
-      PreconnectStorageKeys.seatStatusEtag,
-    );
-    final headers = ifNoneMatchHeader(etag);
-
+  Future<Map<int, SeatStatusDetailsResponse>> _loadDetailsRealtimeOnly({
+    bool forceRefresh = false,
+  }) async {
     final response = await _client.publicGet(
       ApiConfig.seatStatusDataUrl,
-      headers: headers,
-      acceptedStatusCodes: const <int>{200, 304},
-      cacheDuration: const Duration(seconds: 15),
+      acceptedStatusCodes: const <int>{200},
+      cacheDuration: forceRefresh ? Duration.zero : const Duration(seconds: 15),
     );
-
-    if (response.statusCode == 304) {
-      final cached = cachedDetails;
-      return cached ?? const <int, SeatStatusDetailsResponse>{};
-    }
 
     try {
       final raw = jsonDecode(response.body);
@@ -104,16 +95,6 @@ class SeatStatusService {
         PreconnectStorageKeys.seatStatusCacheJson,
         response.body,
       );
-
-      final newEtag = extractEtagFromResponse(response);
-      if (newEtag != null && newEtag.isNotEmpty) {
-        await AppStorage.instance.setString(
-          PreconnectStorageKeys.seatStatusEtag,
-          newEtag,
-        );
-      } else {
-        await AppStorage.instance.remove(PreconnectStorageKeys.seatStatusEtag);
-      }
 
       _cachedDetails = parsed;
       return parsed;
