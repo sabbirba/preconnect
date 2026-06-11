@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:restart_app/restart_app.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:preconnect/app.dart';
-import 'package:preconnect/api/app_preferences_store.dart';
+import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/shared_widgets/export_session_bottom_sheet.dart';
-import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/quiet_mode_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
@@ -230,14 +230,10 @@ class _SettingsPageState extends State<SettingsPage>
       _isClearingCache = true;
     });
     try {
-      final keepKeys = <String>{
-        PreconnectStorageKeys.accessToken,
-        PreconnectStorageKeys.refreshToken,
-        PreconnectStorageKeys.idToken,
-        PreconnectStorageKeys.cachedHasAuthSession,
-      };
-      await AppPreferencesStore().clearAllExcept(keepKeys);
-      await MyApp.warmStartupCachesAsync();
+      await AuthService().logout(force: true, instant: true);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+      await ProfileImageCache.instance.clear();
     } catch (_) {
     } finally {
       if (mounted) {
@@ -430,7 +426,7 @@ class _SettingsPageState extends State<SettingsPage>
             outlined: true,
             isLoading: _isClearingCache,
             icon: Icons.delete_outline_rounded,
-            label: 'Clear Cache and Restart',
+            label: 'Clear Data and Restart',
             borderRadius: 14,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),

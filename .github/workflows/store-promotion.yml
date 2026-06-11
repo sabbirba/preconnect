@@ -34,7 +34,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -143,7 +143,7 @@ jobs:
 
       - name: Chrome Artifact
         if: matrix.run_chrome
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v4
         with:
           name: store-promotion-chrome-extension
           path: build/chrome-extension.zip
