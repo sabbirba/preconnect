@@ -19,8 +19,7 @@ import 'package:preconnect/tools/storage_keys.dart';
 class CampusPrinterPage extends StatefulWidget {
   const CampusPrinterPage({super.key});
 
-  static const String blankPageUrl =
-      '${ApiConfig.websiteBase}/WhitePage.pdf';
+  static const String blankPageUrl = '${ApiConfig.websiteBase}/WhitePage.pdf';
   static Uint8List? cachedBlankPageBytes;
 
   static _CampusPrinterBootstrap? _cachedBootstrap;
@@ -747,6 +746,15 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        action: SnackBarAction(
+          label: 'Close',
+          textColor: Colors.white,
+          onPressed: () {
+            try {
+              messenger.hideCurrentSnackBar();
+            } catch (_) {}
+          },
+        ),
       ),
     );
   }

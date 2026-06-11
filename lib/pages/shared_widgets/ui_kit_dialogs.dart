@@ -683,7 +683,10 @@ Future<T?> showBracuSelectDropdown<T>(
                   ],
                 ),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 215, maxHeight: 280),
+                  constraints: const BoxConstraints(
+                    maxWidth: 215,
+                    maxHeight: 280,
+                  ),
                   child: Material(
                     color: cardColor,
                     borderRadius: BorderRadius.circular(14),

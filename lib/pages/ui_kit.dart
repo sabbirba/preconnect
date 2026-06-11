@@ -300,7 +300,14 @@ void showAppSnackBar(
       action: SnackBarAction(
         label: actionLabel,
         textColor: Colors.white,
-        onPressed: onAction ?? () {},
+        onPressed: () {
+          try {
+            messenger.hideCurrentSnackBar();
+          } catch (_) {}
+          if (onAction != null) {
+            onAction();
+          }
+        },
       ),
     ),
   );
@@ -368,6 +375,15 @@ void _showPdfSnackBar(
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      action: SnackBarAction(
+        label: 'Close',
+        textColor: Colors.white,
+        onPressed: () {
+          try {
+            messenger.hideCurrentSnackBar();
+          } catch (_) {}
+        },
+      ),
     ),
   );
 }

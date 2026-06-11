@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:restart_app/restart_app.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/api/app_preferences_store.dart';
-import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/shared_widgets/export_session_bottom_sheet.dart';
@@ -10,7 +10,6 @@ import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/quiet_mode_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
-import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/chrome_runtime_available_stub.dart'
     if (dart.library.html) 'package:preconnect/tools/chrome_runtime_available_web.dart';
 
@@ -236,17 +235,10 @@ class _SettingsPageState extends State<SettingsPage>
         PreconnectStorageKeys.refreshToken,
         PreconnectStorageKeys.idToken,
         PreconnectStorageKeys.cachedHasAuthSession,
-        StorageKeys.currentSessionSemesterId,
-        CustomSchedulesService.cacheKey,
-        HomeCardPreferences.showQuickAccessSectionKey,
-        HomeCardPreferences.showRamadanCardKey,
-        HomeCardPreferences.showExamCountdownCardKey,
-        HomeCardPreferences.showTodayScheduleKey,
-        HomeCardPreferences.showDecorationsKey,
-        HomeCardPreferences.showCampusMapContactsKey,
-        HomeCardPreferences.showNotificationsIconKey,
       };
       await AppPreferencesStore().clearAllExcept(keepKeys);
+      await MyApp.warmStartupCachesAsync();
+    } catch (_) {
     } finally {
       if (mounted) {
         setState(() {
@@ -256,10 +248,7 @@ class _SettingsPageState extends State<SettingsPage>
     }
 
     RefreshBus.instance.notify(reason: 'cache_cleared');
-    if (!mounted) return;
-    showAppSnackBar(context, 'Cached data cleared');
-    await Future.delayed(const Duration(milliseconds: 250));
-    AppRestart.restart();
+    await Restart.restartApp();
   }
 
   Future<void> _exportSessionForWeb() async {

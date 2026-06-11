@@ -1076,18 +1076,11 @@ class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
                       subtitle: 'Helper',
                       color: const Color(0xFF5B8DEF),
                       onTap: () {
-                        showAppSnackBar(
-                          context,
-                          'Available in the Chrome extension.',
-                          actionLabel: 'Open',
-                          onAction: () {
-                            unawaited(
-                              openExternalUrl(
-                                context,
-                                'https://chromewebstore.google.com/detail/preconnect/fcfkbdogaciifaihbfhnaijfhdcjokca',
-                              ),
-                            );
-                          },
+                        unawaited(
+                          openExternalUrl(
+                            context,
+                            'https://chromewebstore.google.com/detail/preconnect/fcfkbdogaciifaihbfhnaijfhdcjokca',
+                          ),
                         );
                       },
                     ),

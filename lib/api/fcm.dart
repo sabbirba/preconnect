@@ -468,7 +468,7 @@ class FCMService {
 
   Future<void> _setupLocalNotifications() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('ic_stat_preconnect');
 
     const DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(
@@ -561,6 +561,7 @@ class FCMService {
             'High Importance Notifications',
             importance: Importance.max,
             priority: Priority.high,
+            icon: 'ic_stat_preconnect',
           ),
           iOS: DarwinNotificationDetails(
             presentAlert: true,

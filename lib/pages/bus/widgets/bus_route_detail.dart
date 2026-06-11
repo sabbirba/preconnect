@@ -37,13 +37,10 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage>
   Future<void> _callAttendant(String phone) async {
     final normalizedPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
     if (normalizedPhone.isEmpty) return;
-    final messenger = ScaffoldMessenger.of(context);
     final uri = Uri.parse('tel:$normalizedPhone');
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (opened || !mounted) return;
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Unable to open the dialer.')),
-    );
+    showAppSnackBar(context, 'Unable to open the dialer.');
   }
 
   Future<void> _refreshRouteData() async {
@@ -189,15 +186,12 @@ Future<void> _openRouteInGoogleMaps(
   double latitude,
   double longitude,
 ) async {
-  final messenger = ScaffoldMessenger.of(context);
   final uri = Uri.parse(
     'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude',
   );
   final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
   if (opened || !context.mounted) return;
-  messenger.showSnackBar(
-    const SnackBar(content: Text('Unable to open Google Maps.')),
-  );
+  showAppSnackBar(context, 'Unable to open Google Maps.');
 }
 
 class _RouteLiveMapCard extends StatelessWidget {

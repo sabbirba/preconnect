@@ -35,15 +35,7 @@ Future<void> main() async {
 
       final initialState = MyApp.bootstrapSync();
 
-      runApp(
-        AppRestart(
-          key: AppRestart.restartKey,
-          bootstrap: MyApp.bootstrap,
-          initialData: initialState,
-          builder: (bootstrapState) => MyApp(bootstrapState: bootstrapState),
-          child: const MyApp(isPreBoot: true),
-        ),
-      );
+      runApp(MyApp(bootstrapState: initialState));
     },
     (error, stackTrace) {
       debugPrint('[ZoneError] $error\n$stackTrace');

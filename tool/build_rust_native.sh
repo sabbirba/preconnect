@@ -97,11 +97,25 @@ build_android() {
 
 build_apple() {
   local platform_name="$1"
+  if [[ "$platform_name" == "macosx" ]]; then
+    ensure_target "aarch64-apple-darwin"
+    ensure_target "x86_64-apple-darwin"
+
+    cargo build --manifest-path "$MANIFEST" --release --target "aarch64-apple-darwin"
+    cargo build --manifest-path "$MANIFEST" --release --target "x86_64-apple-darwin"
+
+    local out_dir="${CRATE_DIR}/target/apple/macosx/release"
+    mkdir -p "$out_dir"
+
+    lipo -create \
+      "${CRATE_DIR}/target/aarch64-apple-darwin/release/libpreconnect_native.a" \
+      "${CRATE_DIR}/target/x86_64-apple-darwin/release/libpreconnect_native.a" \
+      -output "${out_dir}/libpreconnect_native.a"
+    return 0
+  fi
+
   local target_triple
   case "$platform_name" in
-    macosx)
-      target_triple="aarch64-apple-darwin"
-      ;;
     iphoneos)
       target_triple="aarch64-apple-ios"
       ;;
