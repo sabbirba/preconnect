@@ -385,14 +385,17 @@ jobs:
           cd build/web
           zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-web-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
 
-      - name: Deploy to Firebase Hosting
-        if: matrix.platform == 'web'
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      - name: Deploy to VPS
+        if: matrix.platform == 'web' && secrets.VPS_HOST != ''
+        uses: appleboy/scp-action@v0.1.7
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PRECONNECT_BRACU }}
-          projectId: preconnect-bracu
-          channelId: live
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || '22' }}
+          source: "build/web/*"
+          target: "/var/www/preconnect-web"
+          strip_components: 2
 
       - name: Clean Build
         if: matrix.platform == 'android' || matrix.platform == 'ios' || matrix.platform == 'macos'
