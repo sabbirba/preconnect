@@ -90,6 +90,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   String _searchQuery = '';
   bool _isDetailsRefreshing = false;
   bool _availableOnly = false;
+  bool _labOnly = false;
   String _selectedDayFilter = '';
   String _selectedTimeFilter = '';
   @override
@@ -124,6 +125,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
         _filterCards(
           cards,
           _searchQuery,
+          labOnly: _labOnly,
           availableOnly: _availableOnly,
           dayFilter: _selectedDayFilter,
           timeFilter: _selectedTimeFilter,
