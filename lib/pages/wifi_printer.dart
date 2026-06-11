@@ -7,6 +7,7 @@ import 'package:dart_pdf_reader/dart_pdf_reader.dart' deferred as pdf_reader;
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -18,21 +19,21 @@ import 'package:preconnect/tools/storage_keys.dart';
 class CampusPrinterPage extends StatefulWidget {
   const CampusPrinterPage({super.key});
 
-  static const String whitePageUrl =
-      'https://cdn.preconnect.app/api/WhitePage.pdf';
-  static Uint8List? cachedWhitePageBytes;
+  static const String blankPageUrl =
+      '${ApiConfig.websiteBase}/WhitePage.pdf';
+  static Uint8List? cachedBlankPageBytes;
 
   static _CampusPrinterBootstrap? _cachedBootstrap;
   static Future<_CampusPrinterBootstrap>? _preloadFuture;
 
   static Future<void> preload() async {
-    await Future.wait([_preloadBootstrap(), _preloadWhitePage()]);
+    await Future.wait([_preloadBootstrap(), _preloadBlankPage()]);
   }
 
   static void invalidateCache() {
     _cachedBootstrap = null;
     _preloadFuture = null;
-    cachedWhitePageBytes = null;
+    cachedBlankPageBytes = null;
   }
 
   static Future<void> clearStoredState() async {
@@ -44,32 +45,32 @@ class CampusPrinterPage extends StatefulWidget {
     await AppStorage.instance.remove(StorageKeys.fullName);
     await AppStorage.instance.remove(StorageKeys.shortCode);
     await AppStorage.instance.remove(StorageKeys.currentSemester);
-    await AppStorage.instance.remove('cached_white_page_pdf');
+    await AppStorage.instance.remove('cached_blank_page_pdf');
     invalidateCache();
   }
 
-  static Future<void> _preloadWhitePage() async {
-    if (cachedWhitePageBytes != null) return;
+  static Future<void> _preloadBlankPage() async {
+    if (cachedBlankPageBytes != null) return;
     try {
       final cachedBase64 = await AppStorage.instance.getString(
-        'cached_white_page_pdf',
+        'cached_blank_page_pdf',
       );
       if (cachedBase64 != null && cachedBase64.isNotEmpty) {
-        cachedWhitePageBytes = base64Decode(cachedBase64);
+        cachedBlankPageBytes = base64Decode(cachedBase64);
         return;
       }
     } catch (_) {}
 
     try {
-      final uri = Uri.parse(whitePageUrl);
+      final uri = Uri.parse(blankPageUrl);
       final response = await HttpUtils.client
           .get(uri, headers: const <String, String>{'Accept-Encoding': 'gzip'})
           .timeout(const Duration(seconds: 15));
       if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
         final bytes = response.bodyBytes;
-        cachedWhitePageBytes = bytes;
+        cachedBlankPageBytes = bytes;
         await AppStorage.instance.setString(
-          'cached_white_page_pdf',
+          'cached_blank_page_pdf',
           base64Encode(bytes),
         );
       }
@@ -77,7 +78,7 @@ class CampusPrinterPage extends StatefulWidget {
   }
 
   static Future<_CampusPrinterBootstrap> _preloadBootstrap() async {
-    unawaited(_preloadWhitePage());
+    unawaited(_preloadBlankPage());
     final cached = _cachedBootstrap;
     if (cached != null) return cached;
     final inFlight = _preloadFuture;
@@ -187,8 +188,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const String _snackFileReadFailed = "Couldn't read selected file";
   static const String _snackNoPrinter = 'No printer detected';
   static const String _snackChooseFile = 'Select a file first';
-  static const String _snackWhitePageLoadFailed =
-      "Couldn't load the white page";
+  static const String _snackBlankPageLoadFailed =
+      "Couldn't load the blank page";
   static const String _snackIdentityRequired = 'Profile data required';
   static const String _snackPrintSent = 'Print sent';
   static const String _snackPrintFailed = 'Print failed';
@@ -498,14 +499,14 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     } catch (_) {}
   }
 
-  Future<void> _loadWhitePage() async {
+  Future<void> _loadBlankPage() async {
     if (_busy || _loadingPreset) return;
 
-    final cached = CampusPrinterPage.cachedWhitePageBytes;
+    final cached = CampusPrinterPage.cachedBlankPageBytes;
     if (cached != null && cached.isNotEmpty) {
       setState(() {
         _fileBytes = cached;
-        _fileName = 'WhitePage.pdf';
+        _fileName = 'Blank Page.pdf';
         _filePageCount = 1;
       });
       return;
@@ -515,7 +516,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _loadingPreset = true;
     });
     try {
-      final uri = Uri.parse(CampusPrinterPage.whitePageUrl);
+      final uri = Uri.parse(CampusPrinterPage.blankPageUrl);
       final response = await HttpUtils.client
           .get(uri, headers: const <String, String>{'Accept-Encoding': 'gzip'})
           .timeout(const Duration(seconds: 15));
@@ -524,10 +525,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       }
 
       final bytes = response.bodyBytes;
-      CampusPrinterPage.cachedWhitePageBytes = bytes;
+      CampusPrinterPage.cachedBlankPageBytes = bytes;
       unawaited(
         AppStorage.instance.setString(
-          'cached_white_page_pdf',
+          'cached_blank_page_pdf',
           base64Encode(bytes),
         ),
       );
@@ -535,7 +536,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       if (!mounted) return;
       setState(() {
         _fileBytes = bytes;
-        _fileName = 'WhitePage.pdf';
+        _fileName = 'Blank Page.pdf';
         if (_isPdfFile(_fileName, bytes)) {
           _filePageCount = 1;
         } else {
@@ -544,7 +545,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       });
     } catch (_) {
       if (mounted) {
-        showAppSnackBar(context, _snackWhitePageLoadFailed);
+        showAppSnackBar(context, _snackBlankPageLoadFailed);
       }
     } finally {
       if (mounted) {
@@ -862,8 +863,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                               child: BracuActionButton(
                                 onPressed: (_busy || _loadingPreset)
                                     ? null
-                                    : _loadWhitePage,
-                                label: 'White Page',
+                                    : _loadBlankPage,
+                                label: 'Blank Page',
                                 icon: Icons.download_rounded,
                                 isLoading: _loadingPreset,
                                 iconGap: 0,

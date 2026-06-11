@@ -70,6 +70,7 @@ jobs:
       - name: Install dependencies
         if: matrix.run_play && steps.play_auth.outputs.enabled == 'true'
         run: |
+          gem install bundler --no-document
           bundle config set frozen false
           bundle install
 

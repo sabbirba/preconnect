@@ -338,4 +338,4 @@ DEPENDENCIES
   xcpretty-travis-formatter (1.0.1) sha256=aacc332f17cb7b2cba222994e2adc74223db88724fe76341483ad3098e232f93
 
 BUNDLED WITH
-  4.0.6
+   2.5.11

@@ -437,7 +437,7 @@ jobs:
         run: |
           set -euo pipefail
           AAB_PATH="build/app/outputs/bundle/release/app-release.aab"
-          if ! flutter build appbundle --release --target-platform android-arm,android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}; then
+          if ! flutter build appbundle --release --target-platform android-arm,android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}; then
             echo "Flutter appbundle validation failed; retrying bundle packaging with Gradle." >&2
             cd android
             ./gradlew bundleRelease --no-daemon --stacktrace --info
@@ -715,7 +715,14 @@ jobs:
         uses: ruby/setup-ruby@v1.312.0
         with:
           ruby-version: "3.3"
-          bundler-cache: true
+          bundler-cache: false
+
+      - name: Install Ruby Gems
+        if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
+        run: |
+          gem install bundler --no-document
+          bundle config set frozen false
+          bundle install
 
       - name: Upload Internal
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
