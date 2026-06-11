@@ -248,6 +248,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         runSpacing: 8,
         children: [
           _buildAvailabilityFilterAction(),
+          _buildLabFilterAction(),
           _buildDayFilterAction(context),
           _buildTimeFilterAction(context),
         ],
@@ -261,6 +262,16 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       label: 'Available',
       selected: _availableOnly,
       onTap: () => _setAvailableFilter(!_availableOnly),
+      showArrow: false,
+    );
+  }
+
+  Widget _buildLabFilterAction() {
+    return _FilterChip(
+      icon: Icons.schema_outlined,
+      label: 'Labs',
+      selected: _labOnly,
+      onTap: () => _setLabFilter(!_labOnly),
       showArrow: false,
     );
   }
@@ -316,7 +327,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         });
 
     return BracuSelectDropdownChip<String>(
-      icon: Icons.calendar_today_outlined,
+      icon: Icons.lock_clock,
       label: label,
       selected: _selectedTimeFilter.isNotEmpty,
       compact: true,
@@ -335,7 +346,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
           (data) => BracuSelectOption<String>(
             value: data.repr,
             label: data.repr,
-            icon: Icons.calendar_today_outlined,
+            icon: Icons.lock_clock,
             subtitle: 'Only ${data.repr}',
           ),
         ),
@@ -349,23 +360,30 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     _refreshVisibleCards(availableOnly: next);
   }
 
+  void _setLabFilter(bool next) {
+    if (next == _labOnly) return;
+    _refreshVisibleCards(labOnly: next);
+  }
+
   void _setDayFilter(String next) {
     if (next == _selectedDayFilter) return;
-    _refreshVisibleCards(dayFilter: next, timeFilter: _selectedTimeFilter);
+    _refreshVisibleCards(dayFilter: next);
   }
 
   void _setTimeFilter(String next) {
     if (next == _selectedTimeFilter) return;
-    _refreshVisibleCards(dayFilter: _selectedDayFilter, timeFilter: next);
+    _refreshVisibleCards(timeFilter: next);
   }
 
   void _refreshVisibleCards({
     bool? availableOnly,
+    bool? labOnly,
     String? dayFilter,
     String? timeFilter,
     String? query,
   }) {
     final resolvedAvailableOnly = availableOnly ?? _availableOnly;
+    final resolvedLabOnly = labOnly ?? _labOnly;
     final resolvedDayFilter = dayFilter ?? _selectedDayFilter;
     final resolvedTimeFilter = timeFilter ?? _selectedTimeFilter;
     final resolvedQuery = query ?? _searchQuery;
@@ -373,11 +391,13 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       _cards,
       resolvedQuery,
       availableOnly: resolvedAvailableOnly,
+      labOnly: resolvedLabOnly,
       dayFilter: resolvedDayFilter,
       timeFilter: resolvedTimeFilter,
     );
     final filtersChanged =
         resolvedAvailableOnly != _availableOnly ||
+        resolvedLabOnly != _labOnly ||
         resolvedDayFilter != _selectedDayFilter ||
         resolvedTimeFilter != _selectedTimeFilter ||
         resolvedQuery != _searchQuery;
@@ -387,6 +407,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     }
     _updateSeatStatusState(() {
       _availableOnly = resolvedAvailableOnly;
+      _labOnly = resolvedLabOnly;
       _selectedDayFilter = resolvedDayFilter;
       _selectedTimeFilter = resolvedTimeFilter;
       _searchQuery = resolvedQuery;
@@ -401,6 +422,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     List<_SeatStatusCardData> source,
     String query, {
     required bool availableOnly,
+    required bool labOnly,
     required String dayFilter,
     required String timeFilter,
   }) {
@@ -408,6 +430,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     return source.where((card) {
       if (q.isNotEmpty && !card.searchToken.contains(q)) return false;
       if (availableOnly && card.remaining <= 0) return false;
+      if (labOnly && card.labSectionId == null) return false;
       if (dayFilter.isNotEmpty) {
         final schedules = <SeatStatusClassSchedule>[
           ...card.classSchedule,
@@ -439,6 +462,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     final nextVisible = _filterCards(
       nextCards,
       _searchQuery,
+      labOnly: _labOnly,
       availableOnly: _availableOnly,
       dayFilter: _selectedDayFilter,
       timeFilter: _selectedTimeFilter,
