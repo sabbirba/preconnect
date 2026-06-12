@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
@@ -32,6 +32,12 @@ import 'package:preconnect/tools/token_storage.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 
+bool get _shouldUseMobileUserAgent {
+  if (kIsWeb) return false;
+  return defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS;
+}
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -47,9 +53,11 @@ class LoginPage extends StatefulWidget {
       _pkceVerifier = generatePkceVerifier();
       final codeChallenge = codeChallengeS256(_pkceVerifier!);
       final controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setUserAgent(kPreconnectUserAgent)
-        ..loadRequest(Uri.parse(ApiConfig.authUrlWithPkce(codeChallenge)));
+        ..setJavaScriptMode(JavaScriptMode.unrestricted);
+      if (_shouldUseMobileUserAgent) {
+        controller.setUserAgent(kPreconnectUserAgent);
+      }
+      controller.loadRequest(Uri.parse(ApiConfig.authUrlWithPkce(codeChallenge)));
       await _configureCookies(controller);
       _preloadedWebViewController = controller;
     } catch (_) {
@@ -126,7 +134,6 @@ class _MobileLogoutWebViewPageState extends State<_MobileLogoutWebViewPage> {
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setUserAgent(kPreconnectUserAgent)
       ..setNavigationDelegate(
         NavigationDelegate(
           onNavigationRequest: (request) {
@@ -144,6 +151,9 @@ class _MobileLogoutWebViewPageState extends State<_MobileLogoutWebViewPage> {
         ),
       )
       ..loadRequest(widget.logoutUrl);
+    if (_shouldUseMobileUserAgent) {
+      _controller.setUserAgent(kPreconnectUserAgent);
+    }
     unawaited(LoginPage._configureCookies(_controller));
     _timeoutTimer = Timer(_logoutTimeout, _complete);
   }
@@ -196,9 +206,11 @@ class _LoginPageState extends State<LoginPage> {
     LoginPage._pkceVerifier ??= generatePkceVerifier();
     final codeChallenge = codeChallengeS256(LoginPage._pkceVerifier!);
     final controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setUserAgent(kPreconnectUserAgent)
-      ..loadRequest(Uri.parse(ApiConfig.authUrlWithPkce(codeChallenge)));
+      ..setJavaScriptMode(JavaScriptMode.unrestricted);
+    if (_shouldUseMobileUserAgent) {
+      controller.setUserAgent(kPreconnectUserAgent);
+    }
+    controller.loadRequest(Uri.parse(ApiConfig.authUrlWithPkce(codeChallenge)));
     unawaited(LoginPage._configureCookies(controller));
     return controller;
   }
