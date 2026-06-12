@@ -1,8 +1,8 @@
 name: preconnect
-description: "Your personalised student portal for BRAC University"
+description: "Fast, Calm Academic Companion App. An initiative run by BRAC University students."
 publish_to: "none"
 
-version: 1.6.6+202605061
+version: 1.6.6+202606000
 
 environment:
   sdk: ^3.8.1
