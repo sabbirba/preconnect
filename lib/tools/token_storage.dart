@@ -48,10 +48,11 @@ class TokenStorage {
 
     if (_sensitiveKeys.contains(key)) {
       try {
-        return await _secureStorage.read(key: key);
-      } catch (_) {
-        return null;
-      }
+        final val = await _secureStorage.read(key: key);
+        if (val != null) return val;
+      } catch (_) {}
+      // Fallback if secure storage is unavailable or fails (e.g. macOS sandbox Keychain error)
+      return await AppStorage.instance.getString(key);
     }
 
     final value = await AppStorage.instance.getString(key);
@@ -83,13 +84,21 @@ class TokenStorage {
     }
 
     if (_sensitiveKeys.contains(key)) {
-      // Clean up old insecure/encrypted preferences if any exist
-      await AppStorage.instance.remove(key);
-
-      if (value == null || value.isEmpty) {
-        await _secureStorage.delete(key: key);
-      } else {
-        await _secureStorage.write(key: key, value: value);
+      try {
+        if (value == null || value.isEmpty) {
+          await _secureStorage.delete(key: key);
+        } else {
+          await _secureStorage.write(key: key, value: value);
+        }
+        // Clean up old insecure preferences if we successfully wrote to secure storage
+        await AppStorage.instance.remove(key);
+      } catch (_) {
+        // Fallback: If secure storage fails (macOS Keychain issue), write to standard AppStorage
+        if (value == null || value.isEmpty) {
+          await AppStorage.instance.remove(key);
+        } else {
+          await AppStorage.instance.setString(key, value);
+        }
       }
     } else {
       if (value == null || value.isEmpty) {
@@ -103,9 +112,11 @@ class TokenStorage {
   }
 
   Future<void> deleteAll() async {
-    await _secureStorage.delete(key: PreconnectStorageKeys.accessToken);
-    await _secureStorage.delete(key: PreconnectStorageKeys.refreshToken);
-    await _secureStorage.delete(key: 'wifi_captive_password');
+    try {
+      await _secureStorage.delete(key: PreconnectStorageKeys.accessToken);
+      await _secureStorage.delete(key: PreconnectStorageKeys.refreshToken);
+      await _secureStorage.delete(key: 'wifi_captive_password');
+    } catch (_) {}
     await AppStorage.instance.remove(PreconnectStorageKeys.accessToken);
     await AppStorage.instance.remove(PreconnectStorageKeys.refreshToken);
     await AppStorage.instance.remove(PreconnectStorageKeys.idToken);
