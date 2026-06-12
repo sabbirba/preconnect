@@ -1,10 +1,15 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:preconnect/tools/http/http_utils.dart';
+import 'package:preconnect/tools/runtime_stub.dart'
+    if (dart.library.html) 'package:preconnect/tools/runtime_web.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:preconnect/api/analytics.dart';
+import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/preferences_store.dart';
@@ -52,6 +57,66 @@ class MyApp extends StatefulWidget {
   final bool isPreBoot;
 
   static Future<AppBootstrapState> bootstrap() async {
+    if (kIsWeb && !isChromeRuntimeAvailable()) {
+      final code = Uri.base.queryParameters['code'];
+      if (code != null && code.trim().isNotEmpty) {
+        try {
+          final uri = Uri.parse(ApiConfig.tokenEndpoint);
+          final body = HttpUtils.formBody(<String, String>{
+            'grant_type': 'authorization_code',
+            'client_id': ApiConfig.clientId,
+            'code': code.trim(),
+            'redirect_uri': ApiConfig.redirectUri,
+          });
+          final response = await HttpUtils.client
+              .post(
+                uri,
+                headers: <String, String>{
+                  'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: body,
+              )
+              .timeout(const Duration(seconds: 10));
+
+          if (response.statusCode == 200) {
+            final data = json.decode(response.body);
+            if (data is Map<String, dynamic>) {
+              final accessToken = data['access_token'] as String?;
+              final refreshToken = data['refresh_token'] as String?;
+              final idToken = data['id_token'] as String?;
+              if (accessToken != null &&
+                  accessToken.isNotEmpty &&
+                  refreshToken != null &&
+                  refreshToken.isNotEmpty) {
+                await Future.wait([
+                  TokenStorage.instance.write(
+                    key: PreconnectStorageKeys.accessToken,
+                    value: accessToken,
+                  ),
+                  TokenStorage.instance.write(
+                    key: PreconnectStorageKeys.refreshToken,
+                    value: refreshToken,
+                  ),
+                  if (idToken != null && idToken.isNotEmpty)
+                    TokenStorage.instance.write(
+                      key: PreconnectStorageKeys.idToken,
+                      value: idToken,
+                    ),
+                ]);
+              }
+            }
+          }
+        } catch (_) {}
+      }
+      final shortcut = Uri.base.queryParameters['shortcut'];
+      if (shortcut != null && shortcut.trim().isNotEmpty) {
+        await TokenStorage.instance.write(
+          key: PreconnectStorageKeys.pendingShortcutAction,
+          value: shortcut.trim(),
+        );
+      }
+    }
+
     final prefs = AppStorage.instance;
     final savedTheme = await prefs.getString(StorageKeys.themeMode) ?? 'system';
     final initialHomeTab = _decodeHomeTab(

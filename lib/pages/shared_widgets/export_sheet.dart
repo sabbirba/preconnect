@@ -244,41 +244,22 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              if (_expired)
-                Expanded(
-                  child: BracuActionButton(
-                    onPressed: _generatePayload,
-                    label: 'Generate New Code',
-                    outlined: false,
-                    backgroundColor: BracuPalette.primary,
-                    foregroundColor: Colors.white,
-                  ),
-                )
-              else ...[
-                Expanded(
-                  child: BracuActionButton(
-                    onPressed: _copyToClipboard,
-                    label: _copied ? 'Copied' : 'Copy Code',
-                    outlined: _copied,
-                    backgroundColor: _copied
-                        ? null
-                        : BracuPalette.primary.withValues(alpha: 0.12),
-                    foregroundColor: _copied ? null : BracuPalette.primary,
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 20),
+          if (_expired)
+            BracuActionButton(
+              onPressed: _generatePayload,
+              label: 'Generate New Code',
+              outlined: false,
+              backgroundColor: BracuPalette.primary,
+              foregroundColor: Colors.white,
+            ),
+          if (_expired) const SizedBox(height: 20),
           Center(
             child: Stack(
               alignment: Alignment.center,
               children: [
                 SizedBox(
-                  width: 220,
-                  height: 220,
+                  width: 280,
+                  height: 280,
                   child: Container(
                     decoration: const BoxDecoration(color: Colors.white),
                     padding: const EdgeInsets.all(12),
@@ -341,6 +322,19 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
                   ),
                 ],
               ),
+              if (!_expired) ...[
+                const SizedBox(height: 16),
+                BracuActionButton(
+                  onPressed: _copyToClipboard,
+                  label: _copied ? 'Copied' : 'Copy Code',
+                  icon: _copied ? Icons.check_circle_rounded : Icons.copy_rounded,
+                  outlined: false,
+                  backgroundColor: _copied
+                      ? BracuPalette.accent
+                      : BracuPalette.primary,
+                  foregroundColor: Colors.white,
+                ),
+              ],
               const SizedBox(height: 16),
               BracuActionBannerCard(
                 icon: Icons.language_rounded,

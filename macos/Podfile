@@ -41,5 +41,17 @@ post_install do |installer|
     target.build_configurations.each do |config|
       config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '10.15'
     end
+    
+    target.build_phases.each do |phase|
+      if phase.respond_to?(:files)
+        phase.files.each do |file|
+          if file.file_ref && file.file_ref.path && file.file_ref.path.end_with?('.xcprivacy')
+            if phase.isa == 'PBXSourcesBuildPhase'
+              phase.remove_build_file(file)
+            end
+          end
+        end
+      end
+    end
   end
 end

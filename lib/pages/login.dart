@@ -57,7 +57,9 @@ class LoginPage extends StatefulWidget {
       if (_shouldUseMobileUserAgent) {
         controller.setUserAgent(kPreconnectUserAgent);
       }
-      controller.loadRequest(Uri.parse(ApiConfig.authUrlWithPkce(codeChallenge)));
+      controller.loadRequest(
+        Uri.parse(ApiConfig.authUrlWithPkce(codeChallenge)),
+      );
       await _configureCookies(controller);
       _preloadedWebViewController = controller;
     } catch (_) {
@@ -427,7 +429,11 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _launchWebLogin() async {
     final uri = Uri.parse(ApiConfig.authUrl);
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+      webOnlyWindowName: '_self',
+    );
   }
 
   Future<void> _handleImportSession() async {

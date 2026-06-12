@@ -11,16 +11,24 @@ class ApiConfig {
 
   static const String ssoBase =
       'https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect';
+  static String get _webProxyBase {
+    final origin = getWebAppOrigin();
+    if (origin.contains('localhost') || origin.contains('127.0.0.1')) {
+      return 'https://web.preconnect.app';
+    }
+    return origin;
+  }
+
   static String get tokenEndpoint {
     if (_kIsWeb && !isChromeRuntimeAvailable()) {
-      return '/sso/token';
+      return '$_webProxyBase/sso/token';
     }
     return '$ssoBase/token';
   }
 
   static String get logoutEndpoint {
     if (_kIsWeb && !isChromeRuntimeAvailable()) {
-      return '/sso/logout';
+      return '$_webProxyBase/sso/logout';
     }
     return '$ssoBase/logout';
   }
@@ -46,21 +54,21 @@ class ApiConfig {
 
   static String get connectApiBase {
     if (_kIsWeb && !isChromeRuntimeAvailable()) {
-      return '/api';
+      return '$_webProxyBase/api';
     }
     return 'https://connect.bracu.ac.bd/api';
   }
 
   static String get connectWebApiBase {
     if (_kIsWeb && !isChromeRuntimeAvailable()) {
-      return '/api';
+      return '$_webProxyBase/api';
     }
     return 'https://connect.bracu.ac.bd/api';
   }
 
   static String get connectCdnBase {
     if (_kIsWeb && !isChromeRuntimeAvailable()) {
-      return '/cdn';
+      return '$_webProxyBase/cdn';
     }
     return 'https://connect.bracu.ac.bd/cdn';
   }

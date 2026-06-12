@@ -1,0 +1,68 @@
+{
+  "name": "PreConnect",
+  "short_name": "PreConnect",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#1e6be3",
+  "description": "Fast, Calm Academic Companion App. An initiative run by BRAC University students.",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false,
+  "categories": ["education", "utilities"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Profile",
+      "short_name": "Profile",
+      "description": "View student profile overview",
+      "url": "/?shortcut=quick.profile",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Class Schedule",
+      "short_name": "Classes",
+      "description": "View class schedule",
+      "url": "/?shortcut=quick.classes",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Exam Schedule",
+      "short_name": "Exams",
+      "description": "View exam schedule",
+      "url": "/?shortcut=quick.exams",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Friends' Schedule",
+      "short_name": "Friends",
+      "description": "View friends' schedules",
+      "url": "/?shortcut=quick.friends",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

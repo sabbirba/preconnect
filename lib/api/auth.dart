@@ -19,6 +19,7 @@ import 'package:preconnect/tools/token_refresh.dart';
 import 'package:preconnect/tools/web_shared.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/api/fcm.dart';
 
 class AuthService {
   static final GlobalKey<NavigatorState> navigatorKey =
@@ -58,6 +59,12 @@ class AuthService {
     _isLoggingOut = true;
 
     try {
+      try {
+        await FCMService.instance.unregisterDevice();
+      } catch (e) {
+        debugPrint("FCM unregister error on logout: $e");
+      }
+
       if (!force && !instant && _bootstrapStartTime != null) {
         final timeSinceBootstrap = DateTime.now().difference(
           _bootstrapStartTime!,

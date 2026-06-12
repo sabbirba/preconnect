@@ -62,5 +62,17 @@ post_install do |installer|
       ]
     end
     flutter_additional_ios_build_settings(target)
+    
+    target.build_phases.each do |phase|
+      if phase.respond_to?(:files)
+        phase.files.each do |file|
+          if file.file_ref && file.file_ref.path && file.file_ref.path.end_with?('.xcprivacy')
+            if phase.isa == 'PBXSourcesBuildPhase'
+              phase.remove_build_file(file)
+            end
+          end
+        end
+      end
+    end
   end
 end

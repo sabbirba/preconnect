@@ -331,7 +331,7 @@ class FacultyReviewService {
   static const String _feedCachePrefix = 'faculty_reviews_feed_v1';
   static const String _summaryCachePrefix = 'faculty_reviews_summary_v1';
 
-  String get _base => ApiConfig.seatStatusProxyBase;
+  String get _base => '${ApiConfig.websiteBase}/api';
 
   Future<FacultyReviewFeed> getFacultyReviews(
     String facultyInitial, {

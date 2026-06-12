@@ -399,6 +399,13 @@ class ApiClient {
       ...ApiConfig.apiHeaders,
     };
 
+    final idToken = await TokenStorage.instance.read(
+      key: PreconnectStorageKeys.idToken,
+    );
+    if (idToken != null && idToken.isNotEmpty) {
+      headers['X-ID-Token'] = idToken;
+    }
+
     final uri = Uri.tryParse(url);
     headers.addAll(compressionHeadersForUri(uri));
     if (uri != null && uri.host == 'connect.bracu.ac.bd') {

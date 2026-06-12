@@ -415,7 +415,7 @@ class _SettingsPageState extends State<SettingsPage>
             BracuActionBannerCard(
               icon: Icons.qr_code_rounded,
               title: 'Sync Session with Web',
-              subtitle: 'Scan QR or copy code to log in on Web',
+              subtitle: 'Access your session on the web',
               showTrailingIcon: true,
               onTap: _exportSessionForWeb,
             ),

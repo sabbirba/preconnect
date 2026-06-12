@@ -182,15 +182,12 @@ class FCMService {
     }
   }
 
-  Future<bool> _syncEmailSubscription(String topic, bool isSubscribe) async {
+  Future<bool> syncSeatEmailAlert(
+    String courseCode,
+    String sectionName, {
+    required bool subscribe,
+  }) async {
     try {
-      if (!topic.startsWith('seat-')) return true;
-
-      final parts = topic.split('-');
-      if (parts.length != 3) return true;
-      final courseCode = parts[1];
-      final sectionName = parts[2];
-
       final profile = await ProfileService().getProfile();
       final email =
           profile?['institutionalEmail'] ??
@@ -198,7 +195,7 @@ class FCMService {
           profile?['studentEmail'];
       if (email == null || email.isEmpty) return true;
 
-      final url = isSubscribe
+      final url = subscribe
           ? '${ApiConfig.websiteBase}/api/_client/seat-watch/register'
           : '${ApiConfig.websiteBase}/api/_client/seat-watch/unregister';
 
@@ -216,77 +213,168 @@ class FCMService {
 
       if (response.statusCode != 200) {
         debugPrint(
-          'Email sync failed: ${response.statusCode} ${response.body}',
+          'Seat email sync failed: ${response.statusCode} ${response.body}',
         );
         return false;
       }
       return true;
     } catch (e) {
-      debugPrint('Email sync error: $e');
+      debugPrint('Seat email sync error: $e');
+      return false;
+    }
+  }  Future<bool> syncWatchlistSnapshot(
+    String courseCode,
+    String sectionName, {
+    required bool subscribe,
+  }) async {
+    try {
+      final idToken = await TokenStorage.instance.read(
+        key: PreconnectStorageKeys.idToken,
+      );
+      if (idToken == null || idToken.isEmpty) return false;
+
+      final loadUrl = '${ApiConfig.websiteBase}/api/_client/load-snapshot';
+      final client = ApiClient();
+      final loadRes = await client.publicPost(
+        loadUrl,
+        body: jsonEncode(<String, dynamic>{
+          'idToken': idToken,
+          'key': 'seat.watchlist',
+        }),
+      );
+
+      List<dynamic> currentList = <dynamic>[];
+      if (loadRes.statusCode == 200) {
+        final map = jsonDecode(loadRes.body) as Map<String, dynamic>;
+        final found = map['found'] as bool? ?? false;
+        if (found && map['data'] is List) {
+          currentList = List<dynamic>.from(map['data'] as List);
+        }
+      }
+
+      String normCourse(String code) => code.trim().toUpperCase();
+      String normSection(String sec) {
+        final raw = sec.trim();
+        if (raw.isEmpty) return '';
+        final parsed = int.tryParse(raw);
+        if (parsed != null) return parsed.toString();
+        return raw.toUpperCase();
+      }
+
+      final targetCourse = normCourse(courseCode);
+      final targetSection = normSection(sectionName);
+
+      if (subscribe) {
+        bool exists = false;
+        for (final item in currentList) {
+          if (item is Map) {
+            final c = normCourse(item['courseCode']?.toString() ?? '');
+            final s = normSection(item['sectionName']?.toString() ?? '');
+            if (c == targetCourse && s == targetSection) {
+              exists = true;
+              break;
+            }
+          }
+        }
+        if (!exists) {
+          currentList.add(<String, dynamic>{
+            'courseCode': targetCourse,
+            'sectionName': targetSection,
+            'addedAt': DateTime.now().millisecondsSinceEpoch,
+          });
+        }
+      } else {
+        currentList.removeWhere((dynamic item) {
+          if (item is! Map) return false;
+          final c = normCourse(item['courseCode']?.toString() ?? '');
+          final s = normSection(item['sectionName']?.toString() ?? '');
+          return c == targetCourse && s == targetSection;
+        });
+      }
+
+      final saveUrl = '${ApiConfig.websiteBase}/api/_client/save-snapshot';
+      final saveRes = await client.publicPost(
+        saveUrl,
+        body: jsonEncode(<String, dynamic>{
+          'idToken': idToken,
+          'key': 'seat.watchlist',
+          'data': currentList,
+        }),
+      );
+
+      return saveRes.statusCode == 200;
+    } catch (e) {
+      debugPrint('Watchlist snapshot sync error: $e');
       return false;
     }
   }
 
-  Future<bool> subscribeToTopic(String topic, {bool syncEmail = true}) async {
+
+  Future<bool> subscribeToTopic(String topic) async {
     if (!isSupported) return false;
-    bool emailOk = true;
-    if (syncEmail) {
-      emailOk = await _syncEmailSubscription(topic, true);
-    }
 
     if (kIsWeb) {
       final token = await _getToken();
       if (token == null) return false;
       await _subscribeToTopicWeb(token, topic);
-      return emailOk;
+      return true;
     }
     if ((defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.macOS) &&
         !_apnsAvailable) {
-      debugPrint(
-        "FCM warning: Skipping subscribeToTopic($topic) because APNS is unavailable.",
-      );
-      return emailOk;
+      return true;
     }
     try {
       await FirebaseMessaging.instance.subscribeToTopic(topic);
-      return emailOk;
+      return true;
     } catch (e) {
       debugPrint("FCM error subscribing to topic $topic: $e");
-      return emailOk;
+      return false;
     }
   }
 
-  Future<bool> unsubscribeFromTopic(
-    String topic, {
-    bool syncEmail = true,
-  }) async {
+  Future<bool> unsubscribeFromTopic(String topic) async {
     if (!isSupported) return false;
-    bool emailOk = true;
-    if (syncEmail) {
-      emailOk = await _syncEmailSubscription(topic, false);
-    }
 
     if (kIsWeb) {
       final token = await _getToken();
       if (token == null) return false;
       await _unsubscribeFromTopicWeb(token, topic);
-      return emailOk;
+      return true;
     }
     if ((defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.macOS) &&
         !_apnsAvailable) {
-      debugPrint(
-        "FCM warning: Skipping unsubscribeFromTopic($topic) because APNS is unavailable.",
-      );
-      return emailOk;
+      return true;
     }
     try {
       await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
-      return emailOk;
+      return true;
     } catch (e) {
       debugPrint("FCM error unsubscribing from topic $topic: $e");
-      return emailOk;
+      return false;
+    }
+  }
+
+  Future<void> unregisterDevice() async {
+    if (!isSupported) return;
+    try {
+      final token = await _getToken();
+      if (token == null) return;
+      final client = ApiClient();
+      if (!await client.hasAccessToken()) return;
+      final url =
+          '${ApiConfig.realtimeApiBase}${PreconnectPushConfig.unregisterDevicePath}';
+      await client.authenticatedRequest(
+        'POST',
+        url,
+        body: jsonEncode(<String, dynamic>{'token': token}),
+        additionalHeaders: const <String, String>{
+          'Content-Type': 'application/json',
+        },
+      );
+    } catch (e) {
+      debugPrint("FCM device unregister failed: $e");
     }
   }
 
@@ -415,17 +503,14 @@ class FCMService {
   Future<void> _subscribeToDefaultTopics() async {
     try {
       for (final topic in PreconnectPushConfig.defaultTopics) {
-        await subscribeToTopic(topic, syncEmail: false);
+        await subscribeToTopic(topic);
       }
 
       Set<String> pinnedSeats = await CoursePinStore.load(
         PreconnectPushConfig.seatStatusPinScope,
       );
       for (String seat in pinnedSeats) {
-        await subscribeToTopic(
-          PreconnectPushConfig.seatTopic(seat),
-          syncEmail: false,
-        );
+        await subscribeToTopic(PreconnectPushConfig.seatTopic(seat));
       }
     } catch (e) {
       debugPrint("Failed to subscribe to topics: $e");

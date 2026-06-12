@@ -285,7 +285,7 @@ class CourseMaterialService {
   static final Map<String, List<CourseMaterialItem>> _cachedLists =
       <String, List<CourseMaterialItem>>{};
 
-  String get _realtimeBase => ApiConfig.realtimeApiBase;
+  String get _realtimeBase => '${ApiConfig.websiteBase}/api';
   Future<List<CourseMaterialItem>> list({
     required String courseCode,
     String semester = '',

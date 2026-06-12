@@ -688,9 +688,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       for (final secId in backendSectionIds) {
         if (!_pinnedSections.contains(secId)) {
           final topic = PreconnectPushConfig.seatTopic(secId);
-          unawaited(
-            FCMService.instance.subscribeToTopic(topic, syncEmail: false),
-          );
+          unawaited(FCMService.instance.subscribeToTopic(topic));
           _pinnedSections.add(secId);
           changed = true;
         }
@@ -700,9 +698,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       for (final secId in localCopy) {
         if (!backendSectionIds.contains(secId)) {
           final topic = PreconnectPushConfig.seatTopic(secId);
-          unawaited(
-            FCMService.instance.unsubscribeFromTopic(topic, syncEmail: false),
-          );
+          unawaited(FCMService.instance.unsubscribeFromTopic(topic));
           _pinnedSections.remove(secId);
           changed = true;
         }

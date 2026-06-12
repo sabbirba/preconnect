@@ -255,6 +255,23 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       return;
     }
 
+    if (card != null) {
+      unawaited(
+        FCMService.instance.syncSeatEmailAlert(
+          card.courseCode,
+          card.sectionName,
+          subscribe: willPin,
+        ),
+      );
+      unawaited(
+        FCMService.instance.syncWatchlistSnapshot(
+          card.courseCode,
+          card.sectionName,
+          subscribe: willPin,
+        ),
+      );
+    }
+
     if (willPin && fcmSupported && card != null) {
       unawaited(
         FCMService.instance.sendConfirmationNotification(
@@ -284,6 +301,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     }
     showAppSnackBar(context, message);
   }
+
 
   Future<void> _reloadAll() async {
     final hasCachedCards = _cards.isNotEmpty;
