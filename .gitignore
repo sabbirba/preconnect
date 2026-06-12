@@ -118,8 +118,7 @@ chruby-0.3.9
 **/Package.resolved
 **/.build/
 
-# Rust
-native/preconnect_native/target/
+
 
 # Crashlytics
 crashlytics-build.properties

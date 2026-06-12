@@ -140,4 +140,10 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
 
+configurations.all {
+    resolutionStrategy {
+        force("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0")
+    }
+}
+
 

@@ -128,54 +128,26 @@ Want to build, test, or contribute locally? Follow the full setup guide in [CONT
 
 ### Developer Quickstart (Recommended)
 
-These commands are the shortest path to a working developer environment. They are
-idempotent and safe to run multiple times.
-
 1. Clone and install packages:
 
 ```bash
 git clone https://github.com/sabbirba/preconnect.git
 cd preconnect
+flutter pub get
 ```
 
-2. Bootstrap the machine (installs SDK tools, NDK, CMake, Rust targets):
+2. Run the app:
 
 ```bash
-make setup
+flutter run --dart-define-from-file=.env
 ```
 
-Windows users (PowerShell):
-
-```powershell
-.\tool\dev_setup.ps1
-.\dev.ps1 flutter run --dart-define-from-file=.env
-```
-
-3. Run the app (the `dev` wrapper loads Android SDK/NDK env vars automatically):
+3. Common checks:
 
 ```bash
-make run
+flutter analyze
+flutter test
 ```
-
-4. Common checks:
-
-```bash
-make analyze
-make test
-```
-
-If you prefer to skip the Makefile, you can run the dev wrapper directly:
-
-```bash
-./dev flutter run --dart-define-from-file=.env
-```
-
-Notes:
-- `make setup` downloads Android command-line tools when necessary and writes a
-  local `android/local.properties` and a helper `.env.local.sh`. Do not commit
-  `android/local.properties` to git; it is local configuration.
-- The script will accept SDK licenses automatically and may take several
-  minutes depending on network speed.
 
 ## Community
 

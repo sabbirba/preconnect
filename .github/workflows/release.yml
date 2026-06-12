@@ -296,7 +296,7 @@ jobs:
           path: |
             build
             .dart_tool
-          key: ${{ runner.os }}-${{ matrix.platform }}-flutter-build-${{ hashFiles('pubspec.yaml', 'pubspec.lock', 'android/build.gradle.kts', 'android/app/build.gradle.kts', 'android/settings.gradle.kts', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties', 'tool/**', 'web/**', 'lib/**', 'ios/**', 'macos/**', 'native/**') }}
+          key: ${{ runner.os }}-${{ matrix.platform }}-flutter-build-${{ hashFiles('pubspec.yaml', 'pubspec.lock', 'android/build.gradle.kts', 'android/app/build.gradle.kts', 'android/settings.gradle.kts', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties', 'tool/**', 'web/**', 'lib/**', 'ios/**', 'macos/**') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.platform }}-flutter-build-
 
