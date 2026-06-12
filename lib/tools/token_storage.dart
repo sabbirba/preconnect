@@ -51,7 +51,6 @@ class TokenStorage {
         final val = await _secureStorage.read(key: key);
         if (val != null) return val;
       } catch (_) {}
-      // Fallback if secure storage is unavailable or fails (e.g. macOS sandbox Keychain error)
       return await AppStorage.instance.getString(key);
     }
 
@@ -90,10 +89,8 @@ class TokenStorage {
         } else {
           await _secureStorage.write(key: key, value: value);
         }
-        // Clean up old insecure preferences if we successfully wrote to secure storage
         await AppStorage.instance.remove(key);
       } catch (_) {
-        // Fallback: If secure storage fails (macOS Keychain issue), write to standard AppStorage
         if (value == null || value.isEmpty) {
           await AppStorage.instance.remove(key);
         } else {
