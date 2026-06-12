@@ -140,30 +140,4 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
 
-val buildRustNative = tasks.register<Exec>("buildRustNative") {
-    val repoRoot = rootProject.projectDir.parentFile
-    val localProps = Properties()
-    val localPropsFile = rootProject.file("local.properties")
-    if (localPropsFile.exists()) {
-        FileInputStream(localPropsFile).use { localProps.load(it) }
-    }
-    val sdkDir: String = (localProps["sdk.dir"] as? String)
-        ?: System.getenv("ANDROID_HOME")
-        ?: System.getenv("ANDROID_SDK_ROOT")
-        ?: ""
-    val ndkDir: String = System.getenv("ANDROID_NDK_HOME")
-        ?: System.getenv("ANDROID_NDK_ROOT")
-        ?: if (sdkDir.isNotEmpty()) {
-            "$sdkDir/ndk/$projectNdkVersion"
-        } else {
-            ""
-        }
-    workingDir = repoRoot
-    if (ndkDir.isNotEmpty()) environment("ANDROID_NDK_HOME", ndkDir)
-    if (sdkDir.isNotEmpty()) environment("ANDROID_HOME", sdkDir)
-    commandLine("bash", repoRoot.resolve("tool/build_rust_native.sh").absolutePath, "android")
-}
 
-tasks.named("preBuild").configure {
-    dependsOn(buildRustNative)
-}
