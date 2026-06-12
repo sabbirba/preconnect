@@ -6,12 +6,12 @@ import 'package:preconnect/app.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/pages/shared_widgets/export_session_bottom_sheet.dart';
-import 'package:preconnect/tools/quiet_mode_controller.dart';
+import 'package:preconnect/pages/shared_widgets/export_sheet.dart';
+import 'package:preconnect/tools/quiet_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
-import 'package:preconnect/tools/chrome_runtime_available_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/chrome_runtime_available_web.dart';
+import 'package:preconnect/tools/runtime_stub.dart'
+    if (dart.library.html) 'package:preconnect/tools/runtime_web.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});

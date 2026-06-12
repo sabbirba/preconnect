@@ -8,7 +8,7 @@ import 'package:preconnect/api/course_material.dart';
 import 'package:preconnect/api/faculty_review.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/model/section_info.dart' as section;
-import 'package:preconnect/pages/shared_widgets/schedule_entry_card.dart';
+import 'package:preconnect/pages/shared_widgets/entry_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
 class CourseCommunitySheet extends StatefulWidget {

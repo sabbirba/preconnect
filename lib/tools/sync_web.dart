@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'package:preconnect/tools/api_client_bridge.dart';
+import 'package:preconnect/tools/client_bridge.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_refresh.dart';
-import 'package:preconnect/tools/web_extension_token_storage.dart';
+import 'package:preconnect/tools/web_tokens.dart';
 
 const Duration _refreshLeadTime = Duration(minutes: 5);
 

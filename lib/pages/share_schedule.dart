@@ -10,7 +10,7 @@ import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:archive/archive.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
+import 'package:preconnect/pages/shared_widgets/session_helper.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/storage_keys.dart';

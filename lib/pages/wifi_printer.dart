@@ -11,7 +11,7 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/android_network_assist.dart';
+import 'package:preconnect/tools/network_assist.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/storage_keys.dart';

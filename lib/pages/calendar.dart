@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/calendar.dart';
 import 'package:preconnect/model/calendar_info.dart';
-import 'package:preconnect/pages/shared_widgets/highlight_scroll_helper.dart';
+import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 

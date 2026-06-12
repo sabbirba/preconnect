@@ -8,15 +8,15 @@ import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/free_labs.dart';
 import 'package:preconnect/pages/friend_schedule.dart';
 import 'package:preconnect/pages/seat_status.dart';
-import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
+import 'package:preconnect/pages/shared_widgets/map_shared.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
-import 'package:preconnect/tools/chrome_runtime_available_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/chrome_runtime_available_web.dart';
+import 'package:preconnect/tools/runtime_stub.dart'
+    if (dart.library.html) 'package:preconnect/tools/runtime_web.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
-import 'package:preconnect/pages/shared_widgets/import_session_dialog.dart';
+import 'package:preconnect/pages/shared_widgets/import_dialog.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key, this.isLoggedIn = false});

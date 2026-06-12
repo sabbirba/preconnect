@@ -1,11 +1,9 @@
-import 'dart:convert';
 import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/api/exam_map.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/model/section_info.dart' as section;
-import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
-import 'package:preconnect/tools/native_bridge/native_bridge.dart';
+import 'package:preconnect/pages/shared_widgets/session_helper.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
@@ -64,79 +62,6 @@ class QuietModeSchedulePlanner {
       final scheduleJson = await scheduleService.getStudentScheduleForSemester(
         semesterSessionId: semesterSessionId,
       );
-
-      if (NativeBridge.isSupported && scheduleJson != null) {
-        final sections = scheduleService.parseStudentSections(
-          scheduleJson,
-          semesterSessionId: semesterSessionId,
-        );
-        final examService = ExamScheduleService();
-        final overrides = await examService.getOverridesForSections(
-          sections,
-          forcedSemesterSessionId: semesterSessionId,
-        );
-        final isRamadan = await RamadanTiming.isRamadan();
-
-        final extraWindows = <QuietModeScheduleWindow>[];
-        if (sections.isNotEmpty) {
-          extraWindows.addAll(
-            _buildExamWindows(sections, overrides: overrides, now: now),
-          );
-        }
-        try {
-          final customItems = await CustomSchedulesService().getCachedItems();
-          if (customItems != null && customItems.isNotEmpty) {
-            extraWindows.addAll(_buildCustomWindows(customItems, now: now));
-          }
-        } catch (_) {}
-
-        final extraWindowsJson = jsonEncode(
-          extraWindows.map((w) => w.toJson()).toList(),
-        );
-
-        final nowMs = now.millisecondsSinceEpoch;
-        final tzOffsetMs = now.timeZoneOffset.inMilliseconds;
-
-        final mergedJson = NativeBridge.expandAndMergeSchedules(
-          sectionsJson: scheduleJson,
-          extraWindowsJson: extraWindowsJson,
-          semesterSessionId: semesterSessionId,
-          isRamadan: isRamadan,
-          nowMs: nowMs,
-          timezoneOffsetMs: tzOffsetMs,
-        );
-
-        if (mergedJson != null) {
-          final decoded = jsonDecode(mergedJson);
-          if (decoded is List) {
-            final windows = decoded.map((item) {
-              return QuietModeScheduleWindow(
-                startAt: DateTime.fromMillisecondsSinceEpoch(
-                  item['startAt'] as int,
-                ),
-                endAt: DateTime.fromMillisecondsSinceEpoch(
-                  item['endAt'] as int,
-                ),
-                source: item['source'] as String,
-                label: item['label'] as String,
-              );
-            }).toList();
-
-            final activeNow = windows.any(
-              (window) =>
-                  !now.isBefore(window.startAt) && now.isBefore(window.endAt),
-            );
-            final futureWindows = windows.where(
-              (window) => window.endAt.isAfter(now),
-            );
-
-            return QuietModeSchedulePlan(
-              windows: futureWindows.toList(growable: false),
-              activeNow: activeNow,
-            );
-          }
-        }
-      }
 
       final sections = scheduleService.parseStudentSections(
         scheduleJson,

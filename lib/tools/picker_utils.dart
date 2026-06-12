@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:preconnect/tools/system_image_picker_shared.dart';
+import 'package:preconnect/tools/picker_shared.dart';
 
 Future<String> ensureReadableSystemImagePath(SystemPickedImage file) async {
   final path = file.path?.trim() ?? '';

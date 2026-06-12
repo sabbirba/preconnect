@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/app_preferences_store.dart';
+import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/pages/home_tab.dart';
-import 'package:preconnect/pages/shared_widgets/highlight_scroll_helper.dart';
+import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/time_utils.dart';
 

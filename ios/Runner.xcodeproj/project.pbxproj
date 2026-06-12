@@ -647,11 +647,9 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/../native/preconnect_native/target/apple/$(PLATFORM_NAME)/release",
 				);
 				OTHER_LDFLAGS = (
 					"$(inherited)",
-					"-lpreconnect_native",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.sabbirba.preconnect;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -899,11 +897,9 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/../native/preconnect_native/target/apple/$(PLATFORM_NAME)/release",
 				);
 				OTHER_LDFLAGS = (
 					"$(inherited)",
-					"-lpreconnect_native",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.sabbirba.preconnect;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -934,11 +930,9 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/../native/preconnect_native/target/apple/$(PLATFORM_NAME)/release",
 				);
 				OTHER_LDFLAGS = (
 					"$(inherited)",
-					"-lpreconnect_native",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.sabbirba.preconnect;
 				PRODUCT_NAME = "$(TARGET_NAME)";

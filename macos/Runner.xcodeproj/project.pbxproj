@@ -629,11 +629,9 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/../native/preconnect_native/target/apple/$(PLATFORM_NAME)/release",
 				);
 				OTHER_LDFLAGS = (
 					"$(inherited)",
-					"-lpreconnect_native",
 				);
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_VERSION = 5.0;
@@ -769,11 +767,9 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/../native/preconnect_native/target/apple/$(PLATFORM_NAME)/release",
 				);
 				OTHER_LDFLAGS = (
 					"$(inherited)",
-					"-lpreconnect_native",
 				);
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -797,11 +793,9 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/../native/preconnect_native/target/apple/$(PLATFORM_NAME)/release",
 				);
 				OTHER_LDFLAGS = (
 					"$(inherited)",
-					"-lpreconnect_native",
 				);
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_VERSION = 5.0;

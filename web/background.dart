@@ -16,9 +16,9 @@ import 'package:chrome_extension/gcm.dart';
 import 'package:web/web.dart' show Headers, RequestInit, Response;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/bracu_logout.dart';
-import 'package:preconnect/tools/web_extension_api_config.dart';
+import 'package:preconnect/tools/extension_config.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
-import 'package:preconnect/tools/web_extension_session_sync.dart';
+import 'package:preconnect/tools/session_sync.dart';
 import 'package:preconnect/tools/pkce.dart';
 
 const String _pendingLoginKey = 'preconnect.pendingLogin';

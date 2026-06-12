@@ -20,7 +20,7 @@ import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/web_shared.dart';
-import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
+import 'package:preconnect/pages/shared_widgets/session_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:open_filex/open_filex.dart';
 import 'dart:io';
@@ -31,12 +31,12 @@ import 'package:flutter/rendering.dart';
 
 export 'package:preconnect/tools/web_shared.dart';
 
-part 'shared_widgets/ui_kit_core.dart';
-part 'shared_widgets/ui_kit_dialogs.dart';
-part 'shared_widgets/ui_kit_selects.dart';
-part 'shared_widgets/ui_kit_refresh.dart';
-part 'shared_widgets/ui_kit_chrome.dart';
-part 'shared_widgets/ui_kit_launchers.dart';
+part 'shared_widgets/ui_core.dart';
+part 'shared_widgets/ui_dialogs.dart';
+part 'shared_widgets/ui_selects.dart';
+part 'shared_widgets/ui_refresh.dart';
+part 'shared_widgets/ui_chrome.dart';
+part 'shared_widgets/ui_launchers.dart';
 
 String formatDate(String? input) {
   if (input == null || input.trim().isEmpty) return '';

@@ -108,7 +108,7 @@ jobs:
           path: |
             build
             .dart_tool
-          key: ${{ runner.os }}-store-promotion-build-${{ hashFiles('pubspec.yaml', 'pubspec.lock', 'tool/build_chrome_extension.sh', 'tool/sync_versions.sh', 'web/**', 'lib/**') }}
+          key: ${{ runner.os }}-store-promotion-build-${{ hashFiles('pubspec.yaml', 'pubspec.lock', 'tool/build_extension.sh', 'tool/sync_versions.sh', 'web/**', 'lib/**') }}
           restore-keys: |
             ${{ runner.os }}-store-promotion-build-
 
@@ -139,7 +139,7 @@ jobs:
       - name: Chrome Extension
         if: matrix.run_chrome
         shell: bash
-        run: ./tool/build_chrome_extension.sh
+        run: ./tool/build_extension.sh
 
       - name: Chrome Artifact
         if: matrix.run_chrome

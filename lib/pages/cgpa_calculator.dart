@@ -4,7 +4,7 @@ import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/string_utils.dart';
 
-part 'shared_widgets/cgpa_calculator_models.dart';
+part 'shared_widgets/cgpa_models.dart';
 
 class CgpaCalculatorPage extends StatefulWidget {
   const CgpaCalculatorPage({

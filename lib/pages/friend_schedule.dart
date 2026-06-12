@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/auth.dart';
-import 'package:preconnect/api/friend_schedule_store.dart';
+import 'package:preconnect/api/friend_store.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:archive/archive.dart';
 import 'package:preconnect/pages/home_tab.dart';
@@ -13,10 +13,10 @@ import 'package:preconnect/pages/scan_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan.dart';
-import 'package:preconnect/tools/system_image_picker_utils.dart';
-import 'package:preconnect/tools/system_image_picker_shared.dart';
+import 'package:preconnect/tools/picker_utils.dart';
+import 'package:preconnect/tools/picker_shared.dart';
 import 'package:mobile_scanner/mobile_scanner.dart'
-    if (dart.library.html) 'package:preconnect/tools/mobile_scanner_stub.dart';
+    if (dart.library.html) 'package:preconnect/tools/scanner_stub.dart';
 
 class FriendSchedulePage extends StatefulWidget {
   const FriendSchedulePage({super.key, required this.onNavigate});

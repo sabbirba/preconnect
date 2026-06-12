@@ -1,6 +1,6 @@
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_client.dart';
-import 'package:preconnect/api/app_preferences_store.dart';
+import 'package:preconnect/api/preferences_store.dart';
 
 class RepositoryCache {
   RepositoryCache._();

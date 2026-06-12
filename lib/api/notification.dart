@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/repository_cache.dart';
-import 'package:preconnect/tools/image_url_utils.dart';
+import 'package:preconnect/tools/url_utils.dart';
 
 class RecentConnectNotification {
   const RecentConnectNotification({

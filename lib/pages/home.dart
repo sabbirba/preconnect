@@ -25,7 +25,7 @@ import 'package:preconnect/pages/calendar.dart';
 import 'package:preconnect/pages/bus.dart';
 import 'package:preconnect/pages/seat_status.dart';
 import 'package:preconnect/pages/custom_schedules.dart';
-import 'package:preconnect/pages/custom_schedules_sections/custom_schedules_shared.dart';
+import 'package:preconnect/pages/custom_schedules_sections/schedules_shared.dart';
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/settings.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
@@ -33,30 +33,30 @@ import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/home_sections/exam_countdown.dart';
 import 'package:preconnect/pages/home_sections/student_overview.dart';
-import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
-import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
-import 'package:preconnect/pages/shared_widgets/course_section_exam_filter.dart';
+import 'package:preconnect/pages/shared_widgets/session_helper.dart';
+import 'package:preconnect/pages/shared_widgets/map_shared.dart';
+import 'package:preconnect/pages/shared_widgets/exam_filter.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/android_network_assist.dart';
+import 'package:preconnect/tools/network_assist.dart';
 import 'package:preconnect/tools/cached_image.dart';
-import 'package:preconnect/tools/quiet_mode_controller.dart';
+import 'package:preconnect/tools/quiet_controller.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/token_storage.dart';
-import 'package:preconnect/tools/captive_wifi_http.dart';
+import 'package:preconnect/tools/wifi_http.dart';
 import 'package:preconnect/tools/exam_sorting.dart';
 import 'package:preconnect/tools/exam_visibility.dart';
 import 'package:preconnect/tools/holiday.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
-import 'package:preconnect/tools/json_snapshot_store.dart';
+import 'package:preconnect/tools/snapshot_store.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
-part 'home_sections/home_dashboard_data.dart';
-part 'home_sections/home_dashboard_view.dart';
+part 'home_sections/dashboard_data.dart';
+part 'home_sections/dashboard_view.dart';
 
 enum CaptiveWifiState { offline, validated, captive, unknown }
 

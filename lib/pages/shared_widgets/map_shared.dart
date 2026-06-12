@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/image_url_utils.dart';
+import 'package:preconnect/tools/url_utils.dart';
 
 String normalizeCampusPhoneValue(String raw) {
   var value = raw.trim();

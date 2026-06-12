@@ -6,13 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
+import 'package:preconnect/pages/shared_widgets/map_shared.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-part 'package:preconnect/pages/bus/widgets/bus_route_detail.dart';
+part 'package:preconnect/pages/bus/widgets/route_detail.dart';
 part 'package:preconnect/pages/bus/widgets/bus_models.dart';
 part 'package:preconnect/pages/bus/widgets/bus_sections.dart';
 part 'package:preconnect/pages/bus/widgets/bus_widgets.dart';

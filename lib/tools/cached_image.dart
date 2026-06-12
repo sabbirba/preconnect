@@ -10,8 +10,8 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
-import 'package:preconnect/tools/image_url_utils.dart';
-import 'package:preconnect/tools/web_safe_network_image_shared.dart';
+import 'package:preconnect/tools/url_utils.dart';
+import 'package:preconnect/tools/image_shared.dart';
 
 class CachedImage extends StatefulWidget {
   const CachedImage({

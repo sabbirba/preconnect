@@ -7,7 +7,7 @@ import 'package:in_app_update/in_app_update.dart';
 import 'package:preconnect/api/analytics.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/api/app_preferences_store.dart';
+import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/api/profile.dart';
@@ -22,14 +22,14 @@ import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
-import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
+import 'package:preconnect/pages/shared_widgets/session_helper.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
-import 'package:preconnect/tools/quiet_mode_controller.dart';
+import 'package:preconnect/tools/quiet_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/storage_keys.dart';
-import 'package:preconnect/tools/web_extension_shortcut_bridge_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/web_extension_shortcut_bridge_web.dart';
+import 'package:preconnect/tools/shortcut_stub.dart'
+    if (dart.library.html) 'package:preconnect/tools/shortcut_web.dart';
 
 class AppBootstrapState {
   const AppBootstrapState({

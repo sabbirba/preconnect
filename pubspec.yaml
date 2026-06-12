@@ -34,7 +34,7 @@ dependencies:
   chrome_extension: ^0.4.0
   web: ^1.1.1
   http: ^1.6.0
-  ffi: ^2.1.2
+  flutter_secure_storage: ^10.3.1
   firebase_core: ^4.10.0
   firebase_messaging: ^16.3.0
   firebase_analytics: ^12.4.2

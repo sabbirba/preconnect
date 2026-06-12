@@ -7,7 +7,7 @@ import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/calendar_info.dart';
-import 'package:preconnect/pages/shared_widgets/current_session_helper.dart';
+import 'package:preconnect/pages/shared_widgets/session_helper.dart';
 
 class CalendarService {
   CalendarService._internal();

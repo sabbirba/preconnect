@@ -7,7 +7,7 @@ import 'package:preconnect/api/progress.dart';
 import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/pages/bus.dart';
 import 'package:preconnect/pages/free_labs.dart';
-import 'package:preconnect/pages/shared_widgets/campus_map_shared.dart';
+import 'package:preconnect/pages/shared_widgets/map_shared.dart';
 import 'package:preconnect/tools/holiday.dart';
 import 'package:preconnect/tools/ramadan.dart';
 

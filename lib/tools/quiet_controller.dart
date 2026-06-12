@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/services.dart' show MethodChannel;
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/quiet_mode_schedule_planner.dart';
+import 'package:preconnect/tools/schedule_planner.dart';
 
 class QuietModeResult {
   const QuietModeResult({

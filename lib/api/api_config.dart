@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'package:preconnect/tools/chrome_runtime_available_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/chrome_runtime_available_web.dart';
-import 'package:preconnect/tools/web_origin_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/web_origin_web.dart';
+import 'package:preconnect/tools/runtime_stub.dart'
+    if (dart.library.html) 'package:preconnect/tools/runtime_web.dart';
+import 'package:preconnect/tools/origin_stub.dart'
+    if (dart.library.html) 'package:preconnect/tools/origin_web.dart';
 
 const bool _kIsWeb = identical(0, 0.0);
 

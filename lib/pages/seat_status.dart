@@ -9,14 +9,14 @@ import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
-import 'package:preconnect/pages/shared_widgets/course_community_sheet.dart';
+import 'package:preconnect/pages/shared_widgets/community_sheet.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/api/fcm.dart';
-part 'shared_widgets/seat_status_methods.dart';
+part 'shared_widgets/seat_status.dart';
 
 String seatStatusFacultySummaryLabel(section.SectionFaculty? faculty) {
   final staffName = faculty?.staffName.trim() ?? '';

@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
 
-import 'system_image_picker_types.dart';
+import 'picker_types.dart';
 
 Future<SystemPickedImage?> pickSystemImage() async {
   final XFile? picked = await openFile(

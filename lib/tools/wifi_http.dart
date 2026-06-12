@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:preconnect/tools/http/http_utils.dart';
-import 'package:preconnect/tools/android_network_assist.dart';
+import 'package:preconnect/tools/network_assist.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
 class CaptiveWifiHttpResult {

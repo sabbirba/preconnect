@@ -178,7 +178,7 @@ The supported browser product is the Chrome extension. For quick UI checks on th
 Build the extension:
 
 ```bash
-./tool/build_chrome_extension.sh
+./tool/build_extension.sh
 ```
 
 The extension build outputs:
@@ -265,7 +265,7 @@ flutter build web --release --tree-shake-icons --no-wasm-dry-run --no-web-resour
 Chrome extension:
 
 ```bash
-./tool/build_chrome_extension.sh
+./tool/build_extension.sh
 ```
 
 Debug builds do not need signing setup. Real Android release signing uses `.env`, Gradle properties, or `android/key.properties`; keep signing files out of git.

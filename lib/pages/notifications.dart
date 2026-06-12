@@ -3,8 +3,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/notification.dart';
-import 'package:preconnect/pages/notifications_sections/notification_detail_panels.dart';
-import 'package:preconnect/pages/notifications_sections/notification_list_widgets.dart';
+import 'package:preconnect/pages/notifications_sections/detail_panels.dart';
+import 'package:preconnect/pages/notifications_sections/list_widgets.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';

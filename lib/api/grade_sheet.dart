@@ -6,7 +6,7 @@ import 'dart:typed_data';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile.dart';
-import 'package:preconnect/api/app_preferences_store.dart';
+import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/app_storage.dart';
 

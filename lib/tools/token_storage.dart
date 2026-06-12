@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart'
     show ValueNotifier, defaultTargetPlatform, kIsWeb, TargetPlatform;
-import 'package:flutter/services.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 
 import 'package:in_app_review/in_app_review.dart';
@@ -15,9 +14,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
-import 'package:preconnect/tools/native_bridge/native_bridge.dart';
-import 'package:preconnect/tools/web_platform_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/web_extension_storage_web.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:preconnect/tools/platform_stub.dart'
+    if (dart.library.html) 'package:preconnect/tools/storage_web.dart';
 
 class TokenPersistenceException implements Exception {
   TokenPersistenceException(this.message);
@@ -40,106 +39,23 @@ class TokenStorage {
     'wifi_captive_password',
   };
 
-  static Uint8List? _cachedStorageKey;
-
-  static Future<Uint8List> _getOrCreateStorageKey() async {
-    if (_cachedStorageKey != null) return _cachedStorageKey!;
-
-    const seedKey = 'preconnect_app_sec_k';
-    final prefs = AppStorage.instance;
-    var rawSeed = await prefs.getString(seedKey);
-    if (rawSeed == null || rawSeed.isEmpty) {
-      final random = DateTime.now().microsecondsSinceEpoch;
-      final bytes = Uint8List(32);
-      for (var i = 0; i < 32; i++) {
-        bytes[i] = ((random >> (i % 8)) & 0xFF) ^ ((i * 17) & 0xFF);
-      }
-      rawSeed = base64Encode(bytes);
-      await prefs.setString(seedKey, rawSeed);
-    }
-
-    final seedBytes = base64Decode(rawSeed);
-    final salt = <int>[
-      104,
-      23,
-      99,
-      142,
-      88,
-      12,
-      45,
-      96,
-      201,
-      88,
-      77,
-      43,
-      11,
-      84,
-      95,
-      23,
-      2,
-      9,
-      87,
-      65,
-      32,
-      91,
-      102,
-      19,
-      222,
-      54,
-      11,
-      98,
-      76,
-      54,
-      32,
-      1,
-    ];
-    final derivedKey = Uint8List(32);
-    for (var i = 0; i < 32; i++) {
-      derivedKey[i] = seedBytes[i % seedBytes.length] ^ salt[i];
-    }
-    _cachedStorageKey = derivedKey;
-    return derivedKey;
-  }
-
-  static Future<String?> _encryptValue(String plainText) async {
-    try {
-      final key = await _getOrCreateStorageKey();
-      final data = Uint8List.fromList(utf8.encode(plainText));
-      final encrypted = NativeBridge.encryptBytes(key, data);
-      if (encrypted == null) return null;
-      return '[aes-gcm]${base64Encode(encrypted)}';
-    } catch (_) {
-      return null;
-    }
-  }
-
-  static Future<String?> _decryptValue(String encryptedText) async {
-    try {
-      if (!encryptedText.startsWith('[aes-gcm]')) return encryptedText;
-      final cipherText = base64Decode(
-        encryptedText.substring('[aes-gcm]'.length),
-      );
-      final key = await _getOrCreateStorageKey();
-      final decrypted = NativeBridge.decryptBytes(key, cipherText);
-      if (decrypted == null) return null;
-      return utf8.decode(decrypted);
-    } catch (_) {
-      return null;
-    }
-  }
+  static const _secureStorage = FlutterSecureStorage();
 
   Future<String?> read({required String key}) async {
     if (kIsWeb) {
       return await webExtensionStorageGet(key);
     }
 
+    if (_sensitiveKeys.contains(key)) {
+      try {
+        return await _secureStorage.read(key: key);
+      } catch (_) {
+        return null;
+      }
+    }
+
     final value = await AppStorage.instance.getString(key);
     if (value == null || value.isEmpty) return null;
-
-    if (_sensitiveKeys.contains(key) && NativeBridge.isSupported) {
-      final decrypted = await _decryptValue(value);
-      if (decrypted != null) return decrypted;
-    }
     return value;
   }
 
@@ -166,23 +82,30 @@ class TokenStorage {
       return;
     }
 
-    if (value == null || value.isEmpty) {
+    if (_sensitiveKeys.contains(key)) {
+      // Clean up old insecure/encrypted preferences if any exist
       await AppStorage.instance.remove(key);
-    } else {
-      var storedValue = value;
-      if (_sensitiveKeys.contains(key) && NativeBridge.isSupported) {
-        final encrypted = await _encryptValue(value);
-        if (encrypted != null) {
-          storedValue = encrypted;
-        }
+
+      if (value == null || value.isEmpty) {
+        await _secureStorage.delete(key: key);
+      } else {
+        await _secureStorage.write(key: key, value: value);
       }
-      await AppStorage.instance.setString(key, storedValue);
+    } else {
+      if (value == null || value.isEmpty) {
+        await AppStorage.instance.remove(key);
+      } else {
+        await AppStorage.instance.setString(key, value);
+      }
     }
 
     await _updateCachedSessionFlagForKey(key, value);
   }
 
   Future<void> deleteAll() async {
+    await _secureStorage.delete(key: PreconnectStorageKeys.accessToken);
+    await _secureStorage.delete(key: PreconnectStorageKeys.refreshToken);
+    await _secureStorage.delete(key: 'wifi_captive_password');
     await AppStorage.instance.remove(PreconnectStorageKeys.accessToken);
     await AppStorage.instance.remove(PreconnectStorageKeys.refreshToken);
     await AppStorage.instance.remove(PreconnectStorageKeys.idToken);
