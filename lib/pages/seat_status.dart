@@ -302,7 +302,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     showAppSnackBar(context, message);
   }
 
-
   Future<void> _reloadAll() async {
     final hasCachedCards = _cards.isNotEmpty;
     final hasCachedDetails = _service.cachedDetails != null;

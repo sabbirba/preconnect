@@ -222,7 +222,9 @@ class FCMService {
       debugPrint('Seat email sync error: $e');
       return false;
     }
-  }  Future<bool> syncWatchlistSnapshot(
+  }
+
+  Future<bool> syncWatchlistSnapshot(
     String courseCode,
     String sectionName, {
     required bool subscribe,
@@ -308,7 +310,6 @@ class FCMService {
       return false;
     }
   }
-
 
   Future<bool> subscribeToTopic(String topic) async {
     if (!isSupported) return false;
