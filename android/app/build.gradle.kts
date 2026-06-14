@@ -142,7 +142,7 @@ dependencies {
 
 configurations.all {
     resolutionStrategy {
-        force("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0")
+        force("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.1")
     }
 }
 
