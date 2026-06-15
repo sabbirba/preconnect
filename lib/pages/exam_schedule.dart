@@ -5,7 +5,6 @@ import 'package:preconnect/api/exam_map.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
-import 'package:preconnect/pages/shared_widgets/community_sheet.dart';
 import 'package:preconnect/pages/shared_widgets/session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/exam_sorting.dart';
@@ -352,37 +351,6 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
     return value;
   }
 
-  Future<void> _openExamActionsSheet({
-    required Section section,
-    required String examType,
-    required String examDateLabel,
-    required String examTimeLabel,
-    required String roomLabel,
-  }) async {
-    final semesterLabel = section.semesterSessionId > 0
-        ? formatSemesterFromSessionIdInt(section.semesterSessionId)
-        : 'Current';
-    await showBracuBottomSheet<void>(
-      context,
-      title: section.courseCode,
-      initialChildSize: 0.88,
-      builder: (sheetContext, textPrimary, textSecondary) {
-        return CourseCommunitySheet.forExam(
-          courseCode: section.courseCode,
-          sectionName: section.sectionName,
-          semesterLabel: semesterLabel,
-          roomNumber: roomLabel,
-          faculties: section.faculties,
-          consumedSeat: section.consumedSeat,
-          courseType: section.courseType,
-          examType: examType,
-          examDateLabel: examDateLabel,
-          examTimeLabel: examTimeLabel,
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return BracuPageScaffold(
@@ -632,129 +600,100 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(18),
-                          onTap: () {
-                            _openExamActionsSheet(
-                              section: section,
-                              examType: 'Midterm',
-                              examDateLabel: _formatExamDateLabel(
-                                midDate(section),
-                              ),
-                              examTimeLabel: _formatExamTimeLabel(
-                                midStart(section),
-                                midEnd(section),
-                              ),
-                              roomLabel: _formatExamRoomLabel(midRoom(section)),
-                            );
-                          },
-                          child: BracuCard(
-                            key: isHighlighted
-                                ? _highlightScroll.highlightKey
-                                : null,
-                            isHighlighted: isHighlighted,
-                            highlightColor: BracuPalette.primary,
-                            child: Row(
-                              children: [
-                                SectionBadge(
-                                  label: formatSectionBadge(
-                                    section.sectionName,
-                                  ),
-                                  color: BracuPalette.primary,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  flex: 7,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        section.courseCode,
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        _formatExamTimeLabel(
-                                          midStart(section),
-                                          midEnd(section),
-                                        ),
-                                        style: TextStyle(
-                                          color: BracuPalette.textPrimary(
-                                            context,
-                                          ),
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  flex: 4,
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        _formatExamRoomLabel(midRoom(section)),
-                                        textAlign: TextAlign.right,
-                                        style: TextStyle(
-                                          color: BracuPalette.textPrimary(
-                                            context,
-                                          ),
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      if (section.faculties.trim().isNotEmpty ||
-                                          section.consumedSeat > 0) ...[
-                                        const SizedBox(height: 2),
-                                        Text.rich(
-                                          TextSpan(
-                                            children: [
-                                              if (section.faculties
-                                                  .trim()
-                                                  .isNotEmpty)
-                                                TextSpan(
-                                                  text: section.faculties
-                                                      .trim(),
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w700,
-                                                    color:
-                                                        BracuPalette.textPrimary(
-                                                          context,
-                                                        ),
-                                                  ),
-                                                ),
-                                              if (section.consumedSeat > 0)
-                                                TextSpan(
-                                                  text:
-                                                      '${section.faculties.trim().isEmpty ? '' : ' '}(${section.consumedSeat})',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color:
-                                                        BracuPalette.textSecondary(
-                                                          context,
-                                                        ),
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                          textAlign: TextAlign.right,
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ],
+                      BracuCard(
+                        key: isHighlighted
+                            ? _highlightScroll.highlightKey
+                            : null,
+                        isHighlighted: isHighlighted,
+                        highlightColor: BracuPalette.primary,
+                        child: Row(
+                          children: [
+                            SectionBadge(
+                              label: formatSectionBadge(section.sectionName),
+                              color: BracuPalette.primary,
                             ),
-                          ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 7,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    section.courseCode,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    _formatExamTimeLabel(
+                                      midStart(section),
+                                      midEnd(section),
+                                    ),
+                                    style: TextStyle(
+                                      color: BracuPalette.textPrimary(context),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 4,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    _formatExamRoomLabel(midRoom(section)),
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                      color: BracuPalette.textPrimary(context),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  if (section.faculties.trim().isNotEmpty ||
+                                      section.consumedSeat > 0) ...[
+                                    const SizedBox(height: 2),
+                                    Text.rich(
+                                      TextSpan(
+                                        children: [
+                                          if (section.faculties
+                                              .trim()
+                                              .isNotEmpty)
+                                            TextSpan(
+                                              text: section.faculties.trim(),
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                                color: BracuPalette.textPrimary(
+                                                  context,
+                                                ),
+                                              ),
+                                            ),
+                                          if (section.consumedSeat > 0)
+                                            TextSpan(
+                                              text:
+                                                  '${section.faculties.trim().isEmpty ? '' : ' '}(${section.consumedSeat})',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color:
+                                                    BracuPalette.textSecondary(
+                                                      context,
+                                                    ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      textAlign: TextAlign.right,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -801,133 +740,100 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(18),
-                          onTap: () {
-                            _openExamActionsSheet(
-                              section: section,
-                              examType: 'Final',
-                              examDateLabel: _formatExamDateLabel(
-                                finalDate(section),
-                              ),
-                              examTimeLabel: _formatExamTimeLabel(
-                                finalStart(section),
-                                finalEnd(section),
-                              ),
-                              roomLabel: _formatExamRoomLabel(
-                                finalRoom(section),
-                              ),
-                            );
-                          },
-                          child: BracuCard(
-                            key: isHighlighted
-                                ? _highlightScroll.highlightKey
-                                : null,
-                            isHighlighted: isHighlighted,
-                            highlightColor: BracuPalette.primary,
-                            child: Row(
-                              children: [
-                                SectionBadge(
-                                  label: formatSectionBadge(
-                                    section.sectionName,
-                                  ),
-                                  color: BracuPalette.accent,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  flex: 7,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        section.courseCode,
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        _formatExamTimeLabel(
-                                          finalStart(section),
-                                          finalEnd(section),
-                                        ),
-                                        style: TextStyle(
-                                          color: BracuPalette.textPrimary(
-                                            context,
-                                          ),
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  flex: 4,
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        _formatExamRoomLabel(
-                                          finalRoom(section),
-                                        ),
-                                        textAlign: TextAlign.right,
-                                        style: TextStyle(
-                                          color: BracuPalette.textPrimary(
-                                            context,
-                                          ),
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      if (section.faculties.trim().isNotEmpty ||
-                                          section.consumedSeat > 0) ...[
-                                        const SizedBox(height: 2),
-                                        Text.rich(
-                                          TextSpan(
-                                            children: [
-                                              if (section.faculties
-                                                  .trim()
-                                                  .isNotEmpty)
-                                                TextSpan(
-                                                  text: section.faculties
-                                                      .trim(),
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w700,
-                                                    color:
-                                                        BracuPalette.textPrimary(
-                                                          context,
-                                                        ),
-                                                  ),
-                                                ),
-                                              if (section.consumedSeat > 0)
-                                                TextSpan(
-                                                  text:
-                                                      '${section.faculties.trim().isEmpty ? '' : ' '}(${section.consumedSeat})',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color:
-                                                        BracuPalette.textSecondary(
-                                                          context,
-                                                        ),
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                          textAlign: TextAlign.right,
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ],
+                      BracuCard(
+                        key: isHighlighted
+                            ? _highlightScroll.highlightKey
+                            : null,
+                        isHighlighted: isHighlighted,
+                        highlightColor: BracuPalette.primary,
+                        child: Row(
+                          children: [
+                            SectionBadge(
+                              label: formatSectionBadge(section.sectionName),
+                              color: BracuPalette.accent,
                             ),
-                          ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 7,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    section.courseCode,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    _formatExamTimeLabel(
+                                      finalStart(section),
+                                      finalEnd(section),
+                                    ),
+                                    style: TextStyle(
+                                      color: BracuPalette.textPrimary(context),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 4,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    _formatExamRoomLabel(finalRoom(section)),
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                      color: BracuPalette.textPrimary(context),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  if (section.faculties.trim().isNotEmpty ||
+                                      section.consumedSeat > 0) ...[
+                                    const SizedBox(height: 2),
+                                    Text.rich(
+                                      TextSpan(
+                                        children: [
+                                          if (section.faculties
+                                              .trim()
+                                              .isNotEmpty)
+                                            TextSpan(
+                                              text: section.faculties.trim(),
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                                color: BracuPalette.textPrimary(
+                                                  context,
+                                                ),
+                                              ),
+                                            ),
+                                          if (section.consumedSeat > 0)
+                                            TextSpan(
+                                              text:
+                                                  '${section.faculties.trim().isEmpty ? '' : ' '}(${section.consumedSeat})',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color:
+                                                    BracuPalette.textSecondary(
+                                                      context,
+                                                    ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      textAlign: TextAlign.right,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],

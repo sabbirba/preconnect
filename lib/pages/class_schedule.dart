@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:preconnect/api/exam_map.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/section_info.dart' as section;
-import 'package:preconnect/pages/shared_widgets/community_sheet.dart';
 import 'package:preconnect/pages/shared_widgets/exam_filter.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
 import 'package:preconnect/pages/shared_widgets/entry_card.dart';
@@ -343,37 +342,6 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
     }
   }
 
-  Future<void> _openClassActionsSheet({
-    required String courseCode,
-    required String sectionName,
-    required section.ClassSchedule schedule,
-    required bool isRamadan,
-    required String? roomNumber,
-    required String? faculties,
-    required int? consumedSeat,
-    required String? courseType,
-    required String semesterLabel,
-  }) async {
-    await showBracuBottomSheet<void>(
-      context,
-      title: courseCode,
-      initialChildSize: 0.88,
-      builder: (sheetContext, textPrimary, textSecondary) {
-        return CourseCommunitySheet.forClass(
-          courseCode: courseCode,
-          sectionName: sectionName,
-          classSchedule: schedule,
-          isRamadan: isRamadan,
-          roomNumber: roomNumber,
-          faculties: faculties,
-          consumedSeat: consumedSeat,
-          courseType: courseType,
-          semesterLabel: semesterLabel,
-        );
-      },
-    );
-  }
-
   List<_RenderedScheduleSection> _buildRenderedSections(
     Map<String, List<_ScheduleRow>> grouped, {
     required bool shouldHighlightCurrentSemester,
@@ -538,7 +506,6 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
                       final faculties = entry.faculties;
                       final consumedSeat = entry.consumedSeat;
                       final courseType = entry.courseType.trim();
-                      final semesterSessionId = entry.semesterSessionId;
                       final isScrollTarget =
                           shouldHighlightCurrentSemester &&
                           scrollSchedule == s &&
@@ -570,24 +537,6 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
                             consumedSeat: consumedSeat,
                             courseType: courseType,
                             highlighted: isHighlighted,
-                            onTap: () {
-                              final semesterLabel = semesterSessionId > 0
-                                  ? formatSemesterFromSessionIdInt(
-                                      semesterSessionId,
-                                    )
-                                  : 'Current';
-                              _openClassActionsSheet(
-                                courseCode: code,
-                                sectionName: sectionName,
-                                schedule: s,
-                                isRamadan: isRamadan,
-                                roomNumber: room,
-                                faculties: faculties,
-                                consumedSeat: consumedSeat,
-                                courseType: courseType,
-                                semesterLabel: semesterLabel,
-                              );
-                            },
                           ),
                         ),
                       );

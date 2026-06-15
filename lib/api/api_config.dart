@@ -43,8 +43,6 @@ class ApiConfig {
   static const String busDataUrl = '$cdnApiBase/data/bus.json';
   static const String freeLabsDataUrl = '$cdnApiBase/freelabs.json';
   static const String examMapIndexUrl = '$cdnApiBase/data/exammap.json';
-  static const String facultyReviewsDataUrl =
-      '$cdnApiBase/data/facultyreviews.json';
   static const String announcementFeedUrl =
       '$cdnApiBase/data/announcements.json';
   static const String newsFeedUrl = '$cdnApiBase/data/news.json';

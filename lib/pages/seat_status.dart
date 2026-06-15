@@ -9,9 +9,7 @@ import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
-import 'package:preconnect/pages/shared_widgets/community_sheet.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/time_utils.dart';
@@ -347,41 +345,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     }
   }
 
-  Future<void> _openCourseCommunitySheet(_SeatStatusCardData item) async {
-    final primarySchedule = item.classSchedule.isNotEmpty
-        ? item.classSchedule.first
-        : (item.labSchedule.isNotEmpty ? item.labSchedule.first : null);
-    if (primarySchedule == null) {
-      return;
-    }
-    final schedule = section.ClassSchedule(
-      startTime: primarySchedule.startTime,
-      endTime: primarySchedule.endTime,
-      day: primarySchedule.day,
-    );
-    final isRamadan = await RamadanTiming.isRamadan();
-    if (!mounted) return;
-    await showBracuBottomSheet<void>(
-      context,
-      title: item.courseCode,
-      initialChildSize: 0.88,
-      builder: (sheetContext, textPrimary, textSecondary) {
-        return CourseCommunitySheet.forClass(
-          courseCode: item.courseCode,
-          sectionName: item.sectionName,
-          semesterLabel: 'Current',
-          roomNumber: item.room.isNotEmpty ? item.room : item.labRoom,
-          faculties: item.facultyInitial,
-          consumedSeat: item.consumed,
-          courseType: item.courseType,
-          classSchedule: schedule,
-          isRamadan: isRamadan,
-          showActions: false,
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return _buildPageContent(context);
@@ -391,13 +354,11 @@ class _SeatStatusPageState extends State<SeatStatusPage>
 class _SeatStatusCard extends StatelessWidget {
   const _SeatStatusCard({
     required this.item,
-    this.onTap,
     this.onPinTap,
     this.pinned = false,
   });
 
   final _SeatStatusCardData item;
-  final VoidCallback? onTap;
   final VoidCallback? onPinTap;
   final bool pinned;
 
@@ -635,15 +596,7 @@ class _SeatStatusCard extends StatelessWidget {
         ],
       ),
     );
-    if (onTap == null) return card;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: card,
-      ),
-    );
+    return card;
   }
 
   bool _hasExam(String? date, String? start, String? end) {

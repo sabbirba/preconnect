@@ -204,7 +204,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
                   padding: const EdgeInsets.only(bottom: 12),
                   child: _SeatStatusCard(
                     item: item,
-                    onTap: () => _openCourseCommunitySheet(item),
                     onPinTap: () => _togglePin(item.sectionId),
                     pinned: _isPinnedSection(item.sectionId),
                   ),
