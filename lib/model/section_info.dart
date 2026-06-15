@@ -315,7 +315,9 @@ List<Section> parseSectionsFromScheduleJson(String? scheduleJson) {
     if (decoded is! List<dynamic>) return const <Section>[];
     final sections = <Section>[];
     final seen = <String>{};
-    for (final raw in decoded.whereType<Map<String, dynamic>>()) {
+    for (final raw in decoded.whereType<Map>().map(
+      (e) => e.cast<String, dynamic>(),
+    )) {
       final item = Section.fromJson(raw);
       final key =
           '${item.sectionId}|${item.courseCode}|${item.sectionName}|${item.roomNumber}';

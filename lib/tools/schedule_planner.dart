@@ -51,7 +51,8 @@ class QuietModeSchedulePlanner {
     final rawWindows = <QuietModeScheduleWindow>[];
 
     try {
-      final semesterSessionId = await resolveCurrentSessionSemesterId();
+      final semesterSessionId =
+          await resolveCurrentSessionSemesterIdWithRetry();
       final scheduleService = ScheduleService();
       if (semesterSessionId == null) {
         return const QuietModeSchedulePlan(

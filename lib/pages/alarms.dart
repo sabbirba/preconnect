@@ -899,7 +899,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                           Row(
                             children: [
                               const SectionBadge(
-                                label: '?',
+                                label: 'AD',
                                 color: BracuPalette.primary,
                               ),
                               const SizedBox(width: 12),

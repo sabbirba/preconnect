@@ -349,7 +349,8 @@ class _LoginPageState extends State<LoginPage> {
         PaymentService().getPaymentInfo().then((_) {}),
         ProgressService().getProgress().then((_) {}),
         () async {
-          final semesterSessionId = await resolveCurrentSessionSemesterId();
+          final semesterSessionId =
+              await resolveCurrentSessionSemesterIdWithRetry();
           if (semesterSessionId == null) return;
           await ScheduleService().fetchStudentScheduleForSemester(
             semesterSessionId: semesterSessionId,

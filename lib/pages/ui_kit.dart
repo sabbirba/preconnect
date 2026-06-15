@@ -439,7 +439,7 @@ List<section.Section> buildCurrentSectionsForCalculator(
 Future<void> openCgpaCalculatorPage(BuildContext context) async {
   try {
     final info = await ProgressService().getProgress();
-    final semesterSessionId = await resolveCurrentSessionSemesterId();
+    final semesterSessionId = await resolveCurrentSessionSemesterIdWithRetry();
     if (semesterSessionId == null) {
       if (!context.mounted) return;
       showAppSnackBar(context, 'No current semester schedule available.');

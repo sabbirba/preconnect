@@ -186,7 +186,8 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
       final freshSummary = await ProgressService().getProgressSummary(
         fromFetch: true,
       );
-      final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+      final currentSessionSemesterId =
+          await resolveCurrentSessionSemesterIdWithRetry();
       if (currentSessionSemesterId == null) {
         return;
       }
@@ -599,7 +600,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SectionBadge(
-                            label: '?',
+                            label: 'WL',
                             color: BracuPalette.primary,
                             size: 40,
                             fontSize: 13,

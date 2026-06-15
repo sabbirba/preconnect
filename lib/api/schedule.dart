@@ -32,7 +32,8 @@ class ScheduleService {
       final decoded = jsonDecode(scheduleJson);
       if (decoded is! List<dynamic>) return const <section.Section>[];
       var sections = decoded
-          .whereType<Map<String, dynamic>>()
+          .whereType<Map>()
+          .map((e) => e.cast<String, dynamic>())
           .map(section.Section.fromJson)
           .toList();
       if (semesterSessionId != null && semesterSessionId > 0) {

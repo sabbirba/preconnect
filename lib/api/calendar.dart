@@ -88,7 +88,7 @@ class CalendarService {
   Future<({String startDate, String endDate, String sourceFingerprint})>
   _resolveRange() async {
     final scheduleService = ScheduleService();
-    final semesterSessionId = await resolveCurrentSessionSemesterId();
+    final semesterSessionId = await resolveCurrentSessionSemesterIdWithRetry();
     if (semesterSessionId == null) {
       return (startDate: '', endDate: '', sourceFingerprint: '');
     }

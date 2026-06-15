@@ -65,7 +65,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
   }
 
   Future<void> _primeCurrentSemesterSchedule() async {
-    final semesterSessionId = await resolveCurrentSessionSemesterId();
+    final semesterSessionId = await resolveCurrentSessionSemesterIdWithRetry();
     if (semesterSessionId == null) return;
     await ScheduleService().fetchStudentScheduleForSemester(
       semesterSessionId: semesterSessionId,
@@ -137,7 +137,8 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       final studentId = profile?['studentId'] ?? '';
       final photoFilePath = profile?['photoFilePath'] ?? '';
 
-      final semesterSessionId = await resolveCurrentSessionSemesterId();
+      final semesterSessionId =
+          await resolveCurrentSessionSemesterIdWithRetry();
       if (semesterSessionId == null) {
         if (_base64Data == null) {
           _safeSetState(() {

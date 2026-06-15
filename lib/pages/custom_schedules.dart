@@ -121,7 +121,8 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
     itemsCache.value = await itemsCache.load(forceRefresh: forceRefresh);
 
     try {
-      final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+      final currentSessionSemesterId =
+          await resolveCurrentSessionSemesterIdWithRetry();
       final scheduleService = ScheduleService();
       if (currentSessionSemesterId == null) {
         _cachedCourseOptions = const <CustomSchedulesCourseOption>[];
@@ -240,7 +241,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
     final loadFuture = () async {
       try {
         final currentSessionSemesterId =
-            await resolveCurrentSessionSemesterId();
+            await resolveCurrentSessionSemesterIdWithRetry();
         final scheduleService = ScheduleService();
         if (currentSessionSemesterId == null) {
           return const <CustomSchedulesCourseOption>[];

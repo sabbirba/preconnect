@@ -221,7 +221,8 @@ class MyApp extends StatefulWidget {
       preloadHomeDashboardData().then((_) {}),
       ProfileService().getProfile().then((_) {}),
       () async {
-        final semesterSessionId = await resolveCurrentSessionSemesterId();
+        final semesterSessionId =
+            await resolveCurrentSessionSemesterIdWithRetry();
         if (semesterSessionId == null) return;
         await ScheduleService().getStudentScheduleForSemester(
           semesterSessionId: semesterSessionId,

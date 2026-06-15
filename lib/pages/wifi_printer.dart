@@ -163,7 +163,8 @@ class CampusPrinterPage extends StatefulWidget {
       final decoded = jsonDecode(raw);
       if (decoded is! List<dynamic>) return const <_PrintHistoryEntry>[];
       return decoded
-          .whereType<Map<String, dynamic>>()
+          .whereType<Map>()
+          .map((e) => e.cast<String, dynamic>())
           .map(_PrintHistoryEntry.fromJson)
           .where((entry) => entry.fileName.isNotEmpty)
           .toList(growable: false);

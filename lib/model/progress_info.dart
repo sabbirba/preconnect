@@ -43,21 +43,24 @@ class ProgressInfo {
     final seenCourseCodes = <String>{};
     final headers = headersRaw is List
         ? headersRaw
-              .whereType<Map<String, dynamic>>()
+              .whereType<Map>()
+              .map((e) => e.cast<String, dynamic>())
               .map((header) {
                 final subHeaders = header['subHeaderCreditRequirements'];
                 final courseCodes = <String>{};
                 final headerName = (header['name'] ?? '').toString().trim();
                 if (subHeaders is List) {
-                  for (final subHeader
-                      in subHeaders.whereType<Map<String, dynamic>>()) {
+                  for (final subHeader in subHeaders.whereType<Map>().map(
+                    (e) => e.cast<String, dynamic>(),
+                  )) {
                     final subHeaderName = (subHeader['name'] ?? '')
                         .toString()
                         .trim();
                     final courses = subHeader['curriculumCourses'];
                     if (courses is! List) continue;
-                    for (final course
-                        in courses.whereType<Map<String, dynamic>>()) {
+                    for (final course in courses.whereType<Map>().map(
+                      (e) => e.cast<String, dynamic>(),
+                    )) {
                       final code = (course['courseCode'] ?? '')
                           .toString()
                           .trim();
@@ -101,7 +104,8 @@ class ProgressInfo {
 
     final completedCourses = completedRaw is List
         ? completedRaw
-              .whereType<Map<String, dynamic>>()
+              .whereType<Map>()
+              .map((e) => e.cast<String, dynamic>())
               .map((course) {
                 return CompletedCourse(
                   code: (course['courseCode'] ?? '').toString().trim(),
@@ -122,7 +126,9 @@ class ProgressInfo {
     final minorOptions = <String>[];
 
     if (majorMinorRaw is List) {
-      for (final item in majorMinorRaw.whereType<Map<String, dynamic>>()) {
+      for (final item in majorMinorRaw.whereType<Map>().map(
+        (e) => e.cast<String, dynamic>(),
+      )) {
         final name = (item['name'] ?? '').toString().trim();
         final type = (item['type'] ?? '').toString().trim().toUpperCase();
         if (name.isEmpty) continue;
