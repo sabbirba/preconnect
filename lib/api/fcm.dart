@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -649,8 +648,6 @@ class FCMService {
             importance: Importance.max,
             priority: Priority.high,
             icon: 'ic_stat_preconnect',
-            color: Color(0xFF1E6BE3),
-            largeIcon: DrawableResourceAndroidBitmap('ic_launcher'),
           ),
           iOS: DarwinNotificationDetails(
             presentAlert: true,
