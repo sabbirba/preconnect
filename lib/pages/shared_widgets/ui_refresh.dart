@@ -5,7 +5,12 @@ String formatSectionBadge(String? sectionName) {
   final trimmed = sectionName.trim();
   if (trimmed.isEmpty) return '?';
   final match = RegExp(r'\d+').firstMatch(trimmed);
-  if (match == null) return '?';
+  if (match == null) {
+    if (trimmed.length > 2) {
+      return trimmed.substring(0, 2).toUpperCase();
+    }
+    return trimmed.toUpperCase();
+  }
   final number = int.tryParse(match.group(0)!);
   if (number == null) return match.group(0)!.padLeft(2, '0');
   return number.toString().padLeft(2, '0');

@@ -42,7 +42,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
   bool _isCheckingSession = false;
   bool _isAutoExtending = false;
   bool _autoExtendEnabled = true;
-  CaptiveWifiApiStatus? _sessionStatus;
   StreamSubscription<AndroidNetworkStatus>? _networkStatusSubscription;
   Timer? _autoSessionTimer;
   Timer? _liveSessionTimer;
@@ -309,7 +308,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
 
       if (!mounted) return;
       setState(() {
-        _sessionStatus = currentStatus;
         _liveRemainingSeconds = currentStatus.secondsRemaining;
       });
       _restartLiveSessionTicker();
@@ -378,25 +376,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       canExtendSession: status.canExtendSession == true,
       sessionUrl: parsedUrl,
     );
-  }
-
-  Future<void> _openExtendSession(CaptiveWifiApiStatus status) async {
-    if (!status.canExtendSession || status.sessionUrl == null) return;
-    try {
-      await CaptiveWifiHttp.instance.requestSessionExtension(
-        status.sessionUrl!,
-      );
-      if (!mounted) return;
-      _showLocalSnackBar('Session extended.');
-      await _refreshSessionStatus(
-        showSuccessSnackBar: false,
-        showErrorSnackBar: false,
-        allowAutoExtend: false,
-      );
-    } catch (_) {
-      if (!mounted) return;
-      _showLocalSnackBar('Session extend failed.');
-    }
   }
 
   void _restartAutoSessionMonitor() {
@@ -482,91 +461,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     } finally {
       _isAutoExtending = false;
     }
-  }
-
-  Widget _sessionInfoCard(BuildContext context) {
-    final status = _sessionStatus;
-    if (status == null && !_isCheckingSession) {
-      return const SizedBox.shrink();
-    }
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
-    final expiresIn = _liveRemainingSeconds ?? status?.secondsRemaining;
-    final expired = expiresIn != null && expiresIn <= 0;
-    final canExtend = status?.canExtendSession == true;
-    final showExtend = canExtend && status?.sessionUrl != null;
-    final remainingLabel = expiresIn == null
-        ? 'Unknown'
-        : expiresIn <= 0
-        ? 'Expired'
-        : _formatSeconds(expiresIn);
-
-    return BracuCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'Captive Wi-Fi Session',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: textPrimary,
-                ),
-              ),
-              const Spacer(),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Remaining: $remainingLabel',
-            style: TextStyle(fontSize: 13, color: textPrimary),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            canExtend
-                ? 'Session can be extended.'
-                : 'Session extension is not available.',
-            style: TextStyle(fontSize: 12, color: textSecondary),
-          ),
-          if (expired) ...[
-            const SizedBox(height: 6),
-            Text(
-              'Session has expired. Re-login or extend to continue Wi-Fi access.',
-              style: TextStyle(fontSize: 12, color: textSecondary),
-            ),
-          ],
-          if (showExtend) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 34,
-              child: BracuActionButton(
-                onPressed: _isCheckingSession
-                    ? null
-                    : () => unawaited(_openExtendSession(status!)),
-                icon: Icons.open_in_new_rounded,
-                label: 'Extend Session',
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  String _formatSeconds(int seconds) {
-    final safeSeconds = seconds < 0 ? 0 : seconds;
-    final hours = safeSeconds ~/ 3600;
-    final mins = (safeSeconds % 3600) ~/ 60;
-    final secs = safeSeconds % 60;
-    if (hours > 0) {
-      return '${hours}h ${mins}m ${secs}s';
-    }
-    if (mins > 0) {
-      return '${mins}m ${secs}s';
-    }
-    return '${secs}s';
   }
 
   String _formatThresholdHours(int seconds) {
@@ -878,8 +772,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              _sessionInfoCard(context),
             ],
           ),
         ),
