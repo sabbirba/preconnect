@@ -287,7 +287,6 @@ class _CaptiveWifiBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: BracuPalette.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
@@ -296,45 +295,54 @@ class _CaptiveWifiBanner extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      child: InkWell(
+        onTap: onOpenLogin,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
             children: [
-              const Icon(Icons.wifi_lock_rounded, size: 18),
-              const SizedBox(width: 8),
+              const Icon(
+                Icons.wifi_lock_rounded,
+                size: 20,
+                color: BracuPalette.primary,
+              ),
+              const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  'Captive Wi-Fi login required',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: BracuPalette.textPrimary(context),
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Captive Wi-Fi Login Required',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: BracuPalette.textPrimary(context),
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      statusCode == null
+                          ? 'Tap to connect to Student-WiFi'
+                          : 'Tap to connect (Status $statusCode)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: BracuPalette.textSecondary(context),
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: BracuPalette.textSecondary(context),
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            statusCode == null
-                ? 'Connected to Wi-Fi but internet.'
-                : 'Connected to Wi-Fi but internet $statusCode.',
-            style: TextStyle(
-              fontSize: 12,
-              color: BracuPalette.textSecondary(context),
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 34,
-            child: BracuActionButton(
-              onPressed: onOpenLogin,
-              icon: Icons.login_rounded,
-              label: 'One-Tap Captive Wi-Fi',
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

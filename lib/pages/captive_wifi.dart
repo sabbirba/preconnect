@@ -149,11 +149,27 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     if (!AndroidNetworkAssist.isSupported) return;
     final targetSsid = _ssidController.text.trim().toLowerCase();
     if (targetSsid.isEmpty) return;
+
+    final initialStatus = await AndroidNetworkAssist.getNetworkStatus();
+    if (initialStatus != null) {
+      final currentSsid = (initialStatus.ssid ?? '').trim().toLowerCase();
+      if (currentSsid == targetSsid) return;
+      if (initialStatus.transport == 'wifi' &&
+          (initialStatus.captive || !initialStatus.validated)) {
+        return;
+      }
+    }
+
     final deadline = DateTime.now().add(_wifiAssociationTimeout);
     while (DateTime.now().isBefore(deadline)) {
       final status = await AndroidNetworkAssist.getNetworkStatus();
       final currentSsid = (status?.ssid ?? '').trim().toLowerCase();
       if (currentSsid == targetSsid) {
+        return;
+      }
+      if (status != null &&
+          status.transport == 'wifi' &&
+          (status.captive || !status.validated)) {
         return;
       }
       await Future<void>.delayed(_wifiAssociationPollInterval);
