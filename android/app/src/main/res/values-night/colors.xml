@@ -4,5 +4,5 @@
     <color name="shortcut_classes_bg">#0F2B20</color>
     <color name="shortcut_exams_bg">#24183F</color>
     <color name="shortcut_friends_bg">#10233F</color>
-    <color name="splash_bg">#0F172A</color>
+    <color name="notification_icon_color">#1E6BE3</color>
 </resources>
