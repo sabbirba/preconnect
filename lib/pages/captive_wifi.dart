@@ -38,7 +38,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       GlobalKey<ScaffoldMessengerState>();
 
   bool _isConnecting = false;
-  bool _isLoggingOut = false;
   bool _isCheckingSession = false;
   bool _isAutoExtending = false;
   bool _autoExtendEnabled = true;
@@ -647,65 +646,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     }
   }
 
-  Future<void> _runLogout() async {
-    if (_isConnecting || _isLoggingOut) return;
-    setState(() {
-      _isLoggingOut = true;
-    });
-
-    try {
-      final status = await AndroidNetworkAssist.getNetworkStatus();
-      if (status == null) {
-        _showLocalSnackBar('Disconnected or missing permissions');
-        return;
-      }
-      var captiveWifiUrl = CaptiveWifiHttp.resolvePortalUri(status);
-      if (captiveWifiUrl == null ||
-          captiveWifiUrl == CaptiveWifiHttp.defaultProbeUri) {
-        final savedUrlStr = await CaptiveLoginStore.instance
-            .readLastPortalUrl();
-        if (savedUrlStr != null && savedUrlStr.isNotEmpty) {
-          final savedUrl = Uri.tryParse(savedUrlStr);
-          if (savedUrl != null) {
-            captiveWifiUrl = savedUrl;
-          }
-        }
-      }
-
-      // Absolute fallback if cache is empty and OS reports validated connection
-      if (captiveWifiUrl == null ||
-          captiveWifiUrl == CaptiveWifiHttp.defaultProbeUri) {
-        final rawSsid = status.ssid ?? "Student-WiFi";
-        final base64Ssid = base64.encode(utf8.encode(rawSsid));
-        captiveWifiUrl = Uri.parse(
-          'https://wifi2.bracu.ac.bd:19008/portalpage/aa04f63e5a3a483690888059c7dd4067/20240207115853/pc/auth.html?ssid=$base64Ssid',
-        );
-      }
-
-      await AndroidNetworkAssist.bindToWifiNetwork();
-      try {
-        final success = await CaptiveWifiHttp.instance.logoutViaCaptiveApi(
-          captiveWifiUrl: captiveWifiUrl,
-        );
-        if (success) {
-          _showLocalSnackBar('Successfully logged out.');
-          await _refreshSessionStatus(showSuccessSnackBar: false);
-        } else {
-          final err = CaptiveWifiHttp.instance.lastError;
-          _showLocalSnackBar('Logout failed: ${err ?? "unknown"}');
-        }
-      } finally {
-        await AndroidNetworkAssist.unbindFromWifiNetwork();
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoggingOut = false;
-        });
-      }
-    }
-  }
-
   void _showLocalSnackBar(String message) {
     final messenger = _pageMessengerKey.currentState;
     if (messenger == null) return;
@@ -810,38 +750,17 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                         ],
                       ),
                     ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: BracuActionButton(
-                          onPressed:
-                              (_isConnecting ||
-                                  _isLoggingOut ||
-                                  _isCheckingSession)
-                              ? null
-                              : () => unawaited(_runOneTapConnect()),
-                          label: 'Connect',
-                          isLoading: _isConnecting,
-                          foregroundColor: BracuPalette.primary,
-                          borderRadius: 18,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: BracuActionButton(
-                          onPressed:
-                              (_isConnecting ||
-                                  _isLoggingOut ||
-                                  _isCheckingSession)
-                              ? null
-                              : () => unawaited(_runLogout()),
-                          label: 'Disconnect',
-                          isLoading: _isLoggingOut,
-                          foregroundColor: Colors.red,
-                          borderRadius: 18,
-                        ),
-                      ),
-                    ],
+                  SizedBox(
+                    width: double.infinity,
+                    child: BracuActionButton(
+                      onPressed: (_isConnecting || _isCheckingSession)
+                          ? null
+                          : () => unawaited(_runOneTapConnect()),
+                      label: 'Connect',
+                      isLoading: _isConnecting,
+                      foregroundColor: BracuPalette.primary,
+                      borderRadius: 18,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   SizedBox(

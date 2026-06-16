@@ -322,27 +322,30 @@ class CaptiveWifiHttp {
           captiveWifiUrl.queryParameters['pushPageId'];
       final pushPageId = urlPushPageId ?? _generateUuid();
 
+      final rawSsid =
+          status?.ssid ?? loginUri.queryParameters['ssid'] ?? 'Student-WiFi';
+      final base64Ssid = base64.encode(utf8.encode(rawSsid));
+
       final payload = <String, String>{
-        'esn': '',
-        'armac': '',
-        'accessMac': '',
-        'businessType': '',
-        'acip': '',
-        'agreed': '1',
-        'registerCode': '',
-        'questions': '',
-        'dynamicValidCode': '',
-        'dynamicRSAToken': '',
-        'validCode': '',
-        'apmac': ?deviceApmac,
-        'umac': ?deviceUmac,
-        'uaddress': ?deviceIp,
         'pushPageId': pushPageId,
-        'authType': '1',
-        'lang': 'en_US',
-        ...loginUri.queryParameters,
-        'userName': studentId,
         'userPass': password,
+        'esn': loginUri.queryParameters['esn'] ?? '',
+        'apmac': deviceApmac ?? loginUri.queryParameters['apmac'] ?? '',
+        'armac': loginUri.queryParameters['armac'] ?? '',
+        'authType': loginUri.queryParameters['authType'] ?? '1',
+        'ssid': base64Ssid,
+        'uaddress': deviceIp ?? loginUri.queryParameters['uaddress'] ?? '',
+        'umac': deviceUmac ?? loginUri.queryParameters['umac'] ?? '',
+        'accessMac': loginUri.queryParameters['accessMac'] ?? '',
+        'businessType': loginUri.queryParameters['businessType'] ?? '',
+        'acip': loginUri.queryParameters['acip'] ?? '',
+        'agreed': loginUri.queryParameters['agreed'] ?? '1',
+        'registerCode': loginUri.queryParameters['registerCode'] ?? '',
+        'questions': loginUri.queryParameters['questions'] ?? '',
+        'dynamicValidCode': loginUri.queryParameters['dynamicValidCode'] ?? '',
+        'dynamicRSAToken': loginUri.queryParameters['dynamicRSAToken'] ?? '',
+        'validCode': loginUri.queryParameters['validCode'] ?? '',
+        'userName': studentId,
       };
 
       final encoded = Uri(queryParameters: payload).query;
@@ -415,97 +418,6 @@ class CaptiveWifiHttp {
       body: text,
       location: location == null ? null : Uri.parse(location),
     );
-  }
-
-  Future<bool> logoutViaCaptiveApi({required Uri captiveWifiUrl}) async {
-    lastError = null;
-    final client = await newClient();
-    try {
-      final candidates = <Map<String, String>>[
-        {'path': '/portalauth/logout', 'method': 'POST'},
-        {'path': '/portalauth/logout', 'method': 'GET'},
-        {'path': '/portalauth/portal/logout', 'method': 'POST'},
-        {'path': '/portalauth/portal/logout', 'method': 'GET'},
-        {'path': '/portalpage/portal/logout', 'method': 'POST'},
-        {'path': '/portalpage/portal/logout', 'method': 'GET'},
-        {'path': '/portalpage/logout', 'method': 'POST'},
-        {'path': '/portalpage/logout', 'method': 'GET'},
-        {'path': captiveWifiUrl.resolve('logout').path, 'method': 'POST'},
-        {'path': captiveWifiUrl.resolve('logout').path, 'method': 'GET'},
-        {'path': captiveWifiUrl.resolve('logout.html').path, 'method': 'POST'},
-        {'path': captiveWifiUrl.resolve('logout.html').path, 'method': 'GET'},
-        {'path': captiveWifiUrl.resolve('../logout').path, 'method': 'POST'},
-        {'path': captiveWifiUrl.resolve('../logout').path, 'method': 'GET'},
-        {'path': captiveWifiUrl.resolve('../../logout').path, 'method': 'POST'},
-        {'path': captiveWifiUrl.resolve('../../logout').path, 'method': 'GET'},
-      ];
-
-      for (final candidate in candidates) {
-        final path = candidate['path']!;
-        final method = candidate['method']!;
-
-        Uri logoutUri;
-        if (method == 'GET') {
-          logoutUri = captiveWifiUrl.replace(path: path);
-        } else {
-          logoutUri = captiveWifiUrl.replace(path: path, queryParameters: {});
-        }
-
-        try {
-          if (method == 'POST') {
-            final status = await AndroidNetworkAssist.getNetworkStatus();
-            final deviceIp = status?.ipAddress;
-            final deviceUmac = status?.clientMac;
-            final deviceApmac = status?.apMac;
-
-            final urlPushPageId = captiveWifiUrl.queryParameters['pushPageId'];
-            final pushPageId = urlPushPageId ?? _generateUuid();
-
-            final payload = <String, String>{
-              'apmac': ?deviceApmac,
-              'umac': ?deviceUmac,
-              'uaddress': ?deviceIp,
-              'pushPageId': pushPageId,
-              'authType': '1',
-              'lang': 'en_US',
-              ...captiveWifiUrl.queryParameters,
-            };
-            final encoded = Uri(queryParameters: payload).query;
-            await postOnce(
-              client: client,
-              uri: logoutUri,
-              body: encoded,
-              cookies: sessionCookies,
-              referer: captiveWifiUrl,
-            );
-          } else {
-            await getOnce(
-              client: client,
-              uri: logoutUri,
-              cookies: sessionCookies,
-              referer: captiveWifiUrl,
-            );
-          }
-
-          final probeSuccess = await isValidatedViaProbe(
-            client: client,
-            cookies: sessionCookies,
-          );
-          if (!probeSuccess) {
-            return true;
-          }
-        } catch (_) {}
-      }
-
-      lastError =
-          'Tried all candidate logout endpoints, but probe still succeeded (still logged in).';
-      return false;
-    } catch (e) {
-      lastError = 'Logout exception: $e';
-      return false;
-    } finally {
-      client.close(force: true);
-    }
   }
 
   String _generateUuid() {
