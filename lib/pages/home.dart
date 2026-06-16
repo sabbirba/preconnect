@@ -329,7 +329,7 @@ class _CaptiveWifiBanner extends StatelessWidget {
                           ),
                         ),
                       )
-                    else ...[
+                    else
                       Text(
                         'Wi-Fi Login Required',
                         style: TextStyle(
@@ -338,17 +338,6 @@ class _CaptiveWifiBanner extends StatelessWidget {
                           color: BracuPalette.textPrimary(context),
                         ),
                       ),
-                      const SizedBox(height: 1),
-                      Text(
-                        statusCode == null
-                            ? 'Tap to connect'
-                            : 'Tap to connect (Status $statusCode)',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: BracuPalette.textSecondary(context),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
