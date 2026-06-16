@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -22,9 +21,6 @@ class CaptiveWifiPage extends StatefulWidget {
 
 class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
   static const Duration _apiLoginTimeout = Duration(seconds: 45);
-  static const Duration _autoSessionCheckInterval = Duration(seconds: 30);
-  static const Duration _autoExtendCooldown = Duration(seconds: 60);
-  static const int _autoExtendThresholdSeconds = 21600;
   static const Duration _wifiAssociationTimeout = Duration(seconds: 30);
   static const Duration _wifiAssociationPollInterval = Duration(
     milliseconds: 600,
@@ -38,15 +34,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       GlobalKey<ScaffoldMessengerState>();
 
   bool _isConnecting = false;
-  bool _isCheckingSession = false;
-  bool _isAutoExtending = false;
   bool _autoExtendEnabled = true;
   bool _obscurePassword = true;
   StreamSubscription<AndroidNetworkStatus>? _networkStatusSubscription;
-  Timer? _autoSessionTimer;
-  Timer? _liveSessionTimer;
-  DateTime? _lastAutoExtendAt;
-  int? _liveRemainingSeconds;
   String _studentId = '';
 
   @override
@@ -80,15 +70,15 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       }
     });
     await _autofillSsidFromSystem();
-    _restartAutoSessionMonitor();
-    unawaited(
-      _refreshSessionStatus(
-        showSuccessSnackBar: false,
-        showErrorSnackBar: false,
-        allowAutoExtend: true,
-      ),
-    );
     unawaited(_checkPostConnectionEvent());
+    final status = await AndroidNetworkAssist.getNetworkStatus();
+    if (status != null && status.transport == 'wifi' && status.connected) {
+      final hasPassword = _passwordController.text.isNotEmpty;
+      final isCaptive = status.captive || !status.validated;
+      if (isCaptive && hasPassword && !_isConnecting) {
+        unawaited(_runOneTapConnect());
+      }
+    }
     if (widget.autoOpenCaptiveWifiOnStart) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -267,7 +257,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
 
       if (loggedIn) {
         _showLocalSnackBar('Login success. Internet validated.\nURL: $urlStr');
-        await _refreshSessionStatus(showSuccessSnackBar: false);
       } else {
         final err = CaptiveWifiHttp.instance.lastError;
         if (err != null && err.isNotEmpty) {
@@ -285,184 +274,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     }
   }
 
-  Future<void> _refreshSessionStatus({
-    bool showSuccessSnackBar = true,
-    bool showErrorSnackBar = true,
-    bool allowAutoExtend = true,
-  }) async {
-    final networkStatus = await AndroidNetworkAssist.getNetworkStatus();
-
-    final hasPassword = _passwordController.text.isNotEmpty;
-    final isCaptive =
-        networkStatus?.captive == true ||
-        (networkStatus?.connected == true && networkStatus?.validated == false);
-    if (isCaptive && hasPassword && !_isConnecting) {
-      unawaited(_runOneTapConnect());
-      return;
-    }
-
-    final initialStatus = _statusFromNetwork(networkStatus);
-    if (initialStatus == null) {
-      if (showSuccessSnackBar) {
-        _showLocalSnackBar('Session data unavailable.');
-      }
-      return;
-    }
-    _restartAutoSessionMonitor();
-
-    if (mounted) {
-      setState(() {
-        _isCheckingSession = true;
-      });
-    }
-    try {
-      var currentStatus = initialStatus;
-      if (currentStatus.sessionUrl != null) {
-        await AndroidNetworkAssist.bindToWifiNetwork();
-        try {
-          final client = await CaptiveWifiHttp.instance.newClient();
-          final targetUri = currentStatus.sessionUrl!;
-
-          CaptiveWifiHttpResult res;
-          if (targetUri.path.contains('/portalpage/')) {
-            final syncUri = targetUri.replace(
-              path: '/portalauth/syncPortalResult',
-              queryParameters: {},
-            );
-            res = await CaptiveWifiHttp.instance.postOnce(
-              client: client,
-              uri: syncUri,
-              body: '',
-              cookies: CaptiveWifiHttp.instance.sessionCookies,
-              referer: targetUri,
-            );
-          } else {
-            res = await CaptiveWifiHttp.instance.getWithRedirects(
-              client: client,
-              uri: targetUri,
-              cookies: CaptiveWifiHttp.instance.sessionCookies,
-            );
-          }
-
-          client.close(force: true);
-          if (res.statusCode == 200) {
-            var finalUri = res.uri;
-            var finalBody = res.body;
-
-            // If we queried a probe URL and got redirected to the portal page,
-            // resolve the session data by posting to the sync portal API.
-            if (!targetUri.path.contains('/portalpage/') &&
-                finalUri.path.contains('/portalpage/')) {
-              final syncUri = finalUri.replace(
-                path: '/portalauth/syncPortalResult',
-                queryParameters: {},
-              );
-              try {
-                final syncClient = await CaptiveWifiHttp.instance.newClient();
-                final syncRes = await CaptiveWifiHttp.instance.postOnce(
-                  client: syncClient,
-                  uri: syncUri,
-                  body: '',
-                  cookies: CaptiveWifiHttp.instance.sessionCookies,
-                  referer: finalUri,
-                );
-                syncClient.close(force: true);
-                if (syncRes.statusCode == 200) {
-                  finalBody = syncRes.body;
-                }
-              } catch (_) {}
-            }
-
-            final dynamic decoded = jsonDecode(finalBody);
-            if (decoded is Map) {
-              if (finalUri.path.contains('/portalpage/')) {
-                final isSuccess = decoded['success'] == true;
-                final data = decoded['data'] as Map?;
-                final validPeriodStr = data?['validPeriod']?.toString() ?? '0';
-                final validPeriod = int.tryParse(validPeriodStr) ?? 0;
-                final seconds = (isSuccess && validPeriod > 0)
-                    ? validPeriod
-                    : (isSuccess ? null : 0);
-
-                if (finalUri.path.contains('/portalpage/')) {
-                  unawaited(
-                    CaptiveLoginStore.instance.saveLastPortalUrl(
-                      finalUri.toString(),
-                    ),
-                  );
-                }
-                currentStatus = CaptiveWifiApiStatus(
-                  secondsRemaining: seconds,
-                  canExtendSession: false,
-                  sessionUrl: finalUri,
-                );
-              } else {
-                final secondsRemaining =
-                    decoded['seconds-remaining'] ?? decoded['secondsRemaining'];
-                final canExtend =
-                    decoded['can-extend-session'] ??
-                    decoded['canExtendSession'];
-                final userPortalUrl =
-                    decoded['user-portal-url'] ?? decoded['userPortalUrl'];
-                int? seconds;
-                if (secondsRemaining is num) {
-                  seconds = secondsRemaining.toInt();
-                }
-                final userUri =
-                    userPortalUrl is String && userPortalUrl.isNotEmpty
-                    ? Uri.tryParse(userPortalUrl)
-                    : null;
-                if (userUri != null && userUri.path.contains('/portalpage/')) {
-                  unawaited(
-                    CaptiveLoginStore.instance.saveLastPortalUrl(
-                      userUri.toString(),
-                    ),
-                  );
-                }
-                currentStatus = CaptiveWifiApiStatus(
-                  secondsRemaining: seconds ?? currentStatus.secondsRemaining,
-                  canExtendSession: canExtend == true,
-                  sessionUrl: userUri ?? currentStatus.sessionUrl,
-                );
-              }
-            }
-          }
-        } catch (_) {
-        } finally {
-          await AndroidNetworkAssist.unbindFromWifiNetwork();
-        }
-      }
-
-      if (!mounted) return;
-      setState(() {
-        _liveRemainingSeconds = currentStatus.secondsRemaining;
-      });
-      _restartLiveSessionTicker();
-      if (allowAutoExtend) {
-        await _maybeAutoExtend(currentStatus);
-      }
-      if (showSuccessSnackBar) {
-        final remainingText = _liveRemainingSeconds != null
-            ? _formatSessionTime(_liveRemainingSeconds!)
-            : 'unknown';
-        _showLocalSnackBar(
-          'Session status updated. Time remaining: $remainingText',
-        );
-      }
-    } catch (_) {
-      if (!mounted) return;
-      if (showErrorSnackBar) {
-        _showLocalSnackBar('Unable to read session status.');
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isCheckingSession = false;
-        });
-      }
-    }
-  }
-
   Future<void> _handleNetworkStatusChanged(AndroidNetworkStatus status) async {
     if (!mounted) return;
     _setSsidFromStatus(status);
@@ -470,14 +281,13 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     if (transport != 'wifi' || !status.connected) {
       return;
     }
-    if (_isConnecting || _isCheckingSession) return;
-    unawaited(
-      _refreshSessionStatus(
-        showSuccessSnackBar: false,
-        showErrorSnackBar: false,
-        allowAutoExtend: true,
-      ),
-    );
+    if (_isConnecting) return;
+
+    final hasPassword = _passwordController.text.isNotEmpty;
+    final isCaptive = status.captive || !status.validated;
+    if (isCaptive && hasPassword) {
+      unawaited(_runOneTapConnect());
+    }
   }
 
   void _setSsidFromStatus(AndroidNetworkStatus status) {
@@ -491,131 +301,12 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     _ssidController.text = ssid;
   }
 
-  CaptiveWifiApiStatus? _statusFromNetwork(AndroidNetworkStatus? status) {
-    if (status == null) return null;
-    final parsedUrl = CaptiveWifiHttp.resolvePortalUri(status);
-    if (parsedUrl == null) return null;
-
-    final expiry = status.sessionExpiryTimeMillis;
-    int? secondsRemaining;
-    if (expiry != null && expiry > 0) {
-      final nowMillis = DateTime.now().millisecondsSinceEpoch;
-      final diff = ((expiry - nowMillis) / 1000).floor();
-      secondsRemaining = diff < 0 ? 0 : diff;
-    }
-    return CaptiveWifiApiStatus(
-      secondsRemaining: secondsRemaining,
-      canExtendSession: status.canExtendSession == true,
-      sessionUrl: parsedUrl,
-    );
-  }
-
-  void _restartAutoSessionMonitor() {
-    _autoSessionTimer?.cancel();
-    if (!_autoExtendEnabled) return;
-    _autoSessionTimer = Timer.periodic(_autoSessionCheckInterval, (_) {
-      if (!mounted || _isCheckingSession || _isConnecting) return;
-      unawaited(
-        _refreshSessionStatus(
-          showSuccessSnackBar: false,
-          showErrorSnackBar: false,
-          allowAutoExtend: true,
-        ),
-      );
-    });
-  }
-
-  void _restartLiveSessionTicker() {
-    _liveSessionTimer?.cancel();
-    final seconds = _liveRemainingSeconds;
-    if (seconds == null || seconds <= 0) return;
-    _liveSessionTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      final current = _liveRemainingSeconds;
-      if (current == null || current <= 0) {
-        _liveSessionTimer?.cancel();
-        return;
-      }
-      setState(() {
-        _liveRemainingSeconds = current - 1;
-      });
-    });
-  }
-
   Future<void> _setAutoExtendEnabled(bool value) async {
     await CaptiveLoginStore.instance.saveAutoExtendEnabled(value);
     if (!mounted) return;
     setState(() {
       _autoExtendEnabled = value;
     });
-    _restartAutoSessionMonitor();
-    if (value) {
-      unawaited(
-        _refreshSessionStatus(
-          showSuccessSnackBar: false,
-          showErrorSnackBar: false,
-          allowAutoExtend: true,
-        ),
-      );
-    }
-  }
-
-  Future<void> _maybeAutoExtend(CaptiveWifiApiStatus status) async {
-    if (!_autoExtendEnabled) return;
-    if (_isAutoExtending) return;
-    if (!status.canExtendSession || status.sessionUrl == null) return;
-    final remaining = status.secondsRemaining;
-    if (remaining == null) return;
-    if (remaining > _autoExtendThresholdSeconds) return;
-
-    final now = DateTime.now();
-    if (_lastAutoExtendAt != null &&
-        now.difference(_lastAutoExtendAt!) < _autoExtendCooldown) {
-      return;
-    }
-
-    _isAutoExtending = true;
-    _lastAutoExtendAt = now;
-    try {
-      await AndroidNetworkAssist.bindToWifiNetwork();
-      await CaptiveWifiHttp.instance.requestSessionExtension(
-        status.sessionUrl!,
-      );
-      if (!mounted) return;
-      _showLocalSnackBar('Session extended automatically.');
-      await _refreshSessionStatus(
-        showSuccessSnackBar: false,
-        showErrorSnackBar: false,
-        allowAutoExtend: false,
-      );
-    } catch (_) {
-      if (!mounted) return;
-      _showLocalSnackBar('Auto-extend failed. Tap Extend Session manually.');
-    } finally {
-      await AndroidNetworkAssist.unbindFromWifiNetwork();
-      _isAutoExtending = false;
-    }
-  }
-
-  String _formatThresholdHours(int seconds) {
-    final safeSeconds = seconds < 0 ? 0 : seconds;
-    final hours = safeSeconds ~/ 3600;
-    final mins = (safeSeconds % 3600) ~/ 60;
-    if (mins == 0) {
-      return '${hours}h';
-    }
-    return '${hours}h ${mins}m';
-  }
-
-  String _formatSessionTime(int seconds) {
-    final safe = seconds < 0 ? 0 : seconds;
-    final h = safe ~/ 3600;
-    final m = (safe % 3600) ~/ 60;
-    final s = safe % 60;
-    if (h > 0) {
-      return '${h}h ${m.toString().padLeft(2, '0')}m ${s.toString().padLeft(2, '0')}s';
-    }
-    return '${m}m ${s.toString().padLeft(2, '0')}s';
   }
 
   Future<bool> _loginViaCaptiveApi({
@@ -736,24 +427,10 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  if (_liveRemainingSeconds != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.timer_outlined, size: 18),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Session time: ${_formatSessionTime(_liveRemainingSeconds!)}',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                      ),
-                    ),
                   SizedBox(
                     width: double.infinity,
                     child: BracuActionButton(
-                      onPressed: (_isConnecting || _isCheckingSession)
+                      onPressed: _isConnecting
                           ? null
                           : () => unawaited(_runOneTapConnect()),
                       label: 'Connect',
@@ -762,25 +439,12 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                       borderRadius: 18,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: BracuActionButton(
-                      onPressed: (_isCheckingSession || _isConnecting)
-                          ? null
-                          : () => unawaited(_refreshSessionStatus()),
-                      label: 'Check Session Time',
-                      isLoading: _isCheckingSession,
-                      foregroundColor: BracuPalette.primary,
-                      borderRadius: 18,
-                    ),
-                  ),
                   const SizedBox(height: 4),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Auto Extend Session'),
-                    subtitle: Text(
-                      'Extend when time is <= ${_formatThresholdHours(_autoExtendThresholdSeconds)}',
+                    subtitle: const Text(
+                      'Automatically repost the login API every 2 hours while connected',
                     ),
                     value: _autoExtendEnabled,
                     onChanged: _setAutoExtendEnabled,
@@ -798,22 +462,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
   @override
   void dispose() {
     _networkStatusSubscription?.cancel();
-    _autoSessionTimer?.cancel();
-    _liveSessionTimer?.cancel();
     _ssidController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
-}
-
-class CaptiveWifiApiStatus {
-  const CaptiveWifiApiStatus({
-    required this.secondsRemaining,
-    required this.canExtendSession,
-    required this.sessionUrl,
-  });
-
-  final int? secondsRemaining;
-  final bool canExtendSession;
-  final Uri? sessionUrl;
 }

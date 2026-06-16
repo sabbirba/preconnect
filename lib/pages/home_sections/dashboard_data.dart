@@ -29,7 +29,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   bool _isAutoExtendingSession = false;
   DateTime? _lastAutoAssistantOpenAt;
   DateTime? _lastSilentLoginAt;
-  DateTime? _lastAutoSessionExtendAt;
   Timer? _captiveAutoTimer;
   Timer? _todayScheduleAutoRefreshTimer;
   Future<CampusMapData?>? _campusMapFuture;
@@ -42,8 +41,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   static const Duration _autoAssistantCooldown = Duration(seconds: 45);
   static const Duration _silentLoginCooldown = Duration(seconds: 90);
   static const Duration _silentLoginTimeout = Duration(seconds: 45);
-  static const Duration _autoSessionExtendCooldown = Duration(seconds: 60);
-  static const int _autoSessionExtendThresholdSeconds = 21600;
   static const String _homeDashboardSnapshotCacheKey =
       'home_dashboard_snapshot_v1';
   static _HomeData? _cachedData;
@@ -538,33 +535,29 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
   Future<void> _maybeAutoExtendSession(AndroidNetworkStatus status) async {
     if (!mounted || _isAutoExtendingSession) return;
-    if (status.canExtendSession != true) return;
-    final captiveWifiUri = CaptiveWifiHttp.resolvePortalUri(status);
-    if (captiveWifiUri == null) return;
+    final enabled = await CaptiveLoginStore.instance.readAutoExtendEnabled();
+    if (!enabled) return;
 
-    final expiryMillis = status.sessionExpiryTimeMillis;
-    if (expiryMillis == null || expiryMillis <= 0) return;
-    final remainingSeconds =
-        ((expiryMillis - DateTime.now().millisecondsSinceEpoch) / 1000).floor();
-    if (remainingSeconds > _autoSessionExtendThresholdSeconds) return;
+    if (status.transport != 'wifi' || !status.connected) return;
+    final currentSsid = (status.ssid ?? '').trim();
+    if (currentSsid.isEmpty) return;
+    final isCampusSsid =
+        currentSsid.toLowerCase() ==
+        CaptiveLoginStore.defaultCampusSsid.toLowerCase();
+    if (!isCampusSsid) return;
 
     final now = DateTime.now();
-    if (_lastAutoSessionExtendAt != null &&
-        now.difference(_lastAutoSessionExtendAt!) <
-            _autoSessionExtendCooldown) {
+    // Repost the login API every 2 hours to extend/refresh the session
+    if (_lastSilentLoginAt != null &&
+        now.difference(_lastSilentLoginAt!) < const Duration(hours: 2)) {
       return;
     }
 
     _isAutoExtendingSession = true;
-    _lastAutoSessionExtendAt = now;
     try {
-      await AndroidNetworkAssist.bindToWifiNetwork();
-      await CaptiveWifiHttp.instance.requestSessionExtension(captiveWifiUri);
-      if (!mounted) return;
-      unawaited(_refreshCaptiveStatus());
+      await _silentBackgroundLogin(status);
     } catch (_) {
     } finally {
-      await AndroidNetworkAssist.unbindFromWifiNetwork();
       _isAutoExtendingSession = false;
     }
   }

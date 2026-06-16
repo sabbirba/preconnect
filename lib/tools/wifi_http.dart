@@ -57,20 +57,6 @@ class CaptiveWifiHttp {
     return client;
   }
 
-  Future<void> requestSessionExtension(Uri uri) async {
-    final client = await newClient();
-    try {
-      final request = await client.getUrl(uri);
-      final response = await request.close();
-      await response.drain<void>();
-      if (response.statusCode < 200 || response.statusCode >= 400) {
-        throw HttpException('HTTP ${response.statusCode}', uri: uri);
-      }
-    } finally {
-      client.close(force: true);
-    }
-  }
-
   Future<bool> isValidatedViaProbe({
     required HttpClient client,
     required Map<String, Cookie> cookies,
