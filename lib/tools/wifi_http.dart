@@ -472,14 +472,28 @@ class CaptiveWifiHttp {
   CaptiveWifiForm? _fallbackPortalForm(Uri uri) {
     if (uri.path.startsWith('/portalpage/')) {
       final action = uri.replace(
-        path: '/portalpage/portal/login',
+        path: '/portalauth/login',
         queryParameters: {},
       );
+      final hidden = <String, String>{
+        'esn': '',
+        'armac': '',
+        'accessMac': '',
+        'businessType': '',
+        'acip': '',
+        'agreed': '1',
+        'registerCode': '',
+        'questions': '',
+        'dynamicValidCode': '',
+        'dynamicRSAToken': '',
+        'validCode': '',
+        ...uri.queryParameters,
+      };
       return CaptiveWifiForm(
         action: action,
-        studentIdField: 'username',
-        passwordField: 'password',
-        hiddenFields: uri.queryParameters,
+        studentIdField: 'userName',
+        passwordField: 'userPass',
+        hiddenFields: hidden,
       );
     }
     return null;
@@ -544,11 +558,17 @@ class CaptiveWifiHttp {
         final looksId =
             hint.contains('id') ||
             hint.contains('student') ||
-            hint.contains('roll');
+            hint.contains('roll') ||
+            hint.contains('user') ||
+            hint.contains('name') ||
+            hint.contains('username');
         if (!looksId) continue;
         if (hint.contains('student')) score += 60;
-        if (hint.contains('id')) score += 30;
-        if (hint.contains('roll')) score += 20;
+        if (hint.contains('username')) score += 50;
+        if (hint.contains('user')) score += 40;
+        if (hint.contains('name')) score += 30;
+        if (hint.contains('id')) score += 20;
+        if (hint.contains('roll')) score += 10;
 
         if (score > studentIdScore) {
           studentIdScore = score;
