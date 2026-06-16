@@ -44,7 +44,6 @@ class FCMService {
   Future<String?> _getToken() async {
     if (kIsWeb) {
       if (isChromeRuntimeAvailable()) {
-        // Chrome Extension: get GCM token via background service worker sync.
         var token = await TokenStorage.instance.read(
           key: PreConnectPushConfig.gcmTokenKey,
         );
@@ -61,7 +60,6 @@ class FCMService {
         debugPrint("FCM Chrome Extension Token: $token");
         return token;
       } else {
-        // Standard Web: use native Firebase Messaging getToken().
         try {
           final token = await FirebaseMessaging.instance.getToken();
           debugPrint("FCM Standard Web Token: $token");
@@ -382,9 +380,9 @@ class FCMService {
 
   Future<bool> requestNotificationPermission() async {
     if (!isSupported) return false;
-    // Chrome Extension: permissions are handled via manifest.json.
+
     if (kIsWeb && isChromeRuntimeAvailable()) return true;
-    // Standard Web: request via Firebase Messaging.
+
     if (kIsWeb) {
       try {
         final messaging = FirebaseMessaging.instance;
@@ -431,9 +429,9 @@ class FCMService {
 
   Future<bool> isNotificationPermissionGranted() async {
     if (!isSupported) return false;
-    // Chrome Extension: always considered granted via manifest.
+
     if (kIsWeb && isChromeRuntimeAvailable()) return true;
-    // Standard Web and native: check via Firebase Messaging.
+
     try {
       final settings = await FirebaseMessaging.instance
           .getNotificationSettings();
@@ -488,7 +486,6 @@ class FCMService {
       debugPrint("Failed to load pinned seats: $e");
     }
 
-    // For standard web (non-extension), register a foreground message listener.
     if (!isChromeRuntimeAvailable()) {
       try {
         FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -633,7 +630,6 @@ class FCMService {
   }
 
   void _showLocalNotification(RemoteMessage message) {
-    // flutter_local_notifications is not initialized on web platforms.
     if (kIsWeb) return;
     final notification = message.notification;
     if (notification != null) {
@@ -686,7 +682,6 @@ class FCMService {
     try {
       final token = await _getToken();
       if (token == null) {
-        // Only show local debug notification on native platforms (not web).
         if (kDebugMode && !kIsWeb) {
           _showLocalNotification(
             RemoteMessage(

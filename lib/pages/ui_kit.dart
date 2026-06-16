@@ -502,7 +502,6 @@ class BracuActionBannerCard extends StatelessWidget {
   final bool showTrailingIcon;
   final bool showBorder;
 
-  /// Custom trailing widget. When provided, takes precedence over [showTrailingIcon].
   final Widget? trailing;
 
   @override

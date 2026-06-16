@@ -519,7 +519,6 @@ String _routeMatchKey(String value) {
   return value.trim().toLowerCase();
 }
 
-
 bool _isStopHighlighted(BusTransportStop stop, BusTransportRoute route) {
   final live = route.live;
   final stopName = stop.name.trim().toLowerCase();
@@ -556,7 +555,9 @@ class _NextStopHighlightCard extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 14),
       child: BracuCard(
         isHighlighted: true,
-        backgroundColor: BracuPalette.primary.withValues(alpha: isDark ? 0.15 : 0.08),
+        backgroundColor: BracuPalette.primary.withValues(
+          alpha: isDark ? 0.15 : 0.08,
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
@@ -624,7 +625,9 @@ class _RouteStopsCard extends StatelessWidget {
     }
 
     final hasHighlight = highlightedIndex >= 0;
-    final highlightedStopName = hasHighlight ? route.stops[highlightedIndex].name : '';
+    final highlightedStopName = hasHighlight
+        ? route.stops[highlightedIndex].name
+        : '';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
@@ -680,17 +683,18 @@ class _RouteStopTimelineTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Left timeline column
           SizedBox(
             width: 32,
             child: Column(
               children: [
-                const SizedBox(height: 14), // Center the dot vertically with the first line of text
+                const SizedBox(height: 14),
                 Container(
                   width: 14,
                   height: 14,
                   decoration: BoxDecoration(
-                    color: isHighlighted ? BracuPalette.primary : Colors.grey.shade400,
+                    color: isHighlighted
+                        ? BracuPalette.primary
+                        : Colors.grey.shade400,
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: isHighlighted
@@ -747,7 +751,10 @@ class _RouteStopTimelineTile extends StatelessWidget {
                       if (isHighlighted) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: BracuPalette.primary.withValues(alpha: 0.18),
                             borderRadius: BorderRadius.circular(20),
