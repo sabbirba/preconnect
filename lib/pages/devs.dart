@@ -306,6 +306,8 @@ class _DevsPageState extends State<DevsPage> {
       children: [
         BracuSectionTitle(title: 'Funding & Support'),
         SizedBox(height: 10),
+        BracuFundingPromoDivider(),
+        SizedBox(height: 10),
         _FundingCard(),
       ],
     );
@@ -431,11 +433,6 @@ class _FundingCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'App Store publishing needs the \$99/year Apple Developer '
-          'membership. Any contribution towards this funding will be highly appreciated.',
-          style: TextStyle(color: BracuPalette.textSecondary(context)),
-        ),
         const SizedBox(height: 12),
         const BracuFundingSupportContent(),
       ],

@@ -8,6 +8,8 @@ class FriendSchedule {
   final String? photoFilePath;
   final String? photoUrl;
   final List<Course> courses;
+  final String? shortCode;
+  final String? semester;
 
   FriendSchedule({
     required this.name,
@@ -15,6 +17,8 @@ class FriendSchedule {
     required this.photoFilePath,
     required this.photoUrl,
     required this.courses,
+    this.shortCode,
+    this.semester,
   });
 
   factory FriendSchedule.fromJson(Map<String, dynamic> json) {
@@ -28,6 +32,8 @@ class FriendSchedule {
       courses: (json['courses'] as List<dynamic>? ?? [])
           .map((e) => Course.fromJson(e))
           .toList(),
+      shortCode: json['shortCode']?.toString(),
+      semester: json['semester']?.toString(),
     );
   }
 }

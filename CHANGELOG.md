@@ -5,6 +5,15 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
+## [1.6.7] — 2026-06-17
+
+### Captive Wi-Fi (Campus Internet)
+- Completely rewrote the campus Wi-Fi login flow to be API based
+- Network properties (gateway, MAC address, etc.) are now fetched dynamically from device APIs
+- Captive portal banner redesigned to be minimal on the Home screen
+- Fixed MAC address normalization and portal redirect URL parameter extraction
+- Unpinning a course is now instant — the UI responds immediately and the FCM unsubscribe happens silently in the background
+
 ## [1.6.6] — 2026-06-06
 
 - Improved app startup speed with smaller background work on launch

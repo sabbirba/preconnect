@@ -597,7 +597,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                     padding: const EdgeInsets.only(bottom: 10),
                     child: BracuCard(
                       child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           const SectionBadge(
                             label: 'WL',
@@ -694,7 +694,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                     padding: const EdgeInsets.only(bottom: 10),
                     child: BracuCard(
                       child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           SectionBadge(
                             label: formatSectionBadge(current.sectionName),
@@ -798,7 +798,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                     padding: const EdgeInsets.only(bottom: 10),
                     child: BracuCard(
                       child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           SectionBadge(
                             label: course.grade.isEmpty ? '--' : course.grade,

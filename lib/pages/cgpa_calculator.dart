@@ -450,7 +450,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
         : titleLine.trim();
     final resolvedCredit = creditLine.trim().isEmpty ? '--' : creditLine.trim();
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SectionBadge(
           label: badgeLabel,

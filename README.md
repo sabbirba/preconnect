@@ -26,7 +26,6 @@ An initiative run by [BRAC University](https://bracu.ac.bd) students.
 ## Overview
 
 A Flutter app for BRAC University students with SSO login and Connect API integration.
-The supported browser experience is the Chrome extension build.
 
 ### Key features
 
@@ -65,9 +64,16 @@ The repository is organized around the main product areas below:
 - `lib/pages/alarms.dart` for class and exam reminders
 - `lib/pages/notifications.dart` for app notifications
 - `lib/pages/friend_schedule.dart` and `lib/pages/share_schedule.dart` for schedule sharing
+- `lib/pages/scan_schedule.dart` for QR-based schedule scanning
 - `lib/pages/custom_schedules.dart` for personal schedules
 - `lib/pages/degree_progress.dart` and `lib/pages/cgpa_calculator.dart` for academic planning
+- `lib/pages/all_courses.dart` and `lib/pages/requirement_courses.dart` for course catalogue
+- `lib/pages/student_profile.dart` for the student profile and overview
+- `lib/pages/calendar.dart` for the academic calendar
 - `lib/pages/bus.dart`, `lib/pages/free_labs.dart`, `lib/pages/wifi_printer.dart`, and `lib/pages/captive_wifi.dart` for campus utilities
+- `lib/pages/settings.dart` for app settings and data controls
+- `lib/pages/devs.dart` for the developers, funding, and support page
+- `lib/widgets/` for shared UI components used across pages
 
 ## Documentation
 
@@ -111,14 +117,16 @@ The repository is organized around the main product areas below:
 lib/
   main.dart          Entry point
   app.dart           App shell & routing
+  analytics.dart     Analytics helpers
   api/               Auth & API client
   model/             Data models
   pages/             UI screens & sections
   tools/             Utilities (caching, helpers, etc.)
+  widgets/           Shared UI components
 android/             Android configuration (Kotlin)
 ios/                 iOS configuration (Swift)
 macos/               macOS shell
-web/                 Chrome extension shell
+web/                 Chrome extension + Flutter web app shell
 assets/              Icons & SVGs
 ```
 
@@ -156,13 +164,13 @@ Please also review the community and safety guidance in [CODE_OF_CONDUCT.md](COD
 
 ## Platform Support
 
-| Platform         | Status       | Notes                                                                                   |
-| ---------------- | ------------ | --------------------------------------------------------------------------------------- |
-| Android          | Stable       | Signed APK/AAB are generated in release workflow when signing secrets are configured.   |
-| Chrome Extension | Stable       | Distributed through release assets and store promotion automation.                      |
-| Web              | Not targeted | Use the Chrome extension build instead of a hosted Flutter web app.                     |
-| iOS              | Beta         | CI builds are enabled, but signing/export depends on Apple certificates/profiles.       |
-| macOS            | Beta         | CI builds and packages a DMG artifact from release workflow.                            |
+| Platform         | Status  | Notes                                                                                   |
+| ---------------- | ------- | --------------------------------------------------------------------------------------- |
+| Android          | Stable  | Signed APK/AAB are generated in release workflow when signing secrets are configured.   |
+| Chrome Extension | Stable  | Distributed through release assets and store promotion automation.                      |
+| Web              | Beta    | Flutter web app built in CI and deployed to a self-hosted VPS on each release.          |
+| iOS              | Beta    | CI builds are enabled, but signing/export depends on Apple certificates/profiles.       |
+| macOS            | Beta    | CI builds and packages a DMG artifact from release workflow.                            |
 
 ## CI/CD
 
@@ -175,7 +183,8 @@ Main flow on push to `main`:
 3. Creates/updates a GitHub release tag like `vX.Y.Z+NNN`
 4. Builds and uploads platform artifacts (Android, iOS, macOS)
 5. Builds and uploads the Chrome extension artifact for deployment
-6. Publishes Android AAB to Google Play Internal and Beta testing tracks when required secrets are available
+6. Builds the Flutter web app and deploys it to a self-hosted VPS via SSH
+7. Publishes Android AAB to Google Play Internal and Beta testing tracks when required secrets are available
 
 ## Architecture
 
@@ -201,19 +210,20 @@ Why this architecture:
 
 Key packages related to user data safety/privacy are listed below.
 
-| Package                  | What it does for privacy/safety                                                                                                     |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `shared_preferences`     | Backing store for `AppStorage`, used for non-sensitive app settings, JSON blobs, and lightweight caches. Not used for secrets.     |
-| `local_auth`             | Enables optional biometric/PIN app lock so only the device owner can open protected screens.                                        |
-| `permission_handler`     | Ensures runtime permissions such as camera and notifications are requested explicitly and can be denied by the user.                 |
-| `crypto`                 | Used for hashing in PKCE, cached image keys, and other local request helpers.                                                        |
+| Package                    | What it does for privacy/safety                                                                                                     |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `shared_preferences`       | Backing store for `AppStorage`, used for non-sensitive app settings, JSON blobs, and lightweight caches. Not used for secrets.     |
+| `flutter_secure_storage`   | Stores sensitive tokens (session, auth) in the platform keychain/secure enclave. Falls back to `AppStorage` if unavailable.        |
+| `local_auth`               | Enables optional biometric/PIN app lock so only the device owner can open protected screens.                                        |
+| `permission_handler`       | Ensures runtime permissions such as camera and notifications are requested explicitly and can be denied by the user.                 |
+| `crypto`                   | Used for hashing in PKCE, cached image keys, and other local request helpers.                                                        |
 
 Privacy notes:
 
-- Sensitive tokens are kept in local app storage, not plain preferences.
+- Sensitive tokens are stored in the platform keychain via `flutter_secure_storage`, with a fallback to standard local storage.
 - Users can control OS-level permissions such as camera and notifications at any time.
 - Local caches are used to improve offline and performance behavior.
-- Notification delivery depends on the VPS queue and client polling.
+- Push notifications are delivered via Firebase Cloud Messaging (FCM) — no polling required.
 
 ## Seat Status Proxy
 

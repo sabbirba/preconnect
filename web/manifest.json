@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "PreConnect",
   "short_name": "PreConnect",
-  "description": "PreConnect as a Chrome extension for BRACU students.",
+  "description": "PreConnect as a browser extension for BRACU students.",
   "version": "1.6.6",
   "action": {
     "default_title": "Open PreConnect",
@@ -14,7 +14,13 @@
     }
   },
   "background": {
-    "service_worker": "background.dart.js"
+    "service_worker": "background.dart.js",
+    "scripts": ["background.dart.js"]
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "preconnect@sabbirba.com"
+    }
   },
   "permissions": [
     "alarms",
@@ -32,6 +38,16 @@
   ],
   "side_panel": {
     "default_path": "index.html"
+  },
+  "sidebar_action": {
+    "default_panel": "index.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    },
+    "default_title": "PreConnect"
   },
   "commands": {
     "open_side_panel": {
@@ -63,9 +79,7 @@
       "description": "Open Share Schedule"
     }
   },
-  "host_permissions": [
-    "<all_urls>"
-  ],
+  "host_permissions": ["<all_urls>"],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
   },

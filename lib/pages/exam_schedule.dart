@@ -41,7 +41,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   late final HighlightScrollCoordinator _highlightScroll =
       HighlightScrollCoordinator(scrollController: _scrollController);
   int? _currentSessionSemesterId;
-  bool _showUpcomingExams = true;
+  bool _showDoneExams = false;
 
   @override
   void initState() {
@@ -193,7 +193,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
 
   void _toggleExamView() {
     setState(() {
-      _showUpcomingExams = !_showUpcomingExams;
+      _showDoneExams = !_showDoneExams;
       _highlightScroll.resetScrollState();
     });
   }
@@ -360,7 +360,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
       actions: [
         BracuSelectChip(
           icon: Icons.history_rounded,
-          selected: !_showUpcomingExams,
+          selected: _showDoneExams,
           compact: true,
           showArrow: false,
           onTap: _toggleExamView,
@@ -463,7 +463,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
               )
               .toList();
 
-          final showPast = !_showUpcomingExams;
+          final showPast = _showDoneExams;
 
           final midExams = showPast ? pastMidExams : upcomingMidExams;
           final finalExams = showPast ? pastFinalExams : upcomingFinalExams;
@@ -510,9 +510,11 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
             );
             return buildRefreshEmptyState(
               onRefresh: _handleRefresh,
-              message: hasAnyExamData
-                  ? 'No exams found'
-                  : 'No exam data available',
+              message: showPast
+                  ? 'No done exams available'
+                  : (hasAnyExamData
+                        ? 'No exams found'
+                        : 'No exam data available'),
             );
           }
 

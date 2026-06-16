@@ -1135,7 +1135,7 @@ class _PrintHistoryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final failed = entry.status.toLowerCase() == 'failed';
-    final copiesLabel = entry.copies == 1 ? '1 Copy' : '${entry.copies} Copies';
+    final copiesLabel = entry.copies == 1 ? '1 copy' : '${entry.copies} copies';
     return _PrinterFileCard(
       title: entry.fileName,
       subtitle:

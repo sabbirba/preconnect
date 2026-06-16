@@ -8,7 +8,6 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    # Promotion to Production runs every Friday at 12:00 AM Bangladesh time (Thursday 18:00 UTC).
     - cron: "00 18 * * 4"
 
 permissions:
@@ -89,11 +88,7 @@ jobs:
 
       - name: Auto Bump Version
         shell: bash
-        run: |
-          mapfile -t VERSION_PARTS < <(./tool/sync_versions.sh bump-release)
-          VERSION_NAME="${VERSION_PARTS[0]}"
-          VERSION_CODE="${VERSION_PARTS[1]}"
-          echo "Updated pubspec version to ${VERSION_NAME}+${VERSION_CODE}"
+        run: ./tool/sync_versions.sh bump-release
 
       - name: Read Version
         id: version
@@ -214,7 +209,7 @@ jobs:
 
       - name: Setup Java
         if: matrix.platform == 'android'
-        uses: actions/setup-java@v5.2.0
+        uses: actions/setup-java@v5.3.0
         with:
           distribution: "temurin"
           java-version: "17"
@@ -225,27 +220,16 @@ jobs:
           channel: "stable"
           cache: true
 
-      - name: Flutter Version
-        run: flutter --version
-
       - name: Setup Xcode
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
         uses: maxim-lobanov/setup-xcode@v1.7.0
         with:
           xcode-version: "latest"
 
-      - name: Show Xcode
-        if: matrix.platform == 'ios' || matrix.platform == 'macos'
-        run: |
-          xcodebuild -version
-          xcodebuild -showsdks
-
       - name: Cache Pub
         uses: actions/cache@v5.0.5
         with:
-          path: |
-            ~/.pub-cache
-            C:\Users\runneradmin\AppData\Local\Pub\Cache
+          path: ~/.pub-cache
           key: ${{ runner.os }}-flutter-pub-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: |
             ${{ runner.os }}-flutter-pub-
@@ -279,14 +263,6 @@ jobs:
             fi
           } > android/local.properties
 
-      - name: Refresh Gradle Dependencies
-        if: matrix.platform == 'android'
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd android
-          ./gradlew --no-daemon dependencies --refresh-dependencies -q
-
       - name: Cache Build
         uses: actions/cache@v5.0.5
         with:
@@ -300,10 +276,6 @@ jobs:
       - name: Flutter Pub Get
         shell: bash
         run: flutter pub get
-
-      - name: Flutter Pub Upgrade
-        shell: bash
-        run: flutter pub upgrade
 
       - name: Release Env
         shell: bash
@@ -611,15 +583,12 @@ jobs:
             echo "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not provided."
           fi
 
-      - name: Validate Google Play publish prerequisites
+      - name: Validate Google Play prerequisites
         shell: bash
         run: |
           if [ "${{ steps.aab.outputs.found }}" != "true" ]; then
             echo "Android .aab artifact is missing. Ensure Android release build/signing succeeded."
             exit 1
-          fi
-          if [ "${{ steps.play_auth.outputs.enabled }}" != "true" ]; then
-            echo "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not provided; skipping Google Play upload."
           fi
 
       - name: Generate Play release notes from commits
@@ -631,8 +600,6 @@ jobs:
           rm -rf "$NOTES_DIR"
           mkdir -p "$CHANGELOG_DIR"
 
-          # Read the first versioned section from CHANGELOG.md (skip [Unreleased]).
-          # Falls back to the git commit message if CHANGELOG.md is absent or empty.
           if [ -f CHANGELOG.md ]; then
             NOTES="$(
               awk '
@@ -678,7 +645,6 @@ jobs:
           printf '%s' "$NOTES" > "$CHANGELOG_DIR/${{ needs.prepare-version.outputs.version_code }}.txt"
 
           echo "dir=$NOTES_DIR" >> "$GITHUB_OUTPUT"
-
 
       - name: Setup Ruby
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'

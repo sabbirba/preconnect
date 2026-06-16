@@ -46,6 +46,33 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
   final ScrollController _scrollController = ScrollController();
   late final HighlightScrollCoordinator _highlightScroll =
       HighlightScrollCoordinator(scrollController: _scrollController);
+  String _currentSemester = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentSemester();
+  }
+
+  Future<void> _loadCurrentSemester() async {
+    final semester =
+        await AppStorage.instance.getString(StorageKeys.currentSemester) ?? '';
+    if (mounted && semester.isNotEmpty) {
+      setState(() {
+        _currentSemester = semester;
+      });
+    }
+  }
+
+  String _getProgramCode(FriendSchedule friend) {
+    return friend.shortCode?.trim() ?? '';
+  }
+
+  String _getSemesterName(FriendSchedule friend) {
+    final sem = friend.semester?.trim() ?? '';
+    if (sem.isNotEmpty) return formatSemesterTitle(sem);
+    return formatSemesterTitle(_currentSemester);
+  }
 
   @override
   void dispose() {
@@ -238,9 +265,9 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                           ),
                         ),
                         Text(
-                          widget.friend.id.trim().isEmpty
-                              ? ''
-                              : 'ID: ${widget.friend.id}',
+                          '${_getProgramCode(widget.friend)} ${_getSemesterName(widget.friend)}'
+                              .toUpperCase()
+                              .trim(),
                           style: TextStyle(fontSize: 11, color: textSecondary),
                         ),
                       ],
@@ -365,7 +392,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                   isHighlighted: isHighlighted,
                   highlightColor: BracuPalette.primary,
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       SectionBadge(
                         label: formatSectionBadge(
