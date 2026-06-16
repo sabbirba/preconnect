@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -22,11 +21,11 @@ class CaptiveWifiPage extends StatefulWidget {
 }
 
 class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
-  static const Duration _apiLoginTimeout = Duration(seconds: 18);
+  static const Duration _apiLoginTimeout = Duration(seconds: 45);
   static const Duration _autoSessionCheckInterval = Duration(seconds: 30);
   static const Duration _autoExtendCooldown = Duration(seconds: 60);
   static const int _autoExtendThresholdSeconds = 21600;
-  static const Duration _wifiAssociationTimeout = Duration(seconds: 12);
+  static const Duration _wifiAssociationTimeout = Duration(seconds: 30);
   static const Duration _wifiAssociationPollInterval = Duration(
     milliseconds: 600,
   );
@@ -256,6 +255,16 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     bool allowAutoExtend = true,
   }) async {
     final networkStatus = await AndroidNetworkAssist.getNetworkStatus();
+
+    final hasPassword = _passwordController.text.isNotEmpty;
+    final isCaptive =
+        networkStatus?.captive == true ||
+        (networkStatus?.connected == true && networkStatus?.validated == false);
+    if (isCaptive && hasPassword && !_isConnecting) {
+      unawaited(_runOneTapConnect());
+      return;
+    }
+
     final initialStatus = _statusFromNetwork(networkStatus);
     if (initialStatus == null) {
       if (showSuccessSnackBar) {
@@ -275,32 +284,68 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       if (currentStatus.sessionUrl != null) {
         try {
           final client = await CaptiveWifiHttp.instance.newClient();
-          final res = await CaptiveWifiHttp.instance.getWithRedirects(
-            client: client,
-            uri: currentStatus.sessionUrl!,
-            cookies: const {},
-          );
+          final targetUri = currentStatus.sessionUrl!;
+
+          CaptiveWifiHttpResult res;
+          if (targetUri.path.contains('/portalpage/')) {
+            final syncUri = targetUri.replace(
+              path: '/portalauth/syncPortalResult',
+              queryParameters: {},
+            );
+            res = await CaptiveWifiHttp.instance.postOnce(
+              client: client,
+              uri: syncUri,
+              body: '',
+              cookies: CaptiveWifiHttp.instance.sessionCookies,
+              referer: targetUri,
+            );
+          } else {
+            res = await CaptiveWifiHttp.instance.getWithRedirects(
+              client: client,
+              uri: targetUri,
+              cookies: CaptiveWifiHttp.instance.sessionCookies,
+            );
+          }
+
           client.close(force: true);
           if (res.statusCode == 200) {
             final dynamic decoded = jsonDecode(res.body);
             if (decoded is Map) {
-              final secondsRemaining =
-                  decoded['seconds-remaining'] ?? decoded['secondsRemaining'];
-              final canExtend =
-                  decoded['can-extend-session'] ?? decoded['canExtendSession'];
-              final userPortalUrl =
-                  decoded['user-portal-url'] ?? decoded['userPortalUrl'];
-              int? seconds;
-              if (secondsRemaining is num) {
-                seconds = secondsRemaining.toInt();
+              if (targetUri.path.contains('/portalpage/')) {
+                final isSuccess = decoded['success'] == true;
+                final data = decoded['data'] as Map?;
+                final validPeriodStr = data?['validPeriod']?.toString() ?? '0';
+                final validPeriod = int.tryParse(validPeriodStr) ?? 0;
+                final seconds = (isSuccess && validPeriod > 0)
+                    ? validPeriod
+                    : (isSuccess ? null : 0);
+
+                currentStatus = CaptiveWifiApiStatus(
+                  secondsRemaining: seconds,
+                  canExtendSession: false,
+                  sessionUrl: targetUri,
+                );
+              } else {
+                final secondsRemaining =
+                    decoded['seconds-remaining'] ?? decoded['secondsRemaining'];
+                final canExtend =
+                    decoded['can-extend-session'] ??
+                    decoded['canExtendSession'];
+                final userPortalUrl =
+                    decoded['user-portal-url'] ?? decoded['userPortalUrl'];
+                int? seconds;
+                if (secondsRemaining is num) {
+                  seconds = secondsRemaining.toInt();
+                }
+                currentStatus = CaptiveWifiApiStatus(
+                  secondsRemaining: seconds ?? currentStatus.secondsRemaining,
+                  canExtendSession: canExtend == true,
+                  sessionUrl:
+                      userPortalUrl is String && userPortalUrl.isNotEmpty
+                      ? Uri.tryParse(userPortalUrl) ?? currentStatus.sessionUrl
+                      : currentStatus.sessionUrl,
+                );
               }
-              currentStatus = CaptiveWifiApiStatus(
-                secondsRemaining: seconds ?? currentStatus.secondsRemaining,
-                canExtendSession: canExtend == true,
-                sessionUrl: userPortalUrl is String && userPortalUrl.isNotEmpty
-                    ? Uri.tryParse(userPortalUrl) ?? currentStatus.sessionUrl
-                    : currentStatus.sessionUrl,
-              );
             }
           }
         } catch (_) {}
@@ -473,87 +518,28 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     return '${hours}h ${mins}m';
   }
 
+  String _formatSessionTime(int seconds) {
+    final safe = seconds < 0 ? 0 : seconds;
+    final h = safe ~/ 3600;
+    final m = (safe % 3600) ~/ 60;
+    final s = safe % 60;
+    if (h > 0) {
+      return '${h}h ${m.toString().padLeft(2, '0')}m ${s.toString().padLeft(2, '0')}s';
+    }
+    return '${m}m ${s.toString().padLeft(2, '0')}s';
+  }
+
   Future<bool> _loginViaCaptiveApi({
     required String studentId,
     required String password,
   }) async {
-    final httpService = CaptiveWifiHttp.instance;
     final captiveWifiUrl = await _currentCaptiveWifiApiUri();
-    if (captiveWifiUrl == null) {
-      return false;
-    }
-    final client = await httpService.newClient();
-    final cookies = <String, Cookie>{};
-
-    try {
-      var first = await httpService.getWithRedirects(
-        client: client,
-        uri: captiveWifiUrl,
-        cookies: cookies,
-      );
-      if (first.statusCode == 204) {
-        return true;
-      }
-
-      var loginUri = first.uri;
-      var htmlBody = first.body;
-      try {
-        final dynamic decoded = jsonDecode(first.body);
-        if (decoded is Map) {
-          final userPortalUrl =
-              decoded['user-portal-url'] ?? decoded['userPortalUrl'];
-          if (userPortalUrl is String && userPortalUrl.isNotEmpty) {
-            loginUri = Uri.parse(userPortalUrl);
-            final second = await httpService.getWithRedirects(
-              client: client,
-              uri: loginUri,
-              cookies: cookies,
-            );
-            htmlBody = second.body;
-            loginUri = second.uri;
-          }
-        }
-      } catch (_) {}
-
-      final form = _extractLoginForm(html: htmlBody, pageUri: loginUri);
-      if (form == null) {
-        return false;
-      }
-
-      final payload = <String, String>{
-        ...form.hiddenFields,
-        form.studentIdField: studentId,
-        form.passwordField: password,
-      };
-
-      final encoded = Uri(queryParameters: payload).query;
-      final response = await httpService.postOnce(
-        client: client,
-        uri: form.action,
-        body: encoded,
-        cookies: cookies,
-      );
-
-      if (response.location != null) {
-        final redirected = response.location!.isAbsolute
-            ? response.location!
-            : form.action.resolveUri(response.location!);
-        await httpService.getWithRedirects(
-          client: client,
-          uri: redirected,
-          cookies: cookies,
-        );
-      }
-
-      return await httpService.isValidatedViaProbe(
-        client: client,
-        cookies: cookies,
-      );
-    } catch (_) {
-      return false;
-    } finally {
-      client.close(force: true);
-    }
+    if (captiveWifiUrl == null) return false;
+    return CaptiveWifiHttp.instance.loginViaCaptiveApi(
+      studentId: studentId,
+      password: password,
+      captiveWifiUrl: captiveWifiUrl,
+    );
   }
 
   Future<Uri?> _currentCaptiveWifiApiUri() async {
@@ -561,100 +547,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     final status = await AndroidNetworkAssist.getNetworkStatus();
     if (status == null) return null;
     return CaptiveWifiHttp.resolvePortalUri(status);
-  }
-
-  _CaptiveWifiForm? _extractLoginForm({
-    required String html,
-    required Uri pageUri,
-  }) {
-    if (html.trim().isEmpty) return null;
-
-    final formRe = RegExp(
-      r'<form\b([^>]*)>(.*?)</form>',
-      caseSensitive: false,
-      dotAll: true,
-    );
-    final forms = formRe.allMatches(html).toList();
-    if (forms.isEmpty) return null;
-
-    for (final match in forms) {
-      final attrs = match.group(1) ?? '';
-      final body = match.group(2) ?? '';
-      final actionRaw = _attrValue(attrs, 'action')?.trim();
-      final action = (actionRaw == null || actionRaw.isEmpty)
-          ? pageUri
-          : pageUri.resolve(actionRaw);
-
-      final inputs = RegExp(
-        r'<input\b[^>]*>',
-        caseSensitive: false,
-        dotAll: true,
-      ).allMatches(body).toList();
-      String? passwordField;
-      String? studentIdField;
-      var studentIdScore = -1;
-      final hidden = <String, String>{};
-
-      for (final input in inputs) {
-        final tag = input.group(0) ?? '';
-        final name = _attrValue(tag, 'name')?.trim();
-        if (name == null || name.isEmpty) continue;
-
-        final type = (_attrValue(tag, 'type') ?? 'text').trim().toLowerCase();
-        final id = (_attrValue(tag, 'id') ?? '').toLowerCase();
-        final placeholder = (_attrValue(tag, 'placeholder') ?? '')
-            .toLowerCase();
-        final autocomplete = (_attrValue(tag, 'autocomplete') ?? '')
-            .toLowerCase();
-        final hint = '$name $id $placeholder $autocomplete'.toLowerCase();
-
-        if (type == 'hidden') {
-          hidden[name] = _attrValue(tag, 'value') ?? '';
-          continue;
-        }
-
-        if (type == 'password') {
-          passwordField = name;
-          continue;
-        }
-
-        var score = 0;
-        final looksId =
-            hint.contains('id') ||
-            hint.contains('student') ||
-            hint.contains('roll');
-        if (!looksId) continue;
-        if (hint.contains('student')) score += 60;
-        if (hint.contains('id')) score += 30;
-        if (hint.contains('roll')) score += 20;
-
-        if (score > studentIdScore) {
-          studentIdScore = score;
-          studentIdField = name;
-        }
-      }
-
-      if (studentIdField != null && passwordField != null) {
-        return _CaptiveWifiForm(
-          action: action,
-          studentIdField: studentIdField,
-          passwordField: passwordField,
-          hiddenFields: hidden,
-        );
-      }
-    }
-
-    return null;
-  }
-
-  String? _attrValue(String source, String name) {
-    final re = RegExp("$name\\s*=\\s*([\"'])(.*?)\\1", caseSensitive: false);
-    final m = re.firstMatch(source);
-    if (m != null) return m.group(2);
-
-    final unquoted = RegExp('$name\\s*=\\s*([^\\s>]+)', caseSensitive: false);
-    final um = unquoted.firstMatch(source);
-    return um?.group(1);
   }
 
   void _showLocalSnackBar(String message) {
@@ -734,6 +626,20 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  if (_liveRemainingSeconds != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.timer_outlined, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Session time: ${_formatSessionTime(_liveRemainingSeconds!)}',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
+                    ),
                   SizedBox(
                     width: double.infinity,
                     child: BracuActionButton(
@@ -800,18 +706,4 @@ class CaptiveWifiApiStatus {
   final int? secondsRemaining;
   final bool canExtendSession;
   final Uri? sessionUrl;
-}
-
-class _CaptiveWifiForm {
-  const _CaptiveWifiForm({
-    required this.action,
-    required this.studentIdField,
-    required this.passwordField,
-    required this.hiddenFields,
-  });
-
-  final Uri action;
-  final String studentIdField;
-  final String passwordField;
-  final Map<String, String> hiddenFields;
 }

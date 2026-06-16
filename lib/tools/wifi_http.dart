@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/network_assist.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
@@ -27,7 +26,9 @@ class CaptiveWifiHttp {
     'http://connectivitycheck.gstatic.com/generate_204',
   );
 
-  static const Duration _connectionTimeout = Duration(seconds: 10);
+  static const Duration _connectionTimeout = Duration(seconds: 20);
+
+  final Map<String, Cookie> sessionCookies = {};
 
   static Uri? resolvePortalUri(AndroidNetworkStatus status) {
     final captiveWifiUrl = (status.captiveWifiUrl ?? '').trim();
@@ -53,6 +54,8 @@ class CaptiveWifiHttp {
   Future<HttpClient> newClient() async {
     final client = HttpClient()..userAgent = kPreConnectUserAgent;
     client.connectionTimeout = _connectionTimeout;
+    client.badCertificateCallback =
+        (X509Certificate cert, String host, int port) => true;
     return client;
   }
 
@@ -192,10 +195,32 @@ class CaptiveWifiHttp {
     required Uri uri,
     required String body,
     required Map<String, Cookie> cookies,
+    Uri? referer,
   }) async {
     final request = await client.postUrl(uri);
     request.followRedirects = false;
     request.headers.set('content-type', 'application/x-www-form-urlencoded');
+    request.headers.set('X-Requested-With', 'XMLHttpRequest');
+
+    if (referer != null) {
+      request.headers.set('Referer', referer.toString());
+      request.headers.set(
+        'Origin',
+        '${referer.scheme}://${referer.host}:${referer.port}',
+      );
+    }
+
+    String? xsrfToken;
+    for (final cookie in cookies.values) {
+      if (cookie.name.toUpperCase() == 'XSRF-TOKEN') {
+        xsrfToken = cookie.value;
+        break;
+      }
+    }
+    if (xsrfToken != null) {
+      request.headers.set('X-XSRF-TOKEN', xsrfToken);
+    }
+
     final cookieHeader = _cookieHeader(cookies);
     if (cookieHeader != null) {
       request.headers.set('Cookie', cookieHeader);
@@ -222,10 +247,211 @@ class CaptiveWifiHttp {
     }
   }
 
-  String? _cookieHeader(Map<String, Cookie> jar) {
-    if (jar.isEmpty) return null;
-    return HttpUtils.cookieHeader(<String, String>{
-      for (final cookie in jar.values) cookie.name: cookie.value,
-    });
+  String? _cookieHeader(Map<String, Cookie> cookies) {
+    if (cookies.isEmpty) return null;
+    return cookies.values.map((c) => '${c.name}=${c.value}').join('; ');
   }
+
+  Future<bool> loginViaCaptiveApi({
+    required String studentId,
+    required String password,
+    required Uri captiveWifiUrl,
+  }) async {
+    final client = await newClient();
+    final cookies = sessionCookies;
+    cookies.clear();
+
+    try {
+      var first = await getWithRedirects(
+        client: client,
+        uri: captiveWifiUrl,
+        cookies: cookies,
+      );
+      if (first.statusCode == 204) {
+        return true;
+      }
+
+      var loginUri = first.uri;
+      var htmlBody = first.body;
+      try {
+        final dynamic decoded = jsonDecode(first.body);
+        if (decoded is Map) {
+          final userPortalUrl =
+              decoded['user-portal-url'] ?? decoded['userPortalUrl'];
+          if (userPortalUrl is String && userPortalUrl.isNotEmpty) {
+            loginUri = Uri.parse(userPortalUrl);
+            final second = await getWithRedirects(
+              client: client,
+              uri: loginUri,
+              cookies: cookies,
+            );
+            htmlBody = second.body;
+            loginUri = second.uri;
+          }
+        }
+      } catch (_) {}
+
+      final form = _extractLoginForm(html: htmlBody, pageUri: loginUri);
+      final finalForm = form ?? _fallbackPortalForm(loginUri);
+      if (finalForm == null) {
+        return false;
+      }
+
+      final payload = <String, String>{
+        ...finalForm.hiddenFields,
+        finalForm.studentIdField: studentId,
+        finalForm.passwordField: password,
+      };
+
+      final encoded = Uri(queryParameters: payload).query;
+      final response = await postOnce(
+        client: client,
+        uri: finalForm.action,
+        body: encoded,
+        cookies: cookies,
+        referer: loginUri,
+      );
+
+      if (response.location != null) {
+        final redirected = response.location!.isAbsolute
+            ? response.location!
+            : finalForm.action.resolveUri(response.location!);
+        await getWithRedirects(
+          client: client,
+          uri: redirected,
+          cookies: cookies,
+        );
+      }
+
+      return await isValidatedViaProbe(client: client, cookies: cookies);
+    } catch (_) {
+      return false;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  CaptiveWifiForm? _fallbackPortalForm(Uri uri) {
+    if (uri.path.startsWith('/portalpage/')) {
+      final action = uri.replace(
+        path: '/portalpage/portal/login',
+        queryParameters: {},
+      );
+      return CaptiveWifiForm(
+        action: action,
+        studentIdField: 'username',
+        passwordField: 'password',
+        hiddenFields: uri.queryParameters,
+      );
+    }
+    return null;
+  }
+
+  CaptiveWifiForm? _extractLoginForm({
+    required String html,
+    required Uri pageUri,
+  }) {
+    if (html.trim().isEmpty) return null;
+
+    final formRe = RegExp(
+      r'<form\b([^>]*)>(.*?)</form>',
+      caseSensitive: false,
+      dotAll: true,
+    );
+    final forms = formRe.allMatches(html).toList();
+    if (forms.isEmpty) return null;
+
+    for (final match in forms) {
+      final attrs = match.group(1) ?? '';
+      final body = match.group(2) ?? '';
+      final actionRaw = _attrValue(attrs, 'action')?.trim();
+      final action = (actionRaw == null || actionRaw.isEmpty)
+          ? pageUri
+          : pageUri.resolve(actionRaw);
+
+      final inputs = RegExp(
+        r'<input\b[^>]*>',
+        caseSensitive: false,
+        dotAll: true,
+      ).allMatches(body).toList();
+      String? passwordField;
+      String? studentIdField;
+      var studentIdScore = -1;
+      final hidden = <String, String>{};
+
+      for (final input in inputs) {
+        final tag = input.group(0) ?? '';
+        final name = _attrValue(tag, 'name')?.trim();
+        if (name == null || name.isEmpty) continue;
+
+        final type = (_attrValue(tag, 'type') ?? 'text').trim().toLowerCase();
+        final id = (_attrValue(tag, 'id') ?? '').toLowerCase();
+        final placeholder = (_attrValue(tag, 'placeholder') ?? '')
+            .toLowerCase();
+        final autocomplete = (_attrValue(tag, 'autocomplete') ?? '')
+            .toLowerCase();
+        final hint = '$name $id $placeholder $autocomplete'.toLowerCase();
+
+        if (type == 'hidden') {
+          hidden[name] = _attrValue(tag, 'value') ?? '';
+          continue;
+        }
+
+        if (type == 'password') {
+          passwordField = name;
+          continue;
+        }
+
+        var score = 0;
+        final looksId =
+            hint.contains('id') ||
+            hint.contains('student') ||
+            hint.contains('roll');
+        if (!looksId) continue;
+        if (hint.contains('student')) score += 60;
+        if (hint.contains('id')) score += 30;
+        if (hint.contains('roll')) score += 20;
+
+        if (score > studentIdScore) {
+          studentIdScore = score;
+          studentIdField = name;
+        }
+      }
+
+      if (studentIdField != null && passwordField != null) {
+        return CaptiveWifiForm(
+          action: action,
+          studentIdField: studentIdField,
+          passwordField: passwordField,
+          hiddenFields: hidden,
+        );
+      }
+    }
+
+    return null;
+  }
+
+  String? _attrValue(String source, String name) {
+    final re = RegExp("$name\\s*=\\s*([\"'])(.*?)\\1", caseSensitive: false);
+    final m = re.firstMatch(source);
+    if (m != null) return m.group(2);
+
+    final unquoted = RegExp('$name\\s*=\\s*([^\\s>]+)', caseSensitive: false);
+    final um = unquoted.firstMatch(source);
+    return um?.group(1);
+  }
+}
+
+class CaptiveWifiForm {
+  const CaptiveWifiForm({
+    required this.action,
+    required this.studentIdField,
+    required this.passwordField,
+    required this.hiddenFields,
+  });
+
+  final Uri action;
+  final String studentIdField;
+  final String passwordField;
+  final Map<String, String> hiddenFields;
 }
