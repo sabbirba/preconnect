@@ -2,7 +2,6 @@ name: Store Promotion
 
 on:
   schedule:
-    # Weekly store promotion runs every Thursday at 12:00 AM Bangladesh time (Wednesday 18:00 UTC).
     - cron: "00 18 * * 3"
   workflow_dispatch:
 
@@ -116,9 +115,7 @@ jobs:
         if: matrix.run_chrome
         uses: actions/cache@v5.0.5
         with:
-          path: |
-            ~/.pub-cache
-            C:\Users\runneradmin\AppData\Local\Pub\Cache
+          path: ~/.pub-cache
           key: ${{ runner.os }}-flutter-pub-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: |
             ${{ runner.os }}-flutter-pub-

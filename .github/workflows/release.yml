@@ -88,11 +88,7 @@ jobs:
 
       - name: Auto Bump Version
         shell: bash
-        run: |
-          mapfile -t VERSION_PARTS < <(./tool/sync_versions.sh bump-release)
-          VERSION_NAME="${VERSION_PARTS[0]}"
-          VERSION_CODE="${VERSION_PARTS[1]}"
-          echo "Updated pubspec version to ${VERSION_NAME}+${VERSION_CODE}"
+        run: ./tool/sync_versions.sh bump-release
 
       - name: Read Version
         id: version
@@ -587,15 +583,12 @@ jobs:
             echo "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not provided."
           fi
 
-      - name: Validate Google Play publish prerequisites
+      - name: Validate Google Play prerequisites
         shell: bash
         run: |
           if [ "${{ steps.aab.outputs.found }}" != "true" ]; then
             echo "Android .aab artifact is missing. Ensure Android release build/signing succeeded."
             exit 1
-          fi
-          if [ "${{ steps.play_auth.outputs.enabled }}" != "true" ]; then
-            echo "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not provided; skipping Google Play upload."
           fi
 
       - name: Generate Play release notes from commits
