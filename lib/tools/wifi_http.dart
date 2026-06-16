@@ -301,7 +301,10 @@ class CaptiveWifiHttp {
       final status = await AndroidNetworkAssist.getNetworkStatus();
       var deviceUmac = status?.clientMac;
       if (deviceUmac != null) {
-        deviceUmac = deviceUmac.replaceAll(':', '').replaceAll('-', '').toLowerCase();
+        deviceUmac = deviceUmac
+            .replaceAll(':', '')
+            .replaceAll('-', '')
+            .toLowerCase();
       }
 
       final params = loginUri.queryParameters;

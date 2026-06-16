@@ -451,15 +451,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     _updatePollingStrategy();
   }
 
-  // labOnly: modeSelector
-  //    1. search labs: date & time search in lab times
-  //    2. search theory:
-  //    3. search both:
-  //        1. match day first in either.record konta te hit hoiche,(did it hit lab?)
-  //        2. if hit a lab, try to match time in lab schedule only
-  //
-  //   need 3 icons for each mode.
-
   List<_SeatStatusCardData> _filterCards(
     List<_SeatStatusCardData> source,
     String query, {
@@ -489,27 +480,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
           ...card.labSchedule,
         ];
       }
-
-      // for each x in schedules:
-      //    if dayFilter.isNotEmpty:
-      //      if x.matchesDay == false return false;
-      //      if timeFilter.isNotEmpty:
-      //        if x.matchesTime == false return false;
-      //        else return true;
-      //      else return true;
-      //
-      //    else if timeFilter.isNotEmpty:
-      //      if x.matchesTime == false return false;
-      //      return true;
-      //
-      //    else
-      //      return true;
-      //
-      // day    time
-      // 0      0
-      // 0      1
-      // 1      0
-      // 1      1
 
       for (SeatStatusClassSchedule sc in schedules) {
         if (dayFilter.isNotEmpty) {
