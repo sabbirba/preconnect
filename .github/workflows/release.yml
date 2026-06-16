@@ -171,7 +171,7 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
     needs: [detect-pending, prepare-version, create-release]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 90
     permissions:
       contents: write
     env:
@@ -279,16 +279,13 @@ jobs:
             fi
           } > android/local.properties
 
-      - name: Refresh Gradle
+      - name: Refresh Gradle Dependencies
         if: matrix.platform == 'android'
         shell: bash
         run: |
           set -euo pipefail
           cd android
-          ./gradlew --stop
-          rm -rf .gradle/caches
-          ./gradlew clean --no-daemon --stacktrace --info
-          ./gradlew --no-daemon help --refresh-dependencies
+          ./gradlew --no-daemon dependencies --refresh-dependencies -q
 
       - name: Cache Build
         uses: actions/cache@v5.0.5
@@ -303,6 +300,10 @@ jobs:
       - name: Flutter Pub Get
         shell: bash
         run: flutter pub get
+
+      - name: Flutter Pub Upgrade
+        shell: bash
+        run: flutter pub upgrade
 
       - name: Release Env
         shell: bash
@@ -472,7 +473,7 @@ jobs:
         shell: bash
         run: |
           flutter build macos --release --tree-shake-icons --dart-define-from-file=.env
-          APP_PATH=$(find build/macos/Build/Products/Release -maxdepth 1 -type d -name "*.app" | head -n1)
+          APP_PATH=$(find build/macos/Build/Products/Release -maxdepth 3 -type d -name "*.app" | head -n1)
           if [ -d "$APP_PATH" ]; then
             strip -x "$APP_PATH/Contents/Frameworks/App.framework/Versions/Current/App" || true
             strip -x "$APP_PATH/Contents/MacOS/PreConnect" || true
@@ -527,11 +528,12 @@ jobs:
         if: matrix.platform == 'macos'
         run: |
           mkdir -p artifacts
-          APP_PATH=$(find build/macos/Build/Products/Release -maxdepth 1 -type d -name "*.app" | head -n1)
+          APP_PATH=$(find build/macos/Build/Products/Release -maxdepth 3 -type d -name "*.app" | head -n1)
           if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
-            echo "No macOS .app found"
+            echo "No macOS .app found under build/macos/Build/Products/Release (searched 3 levels deep)"
             exit 0
           fi
+          echo "Packaging macOS app: $APP_PATH"
           DMG_NAME="PreConnect-macos-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.dmg"
           hdiutil create -volname "PreConnect" -srcfolder "$APP_PATH" -ov -format UDZO "$GITHUB_WORKSPACE/artifacts/$DMG_NAME"
 

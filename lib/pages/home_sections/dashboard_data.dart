@@ -22,11 +22,13 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   bool _refreshInFlight = false;
   CaptiveWifiStatus? _captiveStatus;
   bool _isCheckingCaptive = false;
+  bool _isBackgroundLoggingIn = false;
   StreamSubscription<AndroidNetworkStatus>? _networkStatusSubscription;
   bool _autoOpenedWifiAssistant = false;
   bool _isOpeningWifiAssistant = false;
   bool _isAutoExtendingSession = false;
   DateTime? _lastAutoAssistantOpenAt;
+  DateTime? _lastSilentLoginAt;
   DateTime? _lastAutoSessionExtendAt;
   Timer? _captiveAutoTimer;
   Timer? _todayScheduleAutoRefreshTimer;
@@ -38,6 +40,8 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     minutes: 1,
   );
   static const Duration _autoAssistantCooldown = Duration(seconds: 45);
+  static const Duration _silentLoginCooldown = Duration(seconds: 90);
+  static const Duration _silentLoginTimeout = Duration(seconds: 45);
   static const Duration _autoSessionExtendCooldown = Duration(seconds: 60);
   static const int _autoSessionExtendThresholdSeconds = 21600;
   static const String _homeDashboardSnapshotCacheKey =
@@ -563,20 +567,79 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     }
   }
 
+  Future<String> _resolveCaptiveStudentId() async {
+    var id = (await AppStorage.instance.getString(StorageKeys.studentId) ?? '')
+        .trim();
+    if (id.isNotEmpty) return id;
+    try {
+      final profile = await ProfileService().getProfile(fromFetch: false);
+      id = (profile?['studentId'] ?? '').toString().trim();
+    } catch (_) {}
+    return id;
+  }
+
+  Future<bool> _silentBackgroundLogin(AndroidNetworkStatus status) async {
+    if (_isBackgroundLoggingIn) return false;
+
+    final now = DateTime.now();
+    if (_lastSilentLoginAt != null &&
+        now.difference(_lastSilentLoginAt!) < _silentLoginCooldown) {
+      return false;
+    }
+
+    final creds = await CaptiveLoginStore.instance.read();
+    if (creds == null) return false;
+
+    final studentId = await _resolveCaptiveStudentId();
+    if (studentId.isEmpty) return false;
+
+    final captiveWifiUri = CaptiveWifiHttp.resolvePortalUri(status);
+    if (captiveWifiUri == null) return false;
+
+    _isBackgroundLoggingIn = true;
+    _lastSilentLoginAt = now;
+    try {
+      final success = await CaptiveWifiHttp.instance
+          .loginViaCaptiveApi(
+            studentId: studentId,
+            password: creds.password,
+            captiveWifiUrl: captiveWifiUri,
+          )
+          .timeout(_silentLoginTimeout, onTimeout: () => false);
+      if (success && mounted) {
+        unawaited(_refreshCaptiveStatus());
+      }
+      return success;
+    } catch (_) {
+      return false;
+    } finally {
+      _isBackgroundLoggingIn = false;
+    }
+  }
+
   Future<void> _maybeAutoOpenWifiAssistant(AndroidNetworkStatus status) async {
-    if (_autoOpenedWifiAssistant || _isOpeningWifiAssistant || !mounted) return;
+    if (_isOpeningWifiAssistant || !mounted) return;
     if (status.transport != 'wifi') return;
     final creds = await CaptiveLoginStore.instance.read();
     if (!mounted || creds == null) return;
     final currentSsid = (status.ssid ?? '').trim();
     if (currentSsid.isEmpty) return;
+
     final now = DateTime.now();
     if (_lastAutoAssistantOpenAt != null &&
         now.difference(_lastAutoAssistantOpenAt!) < _autoAssistantCooldown) {
       return;
     }
-    _autoOpenedWifiAssistant = true;
     _lastAutoAssistantOpenAt = now;
+
+    final silentSuccess = await _silentBackgroundLogin(status);
+    if (silentSuccess || !mounted) {
+      _autoOpenedWifiAssistant = false;
+      return;
+    }
+
+    if (_autoOpenedWifiAssistant) return;
+    _autoOpenedWifiAssistant = true;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       await _openWifiLoginAssistant();
@@ -590,6 +653,15 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     if (!pending) return;
     final creds = await CaptiveLoginStore.instance.read();
     if (!mounted || creds == null) return;
+
+    final status = await AndroidNetworkAssist.getNetworkStatus();
+    if (!mounted) return;
+
+    if (status != null) {
+      final silentSuccess = await _silentBackgroundLogin(status);
+      if (silentSuccess || !mounted) return;
+    }
+
     _autoOpenedWifiAssistant = true;
     _lastAutoAssistantOpenAt = DateTime.now();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
