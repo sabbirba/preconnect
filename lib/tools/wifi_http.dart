@@ -299,35 +299,46 @@ class CaptiveWifiHttp {
       );
 
       final status = await AndroidNetworkAssist.getNetworkStatus();
-      final deviceUmac = status?.clientMac;
+      var deviceUmac = status?.clientMac;
+      if (deviceUmac != null) {
+        deviceUmac = deviceUmac.replaceAll(':', '').replaceAll('-', '').toLowerCase();
+      }
 
       final params = loginUri.queryParameters;
-      final pushPageId = params['pushPageId'] ??
-          captiveWifiUrl.queryParameters['pushPageId'] ??
-          _generateUuid();
+      final originalParams = captiveWifiUrl.queryParameters;
 
-      final base64Ssid = params['ssid'] ??
-          base64.encode(utf8.encode(status?.ssid ?? 'Student-WiFi'));
+      String getParam(String key, [String defaultValue = '']) {
+        final val = params[key] ?? originalParams[key];
+        return (val != null && val.isNotEmpty) ? val : defaultValue;
+      }
+
+      final pushPageId = getParam('pushPageId').isNotEmpty
+          ? getParam('pushPageId')
+          : _generateUuid();
+
+      final base64Ssid = getParam('ssid').isNotEmpty
+          ? getParam('ssid')
+          : base64.encode(utf8.encode(status?.ssid ?? 'Student-WiFi'));
 
       final payload = <String, String>{
         'pushPageId': pushPageId,
         'userPass': password,
-        'esn': params['esn'] ?? '',
-        'apmac': params['apmac'] ?? '',
-        'armac': params['armac'] ?? '',
-        'authType': params['authType'] ?? '1',
+        'esn': getParam('esn'),
+        'apmac': getParam('apmac'),
+        'armac': getParam('armac'),
+        'authType': getParam('authType', '1'),
         'ssid': base64Ssid,
-        'uaddress': params['uaddress'] ?? '',
-        'umac': deviceUmac ?? params['umac'] ?? '',
-        'accessMac': params['accessMac'] ?? '',
-        'businessType': params['businessType'] ?? '',
-        'acip': params['acip'] ?? '',
-        'agreed': params['agreed'] ?? '1',
-        'registerCode': params['registerCode'] ?? '',
-        'questions': params['questions'] ?? '',
-        'dynamicValidCode': params['dynamicValidCode'] ?? '',
-        'dynamicRSAToken': params['dynamicRSAToken'] ?? '',
-        'validCode': params['validCode'] ?? '',
+        'uaddress': getParam('uaddress'),
+        'umac': deviceUmac ?? getParam('umac'),
+        'accessMac': getParam('accessMac'),
+        'businessType': getParam('businessType'),
+        'acip': getParam('acip'),
+        'agreed': getParam('agreed', '1'),
+        'registerCode': getParam('registerCode'),
+        'questions': getParam('questions'),
+        'dynamicValidCode': getParam('dynamicValidCode'),
+        'dynamicRSAToken': getParam('dynamicRSAToken'),
+        'validCode': getParam('validCode'),
         'userName': studentId,
       };
 
