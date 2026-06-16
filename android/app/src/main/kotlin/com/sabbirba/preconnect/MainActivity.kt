@@ -578,6 +578,19 @@ class MainActivity : FlutterFragmentActivity() {
             if (!gatewayAddress.isNullOrBlank()) {
                 payload["gatewayAddress"] = gatewayAddress
             }
+            val ipAddress = getLocalIpAddress(network)
+            if (!ipAddress.isNullOrBlank()) {
+                payload["ipAddress"] = ipAddress
+            }
+            val wifiInfo = getWifiInfo(network, caps)
+            val apMac = formatMacAddress(wifiInfo?.bssid)
+            if (!apMac.isNullOrBlank()) {
+                payload["apMac"] = apMac
+            }
+            val clientMac = getClientMacAddress()
+            if (!clientMac.isNullOrBlank()) {
+                payload["clientMac"] = clientMac
+            }
         }
         val captiveWifiData = currentCaptiveWifiData(caps)
         if (captiveWifiData.isNotEmpty()) {
@@ -663,6 +676,75 @@ class MainActivity : FlutterFragmentActivity() {
         } else {
             raw
         }.trim().ifEmpty { null }
+    }
+
+    private fun getLocalIpAddress(network: Network): String? {
+        return try {
+            val linkProperties = connectivityManager.getLinkProperties(network) ?: return null
+            val linkAddresses = linkProperties.linkAddresses
+            val ipv4Address = linkAddresses.firstOrNull {
+                it.address is java.net.Inet4Address && !it.address.isLoopbackAddress
+            }
+            ipv4Address?.address?.hostAddress ?: linkAddresses.firstOrNull {
+                !it.address.isLoopbackAddress
+            }?.address?.hostAddress
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun getWifiInfo(network: Network, caps: NetworkCapabilities?): WifiInfo? {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                (caps ?: connectivityManager.getNetworkCapabilities(network))?.transportInfo as? WifiInfo
+            } else {
+                @Suppress("DEPRECATION")
+                wifiManager.connectionInfo
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun formatMacAddress(mac: String?): String? {
+        if (mac == null || mac.isBlank()) return null
+        if (mac.equals("02:00:00:00:00:00", ignoreCase = true)) return null
+        val clean = mac.replace(":", "").replace("-", "").lowercase()
+        return if (clean.length == 12) clean else null
+    }
+
+    private fun getClientMacAddress(): String? {
+        return try {
+            val interfaces = java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces())
+            var macBytes: ByteArray? = null
+            val wlan = interfaces.firstOrNull { it.name.equals("wlan0", ignoreCase = true) }
+            if (wlan != null) {
+                macBytes = wlan.hardwareAddress
+            }
+            if (macBytes == null || macBytes.isEmpty()) {
+                for (iface in interfaces) {
+                    if (iface.name.contains("wlan", ignoreCase = true) ||
+                        iface.name.contains("eth", ignoreCase = true)) {
+                        val hw = iface.hardwareAddress
+                        if (hw != null && hw.isNotEmpty()) {
+                            macBytes = hw
+                            break
+                        }
+                    }
+                }
+            }
+            if (macBytes != null && macBytes.isNotEmpty()) {
+                val sb = StringBuilder()
+                for (b in macBytes) {
+                    sb.append(String.format("%02x", b))
+                }
+                sb.toString()
+            } else {
+                null
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 }
 

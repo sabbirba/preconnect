@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:preconnect/tools/network_assist.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -311,6 +312,16 @@ class CaptiveWifiHttp {
         queryParameters: {},
       );
 
+      final status = await AndroidNetworkAssist.getNetworkStatus();
+      final deviceIp = status?.ipAddress;
+      final deviceUmac = status?.clientMac;
+      final deviceApmac = status?.apMac;
+
+      final urlPushPageId =
+          loginUri.queryParameters['pushPageId'] ??
+          captiveWifiUrl.queryParameters['pushPageId'];
+      final pushPageId = urlPushPageId ?? _generateUuid();
+
       final payload = <String, String>{
         'esn': '',
         'armac': '',
@@ -323,10 +334,10 @@ class CaptiveWifiHttp {
         'dynamicValidCode': '',
         'dynamicRSAToken': '',
         'validCode': '',
-        'apmac': 'c0f6ece2af00',
-        'umac': '4655d0db28e7',
-        'uaddress': '10.100.166.70',
-        'pushPageId': '295b3998-ae5e-4e30-9706-bbb5394afc6e',
+        'apmac': ?deviceApmac,
+        'umac': ?deviceUmac,
+        'uaddress': ?deviceIp,
+        'pushPageId': pushPageId,
         'authType': '1',
         'lang': 'en_US',
         ...loginUri.queryParameters,
@@ -442,11 +453,19 @@ class CaptiveWifiHttp {
 
         try {
           if (method == 'POST') {
+            final status = await AndroidNetworkAssist.getNetworkStatus();
+            final deviceIp = status?.ipAddress;
+            final deviceUmac = status?.clientMac;
+            final deviceApmac = status?.apMac;
+
+            final urlPushPageId = captiveWifiUrl.queryParameters['pushPageId'];
+            final pushPageId = urlPushPageId ?? _generateUuid();
+
             final payload = <String, String>{
-              'apmac': 'c0f6ece2af00',
-              'umac': '4655d0db28e7',
-              'uaddress': '10.100.166.70',
-              'pushPageId': '295b3998-ae5e-4e30-9706-bbb5394afc6e',
+              'apmac': ?deviceApmac,
+              'umac': ?deviceUmac,
+              'uaddress': ?deviceIp,
+              'pushPageId': pushPageId,
               'authType': '1',
               'lang': 'en_US',
               ...captiveWifiUrl.queryParameters,
@@ -487,5 +506,22 @@ class CaptiveWifiHttp {
     } finally {
       client.close(force: true);
     }
+  }
+
+  String _generateUuid() {
+    final random = Random.secure();
+    final hexDigits = '0123456789abcdef';
+    final charCodes = List<int>.generate(36, (i) {
+      if (i == 8 || i == 13 || i == 18 || i == 23) {
+        return 45; // '-'
+      }
+      if (i == 14) {
+        return 52; // '4'
+      }
+      final r = random.nextInt(16);
+      final value = (i == 19) ? (r & 0x3 | 0x8) : r;
+      return hexDigits.codeUnitAt(value);
+    });
+    return String.fromCharCodes(charCodes);
   }
 }

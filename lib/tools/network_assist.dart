@@ -15,6 +15,9 @@ class AndroidNetworkStatus {
     required this.gatewayAddress,
     required this.canExtendSession,
     required this.sessionExpiryTimeMillis,
+    this.ipAddress,
+    this.clientMac,
+    this.apMac,
   });
 
   final bool connected;
@@ -27,6 +30,9 @@ class AndroidNetworkStatus {
   final String? gatewayAddress;
   final bool? canExtendSession;
   final int? sessionExpiryTimeMillis;
+  final String? ipAddress;
+  final String? clientMac;
+  final String? apMac;
 
   factory AndroidNetworkStatus.fromMap(Map<dynamic, dynamic> map) {
     return AndroidNetworkStatus(
@@ -47,6 +53,15 @@ class AndroidNetworkStatus {
       canExtendSession: map['canExtendSession'] as bool?,
       sessionExpiryTimeMillis: (map['sessionExpiryTimeMillis'] as num?)
           ?.toInt(),
+      ipAddress: (map['ipAddress'] as String?)?.trim().isEmpty == true
+          ? null
+          : (map['ipAddress'] as String?),
+      clientMac: (map['clientMac'] as String?)?.trim().isEmpty == true
+          ? null
+          : (map['clientMac'] as String?),
+      apMac: (map['apMac'] as String?)?.trim().isEmpty == true
+          ? null
+          : (map['apMac'] as String?),
     );
   }
 }
