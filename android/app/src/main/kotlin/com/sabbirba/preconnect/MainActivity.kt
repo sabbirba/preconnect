@@ -171,6 +171,11 @@ class MainActivity : FlutterFragmentActivity() {
                     "addWifiSuggestion" -> addWifiSuggestion(call, result)
                     "removeAllWifiSuggestions" -> removeAllWifiSuggestions(result)
                     "getAndClearPostConnectionEvent" -> result.success(getAndClearPostConnectionEvent())
+                    "bindToWifiNetwork" -> result.success(bindToWifiNetwork())
+                    "unbindFromWifiNetwork" -> {
+                        unbindFromWifiNetwork()
+                        result.success(true)
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -502,11 +507,42 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    private fun bindToWifiNetwork(): Boolean {
+        return try {
+            val wifiNetwork = getWifiNetwork()
+            if (wifiNetwork != null) {
+                connectivityManager.bindProcessToNetwork(wifiNetwork)
+                true
+            } else {
+                false
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun unbindFromWifiNetwork() {
+        try {
+            connectivityManager.bindProcessToNetwork(null)
+        } catch (_: Exception) {}
+    }
+
+    private fun getWifiNetwork(): Network? {
+        return try {
+            connectivityManager.allNetworks.firstOrNull { net ->
+                val caps = connectivityManager.getNetworkCapabilities(net)
+                caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private fun currentNetworkStatus(
         networkOverride: Network? = null,
         capabilitiesOverride: NetworkCapabilities? = null,
     ): Map<String, Any> {
-        val network = networkOverride ?: connectivityManager.activeNetwork
+        val network = networkOverride ?: getWifiNetwork() ?: connectivityManager.activeNetwork
         if (network == null) {
             return mapOf(
                 "connected" to false,

@@ -38,9 +38,11 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       GlobalKey<ScaffoldMessengerState>();
 
   bool _isConnecting = false;
+  bool _isLoggingOut = false;
   bool _isCheckingSession = false;
   bool _isAutoExtending = false;
   bool _autoExtendEnabled = true;
+  bool _obscurePassword = true;
   StreamSubscription<AndroidNetworkStatus>? _networkStatusSubscription;
   Timer? _autoSessionTimer;
   Timer? _liveSessionTimer;
@@ -245,16 +247,35 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
 
       await _waitForTargetWifiAssociation();
 
-      final loggedIn = await _loginViaCaptiveApi(
-        studentId: studentId,
-        password: password,
-      ).timeout(_apiLoginTimeout, onTimeout: () => false);
+      final loggedIn =
+          await _loginViaCaptiveApi(
+            studentId: studentId,
+            password: password,
+          ).timeout(
+            _apiLoginTimeout,
+            onTimeout: () {
+              CaptiveWifiHttp.instance.lastError =
+                  'Connection/API login timed out after ${_apiLoginTimeout.inSeconds} seconds.';
+              return false;
+            },
+          );
       if (!mounted) return;
+      final status = await AndroidNetworkAssist.getNetworkStatus();
+      final url = status != null
+          ? CaptiveWifiHttp.resolvePortalUri(status)
+          : null;
+      final urlStr = url != null ? url.toString() : 'unknown';
+
       if (loggedIn) {
-        _showLocalSnackBar('Login success. Internet validated.');
+        _showLocalSnackBar('Login success. Internet validated.\nURL: $urlStr');
         await _refreshSessionStatus(showSuccessSnackBar: false);
       } else {
-        _showLocalSnackBar('Login failed or timed out.');
+        final err = CaptiveWifiHttp.instance.lastError;
+        if (err != null && err.isNotEmpty) {
+          _showLocalSnackBar('Login failed: $err\nURL: $urlStr');
+        } else {
+          _showLocalSnackBar('Login failed or timed out.\nURL: $urlStr');
+        }
       }
     } finally {
       if (mounted) {
@@ -298,6 +319,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     try {
       var currentStatus = initialStatus;
       if (currentStatus.sessionUrl != null) {
+        await AndroidNetworkAssist.bindToWifiNetwork();
         try {
           final client = await CaptiveWifiHttp.instance.newClient();
           final targetUri = currentStatus.sessionUrl!;
@@ -325,9 +347,36 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
 
           client.close(force: true);
           if (res.statusCode == 200) {
-            final dynamic decoded = jsonDecode(res.body);
+            var finalUri = res.uri;
+            var finalBody = res.body;
+
+            // If we queried a probe URL and got redirected to the portal page,
+            // resolve the session data by posting to the sync portal API.
+            if (!targetUri.path.contains('/portalpage/') &&
+                finalUri.path.contains('/portalpage/')) {
+              final syncUri = finalUri.replace(
+                path: '/portalauth/syncPortalResult',
+                queryParameters: {},
+              );
+              try {
+                final syncClient = await CaptiveWifiHttp.instance.newClient();
+                final syncRes = await CaptiveWifiHttp.instance.postOnce(
+                  client: syncClient,
+                  uri: syncUri,
+                  body: '',
+                  cookies: CaptiveWifiHttp.instance.sessionCookies,
+                  referer: finalUri,
+                );
+                syncClient.close(force: true);
+                if (syncRes.statusCode == 200) {
+                  finalBody = syncRes.body;
+                }
+              } catch (_) {}
+            }
+
+            final dynamic decoded = jsonDecode(finalBody);
             if (decoded is Map) {
-              if (targetUri.path.contains('/portalpage/')) {
+              if (finalUri.path.contains('/portalpage/')) {
                 final isSuccess = decoded['success'] == true;
                 final data = decoded['data'] as Map?;
                 final validPeriodStr = data?['validPeriod']?.toString() ?? '0';
@@ -336,10 +385,17 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                     ? validPeriod
                     : (isSuccess ? null : 0);
 
+                if (finalUri.path.contains('/portalpage/')) {
+                  unawaited(
+                    CaptiveLoginStore.instance.saveLastPortalUrl(
+                      finalUri.toString(),
+                    ),
+                  );
+                }
                 currentStatus = CaptiveWifiApiStatus(
                   secondsRemaining: seconds,
                   canExtendSession: false,
-                  sessionUrl: targetUri,
+                  sessionUrl: finalUri,
                 );
               } else {
                 final secondsRemaining =
@@ -353,18 +409,29 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                 if (secondsRemaining is num) {
                   seconds = secondsRemaining.toInt();
                 }
+                final userUri =
+                    userPortalUrl is String && userPortalUrl.isNotEmpty
+                    ? Uri.tryParse(userPortalUrl)
+                    : null;
+                if (userUri != null && userUri.path.contains('/portalpage/')) {
+                  unawaited(
+                    CaptiveLoginStore.instance.saveLastPortalUrl(
+                      userUri.toString(),
+                    ),
+                  );
+                }
                 currentStatus = CaptiveWifiApiStatus(
                   secondsRemaining: seconds ?? currentStatus.secondsRemaining,
                   canExtendSession: canExtend == true,
-                  sessionUrl:
-                      userPortalUrl is String && userPortalUrl.isNotEmpty
-                      ? Uri.tryParse(userPortalUrl) ?? currentStatus.sessionUrl
-                      : currentStatus.sessionUrl,
+                  sessionUrl: userUri ?? currentStatus.sessionUrl,
                 );
               }
             }
           }
-        } catch (_) {}
+        } catch (_) {
+        } finally {
+          await AndroidNetworkAssist.unbindFromWifiNetwork();
+        }
       }
 
       if (!mounted) return;
@@ -376,7 +443,12 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
         await _maybeAutoExtend(currentStatus);
       }
       if (showSuccessSnackBar) {
-        _showLocalSnackBar('Session status updated.');
+        final remainingText = _liveRemainingSeconds != null
+            ? _formatSessionTime(_liveRemainingSeconds!)
+            : 'unknown';
+        _showLocalSnackBar(
+          'Session status updated. Time remaining: $remainingText',
+        );
       }
     } catch (_) {
       if (!mounted) return;
@@ -506,6 +578,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     _isAutoExtending = true;
     _lastAutoExtendAt = now;
     try {
+      await AndroidNetworkAssist.bindToWifiNetwork();
       await CaptiveWifiHttp.instance.requestSessionExtension(
         status.sessionUrl!,
       );
@@ -520,6 +593,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       if (!mounted) return;
       _showLocalSnackBar('Auto-extend failed. Tap Extend Session manually.');
     } finally {
+      await AndroidNetworkAssist.unbindFromWifiNetwork();
       _isAutoExtending = false;
     }
   }
@@ -549,20 +623,87 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     required String studentId,
     required String password,
   }) async {
-    final captiveWifiUrl = await _currentCaptiveWifiApiUri();
-    if (captiveWifiUrl == null) return false;
-    return CaptiveWifiHttp.instance.loginViaCaptiveApi(
-      studentId: studentId,
-      password: password,
-      captiveWifiUrl: captiveWifiUrl,
-    );
+    final status = await AndroidNetworkAssist.getNetworkStatus();
+    if (status == null) {
+      CaptiveWifiHttp.instance.lastError =
+          'AndroidNetworkAssist.getNetworkStatus() returned null (disconnected or missing permissions)';
+      return false;
+    }
+    final captiveWifiUrl = CaptiveWifiHttp.resolvePortalUri(status);
+    if (captiveWifiUrl == null) {
+      CaptiveWifiHttp.instance.lastError =
+          'Could not resolve captive portal URL from network status (transport: ${status.transport}, captive: ${status.captive}, validated: ${status.validated})';
+      return false;
+    }
+    await AndroidNetworkAssist.bindToWifiNetwork();
+    try {
+      return await CaptiveWifiHttp.instance.loginViaCaptiveApi(
+        studentId: studentId,
+        password: password,
+        captiveWifiUrl: captiveWifiUrl,
+      );
+    } finally {
+      await AndroidNetworkAssist.unbindFromWifiNetwork();
+    }
   }
 
-  Future<Uri?> _currentCaptiveWifiApiUri() async {
-    if (!AndroidNetworkAssist.isSupported) return null;
-    final status = await AndroidNetworkAssist.getNetworkStatus();
-    if (status == null) return null;
-    return CaptiveWifiHttp.resolvePortalUri(status);
+  Future<void> _runLogout() async {
+    if (_isConnecting || _isLoggingOut) return;
+    setState(() {
+      _isLoggingOut = true;
+    });
+
+    try {
+      final status = await AndroidNetworkAssist.getNetworkStatus();
+      if (status == null) {
+        _showLocalSnackBar('Disconnected or missing permissions');
+        return;
+      }
+      var captiveWifiUrl = CaptiveWifiHttp.resolvePortalUri(status);
+      if (captiveWifiUrl == null ||
+          captiveWifiUrl == CaptiveWifiHttp.defaultProbeUri) {
+        final savedUrlStr = await CaptiveLoginStore.instance
+            .readLastPortalUrl();
+        if (savedUrlStr != null && savedUrlStr.isNotEmpty) {
+          final savedUrl = Uri.tryParse(savedUrlStr);
+          if (savedUrl != null) {
+            captiveWifiUrl = savedUrl;
+          }
+        }
+      }
+
+      // Absolute fallback if cache is empty and OS reports validated connection
+      if (captiveWifiUrl == null ||
+          captiveWifiUrl == CaptiveWifiHttp.defaultProbeUri) {
+        final rawSsid = status.ssid ?? "Student-WiFi";
+        final base64Ssid = base64.encode(utf8.encode(rawSsid));
+        captiveWifiUrl = Uri.parse(
+          'https://wifi2.bracu.ac.bd:19008/portalpage/aa04f63e5a3a483690888059c7dd4067/20240207115853/pc/auth.html?ssid=$base64Ssid',
+        );
+      }
+
+      await AndroidNetworkAssist.bindToWifiNetwork();
+      try {
+        final success = await CaptiveWifiHttp.instance.logoutViaCaptiveApi(
+          captiveWifiUrl: captiveWifiUrl,
+        );
+        if (success) {
+          _showLocalSnackBar('Successfully logged out.');
+          await _refreshSessionStatus(showSuccessSnackBar: false);
+        } else {
+          final err = CaptiveWifiHttp.instance.lastError;
+          _showLocalSnackBar('Logout failed: ${err ?? "unknown"}');
+        }
+      } finally {
+        await AndroidNetworkAssist.unbindFromWifiNetwork();
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoggingOut = false;
+        });
+      }
+    }
   }
 
   void _showLocalSnackBar(String message) {
@@ -631,11 +772,24 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                         const SizedBox(height: 10),
                         TextField(
                           controller: _passwordController,
-                          obscureText: true,
+                          obscureText: _obscurePassword,
                           autofillHints: const <String>[AutofillHints.password],
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Password',
-                            border: OutlineInputBorder(),
+                            border: const OutlineInputBorder(),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                color: Theme.of(context).hintColor,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
                           ),
                         ),
                       ],
@@ -656,17 +810,38 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                         ],
                       ),
                     ),
-                  SizedBox(
-                    width: double.infinity,
-                    child: BracuActionButton(
-                      onPressed: _isConnecting
-                          ? null
-                          : () => unawaited(_runOneTapConnect()),
-                      label: 'Connect',
-                      isLoading: _isConnecting,
-                      foregroundColor: BracuPalette.primary,
-                      borderRadius: 18,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: BracuActionButton(
+                          onPressed:
+                              (_isConnecting ||
+                                  _isLoggingOut ||
+                                  _isCheckingSession)
+                              ? null
+                              : () => unawaited(_runOneTapConnect()),
+                          label: 'Connect',
+                          isLoading: _isConnecting,
+                          foregroundColor: BracuPalette.primary,
+                          borderRadius: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: BracuActionButton(
+                          onPressed:
+                              (_isConnecting ||
+                                  _isLoggingOut ||
+                                  _isCheckingSession)
+                              ? null
+                              : () => unawaited(_runLogout()),
+                          label: 'Disconnect',
+                          isLoading: _isLoggingOut,
+                          foregroundColor: Colors.red,
+                          borderRadius: 18,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   SizedBox(

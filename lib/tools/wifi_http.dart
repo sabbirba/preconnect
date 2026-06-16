@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -22,12 +23,17 @@ class CaptiveWifiHttp {
   CaptiveWifiHttp._();
 
   static final CaptiveWifiHttp instance = CaptiveWifiHttp._();
+
+  String? lastError;
   static final Uri defaultProbeUri = Uri.parse(
     'http://connectivitycheck.gstatic.com/generate_204',
   );
 
-  static const Duration _connectionTimeout = Duration(seconds: 20);
+  static const String kPreConnectUserAgent =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
+  static const Duration _connectionTimeout = Duration(seconds: 10);
   final Map<String, Cookie> sessionCookies = {};
 
   static Uri? resolvePortalUri(AndroidNetworkStatus status) {
@@ -39,16 +45,7 @@ class CaptiveWifiHttp {
         (parsedUrl.scheme == 'http' || parsedUrl.scheme == 'https')) {
       return parsedUrl;
     }
-
-    final gatewayAddress = (status.gatewayAddress ?? '').trim();
-    if (gatewayAddress.isNotEmpty) {
-      return Uri.tryParse('http://$gatewayAddress/');
-    }
-
-    if (status.transport == 'wifi' && (status.captive || !status.validated)) {
-      return defaultProbeUri;
-    }
-    return null;
+    return defaultProbeUri;
   }
 
   Future<HttpClient> newClient() async {
@@ -257,6 +254,7 @@ class CaptiveWifiHttp {
     required String password,
     required Uri captiveWifiUrl,
   }) async {
+    lastError = null;
     final client = await newClient();
     final cookies = sessionCookies;
     cookies.clear();
@@ -273,6 +271,11 @@ class CaptiveWifiHttp {
 
       var loginUri = first.uri;
       var htmlBody = first.body;
+      if (loginUri.path.contains('/portalpage/')) {
+        unawaited(
+          CaptiveLoginStore.instance.saveLastPortalUrl(loginUri.toString()),
+        );
+      }
       try {
         final dynamic decoded = jsonDecode(first.body);
         if (decoded is Map) {
@@ -280,6 +283,13 @@ class CaptiveWifiHttp {
               decoded['user-portal-url'] ?? decoded['userPortalUrl'];
           if (userPortalUrl is String && userPortalUrl.isNotEmpty) {
             loginUri = Uri.parse(userPortalUrl);
+            if (loginUri.path.contains('/portalpage/')) {
+              unawaited(
+                CaptiveLoginStore.instance.saveLastPortalUrl(
+                  loginUri.toString(),
+                ),
+              );
+            }
             final second = await getWithRedirects(
               client: client,
               uri: loginUri,
@@ -287,6 +297,13 @@ class CaptiveWifiHttp {
             );
             htmlBody = second.body;
             loginUri = second.uri;
+            if (loginUri.path.contains('/portalpage/')) {
+              unawaited(
+                CaptiveLoginStore.instance.saveLastPortalUrl(
+                  loginUri.toString(),
+                ),
+              );
+            }
           }
         }
       } catch (_) {}
@@ -294,6 +311,8 @@ class CaptiveWifiHttp {
       final form = _extractLoginForm(html: htmlBody, pageUri: loginUri);
       final finalForm = form ?? _fallbackPortalForm(loginUri);
       if (finalForm == null) {
+        lastError =
+            'Failed to extract login form or resolve fallback for: $loginUri. Response body length: ${htmlBody.length}';
         return false;
       }
 
@@ -312,6 +331,11 @@ class CaptiveWifiHttp {
         referer: loginUri,
       );
 
+      if (response.statusCode >= 400) {
+        lastError = 'POST login failed with HTTP status ${response.statusCode}';
+        return false;
+      }
+
       if (response.location != null) {
         final redirected = response.location!.isAbsolute
             ? response.location!
@@ -323,8 +347,122 @@ class CaptiveWifiHttp {
         );
       }
 
-      return await isValidatedViaProbe(client: client, cookies: cookies);
-    } catch (_) {
+      final probeSuccess = await isValidatedViaProbe(
+        client: client,
+        cookies: cookies,
+      );
+      if (!probeSuccess) {
+        lastError =
+            'Gateway authentication POST completed but probe to generate_204 failed (still captive)';
+      }
+      return probeSuccess;
+    } catch (e) {
+      lastError = 'Exception: $e';
+      return false;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  Future<CaptiveWifiHttpResult> getOnce({
+    required HttpClient client,
+    required Uri uri,
+    required Map<String, Cookie> cookies,
+    Uri? referer,
+  }) async {
+    final request = await client.getUrl(uri);
+    request.followRedirects = false;
+    if (referer != null) {
+      request.headers.set('Referer', referer.toString());
+    }
+    final cookieHeader = _cookieHeader(cookies);
+    if (cookieHeader != null) {
+      request.headers.set('Cookie', cookieHeader);
+    }
+    final response = await request.close();
+    _captureCookies(response, cookies);
+    final location =
+        response.headers.value('location') ??
+        response.headers.value('Location');
+    final text = await response.transform(utf8.decoder).join();
+
+    return CaptiveWifiHttpResult(
+      statusCode: response.statusCode,
+      uri: uri,
+      body: text,
+      location: location == null ? null : Uri.parse(location),
+    );
+  }
+
+  Future<bool> logoutViaCaptiveApi({required Uri captiveWifiUrl}) async {
+    lastError = null;
+    final client = await newClient();
+    try {
+      final candidates = <Map<String, String>>[
+        {'path': '/portalauth/logout', 'method': 'POST'},
+        {'path': '/portalauth/logout', 'method': 'GET'},
+        {'path': '/portalauth/portal/logout', 'method': 'POST'},
+        {'path': '/portalauth/portal/logout', 'method': 'GET'},
+        {'path': '/portalpage/portal/logout', 'method': 'POST'},
+        {'path': '/portalpage/portal/logout', 'method': 'GET'},
+        {'path': '/portalpage/logout', 'method': 'POST'},
+        {'path': '/portalpage/logout', 'method': 'GET'},
+        {'path': captiveWifiUrl.resolve('logout').path, 'method': 'POST'},
+        {'path': captiveWifiUrl.resolve('logout').path, 'method': 'GET'},
+        {'path': captiveWifiUrl.resolve('logout.html').path, 'method': 'POST'},
+        {'path': captiveWifiUrl.resolve('logout.html').path, 'method': 'GET'},
+        {'path': captiveWifiUrl.resolve('../logout').path, 'method': 'POST'},
+        {'path': captiveWifiUrl.resolve('../logout').path, 'method': 'GET'},
+        {'path': captiveWifiUrl.resolve('../../logout').path, 'method': 'POST'},
+        {'path': captiveWifiUrl.resolve('../../logout').path, 'method': 'GET'},
+      ];
+
+      for (final candidate in candidates) {
+        final path = candidate['path']!;
+        final method = candidate['method']!;
+
+        Uri logoutUri;
+        if (method == 'GET') {
+          logoutUri = captiveWifiUrl.replace(path: path);
+        } else {
+          logoutUri = captiveWifiUrl.replace(path: path, queryParameters: {});
+        }
+
+        try {
+          if (method == 'POST') {
+            final payload = <String, String>{...captiveWifiUrl.queryParameters};
+            final encoded = Uri(queryParameters: payload).query;
+            await postOnce(
+              client: client,
+              uri: logoutUri,
+              body: encoded,
+              cookies: sessionCookies,
+              referer: captiveWifiUrl,
+            );
+          } else {
+            await getOnce(
+              client: client,
+              uri: logoutUri,
+              cookies: sessionCookies,
+              referer: captiveWifiUrl,
+            );
+          }
+
+          final probeSuccess = await isValidatedViaProbe(
+            client: client,
+            cookies: sessionCookies,
+          );
+          if (!probeSuccess) {
+            return true;
+          }
+        } catch (_) {}
+      }
+
+      lastError =
+          'Tried all candidate logout endpoints, but probe still succeeded (still logged in).';
+      return false;
+    } catch (e) {
+      lastError = 'Logout exception: $e';
       return false;
     } finally {
       client.close(force: true);

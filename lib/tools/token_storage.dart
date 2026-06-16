@@ -182,9 +182,20 @@ class CaptiveLoginStore {
     );
   }
 
+  static const String _lastPortalUrlKey = 'wifi_captive_last_portal_url';
+
+  Future<String?> readLastPortalUrl() async {
+    return await _storage.read(key: _lastPortalUrlKey);
+  }
+
+  Future<void> saveLastPortalUrl(String url) async {
+    await _storage.write(key: _lastPortalUrlKey, value: url);
+  }
+
   Future<void> clear() async {
     await _storage.write(key: _passwordKey, value: null);
     await _storage.write(key: _autoExtendEnabledKey, value: null);
+    await _storage.write(key: _lastPortalUrlKey, value: null);
   }
 }
 

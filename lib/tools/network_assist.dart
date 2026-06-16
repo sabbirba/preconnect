@@ -136,4 +136,24 @@ class AndroidNetworkAssist {
     } catch (_) {}
     return const <String, dynamic>{'pending': false};
   }
+
+  static Future<bool> bindToWifiNetwork() async {
+    if (!isSupported) return false;
+    try {
+      final res = await _channel.invokeMethod<bool>('bindToWifiNetwork');
+      return res == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> unbindFromWifiNetwork() async {
+    if (!isSupported) return false;
+    try {
+      final res = await _channel.invokeMethod<bool>('unbindFromWifiNetwork');
+      return res == true;
+    } catch (_) {
+      return false;
+    }
+  }
 }

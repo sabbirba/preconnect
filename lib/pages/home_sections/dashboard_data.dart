@@ -558,11 +558,13 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     _isAutoExtendingSession = true;
     _lastAutoSessionExtendAt = now;
     try {
+      await AndroidNetworkAssist.bindToWifiNetwork();
       await CaptiveWifiHttp.instance.requestSessionExtension(captiveWifiUri);
       if (!mounted) return;
       unawaited(_refreshCaptiveStatus());
     } catch (_) {
     } finally {
+      await AndroidNetworkAssist.unbindFromWifiNetwork();
       _isAutoExtendingSession = false;
     }
   }
@@ -599,6 +601,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     _isBackgroundLoggingIn = true;
     _lastSilentLoginAt = now;
     try {
+      await AndroidNetworkAssist.bindToWifiNetwork();
       final success = await CaptiveWifiHttp.instance
           .loginViaCaptiveApi(
             studentId: studentId,
@@ -613,6 +616,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     } catch (_) {
       return false;
     } finally {
+      await AndroidNetworkAssist.unbindFromWifiNetwork();
       _isBackgroundLoggingIn = false;
     }
   }
