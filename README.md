@@ -55,25 +55,45 @@ Installation is available for multiple platforms through:
 
 ## Project Map
 
-The repository is organized around the main product areas below:
+A visual overview of the repository's directory structure and core files:
 
-- `lib/pages/home.dart` and `lib/pages/home_sections/` for the main dashboard and quick-access cards
-- `lib/pages/class_schedule.dart` for class schedules
-- `lib/pages/exam_schedule.dart` for midterm and final exam data
-- `lib/pages/seat_status.dart` for seat availability and section details
-- `lib/pages/alarms.dart` for class and exam reminders
-- `lib/pages/notifications.dart` for app notifications
-- `lib/pages/friend_schedule.dart` and `lib/pages/share_schedule.dart` for schedule sharing
-- `lib/pages/scan_schedule.dart` for QR-based schedule scanning
-- `lib/pages/custom_schedules.dart` for personal schedules
-- `lib/pages/degree_progress.dart` and `lib/pages/cgpa_calculator.dart` for academic planning
-- `lib/pages/all_courses.dart` and `lib/pages/requirement_courses.dart` for course catalogue
-- `lib/pages/student_profile.dart` for the student profile and overview
-- `lib/pages/calendar.dart` for the academic calendar
-- `lib/pages/bus.dart`, `lib/pages/free_labs.dart`, `lib/pages/wifi_printer.dart`, and `lib/pages/captive_wifi.dart` for campus utilities
-- `lib/pages/settings.dart` for app settings and data controls
-- `lib/pages/devs.dart` for the developers, funding, and support page
-- `lib/widgets/` for shared UI components used across pages
+```bash
+preconnect/
+├── 📂 .github/workflows/        # CI/CD workflows (release, PR check, store promotion)
+├── 📂 android/                  # Android native project files
+├── 📂 assets/                   # App icons, static assets & SVG resource files
+├── 📂 ios/                      # iOS native project files
+├── 📂 lib/                      # Main Flutter codebase
+│   ├── 📄 main.dart             # Application entry point (initialization & runners)
+│   ├── 📄 app.dart              # App shell, theme config, and routing table
+│   ├── 📄 analytics.dart        # User actions & page view tracking helper
+│   ├── 📂 api/                  # Connect SSO Auth, HTTP clients, and endpoints mapping
+│   ├── 📂 model/                # Data serialization models (Friend, Profile, Seat, etc.)
+│   ├── 📂 tools/                # App caching helpers, storage APIs, and platform utilities
+│   ├── 📂 widgets/              # Reusable UI component library (buttons, card layout, inputs)
+│   └── 📂 pages/                # Core screens and application page views
+│       ├── 📄 home.dart         # Main home container & dashboard tabs switcher
+│       ├── 📂 home_sections/    # Dashboard widgets, quick-info cards, and summaries
+│       ├── 📄 class_schedule.dart # Class times, routine views, and schedule list
+│       ├── 📄 exam_schedule.dart  # Mid & Final exam schedules page
+│       ├── 📄 seat_status.dart  # Seat availability checking & real-time socket tracking
+│       ├── 📄 alarms.dart       # Smart reminders and scheduling alarms for lectures/exams
+│       ├── 📄 friend_schedule.dart # Friend's schedule viewer dashboard
+│       ├── 📄 share_schedule.dart  # QR code export and schedule compression sharing
+│       ├── 📄 scan_schedule.dart   # QR scanner implementation for friend schedules
+│       ├── 📄 custom_schedules.dart # Personalized schedule planning & manual slot creator
+│       ├── 📄 degree_progress.dart # Degree audit planner, completed credits, & checklist
+│       ├── 📄 cgpa_calculator.dart # CGPA predictor and semester grade calculators
+│       ├── 📄 student_profile.dart # Student academic profile details
+│       ├── 📄 calendar.dart     # Dynamic academic event calendar and holiday viewer
+│       ├── 📄 devs.dart         # About the developers, funding options, and support info
+│       ├── 📂 bus/              # Campus transport routes, schedules, and bus tracking
+│       ├── 📄 free_labs.dart    # Campus PC lab status and free slot finder
+│       ├── 📄 wifi_printer.dart # Wi-Fi printers setup instructions
+│       └── 📄 settings.dart     # General app preferences and cache controls
+├── 📂 macos/                    # macOS native application shell
+└── 📂 web/                      # Chrome Extension manifest, assets, and service worker shell
+```
 
 ## Documentation
 
@@ -111,24 +131,6 @@ The repository is organized around the main product areas below:
 - Padding: 14–16 px
 - Radius: 18–22 px
 
-## Project Structure
-
-```
-lib/
-  main.dart          Entry point
-  app.dart           App shell & routing
-  analytics.dart     Analytics helpers
-  api/               Auth & API client
-  model/             Data models
-  pages/             UI screens & sections
-  tools/             Utilities (caching, helpers, etc.)
-  widgets/           Shared UI components
-android/             Android configuration (Kotlin)
-ios/                 iOS configuration (Swift)
-macos/               macOS shell
-web/                 Chrome extension + Flutter web app shell
-assets/              Icons & SVGs
-```
 
 ## Getting Started
 
