@@ -272,9 +272,7 @@ class CaptiveWifiHttp {
       var loginUri = first.uri;
       if (loginUri.path.contains('/portalpage/')) {
         unawaited(
-          CaptiveLoginStore.instance.saveLastPortalUrl(
-            loginUri.toString(),
-          ),
+          CaptiveLoginStore.instance.saveLastPortalUrl(loginUri.toString()),
         );
       }
       try {
@@ -325,6 +323,12 @@ class CaptiveWifiHttp {
         'dynamicValidCode': '',
         'dynamicRSAToken': '',
         'validCode': '',
+        'apmac': 'c0f6ece2af00',
+        'umac': '4655d0db28e7',
+        'uaddress': '10.100.166.70',
+        'pushPageId': '295b3998-ae5e-4e30-9706-bbb5394afc6e',
+        'authType': '1',
+        'lang': 'en_US',
         ...loginUri.queryParameters,
         'userName': studentId,
         'userPass': password,
@@ -402,9 +406,7 @@ class CaptiveWifiHttp {
     );
   }
 
-  Future<bool> logoutViaCaptiveApi({
-    required Uri captiveWifiUrl,
-  }) async {
+  Future<bool> logoutViaCaptiveApi({required Uri captiveWifiUrl}) async {
     lastError = null;
     final client = await newClient();
     try {
@@ -441,6 +443,12 @@ class CaptiveWifiHttp {
         try {
           if (method == 'POST') {
             final payload = <String, String>{
+              'apmac': 'c0f6ece2af00',
+              'umac': '4655d0db28e7',
+              'uaddress': '10.100.166.70',
+              'pushPageId': '295b3998-ae5e-4e30-9706-bbb5394afc6e',
+              'authType': '1',
+              'lang': 'en_US',
               ...captiveWifiUrl.queryParameters,
             };
             final encoded = Uri(queryParameters: payload).query;
@@ -470,7 +478,8 @@ class CaptiveWifiHttp {
         } catch (_) {}
       }
 
-      lastError = 'Tried all candidate logout endpoints, but probe still succeeded (still logged in).';
+      lastError =
+          'Tried all candidate logout endpoints, but probe still succeeded (still logged in).';
       return false;
     } catch (e) {
       lastError = 'Logout exception: $e';
