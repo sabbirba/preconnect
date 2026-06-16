@@ -75,6 +75,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     'FRIDAY',
     'SATURDAY',
   ];
+  static const List<String> _modeOrder = <String>["Labs", "Theory"];
 
   final SeatStatusService _service = SeatStatusService();
   final List<_SeatStatusCardData> _cards = <_SeatStatusCardData>[];
@@ -90,7 +91,10 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   bool _availableOnly = false;
   bool _labOnly = false;
   String _selectedDayFilter = '';
-  String _selectedTimeFilter = '';
+  String _selectedModeFilter = '';
+  SeatTimetable _selectedTimeFilter = SeatTimetable(startTime: '', endTime: '');
+  late bool hitsLab;
+
   @override
   void initState() {
     super.initState();
@@ -123,9 +127,9 @@ class _SeatStatusPageState extends State<SeatStatusPage>
         _filterCards(
           cards,
           _searchQuery,
-          labOnly: _labOnly,
           availableOnly: _availableOnly,
           dayFilter: _selectedDayFilter,
+          modeFilter: _selectedModeFilter,
           timeFilter: _selectedTimeFilter,
         ),
       );

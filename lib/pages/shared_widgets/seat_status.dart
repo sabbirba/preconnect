@@ -17,6 +17,13 @@ class SeatTimetable {
   int get hashCode => Object.hash(startTime, endTime);
 
   String get repr => "${formatTime(startTime)} - ${formatTime(endTime)}";
+  bool get isNotEmpty => startTime.isNotEmpty && endTime.isNotEmpty;
+  bool get isEmpty => startTime.isEmpty && endTime.isEmpty;
+
+  @override
+  String toString() {
+    return repr;
+  }
 }
 
 extension _SeatStatusPageStateMethods on _SeatStatusPageState {
@@ -247,7 +254,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         runSpacing: 8,
         children: [
           _buildAvailabilityFilterAction(),
-          _buildLabFilterAction(),
+          _buildModeFilterAction(),
           _buildDayFilterAction(context),
           _buildTimeFilterAction(context),
         ],
@@ -265,13 +272,36 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     );
   }
 
-  Widget _buildLabFilterAction() {
-    return _FilterChip(
-      icon: Icons.schema_outlined,
-      label: 'Labs',
-      selected: _labOnly,
-      onTap: () => _setLabFilter(!_labOnly),
-      showArrow: false,
+  Widget _buildModeFilterAction() {
+    final label = _selectedModeFilter.isEmpty
+        ? 'Labs + Theory'
+        : _selectedModeFilter;
+    return BracuSelectDropdownChip<String>(
+      icon: Icons.explore,
+      label: label,
+      selected: _selectedModeFilter.isNotEmpty,
+      compact: true,
+      borderRadius: 999,
+      title: 'Change Mode',
+      subtitle: 'Show seat status for labs or theories, or both',
+      selectedValue: _selectedModeFilter,
+      options: <BracuSelectOption<String>>[
+        const BracuSelectOption<String>(
+          value: '',
+          label: 'Labs + Theory',
+          icon: Icons.all_inclusive_rounded,
+          subtitle: 'All Schedules',
+        ),
+        ..._SeatStatusPageState._modeOrder.map(
+          (mode) => BracuSelectOption<String>(
+            value: mode,
+            label: mode,
+            icon: Icons.settings,
+            subtitle: 'Only $mode',
+          ),
+        ),
+      ],
+      onSelected: _setModeFilter,
     );
   }
 
@@ -311,7 +341,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   Widget _buildTimeFilterAction(BuildContext context) {
     final label = _selectedTimeFilter.isEmpty
         ? 'Any Time'
-        : formatWeekdayTitle(_selectedTimeFilter);
+        : formatWeekdayTitle(_selectedTimeFilter.toString());
 
     final assortedTimes =
         _cards.expand((card) => card.timetables).toSet().toList()..sort((a, b) {
@@ -325,7 +355,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
           return endA.compareTo(endB);
         });
 
-    return BracuSelectDropdownChip<String>(
+    return BracuSelectDropdownChip<SeatTimetable>(
       icon: Icons.lock_clock,
       label: label,
       selected: _selectedTimeFilter.isNotEmpty,
@@ -334,16 +364,16 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       title: 'Filter by Time',
       subtitle: 'Show seat status for a specific time',
       selectedValue: _selectedTimeFilter,
-      options: <BracuSelectOption<String>>[
-        const BracuSelectOption<String>(
-          value: '',
+      options: <BracuSelectOption<SeatTimetable>>[
+        const BracuSelectOption<SeatTimetable>(
+          value: SeatTimetable(startTime: '', endTime: ''),
           label: 'Any Time',
           icon: Icons.all_inclusive_rounded,
           subtitle: 'Possible times',
         ),
         ...assortedTimes.map(
-          (data) => BracuSelectOption<String>(
-            value: data.repr,
+          (data) => BracuSelectOption<SeatTimetable>(
+            value: data,
             label: data.repr,
             icon: Icons.lock_clock,
             subtitle: 'Only ${data.repr}',
@@ -359,9 +389,9 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     _refreshVisibleCards(availableOnly: next);
   }
 
-  void _setLabFilter(bool next) {
-    if (next == _labOnly) return;
-    _refreshVisibleCards(labOnly: next);
+  void _setModeFilter(String next) {
+    if (next == _selectedModeFilter.toString()) return;
+    _refreshVisibleCards(modeFilter: next);
   }
 
   void _setDayFilter(String next) {
@@ -369,7 +399,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     _refreshVisibleCards(dayFilter: next);
   }
 
-  void _setTimeFilter(String next) {
+  void _setTimeFilter(SeatTimetable next) {
     if (next == _selectedTimeFilter) return;
     _refreshVisibleCards(timeFilter: next);
   }
@@ -378,26 +408,29 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     bool? availableOnly,
     bool? labOnly,
     String? dayFilter,
-    String? timeFilter,
+    String? modeFilter,
+    SeatTimetable? timeFilter,
     String? query,
   }) {
     final resolvedAvailableOnly = availableOnly ?? _availableOnly;
     final resolvedLabOnly = labOnly ?? _labOnly;
     final resolvedDayFilter = dayFilter ?? _selectedDayFilter;
+    final resolvedModeFilter = modeFilter ?? _selectedModeFilter;
     final resolvedTimeFilter = timeFilter ?? _selectedTimeFilter;
     final resolvedQuery = query ?? _searchQuery;
     final nextVisible = _filterCards(
       _cards,
       resolvedQuery,
       availableOnly: resolvedAvailableOnly,
-      labOnly: resolvedLabOnly,
       dayFilter: resolvedDayFilter,
+      modeFilter: resolvedModeFilter,
       timeFilter: resolvedTimeFilter,
     );
     final filtersChanged =
         resolvedAvailableOnly != _availableOnly ||
         resolvedLabOnly != _labOnly ||
         resolvedDayFilter != _selectedDayFilter ||
+        resolvedModeFilter != _selectedModeFilter ||
         resolvedTimeFilter != _selectedTimeFilter ||
         resolvedQuery != _searchQuery;
     if (!filtersChanged &&
@@ -409,6 +442,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       _labOnly = resolvedLabOnly;
       _selectedDayFilter = resolvedDayFilter;
       _selectedTimeFilter = resolvedTimeFilter;
+      _selectedModeFilter = resolvedModeFilter;
       _searchQuery = resolvedQuery;
       _visibleCards
         ..clear()
@@ -421,30 +455,58 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     List<_SeatStatusCardData> source,
     String query, {
     required bool availableOnly,
-    required bool labOnly,
     required String dayFilter,
-    required String timeFilter,
+    required SeatTimetable timeFilter,
+    required String modeFilter,
   }) {
     final q = query.trim().toLowerCase();
     return source.where((card) {
       if (q.isNotEmpty && !card.searchToken.contains(q)) return false;
       if (availableOnly && card.remaining <= 0) return false;
-      if (labOnly && card.labSectionId == null) return false;
-      if (dayFilter.isNotEmpty) {
-        final schedules = <SeatStatusClassSchedule>[
+
+      final List<SeatStatusClassSchedule> schedules;
+
+      if (modeFilter == "Labs") {
+        schedules = <SeatStatusClassSchedule>[...card.labSchedule];
+
+        if (card.labSectionId == null) {
+          return false;
+        }
+      } else if (modeFilter == "Theory") {
+        schedules = <SeatStatusClassSchedule>[...card.classSchedule];
+      } else {
+        schedules = <SeatStatusClassSchedule>[
           ...card.classSchedule,
           ...card.labSchedule,
         ];
-        final hasDay = schedules.any(
-          (entry) => normalizeWeekday(entry.day) == dayFilter,
-        );
-        if (!hasDay) return false;
       }
-      if (timeFilter.isNotEmpty) {
-        final hasTime = card.timetables.any((data) => data.repr == timeFilter);
 
-        if (!hasTime) return false;
+      for (SeatStatusClassSchedule sc in schedules) {
+        if (dayFilter.isNotEmpty) {
+          if (!(normalizeWeekday(sc.day) == dayFilter)) {
+            return false;
+          }
+
+          if (timeFilter.isNotEmpty) {
+            if (!(timeFilter == sc.toTimetable())) {
+              return false;
+            } else {
+              return true;
+            }
+          } else {
+            return true;
+          }
+        } else if (timeFilter.isNotEmpty) {
+          if (!(timeFilter == sc.toTimetable())) {
+            return false;
+          }
+
+          return true;
+        } else {
+          return true;
+        }
       }
+
       return true;
     }).toList();
   }
@@ -461,9 +523,9 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     final nextVisible = _filterCards(
       nextCards,
       _searchQuery,
-      labOnly: _labOnly,
       availableOnly: _availableOnly,
       dayFilter: _selectedDayFilter,
+      modeFilter: _selectedModeFilter,
       timeFilter: _selectedTimeFilter,
     );
     if (!mounted) return;
