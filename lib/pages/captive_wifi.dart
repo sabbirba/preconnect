@@ -249,20 +249,14 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
             },
           );
       if (!mounted) return;
-      final status = await AndroidNetworkAssist.getNetworkStatus();
-      final url = status != null
-          ? CaptiveWifiHttp.resolvePortalUri(status)
-          : null;
-      final urlStr = url != null ? url.toString() : 'unknown';
-
       if (loggedIn) {
-        _showLocalSnackBar('Login success. Internet validated.\nURL: $urlStr');
+        _showLocalSnackBar('Login success. Internet validated.');
       } else {
         final err = CaptiveWifiHttp.instance.lastError;
         if (err != null && err.isNotEmpty) {
-          _showLocalSnackBar('Login failed: $err\nURL: $urlStr');
+          _showLocalSnackBar('Login failed: $err');
         } else {
-          _showLocalSnackBar('Login failed or timed out.\nURL: $urlStr');
+          _showLocalSnackBar('Login failed or timed out.');
         }
       }
     } finally {
@@ -443,9 +437,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Auto Extend Session'),
-                    subtitle: const Text(
-                      'Automatically repost the login API every 2 hours while connected',
-                    ),
                     value: _autoExtendEnabled,
                     onChanged: _setAutoExtendEnabled,
                     activeThumbColor: BracuPalette.primary,

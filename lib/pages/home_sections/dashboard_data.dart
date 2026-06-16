@@ -547,9 +547,8 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     if (!isCampusSsid) return;
 
     final now = DateTime.now();
-    // Repost the login API every 2 hours to extend/refresh the session
     if (_lastSilentLoginAt != null &&
-        now.difference(_lastSilentLoginAt!) < const Duration(hours: 2)) {
+        now.difference(_lastSilentLoginAt!) < const Duration(hours: 12)) {
       return;
     }
 
