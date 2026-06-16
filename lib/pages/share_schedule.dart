@@ -166,8 +166,11 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
         return;
       }
 
+      final currentSemester = profile?['currentSemester'] ?? '';
+      final shortCode = profile?['shortCode'] ?? '';
+
       final fingerprint = _fastHash(
-        'v$_qrPayloadVersion|$studentId|$fullName|$photoFilePath|$jsonString',
+        'v$_qrPayloadVersion|$studentId|$fullName|$photoFilePath|$shortCode|$currentSemester|$jsonString',
       );
       if (!forceRefresh &&
           cachedBase64 != null &&
@@ -198,12 +201,6 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
           "schedule": schedules,
         };
       }).toList();
-
-      final currentSemester =
-          await AppStorage.instance.getString(StorageKeys.currentSemester) ??
-          '';
-      final shortCode =
-          await AppStorage.instance.getString(StorageKeys.shortCode) ?? '';
 
       final finalJson = {
         "name": fullName,
