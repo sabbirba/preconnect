@@ -519,6 +519,93 @@ String _routeMatchKey(String value) {
   return value.trim().toLowerCase();
 }
 
+
+bool _isStopHighlighted(BusTransportStop stop, BusTransportRoute route) {
+  final live = route.live;
+  final stopName = stop.name.trim().toLowerCase();
+  if (stopName.isEmpty) return false;
+
+  final loc = live.locationDescription.trim().toLowerCase();
+  if (loc.isNotEmpty) {
+    if (loc.contains(stopName) || stopName.contains(loc)) {
+      return true;
+    }
+  }
+
+  for (final landmark in live.nearestLandmarks) {
+    final land = landmark.trim().toLowerCase();
+    if (land.isNotEmpty) {
+      if (land.contains(stopName) || stopName.contains(land)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+class _NextStopHighlightCard extends StatelessWidget {
+  const _NextStopHighlightCard({required this.stopName});
+
+  final String stopName;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: BracuCard(
+        isHighlighted: true,
+        backgroundColor: BracuPalette.primary.withValues(alpha: isDark ? 0.15 : 0.08),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: BracuPalette.primary.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.location_on_rounded,
+                color: BracuPalette.primary,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Next Stop (Estimated)',
+                    style: TextStyle(
+                      color: BracuPalette.textSecondary(context),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    stopName,
+                    style: TextStyle(
+                      color: BracuPalette.textPrimary(context),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _RouteStopsCard extends StatelessWidget {
   const _RouteStopsCard({required this.route});
 
@@ -528,11 +615,24 @@ class _RouteStopsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textSecondary = BracuPalette.textSecondary(context);
 
+    int highlightedIndex = -1;
+    for (int i = 0; i < route.stops.length; i++) {
+      if (_isStopHighlighted(route.stops[i], route)) {
+        highlightedIndex = i;
+        break;
+      }
+    }
+
+    final hasHighlight = highlightedIndex >= 0;
+    final highlightedStopName = hasHighlight ? route.stops[highlightedIndex].name : '';
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (hasHighlight)
+            _NextStopHighlightCard(stopName: highlightedStopName),
           if (route.stops.isEmpty)
             Text(
               'Stop details are unavailable for this route.',
@@ -548,6 +648,7 @@ class _RouteStopsCard extends StatelessWidget {
                   index: entry.key + 1,
                   stop: entry.value,
                   isLast: entry.key == route.stops.length - 1,
+                  isHighlighted: entry.key == highlightedIndex,
                 ),
               ),
             ),
@@ -562,11 +663,13 @@ class _RouteStopTimelineTile extends StatelessWidget {
     required this.index,
     required this.stop,
     required this.isLast,
+    required this.isHighlighted,
   });
 
   final int index;
   final BusTransportStop stop;
   final bool isLast;
+  final bool isHighlighted;
 
   @override
   Widget build(BuildContext context) {
@@ -577,23 +680,101 @@ class _RouteStopTimelineTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Left timeline column
+          SizedBox(
+            width: 32,
+            child: Column(
+              children: [
+                const SizedBox(height: 14), // Center the dot vertically with the first line of text
+                Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: isHighlighted ? BracuPalette.primary : Colors.grey.shade400,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isHighlighted
+                          ? BracuPalette.primary.withValues(alpha: 0.25)
+                          : Colors.transparent,
+                      width: isHighlighted ? 3.5 : 0,
+                    ),
+                  ),
+                ),
+                if (!isLast)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      color: isHighlighted
+                          ? BracuPalette.primary.withValues(alpha: 0.3)
+                          : Colors.grey.shade300,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: BracuPalette.primary.withValues(alpha: 0.05),
+                color: isHighlighted
+                    ? BracuPalette.primary.withValues(alpha: 0.12)
+                    : BracuPalette.primary.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(14),
+                border: isHighlighted
+                    ? Border.all(
+                        color: BracuPalette.primary.withValues(alpha: 0.35),
+                        width: 1.5,
+                      )
+                    : null,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    stop.name,
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontWeight: FontWeight.w800,
-                      height: 1.35,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          stop.name,
+                          style: TextStyle(
+                            color: textPrimary,
+                            fontWeight: FontWeight.w800,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                      if (isHighlighted) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: BracuPalette.primary.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.directions_bus_rounded,
+                                color: BracuPalette.primary,
+                                size: 12,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'LIVE',
+                                style: TextStyle(
+                                  color: BracuPalette.primary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   if (stop.times.isNotEmpty) ...[
                     const SizedBox(height: 8),

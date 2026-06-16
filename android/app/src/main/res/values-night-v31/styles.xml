@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="LaunchTheme" parent="@style/NormalTheme">
-        <item name="android:windowSplashScreenBackground">?android:colorBackground</item>
+        <item name="android:windowSplashScreenBackground">#0F172A</item>
     </style>
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
