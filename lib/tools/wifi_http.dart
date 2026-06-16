@@ -411,10 +411,10 @@ class CaptiveWifiHttp {
     final hexDigits = '0123456789abcdef';
     final charCodes = List<int>.generate(36, (i) {
       if (i == 8 || i == 13 || i == 18 || i == 23) {
-        return 45; // '-'
+        return 45;
       }
       if (i == 14) {
-        return 52; // '4'
+        return 52;
       }
       final r = random.nextInt(16);
       final value = (i == 19) ? (r & 0x3 | 0x8) : r;
