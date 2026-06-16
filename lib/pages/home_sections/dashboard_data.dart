@@ -705,7 +705,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       final status = await AndroidNetworkAssist.getNetworkStatus();
       if (status == null) {
         if (mounted) {
-          showAppSnackBar(context, 'No active Wi-Fi connection.');
+          showAppSnackBar(context, 'No Wi-Fi connection');
         }
         return;
       }
@@ -713,7 +713,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       final captiveWifiUri = CaptiveWifiHttp.resolvePortalUri(status);
       if (captiveWifiUri == null) {
         if (mounted) {
-          showAppSnackBar(context, 'Could not resolve captive portal URL.');
+          showAppSnackBar(context, 'Portal not found');
         }
         return;
       }
@@ -729,21 +729,15 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
       if (mounted) {
         if (success) {
-          showAppSnackBar(context, 'Connected to Student-WiFi successfully!');
+          showAppSnackBar(context, 'Connected!');
           unawaited(_refreshCaptiveStatus());
         } else {
-          final err = CaptiveWifiHttp.instance.lastError;
-          showAppSnackBar(
-            context,
-            err != null && err.isNotEmpty
-                ? 'Login failed: $err'
-                : 'Login failed. Open Wi-Fi settings to check credentials.',
-          );
+          showAppSnackBar(context, 'Login failed');
         }
       }
     } catch (e) {
       if (mounted) {
-        showAppSnackBar(context, 'An error occurred during Wi-Fi login.');
+        showAppSnackBar(context, 'Login error');
       }
     } finally {
       await AndroidNetworkAssist.unbindFromWifiNetwork();

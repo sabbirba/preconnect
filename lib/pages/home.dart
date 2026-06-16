@@ -331,7 +331,7 @@ class _CaptiveWifiBanner extends StatelessWidget {
                       )
                     else ...[
                       Text(
-                        'Captive Wi-Fi Login Required',
+                        'Wi-Fi Login Required',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
@@ -341,7 +341,7 @@ class _CaptiveWifiBanner extends StatelessWidget {
                       const SizedBox(height: 1),
                       Text(
                         statusCode == null
-                            ? 'Tap to connect to Student-WiFi'
+                            ? 'Tap to connect'
                             : 'Tap to connect (Status $statusCode)',
                         style: TextStyle(
                           fontSize: 11,
