@@ -787,12 +787,12 @@ PopupMenuItem<T> compactPopupMenuItem<T>({
   );
 }
 
-const String kPreconnectDiscordUrl = 'https://discord.gg/HwrgeFrvaz';
-const String kPreconnectRepositoryUrl =
+const String kPreConnectDiscordUrl = 'https://discord.gg/HwrgeFrvaz';
+const String kPreConnectRepositoryUrl =
     'https://github.com/sabbirba/preconnect';
 
-class PreconnectDiscordIcon extends StatelessWidget {
-  const PreconnectDiscordIcon({super.key, this.size = 30, this.color});
+class PreConnectDiscordIcon extends StatelessWidget {
+  const PreConnectDiscordIcon({super.key, this.size = 30, this.color});
 
   final double size;
   final Color? color;
@@ -807,8 +807,8 @@ class PreconnectDiscordIcon extends StatelessWidget {
   }
 }
 
-class PreconnectGithubIcon extends StatelessWidget {
-  const PreconnectGithubIcon({super.key, this.size = 24.0, this.color});
+class PreConnectGithubIcon extends StatelessWidget {
+  const PreConnectGithubIcon({super.key, this.size = 24.0, this.color});
   final double size;
   final Color? color;
 
@@ -885,21 +885,21 @@ class BracuCommunityLink extends StatelessWidget {
   Widget build(BuildContext context) {
     if (compact) {
       return _BracuSponsorActionChip(
-        iconWidget: const PreconnectDiscordIcon(
+        iconWidget: const PreConnectDiscordIcon(
           size: 18,
           color: BracuPalette.primary,
         ),
         label: _label,
         onTap: () => openExternalUrl(
           context,
-          kPreconnectDiscordUrl,
+          kPreConnectDiscordUrl,
           failureMessage: 'Unable to open Discord.',
         ),
       );
     }
 
     return BracuActionBannerCard(
-      iconWidget: const PreconnectDiscordIcon(
+      iconWidget: const PreConnectDiscordIcon(
         size: 24,
         color: Color.fromRGBO(88, 101, 242, 1),
       ),
@@ -908,7 +908,7 @@ class BracuCommunityLink extends StatelessWidget {
       onTap: () {
         openExternalUrl(
           context,
-          kPreconnectDiscordUrl,
+          kPreConnectDiscordUrl,
           failureMessage: 'Unable to open Discord.',
         );
         showAppSnackBar(context, 'Opened server link.');
@@ -955,11 +955,11 @@ class BracuFundingPromoDivider extends StatelessWidget {
   }
 }
 
-const String _kPreconnectSupportNumber = '01865493144';
-const String _kPreconnectSupportReference = 'PreConnect App';
-const String _kPreconnectSupportQrData =
+const String _kPreConnectSupportNumber = '01865493144';
+const String _kPreConnectSupportReference = 'PreConnect App';
+const String _kPreConnectSupportQrData =
     'https://qr.bka.sh/281014021P3BymAwed3CDD8CFE';
-const String _kPreconnectWhatsAppUrl =
+const String _kPreConnectWhatsAppUrl =
     'https://api.whatsapp.com/send?phone=8801865493144&text=Hi%20PreConnect%2C%20I%20want%20to%20support%20the%20app.';
 
 class BracuFundingSupportContent extends StatelessWidget {
@@ -1006,7 +1006,7 @@ class _BracuFundingSupportContentBodyState
       const fileName = 'preconnect_support_qr.png';
       const shareText =
           'Scan this QR to support PreConnect.\n'
-          'Reference: $_kPreconnectSupportReference';
+          'Reference: $_kPreConnectSupportReference';
 
       if (kIsWeb) {
         await openImageInBrowser(bytes: bytes, fileName: fileName);
@@ -1058,7 +1058,7 @@ class _BracuFundingSupportContentBodyState
                         color: Colors.transparent,
                         child: BarcodeWidget(
                           barcode: Barcode.qrCode(),
-                          data: _kPreconnectSupportQrData,
+                          data: _kPreConnectSupportQrData,
                           color: const Color(0xFFE91E63),
                           backgroundColor: Colors.transparent,
                           drawText: false,
@@ -1093,7 +1093,7 @@ class _BracuFundingSupportContentBodyState
                             Align(
                               alignment: Alignment.center,
                               child: BracuSupportNumberRow(
-                                number: _kPreconnectSupportNumber,
+                                number: _kPreConnectSupportNumber,
                                 textScale: rightTextScale,
                               ),
                             ),
@@ -1117,7 +1117,7 @@ class _BracuFundingSupportContentBodyState
                                 onTap: () async {
                                   await Clipboard.setData(
                                     const ClipboardData(
-                                      text: _kPreconnectSupportReference,
+                                      text: _kPreConnectSupportReference,
                                     ),
                                   );
                                   if (context.mounted) {
@@ -1141,7 +1141,7 @@ class _BracuFundingSupportContentBodyState
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Text(
-                                              _kPreconnectSupportReference,
+                                              _kPreConnectSupportReference,
                                               style: TextStyle(
                                                 color: BracuPalette.textPrimary(
                                                   context,
@@ -1225,9 +1225,9 @@ class _BracuFundingSupportContentBodyState
                       size: 18,
                       color: BracuPalette.primary,
                     ),
-                    label: _kPreconnectSupportNumber,
+                    label: _kPreConnectSupportNumber,
                     onTap: () =>
-                        openPhoneDialer(context, _kPreconnectSupportNumber),
+                        openPhoneDialer(context, _kPreConnectSupportNumber),
                   ),
                   _BracuSponsorActionChip(
                     iconWidget: const Icon(
@@ -1238,30 +1238,30 @@ class _BracuFundingSupportContentBodyState
                     label: 'WhatsApp',
                     onTap: () => openExternalUrl(
                       context,
-                      _kPreconnectWhatsAppUrl,
+                      _kPreConnectWhatsAppUrl,
                       failureMessage: 'Unable to open WhatsApp.',
                     ),
                   ),
                   _BracuSponsorActionChip(
-                    iconWidget: const PreconnectDiscordIcon(
+                    iconWidget: const PreConnectDiscordIcon(
                       size: 18,
                       color: BracuPalette.primary,
                     ),
                     label: 'Discord',
                     onTap: () => openExternalUrl(
                       context,
-                      kPreconnectDiscordUrl,
+                      kPreConnectDiscordUrl,
                       failureMessage: 'Unable to open Discord.',
                     ),
                   ),
                   _BracuSponsorActionChip(
-                    iconWidget: const PreconnectGithubIcon(
+                    iconWidget: const PreConnectGithubIcon(
                       size: 18,
                       color: BracuPalette.primary,
                     ),
                     label: 'GitHub',
                     onTap: () =>
-                        openExternalUrl(context, kPreconnectRepositoryUrl),
+                        openExternalUrl(context, kPreConnectRepositoryUrl),
                   ),
                 ],
               ),

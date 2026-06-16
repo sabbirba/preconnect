@@ -55,7 +55,7 @@ class LoginPage extends StatefulWidget {
       final controller = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted);
       if (_shouldUseMobileUserAgent) {
-        controller.setUserAgent(kPreconnectUserAgent);
+        controller.setUserAgent(kPreConnectUserAgent);
       }
       controller.loadRequest(
         Uri.parse(ApiConfig.authUrlWithPkce(codeChallenge)),
@@ -154,7 +154,7 @@ class _MobileLogoutWebViewPageState extends State<_MobileLogoutWebViewPage> {
       )
       ..loadRequest(widget.logoutUrl);
     if (_shouldUseMobileUserAgent) {
-      _controller.setUserAgent(kPreconnectUserAgent);
+      _controller.setUserAgent(kPreConnectUserAgent);
     }
     unawaited(LoginPage._configureCookies(_controller));
     _timeoutTimer = Timer(_logoutTimeout, _complete);
@@ -210,7 +210,7 @@ class _LoginPageState extends State<LoginPage> {
     final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted);
     if (_shouldUseMobileUserAgent) {
-      controller.setUserAgent(kPreconnectUserAgent);
+      controller.setUserAgent(kPreConnectUserAgent);
     }
     controller.loadRequest(Uri.parse(ApiConfig.authUrlWithPkce(codeChallenge)));
     unawaited(LoginPage._configureCookies(controller));
@@ -305,16 +305,16 @@ class _LoginPageState extends State<LoginPage> {
       try {
         await Future.wait([
           TokenStorage.instance.write(
-            key: PreconnectStorageKeys.accessToken,
+            key: PreConnectStorageKeys.accessToken,
             value: accessToken,
           ),
           TokenStorage.instance.write(
-            key: PreconnectStorageKeys.refreshToken,
+            key: PreConnectStorageKeys.refreshToken,
             value: refreshToken,
           ),
           if (idToken != null && idToken.isNotEmpty)
             TokenStorage.instance.write(
-              key: PreconnectStorageKeys.idToken,
+              key: PreConnectStorageKeys.idToken,
               value: idToken,
             ),
         ]);

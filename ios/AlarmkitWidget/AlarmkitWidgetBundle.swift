@@ -10,7 +10,7 @@ import SwiftUI
 
 @available(iOS 26.0, *)
 @main
-struct PreconnectAlarmLiveActivityBundle: WidgetBundle {
+struct PreConnectAlarmLiveActivityBundle: WidgetBundle {
   @WidgetBundleBuilder
   var body: some Widget {
     AlarmkitLiveActivity()

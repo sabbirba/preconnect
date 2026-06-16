@@ -92,7 +92,7 @@ class ApiClient {
     for (int i = 0; i < retries; i++) {
       try {
         final token = await _storage.read(
-          key: PreconnectStorageKeys.accessToken,
+          key: PreConnectStorageKeys.accessToken,
         );
         if (token != null && token.isNotEmpty) {
           _cachedAccessToken = token;
@@ -400,7 +400,7 @@ class ApiClient {
     };
 
     final idToken = await TokenStorage.instance.read(
-      key: PreconnectStorageKeys.idToken,
+      key: PreConnectStorageKeys.idToken,
     );
     if (idToken != null && idToken.isNotEmpty) {
       headers['X-ID-Token'] = idToken;

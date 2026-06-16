@@ -19,7 +19,7 @@ class SeatStatusService {
   Map<int, SeatStatusDetailsResponse>? get cachedDetails {
     if (_cachedDetails == null) {
       final cachedJson = AppStorage.instance.getStringSync(
-        PreconnectStorageKeys.seatStatusCacheJson,
+        PreConnectStorageKeys.seatStatusCacheJson,
       );
       if (cachedJson != null && cachedJson.trim().isNotEmpty) {
         try {
@@ -92,7 +92,7 @@ class SeatStatusService {
       final parsed = _parseConnectJson(raw);
 
       await AppStorage.instance.setString(
-        PreconnectStorageKeys.seatStatusCacheJson,
+        PreConnectStorageKeys.seatStatusCacheJson,
         response.body,
       );
 

@@ -75,12 +75,12 @@ class AuthService {
       }
 
       var refreshToken = await _storage.read(
-        key: PreconnectStorageKeys.refreshToken,
+        key: PreConnectStorageKeys.refreshToken,
       );
       var accessToken = await _storage.read(
-        key: PreconnectStorageKeys.accessToken,
+        key: PreConnectStorageKeys.accessToken,
       );
-      var idToken = await _storage.read(key: PreconnectStorageKeys.idToken);
+      var idToken = await _storage.read(key: PreConnectStorageKeys.idToken);
       if (accessToken == null && refreshToken == null) {
         return;
       }
@@ -94,12 +94,12 @@ class AuthService {
           (idToken == null || idToken.isEmpty)) {
         await _performTokenRefresh();
         refreshToken = await _storage.read(
-          key: PreconnectStorageKeys.refreshToken,
+          key: PreConnectStorageKeys.refreshToken,
         );
         accessToken = await _storage.read(
-          key: PreconnectStorageKeys.accessToken,
+          key: PreConnectStorageKeys.accessToken,
         );
-        idToken = await _storage.read(key: PreconnectStorageKeys.idToken);
+        idToken = await _storage.read(key: PreConnectStorageKeys.idToken);
       }
 
       final canShowMobileLogoutWebView =
@@ -301,7 +301,7 @@ class AuthService {
   Future<TokenRefreshStatus> _performTokenRefresh() async {
     try {
       final refreshToken = await _storage.read(
-        key: PreconnectStorageKeys.refreshToken,
+        key: PreConnectStorageKeys.refreshToken,
       );
       if (refreshToken == null || refreshToken.isEmpty) {
         _cacheRefreshResult(TokenRefreshStatus.invalidSession);
@@ -313,16 +313,16 @@ class AuthService {
         timeout: _authRequestTimeout,
         persistTokens: (accessToken, refreshToken, idToken) async {
           await _storage.write(
-            key: PreconnectStorageKeys.accessToken,
+            key: PreConnectStorageKeys.accessToken,
             value: accessToken,
           );
           await _storage.write(
-            key: PreconnectStorageKeys.refreshToken,
+            key: PreConnectStorageKeys.refreshToken,
             value: refreshToken,
           );
           if (idToken != null && idToken.isNotEmpty) {
             await _storage.write(
-              key: PreconnectStorageKeys.idToken,
+              key: PreConnectStorageKeys.idToken,
               value: idToken,
             );
           }
@@ -351,13 +351,13 @@ class AuthService {
   }
 
   Future<bool> isLoggedIn() async {
-    final token = await _storage.read(key: PreconnectStorageKeys.accessToken);
+    final token = await _storage.read(key: PreConnectStorageKeys.accessToken);
     return token != null && token.isNotEmpty;
   }
 
   Future<bool> ensureSignedIn() async {
     final accessToken = await _storage.read(
-      key: PreconnectStorageKeys.accessToken,
+      key: PreConnectStorageKeys.accessToken,
     );
     if (accessToken == null || accessToken.isEmpty) {
       return false;
@@ -440,7 +440,7 @@ class AuthService {
   }
 
   Future<DateTime> getTokenExpiryTime() async {
-    final token = await _storage.read(key: PreconnectStorageKeys.accessToken);
+    final token = await _storage.read(key: PreConnectStorageKeys.accessToken);
     if (token == null || token.isEmpty) {
       return DateTime.fromMillisecondsSinceEpoch(0);
     }

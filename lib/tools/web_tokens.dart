@@ -27,10 +27,10 @@ class WebExtensionTokenStorage {
   Future<void> deleteAll() async {
     if (!chrome.storage.isAvailable) return;
     await chrome.storage.local.remove(const [
-      PreconnectStorageKeys.accessToken,
-      PreconnectStorageKeys.refreshToken,
-      PreconnectStorageKeys.idToken,
-      PreconnectStorageKeys.cachedHasAuthSession,
+      PreConnectStorageKeys.accessToken,
+      PreConnectStorageKeys.refreshToken,
+      PreConnectStorageKeys.idToken,
+      PreConnectStorageKeys.cachedHasAuthSession,
     ]);
   }
 }

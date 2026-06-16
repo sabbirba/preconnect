@@ -638,7 +638,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   ) async {
     try {
       final idToken = await TokenStorage.instance.read(
-        key: PreconnectStorageKeys.idToken,
+        key: PreConnectStorageKeys.idToken,
       );
       if (idToken == null || idToken.isEmpty) return;
 
@@ -686,7 +686,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       bool changed = false;
       for (final secId in backendSectionIds) {
         if (!_pinnedSections.contains(secId)) {
-          final topic = PreconnectPushConfig.seatTopic(secId);
+          final topic = PreConnectPushConfig.seatTopic(secId);
           unawaited(FCMService.instance.subscribeToTopic(topic));
           _pinnedSections.add(secId);
           changed = true;
@@ -696,7 +696,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       final localCopy = Set<String>.from(_pinnedSections);
       for (final secId in localCopy) {
         if (!backendSectionIds.contains(secId)) {
-          final topic = PreconnectPushConfig.seatTopic(secId);
+          final topic = PreConnectPushConfig.seatTopic(secId);
           unawaited(FCMService.instance.unsubscribeFromTopic(topic));
           _pinnedSections.remove(secId);
           changed = true;

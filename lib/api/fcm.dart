@@ -46,14 +46,14 @@ class FCMService {
       if (isChromeRuntimeAvailable()) {
         // Chrome Extension: get GCM token via background service worker sync.
         var token = await TokenStorage.instance.read(
-          key: PreconnectPushConfig.gcmTokenKey,
+          key: PreConnectPushConfig.gcmTokenKey,
         );
         if (token == null || token.isEmpty) {
           await requestWebExtensionPushTokenSync();
           for (var attempt = 0; attempt < 5; attempt++) {
             await Future<void>.delayed(const Duration(milliseconds: 200));
             token = await TokenStorage.instance.read(
-              key: PreconnectPushConfig.gcmTokenKey,
+              key: PreConnectPushConfig.gcmTokenKey,
             );
             if (token != null && token.isNotEmpty) break;
           }
@@ -116,7 +116,7 @@ class FCMService {
       final client = ApiClient();
       if (!await client.hasAccessToken()) return;
       final url =
-          '${ApiConfig.realtimeApiBase}${PreconnectPushConfig.registerDevicePath}';
+          '${ApiConfig.realtimeApiBase}${PreConnectPushConfig.registerDevicePath}';
       await client.authenticatedRequest(
         'POST',
         url,
@@ -124,7 +124,7 @@ class FCMService {
           'token': token,
           'platform': kIsWeb
               ? (isChromeRuntimeAvailable()
-                    ? PreconnectPushConfig.chromeExtensionPlatform
+                    ? PreConnectPushConfig.chromeExtensionPlatform
                     : 'web')
               : defaultTargetPlatform.name.toLowerCase(),
         }),
@@ -150,7 +150,7 @@ class FCMService {
       final client = ApiClient();
       if (!await client.hasAccessToken()) return;
       final url =
-          '${ApiConfig.realtimeApiBase}${PreconnectPushConfig.subscribeTopicPath}';
+          '${ApiConfig.realtimeApiBase}${PreConnectPushConfig.subscribeTopicPath}';
       await client.authenticatedRequest(
         'POST',
         url,
@@ -169,7 +169,7 @@ class FCMService {
       final client = ApiClient();
       if (!await client.hasAccessToken()) return;
       final url =
-          '${ApiConfig.realtimeApiBase}${PreconnectPushConfig.unsubscribeTopicPath}';
+          '${ApiConfig.realtimeApiBase}${PreConnectPushConfig.unsubscribeTopicPath}';
       await client.authenticatedRequest(
         'POST',
         url,
@@ -232,7 +232,7 @@ class FCMService {
   }) async {
     try {
       final idToken = await TokenStorage.instance.read(
-        key: PreconnectStorageKeys.idToken,
+        key: PreConnectStorageKeys.idToken,
       );
       if (idToken == null || idToken.isEmpty) return false;
 
@@ -366,7 +366,7 @@ class FCMService {
       final client = ApiClient();
       if (!await client.hasAccessToken()) return;
       final url =
-          '${ApiConfig.realtimeApiBase}${PreconnectPushConfig.unregisterDevicePath}';
+          '${ApiConfig.realtimeApiBase}${PreConnectPushConfig.unregisterDevicePath}';
       await client.authenticatedRequest(
         'POST',
         url,
@@ -473,16 +473,16 @@ class FCMService {
       return;
     }
 
-    for (final topic in PreconnectPushConfig.defaultTopics) {
+    for (final topic in PreConnectPushConfig.defaultTopics) {
       await _subscribeToTopicWeb(token, topic);
     }
 
     try {
       Set<String> pinnedSeats = await CoursePinStore.load(
-        PreconnectPushConfig.seatStatusPinScope,
+        PreConnectPushConfig.seatStatusPinScope,
       );
       for (String seat in pinnedSeats) {
-        await _subscribeToTopicWeb(token, PreconnectPushConfig.seatTopic(seat));
+        await _subscribeToTopicWeb(token, PreConnectPushConfig.seatTopic(seat));
       }
     } catch (e) {
       debugPrint("Failed to load pinned seats: $e");
@@ -504,15 +504,15 @@ class FCMService {
 
   Future<void> _subscribeToDefaultTopics() async {
     try {
-      for (final topic in PreconnectPushConfig.defaultTopics) {
+      for (final topic in PreConnectPushConfig.defaultTopics) {
         await subscribeToTopic(topic);
       }
 
       Set<String> pinnedSeats = await CoursePinStore.load(
-        PreconnectPushConfig.seatStatusPinScope,
+        PreConnectPushConfig.seatStatusPinScope,
       );
       for (String seat in pinnedSeats) {
-        await subscribeToTopic(PreconnectPushConfig.seatTopic(seat));
+        await subscribeToTopic(PreConnectPushConfig.seatTopic(seat));
       }
     } catch (e) {
       debugPrint("Failed to subscribe to topics: $e");
@@ -706,7 +706,7 @@ class FCMService {
       final client = ApiClient();
       if (!await client.hasAccessToken()) return;
       final url =
-          '${ApiConfig.realtimeApiBase}${PreconnectPushConfig.sendConfirmationPath}';
+          '${ApiConfig.realtimeApiBase}${PreConnectPushConfig.sendConfirmationPath}';
       await client.authenticatedRequest(
         'POST',
         url,

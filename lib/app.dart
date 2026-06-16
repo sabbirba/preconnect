@@ -90,16 +90,16 @@ class MyApp extends StatefulWidget {
                   refreshToken.isNotEmpty) {
                 await Future.wait([
                   TokenStorage.instance.write(
-                    key: PreconnectStorageKeys.accessToken,
+                    key: PreConnectStorageKeys.accessToken,
                     value: accessToken,
                   ),
                   TokenStorage.instance.write(
-                    key: PreconnectStorageKeys.refreshToken,
+                    key: PreConnectStorageKeys.refreshToken,
                     value: refreshToken,
                   ),
                   if (idToken != null && idToken.isNotEmpty)
                     TokenStorage.instance.write(
-                      key: PreconnectStorageKeys.idToken,
+                      key: PreConnectStorageKeys.idToken,
                       value: idToken,
                     ),
                 ]);
@@ -111,7 +111,7 @@ class MyApp extends StatefulWidget {
       final shortcut = Uri.base.queryParameters['shortcut'];
       if (shortcut != null && shortcut.trim().isNotEmpty) {
         await TokenStorage.instance.write(
-          key: PreconnectStorageKeys.pendingShortcutAction,
+          key: PreConnectStorageKeys.pendingShortcutAction,
           value: shortcut.trim(),
         );
       }
@@ -124,20 +124,20 @@ class MyApp extends StatefulWidget {
     );
 
     final token = await TokenStorage.instance.read(
-      key: PreconnectStorageKeys.accessToken,
+      key: PreConnectStorageKeys.accessToken,
     );
     final refreshToken = await TokenStorage.instance.read(
-      key: PreconnectStorageKeys.refreshToken,
+      key: PreConnectStorageKeys.refreshToken,
     );
     final tokenPresent = token != null && token.isNotEmpty;
     final refreshTokenPresent = refreshToken != null && refreshToken.isNotEmpty;
     final hasToken = tokenPresent && refreshTokenPresent;
 
     if (!hasToken) {
-      await prefs.setBool(PreconnectStorageKeys.cachedHasAuthSession, false);
+      await prefs.setBool(PreConnectStorageKeys.cachedHasAuthSession, false);
       final keepKeys = <String>{
-        PreconnectStorageKeys.accessToken,
-        PreconnectStorageKeys.refreshToken,
+        PreConnectStorageKeys.accessToken,
+        PreConnectStorageKeys.refreshToken,
         StorageKeys.themeMode,
         CustomSchedulesService.cacheKey,
         HomeCardPreferences.showQuickAccessSectionKey,
@@ -149,7 +149,7 @@ class MyApp extends StatefulWidget {
       };
       await AppPreferencesStore().clearAllExcept(keepKeys);
     } else {
-      await prefs.setBool(PreconnectStorageKeys.cachedHasAuthSession, true);
+      await prefs.setBool(PreConnectStorageKeys.cachedHasAuthSession, true);
     }
 
     final canOpenOffline = hasToken && await _hasOfflineSnapshot();
@@ -173,7 +173,7 @@ class MyApp extends StatefulWidget {
     );
 
     final hasToken =
-        prefs.getBoolSync(PreconnectStorageKeys.cachedHasAuthSession) ?? false;
+        prefs.getBoolSync(PreConnectStorageKeys.cachedHasAuthSession) ?? false;
     final canOpenOffline = hasToken && _hasOfflineSnapshotSync();
 
     if (hasToken) {
@@ -383,10 +383,10 @@ class _MyAppState extends State<MyApp>
   Future<void> _consumePendingShortcutAction() async {
     final pendingAction = kIsWeb
         ? await TokenStorage.instance.read(
-            key: PreconnectStorageKeys.pendingShortcutAction,
+            key: PreConnectStorageKeys.pendingShortcutAction,
           )
         : await AppStorage.instance.getString(
-            PreconnectStorageKeys.pendingShortcutAction,
+            PreConnectStorageKeys.pendingShortcutAction,
           );
     if (pendingAction == null || pendingAction.isEmpty) return;
     await _clearPendingShortcutAction();
@@ -520,13 +520,13 @@ class _MyAppState extends State<MyApp>
   Future<void> _clearPendingShortcutAction() async {
     if (kIsWeb) {
       await TokenStorage.instance.write(
-        key: PreconnectStorageKeys.pendingShortcutAction,
+        key: PreConnectStorageKeys.pendingShortcutAction,
         value: null,
       );
       return;
     }
     await AppStorage.instance.remove(
-      PreconnectStorageKeys.pendingShortcutAction,
+      PreConnectStorageKeys.pendingShortcutAction,
     );
   }
 
@@ -548,33 +548,33 @@ class _MyAppState extends State<MyApp>
 
   HomeTab? _tabFromShortcutAction(String action) {
     switch (action) {
-      case PreconnectBrowserActionIds.shortcutCustomSchedule:
+      case PreConnectBrowserActionIds.shortcutCustomSchedule:
       case 'customSchedule':
       case 'custom_schedule':
         return HomeTab.personalSchedules;
-      case PreconnectBrowserActionIds.shortcutProfile:
+      case PreConnectBrowserActionIds.shortcutProfile:
       case 'profile':
         return HomeTab.profile;
-      case PreconnectBrowserActionIds.shortcutClasses:
+      case PreConnectBrowserActionIds.shortcutClasses:
       case 'classes':
         return HomeTab.studentSchedule;
-      case PreconnectBrowserActionIds.shortcutExams:
+      case PreConnectBrowserActionIds.shortcutExams:
       case 'exams':
         return HomeTab.examSchedule;
-      case PreconnectBrowserActionIds.shortcutFriends:
+      case PreConnectBrowserActionIds.shortcutFriends:
       case 'friends':
         return HomeTab.friendSchedule;
-      case PreconnectBrowserActionIds.shortcutShare:
+      case PreConnectBrowserActionIds.shortcutShare:
       case 'share':
         return HomeTab.shareSchedule;
-      case PreconnectBrowserActionIds.shortcutScan:
+      case PreConnectBrowserActionIds.shortcutScan:
       case 'scan':
         return HomeTab.scanSchedule;
-      case PreconnectBrowserActionIds.shortcutSeatStatus:
+      case PreConnectBrowserActionIds.shortcutSeatStatus:
       case 'seatStatus':
       case 'seat_status':
         return HomeTab.seatStatus;
-      case PreconnectBrowserActionIds.shortcutNotifications:
+      case PreConnectBrowserActionIds.shortcutNotifications:
       case 'notifications':
         return HomeTab.notifications;
       default:
@@ -996,7 +996,7 @@ class _RouteTrackingObserver extends NavigatorObserver {
   bool get isBypassedRoute {
     return _currentRoute?.settings.name == '/secure_access' &&
         _currentRoute?.settings.arguments ==
-            PreconnectRouteTokens.privateAccess;
+            PreConnectRouteTokens.privateAccess;
   }
 
   void _update(Route<dynamic>? route) {

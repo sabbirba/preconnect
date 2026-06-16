@@ -51,7 +51,7 @@ class CaptiveWifiHttp {
   }
 
   Future<HttpClient> newClient() async {
-    final client = HttpClient()..userAgent = kPreconnectUserAgent;
+    final client = HttpClient()..userAgent = kPreConnectUserAgent;
     client.connectionTimeout = _connectionTimeout;
     return client;
   }

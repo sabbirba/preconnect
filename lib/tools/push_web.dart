@@ -11,7 +11,7 @@ Future<void> requestWebExtensionPushTokenSync() async {
   }
   try {
     await chrome.runtime.sendMessage(null, {
-      'type': PreconnectPushConfig.syncPushTokenMessageType,
+      'type': PreConnectPushConfig.syncPushTokenMessageType,
     }, null);
   } catch (_) {}
 }

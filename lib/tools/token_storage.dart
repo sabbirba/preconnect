@@ -31,11 +31,11 @@ class TokenStorage {
 
   static final TokenStorage instance = TokenStorage._();
   static const String _cachedHasSessionKey =
-      PreconnectStorageKeys.cachedHasAuthSession;
+      PreConnectStorageKeys.cachedHasAuthSession;
 
   static const Set<String> _sensitiveKeys = {
-    PreconnectStorageKeys.accessToken,
-    PreconnectStorageKeys.refreshToken,
+    PreConnectStorageKeys.accessToken,
+    PreConnectStorageKeys.refreshToken,
     'wifi_captive_password',
   };
 
@@ -60,7 +60,7 @@ class TokenStorage {
   }
 
   Future<bool> hasAccessToken() async {
-    final value = await read(key: PreconnectStorageKeys.accessToken);
+    final value = await read(key: PreConnectStorageKeys.accessToken);
     return value != null && value.isNotEmpty;
   }
 
@@ -110,34 +110,34 @@ class TokenStorage {
 
   Future<void> deleteAll() async {
     try {
-      await _secureStorage.delete(key: PreconnectStorageKeys.accessToken);
-      await _secureStorage.delete(key: PreconnectStorageKeys.refreshToken);
+      await _secureStorage.delete(key: PreConnectStorageKeys.accessToken);
+      await _secureStorage.delete(key: PreConnectStorageKeys.refreshToken);
       await _secureStorage.delete(key: 'wifi_captive_password');
     } catch (_) {}
-    await AppStorage.instance.remove(PreconnectStorageKeys.accessToken);
-    await AppStorage.instance.remove(PreconnectStorageKeys.refreshToken);
-    await AppStorage.instance.remove(PreconnectStorageKeys.idToken);
+    await AppStorage.instance.remove(PreConnectStorageKeys.accessToken);
+    await AppStorage.instance.remove(PreConnectStorageKeys.refreshToken);
+    await AppStorage.instance.remove(PreConnectStorageKeys.idToken);
     await AppStorage.instance.setBool(_cachedHasSessionKey, false);
     ApiClient().clearTransientCaches();
 
     if (kIsWeb) {
       await webExtensionStorageRemoveKeys(const [
-        PreconnectStorageKeys.accessToken,
-        PreconnectStorageKeys.refreshToken,
-        PreconnectStorageKeys.idToken,
+        PreConnectStorageKeys.accessToken,
+        PreConnectStorageKeys.refreshToken,
+        PreConnectStorageKeys.idToken,
         _cachedHasSessionKey,
       ]);
     }
   }
 
   Future<void> _updateCachedSessionFlagForKey(String key, String? value) async {
-    if (key != PreconnectStorageKeys.accessToken) return;
+    if (key != PreConnectStorageKeys.accessToken) return;
     final hasValue = value != null && value.isNotEmpty;
     await AppStorage.instance.setBool(_cachedHasSessionKey, hasValue);
   }
 }
 
-const String kPreconnectUserAgent =
+const String kPreConnectUserAgent =
     'Mozilla/5.0 (Linux; Android 14; Mobile) '
     'AppleWebKit/537.36 (KHTML, like Gecko) '
     'Chrome/120.0.0.0 Mobile Safari/537.36 PreConnect';
@@ -189,7 +189,7 @@ class CaptiveLoginStore {
 }
 
 class CoursePinStore {
-  static String _key(String scope) => PreconnectPushConfig.coursePinsKey(scope);
+  static String _key(String scope) => PreConnectPushConfig.coursePinsKey(scope);
 
   static Future<Set<String>> load(String scope) async {
     final localValues =

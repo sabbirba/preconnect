@@ -147,15 +147,15 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
 
       final storage = TokenStorage.instance;
       await storage.write(
-        key: PreconnectStorageKeys.accessToken,
+        key: PreConnectStorageKeys.accessToken,
         value: accessToken,
       );
       await storage.write(
-        key: PreconnectStorageKeys.refreshToken,
+        key: PreConnectStorageKeys.refreshToken,
         value: refreshToken,
       );
       if (idToken != null && idToken.isNotEmpty) {
-        await storage.write(key: PreconnectStorageKeys.idToken, value: idToken);
+        await storage.write(key: PreConnectStorageKeys.idToken, value: idToken);
       }
 
       if (mounted) {

@@ -236,7 +236,7 @@ class _DevsPageState extends State<DevsPage> {
       MaterialPageRoute(
         settings: const RouteSettings(
           name: '/secure_access',
-          arguments: PreconnectRouteTokens.privateAccess,
+          arguments: PreConnectRouteTokens.privateAccess,
         ),
         builder: (_) => const ApiTestPage(),
       ),
@@ -376,10 +376,10 @@ class _RepoButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BracuActionBannerCard(
-      iconWidget: const PreconnectGithubIcon(size: 24),
+      iconWidget: const PreConnectGithubIcon(size: 24),
       title: 'View Repository',
       subtitle: 'Explore the source code and contribute.',
-      onTap: () => openExternalUrl(context, kPreconnectRepositoryUrl),
+      onTap: () => openExternalUrl(context, kPreConnectRepositoryUrl),
     );
   }
 }

@@ -51,10 +51,10 @@ class _ApiTestPageState extends State<ApiTestPage> {
 
   Future<void> _loadTokens() async {
     final accessToken = await TokenStorage.instance.read(
-      key: PreconnectStorageKeys.accessToken,
+      key: PreConnectStorageKeys.accessToken,
     );
     final refreshToken = await TokenStorage.instance.read(
-      key: PreconnectStorageKeys.refreshToken,
+      key: PreConnectStorageKeys.refreshToken,
     );
     if (!mounted) return;
     setState(() {
@@ -81,7 +81,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
 
     try {
       var accessToken = await TokenStorage.instance.read(
-        key: PreconnectStorageKeys.accessToken,
+        key: PreConnectStorageKeys.accessToken,
       );
       if (accessToken == null || accessToken.isEmpty) {
         return;
@@ -98,7 +98,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
         final refreshStatus = await AuthService().refreshTokenStatus();
         if (refreshStatus == TokenRefreshStatus.refreshed) {
           accessToken = await TokenStorage.instance.read(
-            key: PreconnectStorageKeys.accessToken,
+            key: PreConnectStorageKeys.accessToken,
           );
           if (accessToken != null && accessToken.isNotEmpty) {
             response = await _perform(

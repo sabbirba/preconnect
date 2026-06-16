@@ -34,13 +34,13 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
-    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreconnectBuildInfo") {
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreConnectBuildInfo") {
       registerBuildInfoChannel(binaryMessenger: registrar.messenger())
     }
-    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreconnectQuietMode") {
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreConnectQuietMode") {
       registerQuietModeChannel(binaryMessenger: registrar.messenger())
     }
-    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreconnectNativePrint") {
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreConnectNativePrint") {
       registerNativePrintChannel(binaryMessenger: registrar.messenger())
     }
 

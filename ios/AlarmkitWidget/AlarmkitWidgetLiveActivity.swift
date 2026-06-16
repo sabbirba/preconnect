@@ -163,13 +163,13 @@ struct AlarmControls: View {
             case .countdown:
                 if let btn = presentation.countdown?.pauseButton {
                     ButtonView(config: btn,
-                               intent: PreconnectPauseIntent(alarmID: state.alarmID.uuidString),
+                               intent: PreConnectPauseIntent(alarmID: state.alarmID.uuidString),
                                tint: .orange)
                 }
             case .paused:
                 if let btn = presentation.paused?.resumeButton {
                     ButtonView(config: btn,
-                               intent: PreconnectResumeIntent(alarmID: state.alarmID.uuidString),
+                               intent: PreConnectResumeIntent(alarmID: state.alarmID.uuidString),
                                tint: .green)
                 }
             default:
@@ -177,7 +177,7 @@ struct AlarmControls: View {
             }
             // Always show the stop button
             ButtonView(config: presentation.alert.stopButton,
-                       intent: PreconnectStopIntent(alarmID: state.alarmID.uuidString),
+                       intent: PreConnectStopIntent(alarmID: state.alarmID.uuidString),
                        tint: .red)
         }
     }

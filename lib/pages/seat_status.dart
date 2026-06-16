@@ -219,7 +219,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       }
     }
 
-    final topic = PreconnectPushConfig.seatTopic(key);
+    final topic = PreConnectPushConfig.seatTopic(key);
     bool syncOk = false;
     try {
       if (!fcmSupported) {

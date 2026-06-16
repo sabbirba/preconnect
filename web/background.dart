@@ -32,42 +32,42 @@ const String _startLogoutType = 'preconnect.startLogout';
 const String _browserShortcutType = 'preconnect.browserShortcut';
 const String _appEntryPoint = 'index.html';
 const String _openSidePanelCommand =
-    PreconnectBrowserActionIds.openSidePanelCommand;
+    PreConnectBrowserActionIds.openSidePanelCommand;
 const String _openCustomScheduleCommand =
-    PreconnectBrowserActionIds.openCustomScheduleCommand;
+    PreConnectBrowserActionIds.openCustomScheduleCommand;
 const String _openProfileCommand =
-    PreconnectBrowserActionIds.openProfileCommand;
+    PreConnectBrowserActionIds.openProfileCommand;
 const String _openClassesCommand =
-    PreconnectBrowserActionIds.openClassesCommand;
-const String _openExamsCommand = PreconnectBrowserActionIds.openExamsCommand;
+    PreConnectBrowserActionIds.openClassesCommand;
+const String _openExamsCommand = PreConnectBrowserActionIds.openExamsCommand;
 const String _openFriendsScheduleCommand =
-    PreconnectBrowserActionIds.openFriendsScheduleCommand;
+    PreConnectBrowserActionIds.openFriendsScheduleCommand;
 const String _openShareScheduleCommand =
-    PreconnectBrowserActionIds.openShareScheduleCommand;
+    PreConnectBrowserActionIds.openShareScheduleCommand;
 const String _openScanScheduleCommand =
-    PreconnectBrowserActionIds.openScanScheduleCommand;
+    PreConnectBrowserActionIds.openScanScheduleCommand;
 const String _openSeatStatusCommand =
-    PreconnectBrowserActionIds.openSeatStatusCommand;
-const String _menuRootId = PreconnectBrowserActionIds.menuRootId;
-const String _menuSidePanelId = PreconnectBrowserActionIds.menuSidePanelId;
-const String _menuDashboardId = PreconnectBrowserActionIds.menuDashboardId;
-const String _menuProfileId = PreconnectBrowserActionIds.menuProfileId;
-const String _menuClassesId = PreconnectBrowserActionIds.menuClassesId;
-const String _menuExamsId = PreconnectBrowserActionIds.menuExamsId;
-const String _menuFriendsId = PreconnectBrowserActionIds.menuFriendsId;
-const String _menuShareId = PreconnectBrowserActionIds.menuShareId;
-const String _menuScanId = PreconnectBrowserActionIds.menuScanId;
-const String _menuSeatStatusId = PreconnectBrowserActionIds.menuSeatStatusId;
+    PreConnectBrowserActionIds.openSeatStatusCommand;
+const String _menuRootId = PreConnectBrowserActionIds.menuRootId;
+const String _menuSidePanelId = PreConnectBrowserActionIds.menuSidePanelId;
+const String _menuDashboardId = PreConnectBrowserActionIds.menuDashboardId;
+const String _menuProfileId = PreConnectBrowserActionIds.menuProfileId;
+const String _menuClassesId = PreConnectBrowserActionIds.menuClassesId;
+const String _menuExamsId = PreConnectBrowserActionIds.menuExamsId;
+const String _menuFriendsId = PreConnectBrowserActionIds.menuFriendsId;
+const String _menuShareId = PreConnectBrowserActionIds.menuShareId;
+const String _menuScanId = PreConnectBrowserActionIds.menuScanId;
+const String _menuSeatStatusId = PreConnectBrowserActionIds.menuSeatStatusId;
 const String _shortcutCustomSchedule =
-    PreconnectBrowserActionIds.shortcutCustomSchedule;
-const String _shortcutProfile = PreconnectBrowserActionIds.shortcutProfile;
-const String _shortcutClasses = PreconnectBrowserActionIds.shortcutClasses;
-const String _shortcutExams = PreconnectBrowserActionIds.shortcutExams;
-const String _shortcutFriends = PreconnectBrowserActionIds.shortcutFriends;
-const String _shortcutShare = PreconnectBrowserActionIds.shortcutShare;
-const String _shortcutScan = PreconnectBrowserActionIds.shortcutScan;
+    PreConnectBrowserActionIds.shortcutCustomSchedule;
+const String _shortcutProfile = PreConnectBrowserActionIds.shortcutProfile;
+const String _shortcutClasses = PreConnectBrowserActionIds.shortcutClasses;
+const String _shortcutExams = PreConnectBrowserActionIds.shortcutExams;
+const String _shortcutFriends = PreConnectBrowserActionIds.shortcutFriends;
+const String _shortcutShare = PreConnectBrowserActionIds.shortcutShare;
+const String _shortcutScan = PreConnectBrowserActionIds.shortcutScan;
 const String _shortcutSeatStatus =
-    PreconnectBrowserActionIds.shortcutSeatStatus;
+    PreConnectBrowserActionIds.shortcutSeatStatus;
 const String _cookieSnapshotConnectKey = 'preconnect.cookies.connect';
 const String _cookieSnapshotSsoKey = 'preconnect.cookies.sso';
 const String _cookieSnapshotUpdatedAtKey = 'preconnect.cookies.updatedAt';
@@ -222,7 +222,7 @@ void _handleRuntimeMessage(dynamic event) {
     case _startLogoutType:
       action = _startLogout;
       break;
-    case PreconnectPushConfig.syncPushTokenMessageType:
+    case PreConnectPushConfig.syncPushTokenMessageType:
       action = _registerGcmAndSyncToken;
       break;
     default:
@@ -493,7 +493,7 @@ Future<void> _activateBrowserShortcut(String shortcut, {Tab? tab}) async {
 
 Future<void> _persistPendingShortcutAction(String shortcut) async {
   await chrome.storage.local.set({
-    PreconnectStorageKeys.pendingShortcutAction: shortcut,
+    PreConnectStorageKeys.pendingShortcutAction: shortcut,
   });
 }
 
@@ -639,12 +639,12 @@ Future<void> _restoreAppTabAfterStartup() async {
 
 Future<bool> _hasStoredAuthSession() async {
   final values = await chrome.storage.local.get([
-    PreconnectStorageKeys.accessToken,
-    PreconnectStorageKeys.refreshToken,
+    PreConnectStorageKeys.accessToken,
+    PreConnectStorageKeys.refreshToken,
   ]);
-  final accessToken = '${values[PreconnectStorageKeys.accessToken] ?? ''}'
+  final accessToken = '${values[PreConnectStorageKeys.accessToken] ?? ''}'
       .trim();
-  final refreshToken = '${values[PreconnectStorageKeys.refreshToken] ?? ''}'
+  final refreshToken = '${values[PreConnectStorageKeys.refreshToken] ?? ''}'
       .trim();
   return accessToken.isNotEmpty && refreshToken.isNotEmpty;
 }
@@ -745,8 +745,8 @@ Future<void> _startLogout() async {
   final appTabId = activeTabs.isNotEmpty ? activeTabs.first.id : null;
   await ensureFreshWebExtensionSession(forceRefresh: true);
   await _revokeMercureSession();
-  final values = await chrome.storage.local.get(PreconnectStorageKeys.idToken);
-  final idToken = '${values[PreconnectStorageKeys.idToken] ?? ''}'.trim();
+  final values = await chrome.storage.local.get(PreConnectStorageKeys.idToken);
+  final idToken = '${values[PreConnectStorageKeys.idToken] ?? ''}'.trim();
   final logoutUrl = BracuLogout.ssoLogoutUri(idToken: idToken);
 
   final tab = await chrome.tabs.create(
@@ -772,9 +772,9 @@ Future<void> _startLogout() async {
 Future<void> _revokeMercureSession() async {
   try {
     final values = await chrome.storage.local.get(
-      PreconnectStorageKeys.accessToken,
+      PreConnectStorageKeys.accessToken,
     );
-    final accessToken = '${values[PreconnectStorageKeys.accessToken] ?? ''}'
+    final accessToken = '${values[PreConnectStorageKeys.accessToken] ?? ''}'
         .trim();
     final uri = BracuLogout.mercureLogoutUri;
     final headers = _headersFromMap(
@@ -791,10 +791,10 @@ Future<void> _completeMercureLogout(int? appTabId) async {
   await _unregisterGcmToken();
   await _clearPendingLogout();
   await chrome.storage.local.remove([
-    PreconnectStorageKeys.accessToken,
-    PreconnectStorageKeys.refreshToken,
-    PreconnectStorageKeys.idToken,
-    PreconnectStorageKeys.cachedHasAuthSession,
+    PreConnectStorageKeys.accessToken,
+    PreConnectStorageKeys.refreshToken,
+    PreConnectStorageKeys.idToken,
+    PreConnectStorageKeys.cachedHasAuthSession,
     _cookieSnapshotConnectKey,
     _cookieSnapshotSsoKey,
     _cookieSnapshotUpdatedAtKey,
@@ -850,11 +850,11 @@ Future<void> _handleNavigation(OnCommittedDetails details) async {
       verifier: pending.verifier,
     );
     await chrome.storage.local.set({
-      PreconnectStorageKeys.accessToken: tokens.accessToken,
-      PreconnectStorageKeys.refreshToken: tokens.refreshToken,
+      PreConnectStorageKeys.accessToken: tokens.accessToken,
+      PreConnectStorageKeys.refreshToken: tokens.refreshToken,
       if (tokens.idToken.isNotEmpty)
-        PreconnectStorageKeys.idToken: tokens.idToken,
-      PreconnectStorageKeys.cachedHasAuthSession: 'true',
+        PreConnectStorageKeys.idToken: tokens.idToken,
+      PreConnectStorageKeys.cachedHasAuthSession: 'true',
     });
     await _syncBracuCookieSnapshot();
     await _refreshBadgeAndNotifyIfNeeded();
@@ -918,10 +918,10 @@ Future<bool> _handleLogoutNavigation(OnCommittedDetails details) async {
   await _unregisterGcmToken();
   await _clearPendingLogout();
   await chrome.storage.local.remove([
-    PreconnectStorageKeys.accessToken,
-    PreconnectStorageKeys.refreshToken,
-    PreconnectStorageKeys.idToken,
-    PreconnectStorageKeys.cachedHasAuthSession,
+    PreConnectStorageKeys.accessToken,
+    PreConnectStorageKeys.refreshToken,
+    PreConnectStorageKeys.idToken,
+    PreConnectStorageKeys.cachedHasAuthSession,
     _cookieSnapshotConnectKey,
     _cookieSnapshotSsoKey,
     _cookieSnapshotUpdatedAtKey,
@@ -1071,9 +1071,9 @@ Future<void> _registerGcmAndSyncToken() async {
   if (!hasSession) return;
 
   try {
-    final token = await chrome.gcm.register([PreconnectPushConfig.gcmSenderId]);
+    final token = await chrome.gcm.register([PreConnectPushConfig.gcmSenderId]);
     if (token.isNotEmpty) {
-      await chrome.storage.local.set({PreconnectPushConfig.gcmTokenKey: token});
+      await chrome.storage.local.set({PreConnectPushConfig.gcmTokenKey: token});
       await chrome.storage.local.set({
         _gcmLastRegisteredAtKey: DateTime.now().toIso8601String(),
       });
@@ -1085,22 +1085,22 @@ Future<void> _registerGcmAndSyncToken() async {
 
 Future<void> _registerFcmTokenWithBackend(String token) async {
   await _postPushJson(
-    PreconnectPushConfig.registerDevicePath,
+    PreConnectPushConfig.registerDevicePath,
     <String, dynamic>{
       'token': token,
-      'platform': PreconnectPushConfig.chromeExtensionPlatform,
+      'platform': PreConnectPushConfig.chromeExtensionPlatform,
     },
   );
 }
 
 Future<void> _syncPushTopics(String token) async {
   final topics = <String>{
-    ...PreconnectPushConfig.defaultTopics,
+    ...PreConnectPushConfig.defaultTopics,
     ...await _loadPinnedSeatTopics(),
   };
   for (final topic in topics) {
     await _postPushJson(
-      PreconnectPushConfig.subscribeTopicPath,
+      PreConnectPushConfig.subscribeTopicPath,
       <String, dynamic>{'token': token, 'topic': topic},
     );
   }
@@ -1108,8 +1108,8 @@ Future<void> _syncPushTopics(String token) async {
 
 Future<Set<String>> _loadPinnedSeatTopics() async {
   try {
-    final key = PreconnectPushConfig.coursePinsKey(
-      PreconnectPushConfig.seatStatusPinScope,
+    final key = PreConnectPushConfig.coursePinsKey(
+      PreConnectPushConfig.seatStatusPinScope,
     );
     final values = await chrome.storage.local.get(key);
     final raw = values[key];
@@ -1125,7 +1125,7 @@ Future<Set<String>> _loadPinnedSeatTopics() async {
     return pins
         .map((pin) => pin.trim().toUpperCase())
         .where((pin) => pin.isNotEmpty)
-        .map(PreconnectPushConfig.seatTopic)
+        .map(PreConnectPushConfig.seatTopic)
         .toSet();
   } catch (_) {
     return const <String>{};
@@ -1141,9 +1141,9 @@ Future<void> _postPushJson(
     var token = accessToken?.trim() ?? '';
     if (token.isEmpty) {
       final values = await chrome.storage.local.get(
-        PreconnectStorageKeys.accessToken,
+        PreConnectStorageKeys.accessToken,
       );
-      token = '${values[PreconnectStorageKeys.accessToken] ?? ''}'.trim();
+      token = '${values[PreConnectStorageKeys.accessToken] ?? ''}'.trim();
     }
     if (token.isEmpty) return;
 
@@ -1166,22 +1166,22 @@ Future<void> _unregisterGcmToken() async {
   if (!chrome.gcm.isAvailable) return;
   try {
     final storedValues = await chrome.storage.local.get(
-      PreconnectPushConfig.gcmTokenKey,
+      PreConnectPushConfig.gcmTokenKey,
     );
-    var token = '${storedValues[PreconnectPushConfig.gcmTokenKey] ?? ''}'
+    var token = '${storedValues[PreConnectPushConfig.gcmTokenKey] ?? ''}'
         .trim();
     if (token.isEmpty) {
-      token = await chrome.gcm.register([PreconnectPushConfig.gcmSenderId]);
+      token = await chrome.gcm.register([PreConnectPushConfig.gcmSenderId]);
     }
     if (token.isNotEmpty) {
       final values = await chrome.storage.local.get(
-        PreconnectStorageKeys.accessToken,
+        PreConnectStorageKeys.accessToken,
       );
-      final accessToken = '${values[PreconnectStorageKeys.accessToken] ?? ''}'
+      final accessToken = '${values[PreConnectStorageKeys.accessToken] ?? ''}'
           .trim();
       if (accessToken.isNotEmpty) {
         await _postPushJson(
-          PreconnectPushConfig.unregisterDevicePath,
+          PreConnectPushConfig.unregisterDevicePath,
           <String, dynamic>{'token': token},
           accessToken: accessToken,
         );
@@ -1192,7 +1192,7 @@ Future<void> _unregisterGcmToken() async {
     await chrome.gcm.unregister();
   } catch (_) {}
   try {
-    await chrome.storage.local.remove(PreconnectPushConfig.gcmTokenKey);
+    await chrome.storage.local.remove(PreConnectPushConfig.gcmTokenKey);
   } catch (_) {}
 }
 
@@ -1366,13 +1366,13 @@ Future<void> _writeNotificationPayloads(Map<String, Object?> payloads) async {
 String _notificationShortcutForPayload(Map<String, String> payload) {
   final explicitRoute = _firstPayloadText(payload, const <String>['route']);
   if (explicitRoute == 'notifications') {
-    return PreconnectBrowserActionIds.shortcutNotifications;
+    return PreConnectBrowserActionIds.shortcutNotifications;
   }
   final courseCode = _firstPayloadText(payload, const <String>['courseCode']);
   if (courseCode.isNotEmpty) {
-    return PreconnectBrowserActionIds.shortcutSeatStatus;
+    return PreConnectBrowserActionIds.shortcutSeatStatus;
   }
-  return PreconnectBrowserActionIds.shortcutNotifications;
+  return PreConnectBrowserActionIds.shortcutNotifications;
 }
 
 String _notificationUrlForPayload(Map<String, String> payload) {

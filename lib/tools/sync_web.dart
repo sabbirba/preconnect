@@ -9,10 +9,10 @@ const Duration _refreshLeadTime = Duration(minutes: 5);
 Future<bool> ensureFreshWebExtensionSession({bool forceRefresh = false}) async {
   final storage = WebExtensionTokenStorage.instance;
   final accessToken = await storage.read(
-    key: PreconnectStorageKeys.accessToken,
+    key: PreConnectStorageKeys.accessToken,
   );
   final refreshToken = await storage.read(
-    key: PreconnectStorageKeys.refreshToken,
+    key: PreConnectStorageKeys.refreshToken,
   );
   if (refreshToken == null || refreshToken.trim().isEmpty) {
     return false;
@@ -30,15 +30,15 @@ Future<bool> ensureFreshWebExtensionSession({bool forceRefresh = false}) async {
     refreshToken: refreshToken,
     persistTokens: (accessToken, refreshToken, idToken) async {
       await storage.write(
-        key: PreconnectStorageKeys.accessToken,
+        key: PreConnectStorageKeys.accessToken,
         value: accessToken,
       );
       await storage.write(
-        key: PreconnectStorageKeys.refreshToken,
+        key: PreConnectStorageKeys.refreshToken,
         value: refreshToken,
       );
       if (idToken != null && idToken.isNotEmpty) {
-        await storage.write(key: PreconnectStorageKeys.idToken, value: idToken);
+        await storage.write(key: PreConnectStorageKeys.idToken, value: idToken);
       }
       clearTransientCaches();
     },

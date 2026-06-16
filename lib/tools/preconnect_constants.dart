@@ -1,5 +1,5 @@
-class PreconnectStorageKeys {
-  PreconnectStorageKeys._();
+class PreConnectStorageKeys {
+  PreConnectStorageKeys._();
 
   static const String accessToken = 'access_token';
   static const String refreshToken = 'refresh_token';
@@ -10,14 +10,14 @@ class PreconnectStorageKeys {
   static const String seatStatusEtag = 'seat_status_etag';
 }
 
-class PreconnectRouteTokens {
-  PreconnectRouteTokens._();
+class PreConnectRouteTokens {
+  PreConnectRouteTokens._();
 
   static const String privateAccess = 'secure_access_gate_v1';
 }
 
-class PreconnectBrowserActionIds {
-  PreconnectBrowserActionIds._();
+class PreConnectBrowserActionIds {
+  PreConnectBrowserActionIds._();
 
   static const String openSidePanelCommand = 'open_side_panel';
   static const String openCustomScheduleCommand = 'open_custom_schedule';
@@ -51,8 +51,8 @@ class PreconnectBrowserActionIds {
   static const String shortcutNotifications = 'quick.notifications';
 }
 
-class PreconnectPushConfig {
-  PreconnectPushConfig._();
+class PreConnectPushConfig {
+  PreConnectPushConfig._();
 
   static const String gcmSenderId = '53508941136';
   static const String gcmTokenKey = 'preconnect.gcmToken';
