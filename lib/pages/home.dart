@@ -278,10 +278,15 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
 }
 
 class _CaptiveWifiBanner extends StatelessWidget {
-  const _CaptiveWifiBanner({required this.onOpenLogin, this.statusCode});
+  const _CaptiveWifiBanner({
+    required this.onOpenLogin,
+    this.statusCode,
+    required this.isLoading,
+  });
 
   final VoidCallback onOpenLogin;
   final int? statusCode;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -296,7 +301,7 @@ class _CaptiveWifiBanner extends StatelessWidget {
         ),
       ),
       child: InkWell(
-        onTap: onOpenLogin,
+        onTap: isLoading ? null : onOpenLogin,
         borderRadius: BorderRadius.circular(14),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -313,33 +318,47 @@ class _CaptiveWifiBanner extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      'Captive Wi-Fi Login Required',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: BracuPalette.textPrimary(context),
+                    if (isLoading)
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            BracuPalette.primary,
+                          ),
+                        ),
+                      )
+                    else ...[
+                      Text(
+                        'Captive Wi-Fi Login Required',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: BracuPalette.textPrimary(context),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      statusCode == null
-                          ? 'Tap to connect to Student-WiFi'
-                          : 'Tap to connect (Status $statusCode)',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: BracuPalette.textSecondary(context),
+                      const SizedBox(height: 1),
+                      Text(
+                        statusCode == null
+                            ? 'Tap to connect to Student-WiFi'
+                            : 'Tap to connect (Status $statusCode)',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: BracuPalette.textSecondary(context),
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 20,
-                color: BracuPalette.textSecondary(context),
-              ),
+              if (!isLoading)
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: BracuPalette.textSecondary(context),
+                ),
             ],
           ),
         ),

@@ -187,7 +187,8 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   const SizedBox(height: 12),
                                   _CaptiveWifiBanner(
                                     statusCode: _captiveStatus?.httpStatusCode,
-                                    onOpenLogin: _openWifiLoginAssistant,
+                                    onOpenLogin: _runBackgroundWifiConnect,
+                                    isLoading: _isConnectingWifi,
                                   ),
                                 ],
                                 const SizedBox(height: 12),

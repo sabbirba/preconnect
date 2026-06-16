@@ -27,6 +27,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   bool _autoOpenedWifiAssistant = false;
   bool _isOpeningWifiAssistant = false;
   bool _isAutoExtendingSession = false;
+  bool _isConnectingWifi = false;
   DateTime? _lastAutoAssistantOpenAt;
   DateTime? _lastSilentLoginAt;
   Timer? _captiveAutoTimer;
@@ -678,6 +679,79 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       );
     } finally {
       _isOpeningWifiAssistant = false;
+    }
+  }
+
+  Future<void> _runBackgroundWifiConnect() async {
+    if (_isConnectingWifi || !mounted) return;
+
+    final creds = await CaptiveLoginStore.instance.read();
+    if (creds == null || creds.password.isEmpty) {
+      await _openWifiLoginAssistant();
+      return;
+    }
+
+    final studentId = await _resolveCaptiveStudentId();
+    if (studentId.isEmpty) {
+      await _openWifiLoginAssistant();
+      return;
+    }
+
+    setState(() {
+      _isConnectingWifi = true;
+    });
+
+    try {
+      final status = await AndroidNetworkAssist.getNetworkStatus();
+      if (status == null) {
+        if (mounted) {
+          showAppSnackBar(context, 'No active Wi-Fi connection.');
+        }
+        return;
+      }
+
+      final captiveWifiUri = CaptiveWifiHttp.resolvePortalUri(status);
+      if (captiveWifiUri == null) {
+        if (mounted) {
+          showAppSnackBar(context, 'Could not resolve captive portal URL.');
+        }
+        return;
+      }
+
+      await AndroidNetworkAssist.bindToWifiNetwork();
+      final success = await CaptiveWifiHttp.instance
+          .loginViaCaptiveApi(
+            studentId: studentId,
+            password: creds.password,
+            captiveWifiUrl: captiveWifiUri,
+          )
+          .timeout(const Duration(seconds: 45), onTimeout: () => false);
+
+      if (mounted) {
+        if (success) {
+          showAppSnackBar(context, 'Connected to Student-WiFi successfully!');
+          unawaited(_refreshCaptiveStatus());
+        } else {
+          final err = CaptiveWifiHttp.instance.lastError;
+          showAppSnackBar(
+            context,
+            err != null && err.isNotEmpty
+                ? 'Login failed: $err'
+                : 'Login failed. Open Wi-Fi settings to check credentials.',
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackBar(context, 'An error occurred during Wi-Fi login.');
+      }
+    } finally {
+      await AndroidNetworkAssist.unbindFromWifiNetwork();
+      if (mounted) {
+        setState(() {
+          _isConnectingWifi = false;
+        });
+      }
     }
   }
 
