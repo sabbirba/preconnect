@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/model/section_info.dart' show SectionFaculty;
+import 'package:preconnect/pages/seat_status.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 
@@ -339,6 +340,10 @@ class SeatStatusClassSchedule {
       'startTime': startTime,
       'endTime': endTime,
     };
+  }
+
+  SeatTimetable toTimetable() {
+    return SeatTimetable(startTime: startTime, endTime: endTime);
   }
 }
 
