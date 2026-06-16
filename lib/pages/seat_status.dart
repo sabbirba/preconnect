@@ -173,7 +173,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     }
   }
 
-  Future<void> _togglePin(int sectionId) async {
+  void _togglePin(int sectionId) {
     final key = sectionId.toString();
     final willPin = !_pinnedSections.contains(key);
     _SeatStatusCardData? card;
@@ -192,112 +192,123 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       }
     });
 
-    await CoursePinStore.save(_pinScope, _pinnedSections);
-
     final initialRefreshed = List<_SeatStatusCardData>.from(_cards);
     _sortCardsByCourseAndSection(initialRefreshed);
     _applyCardsSnapshot(initialRefreshed, isInitialLoading: false);
 
     final fcmSupported = FCMService.instance.isSupported;
+    if (mounted) {
+      final String message;
+      if (card != null) {
+        if (!fcmSupported) {
+          message = willPin
+              ? '${card.courseCode} Section ${card.sectionName} pinned locally'
+              : '${card.courseCode} Section ${card.sectionName} unpinned';
+        } else {
+          final status = willPin ? 'alerts enabled' : 'alerts disabled';
+          message = '${card.courseCode} Section ${card.sectionName} $status';
+        }
+      } else {
+        if (!fcmSupported) {
+          message = willPin ? 'Pinned locally' : 'Unpinned';
+        } else {
+          message = 'Seat alerts ${willPin ? 'enabled' : 'disabled'}';
+        }
+      }
+      showAppSnackBar(context, message);
+    }
 
-    if (willPin && fcmSupported) {
+    unawaited(() async {
       try {
-        final hasPerm = await FCMService.instance
-            .isNotificationPermissionGranted();
-        if (!hasPerm) {
-          final granted = await FCMService.instance
-              .requestNotificationPermission();
-          if (!granted && mounted) {
-            showAppSnackBar(
-              context,
-              'Notification permission is disabled. Enable it in Settings to receive push alerts.',
-            );
+        await CoursePinStore.save(_pinScope, _pinnedSections);
+
+        if (willPin && fcmSupported) {
+          try {
+            final hasPerm =
+                await FCMService.instance.isNotificationPermissionGranted();
+            if (!hasPerm) {
+              final granted =
+                  await FCMService.instance.requestNotificationPermission();
+              if (!granted && mounted) {
+                showAppSnackBar(
+                  context,
+                  'Notification permission is disabled. Enable it in Settings to receive push alerts.',
+                );
+              }
+            }
+          } catch (e) {
+            debugPrint("Error handling permission request during pin: $e");
           }
         }
-      } catch (e) {
-        debugPrint("Error handling permission request during pin: $e");
-      }
-    }
 
-    final topic = PreConnectPushConfig.seatTopic(key);
-    bool syncOk = false;
-    try {
-      if (!fcmSupported) {
-        syncOk = true;
-      } else {
-        if (willPin) {
-          syncOk = await FCMService.instance.subscribeToTopic(topic);
-        } else {
-          syncOk = await FCMService.instance.unsubscribeFromTopic(topic);
+        final topic = PreConnectPushConfig.seatTopic(key);
+        bool syncOk = false;
+        try {
+          if (!fcmSupported) {
+            syncOk = true;
+          } else {
+            if (willPin) {
+              syncOk = await FCMService.instance.subscribeToTopic(topic);
+            } else {
+              syncOk = await FCMService.instance.unsubscribeFromTopic(topic);
+            }
+          }
+        } catch (_) {
+          syncOk = false;
         }
+
+        if (!syncOk && willPin) {
+          if (mounted) {
+            setState(() {
+              _pinnedSections.remove(key);
+            });
+          } else {
+            _pinnedSections.remove(key);
+          }
+          await CoursePinStore.save(_pinScope, _pinnedSections);
+
+          if (mounted) {
+            final revertRefreshed = List<_SeatStatusCardData>.from(_cards);
+            _sortCardsByCourseAndSection(revertRefreshed);
+            _applyCardsSnapshot(revertRefreshed, isInitialLoading: false);
+
+            showAppSnackBar(
+              context,
+              'Failed to sync seat alert. Please check your internet connection.',
+            );
+          }
+          return;
+        }
+
+        if (card != null) {
+          unawaited(
+            FCMService.instance.syncSeatEmailAlert(
+              card.courseCode,
+              card.sectionName,
+              subscribe: willPin,
+            ),
+          );
+          unawaited(
+            FCMService.instance.syncWatchlistSnapshot(
+              card.courseCode,
+              card.sectionName,
+              subscribe: willPin,
+            ),
+          );
+        }
+
+        if (willPin && fcmSupported && card != null) {
+          unawaited(
+            FCMService.instance.sendConfirmationNotification(
+              card.courseCode,
+              card.sectionName,
+            ),
+          );
+        }
+      } catch (e) {
+        debugPrint("Error in background pin toggle: $e");
       }
-    } catch (_) {
-      syncOk = false;
-    }
-
-    if (!syncOk && willPin) {
-      setState(() {
-        _pinnedSections.remove(key);
-      });
-      await CoursePinStore.save(_pinScope, _pinnedSections);
-
-      if (!mounted) return;
-      final revertRefreshed = List<_SeatStatusCardData>.from(_cards);
-      _sortCardsByCourseAndSection(revertRefreshed);
-      _applyCardsSnapshot(revertRefreshed, isInitialLoading: false);
-
-      showAppSnackBar(
-        context,
-        'Failed to sync seat alert. Please check your internet connection.',
-      );
-      return;
-    }
-
-    if (card != null) {
-      unawaited(
-        FCMService.instance.syncSeatEmailAlert(
-          card.courseCode,
-          card.sectionName,
-          subscribe: willPin,
-        ),
-      );
-      unawaited(
-        FCMService.instance.syncWatchlistSnapshot(
-          card.courseCode,
-          card.sectionName,
-          subscribe: willPin,
-        ),
-      );
-    }
-
-    if (willPin && fcmSupported && card != null) {
-      unawaited(
-        FCMService.instance.sendConfirmationNotification(
-          card.courseCode,
-          card.sectionName,
-        ),
-      );
-    }
-
-    if (!mounted) return;
-    final String message;
-    if (card != null) {
-      if (!fcmSupported) {
-        message = willPin
-            ? '${card.courseCode} Section ${card.sectionName} pinned locally'
-            : '${card.courseCode} Section ${card.sectionName} unpinned';
-      } else {
-        final status = willPin ? 'alerts enabled' : 'alerts disabled';
-        message = '${card.courseCode} Section ${card.sectionName} $status';
-      }
-    } else {
-      if (!fcmSupported) {
-        message = willPin ? 'Pinned locally' : 'Unpinned';
-      } else {
-        message = 'Seat alerts ${willPin ? 'enabled' : 'disabled'}';
-      }
-    }
-    showAppSnackBar(context, message);
+    }());
   }
 
   Future<void> _reloadAll() async {
