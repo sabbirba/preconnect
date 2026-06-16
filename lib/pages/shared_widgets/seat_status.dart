@@ -277,7 +277,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         ? 'Labs + Theory'
         : _selectedModeFilter;
     return BracuSelectDropdownChip<String>(
-      icon: Icons.calendar_today_outlined,
+      icon: Icons.explore,
       label: label,
       selected: _selectedModeFilter.isNotEmpty,
       compact: true,
