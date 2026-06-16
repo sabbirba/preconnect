@@ -855,7 +855,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                       : null;
                 }()
               : null;
-          final advisingIsDone = advisingAlarmKey != null &&
+          final advisingIsDone =
+              advisingAlarmKey != null &&
               AppStorage.instance.getBoolSync('alarm_done_$advisingAlarmKey') ==
                   true;
           final showAdvisingSingle =
@@ -899,19 +900,20 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
             }
             return buildRefreshEmptyState(
               onRefresh: _handleRefresh,
-              message: _showDoneAlarms
-                  ? 'No done alarms'
-                  : 'No pending alarms',
+              message: _showDoneAlarms ? 'No done alarms' : 'No pending alarms',
             );
           }
 
-          final highlightedExamKey =
-              _showDoneAlarms ? null : _resolveHighlightedExamKey(filteredExams);
+          final highlightedExamKey = _showDoneAlarms
+              ? null
+              : _resolveHighlightedExamKey(filteredExams);
           _highlightScroll.clearHighlightKey();
 
           final highlightedIndex = highlightedExamKey == null
               ? -1
-              : filteredExams.indexWhere((exam) => exam.id == highlightedExamKey);
+              : filteredExams.indexWhere(
+                  (exam) => exam.id == highlightedExamKey,
+                );
           unawaited(
             _highlightScroll.scrollToTarget(
               targetToken: highlightedExamKey,
