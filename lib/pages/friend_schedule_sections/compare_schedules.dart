@@ -707,7 +707,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
         isHighlighted: isHighlighted,
         highlightColor: BracuPalette.primary,
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SectionBadge(label: badgeLabel, color: color),
             const SizedBox(width: 12),

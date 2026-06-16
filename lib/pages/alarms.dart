@@ -24,6 +24,7 @@ import 'package:preconnect/tools/exam_sorting.dart';
 import 'package:preconnect/tools/exam_visibility.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/time_utils.dart';
+import 'package:preconnect/tools/app_storage.dart';
 
 class AlarmPage extends StatefulWidget {
   const AlarmPage({super.key});
@@ -48,6 +49,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   late final HighlightScrollCoordinator _highlightScroll =
       HighlightScrollCoordinator(scrollController: _scrollController);
   final Map<String, int> _minutesBefore = {};
+  bool _showDoneAlarms = false;
 
   @override
   void initState() {
@@ -420,6 +422,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         );
         if (!context.mounted) return;
         showAppSnackBar(context, 'Alarm scheduled on iOS.');
+        await AppStorage.instance.setBool('alarm_done_$courseCode', true);
+        if (mounted) setState(() {});
         RefreshBus.instance.notify(reason: 'alarms');
       } on PlatformException catch (e) {
         if (!context.mounted) return;
@@ -463,6 +467,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       }
       if (!context.mounted) return;
       showAppSnackBar(context, 'Alarm opened in Clock app.');
+      await AppStorage.instance.setBool('alarm_done_$courseCode', true);
+      if (mounted) setState(() {});
       RefreshBus.instance.notify(reason: 'alarms');
     } catch (_) {
       if (!context.mounted) return;
@@ -531,6 +537,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       return;
     }
 
+    final alarmKey = 'exam_${entry.id}';
+
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       try {
         final alarmkit = FlutterAlarmkit();
@@ -549,6 +557,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         );
         if (!context.mounted) return;
         showAppSnackBar(context, 'Exam alarm scheduled on iOS.');
+        await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
+        if (mounted) setState(() {});
         RefreshBus.instance.notify(reason: 'alarms');
       } on PlatformException catch (e) {
         if (!context.mounted) return;
@@ -580,6 +590,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         context,
         'Alarm opened in Clock app. Please verify the date and time.',
       );
+      await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
+      if (mounted) setState(() {});
       RefreshBus.instance.notify(reason: 'alarms');
     } catch (_) {
       if (!context.mounted) return;
@@ -605,6 +617,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       return;
     }
 
+    final alarmKey = 'custom_${item.itemId}';
+
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       try {
         final alarmkit = FlutterAlarmkit();
@@ -622,6 +636,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         );
         if (!context.mounted) return;
         showAppSnackBar(context, 'Personal alarm scheduled on iOS.');
+        await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
+        if (mounted) setState(() {});
         RefreshBus.instance.notify(reason: 'alarms');
       } on PlatformException catch (e) {
         if (!context.mounted) return;
@@ -653,6 +669,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         context,
         'Alarm opened in Clock app. Please verify the date and time.',
       );
+      await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
+      if (mounted) setState(() {});
       RefreshBus.instance.notify(reason: 'alarms');
     } catch (_) {
       if (!context.mounted) return;
@@ -689,6 +707,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       return;
     }
 
+    final alarmKey = 'advising_${startTime.millisecondsSinceEpoch}';
+
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       try {
         final alarmkit = FlutterAlarmkit();
@@ -706,6 +726,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         );
         if (!context.mounted) return;
         showAppSnackBar(context, 'Advising alarm scheduled on iOS.');
+        await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
+        if (mounted) setState(() {});
         RefreshBus.instance.notify(reason: 'alarms');
       } on PlatformException catch (e) {
         if (!context.mounted) return;
@@ -737,6 +759,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         context,
         'Alarm opened in Clock app. Please verify the date and time.',
       );
+      await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
+      if (mounted) setState(() {});
       RefreshBus.instance.notify(reason: 'alarms');
     } catch (_) {
       if (!context.mounted) return;
@@ -760,6 +784,20 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       title: 'Set Alarms',
       subtitle: 'Class & Exam',
       icon: Icons.alarm_outlined,
+      actions: [
+        BracuSelectChip(
+          icon: Icons.history_rounded,
+          selected: _showDoneAlarms,
+          compact: true,
+          showArrow: false,
+          onTap: () {
+            setState(() {
+              _showDoneAlarms = !_showDoneAlarms;
+              _highlightScroll.resetScrollState();
+            });
+          },
+        ),
+      ],
       body: FutureBuilder<_AlarmData>(
         future: _futureData,
         builder: (context, snapshot) {
@@ -807,36 +845,87 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           final advisingInfo = data?.advisingInfo;
           final advisingActive = _isAdvisingActive(advisingInfo);
 
-          if (sections.isEmpty &&
-              exams.isEmpty &&
-              custom.isEmpty &&
-              !advisingActive) {
+          final advisingAlarmKey = advisingInfo != null
+              ? () {
+                  final startDate = DateTime.tryParse(
+                    advisingInfo['advisingStartDate'] ?? '',
+                  );
+                  return startDate != null
+                      ? 'advising_${startDate.millisecondsSinceEpoch}'
+                      : null;
+                }()
+              : null;
+          final advisingIsDone = advisingAlarmKey != null &&
+              AppStorage.instance.getBoolSync('alarm_done_$advisingAlarmKey') ==
+                  true;
+          final showAdvisingSingle =
+              advisingActive &&
+              (_showDoneAlarms ? advisingIsDone : !advisingIsDone);
+
+          final filteredCustom = custom.where((item) {
+            final key = 'custom_${item.itemId}';
+            final isDone =
+                AppStorage.instance.getBoolSync('alarm_done_$key') == true;
+            return _showDoneAlarms ? isDone : !isDone;
+          }).toList();
+
+          final filteredExams = exams.where((exam) {
+            final key = 'exam_${exam.id}';
+            final isDone =
+                AppStorage.instance.getBoolSync('alarm_done_$key') == true;
+            return _showDoneAlarms ? isDone : !isDone;
+          }).toList();
+
+          final filteredSections = sections.where((s) {
+            final isDone =
+                AppStorage.instance.getBoolSync('alarm_done_${s.courseCode}') ==
+                true;
+            return _showDoneAlarms ? isDone : !isDone;
+          }).toList();
+
+          if (!showAdvisingSingle &&
+              filteredCustom.isEmpty &&
+              filteredSections.isEmpty &&
+              filteredExams.isEmpty) {
+            if (!_showDoneAlarms &&
+                sections.isEmpty &&
+                exams.isEmpty &&
+                custom.isEmpty &&
+                !advisingActive) {
+              return buildRefreshEmptyState(
+                onRefresh: _handleRefresh,
+                message: 'No class, exam, or personal event found',
+              );
+            }
             return buildRefreshEmptyState(
               onRefresh: _handleRefresh,
-              message: 'No class, exam, or personal event found',
+              message: _showDoneAlarms
+                  ? 'No done alarms'
+                  : 'No pending alarms',
             );
           }
 
-          final highlightedExamKey = _resolveHighlightedExamKey(exams);
+          final highlightedExamKey =
+              _showDoneAlarms ? null : _resolveHighlightedExamKey(filteredExams);
           _highlightScroll.clearHighlightKey();
 
           final highlightedIndex = highlightedExamKey == null
               ? -1
-              : exams.indexWhere((exam) => exam.id == highlightedExamKey);
+              : filteredExams.indexWhere((exam) => exam.id == highlightedExamKey);
           unawaited(
             _highlightScroll.scrollToTarget(
               targetToken: highlightedExamKey,
               targetIndex: highlightedIndex >= 0
-                  ? (advisingActive ? 1 : 0) +
-                        custom.length +
-                        sections.length +
+                  ? (showAdvisingSingle ? 1 : 0) +
+                        filteredCustom.length +
+                        filteredSections.length +
                         highlightedIndex
                   : null,
               itemCount:
-                  (advisingActive ? 1 : 0) +
-                  custom.length +
-                  sections.length +
-                  exams.length +
+                  (showAdvisingSingle ? 1 : 0) +
+                  filteredCustom.length +
+                  filteredSections.length +
+                  filteredExams.length +
                   1,
               onRetryBuild: () {
                 if (mounted) {
@@ -850,13 +939,13 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
             onRefresh: _handleRefresh,
             controller: _scrollController,
             itemCount:
-                (advisingActive ? 1 : 0) +
-                custom.length +
-                sections.length +
-                exams.length +
+                (showAdvisingSingle ? 1 : 0) +
+                filteredCustom.length +
+                filteredSections.length +
+                filteredExams.length +
                 1,
             itemBuilder: (context, index) {
-              if (advisingActive && index == 0) {
+              if (showAdvisingSingle && index == 0) {
                 final info = advisingInfo!;
                 final startDate = DateTime.tryParse(
                   info['advisingStartDate'] ?? '',
@@ -1010,21 +1099,37 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: BracuActionButton(
-                              onPressed: () async {
-                                await _setAdvisingAlarm(
-                                  context,
-                                  title,
-                                  startDate,
-                                  _minutesBefore[alarmKey]!,
-                                );
-                              },
-                              icon: Icons.notifications_active,
-                              label: 'Set Alarm',
-                            ),
-                          ),
+                          (() {
+                            final isDone =
+                                AppStorage.instance.getBoolSync(
+                                  'alarm_done_$alarmKey',
+                                ) ==
+                                true;
+                            return SizedBox(
+                              width: double.infinity,
+                              child: BracuActionButton(
+                                onPressed: () async {
+                                  if (isDone) {
+                                    await AppStorage.instance.remove(
+                                      'alarm_done_$alarmKey',
+                                    );
+                                    setState(() {});
+                                  } else {
+                                    await _setAdvisingAlarm(
+                                      context,
+                                      title,
+                                      startDate,
+                                      _minutesBefore[alarmKey]!,
+                                    );
+                                  }
+                                },
+                                icon: isDone
+                                    ? Icons.check_circle_outlined
+                                    : Icons.notifications_active,
+                                label: isDone ? 'Done' : 'Set Alarm',
+                              ),
+                            );
+                          })(),
                         ],
                       ),
                     ),
@@ -1032,13 +1137,16 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                 }
               }
 
-              final valIndex = advisingActive ? index - 1 : index;
-              if (valIndex == custom.length + sections.length + exams.length) {
+              final valIndex = showAdvisingSingle ? index - 1 : index;
+              if (valIndex ==
+                  filteredCustom.length +
+                      filteredSections.length +
+                      filteredExams.length) {
                 return const Padding(padding: EdgeInsets.only(top: 12));
               }
 
-              if (valIndex < custom.length) {
-                final item = custom[valIndex];
+              if (valIndex < filteredCustom.length) {
+                final item = filteredCustom[valIndex];
                 final alarmKey = 'custom_${item.itemId}';
                 _minutesBefore.putIfAbsent(alarmKey, () => 15);
                 final startTime = item.startTime.toLocal();
@@ -1209,30 +1317,47 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: BracuActionButton(
-                            onPressed: () async {
-                              await _setCustomScheduleAlarm(
-                                context,
-                                item,
-                                _minutesBefore[alarmKey]!,
-                              );
-                            },
-                            icon: Icons.notifications_active,
-                            label: 'Set Alarm',
-                          ),
-                        ),
+                        (() {
+                          final isDone =
+                              AppStorage.instance.getBoolSync(
+                                'alarm_done_$alarmKey',
+                              ) ==
+                              true;
+                          return SizedBox(
+                            width: double.infinity,
+                            child: BracuActionButton(
+                              onPressed: () async {
+                                if (isDone) {
+                                  await AppStorage.instance.remove(
+                                    'alarm_done_$alarmKey',
+                                  );
+                                  setState(() {});
+                                } else {
+                                  await _setCustomScheduleAlarm(
+                                    context,
+                                    item,
+                                    _minutesBefore[alarmKey]!,
+                                  );
+                                }
+                              },
+                              icon: isDone
+                                  ? Icons.check_circle_outlined
+                                  : Icons.notifications_active,
+                              label: isDone ? 'Done' : 'Set Alarm',
+                            ),
+                          );
+                        })(),
                       ],
                     ),
                   ),
                 );
               }
 
-              final offsetIndex = valIndex - custom.length;
-              if (offsetIndex >= sections.length && exams.isNotEmpty) {
-                final examIndex = offsetIndex - sections.length;
-                final exam = exams[examIndex];
+              final offsetIndex = valIndex - filteredCustom.length;
+              if (offsetIndex >= filteredSections.length &&
+                  filteredExams.isNotEmpty) {
+                final examIndex = offsetIndex - filteredSections.length;
+                final exam = filteredExams[examIndex];
                 final alarmKey = 'exam_${exam.id}';
                 _minutesBefore.putIfAbsent(alarmKey, () => 15);
                 final isHighlighted = highlightedExamKey == exam.id;
@@ -1494,20 +1619,36 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              child: BracuActionButton(
-                                onPressed: () async {
-                                  await _setExamAlarm(
-                                    context,
-                                    exam,
-                                    _minutesBefore[alarmKey]!,
-                                  );
-                                },
-                                icon: Icons.notifications_active,
-                                label: 'Set Alarm',
-                              ),
-                            ),
+                            (() {
+                              final isDone =
+                                  AppStorage.instance.getBoolSync(
+                                    'alarm_done_$alarmKey',
+                                  ) ==
+                                  true;
+                              return SizedBox(
+                                width: double.infinity,
+                                child: BracuActionButton(
+                                  onPressed: () async {
+                                    if (isDone) {
+                                      await AppStorage.instance.remove(
+                                        'alarm_done_$alarmKey',
+                                      );
+                                      setState(() {});
+                                    } else {
+                                      await _setExamAlarm(
+                                        context,
+                                        exam,
+                                        _minutesBefore[alarmKey]!,
+                                      );
+                                    }
+                                  },
+                                  icon: isDone
+                                      ? Icons.check_circle_outlined
+                                      : Icons.notifications_active,
+                                  label: isDone ? 'Done' : 'Set Alarm',
+                                ),
+                              );
+                            })(),
                           ],
                         ),
                       ),
@@ -1516,7 +1657,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                 );
               }
 
-              final section = sections[offsetIndex];
+              final section = filteredSections[offsetIndex];
               final schedules = section.sectionSchedule.classSchedules;
               if (schedules.isEmpty) return const SizedBox.shrink();
 
@@ -1652,38 +1793,55 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: BracuActionButton(
-                              onPressed: () async {
-                                final days = schedules
-                                    .map((s) => s.day)
-                                    .toList();
-                                final startTime = schedules.isNotEmpty
-                                    ? RamadanTiming.adjustRange(
-                                        schedules.first.startTime,
-                                        schedules.first.endTime,
-                                        isRamadan: isRamadan,
-                                      ).startTime
-                                    : '';
+                      (() {
+                        final isDone =
+                            AppStorage.instance.getBoolSync(
+                              'alarm_done_$courseCode',
+                            ) ==
+                            true;
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: BracuActionButton(
+                                onPressed: () async {
+                                  if (isDone) {
+                                    await AppStorage.instance.remove(
+                                      'alarm_done_$courseCode',
+                                    );
+                                    setState(() {});
+                                  } else {
+                                    final days = schedules
+                                        .map((s) => s.day)
+                                        .toList();
+                                    final startTime = schedules.isNotEmpty
+                                        ? RamadanTiming.adjustRange(
+                                            schedules.first.startTime,
+                                            schedules.first.endTime,
+                                            isRamadan: isRamadan,
+                                          ).startTime
+                                        : '';
 
-                                if (startTime.isNotEmpty && days.isNotEmpty) {
-                                  await _setAlarm(
-                                    context,
-                                    days,
-                                    startTime,
-                                    courseCode,
-                                    _minutesBefore[courseCode]!,
-                                  );
-                                }
-                              },
-                              icon: Icons.notifications_active,
-                              label: 'Set Alarm',
+                                    if (startTime.isNotEmpty &&
+                                        days.isNotEmpty) {
+                                      await _setAlarm(
+                                        context,
+                                        days,
+                                        startTime,
+                                        courseCode,
+                                        _minutesBefore[courseCode]!,
+                                      );
+                                    }
+                                  }
+                                },
+                                icon: isDone
+                                    ? Icons.check_circle_outlined
+                                    : Icons.notifications_active,
+                                label: isDone ? 'Done' : 'Set Alarm',
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        );
+                      })(),
                     ],
                   ),
                 ),

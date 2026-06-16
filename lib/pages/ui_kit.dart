@@ -1220,6 +1220,19 @@ class _BracuFundingSupportContentBodyState
                 children: [
                   _BracuSponsorActionChip(
                     iconWidget: const Icon(
+                      Icons.volunteer_activism_rounded,
+                      size: 18,
+                      color: BracuPalette.primary,
+                    ),
+                    label: 'iOS Campaign',
+                    onTap: () => openExternalUrl(
+                      context,
+                      'https://preconnect.app/funding',
+                      failureMessage: 'Unable to open funding link.',
+                    ),
+                  ),
+                  _BracuSponsorActionChip(
+                    iconWidget: const Icon(
                       Icons.phone_rounded,
                       size: 18,
                       color: BracuPalette.primary,

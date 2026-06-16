@@ -481,7 +481,7 @@ class _ScheduleTile extends StatelessWidget {
             128.0,
           );
           return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SectionBadge(label: badge, color: color),
               const SizedBox(width: 12),

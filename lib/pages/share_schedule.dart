@@ -199,11 +199,19 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
         };
       }).toList();
 
+      final currentSemester =
+          await AppStorage.instance.getString(StorageKeys.currentSemester) ??
+          '';
+      final shortCode =
+          await AppStorage.instance.getString(StorageKeys.shortCode) ?? '';
+
       final finalJson = {
         "name": fullName,
         "id": studentId,
         "photoFilePath": photoFilePath,
         "courses": courses,
+        "shortCode": shortCode,
+        "semester": currentSemester,
       };
 
       final jsonStr = jsonEncode(finalJson);

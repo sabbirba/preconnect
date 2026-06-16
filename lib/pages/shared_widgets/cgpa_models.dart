@@ -251,7 +251,7 @@ const List<_GradeGuideRow> _gradeGuideRows = <_GradeGuideRow>[
   _GradeGuideRow(range: '52 - 55', grade: 'D', point: '1.0', comment: 'Poor'),
   _GradeGuideRow(range: '50 - 52', grade: 'D-', point: '0.7', comment: 'Poor'),
   _GradeGuideRow(
-    range: '00 - 50',
+    range: '00 - 49',
     grade: 'F',
     point: '0.0',
     comment: 'Failure',

@@ -124,7 +124,7 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
                 padding: const EdgeInsets.only(bottom: 10),
                 child: BracuCard(
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       if (gradeLabel != null) ...[
                         SectionBadge(

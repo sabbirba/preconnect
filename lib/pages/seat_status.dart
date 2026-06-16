@@ -246,12 +246,11 @@ class _SeatStatusPageState extends State<SeatStatusPage>
         try {
           if (!fcmSupported) {
             syncOk = true;
+          } else if (willPin) {
+            syncOk = await FCMService.instance.subscribeToTopic(topic);
           } else {
-            if (willPin) {
-              syncOk = await FCMService.instance.subscribeToTopic(topic);
-            } else {
-              syncOk = await FCMService.instance.unsubscribeFromTopic(topic);
-            }
+            unawaited(FCMService.instance.unsubscribeFromTopic(topic));
+            syncOk = true;
           }
         } catch (_) {
           syncOk = false;

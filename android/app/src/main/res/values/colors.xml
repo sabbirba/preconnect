@@ -5,4 +5,5 @@
     <color name="shortcut_exams_bg">#EFE9FF</color>
     <color name="shortcut_friends_bg">#EAF4FF</color>
     <color name="notification_icon_color">#1E6BE3</color>
+	<color name="ic_launcher_background">#FFFFFF</color>
 </resources>

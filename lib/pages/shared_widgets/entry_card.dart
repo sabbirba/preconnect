@@ -52,7 +52,7 @@ class ScheduleEntryCard extends StatelessWidget {
     final content = LayoutBuilder(
       builder: (context, constraints) {
         return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SectionBadge(
               label: formatSectionBadge(sectionName),
