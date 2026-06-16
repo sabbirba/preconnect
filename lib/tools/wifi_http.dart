@@ -270,10 +270,11 @@ class CaptiveWifiHttp {
       }
 
       var loginUri = first.uri;
-      var htmlBody = first.body;
       if (loginUri.path.contains('/portalpage/')) {
         unawaited(
-          CaptiveLoginStore.instance.saveLastPortalUrl(loginUri.toString()),
+          CaptiveLoginStore.instance.saveLastPortalUrl(
+            loginUri.toString(),
+          ),
         );
       }
       try {
@@ -295,7 +296,6 @@ class CaptiveWifiHttp {
               uri: loginUri,
               cookies: cookies,
             );
-            htmlBody = second.body;
             loginUri = second.uri;
             if (loginUri.path.contains('/portalpage/')) {
               unawaited(
@@ -308,24 +308,32 @@ class CaptiveWifiHttp {
         }
       } catch (_) {}
 
-      final form = _extractLoginForm(html: htmlBody, pageUri: loginUri);
-      final finalForm = form ?? _fallbackPortalForm(loginUri);
-      if (finalForm == null) {
-        lastError =
-            'Failed to extract login form or resolve fallback for: $loginUri. Response body length: ${htmlBody.length}';
-        return false;
-      }
+      final apiLoginUri = loginUri.replace(
+        path: '/portalauth/login',
+        queryParameters: {},
+      );
 
       final payload = <String, String>{
-        ...finalForm.hiddenFields,
-        finalForm.studentIdField: studentId,
-        finalForm.passwordField: password,
+        'esn': '',
+        'armac': '',
+        'accessMac': '',
+        'businessType': '',
+        'acip': '',
+        'agreed': '1',
+        'registerCode': '',
+        'questions': '',
+        'dynamicValidCode': '',
+        'dynamicRSAToken': '',
+        'validCode': '',
+        ...loginUri.queryParameters,
+        'userName': studentId,
+        'userPass': password,
       };
 
       final encoded = Uri(queryParameters: payload).query;
       final response = await postOnce(
         client: client,
-        uri: finalForm.action,
+        uri: apiLoginUri,
         body: encoded,
         cookies: cookies,
         referer: loginUri,
@@ -339,7 +347,7 @@ class CaptiveWifiHttp {
       if (response.location != null) {
         final redirected = response.location!.isAbsolute
             ? response.location!
-            : finalForm.action.resolveUri(response.location!);
+            : apiLoginUri.resolveUri(response.location!);
         await getWithRedirects(
           client: client,
           uri: redirected,
@@ -394,7 +402,9 @@ class CaptiveWifiHttp {
     );
   }
 
-  Future<bool> logoutViaCaptiveApi({required Uri captiveWifiUrl}) async {
+  Future<bool> logoutViaCaptiveApi({
+    required Uri captiveWifiUrl,
+  }) async {
     lastError = null;
     final client = await newClient();
     try {
@@ -430,7 +440,9 @@ class CaptiveWifiHttp {
 
         try {
           if (method == 'POST') {
-            final payload = <String, String>{...captiveWifiUrl.queryParameters};
+            final payload = <String, String>{
+              ...captiveWifiUrl.queryParameters,
+            };
             final encoded = Uri(queryParameters: payload).query;
             await postOnce(
               client: client,
@@ -458,8 +470,7 @@ class CaptiveWifiHttp {
         } catch (_) {}
       }
 
-      lastError =
-          'Tried all candidate logout endpoints, but probe still succeeded (still logged in).';
+      lastError = 'Tried all candidate logout endpoints, but probe still succeeded (still logged in).';
       return false;
     } catch (e) {
       lastError = 'Logout exception: $e';
@@ -468,148 +479,4 @@ class CaptiveWifiHttp {
       client.close(force: true);
     }
   }
-
-  CaptiveWifiForm? _fallbackPortalForm(Uri uri) {
-    if (uri.path.startsWith('/portalpage/')) {
-      final action = uri.replace(
-        path: '/portalauth/login',
-        queryParameters: {},
-      );
-      final hidden = <String, String>{
-        'esn': '',
-        'armac': '',
-        'accessMac': '',
-        'businessType': '',
-        'acip': '',
-        'agreed': '1',
-        'registerCode': '',
-        'questions': '',
-        'dynamicValidCode': '',
-        'dynamicRSAToken': '',
-        'validCode': '',
-        ...uri.queryParameters,
-      };
-      return CaptiveWifiForm(
-        action: action,
-        studentIdField: 'userName',
-        passwordField: 'userPass',
-        hiddenFields: hidden,
-      );
-    }
-    return null;
-  }
-
-  CaptiveWifiForm? _extractLoginForm({
-    required String html,
-    required Uri pageUri,
-  }) {
-    if (html.trim().isEmpty) return null;
-
-    final formRe = RegExp(
-      r'<form\b([^>]*)>(.*?)</form>',
-      caseSensitive: false,
-      dotAll: true,
-    );
-    final forms = formRe.allMatches(html).toList();
-    if (forms.isEmpty) return null;
-
-    for (final match in forms) {
-      final attrs = match.group(1) ?? '';
-      final body = match.group(2) ?? '';
-      final actionRaw = _attrValue(attrs, 'action')?.trim();
-      final action = (actionRaw == null || actionRaw.isEmpty)
-          ? pageUri
-          : pageUri.resolve(actionRaw);
-
-      final inputs = RegExp(
-        r'<input\b[^>]*>',
-        caseSensitive: false,
-        dotAll: true,
-      ).allMatches(body).toList();
-      String? passwordField;
-      String? studentIdField;
-      var studentIdScore = -1;
-      final hidden = <String, String>{};
-
-      for (final input in inputs) {
-        final tag = input.group(0) ?? '';
-        final name = _attrValue(tag, 'name')?.trim();
-        if (name == null || name.isEmpty) continue;
-
-        final type = (_attrValue(tag, 'type') ?? 'text').trim().toLowerCase();
-        final id = (_attrValue(tag, 'id') ?? '').toLowerCase();
-        final placeholder = (_attrValue(tag, 'placeholder') ?? '')
-            .toLowerCase();
-        final autocomplete = (_attrValue(tag, 'autocomplete') ?? '')
-            .toLowerCase();
-        final hint = '$name $id $placeholder $autocomplete'.toLowerCase();
-
-        if (type == 'hidden') {
-          hidden[name] = _attrValue(tag, 'value') ?? '';
-          continue;
-        }
-
-        if (type == 'password') {
-          passwordField = name;
-          continue;
-        }
-
-        var score = 0;
-        final looksId =
-            hint.contains('id') ||
-            hint.contains('student') ||
-            hint.contains('roll') ||
-            hint.contains('user') ||
-            hint.contains('name') ||
-            hint.contains('username');
-        if (!looksId) continue;
-        if (hint.contains('student')) score += 60;
-        if (hint.contains('username')) score += 50;
-        if (hint.contains('user')) score += 40;
-        if (hint.contains('name')) score += 30;
-        if (hint.contains('id')) score += 20;
-        if (hint.contains('roll')) score += 10;
-
-        if (score > studentIdScore) {
-          studentIdScore = score;
-          studentIdField = name;
-        }
-      }
-
-      if (studentIdField != null && passwordField != null) {
-        return CaptiveWifiForm(
-          action: action,
-          studentIdField: studentIdField,
-          passwordField: passwordField,
-          hiddenFields: hidden,
-        );
-      }
-    }
-
-    return null;
-  }
-
-  String? _attrValue(String source, String name) {
-    final re = RegExp("$name\\s*=\\s*([\"'])(.*?)\\1", caseSensitive: false);
-    final m = re.firstMatch(source);
-    if (m != null) return m.group(2);
-
-    final unquoted = RegExp('$name\\s*=\\s*([^\\s>]+)', caseSensitive: false);
-    final um = unquoted.firstMatch(source);
-    return um?.group(1);
-  }
-}
-
-class CaptiveWifiForm {
-  const CaptiveWifiForm({
-    required this.action,
-    required this.studentIdField,
-    required this.passwordField,
-    required this.hiddenFields,
-  });
-
-  final Uri action;
-  final String studentIdField;
-  final String passwordField;
-  final Map<String, String> hiddenFields;
 }
