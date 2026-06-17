@@ -6,6 +6,7 @@ multi-ecosystem-groups:
       interval: "daily"
       time: "00:00"
       timezone: "Asia/Dhaka"
+    target-branch: "main"
     labels:
       - "dependencies"
     open-pull-requests-limit: 10
@@ -15,7 +16,6 @@ multi-ecosystem-groups:
 updates:
   - package-ecosystem: "pub"
     directory: "/"
-    target-branch: "main"
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
@@ -25,7 +25,6 @@ updates:
 
   - package-ecosystem: "github-actions"
     directory: "/"
-    target-branch: "main"
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
@@ -35,7 +34,6 @@ updates:
 
   - package-ecosystem: "bundler"
     directory: "/"
-    target-branch: "main"
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
@@ -45,7 +43,6 @@ updates:
 
   - package-ecosystem: "gradle"
     directory: "/android"
-    target-branch: "main"
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
