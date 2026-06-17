@@ -353,15 +353,6 @@ jobs:
           target: "/var/www/preconnect-web"
           strip_components: 2
 
-      - name: Clean Build
-        if: matrix.platform == 'android' || matrix.platform == 'ios' || matrix.platform == 'macos'
-        shell: bash
-        run: |
-          flutter clean
-          if [ "${{ matrix.platform }}" = "android" ]; then
-            cd android
-            ./gradlew clean
-          fi
 
       - name: Pod Install
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
