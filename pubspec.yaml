@@ -22,7 +22,7 @@ dependencies:
   image_picker: ^1.2.2
   archive: ^4.0.9
   dart_pdf_reader: ^2.2.0
-  flutter_alarmkit: ^0.1.0
+  flutter_alarmkit: ^0.2.0
   barcode_widget: ^2.0.4
   url_launcher: ^6.3.2
   file_selector: ^1.1.0
@@ -36,8 +36,8 @@ dependencies:
   http: ^1.6.0
   flutter_secure_storage: ^10.3.1
   firebase_core: ^4.10.0
-  firebase_messaging: ^16.3.0
-  firebase_analytics: ^12.4.2
+  firebase_messaging: ^16.4.0
+  firebase_analytics: ^12.4.3
   flutter_local_notifications: ^22.0.1
 
 dev_dependencies:
