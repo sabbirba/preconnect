@@ -936,7 +936,7 @@ class BracuFundingPromoDivider extends StatelessWidget {
                 'Support PreConnect iOS Funding Campaign',
                 style: TextStyle(
                   color: textSecondary,
-                  fontSize: 12.5,
+                  fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
               ),
