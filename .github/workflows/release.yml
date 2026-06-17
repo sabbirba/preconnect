@@ -227,25 +227,22 @@ jobs:
         with:
           xcode-version: "latest"
 
-      - name: Setup CocoaPods
-        if: matrix.platform == 'ios' || matrix.platform == 'macos'
-        shell: bash
-        run: sudo gem install cocoapods --no-document
-
-      - name: Cache CocoaPods Specs
+      - name: Cache CocoaPods
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
         id: cocoapods-cache
         uses: actions/cache@v5.0.5
         with:
-          path: ~/.cocoapods
-          key: ${{ runner.os }}-cocoapods-specs-${{ hashFiles('ios/Podfile.lock', 'macos/Podfile.lock') }}
+          path: |
+            ~/.cocoapods
+            ~/Library/Caches/CocoaPods
+          key: ${{ runner.os }}-cocoapods-${{ hashFiles('ios/Podfile.lock', 'macos/Podfile.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cocoapods-specs-
+            ${{ runner.os }}-cocoapods-
 
-      - name: Update CocoaPods Specs
+      - name: Setup CocoaPods
         if: (matrix.platform == 'ios' || matrix.platform == 'macos') && steps.cocoapods-cache.outputs.cache-hit != 'true'
         shell: bash
-        run: pod repo update
+        run: sudo gem install cocoapods --no-document
 
       - name: Cache Pub
         uses: actions/cache@v5.0.5
@@ -364,6 +361,17 @@ jobs:
           if [ "${{ matrix.platform }}" = "android" ]; then
             cd android
             ./gradlew clean
+          fi
+
+      - name: Pod Install
+        if: matrix.platform == 'ios' || matrix.platform == 'macos'
+        shell: bash
+        run: |
+          flutter pub get
+          if [ "${{ matrix.platform }}" = "ios" ]; then
+            cd ios && pod install
+          else
+            cd macos && pod install
           fi
 
       - name: Restore Keystore
