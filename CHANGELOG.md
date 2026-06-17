@@ -7,7 +7,8 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [1.6.7] — 2026-06-17
 
-### Captive Wi-Fi (Campus Internet)
+### Captive Wi-Fi
+
 - Completely rewrote the campus Wi-Fi login flow to be API based
 - Network properties (gateway, MAC address, etc.) are now fetched dynamically from device APIs
 - Captive portal banner redesigned to be minimal on the Home screen

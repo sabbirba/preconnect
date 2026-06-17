@@ -307,7 +307,7 @@ class _CaptiveWifiBanner extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Campus Wi-Fi Login Required',
+                    'Wi-Fi Login Required',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -316,7 +316,7 @@ class _CaptiveWifiBanner extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'You are connected to campus Wi-Fi but not authenticated.',
+                    'You are connected but not authenticated.',
                     style: TextStyle(
                       fontSize: 11.5,
                       color: textSecondary,
