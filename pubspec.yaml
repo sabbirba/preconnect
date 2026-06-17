@@ -2,7 +2,7 @@ name: preconnect
 description: "Fast, Calm Academic Companion App. An initiative run by BRAC University students."
 publish_to: "none"
 
-version: 1.6.7+202606000
+version: 1.6.8+202606035
 
 environment:
   sdk: ^3.8.1
