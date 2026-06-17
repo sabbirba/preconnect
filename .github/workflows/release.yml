@@ -226,6 +226,26 @@ jobs:
         with:
           xcode-version: "latest"
 
+      - name: Setup CocoaPods
+        if: matrix.platform == 'ios' || matrix.platform == 'macos'
+        shell: bash
+        run: sudo gem install cocoapods -v 1.16.2 --no-document
+
+      - name: Cache CocoaPods Specs
+        if: matrix.platform == 'ios' || matrix.platform == 'macos'
+        id: cocoapods-cache
+        uses: actions/cache@v5.0.5
+        with:
+          path: ~/.cocoapods
+          key: ${{ runner.os }}-cocoapods-specs-${{ hashFiles('ios/Podfile.lock', 'macos/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cocoapods-specs-
+
+      - name: Update CocoaPods Specs
+        if: (matrix.platform == 'ios' || matrix.platform == 'macos') && steps.cocoapods-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: pod repo update
+
       - name: Cache Pub
         uses: actions/cache@v5.0.5
         with:
