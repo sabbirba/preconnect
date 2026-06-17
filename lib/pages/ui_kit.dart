@@ -23,11 +23,6 @@ import 'package:preconnect/tools/web_shared.dart';
 import 'package:preconnect/pages/shared_widgets/session_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:open_filex/open_filex.dart';
-import 'dart:io';
-import 'package:barcode_widget/barcode_widget.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:preconnect/tools/app_paths.dart';
-import 'package:flutter/rendering.dart';
 
 export 'package:preconnect/tools/web_shared.dart';
 
@@ -941,7 +936,7 @@ class BracuFundingPromoDivider extends StatelessWidget {
                 'Support PreConnect iOS Funding Campaign',
                 style: TextStyle(
                   color: textSecondary,
-                  fontSize: 11.5,
+                  fontSize: 12.5,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -954,10 +949,6 @@ class BracuFundingPromoDivider extends StatelessWidget {
   }
 }
 
-const String _kPreConnectSupportNumber = '01865493144';
-const String _kPreConnectSupportReference = 'PreConnect App';
-const String _kPreConnectSupportQrData =
-    'https://qr.bka.sh/281014021P3BymAwed3CDD8CFE';
 const String _kPreConnectWhatsAppUrl =
     'https://api.whatsapp.com/send?phone=8801865493144&text=Hi%20PreConnect%2C%20I%20want%20to%20support%20the%20app.';
 
@@ -966,385 +957,78 @@ class BracuFundingSupportContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const _BracuFundingSupportContentBody();
-  }
-}
-
-class _BracuFundingSupportContentBody extends StatefulWidget {
-  const _BracuFundingSupportContentBody();
-
-  @override
-  State<_BracuFundingSupportContentBody> createState() =>
-      _BracuFundingSupportContentBodyState();
-}
-
-class _BracuFundingSupportContentBodyState
-    extends State<_BracuFundingSupportContentBody> {
-  final GlobalKey _qrShareKey = GlobalKey();
-
-  Future<void> _shareQrCode() async {
-    final boundary =
-        _qrShareKey.currentContext?.findRenderObject()
-            as RenderRepaintBoundary?;
-    if (boundary == null) {
-      if (!mounted) return;
-      showAppSnackBar(context, 'Unable to capture QR code');
-      return;
-    }
-
-    try {
-      final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) {
-        if (!mounted) return;
-        showAppSnackBar(context, 'Unable to capture QR code');
-        return;
-      }
-
-      final bytes = byteData.buffer.asUint8List();
-      const fileName = 'preconnect_support_qr.png';
-      const shareText =
-          'Scan this QR to support PreConnect.\n'
-          'Reference: $_kPreConnectSupportReference';
-
-      if (kIsWeb) {
-        await openImageInBrowser(bytes: bytes, fileName: fileName);
-        if (!mounted) return;
-        showAppSnackBar(context, 'Share sheet opened');
-        return;
-      }
-
-      final tempDir = await AppPaths.temporaryDirectory();
-      final file = File('${tempDir.path}/$fileName');
-      await file.writeAsBytes(bytes, flush: true);
-
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path)],
-          text: shareText,
-          subject: 'PreConnect Support QR',
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            'Your support helps cover server costs, ongoing development, and app releases so PreConnect can stay reliable.',
+            style: TextStyle(
+              color: BracuPalette.textSecondary(context),
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              height: 1.45,
+            ),
+            textAlign: TextAlign.center,
+          ),
         ),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      showAppSnackBar(context, 'Unable to share QR code');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableWidth = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : 0.0;
-        final qrSize = math.min(math.max(availableWidth * 0.54, 160.0), 260.0);
-        final rightWidth = math.max(0.0, availableWidth - qrSize - 20);
-        final rightTextScale = (rightWidth / 220.0).clamp(0.72, 1.0);
-
-        return Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                GestureDetector(
-                  onTap: _shareQrCode,
-                  child: RepaintBoundary(
-                    key: _qrShareKey,
-                    child: SizedBox.square(
-                      dimension: qrSize,
-                      child: ColoredBox(
-                        color: Colors.transparent,
-                        child: BarcodeWidget(
-                          barcode: Barcode.qrCode(),
-                          data: _kPreConnectSupportQrData,
-                          color: const Color(0xFFE91E63),
-                          backgroundColor: Colors.transparent,
-                          drawText: false,
-                          errorBuilder: (context, error) {
-                            return Container(
-                              alignment: Alignment.center,
-                              color: Colors.transparent,
-                              child: const Icon(
-                                Icons.qr_code_2_rounded,
-                                color: BracuPalette.primary,
-                                size: 44,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
+        const SizedBox(height: 16),
+        Center(
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _BracuSponsorActionChip(
+                iconWidget: const Icon(
+                  Icons.volunteer_activism_rounded,
+                  size: 18,
+                  color: BracuPalette.primary,
                 ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: SizedBox(
-                    height: qrSize,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Align(
-                              alignment: Alignment.center,
-                              child: BracuSupportNumberRow(
-                                number: _kPreConnectSupportNumber,
-                                textScale: rightTextScale,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Align(
-                              alignment: Alignment.center,
-                              child: Text(
-                                'Send money with reference',
-                                style: TextStyle(
-                                  color: BracuPalette.textSecondary(context),
-                                  fontSize: 11 * rightTextScale,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Align(
-                              alignment: Alignment.center,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(10),
-                                onTap: () async {
-                                  await Clipboard.setData(
-                                    const ClipboardData(
-                                      text: _kPreConnectSupportReference,
-                                    ),
-                                  );
-                                  if (context.mounted) {
-                                    showAppSnackBar(
-                                      context,
-                                      'Reference copied',
-                                    );
-                                  }
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 6,
-                                  ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              _kPreConnectSupportReference,
-                                              style: TextStyle(
-                                                color: BracuPalette.textPrimary(
-                                                  context,
-                                                ),
-                                                fontSize: 14 * rightTextScale,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Icon(
-                                              Icons.content_copy_rounded,
-                                              size: 13 * rightTextScale,
-                                              color: BracuPalette.textSecondary(
-                                                context,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Tap to copy',
-                                        style: TextStyle(
-                                          color: BracuPalette.textSecondary(
-                                            context,
-                                          ),
-                                          fontSize: 9 * rightTextScale,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 2),
-                          child: Text(
-                            'Scan the QR code in your bKash app to support or send money manually using the number.',
-                            style: TextStyle(
-                              color: BracuPalette.textSecondary(context),
-                              fontSize: 13 * rightTextScale,
-                              fontWeight: FontWeight.w400,
-                              height: 1.35,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                label: 'iOS Campaign',
+                onTap: () => openExternalUrl(
+                  context,
+                  'https://preconnect.app/funding',
+                  failureMessage: 'Unable to open funding link.',
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(
-                'Your support helps cover server costs, ongoing development, and app releases so PreConnect can stay reliable.',
-                style: TextStyle(
-                  color: BracuPalette.textSecondary(context),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                  height: 1.45,
+              ),
+              _BracuSponsorActionChip(
+                iconWidget: const Icon(
+                  Icons.chat_rounded,
+                  size: 18,
+                  color: BracuPalette.primary,
                 ),
-                textAlign: TextAlign.center,
+                label: 'WhatsApp',
+                onTap: () => openExternalUrl(
+                  context,
+                  _kPreConnectWhatsAppUrl,
+                  failureMessage: 'Unable to open WhatsApp.',
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Center(
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _BracuSponsorActionChip(
-                    iconWidget: const Icon(
-                      Icons.volunteer_activism_rounded,
-                      size: 18,
-                      color: BracuPalette.primary,
-                    ),
-                    label: 'iOS Campaign',
-                    onTap: () => openExternalUrl(
-                      context,
-                      'https://preconnect.app/funding',
-                      failureMessage: 'Unable to open funding link.',
-                    ),
-                  ),
-                  _BracuSponsorActionChip(
-                    iconWidget: const Icon(
-                      Icons.phone_rounded,
-                      size: 18,
-                      color: BracuPalette.primary,
-                    ),
-                    label: _kPreConnectSupportNumber,
-                    onTap: () =>
-                        openPhoneDialer(context, _kPreConnectSupportNumber),
-                  ),
-                  _BracuSponsorActionChip(
-                    iconWidget: const Icon(
-                      Icons.chat_rounded,
-                      size: 18,
-                      color: BracuPalette.primary,
-                    ),
-                    label: 'WhatsApp',
-                    onTap: () => openExternalUrl(
-                      context,
-                      _kPreConnectWhatsAppUrl,
-                      failureMessage: 'Unable to open WhatsApp.',
-                    ),
-                  ),
-                  _BracuSponsorActionChip(
-                    iconWidget: const PreConnectDiscordIcon(
-                      size: 18,
-                      color: BracuPalette.primary,
-                    ),
-                    label: 'Discord',
-                    onTap: () => openExternalUrl(
-                      context,
-                      kPreConnectDiscordUrl,
-                      failureMessage: 'Unable to open Discord.',
-                    ),
-                  ),
-                  _BracuSponsorActionChip(
-                    iconWidget: const PreConnectGithubIcon(
-                      size: 18,
-                      color: BracuPalette.primary,
-                    ),
-                    label: 'GitHub',
-                    onTap: () =>
-                        openExternalUrl(context, kPreConnectRepositoryUrl),
-                  ),
-                ],
+              _BracuSponsorActionChip(
+                iconWidget: const PreConnectDiscordIcon(
+                  size: 18,
+                  color: BracuPalette.primary,
+                ),
+                label: 'Discord',
+                onTap: () => openExternalUrl(
+                  context,
+                  kPreConnectDiscordUrl,
+                  failureMessage: 'Unable to open Discord.',
+                ),
               ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class BracuSupportNumberRow extends StatelessWidget {
-  const BracuSupportNumberRow({
-    super.key,
-    required this.number,
-    this.textScale = 1.0,
-  });
-
-  final String number;
-  final double textScale;
-
-  @override
-  Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
-    return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: () async {
-        await Clipboard.setData(ClipboardData(text: number));
-        if (!context.mounted) return;
-        showAppSnackBar(context, 'Copied to clipboard');
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    number,
-                    style: TextStyle(
-                      color: BracuPalette.textPrimary(context),
-                      fontSize: 16 * textScale,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.content_copy_rounded,
-                    size: 14 * textScale,
-                    color: textSecondary,
-                  ),
-                ],
+              _BracuSponsorActionChip(
+                iconWidget: const PreConnectGithubIcon(
+                  size: 18,
+                  color: BracuPalette.primary,
+                ),
+                label: 'GitHub',
+                onTap: () => openExternalUrl(context, kPreConnectRepositoryUrl),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'bKash / Nagad / Upay',
-              style: TextStyle(color: textSecondary, fontSize: 11 * textScale),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Tap to copy',
-              style: TextStyle(color: textSecondary, fontSize: 9 * textScale),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

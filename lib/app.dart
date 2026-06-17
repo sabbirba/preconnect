@@ -106,7 +106,10 @@ class MyApp extends StatefulWidget {
               }
             }
           }
-        } catch (_) {}
+        } catch (_) {
+        } finally {
+          cleanUrlCodeParameter();
+        }
       }
       final shortcut = Uri.base.queryParameters['shortcut'];
       if (shortcut != null && shortcut.trim().isNotEmpty) {
@@ -259,7 +262,7 @@ class MyApp extends StatefulWidget {
 
   static HomeTab _decodeHomeTab(String? raw) {
     final value = (raw ?? '').trim();
-    if (value.isEmpty) return HomeTab.dashboard;
+    if (value.isEmpty || value == 'moreQuickAccess') return HomeTab.dashboard;
     try {
       return HomeTab.values.byName(value);
     } catch (_) {
@@ -298,9 +301,7 @@ class _MyAppState extends State<MyApp>
     );
     WidgetsBinding.instance.addObserver(this);
     if (!widget.isPreBoot) {
-      if (_resolvedBootstrapState == null) {
-        unawaited(_bootstrapInBackground());
-      }
+      unawaited(_bootstrapInBackground());
       if (kIsWeb) {
         _webExtensionSessionFlow = WebExtensionSessionFlow();
         _webSessionSub = _webExtensionSessionFlow!.events.listen(

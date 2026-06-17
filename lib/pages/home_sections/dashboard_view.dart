@@ -590,23 +590,122 @@ extension _HomeDashboardView on _HomeDashboardState {
 
   Widget _buildQuickAccessGrid({required double maxWidth}) {
     final layout = quickAccessGridLayout(maxWidth);
-    return Center(
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        runAlignment: WrapAlignment.center,
-        spacing: layout.spacing,
-        runSpacing: layout.spacing,
-        children: _quickAccessItems.map((item) {
-          return QuickAccessCard(
-            width: layout.itemWidth,
-            icon: item.icon,
-            title: item.title,
-            subtitle: item.subtitle,
-            color: item.color,
-            onTap: () => widget.onNavigate(item.tab!),
-          );
-        }).toList(),
-      ),
+    final allItems = _quickAccessItems;
+    final staticItems = allItems.take(8).toList();
+    final expandableItems = allItems.skip(8).toList();
+
+    final dividerColor = Theme.of(context).dividerColor.withValues(alpha: 0.12);
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Static Grid (Always shows 8 items)
+        Center(
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            runAlignment: WrapAlignment.center,
+            spacing: layout.spacing,
+            runSpacing: layout.spacing,
+            children: staticItems.map((item) {
+              return QuickAccessCard(
+                width: layout.itemWidth,
+                icon: item.icon,
+                title: item.title,
+                subtitle: item.subtitle,
+                color: item.color,
+                onTap: () {
+                  if (item.onTap != null) {
+                    item.onTap!(context);
+                  } else if (item.tab != null) {
+                    widget.onNavigate(item.tab!);
+                  }
+                },
+              );
+            }).toList(),
+          ),
+        ),
+        // Expandable Grid (Shows remaining items)
+        AnimatedSize(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          alignment: Alignment.topCenter,
+          child: _quickAccessExpanded
+              ? Padding(
+                  padding: EdgeInsets.only(top: layout.spacing),
+                  child: Center(
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      runAlignment: WrapAlignment.center,
+                      spacing: layout.spacing,
+                      runSpacing: layout.spacing,
+                      children: expandableItems.map((item) {
+                        return QuickAccessCard(
+                          width: layout.itemWidth,
+                          icon: item.icon,
+                          title: item.title,
+                          subtitle: item.subtitle,
+                          color: item.color,
+                          onTap: () {
+                            if (item.onTap != null) {
+                              item.onTap!(context);
+                            } else if (item.tab != null) {
+                              widget.onNavigate(item.tab!);
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+        const SizedBox(height: 16),
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            Divider(color: dividerColor, thickness: 1),
+            InkWell(
+              onTap: _toggleQuickAccess,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: dividerColor, width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _quickAccessExpanded ? 'See Less' : 'See More',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: primaryColor,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    AnimatedRotation(
+                      turns: _quickAccessExpanded ? 0.5 : 0.0,
+                      duration: const Duration(milliseconds: 250),
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 16,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -630,42 +729,95 @@ extension _HomeDashboardView on _HomeDashboardState {
       icon: Icons.event_note_outlined,
       title: 'Exam',
       subtitle: 'Schedules',
-      color: Color(0xFF7C56FF),
+      color: const Color(0xFF7C56FF),
     ),
     _DashboardQuickAccess(
       tab: HomeTab.alarms,
       icon: Icons.alarm_outlined,
       title: 'Alarm',
       subtitle: 'Reminders',
-      color: Color(0xFFFF8A34),
+      color: const Color(0xFFFF8A34),
     ),
     _DashboardQuickAccess(
       tab: HomeTab.personalSchedules,
       icon: Icons.event_note_outlined,
       title: 'Custom',
       subtitle: 'Schedules',
-      color: Color(0xFF1E6BE3),
+      color: const Color(0xFF1E6BE3),
     ),
     _DashboardQuickAccess(
       tab: HomeTab.friendSchedule,
       icon: Icons.people_outline_rounded,
       title: 'Friends',
       subtitle: 'Schedules',
-      color: Color(0xFF5B8DEF),
+      color: const Color(0xFF5B8DEF),
     ),
     _DashboardQuickAccess(
       tab: HomeTab.degreeProgress,
       icon: Icons.trending_up_rounded,
       title: 'Degree',
       subtitle: 'Progress',
-      color: Color(0xFF2C9DFF),
+      color: const Color(0xFF2C9DFF),
+    ),
+    // Devs is now the 8th item (last item in the static list)
+    _DashboardQuickAccess(
+      tab: HomeTab.devs,
+      icon: Icons.developer_mode_outlined,
+      title: 'Devs',
+      subtitle: 'Support',
+      color: const Color(0xFF2C9DFF),
+    ),
+    // Secondary options (from MoreQuickAccessPage):
+    _DashboardQuickAccess(
+      tab: HomeTab.bus,
+      icon: Icons.directions_bus_rounded,
+      title: 'Bus',
+      subtitle: 'Routes',
+      color: const Color(0xFF00A8E8),
     ),
     _DashboardQuickAccess(
-      tab: HomeTab.moreQuickAccess,
-      icon: Icons.more_horiz_rounded,
-      title: 'More',
-      subtitle: 'Options',
-      color: Color(0xFF00A8E8),
+      tab: HomeTab.freeLabs,
+      icon: Icons.computer_outlined,
+      title: 'Free',
+      subtitle: 'Labs',
+      color: const Color(0xFF00A8E8),
+    ),
+    _DashboardQuickAccess(
+      tab: HomeTab.seatStatus,
+      icon: Icons.insights_outlined,
+      title: 'Seat',
+      subtitle: 'Status',
+      color: const Color(0xFF00A8E8),
+    ),
+    _DashboardQuickAccess(
+      tab: null, // Advising Helper is an external URL
+      icon: Icons.school_outlined,
+      title: 'Advising',
+      subtitle: 'Helper',
+      color: const Color(0xFF5B8DEF),
+      onTap: (context) {
+        unawaited(
+          openExternalUrl(
+            context,
+            'https://chromewebstore.google.com/detail/preconnect/fcfkbdogaciifaihbfhnaijfhdcjokca',
+          ),
+        );
+      },
+    ),
+    _DashboardQuickAccess(
+      tab: HomeTab.campusPrinter,
+      icon: Icons.local_printshop_outlined,
+      title: 'Printer',
+      subtitle: 'Campus',
+      color: const Color(0xFF22B573),
+    ),
+    // Events (Calendar) is now the 14th item (last item in the expandable list)
+    _DashboardQuickAccess(
+      tab: HomeTab.calendar,
+      icon: Icons.calendar_today_outlined,
+      title: 'Events',
+      subtitle: 'Calendar',
+      color: const Color(0xFF00A86B),
     ),
   ];
 }
@@ -677,6 +829,7 @@ class _DashboardQuickAccess {
     required this.title,
     required this.subtitle,
     required this.color,
+    this.onTap,
   });
 
   final HomeTab? tab;
@@ -684,6 +837,7 @@ class _DashboardQuickAccess {
   final String title;
   final String subtitle;
   final Color color;
+  final void Function(BuildContext context)? onTap;
 }
 
 class _HomeDashboardLoadingShell extends StatelessWidget {

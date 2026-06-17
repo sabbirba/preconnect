@@ -304,7 +304,6 @@ class _DevsPageState extends State<DevsPage> {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        BracuSectionTitle(title: 'Funding & Support'),
         SizedBox(height: 10),
         BracuFundingPromoDivider(),
         SizedBox(height: 10),

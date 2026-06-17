@@ -34,6 +34,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   Timer? _todayScheduleAutoRefreshTimer;
   Future<CampusMapData?>? _campusMapFuture;
   Future<String?>? _transportScheduleUrlFuture;
+  bool _quickAccessExpanded = false;
 
   static const Duration _captiveAutoPollInterval = Duration(seconds: 30);
   static const Duration _todayScheduleAutoRefreshInterval = Duration(
@@ -46,6 +47,11 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       'home_dashboard_snapshot_v1';
   static _HomeData? _cachedData;
   static Future<_HomeData>? _preloadFuture;
+  void _toggleQuickAccess() {
+    setState(() {
+      _quickAccessExpanded = !_quickAccessExpanded;
+    });
+  }
 
   @override
   void initState() {

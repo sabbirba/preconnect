@@ -36,6 +36,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
   String _responseText = '';
   String? _accessToken;
   String? _refreshToken;
+  String? _idToken;
 
   @override
   void dispose() {
@@ -56,12 +57,16 @@ class _ApiTestPageState extends State<ApiTestPage> {
     final refreshToken = await TokenStorage.instance.read(
       key: PreConnectStorageKeys.refreshToken,
     );
+    final idToken = await TokenStorage.instance.read(
+      key: PreConnectStorageKeys.idToken,
+    );
     if (!mounted) return;
     setState(() {
       _accessToken = accessToken?.trim().isEmpty == true ? null : accessToken;
       _refreshToken = refreshToken?.trim().isEmpty == true
           ? null
           : refreshToken;
+      _idToken = idToken?.trim().isEmpty == true ? null : idToken;
     });
   }
 
@@ -220,6 +225,8 @@ class _ApiTestPageState extends State<ApiTestPage> {
           _TokenField(label: 'Access Token', value: _accessToken),
           const SizedBox(height: 12),
           _TokenField(label: 'Refresh Token', value: _refreshToken),
+          const SizedBox(height: 12),
+          _TokenField(label: 'ID Token', value: _idToken),
           const SizedBox(height: 20),
           DropdownButtonFormField<String>(
             initialValue: _method,

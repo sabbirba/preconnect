@@ -94,7 +94,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with RefreshBusState {
   HomeTab selectedTab = HomeTab.dashboard;
   StreamSubscription<HomeTab>? _shortcutTabSubscription;
-  final Set<HomeTab> _returnToMoreTabs = <HomeTab>{};
   late final Map<HomeTab, WidgetBuilder> pages = {
     HomeTab.settings: (_) => const SettingsPage(),
     HomeTab.notifications: (_) => const NotificationsPage(),
@@ -102,7 +101,6 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
       onNavigate: _setTab,
       onLogout: () => _confirmLogout(context),
     ),
-    HomeTab.moreQuickAccess: (_) => MoreQuickAccessPage(onNavigate: _setTab),
     HomeTab.bus: (_) => const BusPage(),
     HomeTab.freeLabs: (_) => const FreeLabsPage(),
     HomeTab.calendar: (_) => const CalendarPage(),
@@ -185,10 +183,6 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
       unawaited(_persistSelectedTab(tab));
       return;
     }
-    if (selectedTab == HomeTab.moreQuickAccess &&
-        tab != HomeTab.moreQuickAccess) {
-      _returnToMoreTabs.add(tab);
-    }
     final shouldJumpClass = tab == HomeTab.studentSchedule;
     final shouldJumpExam = tab == HomeTab.examSchedule;
     setState(() {
@@ -221,11 +215,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
       _setTab(HomeTab.friendSchedule);
       return;
     }
-    if (_returnToMoreTabs.remove(selectedTab)) {
-      _setTab(HomeTab.moreQuickAccess);
-    } else {
-      _setTab(HomeTab.dashboard);
-    }
+    _setTab(HomeTab.dashboard);
   }
 
   Future<void> _confirmLogout(BuildContext context) async {
@@ -290,6 +280,7 @@ class _CaptiveWifiBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textSecondary = BracuPalette.textSecondary(context);
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -300,56 +291,72 @@ class _CaptiveWifiBanner extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: InkWell(
-        onTap: isLoading ? null : onOpenLogin,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.wifi_lock_rounded,
-                size: 20,
-                color: BracuPalette.primary,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.wifi_lock_rounded,
+              size: 20,
+              color: BracuPalette.primary,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Campus Wi-Fi Login Required',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: BracuPalette.textPrimary(context),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'You are connected to campus Wi-Fi but not authenticated.',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: textSecondary,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (isLoading)
-                      const SizedBox(
-                        width: 16,
-                        height: 16,
+            ),
+            const SizedBox(width: 10),
+            GestureDetector(
+              onTap: isLoading ? null : onOpenLogin,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: BracuPalette.primary,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
                         child: CircularProgressIndicator(
-                          strokeWidth: 2.2,
+                          strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            BracuPalette.primary,
+                            Colors.white,
                           ),
                         ),
                       )
-                    else
-                      Text(
-                        'Wi-Fi Login Required',
+                    : const Text(
+                        'Connect',
                         style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: BracuPalette.textPrimary(context),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
                         ),
                       ),
-                  ],
-                ),
               ),
-              const SizedBox(width: 8),
-              if (!isLoading)
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 20,
-                  color: BracuPalette.textSecondary(context),
-                ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -1022,107 +1029,4 @@ class _ScheduleEntry {
   final String sectionName;
   final String? roomNumber;
   final String? faculties;
-}
-
-class MoreQuickAccessPage extends StatefulWidget {
-  const MoreQuickAccessPage({super.key, required this.onNavigate});
-
-  final ValueChanged<HomeTab> onNavigate;
-
-  @override
-  State<MoreQuickAccessPage> createState() => _MoreQuickAccessPageState();
-}
-
-class _MoreQuickAccessPageState extends State<MoreQuickAccessPage> {
-  @override
-  Widget build(BuildContext context) {
-    return BracuPageScaffold(
-      title: 'More',
-      subtitle: 'Options',
-      icon: Icons.more_horiz_rounded,
-      body: ListView(
-        padding: kBracuPageListPadding,
-        children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final layout = quickAccessGridLayout(constraints.maxWidth);
-              return Center(
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  runAlignment: WrapAlignment.center,
-                  spacing: layout.spacing,
-                  runSpacing: layout.spacing,
-                  children: [
-                    QuickAccessCard(
-                      width: layout.itemWidth,
-                      icon: Icons.calendar_today_outlined,
-                      title: 'Events',
-                      subtitle: 'Calendar',
-                      color: const Color(0xFF00A86B),
-                      onTap: () => widget.onNavigate(HomeTab.calendar),
-                    ),
-                    QuickAccessCard(
-                      width: layout.itemWidth,
-                      icon: Icons.directions_bus_rounded,
-                      title: 'Bus',
-                      subtitle: 'Routes',
-                      color: const Color(0xFF00A8E8),
-                      onTap: () => widget.onNavigate(HomeTab.bus),
-                    ),
-                    QuickAccessCard(
-                      width: layout.itemWidth,
-                      icon: Icons.computer_outlined,
-                      title: 'Free',
-                      subtitle: 'Labs',
-                      color: const Color(0xFF00A8E8),
-                      onTap: () => widget.onNavigate(HomeTab.freeLabs),
-                    ),
-                    QuickAccessCard(
-                      width: layout.itemWidth,
-                      icon: Icons.insights_outlined,
-                      title: 'Seat',
-                      subtitle: 'Status',
-                      color: const Color(0xFF00A8E8),
-                      onTap: () => widget.onNavigate(HomeTab.seatStatus),
-                    ),
-                    QuickAccessCard(
-                      width: layout.itemWidth,
-                      icon: Icons.school_outlined,
-                      title: 'Advising',
-                      subtitle: 'Helper',
-                      color: const Color(0xFF5B8DEF),
-                      onTap: () {
-                        unawaited(
-                          openExternalUrl(
-                            context,
-                            'https://chromewebstore.google.com/detail/preconnect/fcfkbdogaciifaihbfhnaijfhdcjokca',
-                          ),
-                        );
-                      },
-                    ),
-                    QuickAccessCard(
-                      width: layout.itemWidth,
-                      icon: Icons.local_printshop_outlined,
-                      title: 'Printer',
-                      subtitle: 'Campus',
-                      color: const Color(0xFF22B573),
-                      onTap: () => widget.onNavigate(HomeTab.campusPrinter),
-                    ),
-                    QuickAccessCard(
-                      width: layout.itemWidth,
-                      icon: Icons.developer_mode_outlined,
-                      title: 'Devs',
-                      subtitle: 'Support',
-                      color: const Color(0xFF2C9DFF),
-                      onTap: () => widget.onNavigate(HomeTab.devs),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
 }
