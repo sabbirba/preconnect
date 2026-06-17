@@ -360,9 +360,9 @@ jobs:
         run: |
           flutter pub get
           if [ "${{ matrix.platform }}" = "ios" ]; then
-            cd ios && pod install
+            cd ios && pod update
           else
-            cd macos && pod install
+            cd macos && pod update
           fi
 
       - name: Restore Keystore
