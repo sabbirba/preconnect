@@ -334,13 +334,7 @@ Why this reduces Connect API calls:
 
 Community driven and free for every student.
 
-If you want to support the project locally, you can send to:
-
-- bKash / Nagad / Upay: **01865493144**
-
-Reference (required): **PreConnect App**
-
-More details: [preconnect.app/funding](https://preconnect.app/funding) or [FUNDING.md](FUNDING.md)
+Support the project via [preconnect.app/funding](https://preconnect.app/funding)
 
 ## Roadmap
 

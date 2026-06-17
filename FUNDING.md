@@ -2,11 +2,7 @@
 
 PreConnect is community driven and free for every student.
 
-If you want to support the project locally, you can send to:
-
-- bKash / Nagad / Upay: **01865493144**
-
-Reference (required): **PreConnect App**
+Support the project via [preconnect.app/funding](https://preconnect.app/funding)
 
 ## What Support Helps With
 
