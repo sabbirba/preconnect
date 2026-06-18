@@ -377,25 +377,33 @@ jobs:
         run: |
           set -e
           KEY_FILE=$(mktemp)
-          SCRIPT_FILE=$(mktemp)
           chmod 600 "$KEY_FILE"
           printf '%s\n' "$VPS_SSH_KEY" > "$KEY_FILE"
           NGINX_B64=$(base64 -w 0 nginx.conf)
-          cat > "$SCRIPT_FILE" << ENDSSH
-          set -e
-          DEST=/etc/nginx/sites-available/web.preconnect.app
+          SCRIPT_FILE=$(python3 - "$NGINX_B64" <<'PYEOF'
+          import sys, tempfile, os
+          b64 = sys.argv[1]
+          dest = "/etc/nginx/sites-available/web.preconnect.app"
+          link = "/etc/nginx/sites-enabled/web.preconnect.app"
+          script = f"""set -e
           sudo mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
-          sudo rm -rf "\$DEST"
-          printf '%s' "${NGINX_B64}" | base64 -d | sudo tee "\$DEST" > /dev/null
-          sudo rm -f /etc/nginx/sites-enabled/web.preconnect.app
-          sudo ln -sf "\$DEST" /etc/nginx/sites-enabled/web.preconnect.app
-          NGINX=\$(command -v nginx 2>/dev/null || ls /usr/sbin/nginx /usr/local/sbin/nginx 2>/dev/null | head -1 || echo "")
-          if [ -z "\$NGINX" ]; then
+          sudo rm -rf {dest}
+          printf '%s' '{b64}' | base64 -d | sudo tee {dest} > /dev/null
+          sudo rm -f {link}
+          sudo ln -sf {dest} {link}
+          NGINX=$(command -v nginx 2>/dev/null || ls /usr/sbin/nginx /usr/local/sbin/nginx 2>/dev/null | head -1 || echo "")
+          if [ -z "$NGINX" ]; then
             sudo systemctl reload nginx
           else
-            sudo "\$NGINX" -t && (sudo systemctl reload nginx 2>/dev/null || sudo "\$NGINX" -s reload)
+            sudo "$NGINX" -t && (sudo systemctl reload nginx 2>/dev/null || sudo "$NGINX" -s reload)
           fi
-          ENDSSH
+          """
+          f = tempfile.NamedTemporaryFile(mode='w', suffix='.sh', delete=False)
+          f.write(script)
+          f.close()
+          print(f.name)
+          PYEOF
+          )
           ssh -i "$KEY_FILE" \
             -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=/dev/null \
@@ -403,6 +411,7 @@ jobs:
             "$VPS_USERNAME@$VPS_HOST" \
             'bash -s' < "$SCRIPT_FILE"
           rm -f "$KEY_FILE" "$SCRIPT_FILE"
+
 
       - name: Pod Install
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
