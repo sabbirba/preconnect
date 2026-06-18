@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:preconnect/tools/network_assist.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
@@ -26,6 +27,7 @@ class CaptiveWifiHttp {
   static final CaptiveWifiHttp instance = CaptiveWifiHttp._();
 
   String? lastError;
+  String lastResponseLog = '';
   static final Uri defaultProbeUri = Uri.parse(
     'http://connectivitycheck.gstatic.com/generate_204',
   );
@@ -241,23 +243,30 @@ class CaptiveWifiHttp {
     required String password,
     required Uri captiveWifiUrl,
   }) async {
+    debugPrint('[CaptiveWifi] Starting login for Student ID: $studentId');
+    debugPrint('[CaptiveWifi] Captive Portal URL: $captiveWifiUrl');
     lastError = null;
+    lastResponseLog = '';
     final client = await newClient();
     final cookies = sessionCookies;
     cookies.clear();
 
     try {
+      debugPrint('[CaptiveWifi] Sending initial GET request with redirects...');
       var first = await getWithRedirects(
         client: client,
         uri: captiveWifiUrl,
         cookies: cookies,
       );
+      debugPrint('[CaptiveWifi] Initial GET finished. Status: ${first.statusCode}, Resolved URI: ${first.uri}');
       if (first.statusCode == 204) {
+        debugPrint('[CaptiveWifi] Connection already validated (HTTP 204).');
         return true;
       }
 
       var loginUri = first.uri;
       if (loginUri.path.contains('/portalpage/')) {
+        debugPrint('[CaptiveWifi] Saving last portal URL: $loginUri');
         unawaited(
           CaptiveLoginStore.instance.saveLastPortalUrl(loginUri.toString()),
         );
@@ -269,6 +278,7 @@ class CaptiveWifiHttp {
               decoded['user-portal-url'] ?? decoded['userPortalUrl'];
           if (userPortalUrl is String && userPortalUrl.isNotEmpty) {
             loginUri = Uri.parse(userPortalUrl);
+            debugPrint('[CaptiveWifi] Found user-portal-url: $loginUri');
             if (loginUri.path.contains('/portalpage/')) {
               unawaited(
                 CaptiveLoginStore.instance.saveLastPortalUrl(
@@ -282,6 +292,7 @@ class CaptiveWifiHttp {
               cookies: cookies,
             );
             loginUri = second.uri;
+            debugPrint('[CaptiveWifi] Redirected resolved URI: $loginUri');
             if (loginUri.path.contains('/portalpage/')) {
               unawaited(
                 CaptiveLoginStore.instance.saveLastPortalUrl(
@@ -291,12 +302,15 @@ class CaptiveWifiHttp {
             }
           }
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[CaptiveWifi] JSON decode exception during initial request: $e');
+      }
 
       final apiLoginUri = loginUri.replace(
         path: '/portalauth/login',
         queryParameters: {},
       );
+      debugPrint('[CaptiveWifi] API Login URI: $apiLoginUri');
 
       final status = await AndroidNetworkAssist.getNetworkStatus();
       var deviceUmac = status?.clientMac;
@@ -306,6 +320,7 @@ class CaptiveWifiHttp {
             .replaceAll('-', '')
             .toLowerCase();
       }
+      debugPrint('[CaptiveWifi] Device MAC Address: $deviceUmac');
 
       final params = loginUri.queryParameters;
       final originalParams = captiveWifiUrl.queryParameters;
@@ -345,7 +360,9 @@ class CaptiveWifiHttp {
         'userName': studentId,
       };
 
+      debugPrint('[CaptiveWifi] Login POST Payload parameters: $payload');
       final encoded = Uri(queryParameters: payload).query;
+      debugPrint('[CaptiveWifi] Sending Login POST to $apiLoginUri ...');
       final response = await postOnce(
         client: client,
         uri: apiLoginUri,
@@ -353,9 +370,73 @@ class CaptiveWifiHttp {
         cookies: cookies,
         referer: loginUri,
       );
+      debugPrint('[CaptiveWifi] Login POST status: ${response.statusCode}');
+      debugPrint('[CaptiveWifi] Login POST body: ${response.body}');
 
       if (response.statusCode >= 400) {
         lastError = 'POST login failed with HTTP status ${response.statusCode}';
+        debugPrint('[CaptiveWifi] Error: $lastError');
+        return false;
+      }
+
+      lastResponseLog = '--- LOGIN RESPONSE ---\n'
+          'Status: ${response.statusCode}\n'
+          'Body: ${response.body}\n';
+
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['success'] == false) {
+          final errorCode = decoded['errorcode']?.toString() ?? '';
+          lastError = _mapPortalErrorCode(errorCode);
+          debugPrint('[CaptiveWifi] Portal returned error: $lastError ($errorCode)');
+          return false;
+        }
+      } catch (e) {
+        debugPrint('[CaptiveWifi] Exception parsing login response JSON: $e');
+      }
+
+      // Sync portal result to fully finalize the login authentication session
+      try {
+        final apiSyncUri = loginUri.replace(
+          path: '/portalauth/syncPortalResult',
+          queryParameters: {},
+        );
+        debugPrint('[CaptiveWifi] API Sync URI: $apiSyncUri');
+        if (!cookies.containsKey('countdown')) {
+          cookies['countdown'] = Cookie('countdown', '0');
+        }
+        debugPrint('[CaptiveWifi] Sending Sync POST...');
+        final syncResponse = await postOnce(
+          client: client,
+          uri: apiSyncUri,
+          body: 'successUrl=null',
+          cookies: cookies,
+          referer: loginUri,
+        );
+        debugPrint('[CaptiveWifi] Sync POST status: ${syncResponse.statusCode}');
+        debugPrint('[CaptiveWifi] Sync POST body: ${syncResponse.body}');
+
+        lastResponseLog += '\n--- SYNC RESPONSE ---\n'
+            'Status: ${syncResponse.statusCode}\n'
+            'Body: ${syncResponse.body}\n';
+
+        if (syncResponse.statusCode == 200) {
+          final syncDecoded = jsonDecode(syncResponse.body);
+          if (syncDecoded is Map && syncDecoded['success'] == false) {
+            final errorCode = syncDecoded['errorcode']?.toString() ?? '';
+            lastError = _mapPortalErrorCode(errorCode);
+            debugPrint('[CaptiveWifi] Sync portal returned error: $lastError ($errorCode)');
+            return false;
+          }
+        } else {
+          lastError =
+              'POST syncPortalResult failed with HTTP status ${syncResponse.statusCode}';
+          debugPrint('[CaptiveWifi] Error: $lastError');
+          return false;
+        }
+      } catch (e) {
+        lastError = 'Network error during session sync.';
+        debugPrint('[CaptiveWifi] Exception during session sync: $e');
         return false;
       }
 
@@ -363,6 +444,7 @@ class CaptiveWifiHttp {
         final redirected = response.location!.isAbsolute
             ? response.location!
             : apiLoginUri.resolveUri(response.location!);
+        debugPrint('[CaptiveWifi] Redirecting to location: $redirected');
         await getWithRedirects(
           client: client,
           uri: redirected,
@@ -370,17 +452,86 @@ class CaptiveWifiHttp {
         );
       }
 
+      debugPrint('[CaptiveWifi] Validating connection with probe check...');
       final probeSuccess = await isValidatedViaProbe(
         client: client,
         cookies: cookies,
       );
+      debugPrint('[CaptiveWifi] Probe validation success: $probeSuccess');
       if (!probeSuccess) {
         lastError =
             'Gateway authentication POST completed but probe to generate_204 failed (still captive)';
+        debugPrint('[CaptiveWifi] Error: $lastError');
       }
       return probeSuccess;
     } catch (e) {
-      lastError = 'Exception: $e';
+      lastError = 'Connection error. Make sure you are on Student-WiFi.';
+      debugPrint('[CaptiveWifi] Exception in loginViaCaptiveApi: $e');
+      return false;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  Future<bool> logoutViaCaptiveApi({required Uri captiveWifiUrl}) async {
+    debugPrint('[CaptiveWifi] Starting logout');
+    debugPrint('[CaptiveWifi] Captive Portal URL: $captiveWifiUrl');
+    lastError = null;
+    lastResponseLog = '';
+    final client = await newClient();
+    final cookies = sessionCookies;
+
+    try {
+      final apiLogoutUri = captiveWifiUrl.replace(
+        path: '/portalauth/logout',
+        queryParameters: {},
+      );
+      debugPrint('[CaptiveWifi] API Logout URI: $apiLogoutUri');
+
+      if (!cookies.containsKey('countdown')) {
+        cookies['countdown'] = Cookie('countdown', '0');
+      }
+
+      debugPrint('[CaptiveWifi] Sending Logout POST...');
+      final response = await postOnce(
+        client: client,
+        uri: apiLogoutUri,
+        body: '',
+        cookies: cookies,
+        referer: captiveWifiUrl,
+      );
+      debugPrint('[CaptiveWifi] Logout response status: ${response.statusCode}');
+      debugPrint('[CaptiveWifi] Logout response body: ${response.body}');
+
+      lastResponseLog = '--- LOGOUT RESPONSE ---\n'
+          'Status: ${response.statusCode}\n'
+          'Body: ${response.body}\n';
+
+      if (response.statusCode >= 400) {
+        lastError =
+            'POST logout failed with HTTP status ${response.statusCode}';
+        debugPrint('[CaptiveWifi] Error: $lastError');
+        return false;
+      }
+
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['success'] == false) {
+          final errorCode = decoded['errorcode']?.toString() ?? '';
+          lastError = _mapPortalErrorCode(errorCode);
+          debugPrint('[CaptiveWifi] Logout portal returned error: $lastError ($errorCode)');
+          return false;
+        }
+      } catch (e) {
+        debugPrint('[CaptiveWifi] Exception parsing logout response JSON: $e');
+      }
+
+      sessionCookies.clear();
+      debugPrint('[CaptiveWifi] Logout successful, cleared session cookies.');
+      return true;
+    } catch (e) {
+      lastError = 'Connection error. Make sure you are on Student-WiFi.';
+      debugPrint('[CaptiveWifi] Exception in logoutViaCaptiveApi: $e');
       return false;
     } finally {
       client.close(force: true);
@@ -432,5 +583,48 @@ class CaptiveWifiHttp {
       return hexDigits.codeUnitAt(value);
     });
     return String.fromCharCodes(charCodes);
+  }
+
+  String _mapPortalErrorCode(String errorCode) {
+    switch (errorCode) {
+      case '10503':
+        return 'Incorrect Student ID or password.';
+      case '10505':
+      case '10514':
+        return 'Account is locked. Please try again later.';
+      case '10513':
+        return 'Your password has expired.';
+      case '10515':
+        return 'Access denied: you do not comply with the access rules.';
+      case '10516':
+        return 'exceeded the limit';
+      case '10517':
+        return 'Access not configured for this account.';
+      case '10518':
+        return 'MAC address does not match.';
+      case '10519':
+        return 'IP address does not match.';
+      case '10520':
+        return 'Device IP does not match.';
+      case '10528':
+        return 'MAC account has expired.';
+      case '10605':
+        return 'No remaining traffic or time quota.';
+      case '10706':
+        return 'Access restriction reached.';
+      case '10711':
+      case '10712':
+        return 'Online user limit reached.';
+      case '10713':
+        return 'Traffic or time quota exhausted.';
+      case '20102':
+        return 'The system is busy. Please try again later.';
+      case '20104':
+        return 'Authentication request timed out.';
+      case '3001':
+        return 'Invalid input. Please check your credentials.';
+      default:
+        return 'Incorrect Student ID or password.';
+    }
   }
 }

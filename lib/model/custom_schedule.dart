@@ -1,3 +1,10 @@
+// ignore: depend_on_referenced_packages
+import 'package:json_annotation/json_annotation.dart';
+
+
+part 'custom_schedule.g.dart';
+
+@JsonSerializable()
 class CustomSchedule {
   const CustomSchedule({
     required this.itemId,
@@ -27,47 +34,10 @@ class CustomSchedule {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  factory CustomSchedule.fromJson(Map<String, dynamic> json) {
-    return CustomSchedule(
-      itemId: (json['itemId'] as num?)?.toInt() ?? 0,
-      kind: (json['kind'] as String? ?? '').trim().toLowerCase(),
-      title: (json['title'] as String? ?? '').trim(),
-      courseCode: (json['courseCode'] as String? ?? '').trim(),
-      sectionName: (json['sectionName'] as String? ?? '').trim(),
-      startTime:
-          DateTime.tryParse((json['startTime'] as String? ?? '').trim()) ??
-          DateTime.fromMillisecondsSinceEpoch(0),
-      endTime: DateTime.tryParse((json['endTime'] as String? ?? '').trim()),
-      reminderAt: DateTime.tryParse(
-        (json['reminderAt'] as String? ?? '').trim(),
-      ),
-      notes: (json['notes'] as String? ?? '').trim(),
-      isDone: json['isDone'] == true,
-      createdAt:
-          DateTime.tryParse((json['createdAt'] as String? ?? '').trim()) ??
-          DateTime.fromMillisecondsSinceEpoch(0),
-      updatedAt:
-          DateTime.tryParse((json['updatedAt'] as String? ?? '').trim()) ??
-          DateTime.fromMillisecondsSinceEpoch(0),
-    );
-  }
+  factory CustomSchedule.fromJson(Map<String, dynamic> json) =>
+      _$CustomScheduleFromJson(json);
 
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'itemId': itemId,
-      'kind': kind,
-      'title': title,
-      'courseCode': courseCode,
-      'sectionName': sectionName,
-      'startTime': startTime.toUtc().toIso8601String(),
-      'endTime': endTime?.toUtc().toIso8601String(),
-      'reminderAt': reminderAt?.toUtc().toIso8601String(),
-      'notes': notes,
-      'isDone': isDone,
-      'createdAt': createdAt.toUtc().toIso8601String(),
-      'updatedAt': updatedAt.toUtc().toIso8601String(),
-    };
-  }
+  Map<String, dynamic> toJson() => _$CustomScheduleToJson(this);
 
   CustomSchedule copyWith({
     String? kind,

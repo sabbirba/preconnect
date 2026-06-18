@@ -148,8 +148,8 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
                             context,
                           ).withValues(alpha: 0.24),
                   ),
-                  backgroundColor: BracuPalette.card(context),
-                  selectedColor: BracuPalette.primary.withValues(alpha: 0.14),
+                  backgroundColor: Colors.transparent,
+                  selectedColor: Colors.transparent,
                   selected: selected,
                   onSelected: (_) {
                     setState(() {
@@ -184,8 +184,8 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
                             context,
                           ).withValues(alpha: 0.24),
                   ),
-                  backgroundColor: BracuPalette.card(context),
-                  selectedColor: BracuPalette.primary.withValues(alpha: 0.14),
+                  backgroundColor: Colors.transparent,
+                  selectedColor: Colors.transparent,
                   selected: _mandatoryOnly,
                   onSelected: (value) {
                     setState(() {
@@ -213,8 +213,8 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
                             context,
                           ).withValues(alpha: 0.24),
                   ),
-                  backgroundColor: BracuPalette.card(context),
-                  selectedColor: BracuPalette.primary.withValues(alpha: 0.14),
+                  backgroundColor: Colors.transparent,
+                  selectedColor: Colors.transparent,
                   selected: _optionalOnly,
                   onSelected: (value) {
                     setState(() {

@@ -468,7 +468,9 @@ class _WebLoginPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = Theme.of(context).colorScheme.onSurface.withAlpha(128);
+    final textSecondary = Theme.of(
+      context,
+    ).colorScheme.onSurface.withAlpha(128);
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -489,10 +491,7 @@ class _WebLoginPage extends StatelessWidget {
                   const SizedBox(height: 16),
                   const Text(
                     'PreConnect',
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 6),
@@ -518,24 +517,17 @@ class _WebLoginPage extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Divider(
-                          color: textSecondary.withAlpha(60),
-                        ),
+                        child: Divider(color: textSecondary.withAlpha(60)),
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 14),
                         child: Text(
                           'or sync from mobile app',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: textSecondary,
-                          ),
+                          style: TextStyle(fontSize: 12, color: textSecondary),
                         ),
                       ),
                       Expanded(
-                        child: Divider(
-                          color: textSecondary.withAlpha(60),
-                        ),
+                        child: Divider(color: textSecondary.withAlpha(60)),
                       ),
                     ],
                   ),

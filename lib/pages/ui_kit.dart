@@ -23,6 +23,8 @@ import 'package:preconnect/tools/web_shared.dart';
 import 'package:preconnect/pages/shared_widgets/session_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:share_plus/share_plus.dart';
+
 
 export 'package:preconnect/tools/web_shared.dart';
 
@@ -288,7 +290,7 @@ void showAppSnackBar(
     SnackBar(
       content: Text(trimmed, style: const TextStyle(color: Colors.white)),
       backgroundColor: isDark ? const Color(0xFF1E6BE3) : BracuPalette.primary,
-      duration: duration,
+      duration: const Duration(seconds: 2),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -367,6 +369,7 @@ void _showPdfSnackBar(
     SnackBar(
       content: Text(message, style: const TextStyle(color: Colors.white)),
       backgroundColor: isDark ? const Color(0xFF1E6BE3) : BracuPalette.primary,
+      duration: const Duration(seconds: 2),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -529,9 +532,8 @@ class BracuActionBannerCard extends StatelessWidget {
                 Container(
                   width: 36,
                   height: 36,
-                  decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
+                  decoration: const BoxDecoration(
+                    color: Colors.transparent,
                   ),
                   child: Icon(icon, color: iconColor, size: 18),
                 )
@@ -914,36 +916,101 @@ class BracuCommunityLink extends StatelessWidget {
 class BracuFundingPromoDivider extends StatelessWidget {
   const BracuFundingPromoDivider({super.key});
 
+  static const _padding = EdgeInsets.symmetric(horizontal: 16, vertical: 12);
+  static const _innerGap = SizedBox(height: 8);
+  static const _rowGap = SizedBox(width: 12);
+  static const _buttonPadding = EdgeInsets.symmetric(horizontal: 10, vertical: 6);
+
   @override
   Widget build(BuildContext context) {
     final textSecondary = BracuPalette.textSecondary(context);
-    final borderColor = textSecondary.withValues(alpha: 0.18);
-    return InkWell(
-      onTap: () => openExternalUrl(
-        context,
-        'https://preconnect.app/funding',
-        failureMessage: 'Unable to open funding link.',
+    final textPrimary = BracuPalette.textPrimary(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    const textContent =
+        "Please help us release PreConnect on iOS and keep it free for everyone. We kindly request you to donate any amount you can and share the funding link with your friends to support this campaign.";
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: textSecondary.withValues(
+            alpha: isDark ? 0.22 : 0.16,
+          ),
+        ),
       ),
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Row(
-          children: [
-            Expanded(child: Container(height: 1, color: borderColor)),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text(
-                'Support PreConnect iOS Funding Campaign',
-                style: TextStyle(
-                  color: textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+      padding: _padding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  "iOS Release Funding Campaign",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: textPrimary,
+                  ),
                 ),
               ),
+              _rowGap,
+              InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () async {
+                  await SharePlus.instance.share(
+                    ShareParams(
+                      uri: Uri.parse('https://preconnect.app/funding'),
+                      subject: 'PreConnect iOS Release Funding Campaign',
+                    ),
+                  );
+                },
+                child: Padding(
+                  padding: _buttonPadding,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.share_rounded,
+                        size: 14,
+                        color: textSecondary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Share',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          _innerGap,
+          InkWell(
+            onTap: () => openExternalUrl(
+              context,
+              'https://preconnect.app/funding',
+              failureMessage: 'Unable to open funding link.',
             ),
-            Expanded(child: Container(height: 1, color: borderColor)),
-          ],
-        ),
+            borderRadius: BorderRadius.circular(8),
+            child: Text(
+              textContent,
+              style: TextStyle(
+                color: textSecondary,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

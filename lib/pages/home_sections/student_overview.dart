@@ -161,7 +161,7 @@ class _IconButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: BracuPalette.primary.withValues(alpha: 0.12),
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(icon, size: 18, color: BracuPalette.primary),
@@ -179,8 +179,24 @@ class _SupportButton extends StatefulWidget {
   State<_SupportButton> createState() => _SupportButtonState();
 }
 
-class _SupportButtonState extends State<_SupportButton> {
+class _SupportButtonState extends State<_SupportButton> with SingleTickerProviderStateMixin {
   bool _isLoading = false;
+  late final AnimationController _animationController = AnimationController(
+    duration: const Duration(seconds: 3),
+    vsync: this,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController.repeat();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
   Future<void> _handleTap() async {
     if (_isLoading) return;
@@ -203,35 +219,71 @@ class _SupportButtonState extends State<_SupportButton> {
     return InkWell(
       onTap: _isLoading ? null : _handleTap,
       borderRadius: BorderRadius.circular(12),
-      child: Container(
-        height: 30,
-        padding: const EdgeInsets.symmetric(horizontal: 9),
-        decoration: BoxDecoration(
-          color: BracuPalette.primary.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
+      child: CustomPaint(
+        painter: _AnimatedBorderPainter(
+          animation: _animationController,
+          color: BracuPalette.primary,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.volunteer_activism_rounded,
-              size: 16,
-              color: BracuPalette.primary,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'Support',
-              style: TextStyle(
+        child: Container(
+          height: 30,
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.volunteer_activism_rounded,
+                size: 16,
                 color: BracuPalette.primary,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
               ),
-            ),
-          ],
+              const SizedBox(width: 6),
+              Text(
+                'Support iOS',
+                style: TextStyle(
+                  color: BracuPalette.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+class _AnimatedBorderPainter extends CustomPainter {
+  _AnimatedBorderPainter({required this.animation, required this.color})
+      : super(repaint: animation);
+
+  final Animation<double> animation;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final paint = Paint()
+      ..strokeWidth = 0.8
+      ..style = PaintingStyle.stroke
+      ..shader = SweepGradient(
+        colors: [
+          color,
+          color.withValues(alpha: 0.1),
+          color,
+        ],
+        transform: GradientRotation(animation.value * 2 * 3.141592653589793),
+      ).createShader(rect);
+
+    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(12));
+    canvas.drawRRect(rrect, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _AnimatedBorderPainter oldDelegate) => false;
 }
 
 class _OverviewHeader extends StatelessWidget {

@@ -480,9 +480,8 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                       borderRadius: BorderRadius.circular(10),
                       child: Container(
                         padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: BracuPalette.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
+                        decoration: const BoxDecoration(
+                          color: Colors.transparent,
                         ),
                         child: const Icon(
                           Icons.remove,
@@ -523,9 +522,8 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                       borderRadius: BorderRadius.circular(10),
                       child: Container(
                         padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: BracuPalette.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
+                        decoration: const BoxDecoration(
+                          color: Colors.transparent,
                         ),
                         child: const Icon(
                           Icons.add,

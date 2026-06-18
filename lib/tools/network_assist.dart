@@ -171,4 +171,24 @@ class AndroidNetworkAssist {
       return false;
     }
   }
+
+  static Future<bool> reportCaptivePortalDismissed() async {
+    if (!isSupported) return false;
+    try {
+      final res = await _channel.invokeMethod<bool>('reportCaptivePortalDismissed');
+      return res == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> ignoreNetwork() async {
+    if (!isSupported) return false;
+    try {
+      final res = await _channel.invokeMethod<bool>('ignoreNetwork');
+      return res == true;
+    } catch (_) {
+      return false;
+    }
+  }
 }

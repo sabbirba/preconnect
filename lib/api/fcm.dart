@@ -25,6 +25,7 @@ class FCMService {
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
   bool _apnsAvailable = true;
+  String? _cachedToken;
 
   bool get isSupported {
     if (kIsWeb) {
@@ -41,7 +42,10 @@ class FCMService {
     debugPrint("Background message: ${message.messageId}");
   }
 
-  Future<String?> _getToken() async {
+  Future<String?> _getToken({bool force = false}) async {
+    if (!force && _cachedToken != null) {
+      return _cachedToken;
+    }
     if (kIsWeb) {
       if (isChromeRuntimeAvailable()) {
         var token = await TokenStorage.instance.read(
@@ -58,11 +62,13 @@ class FCMService {
           }
         }
         debugPrint("FCM Chrome Extension Token: $token");
+        _cachedToken = token;
         return token;
       } else {
         try {
           final token = await FirebaseMessaging.instance.getToken();
           debugPrint("FCM Standard Web Token: $token");
+          _cachedToken = token;
           return token;
         } catch (e) {
           debugPrint("FCM Standard Web token fetch error: $e");
@@ -102,6 +108,7 @@ class FCMService {
       }
       final token = await FirebaseMessaging.instance.getToken();
       debugPrint("FCM Token: $token");
+      _cachedToken = token;
       return token;
     } catch (e) {
       debugPrint("FCM Error getting token: $e");
@@ -139,7 +146,7 @@ class FCMService {
     final token = await _getToken();
 
     if (token != null) {
-      await _sendTokenToBackend(token);
+      unawaited(_sendTokenToBackend(token));
     }
   }
 
@@ -312,9 +319,21 @@ class FCMService {
 
   Future<bool> subscribeToTopic(String topic) async {
     if (!isSupported) return false;
+    final token = await _getToken();
+    return _subscribeToTopicInternal(topic, cachedToken: token);
+  }
+
+  /// Internal subscribe that accepts an already-fetched token to avoid
+  /// re-calling [_getToken] for every topic in bulk operations.
+  Future<bool> _subscribeToTopicInternal(
+    String topic, {
+    String? cachedToken,
+  }) async {
+    if (!isSupported) return false;
+
+    final token = cachedToken ?? await _getToken();
 
     if (kIsWeb) {
-      final token = await _getToken();
       if (token == null) return false;
       await _subscribeToTopicWeb(token, topic);
       return true;
@@ -324,20 +343,35 @@ class FCMService {
         !_apnsAvailable) {
       return true;
     }
+    // Always sync via backend first (reliable path regardless of FCM API status)
+    if (token != null) {
+      unawaited(_subscribeToTopicWeb(token, topic));
+    }
+    // Also attempt native subscription (may log "Not Found" if FCM Registration
+    // API is not enabled in Google Cloud Console for this project — harmless).
     try {
       await FirebaseMessaging.instance.subscribeToTopic(topic);
-      return true;
     } catch (e) {
-      debugPrint("FCM error subscribing to topic $topic: $e");
-      return false;
+      debugPrint("FCM native subscribe to '$topic' skipped: $e");
     }
+    return true;
   }
 
   Future<bool> unsubscribeFromTopic(String topic) async {
     if (!isSupported) return false;
+    final token = await _getToken();
+    return _unsubscribeFromTopicInternal(topic, cachedToken: token);
+  }
+
+  Future<bool> _unsubscribeFromTopicInternal(
+    String topic, {
+    String? cachedToken,
+  }) async {
+    if (!isSupported) return false;
+
+    final token = cachedToken ?? await _getToken();
 
     if (kIsWeb) {
-      final token = await _getToken();
       if (token == null) return false;
       await _unsubscribeFromTopicWeb(token, topic);
       return true;
@@ -347,13 +381,16 @@ class FCMService {
         !_apnsAvailable) {
       return true;
     }
+    // Always sync via backend first (reliable path)
+    if (token != null) {
+      unawaited(_unsubscribeFromTopicWeb(token, topic));
+    }
     try {
       await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
-      return true;
     } catch (e) {
-      debugPrint("FCM error unsubscribing from topic $topic: $e");
-      return false;
+      debugPrint("FCM native unsubscribe from '$topic' skipped: $e");
     }
+    return true;
   }
 
   Future<void> unregisterDevice() async {
@@ -500,19 +537,25 @@ class FCMService {
   }
 
   Future<void> _subscribeToDefaultTopics() async {
+    // Fetch the token once and reuse it for every subscription — avoids
+    // calling _getToken() (and printing the FCM token) for every topic.
+    final token = await _getToken();
     try {
       for (final topic in PreConnectPushConfig.defaultTopics) {
-        await subscribeToTopic(topic);
+        await _subscribeToTopicInternal(topic, cachedToken: token);
       }
 
-      Set<String> pinnedSeats = await CoursePinStore.load(
+      final Set<String> pinnedSeats = await CoursePinStore.load(
         PreConnectPushConfig.seatStatusPinScope,
       );
-      for (String seat in pinnedSeats) {
-        await subscribeToTopic(PreConnectPushConfig.seatTopic(seat));
+      for (final String seat in pinnedSeats) {
+        await _subscribeToTopicInternal(
+          PreConnectPushConfig.seatTopic(seat),
+          cachedToken: token,
+        );
       }
     } catch (e) {
-      debugPrint("Failed to subscribe to topics: $e");
+      debugPrint('FCM topic sync failed: $e');
     }
   }
 
@@ -547,6 +590,13 @@ class FCMService {
       }
     });
 
+    // Delay topic subscription on Android to allow the FCM token to fully
+    // register with Google's servers before attempting subscriptions.
+    // The native SDK may log "Not Found" if the FCM Registration API is not
+    // enabled in the Google Cloud Console — we always fall back to the backend.
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      await Future<void>.delayed(const Duration(seconds: 3));
+    }
     await _subscribeToDefaultTopics();
   }
 
@@ -702,7 +752,7 @@ class FCMService {
       if (!await client.hasAccessToken()) return;
       final url =
           '${ApiConfig.realtimeApiBase}${PreConnectPushConfig.sendConfirmationPath}';
-      await client.authenticatedRequest(
+      unawaited(client.authenticatedRequest(
         'POST',
         url,
         body: jsonEncode(<String, dynamic>{
@@ -713,7 +763,7 @@ class FCMService {
         additionalHeaders: const <String, String>{
           'Content-Type': 'application/json',
         },
-      );
+      ));
     } catch (e) {
       debugPrint("FCM confirmation push failed: $e");
     }

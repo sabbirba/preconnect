@@ -61,7 +61,7 @@ class HeaderActionButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: BracuPalette.primary.withValues(alpha: 0.12),
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, size: 20, color: BracuPalette.primary),

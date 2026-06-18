@@ -24,11 +24,7 @@ class BracuSelectChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final textSecondary = BracuPalette.textSecondary(context);
     final primaryColor = selected ? BracuPalette.primary : textSecondary;
-    final backgroundColor = compact
-        ? (selected
-              ? BracuPalette.primary.withValues(alpha: 0.14)
-              : BracuPalette.card(context).withValues(alpha: 0.94))
-        : BracuPalette.card(context).withValues(alpha: 0.94);
+    final backgroundColor = Colors.transparent;
     final borderColor = selected
         ? BracuPalette.primary.withValues(alpha: compact ? 0.45 : 0.70)
         : textSecondary.withValues(alpha: 0.26);
@@ -229,31 +225,16 @@ class _BracuNotificationsIconButtonState
               ),
             ),
             if (newCount > 0)
-              Positioned(
-                top: 0,
-                right: 0,
-                child: Container(
-                  constraints: const BoxConstraints(
-                    minWidth: 14,
-                    minHeight: 14,
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 3,
-                    vertical: 1,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD63B3B),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    newCount > 9 ? '9+' : '$newCount',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.w900,
-                      height: 1,
+              const Positioned(
+                top: 4,
+                right: 4,
+                child: SizedBox(
+                  width: 8,
+                  height: 8,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: BracuPalette.danger,
+                      shape: BoxShape.circle,
                     ),
                   ),
                 ),

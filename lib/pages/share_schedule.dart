@@ -377,9 +377,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
                               vertical: 10,
                             ),
                             decoration: BoxDecoration(
-                              color: BracuPalette.primary.withValues(
-                                alpha: 0.08,
-                              ),
+                              color: Colors.transparent,
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
                                 color: BracuPalette.primary.withValues(
@@ -393,9 +391,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
                                   width: 28,
                                   height: 28,
                                   decoration: BoxDecoration(
-                                    color: BracuPalette.primary.withValues(
-                                      alpha: 0.12,
-                                    ),
+                                    color: Colors.transparent,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   alignment: Alignment.center,
@@ -423,7 +419,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
                     ],
                   ),
                   const SizedBox(height: 14),
-                  const BracuSectionTitle(title: 'How to use'),
+                  const BracuSectionTitle(title: 'How to Use'),
                   const SizedBox(height: 10),
                   BracuCard(
                     child: Column(

@@ -241,7 +241,7 @@ class _SectionHeader extends StatelessWidget {
           width: 26,
           height: 26,
           decoration: BoxDecoration(
-            color: BracuPalette.primary.withValues(alpha: 0.12),
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(13),
           ),
           alignment: Alignment.center,
@@ -280,7 +280,7 @@ class _InfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: BracuPalette.primary.withValues(alpha: 0.1),
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(

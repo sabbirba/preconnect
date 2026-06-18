@@ -250,7 +250,7 @@ class _CalendarCard extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: badgeColor.withValues(alpha: 0.14),
+              color: Colors.transparent,
               borderRadius: BorderRadius.circular(14),
             ),
             alignment: Alignment.center,

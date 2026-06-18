@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:restart_app/restart_app.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:preconnect/app.dart';
-import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/shared_widgets/export_sheet.dart';
@@ -31,12 +28,12 @@ class _SettingsPageState extends State<SettingsPage>
   bool _showDecorations = true;
   bool _showCampusMapContacts = true;
   bool _showNotificationsIcon = true;
+  bool _showFundingSection = true;
   bool _appLockEnabled = false;
   bool _quietModeEnabled = false;
   bool _quietModeNeedsSetup = false;
   String? _quietModeSetupPermission;
   String _quietModeStatusMessage = '';
-  bool _isClearingCache = false;
 
   @override
   void initState() {
@@ -72,6 +69,7 @@ class _SettingsPageState extends State<SettingsPage>
       _showNotificationsIcon = visibility.showNotificationsIcon;
       _showExamCountdownCard = visibility.showExamCountdownCard;
       _showTodaySchedule = visibility.showTodaySchedule;
+      _showFundingSection = visibility.showFundingSection;
       _appLockEnabled = appLockEnabled;
       _quietModeEnabled = QuietModeController.instance.isEnabled;
       _quietModeNeedsSetup = quietModeResult.status == 'permission_required';
@@ -133,6 +131,15 @@ class _SettingsPageState extends State<SettingsPage>
       value: value,
       applyLocal: () => _showQuickAccessSection = value,
       persist: HomeCardPreferences.setShowQuickAccessSection,
+    );
+  }
+
+  Future<void> _setShowFundingSection(bool value) async {
+    await _setVisibility(
+      label: 'Funding Campaign',
+      value: value,
+      applyLocal: () => _showFundingSection = value,
+      persist: HomeCardPreferences.setShowFundingSection,
     );
   }
 
@@ -224,28 +231,6 @@ class _SettingsPageState extends State<SettingsPage>
     RefreshBus.instance.notify(reason: 'quiet_mode_settings_changed');
   }
 
-  Future<void> _clearCacheKeepingLoginData() async {
-    if (_isClearingCache) return;
-    setState(() {
-      _isClearingCache = true;
-    });
-    try {
-      await AuthService().logout(force: true, instant: true);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-      await ProfileImageCache.instance.clear();
-    } catch (_) {
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isClearingCache = false;
-        });
-      }
-    }
-
-    RefreshBus.instance.notify(reason: 'cache_cleared');
-    await Restart.restartApp();
-  }
 
   Future<void> _exportSessionForWeb() async {
     await ExportSessionBottomSheet.show(context);
@@ -317,6 +302,13 @@ class _SettingsPageState extends State<SettingsPage>
                   subtitle: 'Show quick shortcuts on home',
                   value: _showQuickAccessSection,
                   onChanged: _setShowQuickAccessSection,
+                ),
+                divider,
+                _ToggleRow(
+                  title: 'Funding Campaign',
+                  subtitle: 'Show funding campaign banner',
+                  value: _showFundingSection,
+                  onChanged: _setShowFundingSection,
                 ),
                 divider,
                 _ToggleRow(
@@ -421,16 +413,7 @@ class _SettingsPageState extends State<SettingsPage>
             ),
           ],
           const SizedBox(height: _sectionGap),
-          BracuActionButton(
-            onPressed: _isClearingCache ? null : _clearCacheKeepingLoginData,
-            outlined: true,
-            isLoading: _isClearingCache,
-            icon: Icons.delete_outline_rounded,
-            label: 'Clear Data and Restart',
-            borderRadius: 14,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          ),
-          const SizedBox(height: _sectionGap),
+
         ],
       ),
     );

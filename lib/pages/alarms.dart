@@ -775,9 +775,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final chipBg = isDark
-        ? const Color(0xFF0F3B6D)
-        : BracuPalette.primary.withValues(alpha: 0.10);
+    final chipBg = Colors.transparent;
     final controlBg = isDark ? const Color(0xFF0B0B0B) : Colors.white;
 
     return BracuPageScaffold(

@@ -226,8 +226,6 @@ extension _HomeDashboardView on _HomeDashboardState {
                                         ),
                                 ),
                                 const SizedBox(height: 12),
-                                const BracuFundingPromoDivider(),
-                                const SizedBox(height: 12),
                                 if (isTodayScheduleLoading) ...[
                                   const Shimmer(
                                     child: _TodayScheduleLoadingSkeleton(),
@@ -315,10 +313,10 @@ extension _HomeDashboardView on _HomeDashboardState {
                                         ),
                                         child: _ScheduleTile(
                                           title: isExamWeekActive
-                                              ? 'No classes today!'
+                                              ? 'No Classes Today'
                                               : isTodayHoliday
                                               ? 'National holiday'
-                                              : 'No classes today!',
+                                              : 'No Classes Today',
                                           subtitle: isExamWeekActive
                                               ? examWeekStatus.subtitle
                                               : isTodayHoliday
@@ -433,6 +431,10 @@ extension _HomeDashboardView on _HomeDashboardState {
                                       ),
                                     ),
                                   ),
+                                if (cardVisibility.showFundingSection) ...[
+                                  const BracuFundingPromoDivider(),
+                                  const SizedBox(height: 12),
+                                ],
                                 if (cardVisibility.showQuickAccessSection) ...[
                                   Row(
                                     crossAxisAlignment:

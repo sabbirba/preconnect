@@ -27,18 +27,14 @@ class PaymentList extends StatelessWidget {
           payment.semesterSessionId,
         );
         final paymentType = _formatPaymentType(payment.paymentType);
-        final cardTint = isPaid
-            ? Colors.transparent
-            : statusBg.withValues(alpha: 0.08);
+        final cardTint = Colors.transparent;
         final cardBorder = isPaid
             ? BracuPalette.primary.withValues(alpha: 0.08)
             : statusBg.withValues(alpha: 0.6);
         final iconColor = isPaid
             ? BracuPalette.accent
             : const Color(0xFFFF8A34);
-        final iconBg = isPaid
-            ? BracuPalette.accent.withValues(alpha: 0.16)
-            : const Color(0xFFFF8A34).withValues(alpha: 0.16);
+        final iconBg = Colors.transparent;
         return Container(
           margin: const EdgeInsets.symmetric(vertical: 8),
           padding: EdgeInsets.zero,

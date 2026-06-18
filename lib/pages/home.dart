@@ -330,7 +330,10 @@ class _CaptiveWifiBanner extends StatelessWidget {
             GestureDetector(
               onTap: isLoading ? null : onOpenLogin,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: BracuPalette.primary,
                   borderRadius: BorderRadius.circular(20),
@@ -849,6 +852,7 @@ class _HomeData {
         'showDecorations': cardVisibility.showDecorations,
         'showCampusMapContacts': cardVisibility.showCampusMapContacts,
         'showNotificationsIcon': cardVisibility.showNotificationsIcon,
+        'showFundingSection': cardVisibility.showFundingSection,
       },
       'sections': scheduleJson,
       'examOverrides': examOverrides.map(
@@ -910,6 +914,8 @@ class _HomeData {
                 visibilityJson['showCampusMapContacts'] == true,
             showNotificationsIcon:
                 visibilityJson['showNotificationsIcon'] == true,
+            showFundingSection:
+                visibilityJson['showFundingSection'] == true,
           )
         : HomeCardPreferences.defaults;
     final overridesJson = json['examOverrides'];

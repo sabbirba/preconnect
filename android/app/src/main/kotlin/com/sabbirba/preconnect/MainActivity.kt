@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
+import android.net.CaptivePortal
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -40,6 +41,10 @@ class MainActivity : FlutterFragmentActivity() {
     private val shortcutExtraKey = "flutter_shortcut"
     private val shortcutPrefsKey = "flutter.pending_shortcut_action"
 
+    private var captivePortalUrl: String? = null
+    private var intentNetwork: Network? = null
+    private var captivePortal: CaptivePortal? = null
+
     private val connectivityManager by lazy {
         getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     }
@@ -65,6 +70,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onDestroy() {
         unregisterNetworkCallback()
+        ignoreNetwork()
         super.onDestroy()
     }
 
@@ -72,9 +78,34 @@ class MainActivity : FlutterFragmentActivity() {
         if (intent == null) return
         val shortcutAction = intent.getStringExtra(shortcutExtraKey)
         val launchAction = intent.action
+
+        val portalUrl = intent.getStringExtra(ConnectivityManager.EXTRA_CAPTIVE_PORTAL_URL)
+        if (!portalUrl.isNullOrBlank()) {
+            captivePortalUrl = portalUrl
+        }
+        val network = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(ConnectivityManager.EXTRA_NETWORK, Network::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(ConnectivityManager.EXTRA_NETWORK) as? Network
+        }
+        if (network != null) {
+            intentNetwork = network
+        }
+        val portal = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(ConnectivityManager.EXTRA_CAPTIVE_PORTAL, CaptivePortal::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(ConnectivityManager.EXTRA_CAPTIVE_PORTAL) as? CaptivePortal
+        }
+        if (portal != null) {
+            captivePortal = portal
+        }
+
         val action = when {
             !shortcutAction.isNullOrBlank() -> shortcutAction
             !launchAction.isNullOrBlank() && launchAction.startsWith("quick.") -> launchAction
+            !launchAction.isNullOrBlank() && launchAction == ConnectivityManager.ACTION_CAPTIVE_PORTAL_SIGN_IN -> "captive_wifi"
             else -> null
         }
         if (action.isNullOrBlank()) return
@@ -174,6 +205,14 @@ class MainActivity : FlutterFragmentActivity() {
                     "bindToWifiNetwork" -> result.success(bindToWifiNetwork())
                     "unbindFromWifiNetwork" -> {
                         unbindFromWifiNetwork()
+                        result.success(true)
+                    }
+                    "reportCaptivePortalDismissed" -> {
+                        reportCaptivePortalDismissed()
+                        result.success(true)
+                    }
+                    "ignoreNetwork" -> {
+                        ignoreNetwork()
                         result.success(true)
                     }
                     else -> result.notImplemented()
@@ -527,9 +566,23 @@ class MainActivity : FlutterFragmentActivity() {
         } catch (_: Exception) {}
     }
 
+    private fun reportCaptivePortalDismissed() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            captivePortal?.reportCaptivePortalDismissed()
+            captivePortal = null
+        }
+    }
+
+    private fun ignoreNetwork() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            captivePortal?.ignoreNetwork()
+            captivePortal = null
+        }
+    }
+
     private fun getWifiNetwork(): Network? {
         return try {
-            connectivityManager.allNetworks.firstOrNull { net ->
+            intentNetwork ?: connectivityManager.allNetworks.firstOrNull { net ->
                 val caps = connectivityManager.getNetworkCapabilities(net)
                 caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
             }
@@ -595,6 +648,9 @@ class MainActivity : FlutterFragmentActivity() {
         val captiveWifiData = currentCaptiveWifiData(caps)
         if (captiveWifiData.isNotEmpty()) {
             payload.putAll(captiveWifiData)
+        }
+        if (transport == "wifi" && !payload.containsKey("captiveWifiUrl") && !captivePortalUrl.isNullOrBlank()) {
+            payload["captiveWifiUrl"] = captivePortalUrl!!
         }
         return payload
     }

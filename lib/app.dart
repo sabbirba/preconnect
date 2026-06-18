@@ -24,6 +24,7 @@ import 'package:preconnect/pages/class_schedule.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/onboarding.dart';
+import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
@@ -158,6 +159,7 @@ class MyApp extends StatefulWidget {
         HomeCardPreferences.showTodayScheduleKey,
         HomeCardPreferences.showDecorationsKey,
         HomeCardPreferences.showCampusMapContactsKey,
+        HomeCardPreferences.showFundingSectionKey,
       };
       await AppPreferencesStore().clearAllExcept(keepKeys);
     } else {
@@ -521,9 +523,25 @@ class _MyAppState extends State<MyApp>
   }
 
   void _handleShortcutAction(String action) {
+    if (action == 'captive_wifi') {
+      _openCaptiveWifi();
+      return;
+    }
     final tab = _tabFromShortcutAction(action);
     if (tab == null) return;
     _openHomeTab(tab);
+    unawaited(_clearPendingShortcutAction());
+  }
+
+  void _openCaptiveWifi() {
+    final navigator = AuthService.navigatorKey.currentState;
+    if (navigator != null) {
+      navigator.pushNamed('/captive_wifi');
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        AuthService.navigatorKey.currentState?.pushNamed('/captive_wifi');
+      });
+    }
     unawaited(_clearPendingShortcutAction());
   }
 
@@ -983,6 +1001,7 @@ class _MyAppState extends State<MyApp>
                     HomeTab.dashboard,
               ),
               '/onboarding': (context) => const OnboardingPage(),
+              '/captive_wifi': (context) => const CaptiveWifiPage(),
             },
             home: _resolvedBootstrapState == null
                 ? const StartupFrame()

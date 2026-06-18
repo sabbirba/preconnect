@@ -279,6 +279,7 @@ class HomeCardPreferences {
   static const String showCampusMapContactsKey =
       'home_show_campus_map_contacts';
   static const String showNotificationsIconKey = 'home_show_notifications_icon';
+  static const String showFundingSectionKey = 'home_show_funding_section';
 
   static const HomeCardVisibility defaults = HomeCardVisibility(
     showQuickAccessSection: true,
@@ -288,6 +289,7 @@ class HomeCardPreferences {
     showTodaySchedule: true,
     showCampusMapContacts: true,
     showNotificationsIcon: true,
+    showFundingSection: true,
   );
 
   static Future<HomeCardVisibility> load() async {
@@ -317,6 +319,8 @@ class HomeCardPreferences {
             AppStorage.instance.getBoolSync(showTodayScheduleKey) ?? true,
         showCampusMapContacts: showCampusMapContacts,
         showNotificationsIcon: showNotificationsIcon,
+        showFundingSection:
+            AppStorage.instance.getBoolSync(showFundingSectionKey) ?? true,
       );
     } catch (_) {
       return defaults;
@@ -365,6 +369,12 @@ class HomeCardPreferences {
       await AppStorage.instance.setBool(showNotificationsIconKey, value);
     } catch (_) {}
   }
+
+  static Future<void> setShowFundingSection(bool value) async {
+    try {
+      await AppStorage.instance.setBool(showFundingSectionKey, value);
+    } catch (_) {}
+  }
 }
 
 class HomeCardVisibility {
@@ -376,6 +386,7 @@ class HomeCardVisibility {
     required this.showTodaySchedule,
     required this.showCampusMapContacts,
     required this.showNotificationsIcon,
+    required this.showFundingSection,
   });
 
   final bool showDecorations;
@@ -385,6 +396,7 @@ class HomeCardVisibility {
   final bool showTodaySchedule;
   final bool showCampusMapContacts;
   final bool showNotificationsIcon;
+  final bool showFundingSection;
 }
 
 class InAppReviewPrompt {
