@@ -60,8 +60,7 @@ A detailed visual directory structure of the repository, including core files, m
 ```bash
 preconnect/
 ├── 📂 .github/workflows/          # CI/CD pipelines
-│   ├── 📄 pr-ci.yml               # PR validation workflow (runs format checks & tests)
-│   ├── 📄 release.yml             # Handles auto-bumps, builds APK/AAB/Extension, and deploys to VPS
+│   ├── 📄 release.yml             # Handles auto-bumps, builds APK/AAB/Extension/Web
 │   └── 📄 store-promotion.yml     # Weekly scheduled production deployment track
 ├── 📂 android/                    # Android native project configuration and Kotlin settings
 ├── 📂 ios/                        # iOS native project runner configs and Swift setups
@@ -240,7 +239,7 @@ Please also review the community and safety guidance in [CODE_OF_CONDUCT.md](COD
 | ---------------- | ------- | --------------------------------------------------------------------------------------- |
 | Android          | Stable  | Signed APK/AAB are generated in release workflow when signing secrets are configured.   |
 | Chrome Extension | Stable  | Distributed through release assets and store promotion automation.                      |
-| Web              | Beta    | Flutter web app built in CI and deployed to a self-hosted VPS on each release.          |
+| Web              | Beta    | Flutter web app built in CI and packaged as a release artifact.                        |
 | iOS              | Beta    | CI builds are enabled, but signing/export depends on Apple certificates/profiles.       |
 | macOS            | Beta    | CI builds and packages a DMG artifact from release workflow.                            |
 
@@ -255,7 +254,7 @@ Main flow on push to `main`:
 3. Creates/updates a GitHub release tag like `vX.Y.Z+NNN`
 4. Builds and uploads platform artifacts (Android, iOS, macOS)
 5. Builds and uploads the Chrome extension artifact for deployment
-6. Builds the Flutter web app and deploys it to a self-hosted VPS via SSH
+6. Builds the Flutter web app and packages it as a release artifact
 7. Publishes Android AAB to Google Play Internal and Beta testing tracks when required secrets are available
 
 ## Architecture
@@ -375,7 +374,7 @@ The app uses the hosted PreConnect API (`api.preconnect.app`) for cached seat-st
 - BRAC University student community for continuous feedback and testing
 - Flutter and Dart ecosystems
 - Open-source package maintainers on [pub.dev](https://pub.dev)
-- Infrastructure providers: VPS-hosted services and the configured push provider
+- Infrastructure providers: Cloudflare services and the configured push provider
 
 ## Developer Credit
 
