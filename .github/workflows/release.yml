@@ -341,6 +341,15 @@ jobs:
           cd build/web
           zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-web-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
 
+      - name: Deploy to Cloudflare Pages
+        if: matrix.platform == 'web'
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: preconnect-web
+          directory: build/web
+
 
       - name: Pod Install
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
