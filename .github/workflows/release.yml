@@ -341,7 +341,7 @@ jobs:
           cd build/web
           zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-web-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
 
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Worker
         if: matrix.platform == 'web'
         uses: cloudflare/pages-action@v1
         with:
