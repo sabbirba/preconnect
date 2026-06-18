@@ -106,10 +106,9 @@ jobs:
         with:
           path: |
             build
-            .dart_tool
-          key: ${{ runner.os }}-store-promotion-build-${{ hashFiles('pubspec.yaml', 'pubspec.lock', 'tool/build_extension.sh', 'tool/sync_versions.sh', 'web/**', 'lib/**') }}
+          key: ${{ runner.os }}-store-promotion-build-v2-${{ hashFiles('pubspec.yaml', 'pubspec.lock', 'tool/build_extension.sh', 'tool/sync_versions.sh', 'web/**', 'lib/**') }}
           restore-keys: |
-            ${{ runner.os }}-store-promotion-build-
+            ${{ runner.os }}-store-promotion-build-v2-
 
       - name: Cache Pub
         if: matrix.run_chrome
