@@ -362,7 +362,7 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || '22' }}
           source: "nginx.conf"
-          target: "/etc/nginx/sites-available/web.preconnect.app"
+          target: "/tmp/preconnect-nginx.conf"
           strip_components: 1
 
       - name: Reload Nginx
@@ -374,8 +374,20 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || '22' }}
           script: |
-            ln -sf /etc/nginx/sites-available/web.preconnect.app /etc/nginx/sites-enabled/web.preconnect.app
-            nginx -t && systemctl reload nginx
+            set -e
+            # scp-action places the file at target/nginx.conf (treats target as dir)
+            NGINX_CONF=/tmp/preconnect-nginx.conf/nginx.conf
+            DEST=/etc/nginx/sites-available/web.preconnect.app
+            sudo mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+            sudo cp "$NGINX_CONF" "$DEST"
+            sudo ln -sf "$DEST" /etc/nginx/sites-enabled/web.preconnect.app
+            NGINX=$(command -v nginx 2>/dev/null || ls /usr/sbin/nginx /usr/local/sbin/nginx 2>/dev/null | head -1 || echo "")
+            if [ -z "$NGINX" ]; then
+              sudo systemctl reload nginx
+            else
+              sudo "$NGINX" -t && (sudo systemctl reload nginx 2>/dev/null || sudo "$NGINX" -s reload)
+            fi
+            rm -rf /tmp/preconnect-nginx.conf
 
       - name: Pod Install
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
