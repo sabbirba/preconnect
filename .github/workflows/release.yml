@@ -391,11 +391,16 @@ jobs:
           printf '%s' '{b64}' | base64 -d | sudo tee {dest} > /dev/null
           sudo rm -f {link}
           sudo ln -sf {dest} {link}
-          NGINX=$(command -v nginx 2>/dev/null || ls /usr/sbin/nginx /usr/local/sbin/nginx 2>/dev/null | head -1 || echo "")
-          if [ -z "$NGINX" ]; then
-            sudo systemctl reload nginx
+          NGINX=$(command -v nginx 2>/dev/null || ls /usr/sbin/nginx /usr/local/sbin/nginx 2>/dev/null | head -1 || true)
+          if [ -n "$NGINX" ]; then
+            sudo "$NGINX" -t
+            if sudo systemctl reload nginx 2>/dev/null; then
+              echo "nginx reloaded via systemctl"
+            else
+              sudo "$NGINX" -s reload && echo "nginx reloaded via signal"
+            fi
           else
-            sudo "$NGINX" -t && (sudo systemctl reload nginx 2>/dev/null || sudo "$NGINX" -s reload)
+            echo "WARNING: nginx binary not found, skipping reload"
           fi
           """
           f = tempfile.NamedTemporaryFile(mode='w', suffix='.sh', delete=False)
