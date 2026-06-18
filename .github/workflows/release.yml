@@ -366,39 +366,43 @@ jobs:
           target: "/var/www/preconnect-web"
           strip_components: 2
 
-      - name: Encode Nginx Config
-        id: nginx_conf
-        if: matrix.platform == 'web' && steps.vps_check.outputs.enabled == 'true'
-        shell: bash
-        run: |
-          echo "b64=$(base64 -w 0 nginx.conf)" >> "$GITHUB_OUTPUT"
-
       - name: Deploy and Reload Nginx
         if: matrix.platform == 'web' && steps.vps_check.outputs.enabled == 'true'
-        uses: appleboy/ssh-action@v1.0.0
+        shell: bash
         env:
-          NGINX_B64: ${{ steps.nginx_conf.outputs.b64 }}
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USERNAME }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT || '22' }}
-          envs: NGINX_B64
-          script: |
-            set -e
-            DEST=/etc/nginx/sites-available/web.preconnect.app
-            sudo mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
-            sudo rm -rf "$DEST"
-            printf '%s' "$NGINX_B64" | base64 -d | sudo tee "$DEST" > /dev/null
-            sudo rm -f /etc/nginx/sites-enabled/web.preconnect.app
-            sudo ln -sf "$DEST" /etc/nginx/sites-enabled/web.preconnect.app
-            NGINX=$(command -v nginx 2>/dev/null || ls /usr/sbin/nginx /usr/local/sbin/nginx 2>/dev/null | head -1 || echo "")
-            if [ -z "$NGINX" ]; then
-              sudo systemctl reload nginx
-            else
-              sudo "$NGINX" -t && (sudo systemctl reload nginx 2>/dev/null || sudo "$NGINX" -s reload)
-            fi
-
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+        run: |
+          set -e
+          KEY_FILE=$(mktemp)
+          SCRIPT_FILE=$(mktemp)
+          chmod 600 "$KEY_FILE"
+          printf '%s\n' "$VPS_SSH_KEY" > "$KEY_FILE"
+          NGINX_B64=$(base64 -w 0 nginx.conf)
+          cat > "$SCRIPT_FILE" << ENDSSH
+          set -e
+          DEST=/etc/nginx/sites-available/web.preconnect.app
+          sudo mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+          sudo rm -rf "\$DEST"
+          printf '%s' "${NGINX_B64}" | base64 -d | sudo tee "\$DEST" > /dev/null
+          sudo rm -f /etc/nginx/sites-enabled/web.preconnect.app
+          sudo ln -sf "\$DEST" /etc/nginx/sites-enabled/web.preconnect.app
+          NGINX=\$(command -v nginx 2>/dev/null || ls /usr/sbin/nginx /usr/local/sbin/nginx 2>/dev/null | head -1 || echo "")
+          if [ -z "\$NGINX" ]; then
+            sudo systemctl reload nginx
+          else
+            sudo "\$NGINX" -t && (sudo systemctl reload nginx 2>/dev/null || sudo "\$NGINX" -s reload)
+          fi
+          ENDSSH
+          ssh -i "$KEY_FILE" \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -p "$VPS_PORT" \
+            "$VPS_USERNAME@$VPS_HOST" \
+            'bash -s' < "$SCRIPT_FILE"
+          rm -f "$KEY_FILE" "$SCRIPT_FILE"
 
       - name: Pod Install
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
