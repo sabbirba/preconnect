@@ -230,7 +230,6 @@ jobs:
         uses: subosito/flutter-action@v2.23.0
         with:
           channel: "stable"
-          cache: true
 
       - name: Setup Xcode
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
@@ -631,7 +630,6 @@ jobs:
         uses: ruby/setup-ruby@v1.313.0
         with:
           ruby-version: "3.3"
-          bundler-cache: false
 
       - name: Install Ruby Gems
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
