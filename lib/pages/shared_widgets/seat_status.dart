@@ -484,12 +484,12 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       for (SeatStatusClassSchedule sc in schedules) {
         if (dayFilter.isNotEmpty) {
           if (!(normalizeWeekday(sc.day) == dayFilter)) {
-            return false;
+            continue;
           }
 
           if (timeFilter.isNotEmpty) {
             if (!(timeFilter == sc.toTimetable())) {
-              return false;
+              continue;
             } else {
               return true;
             }
@@ -498,7 +498,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
           }
         } else if (timeFilter.isNotEmpty) {
           if (!(timeFilter == sc.toTimetable())) {
-            return false;
+            continue;
           }
 
           return true;
@@ -507,7 +507,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         }
       }
 
-      return true;
+      return false;
     }).toList();
   }
 
