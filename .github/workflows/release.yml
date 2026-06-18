@@ -28,7 +28,7 @@ jobs:
       should_run: ${{ steps.check.outputs.should_run }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -78,7 +78,7 @@ jobs:
       release_sha: ${{ github.sha }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -107,7 +107,7 @@ jobs:
       release_tag: ${{ steps.meta.outputs.release_tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare-version.outputs.release_sha }}
           fetch-depth: 0
@@ -210,7 +210,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare-version.outputs.release_sha }}
           fetch-depth: 1
@@ -343,7 +343,7 @@ jobs:
 
       - name: Deploy to Cloudflare Worker
         if: matrix.platform == 'web'
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -555,7 +555,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare-version.outputs.release_sha }}
           fetch-depth: 0
