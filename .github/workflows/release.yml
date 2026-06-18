@@ -32,7 +32,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check for unreleased commits
+      - name: Check Pending Commits
         id: check
         shell: bash
         run: |
@@ -47,14 +47,12 @@ jobs:
           if [ "$HEAD_AUTHOR" = "github-actions[bot]" ] && \
              [ "$HEAD_EMAIL" = "github-actions[bot]@users.noreply.github.com" ] && \
              [[ "$HEAD_SUBJECT" == chore:\ bump\ version\ to* ]]; then
-            echo "Latest commit is the release bot's version bump; skipping retrigger."
             echo "should_run=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           LAST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n1 || true)
           if [ -z "$LAST_TAG" ]; then
-            echo "No release tag found yet; scheduled run should proceed."
             echo "should_run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -62,10 +60,8 @@ jobs:
           LAST_TAG_SHA=$(git rev-list -n 1 "$LAST_TAG")
           HEAD_SHA=$(git rev-parse HEAD)
           if [ "$HEAD_SHA" = "$LAST_TAG_SHA" ]; then
-            echo "No new commits since $LAST_TAG; scheduled release is not required."
             echo "should_run=false" >> "$GITHUB_OUTPUT"
           else
-            echo "New commits found since $LAST_TAG; scheduled release should proceed."
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -86,7 +82,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Auto Bump Version
+      - name: Bump Version
         shell: bash
         run: ./tool/sync_versions.sh bump-release
 
@@ -116,7 +112,7 @@ jobs:
           ref: ${{ needs.prepare-version.outputs.release_sha }}
           fetch-depth: 0
 
-      - name: Prepare Release Metadata
+      - name: Release Metadata
         id: meta
         shell: bash
         run: |
@@ -147,7 +143,7 @@ jobs:
             echo
           } > "$NOTES_FILE"
 
-      - name: Create GitHub Release
+      - name: GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -220,10 +216,9 @@ jobs:
           fetch-depth: 1
           fetch-tags: true
 
-      - name: Auto Bump Version
+      - name: Bump Version
         shell: bash
-        run: |
-          ./tool/sync_versions.sh bump-release
+        run: ./tool/sync_versions.sh bump-release
 
       - name: Setup Java
         if: matrix.platform == 'android'
@@ -281,7 +276,7 @@ jobs:
             ${{ runner.os }}-gradle-${{ matrix.build_type }}-
             ${{ runner.os }}-gradle-
 
-      - name: Android Props
+      - name: Android Local Properties
         if: matrix.platform == 'android'
         shell: bash
         run: |
@@ -322,12 +317,12 @@ jobs:
           DEVELOPMENT_TEAM=${{ secrets.DEVELOPMENT_TEAM }}
           EOF
 
-      - name: Chrome Extension
+      - name: Build Chrome Extension
         if: matrix.platform == 'chrome_extension'
         shell: bash
         run: ./tool/build_extension.sh
 
-      - name: Chrome Package
+      - name: Package Chrome Extension
         if: matrix.platform == 'chrome_extension'
         run: |
           mkdir -p artifacts
@@ -340,7 +335,7 @@ jobs:
         run: |
           flutter build web --release --tree-shake-icons --csp --no-wasm-dry-run --no-web-resources-cdn --dart-define-from-file=.env
 
-      - name: Web Package
+      - name: Package Web
         if: matrix.platform == 'web'
         run: |
           mkdir -p artifacts
@@ -360,7 +355,7 @@ jobs:
             echo "enabled=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Deploy to VPS
+      - name: Deploy Web to VPS
         if: matrix.platform == 'web' && steps.vps_check.outputs.enabled == 'true'
         uses: appleboy/scp-action@v1.0.0
         with:
@@ -394,7 +389,6 @@ jobs:
           port: ${{ secrets.VPS_PORT || '22' }}
           script: |
             set -e
-            # scp-action places the file at target/nginx.conf (treats target as dir)
             NGINX_CONF=/tmp/preconnect-nginx.conf/nginx.conf
             DEST=/etc/nginx/sites-available/web.preconnect.app
             sudo mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
@@ -412,7 +406,6 @@ jobs:
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
         shell: bash
         run: |
-          flutter pub get
           if [ "${{ matrix.platform }}" = "ios" ]; then
             cd ios && pod update
           else
@@ -440,25 +433,24 @@ jobs:
           keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
           EOF
 
-      - name: Android APK
+      - name: Build Android APK
         if: matrix.platform == 'android' && matrix.build_type == 'apk'
         shell: bash
         run: |
           flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
 
-      - name: Android AAB
+      - name: Build Android AAB
         if: matrix.platform == 'android' && matrix.build_type == 'aab'
         shell: bash
         run: |
           set -euo pipefail
-          AAB_PATH="build/app/outputs/bundle/release/app-release.aab"
           if ! flutter build appbundle --release --target-platform android-arm,android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}; then
-            echo "Flutter appbundle validation failed; retrying bundle packaging with Gradle." >&2
+            echo "Flutter appbundle failed; retrying with Gradle." >&2
             cd android
             ./gradlew bundleRelease --no-daemon --stacktrace --info
           fi
 
-      - name: iOS App
+      - name: Build iOS
         if: matrix.platform == 'ios'
         shell: bash
         run: |
@@ -469,7 +461,7 @@ jobs:
             strip -x "$APP_PATH/Frameworks/App.framework/App" || true
           fi
 
-      - name: Detect Signing
+      - name: Detect iOS Signing
         id: ios_signing
         if: matrix.platform == 'ios'
         shell: bash
@@ -482,13 +474,11 @@ jobs:
           if [ -n "$DEVELOPMENT_TEAM" ] && [ -n "$IOS_P12_BASE64" ] && \
              [ -n "$IOS_P12_PASSWORD" ] && [ -n "$IOS_PROFILE_BASE64" ]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
-            echo "iOS signing secrets detected; signed IPA export is enabled."
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "iOS signing secrets missing; continuing with unsigned iOS fallback."
           fi
 
-      - name: iOS IPA
+      - name: Export iOS IPA
         if: matrix.platform == 'ios' && steps.ios_signing.outputs.enabled == 'true'
         env:
           IOS_P12_BASE64: ${{ secrets.IOS_P12_BASE64 }}
@@ -499,7 +489,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$IOS_P12_BASE64" ] || [ -z "$IOS_P12_PASSWORD" ] || [ -z "$IOS_PROFILE_BASE64" ]; then
-            echo "iOS signing secrets missing; signed IPA export disabled, continuing with unsigned artifact packaging."
+            echo "iOS signing secrets missing; continuing with unsigned artifact."
             exit 0
           fi
           [ -f ios/ExportOptions.plist ] || { echo "Missing required file: ios/ExportOptions.plist"; exit 1; }
@@ -514,7 +504,7 @@ jobs:
           printf '%s' "$IOS_PROFILE_BASE64" | base64 -d > "$HOME/Library/MobileDevice/Provisioning Profiles/profile.mobileprovision"
           flutter build ipa --release --tree-shake-icons --obfuscate --split-debug-info=build/symbols/ios --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --export-options-plist=ios/ExportOptions.plist
 
-      - name: macOS App
+      - name: Build macOS
         if: matrix.platform == 'macos'
         shell: bash
         run: |
@@ -525,7 +515,7 @@ jobs:
             strip -x "$APP_PATH/Contents/MacOS/PreConnect" || true
           fi
 
-      - name: Android Package
+      - name: Package Android APK
         if: matrix.platform == 'android' && matrix.build_type == 'apk'
         run: |
           set -euo pipefail
@@ -534,7 +524,7 @@ jobs:
           apk_paths=(build/app/outputs/flutter-apk/app-*-release.apk)
           shopt -u nullglob
           if [ "${#apk_paths[@]}" -eq 0 ]; then
-            echo "No ABI split APKs found in build/app/outputs/flutter-apk." >&2
+            echo "No ABI split APKs found." >&2
             exit 1
           fi
           for apk_path in "${apk_paths[@]}"; do
@@ -543,7 +533,7 @@ jobs:
               "artifacts/PreConnect-android-${abi}-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.apk"
           done
 
-      - name: Android AAB Package
+      - name: Package Android AAB
         if: matrix.platform == 'android' && matrix.build_type == 'aab'
         run: |
           set -euo pipefail
@@ -551,11 +541,11 @@ jobs:
           cp build/app/outputs/bundle/release/app-release.aab \
             artifacts/PreConnect-android-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.aab
 
-      - name: iOS Package
+      - name: Package iOS
         if: matrix.platform == 'ios'
         run: |
           mkdir -p artifacts
-          if ls build/ios/ipa/*.ipa >/dev/null 2>&1; then
+          if ls build/ios/ipa/*.ipa > /dev/null 2>&1; then
             IPA_PATH=$(ls build/ios/ipa/*.ipa | head -n1)
             cp "$IPA_PATH" \
               "artifacts/PreConnect-ios-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.ipa"
@@ -576,27 +566,26 @@ jobs:
           ditto "$APP_PATH" "Payload/$(basename "$APP_PATH")"
           (cd Payload && zip -r -9 -y "$GITHUB_WORKSPACE/artifacts/$IPA_NAME" .) || true
 
-      - name: macOS Package
+      - name: Package macOS
         if: matrix.platform == 'macos'
         run: |
           mkdir -p artifacts
           APP_PATH=$(find build/macos/Build/Products/Release -maxdepth 3 -type d -name "*.app" | head -n1)
           if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
-            echo "No macOS .app found under build/macos/Build/Products/Release (searched 3 levels deep)"
+            echo "No macOS .app found"
             exit 0
           fi
-          echo "Packaging macOS app: $APP_PATH"
           DMG_NAME="PreConnect-macos-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.dmg"
           hdiutil create -volname "PreConnect" -srcfolder "$APP_PATH" -ov -format UDZO "$GITHUB_WORKSPACE/artifacts/$DMG_NAME"
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ matrix.artifact_name || matrix.platform }}-artifacts
+          name: ${{ matrix.artifact_name }}
           path: artifacts/*
           if-no-files-found: ignore
 
-      - name: Upload Assets
+      - name: Upload Release Assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -604,11 +593,11 @@ jobs:
           if [ -d artifacts ] && find artifacts -type f -print -quit | grep -q .; then
             gh release upload "${{ needs.create-release.outputs.release_tag }}" artifacts/* --clobber
           else
-            echo "No packaged artifacts for ${{ matrix.platform }}."
+            echo "No packaged artifacts for ${{ matrix.name }}."
           fi
 
   publish-google-play:
-    name: Publish Google Play Release (Android)
+    name: Publish Google Play
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
     runs-on: ubuntu-latest
     needs: [detect-pending, prepare-version, build]
@@ -623,21 +612,21 @@ jobs:
           ref: ${{ needs.prepare-version.outputs.release_sha }}
           fetch-depth: 0
 
-      - name: Read Package
+      - name: Read Package Name
         id: android_meta
         shell: bash
         run: |
           PACKAGE_NAME=$(grep -E 'applicationId\s*=' android/app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
           echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Download Android APK artifacts
+      - name: Download Android APK Artifacts
         uses: actions/download-artifact@v8
         with:
           name: android_apk-artifacts
           path: artifacts/android
         continue-on-error: true
 
-      - name: Download Android AAB artifacts
+      - name: Download Android AAB Artifacts
         uses: actions/download-artifact@v8
         with:
           name: android_aab-artifacts
@@ -657,7 +646,7 @@ jobs:
           echo "file=$AAB_FILE" >> "$GITHUB_OUTPUT"
           echo "Using AAB: $AAB_FILE"
 
-      - name: Check Credentials
+      - name: Check Play Credentials
         id: play_auth
         shell: bash
         env:
@@ -667,18 +656,17 @@ jobs:
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not provided."
           fi
 
-      - name: Validate Google Play prerequisites
+      - name: Validate Prerequisites
         shell: bash
         run: |
           if [ "${{ steps.aab.outputs.found }}" != "true" ]; then
-            echo "Android .aab artifact is missing. Ensure Android release build/signing succeeded."
+            echo "Android .aab artifact is missing. Ensure Android AAB build succeeded."
             exit 1
           fi
 
-      - name: Generate Play release notes from commits
+      - name: Generate Play Release Notes
         id: play_notes
         shell: bash
         run: |
@@ -699,7 +687,7 @@ jobs:
                 found { print }
               ' CHANGELOG.md \
               | sed 's/^[-*] /• /' \
-              | sed 's/^#\+[[:space:]]*//'
+              | sed 's/^#+[[:space:]]*//'
             )"
           fi
 
@@ -747,7 +735,7 @@ jobs:
           bundle config set frozen false
           bundle install
 
-      - name: Upload Internal
+      - name: Upload to Internal Track
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
         shell: bash
         env:
@@ -767,7 +755,7 @@ jobs:
             --skip_upload_images true \
             --skip_upload_screenshots true
 
-      - name: Promote Beta
+      - name: Promote to Beta
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
         shell: bash
         env:
