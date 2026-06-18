@@ -1,3 +1,6 @@
+# ── Suppress R8 "rule does not match anything" INFO noise from deps ──────────
+-ignorewarnings
+
 # ── Kotlin ──────────────────────────────────────────────────────────────────
 -dontwarn kotlin.**
 -dontwarn kotlinx.**
