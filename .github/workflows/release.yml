@@ -388,7 +388,9 @@ jobs:
             set -e
             DEST=/etc/nginx/sites-available/web.preconnect.app
             sudo mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+            sudo rm -rf "$DEST"
             printf '%s' "$NGINX_B64" | base64 -d | sudo tee "$DEST" > /dev/null
+            sudo rm -f /etc/nginx/sites-enabled/web.preconnect.app
             sudo ln -sf "$DEST" /etc/nginx/sites-enabled/web.preconnect.app
             NGINX=$(command -v nginx 2>/dev/null || ls /usr/sbin/nginx /usr/local/sbin/nginx 2>/dev/null | head -1 || echo "")
             if [ -z "$NGINX" ]; then
