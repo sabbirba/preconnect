@@ -1,3 +1,6 @@
 name = "preconnect-web"
 main = "index.js"
 compatibility_date = "2026-06-18"
+
+[assets]
+directory = "./build/web"
