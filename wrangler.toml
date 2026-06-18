@@ -3,7 +3,5 @@ compatibility_date = "2026-06-18"
 
 [assets]
 directory = "./build/web"
-# Serve index.html for all unknown routes — required for Flutter SPA routing
 not_found_handling = "single-page-application"
-# Clean URLs: /page serves /page.html automatically
 html_handling = "auto-trailing-slash"
