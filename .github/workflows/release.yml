@@ -214,7 +214,6 @@ jobs:
         with:
           ref: ${{ needs.prepare-version.outputs.release_sha }}
           fetch-depth: 1
-          fetch-tags: true
 
       - name: Bump Version
         shell: bash
