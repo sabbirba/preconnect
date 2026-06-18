@@ -61,12 +61,21 @@ class MyApp extends StatefulWidget {
       final code = Uri.base.queryParameters['code'];
       if (code != null && code.trim().isNotEmpty) {
         try {
+          final storedVerifier = await TokenStorage.instance.read(
+            key: PreConnectStorageKeys.pkceVerifier,
+          );
+          await TokenStorage.instance.write(
+            key: PreConnectStorageKeys.pkceVerifier,
+            value: null,
+          );
           final uri = Uri.parse(ApiConfig.tokenEndpoint);
           final body = HttpUtils.formBody(<String, String>{
             'grant_type': 'authorization_code',
             'client_id': ApiConfig.clientId,
             'code': code.trim(),
             'redirect_uri': ApiConfig.redirectUri,
+            if (storedVerifier != null && storedVerifier.isNotEmpty)
+              'code_verifier': storedVerifier,
           });
           final response = await HttpUtils.client
               .post(

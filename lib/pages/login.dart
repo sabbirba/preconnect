@@ -429,7 +429,13 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _launchWebLogin() async {
-    final uri = Uri.parse(ApiConfig.authUrl);
+    final verifier = generatePkceVerifier();
+    final challenge = codeChallengeS256(verifier);
+    await TokenStorage.instance.write(
+      key: PreConnectStorageKeys.pkceVerifier,
+      value: verifier,
+    );
+    final uri = Uri.parse(ApiConfig.authUrlWithPkce(challenge));
     await launchUrl(
       uri,
       mode: LaunchMode.externalApplication,
@@ -462,14 +468,113 @@ class _WebLoginPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    final textSecondary = Theme.of(context).colorScheme.onSurface.withAlpha(128);
+    return Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: EdgeInsets.all(24),
-            child: ImportSessionDialog(
-              showCancelButton: false,
-              showCloseButton: false,
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 40),
+                  const Icon(
+                    Icons.school_rounded,
+                    size: 52,
+                    color: Color(0xFF1E6BE3),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'PreConnect',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Sign in with your BRACU student account',
+                    style: TextStyle(fontSize: 13.5, color: textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 40),
+                  FilledButton.icon(
+                    onPressed: () => unawaited(onOpenLogin()),
+                    icon: const Icon(Icons.login_rounded),
+                    label: const Text('Sign in with BRACU'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      textStyle: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Divider(
+                          color: textSecondary.withAlpha(60),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: Text(
+                          'or sync from mobile app',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: textSecondary,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Divider(
+                          color: textSecondary.withAlpha(60),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  OutlinedButton.icon(
+                    onPressed: onImportPressed,
+                    icon: const Icon(Icons.qr_code_scanner_rounded),
+                    label: const Text('Sync Session (QR / Copy Code)'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      textStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E6BE3).withAlpha(15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF1E6BE3).withAlpha(38),
+                      ),
+                    ),
+                    child: Text(
+                      'To sync: open PreConnect on your phone → Settings → Sync Session → Copy or scan the QR code.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textSecondary,
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                ],
+              ),
             ),
           ),
         ),
