@@ -1,5 +1,6 @@
 name = "preconnect-web"
 compatibility_date = "2026-06-18"
+preview_urls = false
 
 [assets]
 directory = "./build/web"
