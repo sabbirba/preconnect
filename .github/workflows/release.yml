@@ -238,42 +238,10 @@ jobs:
         with:
           xcode-version: "latest"
 
-      - name: Cache CocoaPods
-        if: matrix.platform == 'ios' || matrix.platform == 'macos'
-        id: cocoapods-cache
-        uses: actions/cache@v5.0.5
-        with:
-          path: |
-            ~/.cocoapods
-            ~/Library/Caches/CocoaPods
-          key: ${{ runner.os }}-cocoapods-${{ hashFiles('ios/Podfile.lock', 'macos/Podfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cocoapods-
-
       - name: Setup CocoaPods
-        if: (matrix.platform == 'ios' || matrix.platform == 'macos') && steps.cocoapods-cache.outputs.cache-hit != 'true'
+        if: matrix.platform == 'ios' || matrix.platform == 'macos'
         shell: bash
         run: sudo gem install cocoapods --no-document
-
-      - name: Cache Pub
-        uses: actions/cache@v5.0.5
-        with:
-          path: ~/.pub-cache
-          key: ${{ runner.os }}-flutter-pub-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-flutter-pub-
-
-      - name: Cache Gradle
-        if: matrix.platform == 'android'
-        uses: actions/cache@v5.0.5
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ matrix.build_type }}-${{ hashFiles('android/**/build.gradle*', 'android/**/settings.gradle*', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-${{ matrix.build_type }}-
-            ${{ runner.os }}-gradle-
 
       - name: Android Local Properties
         if: matrix.platform == 'android'
@@ -292,16 +260,6 @@ jobs:
               exit 1
             fi
           } > android/local.properties
-
-      - name: Cache Build
-        uses: actions/cache@v5.0.5
-        with:
-          path: |
-            build
-          key: ${{ runner.os }}-${{ matrix.platform }}-${{ matrix.build_type || 'default' }}-flutter-build-${{ hashFiles('pubspec.yaml', 'pubspec.lock', 'android/build.gradle.kts', 'android/app/build.gradle.kts', 'android/settings.gradle.kts', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties', 'tool/**', 'web/**', 'lib/**', 'ios/**', 'macos/**') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.platform }}-${{ matrix.build_type || 'default' }}-flutter-build-
-            ${{ runner.os }}-${{ matrix.platform }}-default-flutter-build-
 
       - name: Flutter Pub Get
         shell: bash
