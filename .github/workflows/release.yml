@@ -353,6 +353,29 @@ jobs:
           target: "/var/www/preconnect-web"
           strip_components: 2
 
+      - name: Deploy Nginx Config
+        if: matrix.platform == 'web' && steps.vps_check.outputs.enabled == 'true'
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || '22' }}
+          source: "nginx.conf"
+          target: "/etc/nginx/sites-available/web.preconnect.app"
+          strip_components: 1
+
+      - name: Reload Nginx
+        if: matrix.platform == 'web' && steps.vps_check.outputs.enabled == 'true'
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || '22' }}
+          script: |
+            ln -sf /etc/nginx/sites-available/web.preconnect.app /etc/nginx/sites-enabled/web.preconnect.app
+            nginx -t && systemctl reload nginx
 
       - name: Pod Install
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
