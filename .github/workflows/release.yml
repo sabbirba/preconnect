@@ -166,7 +166,7 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
     needs: [detect-pending, prepare-version, create-release]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 90
+    timeout-minutes: ${{ matrix.timeout || 90 }}
     permissions:
       contents: write
     env:
@@ -182,18 +182,35 @@ jobs:
           - os: ubuntu-latest
             platform: chrome_extension
             name: Chrome Extension
+            artifact_name: chrome_extension-artifacts
+            timeout: 30
           - os: ubuntu-latest
             platform: web
             name: Web
+            artifact_name: web-artifacts
+            timeout: 30
           - os: ubuntu-22.04
             platform: android
-            name: Android
+            build_type: apk
+            name: Android APK
+            artifact_name: android_apk-artifacts
+            timeout: 50
+          - os: ubuntu-22.04
+            platform: android
+            build_type: aab
+            name: Android AAB
+            artifact_name: android_aab-artifacts
+            timeout: 50
           - os: macos-latest
             platform: ios
             name: iOS
+            artifact_name: ios-artifacts
+            timeout: 90
           - os: macos-latest
             platform: macos
             name: macOS
+            artifact_name: macos-artifacts
+            timeout: 90
 
     steps:
       - name: Checkout
@@ -259,8 +276,9 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/build.gradle*', 'android/**/settings.gradle*', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          key: ${{ runner.os }}-gradle-${{ matrix.build_type }}-${{ hashFiles('android/**/build.gradle*', 'android/**/settings.gradle*', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: |
+            ${{ runner.os }}-gradle-${{ matrix.build_type }}-
             ${{ runner.os }}-gradle-
 
       - name: Android Props
@@ -287,9 +305,10 @@ jobs:
           path: |
             build
             .dart_tool
-          key: ${{ runner.os }}-${{ matrix.platform }}-flutter-build-${{ hashFiles('pubspec.yaml', 'pubspec.lock', 'android/build.gradle.kts', 'android/app/build.gradle.kts', 'android/settings.gradle.kts', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties', 'tool/**', 'web/**', 'lib/**', 'ios/**', 'macos/**') }}
+          key: ${{ runner.os }}-${{ matrix.platform }}-${{ matrix.build_type || 'default' }}-flutter-build-${{ hashFiles('pubspec.yaml', 'pubspec.lock', 'android/build.gradle.kts', 'android/app/build.gradle.kts', 'android/settings.gradle.kts', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties', 'tool/**', 'web/**', 'lib/**', 'ios/**', 'macos/**') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.platform }}-flutter-build-
+            ${{ runner.os }}-${{ matrix.platform }}-${{ matrix.build_type || 'default' }}-flutter-build-
+            ${{ runner.os }}-${{ matrix.platform }}-default-flutter-build-
 
       - name: Flutter Pub Get
         shell: bash
@@ -422,13 +441,13 @@ jobs:
           EOF
 
       - name: Android APK
-        if: matrix.platform == 'android'
+        if: matrix.platform == 'android' && matrix.build_type == 'apk'
         shell: bash
         run: |
           flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
 
       - name: Android AAB
-        if: matrix.platform == 'android'
+        if: matrix.platform == 'android' && matrix.build_type == 'aab'
         shell: bash
         run: |
           set -euo pipefail
@@ -507,7 +526,7 @@ jobs:
           fi
 
       - name: Android Package
-        if: matrix.platform == 'android'
+        if: matrix.platform == 'android' && matrix.build_type == 'apk'
         run: |
           set -euo pipefail
           mkdir -p artifacts
@@ -523,6 +542,12 @@ jobs:
             cp "$apk_path" \
               "artifacts/PreConnect-android-${abi}-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.apk"
           done
+
+      - name: Android AAB Package
+        if: matrix.platform == 'android' && matrix.build_type == 'aab'
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
           cp build/app/outputs/bundle/release/app-release.aab \
             artifacts/PreConnect-android-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.aab
 
@@ -567,7 +592,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ matrix.platform }}-artifacts
+          name: ${{ matrix.artifact_name || matrix.platform }}-artifacts
           path: artifacts/*
           if-no-files-found: ignore
 
@@ -605,10 +630,17 @@ jobs:
           PACKAGE_NAME=$(grep -E 'applicationId\s*=' android/app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
           echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Download Android artifacts
+      - name: Download Android APK artifacts
         uses: actions/download-artifact@v8
         with:
-          name: android-artifacts
+          name: android_apk-artifacts
+          path: artifacts/android
+        continue-on-error: true
+
+      - name: Download Android AAB artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: android_aab-artifacts
           path: artifacts/android
 
       - name: Resolve AAB
