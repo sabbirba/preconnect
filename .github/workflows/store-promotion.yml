@@ -106,9 +106,9 @@ jobs:
         with:
           path: |
             build
-          key: ${{ runner.os }}-store-promotion-build-v2-${{ hashFiles('pubspec.yaml', 'pubspec.lock', 'tool/build_extension.sh', 'tool/sync_versions.sh', 'web/**', 'lib/**') }}
+          key: ${{ runner.os }}-store-promotion-build-${{ hashFiles('pubspec.yaml', 'pubspec.lock', 'tool/build_extension.sh', 'tool/sync_versions.sh', 'web/**', 'lib/**') }}
           restore-keys: |
-            ${{ runner.os }}-store-promotion-build-v2-
+            ${{ runner.os }}-store-promotion-build-
 
       - name: Cache Pub
         if: matrix.run_chrome

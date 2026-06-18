@@ -298,10 +298,10 @@ jobs:
         with:
           path: |
             build
-          key: ${{ runner.os }}-${{ matrix.platform }}-${{ matrix.build_type || 'default' }}-flutter-build-v2-${{ hashFiles('pubspec.yaml', 'pubspec.lock', 'android/build.gradle.kts', 'android/app/build.gradle.kts', 'android/settings.gradle.kts', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties', 'tool/**', 'web/**', 'lib/**', 'ios/**', 'macos/**') }}
+          key: ${{ runner.os }}-${{ matrix.platform }}-${{ matrix.build_type || 'default' }}-flutter-build-${{ hashFiles('pubspec.yaml', 'pubspec.lock', 'android/build.gradle.kts', 'android/app/build.gradle.kts', 'android/settings.gradle.kts', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties', 'tool/**', 'web/**', 'lib/**', 'ios/**', 'macos/**') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.platform }}-${{ matrix.build_type || 'default' }}-flutter-build-v2-
-            ${{ runner.os }}-${{ matrix.platform }}-default-flutter-build-v2-
+            ${{ runner.os }}-${{ matrix.platform }}-${{ matrix.build_type || 'default' }}-flutter-build-
+            ${{ runner.os }}-${{ matrix.platform }}-default-flutter-build-
 
       - name: Flutter Pub Get
         shell: bash
