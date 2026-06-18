@@ -366,31 +366,29 @@ jobs:
           target: "/var/www/preconnect-web"
           strip_components: 2
 
-      - name: Deploy Nginx Config
+      - name: Encode Nginx Config
+        id: nginx_conf
         if: matrix.platform == 'web' && steps.vps_check.outputs.enabled == 'true'
-        uses: appleboy/scp-action@v1.0.0
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USERNAME }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT || '22' }}
-          source: "nginx.conf"
-          target: "/tmp/"
+        shell: bash
+        run: |
+          echo "b64=$(base64 -w 0 nginx.conf)" >> "$GITHUB_OUTPUT"
 
-      - name: Reload Nginx
+      - name: Deploy and Reload Nginx
         if: matrix.platform == 'web' && steps.vps_check.outputs.enabled == 'true'
         uses: appleboy/ssh-action@v1.0.0
+        env:
+          NGINX_B64: ${{ steps.nginx_conf.outputs.b64 }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || '22' }}
+          envs: NGINX_B64
           script: |
             set -e
-            NGINX_CONF=/tmp/nginx.conf
             DEST=/etc/nginx/sites-available/web.preconnect.app
             sudo mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
-            sudo cp "$NGINX_CONF" "$DEST"
+            printf '%s' "$NGINX_B64" | base64 -d | sudo tee "$DEST" > /dev/null
             sudo ln -sf "$DEST" /etc/nginx/sites-enabled/web.preconnect.app
             NGINX=$(command -v nginx 2>/dev/null || ls /usr/sbin/nginx /usr/local/sbin/nginx 2>/dev/null | head -1 || echo "")
             if [ -z "$NGINX" ]; then
@@ -398,7 +396,7 @@ jobs:
             else
               sudo "$NGINX" -t && (sudo systemctl reload nginx 2>/dev/null || sudo "$NGINX" -s reload)
             fi
-            rm -f /tmp/nginx.conf
+
 
       - name: Pod Install
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
