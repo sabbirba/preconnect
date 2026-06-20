@@ -48,7 +48,6 @@ dev_dependencies:
   flutter_gen_runner: ^5.8.0
   json_annotation: ^4.12.0
 
-
 flutter:
   config:
     enable-swift-package-manager: false
@@ -59,5 +58,4 @@ flutter:
 flutter_gen:
   output: lib/gen/
   line_length: 80
-
 
