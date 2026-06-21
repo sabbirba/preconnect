@@ -426,10 +426,10 @@ packages:
     dependency: "direct main"
     description:
       name: flutter_alarmkit
-      sha256: fdc67e3aaa5ac19402d70ce1eec70fa73558e8ac52cd2969bfc7b420d427bbe3
+      sha256: a3b234e4fa73e6402d683e95a1a1445e42165441c54b91a116471531b95b05bf
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.0"
+    version: "0.3.0"
   flutter_gen_core:
     dependency: transitive
     description:

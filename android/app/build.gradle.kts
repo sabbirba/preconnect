@@ -143,7 +143,7 @@ dependencies {
 configurations.all {
     resolutionStrategy {
         force("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.1")
-        force("com.google.firebase:firebase-messaging:25.0.2")
+        force("com.google.firebase:firebase-messaging:25.1.0")
     }
 }
 
