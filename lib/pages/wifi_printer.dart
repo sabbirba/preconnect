@@ -177,6 +177,18 @@ class CampusPrinterPage extends StatefulWidget {
   State<CampusPrinterPage> createState() => _CampusPrinterPageState();
 }
 
+class _SelectedFile {
+  _SelectedFile({
+    required this.name,
+    required this.bytes,
+    this.pageCount,
+  });
+
+  final String name;
+  final Uint8List bytes;
+  int? pageCount;
+}
+
 class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const int _printerPort = 515;
   static const String _printerQueue = 'secure';
@@ -196,9 +208,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const String _snackPrinterConnectionFailed =
       'Printer connection failed';
 
-  Uint8List? _fileBytes;
-  String _fileName = '';
-  int? _filePageCount;
+  List<_SelectedFile> _selectedFiles = const <_SelectedFile>[];
   String _studentId = '';
   String _studentName = '';
   String _studentShortCode = '';
@@ -480,37 +490,38 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   Future<void> _pickPrintFile() async {
     try {
-      final XFile? picked = await openFile(
+      final List<XFile> picked = await openFiles(
         acceptedTypeGroups: const <XTypeGroup>[
           XTypeGroup(label: 'PDF', extensions: <String>['pdf']),
           XTypeGroup(label: 'JPEG', extensions: <String>['jpg', 'jpeg']),
           XTypeGroup(label: 'PNG', extensions: <String>['png']),
         ],
       );
-      if (!mounted || picked == null) return;
-      var bytes = await picked.readAsBytes();
-      if (bytes.isEmpty) {
-        final path = picked.path;
-        if (path.isNotEmpty) {
-          bytes = await File(path).readAsBytes();
+      if (!mounted || picked.isEmpty) return;
+      final nextFiles = <_SelectedFile>[];
+      for (final file in picked) {
+        var bytes = await file.readAsBytes();
+        if (bytes.isEmpty) {
+          final path = file.path;
+          if (path.isNotEmpty) {
+            bytes = await File(path).readAsBytes();
+          }
+        }
+        if (bytes.isNotEmpty) {
+          final selected = _SelectedFile(name: file.name.trim(), bytes: bytes);
+          if (_isPdfFile(selected.name, bytes)) {
+            final pdfInfo = await _readPdfInfo(bytes);
+            selected.pageCount = pdfInfo.pageCount;
+          }
+          nextFiles.add(selected);
         }
       }
-      if (bytes.isEmpty) {
+      if (nextFiles.isEmpty) {
         if (mounted) showAppSnackBar(context, _snackFileReadFailed);
         return;
       }
-
       setState(() {
-        _fileBytes = bytes;
-        _fileName = picked.name.trim();
-      });
-      if (!mounted) return;
-      setState(() {
-        if (_isPdfFile(_fileName, bytes)) {
-          _setPdfInfoFromBytes(bytes);
-        } else {
-          _filePageCount = null;
-        }
+        _selectedFiles = List<_SelectedFile>.from(_selectedFiles)..addAll(nextFiles);
       });
     } catch (_) {}
   }
@@ -521,9 +532,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     final cached = CampusPrinterPage.cachedBlankPageBytes;
     if (cached != null && cached.isNotEmpty) {
       setState(() {
-        _fileBytes = cached;
-        _fileName = 'Blank Page.pdf';
-        _filePageCount = 1;
+        _selectedFiles = [
+          _SelectedFile(
+            name: 'Blank Page.pdf',
+            bytes: cached,
+            pageCount: 1,
+          ),
+        ];
       });
       return;
     }
@@ -551,13 +566,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
       if (!mounted) return;
       setState(() {
-        _fileBytes = bytes;
-        _fileName = 'Blank Page.pdf';
-        if (_isPdfFile(_fileName, bytes)) {
-          _filePageCount = 1;
-        } else {
-          _filePageCount = null;
-        }
+        _selectedFiles = [
+          _SelectedFile(
+            name: 'Blank Page.pdf',
+            bytes: bytes,
+            pageCount: 1,
+          ),
+        ];
       });
     } catch (_) {
       if (mounted) {
@@ -572,42 +587,28 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     }
   }
 
-  void _clearPickedFile() {
+  void _clearFileAt(int index) {
     if (_busy) return;
     setState(() {
-      _fileBytes = null;
-      _fileName = '';
-      _filePageCount = null;
+      final next = List<_SelectedFile>.from(_selectedFiles);
+      next.removeAt(index);
+      _selectedFiles = next;
     });
   }
 
-  String _formatFileSizeMb(Uint8List? bytes) {
-    final length = bytes?.lengthInBytes ?? 0;
+  String _formatFileSizeMb(Uint8List bytes) {
+    final length = bytes.lengthInBytes;
     if (length <= 0) return '0 MB';
     final mb = length / (1024 * 1024);
     return '${mb.toStringAsFixed(mb >= 10 ? 1 : 2)} MB';
   }
 
-  String _fileKindLabel() {
-    if (_fileName.trim().isEmpty) return 'File';
-    if (_isJpegFile(_fileName)) return 'JPEG';
-    if (_isPngFile(_fileName)) return 'PNG';
-    if (_filePageCount == null) return 'File';
-    return _filePageCount == 1 ? '1 Page' : '$_filePageCount Pages';
-  }
-
-  String _fileStatusLabel() {
-    return _fileName.isEmpty ? 'Choose File' : _fileName;
-  }
-
-  void _setPdfInfoFromBytes(Uint8List bytes) {
-    unawaited(() async {
-      final pdfInfo = await _readPdfInfo(bytes);
-      if (!mounted) return;
-      setState(() {
-        _filePageCount = pdfInfo.pageCount;
-      });
-    }());
+  String _fileKindLabelFor(_SelectedFile file) {
+    if (file.name.trim().isEmpty) return 'File';
+    if (_isJpegFile(file.name)) return 'JPEG';
+    if (_isPngFile(file.name)) return 'PNG';
+    if (file.pageCount == null) return 'File';
+    return file.pageCount == 1 ? '1 Page' : '${file.pageCount} Pages';
   }
 
   Future<({int? pageCount})> _readPdfInfo(Uint8List bytes) async {
@@ -644,13 +645,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         : (_studentName.trim().isNotEmpty
               ? _studentName.trim()
               : (_guestName.trim().isNotEmpty ? _guestName.trim() : studentId));
-    final bytes = _fileBytes;
 
     if (host.isEmpty) {
       showAppSnackBar(context, _snackNoPrinter);
       return;
     }
-    if (bytes == null || bytes.isEmpty) {
+    if (_selectedFiles.isEmpty) {
       showAppSnackBar(context, _snackChooseFile);
       return;
     }
@@ -678,58 +678,78 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         duplexMode: _duplexMode,
         collateMode: _collateMode,
       );
-      await client.sendFile(
-        bytes: bytes,
-        fileName: _fileName,
-        user: user,
-        clientName: clientName,
-        preferences: preferences,
-        onStatus: (message) {
+
+      for (int i = 0; i < _selectedFiles.length; i++) {
+        final file = _selectedFiles[i];
+        if (!mounted) return;
+        _showPrintProgress(
+          'Sending ${i + 1}/${_selectedFiles.length}: ${file.name}',
+          duration: const Duration(seconds: 2),
+        );
+        try {
+          await client.sendFile(
+            bytes: file.bytes,
+            fileName: file.name,
+            user: user,
+            clientName: clientName,
+            preferences: preferences,
+            onStatus: (message) {
+              if (!mounted) return;
+              _showPrintProgress(
+                message,
+                duration: _progressSnackDuration(copies),
+              );
+            },
+          );
           if (!mounted) return;
-          _showPrintProgress(message, duration: _progressSnackDuration(copies));
-        },
-      );
-      if (!mounted) return;
-      await _addHistory(
-        _PrintHistoryEntry(
-          fileName: _fileName,
-          printerHost: host,
-          copies: copies,
-          status: 'Sent',
-          message: 'Sent to campus printer',
-          createdAt: DateTime.now(),
-        ),
-      );
-      if (!mounted) return;
-      showAppSnackBar(context, _snackPrintSent);
-    } on _LprPrintException catch (error) {
-      if (!mounted) return;
-      await _addHistory(
-        _PrintHistoryEntry(
-          fileName: _fileName,
-          printerHost: host,
-          copies: copies,
-          status: 'Failed',
-          message: error.message,
-          createdAt: DateTime.now(),
-        ),
-      );
-      if (!mounted) return;
-      showAppSnackBar(context, _sanitizePrinterMessage(error.message));
-    } catch (_) {
-      if (!mounted) return;
-      await _addHistory(
-        _PrintHistoryEntry(
-          fileName: _fileName,
-          printerHost: host,
-          copies: copies,
-          status: 'Failed',
-          message: _snackPrintFailed,
-          createdAt: DateTime.now(),
-        ),
-      );
-      if (!mounted) return;
-      showAppSnackBar(context, _snackPrintFailed);
+          await _addHistory(
+            _PrintHistoryEntry(
+              fileName: file.name,
+              printerHost: host,
+              copies: copies,
+              status: 'Sent',
+              message: 'Sent to campus printer (${i + 1}/${_selectedFiles.length})',
+              createdAt: DateTime.now(),
+            ),
+          );
+        } on _LprPrintException catch (error) {
+          if (!mounted) return;
+          await _addHistory(
+            _PrintHistoryEntry(
+              fileName: file.name,
+              printerHost: host,
+              copies: copies,
+              status: 'Failed',
+              message: error.message,
+              createdAt: DateTime.now(),
+            ),
+          );
+          if (mounted) {
+            showAppSnackBar(context, '${file.name}: ${_sanitizePrinterMessage(error.message)}');
+          }
+        } catch (_) {
+          if (!mounted) return;
+          await _addHistory(
+            _PrintHistoryEntry(
+              fileName: file.name,
+              printerHost: host,
+              copies: copies,
+              status: 'Failed',
+              message: _snackPrintFailed,
+              createdAt: DateTime.now(),
+            ),
+          );
+          if (mounted) {
+            showAppSnackBar(context, '${file.name}: $_snackPrintFailed');
+          }
+        }
+        if (i < _selectedFiles.length - 1) {
+          await Future<void>.delayed(const Duration(seconds: 1));
+        }
+      }
+      if (mounted) {
+        showAppSnackBar(context, _snackPrintSent);
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -782,6 +802,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         !_busy &&
         !_discovering &&
         _printerHost.isNotEmpty &&
+        _selectedFiles.isNotEmpty &&
         (_studentId.isNotEmpty || _guestId != null) &&
         (_studentName.isNotEmpty || _guestName.isNotEmpty);
     final printerSubtitle = _discovering
@@ -869,46 +890,58 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _PrinterFileCard(
-                  title: _fileStatusLabel(),
-                  subtitle:
-                      '${_formatFileSizeMb(_fileBytes)} • ${_fileKindLabel()}',
-                  isEmpty: _fileName.isEmpty,
-                  onTap: _fileName.isEmpty && !_busy ? _pickPrintFile : null,
-                  onClear: _fileName.isNotEmpty ? _clearPickedFile : null,
-                  borderRadius: 8,
-                  emptyAction: _fileName.isEmpty
-                      ? Align(
+                if (_selectedFiles.isEmpty) ...[
+                  _PrinterFileCard(
+                    title: 'Choose Files',
+                    subtitle: '0 MB • Files',
+                    isEmpty: true,
+                    onTap: !_busy ? _pickPrintFile : null,
+                    borderRadius: 8,
+                    emptyAction: Align(
+                      alignment: Alignment.centerRight,
+                      child: SizedBox(
+                        width: 168,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
                           alignment: Alignment.centerRight,
-                          child: SizedBox(
-                            width: 168,
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerRight,
-                              child: BracuActionButton(
-                                onPressed: (_busy || _loadingPreset)
-                                    ? null
-                                    : _loadBlankPage,
-                                label: 'Blank Page',
-                                icon: Icons.download_rounded,
-                                isLoading: _loadingPreset,
-                                iconGap: 0,
-                                foregroundColor: BracuPalette.textPrimary(
-                                  context,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                borderRadius: 12,
-                                iconSize: 22,
-                                fontSize: 16,
-                              ),
+                          child: BracuActionButton(
+                            onPressed: (_busy || _loadingPreset)
+                                ? null
+                                : _loadBlankPage,
+                            label: 'Blank Page',
+                            icon: Icons.download_rounded,
+                            isLoading: _loadingPreset,
+                            iconGap: 0,
+                            foregroundColor: BracuPalette.textPrimary(
+                              context,
                             ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            borderRadius: 12,
+                            iconSize: 22,
+                            fontSize: 16,
                           ),
-                        )
-                      : null,
-                ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  for (int i = 0; i < _selectedFiles.length; i++) ...[
+                    _PrinterFileCard(
+                      title: _selectedFiles[i].name,
+                      subtitle:
+                          '${_formatFileSizeMb(_selectedFiles[i].bytes)} • ${_fileKindLabelFor(_selectedFiles[i])}',
+                      isEmpty: false,
+                      onTap: null,
+                      onClear: !_busy ? () => _clearFileAt(i) : null,
+                      borderRadius: 8,
+                    ),
+                    if (i < _selectedFiles.length - 1)
+                      const SizedBox(height: 6),
+                  ],
+                ],
                 const SizedBox(height: 6),
                 _PrinterPreferencesPanel(
                   copiesController: _copiesController,
