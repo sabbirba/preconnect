@@ -1262,28 +1262,46 @@ class _CaptivePortalWebViewState extends State<CaptivePortalWebView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: BracuPageScaffold(
-        title: 'Wi-Fi Portal',
-        subtitle: _loading ? 'Loading Portal...' : 'Login Details',
-        icon: Icons.language_rounded,
-        showBack: true,
-        actions: [
-          if (_loading)
-            const Center(
-              child: SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: BracuPalette.primary,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: WebViewWidget(controller: _controller),
+            ),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 48,
+                color: Colors.transparent,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: _loading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: BracuPalette.primary,
+                              ),
+                            )
+                          : const Icon(Icons.refresh_rounded),
+                      onPressed: _loading ? null : () => _controller.reload(),
+                    ),
+                  ],
                 ),
               ),
             ),
-        ],
-        body: Container(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          child: WebViewWidget(controller: _controller),
+          ],
         ),
       ),
     );
