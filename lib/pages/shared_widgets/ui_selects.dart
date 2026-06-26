@@ -275,11 +275,6 @@ class BracuSearchField extends StatelessWidget {
     final textColor = scheme.onSurface;
     final borderColor = scheme.onSurface.withValues(alpha: 0.24);
     return TextField(
-      key: keySuffix == null
-          ? null
-          : ValueKey<String>(
-              'bracu-search-$keySuffix-${Theme.of(context).brightness.name}',
-            ),
       controller: controller,
       autofocus: autofocus,
       style: TextStyle(color: textColor),

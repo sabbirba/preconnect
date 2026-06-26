@@ -45,6 +45,8 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   static const String _freeLabsUrl = ApiConfig.freeLabsDataUrl;
   static const String _freeLabsCacheKey = 'freelabs_json_v1';
 
+  late final TextEditingController _searchController;
+  String _searchQuery = '';
   late Future<List<_FreeRoomSlot>> _future;
   List<_FreeRoomSlot>? _latestSlots;
   int _slotsRequestId = 0;
@@ -58,6 +60,9 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   @override
   void initState() {
     super.initState();
+    _searchController = TextEditingController();
+    _searchController.addListener(_onSearchQueryChanged);
+    _loadCachedSearch();
     _future = _loadSlots();
     _bindSlotsFuture(_future);
     HomeTabRegistry.activeTab.addListener(_onActiveTabChanged);
@@ -69,10 +74,34 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
 
   @override
   void dispose() {
+    _searchController.removeListener(_onSearchQueryChanged);
+    _searchController.dispose();
     HomeTabRegistry.activeTab.removeListener(_onActiveTabChanged);
     _liveRefreshTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onSearchQueryChanged() {
+    final query = _searchController.text;
+    if (query != _searchQuery) {
+      setState(() {
+        _searchQuery = query;
+      });
+      final cache = AppPreferencesStore();
+      unawaited(cache.setString('freelabs_search_query', query));
+    }
+  }
+
+  Future<void> _loadCachedSearch() async {
+    final cache = AppPreferencesStore();
+    final query = await cache.getString('freelabs_search_query');
+    if (query != null && query.isNotEmpty && mounted) {
+      _searchController.text = query;
+      setState(() {
+        _searchQuery = query;
+      });
+    }
   }
 
   void _onActiveTabChanged() {
@@ -182,6 +211,18 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     };
   }
 
+  List<_FreeRoomSlot> _filterSlotsBySearch(List<_FreeRoomSlot> slots) {
+    if (_searchQuery.trim().isEmpty) return slots;
+    final query = _searchQuery.trim().toLowerCase();
+    return slots.where((slot) {
+      final roomMatch = slot.roomNumber.toLowerCase().contains(query) ||
+          slot.roomName.toLowerCase().contains(query);
+      final programMatch = slot.dominantProgramCode.toLowerCase().contains(query) ||
+          slot.courseTitlesLabel.toLowerCase().contains(query);
+      return roomMatch || programMatch;
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final cachedSlots = _latestSlots;
@@ -242,17 +283,40 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
             );
           }
 
-          final highlightIndex = _highlightIndex(visibleSlots);
+          final filteredSlots = _filterSlotsBySearch(visibleSlots);
+          if (filteredSlots.isEmpty) {
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
+                  child: BracuSearchField(
+                    controller: _searchController,
+                    hintText: 'Search rooms or programs...',
+                    query: _searchQuery,
+                    keySuffix: 'free-labs',
+                  ),
+                ),
+                Expanded(
+                  child: buildRefreshEmptyState(
+                    onRefresh: _refresh,
+                    message: 'No matching rooms found for "$_searchQuery".',
+                  ),
+                ),
+              ],
+            );
+          }
+
+          final highlightIndex = _highlightIndex(filteredSlots);
           final highlightedSlot = highlightIndex == null
               ? null
-              : visibleSlots[highlightIndex];
+              : filteredSlots[highlightIndex];
           final highlightToken = highlightedSlot == null
               ? null
               : '${highlightedSlot.roomNumber}_${highlightedSlot.startTime}_${highlightedSlot.endTime}';
           _highlightScroll.clearHighlightKey();
 
           final groupedSlots = <String, List<_FreeRoomSlot>>{};
-          for (final slot in visibleSlots) {
+          for (final slot in filteredSlots) {
             final key = '${slot.startTime}|${slot.endTime}';
             groupedSlots.putIfAbsent(key, () => <_FreeRoomSlot>[]).add(slot);
           }
@@ -291,7 +355,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                         '${slot.roomNumber}_${slot.startTime}_${slot.endTime}';
                     final isHighlighted = slotToken == highlightToken;
                     _highlightScroll.markHighlighted(isHighlighted);
-                    final roomSlots = visibleSlots
+                    final roomSlots = filteredSlots
                         .where((item) => item.roomNumber == slot.roomNumber)
                         .toList();
                     return Padding(
@@ -317,7 +381,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
               _highlightScroll.scrollToTarget(
                 targetToken: highlightToken,
                 targetIndex: highlightIndex,
-                itemCount: visibleSlots.length,
+                itemCount: filteredSlots.length,
                 onRetryBuild: () {
                   if (mounted) {
                     setState(() {});
@@ -327,10 +391,25 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
             );
           }
 
-          return BracuRefreshList(
-            onRefresh: _refresh,
-            controller: _scrollController,
-            children: children,
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
+                child: BracuSearchField(
+                  controller: _searchController,
+                  hintText: 'Search rooms or programs...',
+                  query: _searchQuery,
+                  keySuffix: 'free-labs',
+                ),
+              ),
+              Expanded(
+                child: BracuRefreshList(
+                  onRefresh: _refresh,
+                  controller: _scrollController,
+                  children: children,
+                ),
+              ),
+            ],
           );
         },
       ),
@@ -826,7 +905,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
         if (countCompare != 0) return countCompare;
         return a.key.compareTo(b.key);
       });
-    return sorted.first.key;
+    return sorted.take(3).map((e) => e.key).join(', ');
   }
 
   String _courseProgramCode(String courseCode) {
