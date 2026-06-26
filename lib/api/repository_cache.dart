@@ -18,11 +18,14 @@ class RepositoryCache {
     required Future<T?> Function({required bool fromFetch}) readCache,
     Duration cacheDuration = const Duration(seconds: 2),
   }) async {
+    final etag = await _store.getString(etagKey);
     return _client.fetchWithFallback<T>(
       url: url,
       fromGet: fromGet,
       cacheResponse: cacheResponse,
       readCache: readCache,
+      etag: etag,
+      cacheEtag: (newEtag) => _store.setString(etagKey, newEtag),
       cacheDuration: cacheDuration,
     );
   }

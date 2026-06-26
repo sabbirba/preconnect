@@ -529,6 +529,7 @@ class FCMService {
           debugPrint(
             "Standard Web foreground message: ${message.notification?.title}",
           );
+          RefreshBus.instance.notify(reason: 'push_notification');
         });
       } catch (e) {
         debugPrint("Error registering standard web foreground listener: $e");
@@ -571,6 +572,7 @@ class FCMService {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint("Foreground message: ${message.notification?.title}");
       _showLocalNotification(message);
+      RefreshBus.instance.notify(reason: 'push_notification');
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageTap);

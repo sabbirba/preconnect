@@ -20,7 +20,8 @@ class NotificationsPage extends StatefulWidget {
   State<NotificationsPage> createState() => _NotificationsPageState();
 }
 
-class _NotificationsPageState extends State<NotificationsPage> {
+class _NotificationsPageState extends State<NotificationsPage>
+    with RefreshBusState<NotificationsPage> {
   static const int _pageSize = 32;
   static final PreloadCache<NotificationsViewData> cache =
       PreloadCache<NotificationsViewData>();
@@ -39,6 +40,20 @@ class _NotificationsPageState extends State<NotificationsPage> {
       _future = _startWithCache();
     }
     unawaited(_warmAndBind());
+    bindRefreshBus(_onRefreshSignal);
+  }
+
+  @override
+  void dispose() {
+    unbindRefreshBus(_onRefreshSignal);
+    super.dispose();
+  }
+
+  void _onRefreshSignal() {
+    if (!mounted) return;
+    if (isRefreshingFrom('push_notification') || isRefreshingFrom('refresh')) {
+      unawaited(_refresh());
+    }
   }
 
   Future<NotificationsViewData> _startWithCache() async {

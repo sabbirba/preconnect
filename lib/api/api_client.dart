@@ -345,12 +345,16 @@ class ApiClient {
     String url, {
     String? etag,
     Map<String, String> additionalHeaders = const <String, String>{},
-    Set<int> acceptedStatusCodes = const <int>{200},
+    Set<int> acceptedStatusCodes = const <int>{200, 304},
     Duration cacheDuration = _defaultGetCacheTtl,
   }) {
+    final headers = <String, String>{...additionalHeaders};
+    if (etag != null && etag.isNotEmpty) {
+      headers['If-None-Match'] = etag;
+    }
     return authenticatedGet(
       url,
-      additionalHeaders: additionalHeaders,
+      additionalHeaders: headers,
       acceptedStatusCodes: acceptedStatusCodes,
       cacheDuration: cacheDuration,
     );
@@ -370,11 +374,23 @@ class ApiClient {
     }
 
     try {
+      final headers = <String, String>{};
+      if (etag != null && etag.isNotEmpty) {
+        headers['If-None-Match'] = etag;
+      }
       final response = await authenticatedGet(
         url,
-        acceptedStatusCodes: const <int>{200},
+        additionalHeaders: headers,
+        acceptedStatusCodes: const <int>{200, 304},
         cacheDuration: cacheDuration,
       );
+      if (response.statusCode == 304) {
+        return readCache(fromFetch: true);
+      }
+      final newEtag = response.headers['etag'];
+      if (newEtag != null && newEtag.isNotEmpty && cacheEtag != null) {
+        await cacheEtag(newEtag);
+      }
       await cacheResponse(response);
       return readCache(fromFetch: true);
     } on UnauthenticatedException {
