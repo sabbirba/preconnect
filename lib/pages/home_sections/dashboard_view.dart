@@ -895,13 +895,32 @@ extension _HomeDashboardView on _HomeDashboardState {
       },
     ),
     _DashboardQuickAccess(
+      tab: null,
+      icon: Icons.local_library_outlined,
+      title: 'Library',
+      subtitle: 'Libsync',
+      color: const Color(0xFF007ACC),
+      onTap: (context) {
+        showAppSnackBar(context, 'Coming in the next update');
+      },
+    ),
+    _DashboardQuickAccess(
+      tab: null,
+      icon: Icons.find_in_page_outlined,
+      title: 'Course',
+      subtitle: 'Leaks',
+      color: const Color(0xFFE05252),
+      onTap: (context) {
+        showAppSnackBar(context, 'Coming in the next update');
+      },
+    ),
+    _DashboardQuickAccess(
       tab: HomeTab.campusPrinter,
       icon: Icons.local_printshop_outlined,
       title: 'Printer',
       subtitle: 'Campus',
       color: const Color(0xFF22B573),
     ),
-    // Events (Calendar) is now the 14th item (last item in the expandable list)
     _DashboardQuickAccess(
       tab: HomeTab.calendar,
       icon: Icons.calendar_today_outlined,
