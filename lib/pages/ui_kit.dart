@@ -25,7 +25,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
 
-
 export 'package:preconnect/tools/web_shared.dart';
 
 part 'shared_widgets/ui_core.dart';
@@ -532,9 +531,7 @@ class BracuActionBannerCard extends StatelessWidget {
                 Container(
                   width: 36,
                   height: 36,
-                  decoration: const BoxDecoration(
-                    color: Colors.transparent,
-                  ),
+                  decoration: const BoxDecoration(color: Colors.transparent),
                   child: Icon(icon, color: iconColor, size: 18),
                 )
               else
@@ -957,11 +954,7 @@ class BracuFundingPromoDivider extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.share_outlined,
-                      size: 14,
-                      color: textPrimary,
-                    ),
+                    Icon(Icons.share_outlined, size: 14, color: textPrimary),
                     const SizedBox(width: 6),
                     Text(
                       'Share',
@@ -985,9 +978,7 @@ class BracuFundingPromoDivider extends StatelessWidget {
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: textSecondary.withValues(
-                alpha: isDark ? 0.22 : 0.16,
-              ),
+              color: textSecondary.withValues(alpha: isDark ? 0.22 : 0.16),
             ),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1000,11 +991,7 @@ class BracuFundingPromoDivider extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             child: Text(
               textContent,
-              style: TextStyle(
-                color: textSecondary,
-                fontSize: 13,
-                height: 1.4,
-              ),
+              style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
             ),
           ),
         ),

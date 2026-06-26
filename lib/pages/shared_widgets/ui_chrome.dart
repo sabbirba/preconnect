@@ -561,9 +561,7 @@ class SectionBadge extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: const BoxDecoration(
-        color: Colors.transparent,
-      ),
+      decoration: const BoxDecoration(color: Colors.transparent),
       alignment: Alignment.center,
       child: Text(
         displayLabel,
@@ -639,9 +637,7 @@ class QuickAccessCard extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: Colors.transparent,
-              ),
+              decoration: const BoxDecoration(color: Colors.transparent),
               child: isLoading
                   ? Icon(icon, color: color, size: 22)
                   : Icon(icon, color: color, size: 22),
@@ -718,9 +714,7 @@ class FriendActionCard extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(7),
-              decoration: const BoxDecoration(
-                color: Colors.transparent,
-              ),
+              decoration: const BoxDecoration(color: Colors.transparent),
               child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(height: 8),

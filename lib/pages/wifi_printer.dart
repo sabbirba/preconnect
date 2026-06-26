@@ -221,11 +221,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   final TextEditingController _copiesController = TextEditingController(
     text: '1',
   );
+  final TextEditingController _studentIdController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _copiesController.addListener(_handleCopiesControllerChanged);
+    _studentIdController.addListener(_handleStudentIdControllerChanged);
     if (AndroidNetworkAssist.isSupported) {
       _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen(
         (status) => unawaited(_handleNetworkStatusChanged(status)),
@@ -243,6 +245,16 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _copies = nextCopies;
     });
     unawaited(_savePrinterPreferences());
+  }
+
+  void _handleStudentIdControllerChanged() {
+    final value = _studentIdController.text.trim();
+    if (value != _studentId) {
+      setState(() {
+        _studentId = value;
+      });
+      AppStorage.instance.setString(StorageKeys.studentId, value);
+    }
   }
 
   void _setCopiesControllerText(int copies) {
@@ -274,6 +286,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _copies = bootstrap.copies;
       _history = bootstrap.history;
       _studentId = bootstrap.studentId;
+      _studentIdController.text = bootstrap.studentId;
       _studentName = bootstrap.studentName;
       _studentShortCode = bootstrap.studentShortCode;
       _currentSemester = bootstrap.currentSemester;
@@ -293,6 +306,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _copies = bootstrap.copies;
       _history = bootstrap.history;
       _studentId = bootstrap.studentId;
+      _studentIdController.text = bootstrap.studentId;
       _studentName = bootstrap.studentName;
       _studentShortCode = bootstrap.studentShortCode;
       _currentSemester = bootstrap.currentSemester;
@@ -314,6 +328,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     _networkStatusSubscription?.cancel();
     _copiesController.removeListener(_handleCopiesControllerChanged);
     _copiesController.dispose();
+    _studentIdController.removeListener(_handleStudentIdControllerChanged);
+    _studentIdController.dispose();
     super.dispose();
   }
 
@@ -825,7 +841,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                     name: _studentName,
                     shortCode: _studentShortCode,
                     semester: _currentSemester,
-                    studentId: _studentId,
+                    studentIdController: _studentIdController,
                     wifiName: _wifiName,
                     printerHost: _printerHost,
                   ),
@@ -981,7 +997,7 @@ class _StudentPrintDetails extends StatelessWidget {
     required this.name,
     required this.shortCode,
     required this.semester,
-    required this.studentId,
+    required this.studentIdController,
     required this.wifiName,
     required this.printerHost,
   });
@@ -989,7 +1005,7 @@ class _StudentPrintDetails extends StatelessWidget {
   final String name;
   final String shortCode;
   final String semester;
-  final String studentId;
+  final TextEditingController studentIdController;
   final String wifiName;
   final String printerHost;
 
@@ -999,13 +1015,8 @@ class _StudentPrintDetails extends StatelessWidget {
       (label: 'Name', value: name.trim()),
       (label: 'Program', value: shortCode.trim()),
       (label: 'Semester', value: semester.trim()),
-      (label: 'Student ID', value: studentId.trim()),
       (label: 'Printer', value: printerHost.trim()),
     ].where((row) => row.value.isNotEmpty).toList();
-
-    if (rows.isEmpty) {
-      return const SizedBox.shrink();
-    }
 
     return Table(
       columnWidths: const <int, TableColumnWidth>{
@@ -1041,6 +1052,37 @@ class _StudentPrintDetails extends StatelessWidget {
               ),
             ],
           ),
+        TableRow(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(right: 10, bottom: 4),
+              child: Text(
+                'Student ID',
+                style: TextStyle(
+                  color: BracuPalette.textSecondary(context),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: TextField(
+                controller: studentIdController,
+                style: TextStyle(
+                  color: BracuPalette.textPrimary(context),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+                decoration: const InputDecoration(
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(vertical: 4),
+                  border: InputBorder.none,
+                ),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }

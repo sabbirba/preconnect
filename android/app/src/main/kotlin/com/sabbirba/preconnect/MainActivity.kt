@@ -58,6 +58,18 @@ class MainActivity : FlutterFragmentActivity() {
         getSharedPreferences("preconnect.network_assist", Context.MODE_PRIVATE)
     }
 
+    private val REQUEST_CODE_LOCATION_SETTINGS = 1092
+    private var locationSettingsResult: MethodChannel.Result? = null
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_CODE_LOCATION_SETTINGS) {
+            val success = resultCode == RESULT_OK
+            locationSettingsResult?.success(success)
+            locationSettingsResult = null
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         cacheShortcutAction(intent)
@@ -199,6 +211,113 @@ class MainActivity : FlutterFragmentActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "getNetworkStatus" -> result.success(currentNetworkStatus())
+                    "isLocationServiceEnabled" -> {
+                        val lm = getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
+                        val enabled = try {
+                            lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER) ||
+                                    lm.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER)
+                        } catch (e: Exception) {
+                            false
+                        }
+                        result.success(enabled)
+                    }
+                    "openLocationSettings" -> {
+                        try {
+                            locationSettingsResult = result
+                            val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
+                                com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, 5000
+                            ).build()
+                            val builder = com.google.android.gms.location.LocationSettingsRequest.Builder()
+                                .addLocationRequest(locationRequest)
+                            val client = com.google.android.gms.location.LocationServices.getSettingsClient(this)
+                            val task = client.checkLocationSettings(builder.build())
+                            task.addOnCompleteListener { t ->
+                                try {
+                                    t.getResult(com.google.android.gms.common.api.ApiException::class.java)
+                                    result.success(true)
+                                    locationSettingsResult = null
+                                } catch (exception: com.google.android.gms.common.api.ApiException) {
+                                    when (exception.statusCode) {
+                                        com.google.android.gms.location.LocationSettingsStatusCodes.RESOLUTION_REQUIRED -> {
+                                            try {
+                                                val resolvable = exception as com.google.android.gms.common.api.ResolvableApiException
+                                                resolvable.startResolutionForResult(this, REQUEST_CODE_LOCATION_SETTINGS)
+                                            } catch (e: Exception) {
+                                                result.success(false)
+                                                locationSettingsResult = null
+                                            }
+                                        }
+                                        else -> {
+                                            val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            startActivity(intent)
+                                            result.success(true)
+                                            locationSettingsResult = null
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            try {
+                                val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                startActivity(intent)
+                                result.success(true)
+                            } catch (e2: Exception) {
+                                result.success(false)
+                            }
+                        }
+                    }
+                    "openWifiSettings" -> {
+                        try {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                val intent = Intent(Settings.Panel.ACTION_WIFI)
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                startActivity(intent)
+                                result.success(true)
+                            } else {
+                                val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                startActivity(intent)
+                                result.success(true)
+                            }
+                        } catch (e: Exception) {
+                            try {
+                                val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                startActivity(intent)
+                                result.success(true)
+                            } catch (e2: Exception) {
+                                result.success(false)
+                            }
+                        }
+                    }
+                    "getWifiScanResults" -> {
+                        val hasLocation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                        } else {
+                            true
+                        }
+                        val hasNearby = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            checkSelfPermission("android.permission.NEARBY_WIFI_DEVICES") == PackageManager.PERMISSION_GRANTED
+                        } else {
+                            true
+                        }
+                        if (hasLocation || hasNearby) {
+                            try {
+                                @Suppress("DEPRECATION")
+                                wifiManager.startScan()
+                            } catch (_: Exception) {}
+                            val list = try {
+                                wifiManager.scanResults.mapNotNull { it.SSID }.filter { it.isNotBlank() }.distinct()
+                            } catch (e: Exception) {
+                                emptyList<String>()
+                            }
+                            result.success(list)
+                        } else {
+                            result.success(emptyList<String>())
+                        }
+                    }
                     "addWifiSuggestion" -> addWifiSuggestion(call, result)
                     "removeAllWifiSuggestions" -> removeAllWifiSuggestions(result)
                     "getAndClearPostConnectionEvent" -> result.success(getAndClearPostConnectionEvent())
@@ -505,7 +624,8 @@ class MainActivity : FlutterFragmentActivity() {
             }
         }
         val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+            .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
             .build()
         try {
             connectivityManager.registerNetworkCallback(request, callback)
@@ -709,15 +829,19 @@ class MainActivity : FlutterFragmentActivity() {
 
     private fun currentWifiSsid(): String? {
         return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            @Suppress("DEPRECATION")
+            val info = wifiManager.connectionInfo
+            val raw = info?.ssid?.trim().orEmpty()
+            val normalized = normalizeSsid(raw)
+            if (normalized != null) {
+                normalized
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val network = connectivityManager.activeNetwork ?: return null
                 val caps = connectivityManager.getNetworkCapabilities(network) ?: return null
                 val wifiInfo = caps.transportInfo as? WifiInfo
                 normalizeSsid(wifiInfo?.ssid?.trim().orEmpty())
             } else {
-                @Suppress("DEPRECATION")
-                val raw = wifiManager.connectionInfo?.ssid?.trim().orEmpty()
-                normalizeSsid(raw)
+                null
             }
         } catch (_: Exception) {
             null
@@ -751,7 +875,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     private fun getWifiInfo(network: Network, caps: NetworkCapabilities?): WifiInfo? {
         return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 (caps ?: connectivityManager.getNetworkCapabilities(network))?.transportInfo as? WifiInfo
             } else {
                 @Suppress("DEPRECATION")

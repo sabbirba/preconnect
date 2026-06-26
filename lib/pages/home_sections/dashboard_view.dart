@@ -692,9 +692,9 @@ extension _HomeDashboardView on _HomeDashboardState {
                               turns: 0.5,
                               duration: const Duration(milliseconds: 250),
                               child: Icon(
-                                  Icons.keyboard_arrow_down_rounded,
-                                  size: 16,
-                                  color: primaryColor,
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 16,
+                                color: primaryColor,
                               ),
                             ),
                           ],
@@ -711,7 +711,10 @@ extension _HomeDashboardView on _HomeDashboardState {
                       behavior: HitTestBehavior.opaque,
                       child: IgnorePointer(
                         child: Padding(
-                          padding: EdgeInsets.only(top: layout.spacing, bottom: 12),
+                          padding: EdgeInsets.only(
+                            top: layout.spacing,
+                            bottom: 12,
+                          ),
                           child: ClipRect(
                             child: Align(
                               alignment: Alignment.topCenter,
@@ -723,7 +726,14 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     end: Alignment.bottomCenter,
                                     colors: [Colors.black, Colors.transparent],
                                     stops: [0.0, 1.0],
-                                  ).createShader(Rect.fromLTRB(0, 0, rect.width, rect.height));
+                                  ).createShader(
+                                    Rect.fromLTRB(
+                                      0,
+                                      0,
+                                      rect.width,
+                                      rect.height,
+                                    ),
+                                  );
                                 },
                                 blendMode: BlendMode.dstIn,
                                 child: Center(
@@ -732,7 +742,9 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     runAlignment: WrapAlignment.center,
                                     spacing: layout.spacing,
                                     runSpacing: layout.spacing,
-                                    children: expandableItems.take(4).map((item) {
+                                    children: expandableItems.take(4).map((
+                                      item,
+                                    ) {
                                       return QuickAccessCard(
                                         width: layout.itemWidth,
                                         icon: item.icon,

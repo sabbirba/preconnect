@@ -118,9 +118,7 @@ class _ContactsCard extends StatelessWidget {
                   Container(
                     width: 28,
                     height: 28,
-                    decoration: const BoxDecoration(
-                      color: Colors.transparent,
-                    ),
+                    decoration: const BoxDecoration(color: Colors.transparent),
                     alignment: Alignment.center,
                     child: Icon(
                       Icons.person_rounded,
@@ -204,9 +202,7 @@ class _GeneralInstructionsCard extends StatelessWidget {
                     width: 24,
                     height: 24,
                     alignment: Alignment.center,
-                    decoration: const BoxDecoration(
-                      color: Colors.transparent,
-                    ),
+                    decoration: const BoxDecoration(color: Colors.transparent),
                     child: Text(
                       '${entry.key + 1}',
                       style: TextStyle(

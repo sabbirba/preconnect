@@ -215,9 +215,11 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     if (_searchQuery.trim().isEmpty) return slots;
     final query = _searchQuery.trim().toLowerCase();
     return slots.where((slot) {
-      final roomMatch = slot.roomNumber.toLowerCase().contains(query) ||
+      final roomMatch =
+          slot.roomNumber.toLowerCase().contains(query) ||
           slot.roomName.toLowerCase().contains(query);
-      final programMatch = slot.dominantProgramCode.toLowerCase().contains(query) ||
+      final programMatch =
+          slot.dominantProgramCode.toLowerCase().contains(query) ||
           slot.courseTitlesLabel.toLowerCase().contains(query);
       return roomMatch || programMatch;
     }).toList();

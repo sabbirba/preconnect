@@ -914,8 +914,7 @@ class _HomeData {
                 visibilityJson['showCampusMapContacts'] == true,
             showNotificationsIcon:
                 visibilityJson['showNotificationsIcon'] == true,
-            showFundingSection:
-                visibilityJson['showFundingSection'] == true,
+            showFundingSection: visibilityJson['showFundingSection'] == true,
           )
         : HomeCardPreferences.defaults;
     final overridesJson = json['examOverrides'];

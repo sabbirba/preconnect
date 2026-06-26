@@ -548,9 +548,9 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     if (status.transport != 'wifi' || !status.connected) return;
     final currentSsid = (status.ssid ?? '').trim();
     if (currentSsid.isEmpty) return;
-    final isCampusSsid =
-        currentSsid.toLowerCase() ==
-        CaptiveLoginStore.defaultCampusSsid.toLowerCase();
+    final savedSsid = await CaptiveLoginStore.instance.readSsid();
+    if (savedSsid.isEmpty) return;
+    final isCampusSsid = currentSsid.toLowerCase() == savedSsid.toLowerCase();
     if (!isCampusSsid) return;
 
     final now = DateTime.now();
@@ -606,6 +606,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
             studentId: studentId,
             password: creds.password,
             captiveWifiUrl: captiveWifiUri,
+            ssid: status.ssid ?? '',
           )
           .timeout(_silentLoginTimeout, onTimeout: () => false);
       if (success && mounted) {
@@ -724,12 +725,15 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         return;
       }
 
+      final savedSsid = await CaptiveLoginStore.instance.readSsid();
+      final ssid = (status.ssid ?? savedSsid).trim();
       await AndroidNetworkAssist.bindToWifiNetwork();
       final success = await CaptiveWifiHttp.instance
           .loginViaCaptiveApi(
             studentId: studentId,
             password: creds.password,
             captiveWifiUrl: captiveWifiUri,
+            ssid: ssid,
           )
           .timeout(const Duration(seconds: 45), onTimeout: () => false);
 

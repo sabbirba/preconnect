@@ -752,18 +752,20 @@ class FCMService {
       if (!await client.hasAccessToken()) return;
       final url =
           '${ApiConfig.realtimeApiBase}${PreConnectPushConfig.sendConfirmationPath}';
-      unawaited(client.authenticatedRequest(
-        'POST',
-        url,
-        body: jsonEncode(<String, dynamic>{
-          'token': token,
-          'courseCode': courseCode,
-          'sectionName': sectionName,
-        }),
-        additionalHeaders: const <String, String>{
-          'Content-Type': 'application/json',
-        },
-      ));
+      unawaited(
+        client.authenticatedRequest(
+          'POST',
+          url,
+          body: jsonEncode(<String, dynamic>{
+            'token': token,
+            'courseCode': courseCode,
+            'sectionName': sectionName,
+          }),
+          additionalHeaders: const <String, String>{
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
     } catch (e) {
       debugPrint("FCM confirmation push failed: $e");
     }

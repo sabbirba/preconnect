@@ -231,7 +231,6 @@ class _SettingsPageState extends State<SettingsPage>
     RefreshBus.instance.notify(reason: 'quiet_mode_settings_changed');
   }
 
-
   Future<void> _exportSessionForWeb() async {
     await ExportSessionBottomSheet.show(context);
   }
@@ -413,7 +412,6 @@ class _SettingsPageState extends State<SettingsPage>
             ),
           ],
           const SizedBox(height: _sectionGap),
-
         ],
       ),
     );

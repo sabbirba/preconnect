@@ -152,11 +152,20 @@ class CaptiveLoginStore {
   CaptiveLoginStore._();
 
   static final CaptiveLoginStore instance = CaptiveLoginStore._();
-  static const String _passwordKey = 'wifi_captive_password';
-  static const String _autoExtendEnabledKey = 'wifi_captive_auto_extend';
   static const String defaultCampusSsid = 'Student-WiFi';
+  static const String _passwordKey = 'wifi_captive_password';
+  static const String _ssidKey = 'wifi_captive_ssid';
+  static const String _autoExtendEnabledKey = 'wifi_captive_auto_extend';
 
   final TokenStorage _storage = TokenStorage.instance;
+
+  Future<String> readSsid() async {
+    return (await _storage.read(key: _ssidKey) ?? '').trim();
+  }
+
+  Future<void> saveSsid(String ssid) async {
+    await _storage.write(key: _ssidKey, value: ssid);
+  }
 
   Future<bool> readAutoExtendEnabled() async {
     final raw = (await _storage.read(key: _autoExtendEnabledKey) ?? 'true')

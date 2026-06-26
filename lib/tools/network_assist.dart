@@ -90,6 +90,49 @@ class AndroidNetworkAssist {
     return null;
   }
 
+  static Future<List<String>> getWifiScanResults() async {
+    if (!isSupported) return const [];
+    try {
+      final List<dynamic>? list = await _channel.invokeMethod<List<dynamic>>(
+        'getWifiScanResults',
+      );
+      if (list != null) {
+        return list.map((dynamic e) => '$e').toList();
+      }
+    } catch (_) {}
+    return const [];
+  }
+
+  static Future<bool> openWifiSettings() async {
+    if (!isSupported) return false;
+    try {
+      final res = await _channel.invokeMethod<bool>('openWifiSettings');
+      return res == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> isLocationServiceEnabled() async {
+    if (!isSupported) return true;
+    try {
+      final res = await _channel.invokeMethod<bool>('isLocationServiceEnabled');
+      return res == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> openLocationSettings() async {
+    if (!isSupported) return false;
+    try {
+      final res = await _channel.invokeMethod<bool>('openLocationSettings');
+      return res == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Stream<AndroidNetworkStatus> get statusStream {
     if (!isSupported) {
       return const Stream<AndroidNetworkStatus>.empty();
@@ -175,7 +218,9 @@ class AndroidNetworkAssist {
   static Future<bool> reportCaptivePortalDismissed() async {
     if (!isSupported) return false;
     try {
-      final res = await _channel.invokeMethod<bool>('reportCaptivePortalDismissed');
+      final res = await _channel.invokeMethod<bool>(
+        'reportCaptivePortalDismissed',
+      );
       return res == true;
     } catch (_) {
       return false;
