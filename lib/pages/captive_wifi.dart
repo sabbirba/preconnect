@@ -590,7 +590,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
             _currentStatus!.ssid?.trim().toLowerCase() ==
                 _ssidController.text.trim().toLowerCase());
 
-    final bool isSessionActive = _currentStatus != null &&
+    final bool isSessionActive =
+        _currentStatus != null &&
         _currentStatus!.connected &&
         !_currentStatus!.captive &&
         _currentStatus!.validated;
@@ -725,13 +726,14 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                         const SizedBox(width: 10),
                         Expanded(
                           child: BracuActionButton(
-                            onPressed: _isConnecting ||
+                            onPressed:
+                                _isConnecting ||
                                     _isDisconnecting ||
                                     !isCorrectSsid
                                 ? null
                                 : (isSessionActive
-                                    ? () => unawaited(_runDisconnect())
-                                    : () => unawaited(_runOneTapConnect())),
+                                      ? () => unawaited(_runDisconnect())
+                                      : () => unawaited(_runOneTapConnect())),
                             icon: isSessionActive
                                 ? Icons.wifi_off_rounded
                                 : Icons.wifi_rounded,
@@ -1111,35 +1113,40 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                 context,
                 stepNumber: '1',
                 title: 'Connect to Wi-Fi',
-                body: 'Ensure your device Wi-Fi is turned on and connected to the Student-WiFi network.',
+                body:
+                    'Ensure your device Wi-Fi is turned on and connected to the Student-WiFi network.',
               ),
               const SizedBox(height: 14),
               _buildStepItem(
                 context,
                 stepNumber: '2',
                 title: 'Enter Credentials',
-                body: 'Provide your campus Student ID and Portal password correctly in the input fields.',
+                body:
+                    'Provide your campus Student ID and Portal password correctly in the input fields.',
               ),
               const SizedBox(height: 14),
               _buildStepItem(
                 context,
                 stepNumber: '3',
                 title: 'Connect Session',
-                body: 'Tap the Connect button. PreConnect will automatically configure and authenticate you.',
+                body:
+                    'Tap the Connect button. PreConnect will automatically configure and authenticate you.',
               ),
               const SizedBox(height: 14),
               _buildStepItem(
                 context,
                 stepNumber: '4',
                 title: 'Auto Extend Session',
-                body: 'Enable Auto Extend to allow PreConnect to run in the background and auto-renew your connectivity.',
+                body:
+                    'Enable Auto Extend to allow PreConnect to run in the background and auto-renew your connectivity.',
               ),
               const SizedBox(height: 14),
               _buildStepItem(
                 context,
                 stepNumber: '5',
                 title: 'Disconnect/Logout',
-                body: 'Tap Disconnect to log out of the active captive portal network session immediately.',
+                body:
+                    'Tap Disconnect to log out of the active captive portal network session immediately.',
               ),
             ],
           ),
@@ -1266,9 +1273,7 @@ class _CaptivePortalWebViewState extends State<CaptivePortalWebView> {
       body: SafeArea(
         child: Stack(
           children: [
-            Positioned.fill(
-              child: WebViewWidget(controller: _controller),
-            ),
+            Positioned.fill(child: WebViewWidget(controller: _controller)),
             Positioned(
               top: 0,
               left: 0,

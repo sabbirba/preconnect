@@ -62,20 +62,23 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     _future = _initializeHomeData(forceRefresh: forceRefresh);
     unawaited(_warmAndBind(forceRefresh: forceRefresh));
     if (AndroidNetworkAssist.isSupported) {
-      _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen(
-        (status) {
-          if (!mounted) return;
-          unawaited(_consumePostConnectionEvent());
-          unawaited(_maybeAutoExtendSession(status));
-          final shouldOpenAssistant = status.captive ||
-              (status.transport == 'wifi' && status.connected && !status.validated);
-          if (shouldOpenAssistant) {
-            unawaited(_maybeAutoOpenWifiAssistant(status));
-          } else {
-            _autoOpenedWifiAssistant = false;
-          }
-        },
-      );
+      _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen((
+        status,
+      ) {
+        if (!mounted) return;
+        unawaited(_consumePostConnectionEvent());
+        unawaited(_maybeAutoExtendSession(status));
+        final shouldOpenAssistant =
+            status.captive ||
+            (status.transport == 'wifi' &&
+                status.connected &&
+                !status.validated);
+        if (shouldOpenAssistant) {
+          unawaited(_maybeAutoOpenWifiAssistant(status));
+        } else {
+          _autoOpenedWifiAssistant = false;
+        }
+      });
       unawaited(_consumePostConnectionEvent());
     }
     _todayScheduleAutoRefreshTimer = Timer.periodic(

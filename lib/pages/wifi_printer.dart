@@ -178,11 +178,7 @@ class CampusPrinterPage extends StatefulWidget {
 }
 
 class _SelectedFile {
-  _SelectedFile({
-    required this.name,
-    required this.bytes,
-    this.pageCount,
-  });
+  _SelectedFile({required this.name, required this.bytes, this.pageCount});
 
   final String name;
   final Uint8List bytes;
@@ -521,7 +517,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         return;
       }
       setState(() {
-        _selectedFiles = List<_SelectedFile>.from(_selectedFiles)..addAll(nextFiles);
+        _selectedFiles = List<_SelectedFile>.from(_selectedFiles)
+          ..addAll(nextFiles);
       });
     } catch (_) {}
   }
@@ -533,11 +530,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     if (cached != null && cached.isNotEmpty) {
       setState(() {
         _selectedFiles = [
-          _SelectedFile(
-            name: 'Blank Page.pdf',
-            bytes: cached,
-            pageCount: 1,
-          ),
+          _SelectedFile(name: 'Blank Page.pdf', bytes: cached, pageCount: 1),
         ];
       });
       return;
@@ -567,11 +560,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       if (!mounted) return;
       setState(() {
         _selectedFiles = [
-          _SelectedFile(
-            name: 'Blank Page.pdf',
-            bytes: bytes,
-            pageCount: 1,
-          ),
+          _SelectedFile(name: 'Blank Page.pdf', bytes: bytes, pageCount: 1),
         ];
       });
     } catch (_) {
@@ -708,7 +697,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               printerHost: host,
               copies: copies,
               status: 'Sent',
-              message: 'Sent to campus printer (${i + 1}/${_selectedFiles.length})',
+              message:
+                  'Sent to campus printer (${i + 1}/${_selectedFiles.length})',
               createdAt: DateTime.now(),
             ),
           );
@@ -725,7 +715,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
             ),
           );
           if (mounted) {
-            showAppSnackBar(context, '${file.name}: ${_sanitizePrinterMessage(error.message)}');
+            showAppSnackBar(
+              context,
+              '${file.name}: ${_sanitizePrinterMessage(error.message)}',
+            );
           }
         } catch (_) {
           if (!mounted) return;
@@ -912,9 +905,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                             icon: Icons.download_rounded,
                             isLoading: _loadingPreset,
                             iconGap: 0,
-                            foregroundColor: BracuPalette.textPrimary(
-                              context,
-                            ),
+                            foregroundColor: BracuPalette.textPrimary(context),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 10,
@@ -1016,35 +1007,40 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 context,
                 stepNumber: '1',
                 title: 'Connect to Wi-Fi',
-                body: 'Make sure your device is connected to the Student-WiFi or university network.',
+                body:
+                    'Make sure your device is connected to the Student-WiFi or university network.',
               ),
               const SizedBox(height: 14),
               _buildStepItem(
                 context,
                 stepNumber: '2',
                 title: 'Set Student ID',
-                body: 'Ensure your student ID is entered correctly in the printer identity section above.',
+                body:
+                    'Ensure your student ID is entered correctly in the printer identity section above.',
               ),
               const SizedBox(height: 14),
               _buildStepItem(
                 context,
                 stepNumber: '3',
                 title: 'Choose Documents',
-                body: 'Pick the files you want to print. You can select multiple PDF, JPEG, or PNG files.',
+                body:
+                    'Pick the files you want to print. You can select multiple PDF, JPEG, or PNG files.',
               ),
               const SizedBox(height: 14),
               _buildStepItem(
                 context,
                 stepNumber: '4',
                 title: 'Send Print Job',
-                body: 'Tap the Print button. Files will be sent sequentially with a 1-second delay.',
+                body:
+                    'Tap the Print button. Files will be sent sequentially with a 1-second delay.',
               ),
               const SizedBox(height: 14),
               _buildStepItem(
                 context,
                 stepNumber: '5',
                 title: 'Release Document',
-                body: 'Tap your physical ID card on any campus card-reader printer to release and print the files.',
+                body:
+                    'Tap your physical ID card on any campus card-reader printer to release and print the files.',
               ),
             ],
           ),

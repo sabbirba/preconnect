@@ -5,6 +5,13 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
+## [1.6.8] — 2026-06-27
+
+- Added help instructions and an automated Connect/Disconnect button to Captive Wi-Fi
+- Swapped the SSID display to a read-only input field matching the rest of the text fields
+- Replaced the webview portal page header with a transparent overlay for back and refresh controls
+- Setup real-time updates for push notifications and added Library and Course Leaks(Course Materials)
+
 ## [1.6.7] — 2026-06-17
 
 - Completely rewrote the campus Wi-Fi login flow to be API based

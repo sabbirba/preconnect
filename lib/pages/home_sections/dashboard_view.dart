@@ -197,7 +197,8 @@ extension _HomeDashboardView on _HomeDashboardState {
                                       widget.onNavigate(HomeTab.settings),
                                   onLogout: widget.onLogout,
                                   isLoading: isOverviewLoading,
-                                  showSupportButton: cardVisibility.showFundingSection,
+                                  showSupportButton:
+                                      cardVisibility.showFundingSection,
                                   countdown:
                                       !cardVisibility.showExamCountdownCard ||
                                           nextCountdown == null
