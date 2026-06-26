@@ -634,15 +634,12 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                     AutofillGroup(
                       child: Column(
                         children: [
-                          InputDecorator(
+                          TextField(
+                            controller: _ssidController,
+                            readOnly: true,
                             decoration: const InputDecoration(
                               labelText: 'SSID',
                               border: OutlineInputBorder(),
-                            ),
-                            child: Text(
-                              _ssidController.text.isEmpty
-                                  ? 'Not available'
-                                  : _ssidController.text,
                             ),
                           ),
                           const SizedBox(height: 10),
