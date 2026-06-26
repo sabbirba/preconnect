@@ -191,7 +191,7 @@ class _SupportButtonState extends State<_SupportButton> {
     super.initState();
     _status = FundingService.cached;
     _fetchLatest();
-    _rotationTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    _rotationTimer = Timer.periodic(const Duration(seconds: 7), (_) {
       if (mounted) {
         setState(() {
           _rotationIndex++;

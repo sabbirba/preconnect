@@ -916,11 +916,6 @@ class BracuCommunityLink extends StatelessWidget {
 class BracuFundingPromoDivider extends StatelessWidget {
   const BracuFundingPromoDivider({super.key});
 
-  static const _padding = EdgeInsets.symmetric(horizontal: 16, vertical: 12);
-  static const _innerGap = SizedBox(height: 8);
-  static const _rowGap = SizedBox(width: 12);
-  static const _buttonPadding = EdgeInsets.symmetric(horizontal: 10, vertical: 6);
-
   @override
   Widget build(BuildContext context) {
     final textSecondary = BracuPalette.textSecondary(context);
@@ -930,71 +925,73 @@ class BracuFundingPromoDivider extends StatelessWidget {
     const textContent =
         "Please help us release PreConnect on iOS and keep it free for everyone. We kindly request you to donate any amount you can and share the funding link with your friends to support this campaign.";
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: textSecondary.withValues(
-            alpha: isDark ? 0.22 : 0.16,
-          ),
-        ),
-      ),
-      padding: _padding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  "iOS Release Funding Campaign",
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: textPrimary,
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Text(
+                "iOS Release Campaign",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: textPrimary,
                 ),
               ),
-              _rowGap,
-              InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () async {
-                  await SharePlus.instance.share(
-                    ShareParams(
-                      uri: Uri.parse('https://preconnect.app/funding'),
-                      subject: 'PreConnect iOS Release Funding Campaign',
+            ),
+            InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () async {
+                await SharePlus.instance.share(
+                  ShareParams(
+                    uri: Uri.parse('https://preconnect.app/funding'),
+                    subject: 'PreConnect iOS Release Campaign',
+                  ),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.share_outlined,
+                      size: 14,
+                      color: textPrimary,
                     ),
-                  );
-                },
-                child: Padding(
-                  padding: _buttonPadding,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.share_rounded,
-                        size: 14,
-                        color: textSecondary,
+                    const SizedBox(width: 6),
+                    Text(
+                      'Share',
+                      softWrap: false,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: textPrimary,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Share',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: textSecondary.withValues(
+                alpha: isDark ? 0.22 : 0.16,
+              ),
+            ),
           ),
-          _innerGap,
-          InkWell(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: InkWell(
             onTap: () => openExternalUrl(
               context,
               'https://preconnect.app/funding',
@@ -1005,13 +1002,13 @@ class BracuFundingPromoDivider extends StatelessWidget {
               textContent,
               style: TextStyle(
                 color: textSecondary,
-                fontSize: 12,
+                fontSize: 13,
                 height: 1.4,
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

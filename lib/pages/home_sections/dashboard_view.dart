@@ -431,10 +431,6 @@ extension _HomeDashboardView on _HomeDashboardState {
                                       ),
                                     ),
                                   ),
-                                if (cardVisibility.showFundingSection) ...[
-                                  const BracuFundingPromoDivider(),
-                                  const SizedBox(height: 12),
-                                ],
                                 if (cardVisibility.showQuickAccessSection) ...[
                                   Row(
                                     crossAxisAlignment:
@@ -558,6 +554,10 @@ extension _HomeDashboardView on _HomeDashboardState {
                                       );
                                     },
                                   ),
+                                ],
+                                if (cardVisibility.showFundingSection) ...[
+                                  const SizedBox(height: 12),
+                                  const BracuFundingPromoDivider(),
                                 ],
                                 const SizedBox(height: 12),
                                 if (data == null)
