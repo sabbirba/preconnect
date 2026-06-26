@@ -590,6 +590,11 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
             _currentStatus!.ssid?.trim().toLowerCase() ==
                 _ssidController.text.trim().toLowerCase());
 
+    final bool isSessionActive = _currentStatus != null &&
+        _currentStatus!.connected &&
+        !_currentStatus!.captive &&
+        _currentStatus!.validated;
+
     return PopScope(
       canPop: true,
       onPopInvokedWithResult: (didPop, result) {
@@ -603,39 +608,18 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
         icon: Icons.wifi_rounded,
         actions: [
           IconButton(
-            onPressed: _scanning
-                ? null
-                : () async {
-                    await _loadStoredCredentials();
-                    await _autofillSsidFromSystem(force: true);
-                  },
+            onPressed: () => _showHelpBottomSheet(context),
             style: bracuCompactIconButtonStyle(
               foregroundColor: BracuPalette.primary,
               borderColor: Colors.transparent,
               padding: EdgeInsets.zero,
               borderRadius: 12,
             ),
-            icon: _scanning
-                ? SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color:
-                          (_currentStatus != null && _currentStatus!.connected)
-                          ? const Color(0xFF22B573)
-                          : BracuPalette.primary,
-                    ),
-                  )
-                : Icon(
-                    (_currentStatus != null && _currentStatus!.connected)
-                        ? Icons.wifi_tethering_rounded
-                        : Icons.wifi_find_outlined,
-                    color: (_currentStatus != null && _currentStatus!.connected)
-                        ? const Color(0xFF22B573)
-                        : BracuPalette.primary,
-                  ),
-            tooltip: 'Scan',
+            icon: const Icon(
+              Icons.help_outline_rounded,
+              color: BracuPalette.primary,
+            ),
+            tooltip: 'Help',
           ),
         ],
         body: ScaffoldMessenger(
@@ -737,41 +721,30 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                             onPressed: _isConnecting || _isDisconnecting
                                 ? null
                                 : () => unawaited(_savePassword()),
+                            icon: Icons.save_rounded,
                             label: 'Save',
-                            foregroundColor: Colors.grey,
-                            borderRadius: 18,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: BracuActionButton(
-                            onPressed:
-                                _isConnecting ||
+                            onPressed: _isConnecting ||
                                     _isDisconnecting ||
                                     !isCorrectSsid
                                 ? null
-                                : () => unawaited(_runOneTapConnect()),
-                            label: 'Connect',
-                            isLoading: _isConnecting,
-                            foregroundColor: BracuPalette.primary,
-                            borderRadius: 18,
+                                : (isSessionActive
+                                    ? () => unawaited(_runDisconnect())
+                                    : () => unawaited(_runOneTapConnect())),
+                            icon: isSessionActive
+                                ? Icons.wifi_off_rounded
+                                : Icons.wifi_rounded,
+                            label: isSessionActive ? 'Disconnect' : 'Connect',
+                            isLoading: isSessionActive
+                                ? _isDisconnecting
+                                : _isConnecting,
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: BracuActionButton(
-                        onPressed:
-                            _isConnecting || _isDisconnecting || !isCorrectSsid
-                            ? null
-                            : () => unawaited(_runDisconnect()),
-                        label: 'Disconnect',
-                        isLoading: _isDisconnecting,
-                        foregroundColor: Colors.redAccent,
-                        borderRadius: 18,
-                      ),
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
@@ -801,9 +774,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                             ),
                           );
                         },
+                        icon: Icons.language_rounded,
                         label: 'Open Portal In App',
-                        foregroundColor: BracuPalette.primary,
-                        borderRadius: 18,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -1043,21 +1015,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.history_edu, size: 18, color: BracuPalette.primary),
-              const SizedBox(width: 8),
-              Text(
-                'Last Gateway Responses',
-                style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
           for (var i = 0; i < sections.length; i++) ...[
             _buildResponseSection(context, sections[i], isDark),
             if (i != sections.length - 1) const SizedBox(height: 16),
@@ -1111,20 +1068,12 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
             ),
           ],
         ),
-        const SizedBox(height: 6),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.black26 : Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: Theme.of(context).dividerColor.withValues(alpha: 0.05),
-            ),
-          ),
-          child: Text(
-            _tryPrettyPrintJson(body),
-            style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+        Text(
+          _tryPrettyPrintJson(body),
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 11,
+            color: BracuPalette.textSecondary(context),
           ),
         ),
       ],
@@ -1148,6 +1097,119 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
     _ssidController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _showHelpBottomSheet(BuildContext context) {
+    showBracuBottomSheet<void>(
+      context,
+      title: 'Captive Wi-Fi Instructions',
+      initialChildSize: 0.52,
+      builder: (sheetContext, textPrimary, textSecondary) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildStepItem(
+                context,
+                stepNumber: '1',
+                title: 'Connect to Wi-Fi',
+                body: 'Ensure your device Wi-Fi is turned on and connected to the Student-WiFi network.',
+              ),
+              const SizedBox(height: 14),
+              _buildStepItem(
+                context,
+                stepNumber: '2',
+                title: 'Enter Credentials',
+                body: 'Provide your campus Student ID and Portal password correctly in the input fields.',
+              ),
+              const SizedBox(height: 14),
+              _buildStepItem(
+                context,
+                stepNumber: '3',
+                title: 'Connect Session',
+                body: 'Tap the Connect button. PreConnect will automatically configure and authenticate you.',
+              ),
+              const SizedBox(height: 14),
+              _buildStepItem(
+                context,
+                stepNumber: '4',
+                title: 'Auto Extend Session',
+                body: 'Enable Auto Extend to allow PreConnect to run in the background and auto-renew your connectivity.',
+              ),
+              const SizedBox(height: 14),
+              _buildStepItem(
+                context,
+                stepNumber: '5',
+                title: 'Disconnect/Logout',
+                body: 'Tap Disconnect to log out of the active captive portal network session immediately.',
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStepItem(
+    BuildContext context, {
+    required String stepNumber,
+    required String title,
+    required String body,
+  }) {
+    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = BracuPalette.textSecondary(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: BracuPalette.primary.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              stepNumber,
+              style: const TextStyle(
+                color: BracuPalette.primary,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                body,
+                style: TextStyle(
+                  color: textSecondary,
+                  fontSize: 12,
+                  height: 1.4,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
 

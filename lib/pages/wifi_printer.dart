@@ -955,6 +955,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   onCollateChanged: (mode) {
                     setState(() => _collateMode = mode);
                   },
+                  onHelpPressed: () => _showHelpBottomSheet(context),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -997,6 +998,119 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
           _PrintHistoryCard(history: _history),
         ],
       ),
+    );
+  }
+
+  void _showHelpBottomSheet(BuildContext context) {
+    showBracuBottomSheet<void>(
+      context,
+      title: 'Printer Instructions',
+      initialChildSize: 0.52,
+      builder: (sheetContext, textPrimary, textSecondary) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildStepItem(
+                context,
+                stepNumber: '1',
+                title: 'Connect to Wi-Fi',
+                body: 'Make sure your device is connected to the Student-WiFi or university network.',
+              ),
+              const SizedBox(height: 14),
+              _buildStepItem(
+                context,
+                stepNumber: '2',
+                title: 'Set Student ID',
+                body: 'Ensure your student ID is entered correctly in the printer identity section above.',
+              ),
+              const SizedBox(height: 14),
+              _buildStepItem(
+                context,
+                stepNumber: '3',
+                title: 'Choose Documents',
+                body: 'Pick the files you want to print. You can select multiple PDF, JPEG, or PNG files.',
+              ),
+              const SizedBox(height: 14),
+              _buildStepItem(
+                context,
+                stepNumber: '4',
+                title: 'Send Print Job',
+                body: 'Tap the Print button. Files will be sent sequentially with a 1-second delay.',
+              ),
+              const SizedBox(height: 14),
+              _buildStepItem(
+                context,
+                stepNumber: '5',
+                title: 'Release Document',
+                body: 'Tap your physical ID card on any campus card-reader printer to release and print the files.',
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStepItem(
+    BuildContext context, {
+    required String stepNumber,
+    required String title,
+    required String body,
+  }) {
+    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = BracuPalette.textSecondary(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: BracuPalette.primary.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              stepNumber,
+              style: const TextStyle(
+                color: BracuPalette.primary,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                body,
+                style: TextStyle(
+                  color: textSecondary,
+                  fontSize: 12,
+                  height: 1.4,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1561,6 +1675,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
     required this.onCopiesStep,
     required this.onDuplexChanged,
     required this.onCollateChanged,
+    required this.onHelpPressed,
   });
 
   final TextEditingController copiesController;
@@ -1570,6 +1685,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
   final ValueChanged<int> onCopiesStep;
   final ValueChanged<String> onDuplexChanged;
   final ValueChanged<String> onCollateChanged;
+  final VoidCallback onHelpPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -1596,7 +1712,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
-              flex: 42,
+              flex: 32,
               child: Row(
                 children: [
                   Expanded(
@@ -1660,7 +1776,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
             ),
             SizedBox(width: compact ? 8 : 10),
             Expanded(
-              flex: 58,
+              flex: 68,
               child: Row(
                 children: [
                   Expanded(
@@ -1697,6 +1813,18 @@ class _PrinterPreferencesPanel extends StatelessWidget {
                       borderRadius: 4,
                       padding: togglePadding,
                       label: 'Collate',
+                      fontSize: toggleFont,
+                    ),
+                  ),
+                  SizedBox(width: gap),
+                  SizedBox(
+                    width: controlHeight,
+                    child: BracuActionButton(
+                      onPressed: onHelpPressed,
+                      outlined: true,
+                      borderRadius: 4,
+                      padding: togglePadding,
+                      label: '?',
                       fontSize: toggleFont,
                     ),
                   ),
