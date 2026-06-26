@@ -117,7 +117,7 @@ class MainActivity : FlutterFragmentActivity() {
         val action = when {
             !shortcutAction.isNullOrBlank() -> shortcutAction
             !launchAction.isNullOrBlank() && launchAction.startsWith("quick.") -> launchAction
-            !launchAction.isNullOrBlank() && launchAction == ConnectivityManager.ACTION_CAPTIVE_PORTAL_SIGN_IN -> "captive_wifi"
+            !launchAction.isNullOrBlank() && (launchAction == ConnectivityManager.ACTION_CAPTIVE_PORTAL_SIGN_IN || launchAction == "android.net.conn.CAPTIVE_PORTAL") -> "captive_wifi"
             else -> null
         }
         if (action.isNullOrBlank()) return

@@ -16,6 +16,7 @@ class StudentOverviewCard extends StatelessWidget {
     required this.onLogout,
     this.countdown,
     this.isLoading = false,
+    this.showSupportButton = true,
   });
 
   final String studentId;
@@ -28,6 +29,7 @@ class StudentOverviewCard extends StatelessWidget {
   final Future<void> Function() onLogout;
   final Widget? countdown;
   final bool isLoading;
+  final bool showSupportButton;
 
   @override
   Widget build(BuildContext context) {
@@ -58,8 +60,10 @@ class StudentOverviewCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                _SupportButton(onTap: onOpenSupport),
+                if (showSupportButton) ...[
+                  const SizedBox(width: 8),
+                  _SupportButton(onTap: onOpenSupport),
+                ],
                 const SizedBox(width: 8),
                 _IconButton(
                   icon: Icons.settings_outlined,

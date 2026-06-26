@@ -20,23 +20,18 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   _HomeData? _latestData;
   bool _isRefreshing = false;
   bool _refreshInFlight = false;
-  CaptiveWifiStatus? _captiveStatus;
-  bool _isCheckingCaptive = false;
   bool _isBackgroundLoggingIn = false;
   StreamSubscription<AndroidNetworkStatus>? _networkStatusSubscription;
   bool _autoOpenedWifiAssistant = false;
   bool _isOpeningWifiAssistant = false;
   bool _isAutoExtendingSession = false;
-  bool _isConnectingWifi = false;
   DateTime? _lastAutoAssistantOpenAt;
   DateTime? _lastSilentLoginAt;
-  Timer? _captiveAutoTimer;
   Timer? _todayScheduleAutoRefreshTimer;
   Future<CampusMapData?>? _campusMapFuture;
   Future<String?>? _transportScheduleUrlFuture;
   bool _quickAccessExpanded = false;
 
-  static const Duration _captiveAutoPollInterval = Duration(seconds: 30);
   static const Duration _todayScheduleAutoRefreshInterval = Duration(
     minutes: 1,
   );
@@ -68,15 +63,21 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     unawaited(_warmAndBind(forceRefresh: forceRefresh));
     if (AndroidNetworkAssist.isSupported) {
       _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen(
-        _applyAndroidNetworkStatus,
+        (status) {
+          if (!mounted) return;
+          unawaited(_consumePostConnectionEvent());
+          unawaited(_maybeAutoExtendSession(status));
+          final shouldOpenAssistant = status.captive ||
+              (status.transport == 'wifi' && status.connected && !status.validated);
+          if (shouldOpenAssistant) {
+            unawaited(_maybeAutoOpenWifiAssistant(status));
+          } else {
+            _autoOpenedWifiAssistant = false;
+          }
+        },
       );
       unawaited(_consumePostConnectionEvent());
-      _captiveAutoTimer = Timer.periodic(_captiveAutoPollInterval, (_) {
-        if (!mounted) return;
-        unawaited(_refreshCaptiveStatus());
-      });
     }
-    unawaited(_refreshCaptiveStatus());
     _todayScheduleAutoRefreshTimer = Timer.periodic(
       _todayScheduleAutoRefreshInterval,
       (_) {
@@ -91,7 +92,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   void dispose() {
     unbindRefreshBus(_onRefreshSignal);
     _networkStatusSubscription?.cancel();
-    _captiveAutoTimer?.cancel();
     _todayScheduleAutoRefreshTimer?.cancel();
     super.dispose();
   }
@@ -160,7 +160,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         _future = Future<_HomeData>.value(fresh);
       });
       unawaited(_saveHomeDashboardSnapshot(fresh));
-      unawaited(_refreshCaptiveStatus());
     } catch (_) {
     } finally {
       _refreshInFlight = false;
@@ -218,7 +217,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     }
     if (isRefreshingFrom('home_card_settings_changed')) {
       unawaited(_reloadCardVisibilityOnly());
-      unawaited(_refreshCaptiveStatus());
       return;
     }
     if (isRefreshingFrom('cache_cleared')) {
@@ -472,72 +470,12 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         _latestData = fresh;
       });
       unawaited(_saveHomeDashboardSnapshot(fresh));
-      unawaited(_refreshCaptiveStatus());
       if (notify) {
         RefreshBus.instance.notify(reason: 'home_dashboard');
       }
     } finally {
       _isRefreshing = false;
     }
-  }
-
-  Future<void> _refreshCaptiveStatus() async {
-    if (_isCheckingCaptive) return;
-    _isCheckingCaptive = true;
-    try {
-      if (AndroidNetworkAssist.isSupported) {
-        await _consumePostConnectionEvent();
-        final status = await AndroidNetworkAssist.getNetworkStatus();
-        if (status != null) {
-          _applyAndroidNetworkStatus(status);
-          return;
-        }
-      }
-      const next = CaptiveWifiStatus(
-        state: CaptiveWifiState.unknown,
-        httpStatusCode: null,
-      );
-      if (!mounted ||
-          (_captiveStatus?.state == next.state &&
-              _captiveStatus?.httpStatusCode == next.httpStatusCode)) {
-        return;
-      }
-      setState(() {
-        _captiveStatus = next;
-      });
-    } finally {
-      _isCheckingCaptive = false;
-    }
-  }
-
-  void _applyAndroidNetworkStatus(AndroidNetworkStatus status) {
-    if (!mounted) return;
-    final mapped = CaptiveWifiStatus(
-      state: status.captive
-          ? CaptiveWifiState.captive
-          : status.validated
-          ? CaptiveWifiState.validated
-          : status.connected
-          ? CaptiveWifiState.unknown
-          : CaptiveWifiState.offline,
-      httpStatusCode: null,
-    );
-    if (_captiveStatus?.state == mapped.state &&
-        _captiveStatus?.httpStatusCode == mapped.httpStatusCode) {
-      return;
-    }
-    setState(() {
-      _captiveStatus = mapped;
-    });
-    final shouldOpenAssistant =
-        status.captive ||
-        (status.transport == 'wifi' && status.connected && !status.validated);
-    if (shouldOpenAssistant) {
-      unawaited(_maybeAutoOpenWifiAssistant(status));
-    } else {
-      _autoOpenedWifiAssistant = false;
-    }
-    unawaited(_maybeAutoExtendSession(status));
   }
 
   Future<void> _maybeAutoExtendSession(AndroidNetworkStatus status) async {
@@ -610,7 +548,24 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
           )
           .timeout(_silentLoginTimeout, onTimeout: () => false);
       if (success && mounted) {
-        unawaited(_refreshCaptiveStatus());
+        unawaited(
+          FCMService.instance.showNotification(
+            id: 9987,
+            title: 'Wi-Fi Auto-Login Successful',
+            body:
+                'Automatically connected to ${status.ssid ?? 'Student-WiFi'}.',
+          ),
+        );
+      } else {
+        unawaited(
+          FCMService.instance.showNotification(
+            id: 9987,
+            title: 'Wi-Fi Auto-Login Failed',
+            body:
+                'Unable to log in to ${status.ssid ?? 'Student-WiFi'}. Tap to fix.',
+            payload: 'captive_wifi',
+          ),
+        );
       }
       return success;
     } catch (_) {
@@ -686,76 +641,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       );
     } finally {
       _isOpeningWifiAssistant = false;
-    }
-  }
-
-  Future<void> _runBackgroundWifiConnect() async {
-    if (_isConnectingWifi || !mounted) return;
-
-    final creds = await CaptiveLoginStore.instance.read();
-    if (creds == null || creds.password.isEmpty) {
-      await _openWifiLoginAssistant();
-      return;
-    }
-
-    final studentId = await _resolveCaptiveStudentId();
-    if (studentId.isEmpty) {
-      await _openWifiLoginAssistant();
-      return;
-    }
-
-    setState(() {
-      _isConnectingWifi = true;
-    });
-
-    try {
-      final status = await AndroidNetworkAssist.getNetworkStatus();
-      if (status == null) {
-        if (mounted) {
-          showAppSnackBar(context, 'No Wi-Fi connection');
-        }
-        return;
-      }
-
-      final captiveWifiUri = CaptiveWifiHttp.resolvePortalUri(status);
-      if (captiveWifiUri == null) {
-        if (mounted) {
-          showAppSnackBar(context, 'Portal not found');
-        }
-        return;
-      }
-
-      final savedSsid = await CaptiveLoginStore.instance.readSsid();
-      final ssid = (status.ssid ?? savedSsid).trim();
-      await AndroidNetworkAssist.bindToWifiNetwork();
-      final success = await CaptiveWifiHttp.instance
-          .loginViaCaptiveApi(
-            studentId: studentId,
-            password: creds.password,
-            captiveWifiUrl: captiveWifiUri,
-            ssid: ssid,
-          )
-          .timeout(const Duration(seconds: 45), onTimeout: () => false);
-
-      if (mounted) {
-        if (success) {
-          showAppSnackBar(context, 'Connected!');
-          unawaited(_refreshCaptiveStatus());
-        } else {
-          showAppSnackBar(context, 'Login failed');
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        showAppSnackBar(context, 'Login error');
-      }
-    } finally {
-      await AndroidNetworkAssist.unbindFromWifiNetwork();
-      if (mounted) {
-        setState(() {
-          _isConnectingWifi = false;
-        });
-      }
     }
   }
 

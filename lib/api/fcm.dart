@@ -770,4 +770,33 @@ class FCMService {
       debugPrint("FCM confirmation push failed: $e");
     }
   }
+
+  Future<void> showNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    if (kIsWeb) return;
+    await _localNotifications.show(
+      id: id,
+      title: title,
+      body: body,
+      payload: payload,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          importance: Importance.max,
+          priority: Priority.high,
+          icon: 'ic_stat_preconnect',
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+    );
+  }
 }

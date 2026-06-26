@@ -182,15 +182,6 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     onProfileTap: () =>
                                         widget.onNavigate(HomeTab.profile),
                                   ),
-                                if (_captiveStatus?.state ==
-                                    CaptiveWifiState.captive) ...[
-                                  const SizedBox(height: 12),
-                                  _CaptiveWifiBanner(
-                                    statusCode: _captiveStatus?.httpStatusCode,
-                                    onOpenLogin: _runBackgroundWifiConnect,
-                                    isLoading: _isConnectingWifi,
-                                  ),
-                                ],
                                 const SizedBox(height: 12),
                                 StudentOverviewCard(
                                   studentId: profile['studentId'] ?? '',
@@ -206,6 +197,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                       widget.onNavigate(HomeTab.settings),
                                   onLogout: widget.onLogout,
                                   isLoading: isOverviewLoading,
+                                  showSupportButton: cardVisibility.showFundingSection,
                                   countdown:
                                       !cardVisibility.showExamCountdownCard ||
                                           nextCountdown == null
@@ -951,6 +943,7 @@ class _HomeDashboardLoadingShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final showSupport = HomeCardPreferences.loadSync().showFundingSection;
     return Shimmer(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -967,6 +960,7 @@ class _HomeDashboardLoadingShell extends StatelessWidget {
             onOpenSettings: onOpenSettings,
             onLogout: onLogout,
             isLoading: true,
+            showSupportButton: showSupport,
           ),
           const SizedBox(height: 12),
           const _TodayScheduleLoadingSkeleton(),

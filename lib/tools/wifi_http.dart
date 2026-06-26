@@ -252,11 +252,22 @@ class CaptiveWifiHttp {
     final cookies = sessionCookies;
     cookies.clear();
 
+    var targetUrl = captiveWifiUrl;
+    if (targetUrl == defaultProbeUri) {
+      final savedUrlStr = await CaptiveLoginStore.instance.readLastPortalUrl();
+      if (savedUrlStr != null && savedUrlStr.isNotEmpty) {
+        final parsed = Uri.tryParse(savedUrlStr);
+        if (parsed != null) {
+          targetUrl = parsed;
+        }
+      }
+    }
+
     try {
       debugPrint('[CaptiveWifi] Sending initial GET request with redirects...');
       var first = await getWithRedirects(
         client: client,
-        uri: captiveWifiUrl,
+        uri: targetUrl,
         cookies: cookies,
       );
       debugPrint(
@@ -311,11 +322,25 @@ class CaptiveWifiHttp {
         );
       }
 
-      final apiLoginUri = loginUri.replace(
-        path: '/portalauth/login',
-        queryParameters: {},
+      Uri apiLoginUri;
+      final formReg = RegExp(
+        r'''<form\b[^>]*\baction\s*=\s*["']([^"']+)["']''',
+        caseSensitive: false,
       );
-      debugPrint('[CaptiveWifi] API Login URI: $apiLoginUri');
+      final match = formReg.firstMatch(first.body);
+      final formAction = match?.group(1)?.trim();
+      if (formAction != null && formAction.isNotEmpty) {
+        apiLoginUri = Uri.parse(formAction).isAbsolute
+            ? Uri.parse(formAction)
+            : loginUri.resolve(formAction);
+        debugPrint('[CaptiveWifi] Found form action target: $apiLoginUri');
+      } else {
+        apiLoginUri = loginUri.replace(
+          path: '/portalauth/login',
+          queryParameters: {},
+        );
+        debugPrint('[CaptiveWifi] Fallback API Login URI: $apiLoginUri');
+      }
 
       final status = await AndroidNetworkAssist.getNetworkStatus();
       var deviceUmac = status?.clientMac;
@@ -497,8 +522,28 @@ class CaptiveWifiHttp {
     final client = await newClient();
     final cookies = sessionCookies;
 
+    var targetUrl = captiveWifiUrl;
+    if (targetUrl == defaultProbeUri) {
+      final savedUrlStr = await CaptiveLoginStore.instance.readLastPortalUrl();
+      if (savedUrlStr != null && savedUrlStr.isNotEmpty) {
+        final parsed = Uri.tryParse(savedUrlStr);
+        if (parsed != null) {
+          targetUrl = parsed;
+        }
+      }
+    }
+
     try {
-      final apiLogoutUri = captiveWifiUrl.replace(
+      debugPrint(
+        '[CaptiveWifi] Sending initial GET request for logout redirects...',
+      );
+      final first = await getWithRedirects(
+        client: client,
+        uri: targetUrl,
+        cookies: cookies,
+      );
+      final loginUri = first.uri;
+      final apiLogoutUri = loginUri.replace(
         path: '/portalauth/logout',
         queryParameters: {},
       );
@@ -514,7 +559,7 @@ class CaptiveWifiHttp {
         uri: apiLogoutUri,
         body: '',
         cookies: cookies,
-        referer: captiveWifiUrl,
+        referer: loginUri,
       );
       debugPrint(
         '[CaptiveWifi] Logout response status: ${response.statusCode}',

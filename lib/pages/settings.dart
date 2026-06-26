@@ -305,7 +305,7 @@ class _SettingsPageState extends State<SettingsPage>
                 divider,
                 _ToggleRow(
                   title: 'Funding Campaign',
-                  subtitle: 'Show funding campaign banner',
+                  subtitle: 'Show funding campaign section',
                   value: _showFundingSection,
                   onChanged: _setShowFundingSection,
                 ),

@@ -10,6 +10,7 @@ import 'package:preconnect/tools/wifi_http.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/storage_keys.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 class CaptiveWifiPage extends StatefulWidget {
   const CaptiveWifiPage({super.key, this.autoOpenCaptiveWifiOnStart = false});
@@ -20,7 +21,8 @@ class CaptiveWifiPage extends StatefulWidget {
   State<CaptiveWifiPage> createState() => _CaptiveWifiPageState();
 }
 
-class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingObserver {
+class _CaptiveWifiPageState extends State<CaptiveWifiPage>
+    with WidgetsBindingObserver {
   static const Duration _apiLoginTimeout = Duration(seconds: 45);
   static const Duration _wifiAssociationTimeout = Duration(seconds: 30);
   static const Duration _wifiAssociationPollInterval = Duration(
@@ -88,10 +90,14 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
     final status = await AndroidNetworkAssist.getNetworkStatus();
     final api = status?.androidApi ?? 0;
     if (api >= 33) {
-      final nearbyOk = await _requestPermissionWithUx(permission: Permission.nearbyWifiDevices);
+      final nearbyOk = await _requestPermissionWithUx(
+        permission: Permission.nearbyWifiDevices,
+      );
       if (!nearbyOk) return;
     } else {
-      final locationOk = await _requestPermissionWithUx(permission: Permission.locationWhenInUse);
+      final locationOk = await _requestPermissionWithUx(
+        permission: Permission.locationWhenInUse,
+      );
       if (!locationOk) return;
     }
     final gpsEnabled = await AndroidNetworkAssist.isLocationServiceEnabled();
@@ -118,7 +124,11 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
         final profile = await ProfileService().getProfile(fromFetch: true);
         studentId = (profile?['studentId'] ?? '').trim();
       }
-      final responseLog = await AppStorage.instance.getString(StorageKeys.wifiCaptiveLastResponseLog) ?? '';
+      final responseLog =
+          await AppStorage.instance.getString(
+            StorageKeys.wifiCaptiveLastResponseLog,
+          ) ??
+          '';
       if (!mounted) return;
       _studentIdController.text = studentId;
       setState(() {
@@ -303,11 +313,15 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
   Future<void> _runOneTapConnect() async {
     debugPrint('[CaptiveWifiUI] _runOneTapConnect triggered');
     if (!mounted || _isConnecting) {
-      debugPrint('[CaptiveWifiUI] _runOneTapConnect aborted: mounted=$mounted, _isConnecting=$_isConnecting');
+      debugPrint(
+        '[CaptiveWifiUI] _runOneTapConnect aborted: mounted=$mounted, _isConnecting=$_isConnecting',
+      );
       return;
     }
     if (!_validateRequiredInputs()) {
-      debugPrint('[CaptiveWifiUI] _runOneTapConnect validation failed: SSID=${_ssidController.text}, StudentID=${_studentIdController.text}, PasswordLength=${_passwordController.text.length}');
+      debugPrint(
+        '[CaptiveWifiUI] _runOneTapConnect validation failed: SSID=${_ssidController.text}, StudentID=${_studentIdController.text}, PasswordLength=${_passwordController.text.length}',
+      );
       _showLocalSnackBar('Required credentials or SSID are missing.');
       return;
     }
@@ -342,7 +356,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
           ).timeout(
             _apiLoginTimeout,
             onTimeout: () {
-              debugPrint('[CaptiveWifiUI] loginViaCaptiveApi timed out after ${_apiLoginTimeout.inSeconds} seconds');
+              debugPrint(
+                '[CaptiveWifiUI] loginViaCaptiveApi timed out after ${_apiLoginTimeout.inSeconds} seconds',
+              );
               CaptiveWifiHttp.instance.lastError =
                   'Connection/API login timed out after ${_apiLoginTimeout.inSeconds} seconds.';
               return false;
@@ -367,7 +383,12 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
           _isConnecting = false;
           _responseLog = CaptiveWifiHttp.instance.lastResponseLog;
         });
-        unawaited(AppStorage.instance.setString(StorageKeys.wifiCaptiveLastResponseLog, _responseLog));
+        unawaited(
+          AppStorage.instance.setString(
+            StorageKeys.wifiCaptiveLastResponseLog,
+            _responseLog,
+          ),
+        );
       }
     }
   }
@@ -385,7 +406,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
   Future<void> _runDisconnect() async {
     debugPrint('[CaptiveWifiUI] _runDisconnect triggered');
     if (!mounted || _isDisconnecting) {
-      debugPrint('[CaptiveWifiUI] _runDisconnect aborted: mounted=$mounted, _isDisconnecting=$_isDisconnecting');
+      debugPrint(
+        '[CaptiveWifiUI] _runDisconnect aborted: mounted=$mounted, _isDisconnecting=$_isDisconnecting',
+      );
       return;
     }
 
@@ -397,11 +420,15 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
       debugPrint('[CaptiveWifiUI] Fetching network status for disconnect...');
       final status = await AndroidNetworkAssist.getNetworkStatus();
       if (status == null) {
-        debugPrint('[CaptiveWifiUI] Network status is null. Cannot disconnect.');
+        debugPrint(
+          '[CaptiveWifiUI] Network status is null. Cannot disconnect.',
+        );
         _showLocalSnackBar('Not connected to Wi-Fi.');
         return;
       }
-      debugPrint('[CaptiveWifiUI] Network status: connected=${status.connected}, transport=${status.transport}, ssid=${status.ssid}');
+      debugPrint(
+        '[CaptiveWifiUI] Network status: connected=${status.connected}, transport=${status.transport}, ssid=${status.ssid}',
+      );
       final captiveWifiUrl = CaptiveWifiHttp.resolvePortalUri(status);
       debugPrint('[CaptiveWifiUI] Resolved portal URI: $captiveWifiUrl');
       if (captiveWifiUrl == null) {
@@ -443,7 +470,12 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
           _isDisconnecting = false;
           _responseLog = CaptiveWifiHttp.instance.lastResponseLog;
         });
-        unawaited(AppStorage.instance.setString(StorageKeys.wifiCaptiveLastResponseLog, _responseLog));
+        unawaited(
+          AppStorage.instance.setString(
+            StorageKeys.wifiCaptiveLastResponseLog,
+            _responseLog,
+          ),
+        );
       }
     }
   }
@@ -452,7 +484,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
     if (!mounted) return;
     setState(() {
       _currentStatus = status;
-      if (status.transport.trim().toLowerCase() != 'wifi' || !status.connected) {
+      if (status.transport.trim().toLowerCase() != 'wifi' ||
+          !status.connected) {
         _extractedParams = null;
       }
     });
@@ -549,11 +582,13 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
 
   @override
   Widget build(BuildContext context) {
-    final bool isCorrectSsid = !AndroidNetworkAssist.isSupported ||
+    final bool isCorrectSsid =
+        !AndroidNetworkAssist.isSupported ||
         (_currentStatus != null &&
             _currentStatus!.connected &&
             _currentStatus!.transport == 'wifi' &&
-            _currentStatus!.ssid?.trim().toLowerCase() == _ssidController.text.trim().toLowerCase());
+            _currentStatus!.ssid?.trim().toLowerCase() ==
+                _ssidController.text.trim().toLowerCase());
 
     return PopScope(
       canPop: true,
@@ -586,7 +621,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
                     height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: (_currentStatus != null && _currentStatus!.connected)
+                      color:
+                          (_currentStatus != null && _currentStatus!.connected)
                           ? const Color(0xFF22B573)
                           : BracuPalette.primary,
                     ),
@@ -602,158 +638,198 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
             tooltip: 'Scan',
           ),
         ],
-      body: ScaffoldMessenger(
-        key: _pageMessengerKey,
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          body: BracuRefreshList(
-            onRefresh: _loadStoredCredentials,
-            children: [
-              Column(
-                children: [
-                  AutofillGroup(
-                    child: Column(
-                      children: [
-                        InputDecorator(
-                          decoration: const InputDecoration(
-                            labelText: 'SSID',
-                            border: OutlineInputBorder(),
-                          ),
-                          child: Text(
-                            _ssidController.text.isEmpty
-                                ? 'Not available'
-                                : _ssidController.text,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        TextField(
-                          controller: _studentIdController,
-                          decoration: const InputDecoration(
-                            labelText: 'Student ID',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        TextField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          autofillHints: const <String>[AutofillHints.password],
-                          decoration: InputDecoration(
-                            labelText: 'Password',
-                            border: const OutlineInputBorder(),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_off_outlined
-                                    : Icons.visibility_outlined,
-                                color: Theme.of(context).hintColor,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
-                              },
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_locationNeedsSetup) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: BracuPalette.primary.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: BracuPalette.primary.withValues(alpha: 0.22),
-                        ),
-                      ),
-                      child: Row(
+        body: ScaffoldMessenger(
+          key: _pageMessengerKey,
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: BracuRefreshList(
+              onRefresh: _loadStoredCredentials,
+              children: [
+                Column(
+                  children: [
+                    AutofillGroup(
+                      child: Column(
                         children: [
-                          Expanded(
+                          InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'SSID',
+                              border: OutlineInputBorder(),
+                            ),
                             child: Text(
-                              'Needs location access and services to detect Wi-Fi.',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: BracuPalette.textSecondary(context),
-                              ),
+                              _ssidController.text.isEmpty
+                                  ? 'Not available'
+                                  : _ssidController.text,
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          TextButton(
-                            onPressed: _fixLocationSetup,
-                            child: const Text('Fix'),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: _studentIdController,
+                            decoration: const InputDecoration(
+                              labelText: 'Student ID',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: _passwordController,
+                            obscureText: _obscurePassword,
+                            autofillHints: const <String>[
+                              AutofillHints.password,
+                            ],
+                            decoration: InputDecoration(
+                              labelText: 'Password',
+                              border: const OutlineInputBorder(),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.visibility_outlined,
+                                  color: Theme.of(context).hintColor,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
+                              ),
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: BracuActionButton(
-                          onPressed: _isConnecting || _isDisconnecting
-                              ? null
-                              : () => unawaited(_savePassword()),
-                          label: 'Save',
-                          foregroundColor: Colors.grey,
-                          borderRadius: 18,
+                    if (_locationNeedsSetup) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: BracuPalette.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: BracuPalette.primary.withValues(alpha: 0.22),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: BracuActionButton(
-                          onPressed: _isConnecting || _isDisconnecting || !isCorrectSsid
-                              ? null
-                              : () => unawaited(_runOneTapConnect()),
-                          label: 'Connect',
-                          isLoading: _isConnecting,
-                          foregroundColor: BracuPalette.primary,
-                          borderRadius: 18,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Needs location access and services to detect Wi-Fi.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: BracuPalette.textSecondary(context),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            TextButton(
+                              onPressed: _fixLocationSetup,
+                              child: const Text('Fix'),
+                            ),
+                          ],
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: BracuActionButton(
-                      onPressed: _isConnecting || _isDisconnecting || !isCorrectSsid
-                          ? null
-                          : () => unawaited(_runDisconnect()),
-                      label: 'Disconnect',
-                      isLoading: _isDisconnecting,
-                      foregroundColor: Colors.redAccent,
-                      borderRadius: 18,
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: BracuActionButton(
+                            onPressed: _isConnecting || _isDisconnecting
+                                ? null
+                                : () => unawaited(_savePassword()),
+                            label: 'Save',
+                            foregroundColor: Colors.grey,
+                            borderRadius: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: BracuActionButton(
+                            onPressed:
+                                _isConnecting ||
+                                    _isDisconnecting ||
+                                    !isCorrectSsid
+                                ? null
+                                : () => unawaited(_runOneTapConnect()),
+                            label: 'Connect',
+                            isLoading: _isConnecting,
+                            foregroundColor: BracuPalette.primary,
+                            borderRadius: 18,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Auto Extend Session'),
-                    value: _autoExtendEnabled,
-                    onChanged: _setAutoExtendEnabled,
-                    activeThumbColor: BracuPalette.primary,
-                  ),
-                  if (_extractedParams != null && _extractedParams!.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    _buildPortalParamsCard(context),
-                  ],
-                  if (_responseLog.isNotEmpty) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: BracuActionButton(
+                        onPressed:
+                            _isConnecting || _isDisconnecting || !isCorrectSsid
+                            ? null
+                            : () => unawaited(_runDisconnect()),
+                        label: 'Disconnect',
+                        isLoading: _isDisconnecting,
+                        foregroundColor: Colors.redAccent,
+                        borderRadius: 18,
+                      ),
+                    ),
                     const SizedBox(height: 12),
-                    _buildGatewayResponsesCard(context),
+                    SizedBox(
+                      width: double.infinity,
+                      child: BracuActionButton(
+                        onPressed: () async {
+                          final status =
+                              await AndroidNetworkAssist.getNetworkStatus();
+                          Uri? url;
+                          if (status != null) {
+                            url = CaptiveWifiHttp.resolvePortalUri(status);
+                          }
+                          if (url == null ||
+                              url == CaptiveWifiHttp.defaultProbeUri) {
+                            final saved = await CaptiveLoginStore.instance
+                                .readLastPortalUrl();
+                            if (saved != null && saved.isNotEmpty) {
+                              url = Uri.tryParse(saved);
+                            }
+                          }
+                          url ??= CaptiveWifiHttp.defaultProbeUri;
+                          if (!context.mounted) return;
+                          await Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (context) =>
+                                  CaptivePortalWebView(portalUrl: url!),
+                            ),
+                          );
+                        },
+                        label: 'Open Portal In App',
+                        foregroundColor: BracuPalette.primary,
+                        borderRadius: 18,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Auto Extend Session'),
+                      value: _autoExtendEnabled,
+                      onChanged: _setAutoExtendEnabled,
+                      activeThumbColor: BracuPalette.primary,
+                    ),
+                    if (_extractedParams != null &&
+                        _extractedParams!.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      _buildPortalParamsCard(context),
+                    ],
+                    if (_responseLog.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      _buildGatewayResponsesCard(context),
+                    ],
                   ],
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
     );
   }
 
@@ -775,11 +851,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
           break;
         }
       }
-      sections.add({
-        'title': header,
-        'status': status,
-        'body': body,
-      });
+      sections.add({'title': header, 'status': status, 'body': body});
     }
     return sections;
   }
@@ -806,16 +878,20 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
     if (lower.contains('expired')) {
       return 'Your password has expired.';
     }
-    if (lower.contains('exceeded the limit') || lower.contains('limit reached')) {
+    if (lower.contains('exceeded the limit') ||
+        lower.contains('limit reached')) {
       return 'Terminal limit reached. Disconnect another device.';
     }
-    if (lower.contains('socketexception') || lower.contains('connection refused') || lower.contains('unreachable')) {
+    if (lower.contains('socketexception') ||
+        lower.contains('connection refused') ||
+        lower.contains('unreachable')) {
       return 'Cannot reach the campus network. Make sure you are connected to Student-WiFi.';
     }
     if (lower.contains('time out') || lower.contains('timeout')) {
       return 'The connection request timed out. Please try again.';
     }
-    if (lower.contains('probe to generate_204 failed') || lower.contains('still captive')) {
+    if (lower.contains('probe to generate_204 failed') ||
+        lower.contains('still captive')) {
       return 'Logged in, but no internet access detected.';
     }
     if (lower.contains('http status')) {
@@ -841,8 +917,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
       return const SizedBox.shrink();
     }
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = BracuPalette.textSecondary(context)
-        .withValues(alpha: isDark ? 0.35 : 0.18);
+    final borderColor = BracuPalette.textSecondary(
+      context,
+    ).withValues(alpha: isDark ? 0.35 : 0.18);
 
     final parameterLabels = {
       'pushPageId': 'Page Transaction ID',
@@ -927,8 +1004,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
               Divider(
                 height: 18,
                 thickness: 1,
-                color: BracuPalette.textSecondary(context)
-                    .withValues(alpha: isDark ? 0.22 : 0.14),
+                color: BracuPalette.textSecondary(
+                  context,
+                ).withValues(alpha: isDark ? 0.22 : 0.14),
               ),
           ],
         ],
@@ -941,8 +1019,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
       return const SizedBox.shrink();
     }
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = BracuPalette.textSecondary(context)
-        .withValues(alpha: isDark ? 0.35 : 0.18);
+    final borderColor = BracuPalette.textSecondary(
+      context,
+    ).withValues(alpha: isDark ? 0.35 : 0.18);
     final sections = _parseResponseLog(_responseLog);
 
     return Container(
@@ -981,15 +1060,18 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
           const SizedBox(height: 16),
           for (var i = 0; i < sections.length; i++) ...[
             _buildResponseSection(context, sections[i], isDark),
-            if (i != sections.length - 1)
-              const SizedBox(height: 16),
+            if (i != sections.length - 1) const SizedBox(height: 16),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildResponseSection(BuildContext context, Map<String, String> section, bool isDark) {
+  Widget _buildResponseSection(
+    BuildContext context,
+    Map<String, String> section,
+    bool isDark,
+  ) {
     final title = section['title'] ?? '';
     final status = section['status'] ?? '';
     final body = section['body'] ?? '';
@@ -1042,10 +1124,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
           ),
           child: Text(
             _tryPrettyPrintJson(body),
-            style: const TextStyle(
-              fontFamily: 'monospace',
-              fontSize: 11,
-            ),
+            style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
           ),
         ),
       ],
@@ -1069,5 +1148,85 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> with WidgetsBindingOb
     _ssidController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+}
+
+class CaptivePortalWebView extends StatefulWidget {
+  const CaptivePortalWebView({required this.portalUrl, super.key});
+
+  final Uri portalUrl;
+
+  @override
+  State<CaptivePortalWebView> createState() => _CaptivePortalWebViewState();
+}
+
+class _CaptivePortalWebViewState extends State<CaptivePortalWebView> {
+  late final WebViewController _controller;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(AndroidNetworkAssist.bindToWifiNetwork());
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageStarted: (String url) {
+            if (mounted) {
+              setState(() {
+                _loading = true;
+              });
+            }
+          },
+          onPageFinished: (String url) {
+            if (mounted) {
+              setState(() {
+                _loading = false;
+              });
+            }
+            if (url.contains('/portalpage/')) {
+              unawaited(CaptiveLoginStore.instance.saveLastPortalUrl(url));
+            }
+          },
+        ),
+      )
+      ..loadRequest(widget.portalUrl);
+  }
+
+  @override
+  void dispose() {
+    unawaited(AndroidNetworkAssist.unbindFromWifiNetwork());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: BracuPageScaffold(
+        title: 'Wi-Fi Portal',
+        subtitle: _loading ? 'Loading Portal...' : 'Login Details',
+        icon: Icons.language_rounded,
+        showBack: true,
+        actions: [
+          if (_loading)
+            const Center(
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: BracuPalette.primary,
+                ),
+              ),
+            ),
+        ],
+        body: Container(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          child: WebViewWidget(controller: _controller),
+        ),
+      ),
+    );
   }
 }

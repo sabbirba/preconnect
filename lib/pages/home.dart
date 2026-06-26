@@ -52,20 +52,12 @@ import 'package:preconnect/tools/holiday.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/snapshot_store.dart';
+import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 part 'home_sections/dashboard_data.dart';
 part 'home_sections/dashboard_view.dart';
-
-enum CaptiveWifiState { offline, validated, captive, unknown }
-
-class CaptiveWifiStatus {
-  const CaptiveWifiStatus({required this.state, required this.httpStatusCode});
-
-  final CaptiveWifiState state;
-  final int? httpStatusCode;
-}
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, this.initialTab = HomeTab.dashboard});
@@ -261,105 +253,6 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
               return const SizedBox.shrink();
             }).toList(),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CaptiveWifiBanner extends StatelessWidget {
-  const _CaptiveWifiBanner({
-    required this.onOpenLogin,
-    this.statusCode,
-    required this.isLoading,
-  });
-
-  final VoidCallback onOpenLogin;
-  final int? statusCode;
-  final bool isLoading;
-
-  @override
-  Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: BracuPalette.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: BracuPalette.primary.withValues(alpha: 0.20),
-          width: 1,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.wifi_lock_rounded,
-              size: 20,
-              color: BracuPalette.primary,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Wi-Fi Login Required',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: BracuPalette.textPrimary(context),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'You are connected but not authenticated.',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      color: textSecondary,
-                      height: 1.3,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            GestureDetector(
-              onTap: isLoading ? null : onOpenLogin,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: BracuPalette.primary,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: isLoading
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white,
-                          ),
-                        ),
-                      )
-                    : const Text(
-                        'Connect',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-              ),
-            ),
-          ],
         ),
       ),
     );

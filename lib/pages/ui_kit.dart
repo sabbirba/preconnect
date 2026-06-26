@@ -917,7 +917,6 @@ class BracuFundingPromoDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     final textSecondary = BracuPalette.textSecondary(context);
     final textPrimary = BracuPalette.textPrimary(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     const textContent =
         "Please help us release PreConnect on iOS and keep it free for everyone. We kindly request you to donate any amount you can and share the funding link with your friends to support this campaign.";
@@ -972,27 +971,16 @@ class BracuFundingPromoDivider extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: textSecondary.withValues(alpha: isDark ? 0.22 : 0.16),
-            ),
+        InkWell(
+          onTap: () => openExternalUrl(
+            context,
+            'https://preconnect.app/funding',
+            failureMessage: 'Unable to open funding link.',
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: InkWell(
-            onTap: () => openExternalUrl(
-              context,
-              'https://preconnect.app/funding',
-              failureMessage: 'Unable to open funding link.',
-            ),
-            borderRadius: BorderRadius.circular(8),
-            child: Text(
-              textContent,
-              style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
-            ),
+          borderRadius: BorderRadius.circular(8),
+          child: Text(
+            textContent,
+            style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
           ),
         ),
       ],
