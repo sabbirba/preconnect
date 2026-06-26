@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:preconnect/api/funding.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
 class StudentOverviewCard extends StatelessWidget {
@@ -169,7 +171,6 @@ class _IconButton extends StatelessWidget {
     );
   }
 }
-
 class _SupportButton extends StatefulWidget {
   const _SupportButton({required this.onTap});
 
@@ -179,23 +180,39 @@ class _SupportButton extends StatefulWidget {
   State<_SupportButton> createState() => _SupportButtonState();
 }
 
-class _SupportButtonState extends State<_SupportButton> with SingleTickerProviderStateMixin {
+class _SupportButtonState extends State<_SupportButton> {
   bool _isLoading = false;
-  late final AnimationController _animationController = AnimationController(
-    duration: const Duration(seconds: 3),
-    vsync: this,
-  );
+  Timer? _rotationTimer;
+  int _rotationIndex = 0;
+  FundingStatus? _status;
 
   @override
   void initState() {
     super.initState();
-    _animationController.repeat();
+    _status = FundingService.cached;
+    _fetchLatest();
+    _rotationTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted) {
+        setState(() {
+          _rotationIndex++;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _rotationTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _fetchLatest() async {
+    final latest = await FundingService.fetchStatus();
+    if (latest != null && mounted) {
+      setState(() {
+        _status = latest;
+      });
+    }
   }
 
   Future<void> _handleTap() async {
@@ -214,76 +231,64 @@ class _SupportButtonState extends State<_SupportButton> with SingleTickerProvide
     }
   }
 
+  String _formatAmount(int amount) {
+    final str = amount.toString();
+    if (str.length <= 3) return str;
+    final buffer = StringBuffer();
+    for (int i = 0; i < str.length; i++) {
+      if (i > 0 && (str.length - i) % 3 == 0) {
+        buffer.write(',');
+      }
+      buffer.writeCharCode(str.codeUnitAt(i));
+    }
+    return buffer.toString();
+  }
+
+  String _labelText() {
+    final status = _status;
+    if (status == null) return 'Support iOS';
+    final optionIndex = _rotationIndex % 4;
+    return switch (optionIndex) {
+      0 => 'Support iOS',
+      1 => '৳${_formatAmount(status.totalRaised)} Raised',
+      2 => '৳${_formatAmount(status.goal)} Goal',
+      3 => '${status.contributorsCount} Backers',
+      _ => 'Support iOS',
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: _isLoading ? null : _handleTap,
       borderRadius: BorderRadius.circular(12),
-      child: CustomPaint(
-        painter: _AnimatedBorderPainter(
-          animation: _animationController,
-          color: BracuPalette.primary,
+      child: Container(
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 9),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: BracuPalette.primary.withValues(alpha: 0.35),
+            width: 0.8,
+          ),
         ),
-        child: Container(
-          height: 30,
-          padding: const EdgeInsets.symmetric(horizontal: 9),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.volunteer_activism_rounded,
-                size: 16,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _labelText(),
+              style: TextStyle(
                 color: BracuPalette.primary,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(width: 6),
-              Text(
-                'Support iOS',
-                style: TextStyle(
-                  color: BracuPalette.primary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
-}
-
-class _AnimatedBorderPainter extends CustomPainter {
-  _AnimatedBorderPainter({required this.animation, required this.color})
-      : super(repaint: animation);
-
-  final Animation<double> animation;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final paint = Paint()
-      ..strokeWidth = 0.8
-      ..style = PaintingStyle.stroke
-      ..shader = SweepGradient(
-        colors: [
-          color,
-          color.withValues(alpha: 0.1),
-          color,
-        ],
-        transform: GradientRotation(animation.value * 2 * 3.141592653589793),
-      ).createShader(rect);
-
-    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(12));
-    canvas.drawRRect(rrect, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _AnimatedBorderPainter oldDelegate) => false;
 }
 
 class _OverviewHeader extends StatelessWidget {
