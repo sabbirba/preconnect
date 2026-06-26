@@ -627,85 +627,169 @@ extension _HomeDashboardView on _HomeDashboardState {
             }).toList(),
           ),
         ),
-        // Expandable Grid (Shows remaining items)
         AnimatedSize(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
           alignment: Alignment.topCenter,
           child: _quickAccessExpanded
-              ? Padding(
-                  padding: EdgeInsets.only(top: layout.spacing),
-                  child: Center(
-                    child: Wrap(
-                      alignment: WrapAlignment.center,
-                      runAlignment: WrapAlignment.center,
-                      spacing: layout.spacing,
-                      runSpacing: layout.spacing,
-                      children: expandableItems.map((item) {
-                        return QuickAccessCard(
-                          width: layout.itemWidth,
-                          icon: item.icon,
-                          title: item.title,
-                          subtitle: item.subtitle,
-                          color: item.color,
-                          onTap: () {
-                            if (item.onTap != null) {
-                              item.onTap!(context);
-                            } else if (item.tab != null) {
-                              widget.onNavigate(item.tab!);
-                            }
-                          },
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                )
-              : const SizedBox.shrink(),
-        ),
-        const SizedBox(height: 16),
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            Divider(color: dividerColor, thickness: 1),
-            InkWell(
-              onTap: _toggleQuickAccess,
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: dividerColor, width: 1),
-                ),
-                child: Row(
+              ? Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      _quickAccessExpanded ? 'See Less' : 'See More',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: primaryColor,
+                    Padding(
+                      padding: EdgeInsets.only(top: layout.spacing),
+                      child: Center(
+                        child: Wrap(
+                          alignment: WrapAlignment.center,
+                          runAlignment: WrapAlignment.center,
+                          spacing: layout.spacing,
+                          runSpacing: layout.spacing,
+                          children: expandableItems.map((item) {
+                            return QuickAccessCard(
+                              width: layout.itemWidth,
+                              icon: item.icon,
+                              title: item.title,
+                              subtitle: item.subtitle,
+                              color: item.color,
+                              onTap: () {
+                                if (item.onTap != null) {
+                                  item.onTap!(context);
+                                } else if (item.tab != null) {
+                                  widget.onNavigate(item.tab!);
+                                }
+                              },
+                            );
+                          }).toList(),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    AnimatedRotation(
-                      turns: _quickAccessExpanded ? 0.5 : 0.0,
-                      duration: const Duration(milliseconds: 250),
-                      child: Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        size: 16,
-                        color: primaryColor,
+                    const SizedBox(height: 16),
+                    InkWell(
+                      onTap: _toggleQuickAccess,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).scaffoldBackgroundColor,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: dividerColor, width: 1),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'See Less',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: primaryColor,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            AnimatedRotation(
+                              turns: 0.5,
+                              duration: const Duration(milliseconds: 250),
+                              child: Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  size: 16,
+                                  color: primaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Stack(
+                  alignment: Alignment.bottomCenter,
+                  children: [
+                    GestureDetector(
+                      onTap: _toggleQuickAccess,
+                      behavior: HitTestBehavior.opaque,
+                      child: IgnorePointer(
+                        child: Padding(
+                          padding: EdgeInsets.only(top: layout.spacing, bottom: 12),
+                          child: ClipRect(
+                            child: Align(
+                              alignment: Alignment.topCenter,
+                              heightFactor: 0.5,
+                              child: ShaderMask(
+                                shaderCallback: (rect) {
+                                  return const LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [Colors.black, Colors.transparent],
+                                    stops: [0.0, 1.0],
+                                  ).createShader(Rect.fromLTRB(0, 0, rect.width, rect.height));
+                                },
+                                blendMode: BlendMode.dstIn,
+                                child: Center(
+                                  child: Wrap(
+                                    alignment: WrapAlignment.center,
+                                    runAlignment: WrapAlignment.center,
+                                    spacing: layout.spacing,
+                                    runSpacing: layout.spacing,
+                                    children: expandableItems.take(4).map((item) {
+                                      return QuickAccessCard(
+                                        width: layout.itemWidth,
+                                        icon: item.icon,
+                                        title: item.title,
+                                        subtitle: item.subtitle,
+                                        color: item.color,
+                                        onTap: () {},
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: _toggleQuickAccess,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).scaffoldBackgroundColor,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: dividerColor, width: 1),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'See More',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: primaryColor,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            AnimatedRotation(
+                              turns: 0.0,
+                              duration: const Duration(milliseconds: 250),
+                              child: Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 16,
+                                color: primaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ),
-          ],
         ),
       ],
     );
