@@ -28,6 +28,6 @@ echo "=== Flutter Pub Get ==="
 flutter pub get
 
 echo "=== Building Flutter Web ==="
-flutter build web --release --dart-define-from-file=.env
+flutter build web --release --tree-shake-icons --csp --no-wasm-dry-run --no-web-resources-cdn --dart-define-from-file=.env
 
 echo "=== Build Complete ==="
