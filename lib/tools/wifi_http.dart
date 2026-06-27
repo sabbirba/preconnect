@@ -360,6 +360,15 @@ class CaptiveWifiHttp {
         return (val != null && val.isNotEmpty) ? val : defaultValue;
       }
 
+      final acip = getParam('acip');
+      final apmac = getParam('apmac');
+      if (acip.isEmpty || apmac.isEmpty) {
+        lastError =
+            'Missing gateway parameters (acip/apmac) in portal redirect URL.';
+        debugPrint('[CaptiveWifi] Aborting login: $lastError');
+        return false;
+      }
+
       final pushPageId = getParam('pushPageId').isNotEmpty
           ? getParam('pushPageId')
           : _generateUuid();
@@ -372,7 +381,7 @@ class CaptiveWifiHttp {
         'pushPageId': pushPageId,
         'userPass': password,
         'esn': getParam('esn'),
-        'apmac': getParam('apmac'),
+        'apmac': apmac,
         'armac': getParam('armac'),
         'authType': getParam('authType', '1'),
         'ssid': base64Ssid,
@@ -380,7 +389,7 @@ class CaptiveWifiHttp {
         'umac': deviceUmac ?? getParam('umac'),
         'accessMac': getParam('accessMac'),
         'businessType': getParam('businessType'),
-        'acip': getParam('acip'),
+        'acip': acip,
         'agreed': getParam('agreed', '1'),
         'registerCode': getParam('registerCode'),
         'questions': getParam('questions'),
@@ -414,21 +423,29 @@ class CaptiveWifiHttp {
           'Status: ${response.statusCode}\n'
           'Body: ${response.body}\n';
 
+      String? successUrl;
       try {
         final decoded = jsonDecode(response.body);
-        if (decoded is Map && decoded['success'] == false) {
-          final errorCode = decoded['errorcode']?.toString() ?? '';
-          lastError = _mapPortalErrorCode(errorCode);
-          debugPrint(
-            '[CaptiveWifi] Portal returned error: $lastError ($errorCode)',
-          );
-          return false;
+        if (decoded is Map) {
+          if (decoded['success'] == false) {
+            final errorCode = decoded['errorcode']?.toString() ?? '';
+            lastError = _mapPortalErrorCode(errorCode);
+            debugPrint(
+              '[CaptiveWifi] Portal returned error: $lastError ($errorCode)',
+            );
+            return false;
+          }
+          successUrl = (decoded['successUrl'] ?? decoded['successurl'])
+              ?.toString();
+          if (successUrl != null && successUrl.isNotEmpty) {
+            unawaited(CaptiveLoginStore.instance.saveSuccessUrl(successUrl));
+            debugPrint('[CaptiveWifi] Saved success URL: $successUrl');
+          }
         }
       } catch (e) {
         debugPrint('[CaptiveWifi] Exception parsing login response JSON: $e');
       }
 
-      // Sync portal result to fully finalize the login authentication session
       try {
         final apiSyncUri = loginUri.replace(
           path: '/portalauth/syncPortalResult',
@@ -438,11 +455,12 @@ class CaptiveWifiHttp {
         if (!cookies.containsKey('countdown')) {
           cookies['countdown'] = Cookie('countdown', '0');
         }
+        final syncVal = successUrl ?? 'null';
         debugPrint('[CaptiveWifi] Sending Sync POST...');
         final syncResponse = await postOnce(
           client: client,
           uri: apiSyncUri,
-          body: 'successUrl=null',
+          body: 'successUrl=${Uri.encodeComponent(syncVal)}',
           cookies: cookies,
           referer: loginUri,
         );
@@ -478,16 +496,29 @@ class CaptiveWifiHttp {
         return false;
       }
 
-      if (response.location != null) {
-        final redirected = response.location!.isAbsolute
-            ? response.location!
-            : apiLoginUri.resolveUri(response.location!);
+      final redirectTarget =
+          response.location ??
+          (successUrl != null ? Uri.tryParse(successUrl) : null);
+      if (redirectTarget != null) {
+        final redirected = redirectTarget.isAbsolute
+            ? redirectTarget
+            : apiLoginUri.resolveUri(redirectTarget);
         debugPrint('[CaptiveWifi] Redirecting to location: $redirected');
-        await getWithRedirects(
+        final successRedirectResult = await getWithRedirects(
           client: client,
           uri: redirected,
           cookies: cookies,
         );
+        if (successRedirectResult.uri != redirected) {
+          unawaited(
+            CaptiveLoginStore.instance.saveSuccessUrl(
+              successRedirectResult.uri.toString(),
+            ),
+          );
+          debugPrint(
+            '[CaptiveWifi] Updated success URL with redirect: ${successRedirectResult.uri}',
+          );
+        }
       }
 
       debugPrint('[CaptiveWifi] Validating connection with probe check...');
@@ -496,7 +527,13 @@ class CaptiveWifiHttp {
         cookies: cookies,
       );
       debugPrint('[CaptiveWifi] Probe validation success: $probeSuccess');
-      if (!probeSuccess) {
+      if (probeSuccess) {
+        unawaited(
+          CaptiveLoginStore.instance.saveLastLoginAt(
+            DateTime.now().millisecondsSinceEpoch,
+          ),
+        );
+      } else {
         lastError =
             'Gateway authentication POST completed but probe to generate_204 failed (still captive)';
         debugPrint('[CaptiveWifi] Error: $lastError');
@@ -522,7 +559,10 @@ class CaptiveWifiHttp {
     final client = await newClient();
     final cookies = sessionCookies;
 
-    var targetUrl = captiveWifiUrl;
+    final savedSuccessUrl = await CaptiveLoginStore.instance.readSuccessUrl();
+    var targetUrl = savedSuccessUrl != null && savedSuccessUrl.isNotEmpty
+        ? Uri.parse(savedSuccessUrl)
+        : captiveWifiUrl;
     if (targetUrl == defaultProbeUri) {
       final savedUrlStr = await CaptiveLoginStore.instance.readLastPortalUrl();
       if (savedUrlStr != null && savedUrlStr.isNotEmpty) {

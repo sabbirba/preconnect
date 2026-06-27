@@ -24,11 +24,6 @@ class CaptiveWifiPage extends StatefulWidget {
 class _CaptiveWifiPageState extends State<CaptiveWifiPage>
     with WidgetsBindingObserver {
   static const Duration _apiLoginTimeout = Duration(seconds: 45);
-  static const Duration _wifiAssociationTimeout = Duration(seconds: 30);
-  static const Duration _wifiAssociationPollInterval = Duration(
-    milliseconds: 600,
-  );
-
   final TextEditingController _ssidController = TextEditingController(
     text: CaptiveLoginStore.defaultCampusSsid,
   );
@@ -47,6 +42,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   Map<String, String>? _extractedParams;
   String _responseLog = '';
   AndroidNetworkStatus? _currentStatus;
+  DateTime? _lastConnectAttemptAt;
 
   @override
   void initState() {
@@ -240,29 +236,15 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
     final targetSsid = _ssidController.text.trim().toLowerCase();
     if (targetSsid.isEmpty) return;
 
-    final initialStatus = await AndroidNetworkAssist.getNetworkStatus();
-    if (initialStatus != null) {
-      final currentSsid = (initialStatus.ssid ?? '').trim().toLowerCase();
-      if (currentSsid == targetSsid) return;
-      if (initialStatus.transport == 'wifi' &&
-          (initialStatus.captive || !initialStatus.validated)) {
-        return;
-      }
-    }
-
-    final deadline = DateTime.now().add(_wifiAssociationTimeout);
-    while (DateTime.now().isBefore(deadline)) {
-      final status = await AndroidNetworkAssist.getNetworkStatus();
-      final currentSsid = (status?.ssid ?? '').trim().toLowerCase();
+    final status = await AndroidNetworkAssist.getNetworkStatus();
+    if (status != null) {
+      final currentSsid = (status.ssid ?? '').trim().toLowerCase();
       if (currentSsid == targetSsid) {
         return;
       }
-      if (status != null &&
-          status.transport == 'wifi' &&
-          (status.captive || !status.validated)) {
+      if (status.transport == 'wifi' && (status.captive || !status.validated)) {
         return;
       }
-      await Future<void>.delayed(_wifiAssociationPollInterval);
     }
   }
 
@@ -310,7 +292,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
     unawaited(_runOneTapConnect());
   }
 
-  Future<void> _runOneTapConnect() async {
+  Future<void> _runOneTapConnect({bool isManual = false}) async {
     debugPrint('[CaptiveWifiUI] _runOneTapConnect triggered');
     if (!mounted || _isConnecting) {
       debugPrint(
@@ -318,6 +300,26 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       );
       return;
     }
+    final now = DateTime.now();
+    final lastAttemptMs = await CaptiveLoginStore.instance
+        .readLastConnectAttemptAt();
+    final lastAttemptAt = lastAttemptMs != null
+        ? DateTime.fromMillisecondsSinceEpoch(lastAttemptMs)
+        : _lastConnectAttemptAt;
+    if (lastAttemptAt != null &&
+        now.difference(lastAttemptAt) < const Duration(minutes: 1)) {
+      debugPrint(
+        '[CaptiveWifiUI] _runOneTapConnect aborted: 1-minute cooldown active',
+      );
+      if (isManual) {
+        _showLocalSnackBar('Please wait 1 minute between connection attempts.');
+      }
+      return;
+    }
+    _lastConnectAttemptAt = now;
+    await CaptiveLoginStore.instance.saveLastConnectAttemptAt(
+      now.millisecondsSinceEpoch,
+    );
     if (!_validateRequiredInputs()) {
       debugPrint(
         '[CaptiveWifiUI] _runOneTapConnect validation failed: SSID=${_ssidController.text}, StudentID=${_studentIdController.text}, PasswordLength=${_passwordController.text.length}',
@@ -733,7 +735,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                                 ? null
                                 : (isSessionActive
                                       ? () => unawaited(_runDisconnect())
-                                      : () => unawaited(_runOneTapConnect())),
+                                      : () => unawaited(
+                                          _runOneTapConnect(isManual: true),
+                                        )),
                             icon: isSessionActive
                                 ? Icons.wifi_off_rounded
                                 : Icons.wifi_rounded,

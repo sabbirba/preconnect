@@ -22,8 +22,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   bool _refreshInFlight = false;
   bool _isBackgroundLoggingIn = false;
   StreamSubscription<AndroidNetworkStatus>? _networkStatusSubscription;
-  bool _autoOpenedWifiAssistant = false;
-  bool _isOpeningWifiAssistant = false;
+
   bool _isAutoExtendingSession = false;
   DateTime? _lastAutoAssistantOpenAt;
   DateTime? _lastSilentLoginAt;
@@ -35,8 +34,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   static const Duration _todayScheduleAutoRefreshInterval = Duration(
     minutes: 1,
   );
-  static const Duration _autoAssistantCooldown = Duration(seconds: 45);
-  static const Duration _silentLoginCooldown = Duration(seconds: 90);
   static const Duration _silentLoginTimeout = Duration(seconds: 45);
   static const String _homeDashboardSnapshotCacheKey =
       'home_dashboard_snapshot_v1';
@@ -75,8 +72,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
                 !status.validated);
         if (shouldOpenAssistant) {
           unawaited(_maybeAutoOpenWifiAssistant(status));
-        } else {
-          _autoOpenedWifiAssistant = false;
         }
       });
       unawaited(_consumePostConnectionEvent());
@@ -495,8 +490,12 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     if (!isCampusSsid) return;
 
     final now = DateTime.now();
-    if (_lastSilentLoginAt != null &&
-        now.difference(_lastSilentLoginAt!) < const Duration(hours: 12)) {
+    final lastLoginMs = await CaptiveLoginStore.instance.readLastLoginAt();
+    final lastLoginAt = lastLoginMs != null
+        ? DateTime.fromMillisecondsSinceEpoch(lastLoginMs)
+        : _lastSilentLoginAt;
+    if (lastLoginAt != null &&
+        now.difference(lastLoginAt) < const Duration(hours: 12)) {
       return;
     }
 
@@ -524,8 +523,13 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     if (_isBackgroundLoggingIn) return false;
 
     final now = DateTime.now();
-    if (_lastSilentLoginAt != null &&
-        now.difference(_lastSilentLoginAt!) < _silentLoginCooldown) {
+    final lastAttemptMs = await CaptiveLoginStore.instance
+        .readLastConnectAttemptAt();
+    final lastAttemptAt = lastAttemptMs != null
+        ? DateTime.fromMillisecondsSinceEpoch(lastAttemptMs)
+        : _lastSilentLoginAt;
+    if (lastAttemptAt != null &&
+        now.difference(lastAttemptAt) < const Duration(minutes: 1)) {
       return false;
     }
 
@@ -540,6 +544,9 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
     _isBackgroundLoggingIn = true;
     _lastSilentLoginAt = now;
+    await CaptiveLoginStore.instance.saveLastConnectAttemptAt(
+      now.millisecondsSinceEpoch,
+    );
     try {
       await AndroidNetworkAssist.bindToWifiNetwork();
       final success = await CaptiveWifiHttp.instance
@@ -580,32 +587,45 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   }
 
   Future<void> _maybeAutoOpenWifiAssistant(AndroidNetworkStatus status) async {
-    if (_isOpeningWifiAssistant || !mounted) return;
+    if (!mounted) return;
     if (status.transport != 'wifi') return;
-    final creds = await CaptiveLoginStore.instance.read();
-    if (!mounted || creds == null) return;
     final currentSsid = (status.ssid ?? '').trim();
     if (currentSsid.isEmpty) return;
 
     final now = DateTime.now();
-    if (_lastAutoAssistantOpenAt != null &&
-        now.difference(_lastAutoAssistantOpenAt!) < _autoAssistantCooldown) {
+    final lastAttemptMs = await CaptiveLoginStore.instance
+        .readLastConnectAttemptAt();
+    final lastAttemptAt = lastAttemptMs != null
+        ? DateTime.fromMillisecondsSinceEpoch(lastAttemptMs)
+        : _lastAutoAssistantOpenAt;
+    if (lastAttemptAt != null &&
+        now.difference(lastAttemptAt) < const Duration(minutes: 1)) {
       return;
     }
     _lastAutoAssistantOpenAt = now;
 
-    final silentSuccess = await _silentBackgroundLogin(status);
-    if (silentSuccess || !mounted) {
-      _autoOpenedWifiAssistant = false;
-      return;
+    final captiveWifiUri = CaptiveWifiHttp.resolvePortalUri(status);
+    if (captiveWifiUri != null &&
+        captiveWifiUri != CaptiveWifiHttp.defaultProbeUri) {
+      await CaptiveLoginStore.instance.saveLastPortalUrl(
+        captiveWifiUri.toString(),
+      );
     }
 
-    if (_autoOpenedWifiAssistant) return;
-    _autoOpenedWifiAssistant = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      await _openWifiLoginAssistant();
-    });
+    unawaited(
+      FCMService.instance.showNotification(
+        id: 9987,
+        title: 'Sign in to Wi-Fi network',
+        body:
+            'Tap to sign in to ${status.ssid ?? 'Student-WiFi'} via PreConnect.',
+        payload: 'captive_wifi',
+      ),
+    );
+
+    final creds = await CaptiveLoginStore.instance.read();
+    if (!mounted || creds == null) return;
+
+    await _silentBackgroundLogin(status);
   }
 
   Future<void> _consumePostConnectionEvent() async {
@@ -620,30 +640,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     if (!mounted) return;
 
     if (status != null) {
-      final silentSuccess = await _silentBackgroundLogin(status);
-      if (silentSuccess || !mounted) return;
-    }
-
-    _autoOpenedWifiAssistant = true;
-    _lastAutoAssistantOpenAt = DateTime.now();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      await _openWifiLoginAssistant();
-    });
-  }
-
-  Future<void> _openWifiLoginAssistant() async {
-    if (_isOpeningWifiAssistant || !mounted) return;
-    _isOpeningWifiAssistant = true;
-    try {
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) =>
-              const CaptiveWifiPage(autoOpenCaptiveWifiOnStart: true),
-        ),
-      );
-    } finally {
-      _isOpeningWifiAssistant = false;
+      await _silentBackgroundLogin(status);
     }
   }
 
