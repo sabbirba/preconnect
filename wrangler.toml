@@ -5,7 +5,7 @@ preview_urls = false
 keep_bindings = []
 
 routes = [
-  { pattern = "web.preconnect.app/*", custom_domain = true }
+  { pattern = "web.preconnect.app", custom_domain = true }
 ]
 
 [assets]
