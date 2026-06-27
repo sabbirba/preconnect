@@ -45,7 +45,10 @@ class AuthService {
   static bool _isLoggingOut = false;
 
   Future<void> login(BuildContext context) async {
-    Navigator.pushNamed(context, '/login');
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginPage()),
+    );
   }
 
   Future<void> logout({

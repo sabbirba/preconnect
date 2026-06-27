@@ -17,6 +17,7 @@ import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/pages/shared_widgets/import_dialog.dart';
+import 'package:preconnect/pages/home.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key, this.isLoggedIn = false});
@@ -66,7 +67,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
       return;
     }
     if (widget.isLoggedIn) {
-      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const HomePage()),
+        (route) => false,
+      );
       return;
     }
     Navigator.of(context).pushReplacement(
@@ -115,7 +119,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
     if (result == true) {
       if (!mounted) return;
       RefreshBus.instance.notify(reason: 'auth');
-      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const HomePage()),
+        (route) => false,
+      );
     }
   }
 
@@ -149,7 +156,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
       });
       await MyApp.warmStartupCachesAsync();
       if (!mounted) return;
-      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const HomePage()),
+        (route) => false,
+      );
       return;
     }
     if (state.isFailed) {

@@ -22,12 +22,14 @@ import 'package:preconnect/pages/shared_widgets/session_helper.dart';
 import 'package:preconnect/pages/shared_widgets/import_dialog.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/pages/home.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/bracu_logout.dart';
 import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
@@ -324,7 +326,10 @@ class _LoginPageState extends State<LoginPage> {
 
       RefreshBus.instance.notify(reason: 'auth');
       if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const HomePage()),
+          (route) => false,
+        );
       }
       unawaited(_warmAuthenticatedData());
       return true;
@@ -397,8 +402,10 @@ class _LoginPageState extends State<LoginPage> {
                     if (await controller.canGoBack()) {
                       await controller.goBack();
                     } else {
-                      navigator.pushNamedAndRemoveUntil(
-                        '/onboarding',
+                      navigator.pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (context) => const OnboardingPage(),
+                        ),
                         (route) => false,
                       );
                     }
@@ -446,7 +453,10 @@ class _LoginPageState extends State<LoginPage> {
     if (result == true) {
       RefreshBus.instance.notify(reason: 'auth');
       if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const HomePage()),
+          (route) => false,
+        );
       }
       unawaited(_warmAuthenticatedData());
     }

@@ -22,7 +22,6 @@ import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/class_schedule.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
-import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/student_profile.dart';
@@ -480,8 +479,8 @@ class _MyAppState extends State<MyApp>
       _initialLoggedIn = false;
       _canOpenOffline = false;
     });
-    AuthService.navigatorKey.currentState?.pushNamedAndRemoveUntil(
-      '/onboarding',
+    AuthService.navigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const OnboardingPage()),
       (route) => false,
     );
   }
@@ -501,8 +500,8 @@ class _MyAppState extends State<MyApp>
           });
           if (!loggedIn) {
             _themeMode.value = ThemeMode.system;
-            AuthService.navigatorKey.currentState?.pushNamedAndRemoveUntil(
-              '/onboarding',
+            AuthService.navigatorKey.currentState?.pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => const OnboardingPage()),
               (route) => false,
             );
           }
@@ -536,10 +535,14 @@ class _MyAppState extends State<MyApp>
   void _openCaptiveWifi() {
     final navigator = AuthService.navigatorKey.currentState;
     if (navigator != null) {
-      navigator.pushNamed('/captive_wifi');
+      navigator.push(
+        MaterialPageRoute(builder: (context) => const CaptiveWifiPage()),
+      );
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        AuthService.navigatorKey.currentState?.pushNamed('/captive_wifi');
+        AuthService.navigatorKey.currentState?.push(
+          MaterialPageRoute(builder: (context) => const CaptiveWifiPage()),
+        );
       });
     }
     unawaited(_clearPendingShortcutAction());
@@ -563,12 +566,15 @@ class _MyAppState extends State<MyApp>
     HomePage.requestShortcutTab(tab);
     final navigator = AuthService.navigatorKey.currentState;
     if (navigator != null) {
-      navigator.pushNamedAndRemoveUntil('/', (route) => false);
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => HomePage(initialTab: tab)),
+        (route) => false,
+      );
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      AuthService.navigatorKey.currentState?.pushNamedAndRemoveUntil(
-        '/',
+      AuthService.navigatorKey.currentState?.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => HomePage(initialTab: tab)),
         (route) => false,
       );
     });
@@ -993,11 +999,7 @@ class _MyAppState extends State<MyApp>
                 ),
               );
             },
-            routes: {
-              '/login': (context) => const LoginPage(),
-              '/onboarding': (context) => const OnboardingPage(),
-              '/captive_wifi': (context) => const CaptiveWifiPage(),
-            },
+
             home: _resolvedBootstrapState == null
                 ? const StartupFrame()
                 : (_initialLoggedIn || _canOpenOffline)
