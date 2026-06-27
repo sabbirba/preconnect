@@ -2,28 +2,6 @@
 <html>
   <head>
     <base href="$FLUTTER_BASE_HREF" />
-    <script>
-      (function () {
-        var path = window.location.pathname;
-        var search = window.location.search;
-        var hash = window.location.hash;
-        if (path !== '/' && (!hash || hash === '#/')) {
-          window.location.hash = '#/' + path.replace(/^\/+/, '') + search;
-        }
-        var originalPush = window.history.pushState;
-        var originalReplace = window.history.replaceState;
-        function cleanUrl(url) {
-          if (!url) return url;
-          return url.replace(/\/+\#\/+/, '/').replace(/\/+\#$/, '/');
-        }
-        window.history.pushState = function (state, title, url) {
-          return originalPush.apply(this, [state, title, cleanUrl(url)]);
-        };
-        window.history.replaceState = function (state, title, url) {
-          return originalReplace.apply(this, [state, title, cleanUrl(url)]);
-        };
-      })();
-    </script>
     <meta charset="UTF-8" />
     <meta content="IE=Edge" http-equiv="X-UA-Compatible" />
     <meta
