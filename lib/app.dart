@@ -563,12 +563,12 @@ class _MyAppState extends State<MyApp>
     HomePage.requestShortcutTab(tab);
     final navigator = AuthService.navigatorKey.currentState;
     if (navigator != null) {
-      navigator.pushNamedAndRemoveUntil('/home', (route) => false);
+      navigator.pushNamedAndRemoveUntil('/', (route) => false);
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AuthService.navigatorKey.currentState?.pushNamedAndRemoveUntil(
-        '/home',
+        '/',
         (route) => false,
       );
     });
@@ -995,11 +995,6 @@ class _MyAppState extends State<MyApp>
             },
             routes: {
               '/login': (context) => const LoginPage(),
-              '/home': (context) => HomePage(
-                initialTab:
-                    _resolvedBootstrapState?.initialHomeTab ??
-                    HomeTab.dashboard,
-              ),
               '/onboarding': (context) => const OnboardingPage(),
               '/captive_wifi': (context) => const CaptiveWifiPage(),
             },

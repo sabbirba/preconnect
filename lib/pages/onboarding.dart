@@ -66,7 +66,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
       return;
     }
     if (widget.isLoggedIn) {
-      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
       return;
     }
     Navigator.of(context).pushReplacement(
@@ -115,7 +115,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     if (result == true) {
       if (!mounted) return;
       RefreshBus.instance.notify(reason: 'auth');
-      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
     }
   }
 
@@ -149,7 +149,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
       });
       await MyApp.warmStartupCachesAsync();
       if (!mounted) return;
-      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
       return;
     }
     if (state.isFailed) {

@@ -324,9 +324,7 @@ class _LoginPageState extends State<LoginPage> {
 
       RefreshBus.instance.notify(reason: 'auth');
       if (mounted) {
-        Navigator.of(
-          context,
-        ).pushNamedAndRemoveUntil('/home', (route) => false);
+        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
       }
       unawaited(_warmAuthenticatedData());
       return true;
@@ -448,9 +446,7 @@ class _LoginPageState extends State<LoginPage> {
     if (result == true) {
       RefreshBus.instance.notify(reason: 'auth');
       if (mounted) {
-        Navigator.of(
-          context,
-        ).pushNamedAndRemoveUntil('/home', (route) => false);
+        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
       }
       unawaited(_warmAuthenticatedData());
     }
