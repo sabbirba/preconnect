@@ -195,9 +195,6 @@ class CaptiveLoginStore {
   static const String _successUrlKey = 'wifi_captive_success_url';
   static const String _lastLoginAtKey = 'wifi_captive_last_login_at';
 
-  static const String _lastConnectAttemptAtKey =
-      'wifi_captive_last_connect_attempt_at';
-
   Future<String?> readLastPortalUrl() async {
     return await _storage.read(key: _lastPortalUrlKey);
   }
@@ -223,25 +220,12 @@ class CaptiveLoginStore {
     await _storage.write(key: _lastLoginAtKey, value: timestamp.toString());
   }
 
-  Future<int?> readLastConnectAttemptAt() async {
-    final raw = await _storage.read(key: _lastConnectAttemptAtKey);
-    return raw != null ? int.tryParse(raw) : null;
-  }
-
-  Future<void> saveLastConnectAttemptAt(int timestamp) async {
-    await _storage.write(
-      key: _lastConnectAttemptAtKey,
-      value: timestamp.toString(),
-    );
-  }
-
   Future<void> clear() async {
     await _storage.write(key: _passwordKey, value: null);
     await _storage.write(key: _autoExtendEnabledKey, value: null);
     await _storage.write(key: _lastPortalUrlKey, value: null);
     await _storage.write(key: _successUrlKey, value: null);
     await _storage.write(key: _lastLoginAtKey, value: null);
-    await _storage.write(key: _lastConnectAttemptAtKey, value: null);
   }
 }
 

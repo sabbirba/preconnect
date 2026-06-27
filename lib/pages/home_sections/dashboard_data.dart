@@ -523,13 +523,8 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     if (_isBackgroundLoggingIn) return false;
 
     final now = DateTime.now();
-    final lastAttemptMs = await CaptiveLoginStore.instance
-        .readLastConnectAttemptAt();
-    final lastAttemptAt = lastAttemptMs != null
-        ? DateTime.fromMillisecondsSinceEpoch(lastAttemptMs)
-        : _lastSilentLoginAt;
-    if (lastAttemptAt != null &&
-        now.difference(lastAttemptAt) < const Duration(minutes: 1)) {
+    if (_lastSilentLoginAt != null &&
+        now.difference(_lastSilentLoginAt!) < const Duration(minutes: 1)) {
       return false;
     }
 
@@ -544,9 +539,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
     _isBackgroundLoggingIn = true;
     _lastSilentLoginAt = now;
-    await CaptiveLoginStore.instance.saveLastConnectAttemptAt(
-      now.millisecondsSinceEpoch,
-    );
     try {
       await AndroidNetworkAssist.bindToWifiNetwork();
       final success = await CaptiveWifiHttp.instance
@@ -593,13 +585,9 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     if (currentSsid.isEmpty) return;
 
     final now = DateTime.now();
-    final lastAttemptMs = await CaptiveLoginStore.instance
-        .readLastConnectAttemptAt();
-    final lastAttemptAt = lastAttemptMs != null
-        ? DateTime.fromMillisecondsSinceEpoch(lastAttemptMs)
-        : _lastAutoAssistantOpenAt;
-    if (lastAttemptAt != null &&
-        now.difference(lastAttemptAt) < const Duration(minutes: 1)) {
+    if (_lastAutoAssistantOpenAt != null &&
+        now.difference(_lastAutoAssistantOpenAt!) <
+            const Duration(seconds: 45)) {
       return;
     }
     _lastAutoAssistantOpenAt = now;

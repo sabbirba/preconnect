@@ -42,7 +42,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   Map<String, String>? _extractedParams;
   String _responseLog = '';
   AndroidNetworkStatus? _currentStatus;
-  DateTime? _lastConnectAttemptAt;
 
   @override
   void initState() {
@@ -300,26 +299,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       );
       return;
     }
-    final now = DateTime.now();
-    final lastAttemptMs = await CaptiveLoginStore.instance
-        .readLastConnectAttemptAt();
-    final lastAttemptAt = lastAttemptMs != null
-        ? DateTime.fromMillisecondsSinceEpoch(lastAttemptMs)
-        : _lastConnectAttemptAt;
-    if (lastAttemptAt != null &&
-        now.difference(lastAttemptAt) < const Duration(minutes: 1)) {
-      debugPrint(
-        '[CaptiveWifiUI] _runOneTapConnect aborted: 1-minute cooldown active',
-      );
-      if (isManual) {
-        _showLocalSnackBar('Please wait 1 minute between connection attempts.');
-      }
-      return;
-    }
-    _lastConnectAttemptAt = now;
-    await CaptiveLoginStore.instance.saveLastConnectAttemptAt(
-      now.millisecondsSinceEpoch,
-    );
+
     if (!_validateRequiredInputs()) {
       debugPrint(
         '[CaptiveWifiUI] _runOneTapConnect validation failed: SSID=${_ssidController.text}, StudentID=${_studentIdController.text}, PasswordLength=${_passwordController.text.length}',
