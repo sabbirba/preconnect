@@ -49,7 +49,9 @@ Installation is available for multiple platforms through:
 - macOS: Using [Homebrew](https://brew.sh):
 
   ```bash
-  brew install hitblast/tap/preconnect
+  brew tap hitblast/tap
+  brew trust hitblast/tap
+  brew install preconnect
   ```
   Or, use GitHub Releases as mentioned before.
 
