@@ -229,11 +229,9 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
         _base64Data = base64Str;
       });
     } catch (e) {
-      if (_base64Data == null) {
-        _safeSetState(() {
-          errorMessage = e.toString();
-        });
-      }
+      _safeSetState(() {
+        errorMessage = 'Failed to generate. Please try again.';
+      });
     } finally {
       _isRefreshing = false;
       _safeSetState(() {

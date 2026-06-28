@@ -55,7 +55,8 @@ class LoginPage extends StatefulWidget {
       _pkceVerifier = generatePkceVerifier();
       final codeChallenge = codeChallengeS256(_pkceVerifier!);
       final controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted);
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setBackgroundColor(Colors.transparent);
       if (_shouldUseMobileUserAgent) {
         controller.setUserAgent(kPreConnectUserAgent);
       }
@@ -138,6 +139,7 @@ class _MobileLogoutWebViewPageState extends State<_MobileLogoutWebViewPage> {
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.transparent)
       ..setNavigationDelegate(
         NavigationDelegate(
           onNavigationRequest: (request) {
@@ -184,6 +186,7 @@ class _MobileLogoutWebViewPageState extends State<_MobileLogoutWebViewPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(child: WebViewWidget(controller: _controller)),
     );
   }
@@ -195,6 +198,7 @@ class _LoginPageState extends State<LoginPage> {
   WebViewController? _webViewController;
   bool _handledRedirect = false;
   bool _isLoggingIn = false;
+  bool _webViewLoading = false;
 
   @override
   void initState() {
@@ -210,7 +214,8 @@ class _LoginPageState extends State<LoginPage> {
     LoginPage._pkceVerifier ??= generatePkceVerifier();
     final codeChallenge = codeChallengeS256(LoginPage._pkceVerifier!);
     final controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted);
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.transparent);
     if (_shouldUseMobileUserAgent) {
       controller.setUserAgent(kPreConnectUserAgent);
     }
@@ -228,6 +233,20 @@ class _LoginPageState extends State<LoginPage> {
             return NavigationDecision.prevent;
           }
           return NavigationDecision.navigate;
+        },
+        onPageStarted: (url) {
+          if (mounted) {
+            setState(() {
+              _webViewLoading = true;
+            });
+          }
+        },
+        onPageFinished: (url) {
+          if (mounted) {
+            setState(() {
+              _webViewLoading = false;
+            });
+          }
         },
       ),
     );
@@ -384,6 +403,7 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: LayoutBuilder(
@@ -416,6 +436,55 @@ class _LoginPageState extends State<LoginPage> {
                         Positioned.fill(
                           child: WebViewWidget(controller: _webViewController!),
                         ),
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          height: 48,
+                          color: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.arrow_back_rounded),
+                                onPressed: () async {
+                                  final controller = _webViewController;
+                                  if (controller == null || !mounted) return;
+                                  final navigator = Navigator.of(context);
+                                  if (await controller.canGoBack()) {
+                                    await controller.goBack();
+                                  } else {
+                                    navigator.pushAndRemoveUntil(
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const OnboardingPage(),
+                                      ),
+                                      (route) => false,
+                                    );
+                                  }
+                                },
+                              ),
+                              const Spacer(),
+                              IconButton(
+                                icon: _webViewLoading
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: BracuPalette.primary,
+                                        ),
+                                      )
+                                    : const Icon(Icons.refresh_rounded),
+                                onPressed: _webViewLoading
+                                    ? null
+                                    : () => _webViewController?.reload(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),

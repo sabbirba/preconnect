@@ -597,6 +597,7 @@ class AdvisingService {
 
   Future<Map<String, String?>?> fetchAdvisingInfo({
     bool fromGet = false,
+    Duration cacheDuration = const Duration(seconds: 2),
   }) async {
     final asyncPrefs = AppStorage.instance;
     final repo = RepositoryCache.instance;
@@ -643,6 +644,7 @@ class AdvisingService {
       },
       readCache: ({required bool fromFetch}) =>
           getAdvisingInfo(fromFetch: fromFetch),
+      cacheDuration: cacheDuration,
     );
   }
 
@@ -678,7 +680,10 @@ class AttendanceService {
   static const String _attendanceKey = 'attendance';
   static const String _attendanceEtagKey = 'attendance_etag_v1';
 
-  Future<String?> fetchAttendanceInfo({bool fromGet = false}) async {
+  Future<String?> fetchAttendanceInfo({
+    bool fromGet = false,
+    Duration cacheDuration = const Duration(seconds: 2),
+  }) async {
     final asyncPrefs = AppStorage.instance;
     final id = await resolvePortfolioId(
       prefs: asyncPrefs,
@@ -701,6 +706,7 @@ class AttendanceService {
       },
       readCache: ({required bool fromFetch}) =>
           getAttendanceInfo(fromFetch: fromFetch),
+      cacheDuration: cacheDuration,
     );
   }
 
@@ -722,7 +728,10 @@ class PaymentService {
   static const String _paymentInfoKey = 'SemesterPaymentInfo';
   static const String _paymentInfoEtagKey = 'SemesterPaymentInfo_etag_v1';
 
-  Future<String?> fetchPaymentInfo({bool fromGet = false}) async {
+  Future<String?> fetchPaymentInfo({
+    bool fromGet = false,
+    Duration cacheDuration = const Duration(seconds: 2),
+  }) async {
     final asyncPrefs = AppStorage.instance;
     final id = await resolvePortfolioId(
       prefs: asyncPrefs,
@@ -745,6 +754,7 @@ class PaymentService {
       },
       readCache: ({required bool fromFetch}) =>
           getPaymentInfo(fromFetch: fromFetch),
+      cacheDuration: cacheDuration,
     );
   }
 

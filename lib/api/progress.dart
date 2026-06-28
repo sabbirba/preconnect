@@ -27,13 +27,19 @@ class ProgressService {
   final Map<String, Future<ProgressInfo?>> _fetchInFlight =
       <String, Future<ProgressInfo?>>{};
 
-  Future<ProgressInfo?> fetchProgress({bool fromGet = false}) async {
+  Future<ProgressInfo?> fetchProgress({
+    bool fromGet = false,
+    Duration cacheDuration = const Duration(seconds: 30),
+  }) async {
     final inFlightKey = 'progress|$fromGet';
     final inFlight = _fetchInFlight[inFlightKey];
     if (inFlight != null) {
       return await inFlight;
     }
-    final request = _fetchProgressInternal(fromGet: fromGet);
+    final request = _fetchProgressInternal(
+      fromGet: fromGet,
+      cacheDuration: cacheDuration,
+    );
     _fetchInFlight[inFlightKey] = request;
     try {
       return await request;
@@ -42,7 +48,10 @@ class ProgressService {
     }
   }
 
-  Future<ProgressInfo?> _fetchProgressInternal({required bool fromGet}) async {
+  Future<ProgressInfo?> _fetchProgressInternal({
+    required bool fromGet,
+    required Duration cacheDuration,
+  }) async {
     final asyncPrefs = AppStorage.instance;
     final portfolioId = await resolvePortfolioId(
       prefs: asyncPrefs,
@@ -71,17 +80,17 @@ class ProgressService {
         _client.authenticatedGet(
           majorMinorsUrl,
           acceptedStatusCodes: const <int>{200},
-          cacheDuration: const Duration(seconds: 30),
+          cacheDuration: cacheDuration,
         ),
         _client.authenticatedGet(
           completedCoursesUrl,
           acceptedStatusCodes: const <int>{200},
-          cacheDuration: const Duration(seconds: 30),
+          cacheDuration: cacheDuration,
         ),
         _client.authenticatedGet(
           curriculumUrl,
           acceptedStatusCodes: const <int>{200},
-          cacheDuration: const Duration(seconds: 30),
+          cacheDuration: cacheDuration,
         ),
       ]);
 

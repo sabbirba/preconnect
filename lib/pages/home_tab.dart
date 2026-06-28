@@ -19,6 +19,7 @@ enum HomeTab {
   campusPrinter,
   devs,
   personalSchedules,
+  libSync,
 }
 
 class HomeTabRegistry {

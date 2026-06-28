@@ -270,6 +270,10 @@ jobs:
           cat > .env <<'EOF'
           GITHUB_TOKEN=${{ secrets.GH_TOKEN }}
           DEVELOPMENT_TEAM=${{ secrets.DEVELOPMENT_TEAM }}
+          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
+          GOOGLE_SCOPES=${{ secrets.GOOGLE_SCOPES }}
           EOF
 
       - name: Build Chrome Extension

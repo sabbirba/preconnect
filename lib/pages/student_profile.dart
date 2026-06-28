@@ -199,7 +199,9 @@ class _StudentProfileState extends State<StudentProfile>
       try {
         final List<dynamic> paymentsJson = _decodeListStatic(
           forceRefresh
-              ? await PaymentService().fetchPaymentInfo()
+              ? await PaymentService().fetchPaymentInfo(
+                  cacheDuration: Duration.zero,
+                )
               : await PaymentService().getPaymentInfo(),
         );
         return paymentsJson
@@ -221,7 +223,9 @@ class _StudentProfileState extends State<StudentProfile>
       try {
         final List<dynamic> attendanceJson = _decodeListStatic(
           forceRefresh
-              ? await AttendanceService().fetchAttendanceInfo()
+              ? await AttendanceService().fetchAttendanceInfo(
+                  cacheDuration: Duration.zero,
+                )
               : await AttendanceService().getAttendanceInfo(),
         );
         return attendanceJson
@@ -241,7 +245,9 @@ class _StudentProfileState extends State<StudentProfile>
     final advisingFuture = () async {
       try {
         return forceRefresh
-            ? await AdvisingService().fetchAdvisingInfo()
+            ? await AdvisingService().fetchAdvisingInfo(
+                cacheDuration: Duration.zero,
+              )
             : await AdvisingService().getAdvisingInfo();
       } catch (_) {
         return null;
@@ -250,7 +256,9 @@ class _StudentProfileState extends State<StudentProfile>
     final progressFuture = () async {
       try {
         final progress = forceRefresh
-            ? await ProgressService().fetchProgress()
+            ? await ProgressService().fetchProgress(
+                cacheDuration: Duration.zero,
+              )
             : await ProgressService().getProgress();
         return progress == null
             ? null

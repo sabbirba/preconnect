@@ -860,11 +860,11 @@ extension _HomeDashboardView on _HomeDashboardState {
     ),
     // Secondary options (from MoreQuickAccessPage):
     _DashboardQuickAccess(
-      tab: HomeTab.bus,
-      icon: Icons.directions_bus_rounded,
-      title: 'Bus',
-      subtitle: 'Routes',
-      color: const Color(0xFF00A8E8),
+      tab: HomeTab.libSync,
+      icon: Icons.local_library_outlined,
+      title: 'BRACU',
+      subtitle: 'Libsync',
+      color: const Color(0xFF007ACC),
     ),
     _DashboardQuickAccess(
       tab: HomeTab.freeLabs,
@@ -896,14 +896,11 @@ extension _HomeDashboardView on _HomeDashboardState {
       },
     ),
     _DashboardQuickAccess(
-      tab: null,
-      icon: Icons.local_library_outlined,
-      title: 'Library',
-      subtitle: 'Libsync',
-      color: const Color(0xFF007ACC),
-      onTap: (context) {
-        showAppSnackBar(context, 'Coming in the next update');
-      },
+      tab: HomeTab.bus,
+      icon: Icons.directions_bus_rounded,
+      title: 'Bus',
+      subtitle: 'Routes',
+      color: const Color(0xFF00A8E8),
     ),
     _DashboardQuickAccess(
       tab: null,
