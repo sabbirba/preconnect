@@ -297,7 +297,8 @@ class _LibSyncPageState extends State<LibSyncPage> {
               ),
             );
           case LibSyncAuthStatus.authenticated:
-            final profile = state.profile!;
+            final profile = state.profile;
+            if (profile == null) return const SizedBox.shrink();
 
             return BracuPageScaffold(
               title: 'BRACU Libsync',
@@ -341,20 +342,25 @@ class _LibSyncPageState extends State<LibSyncPage> {
                   const SizedBox(height: 18),
                   const BracuSectionTitle(title: 'Overview'),
                   const SizedBox(height: 10),
-                  if (_totalReservationCount != null ||
-                      (_reservationByYear != null &&
-                          _reservationByYear!.isNotEmpty &&
-                          _reservationByYear!.any(
-                            (monthData) => _hasReservations(monthData),
-                          ))) ...[
-                    BracuCard(
+                  () {
+                    final reservationByYear = _reservationByYear;
+                    final totalReservationCount = _totalReservationCount;
+                    if (totalReservationCount == null &&
+                        (reservationByYear == null ||
+                            reservationByYear.isEmpty ||
+                            !reservationByYear.any(
+                              (monthData) => _hasReservations(monthData),
+                            ))) {
+                      return const SizedBox.shrink();
+                    }
+                    return BracuCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (_totalReservationCount != null)
-                            _StatsGrid(stats: _totalReservationCount!),
-                          if (_reservationByYear != null &&
-                              _reservationByYear!.any(
+                          if (totalReservationCount != null)
+                            _StatsGrid(stats: totalReservationCount),
+                          if (reservationByYear != null &&
+                              reservationByYear.any(
                                 (monthData) => _hasReservations(monthData),
                               )) ...[
                             const SizedBox(height: 14),
@@ -382,33 +388,19 @@ class _LibSyncPageState extends State<LibSyncPage> {
                                         : chartWidth;
                                     final double relativeX =
                                         localX - sideMargin;
-                                    final int index = chartData.length > 1
-                                        ? (relativeX / stepX).round().clamp(
-                                            0,
-                                            chartData.length - 1,
-                                          )
-                                        : 0;
-                                    final double barCenter =
-                                        chartData.length > 1
-                                        ? index * stepX
-                                        : chartWidth / 2;
-                                    if ((relativeX - barCenter).abs() <
-                                        (chartData.length > 1
-                                            ? stepX * 0.45
-                                            : chartWidth * 0.45)) {
-                                      setState(() {
-                                        if (_selectedChartIndex == index) {
-                                          _selectedChartIndex = null;
-                                        } else {
-                                          _selectedChartIndex = index;
-                                        }
-                                      });
-                                    }
+                                    final int rawIndex = (relativeX / stepX)
+                                        .round();
+                                    final int index = rawIndex.clamp(
+                                      0,
+                                      chartData.length - 1,
+                                    );
+                                    setState(() {
+                                      _selectedChartIndex = index;
+                                    });
                                   },
-                                  child: Container(
-                                    height: 130,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints.tightFor(
+                                      height: 140,
                                     ),
                                     child: CustomPaint(
                                       size: Size.infinite,
@@ -427,40 +419,63 @@ class _LibSyncPageState extends State<LibSyncPage> {
                           ],
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                  ],
+                    );
+                  }(),
+                  const SizedBox(height: 18),
                   BracuActionBannerCard(
                     icon: Icons.calendar_month_outlined,
                     title: 'Room Availability',
                     subtitle: 'Book available rooms and slots',
-                    onTap: () {
-                      Navigator.of(context).push(
+                    onTap: () async {
+                      final booked = await Navigator.of(context).push<bool>(
                         MaterialPageRoute(
                           builder: (context) => const RoomAvailabilityPage(),
                         ),
                       );
+                      if (booked == true) {
+                        if (context.mounted) {
+                          showAppSnackBar(context, 'Booking successful!');
+                        }
+                      }
+                      _loadReservationData();
                     },
                   ),
-                  const SizedBox(height: 18),
-                  if (_loadingData && _checkQuota == null)
-                    const BracuLoading()
-                  else ...[
-                    if (_checkQuota != null && _checkQuota!.isNotEmpty) ...[
-                      const BracuSectionTitle(title: 'Daily Quota'),
-                      const SizedBox(height: 10),
-                      _QuotaCard(quota: _checkQuota!),
-                      const SizedBox(height: 18),
-                    ],
-                    if (_recentReservations != null) ...[
-                      const BracuSectionTitle(title: 'Recent Reservations'),
-                      const SizedBox(height: 10),
-                      _RecentReservationsList(
-                        reservations: _recentReservations!,
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                  ],
+                  () {
+                    final checkQuota = _checkQuota;
+                    final recentReservations = _recentReservations;
+                    if (_loadingData && checkQuota == null) {
+                      return const BracuLoading();
+                    }
+                    final hasQuota =
+                        checkQuota != null && checkQuota.isNotEmpty;
+                    final hasRecent =
+                        recentReservations != null &&
+                        recentReservations.isNotEmpty;
+                    if (!hasQuota && !hasRecent) {
+                      return const SizedBox.shrink();
+                    }
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 18),
+                        if (hasQuota) ...[
+                          const BracuSectionTitle(title: 'Daily Quota'),
+                          const SizedBox(height: 10),
+                          _QuotaCard(quota: checkQuota),
+                          const SizedBox(height: 18),
+                        ],
+                        if (recentReservations != null) ...[
+                          const BracuSectionTitle(title: 'Recent Reservations'),
+                          const SizedBox(height: 10),
+                          _RecentReservationsList(
+                            reservations: recentReservations,
+                            onRefresh: _loadReservationData,
+                          ),
+                        ],
+                      ],
+                    );
+                  }(),
+                  const SizedBox(height: 12),
                 ],
               ),
             );
@@ -714,8 +729,12 @@ class _BarItem extends StatelessWidget {
 }
 
 class _RecentReservationsList extends StatelessWidget {
-  const _RecentReservationsList({required this.reservations});
+  const _RecentReservationsList({
+    required this.reservations,
+    required this.onRefresh,
+  });
   final List<dynamic> reservations;
+  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -739,6 +758,7 @@ class _RecentReservationsList extends StatelessWidget {
         final category = (res['room_no'] ?? {})['room_cat'] ?? 'N/A';
         final date = formatDate(res['reserve_start_date']?.toString());
         final code = res['reservation_code']?.toString() ?? 'N/A';
+        final uniqueToken = res['unique_token']?.toString() ?? '';
         final status = (res['status'] ?? '').toString();
 
         Color statusColor;
@@ -851,6 +871,148 @@ class _RecentReservationsList extends StatelessWidget {
                 isValueBold: true,
                 valueColor: statusColor,
               ),
+              if (status.toLowerCase() == 'confirmed') ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: BorderSide(
+                            color: Colors.red.withValues(alpha: 0.4),
+                            width: 1.2,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        onPressed: () async {
+                          final confirm =
+                              await showBracuConfirmationWithActionDialog(
+                                context,
+                                icon: Icons.cancel_outlined,
+                                title: 'Cancel Booking?',
+                                message:
+                                    'Are you sure you want to cancel this booking?',
+                                confirmLabel: 'Cancel',
+                                confirmColor: Colors.red,
+                                onConfirm: () async {},
+                              );
+                          if (confirm == true) {
+                            if (!context.mounted) return;
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (context) => const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            );
+                            try {
+                              if (uniqueToken.isNotEmpty) {
+                                await LibSyncAuthService.instance
+                                    .cancelReservation(uniqueToken);
+                                if (context.mounted) {
+                                  Navigator.of(context).pop();
+                                  showAppSnackBar(
+                                    context,
+                                    'Reservation cancelled',
+                                  );
+                                  onRefresh();
+                                }
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                                showAppSnackBar(
+                                  context,
+                                  e.toString().replaceAll('Exception: ', ''),
+                                );
+                              }
+                            }
+                          }
+                        },
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: BracuPalette.primary,
+                          side: BorderSide(
+                            color: BracuPalette.primary.withValues(alpha: 0.4),
+                            width: 1.2,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        onPressed: () async {
+                          final confirm =
+                              await showBracuConfirmationWithActionDialog(
+                                context,
+                                icon: Icons.location_on_outlined,
+                                title: 'Confirm Check In?',
+                                message:
+                                    'Are you at the library and ready to check in?',
+                                confirmLabel: 'Check In',
+                                confirmColor: BracuPalette.primary,
+                                onConfirm: () async {},
+                              );
+                          if (confirm != true) return;
+                          if (!context.mounted) return;
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (context) => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                          try {
+                            final intCode = int.tryParse(code);
+                            if (intCode != null) {
+                              await LibSyncAuthService.instance
+                                  .checkInAttendance(intCode);
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                                showAppSnackBar(
+                                  context,
+                                  'Attendance checked in successfully!',
+                                );
+                                onRefresh();
+                              }
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              Navigator.of(context).pop();
+                              showAppSnackBar(
+                                context,
+                                e.toString().replaceAll('Exception: ', ''),
+                              );
+                            }
+                          }
+                        },
+                        child: const Text(
+                          'Check In',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         );

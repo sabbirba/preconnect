@@ -253,7 +253,7 @@ class _CardFront extends StatelessWidget {
                                     _InfoRow(
                                       label: 'Student ID',
                                       value: displayStudentId,
-                                      enableCopy: true,
+                                      enableCopy: false,
                                     ),
                                     const SizedBox(height: 5),
                                     _InfoRow(

@@ -3,9 +3,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'libsync_config.dart';
 import 'client_creator.dart';
+import 'google_auth_helper.dart';
 import 'package:preconnect/api/preferences_store.dart';
-
-import 'auth_service.dart';
 
 class LibSyncApiClient extends http.BaseClient {
   LibSyncApiClient() : _inner = createLibSyncClient();
@@ -14,6 +13,7 @@ class LibSyncApiClient extends http.BaseClient {
   static const _secureStorage = FlutterSecureStorage();
   static const String _cookiesStorageKey = 'libsync_cookies';
   static const String _googleRefreshTokenKey = 'libsync_google_refresh_token';
+  static const String _profileStorageKey = 'libsync_profile';
   static const String _etagCacheKey = 'libsync_etag_cache';
   static const String _bodyCacheKey = 'libsync_body_cache';
   static const String _headersCacheKey = 'libsync_headers_cache';
@@ -99,21 +99,41 @@ class LibSyncApiClient extends http.BaseClient {
     final cookies = await getStoredCookies();
     if (cookies.isNotEmpty) {
       request.headers['Cookie'] = _buildCookieHeaderString(cookies);
+      final csrf = cookies['csrftoken'];
+      if (csrf != null) {
+        request.headers['X-CSRFToken'] = csrf;
+      }
     }
 
     final response = await _sendWithEtag(request);
 
-    if (response.statusCode == 401) {
+    if (response.statusCode == 401 || response.statusCode == 403) {
       final refreshed = await _attemptTokenRefresh();
       if (refreshed) {
         final newRequest = _cloneRequest(request);
         final newCookies = await getStoredCookies();
         if (newCookies.isNotEmpty) {
           newRequest.headers['Cookie'] = _buildCookieHeaderString(newCookies);
+          final csrf = newCookies['csrftoken'];
+          if (csrf != null) {
+            newRequest.headers['X-CSRFToken'] = csrf;
+          }
         }
         return _sendWithEtag(newRequest);
       } else {
-        LibSyncAuthService.instance.logout();
+        final urlKey = request.url.toString();
+        final isGet = request.method == 'GET';
+        if (isGet && _bodyCache.containsKey(urlKey)) {
+          final cachedBody = _bodyCache[urlKey]!;
+          final bodyBytes = utf8.encode(cachedBody);
+          return http.StreamedResponse(
+            Stream.value(bodyBytes),
+            200,
+            contentLength: bodyBytes.length,
+            request: request,
+            headers: _headersCache[urlKey] ?? {},
+          );
+        }
       }
     }
 
@@ -129,11 +149,37 @@ class LibSyncApiClient extends http.BaseClient {
         urlKey.endsWith('.jpg') ||
         urlKey.endsWith('.jpeg');
 
+    if (request.method != 'GET') {
+      _etagCache.removeWhere((key, _) => key.contains('/api/reservation/'));
+      _bodyCache.removeWhere((key, _) => key.contains('/api/reservation/'));
+      _headersCache.removeWhere((key, _) => key.contains('/api/reservation/'));
+      final store = AppPreferencesStore();
+      await store.setJson(_etagCacheKey, _etagCache);
+      await store.setJson(_bodyCacheKey, _bodyCache);
+      await store.setJson(_headersCacheKey, _headersCache);
+    }
+
     if (isGet && !isMedia && _etagCache.containsKey(urlKey)) {
       request.headers['If-None-Match'] = _etagCache[urlKey]!;
     }
 
-    final response = await _inner.send(request);
+    http.StreamedResponse response;
+    try {
+      response = await _inner.send(request);
+    } catch (e) {
+      if (isGet && !isMedia && _bodyCache.containsKey(urlKey)) {
+        final cachedBody = _bodyCache[urlKey]!;
+        final bodyBytes = utf8.encode(cachedBody);
+        return http.StreamedResponse(
+          Stream.value(bodyBytes),
+          200,
+          contentLength: bodyBytes.length,
+          request: request,
+          headers: _headersCache[urlKey] ?? {},
+        );
+      }
+      rethrow;
+    }
 
     if (isMedia) {
       final responseCookies = parseResponseCookies(response.headers);
@@ -180,6 +226,8 @@ class LibSyncApiClient extends http.BaseClient {
       final etag = response.headers['etag'] ?? response.headers['ETag'];
       if (etag != null) {
         _etagCache[urlKey] = etag;
+      } else {
+        _etagCache.remove(urlKey);
       }
       _bodyCache[urlKey] = utf8.decode(bytes);
       _headersCache[urlKey] = response.headers;
@@ -213,14 +261,37 @@ class LibSyncApiClient extends http.BaseClient {
   Future<void> clearAuthData() async {
     await _secureStorage.delete(key: _cookiesStorageKey);
     await _secureStorage.delete(key: _googleRefreshTokenKey);
+    await _secureStorage.delete(key: _profileStorageKey);
+    await clearCache();
+    final store = AppPreferencesStore();
+    await store.remove(_throttledUntilKey);
+  }
+
+  Future<void> clearCache() async {
     final store = AppPreferencesStore();
     await store.remove(_etagCacheKey);
     await store.remove(_bodyCacheKey);
     await store.remove(_headersCacheKey);
-    await store.remove(_throttledUntilKey);
     _etagCache.clear();
     _bodyCache.clear();
     _headersCache.clear();
+  }
+
+  Future<void> saveCachedProfile(Map<String, dynamic> profile) async {
+    await _secureStorage.write(
+      key: _profileStorageKey,
+      value: jsonEncode(profile),
+    );
+  }
+
+  Future<Map<String, dynamic>?> getCachedProfile() async {
+    try {
+      final data = await _secureStorage.read(key: _profileStorageKey);
+      if (data == null) return null;
+      return jsonDecode(data) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<Map<String, String>> getStoredCookies() async {
@@ -273,6 +344,7 @@ class LibSyncApiClient extends http.BaseClient {
     headers['Accept'] = '*/*';
     headers['Accept-Language'] = 'en-US,en;q=0.9';
     headers['Referer'] = 'https://libsync.bracu.ac.bd/';
+    headers['Origin'] = 'https://libsync.bracu.ac.bd';
     headers['sec-ch-ua-mobile'] = '?1';
     headers['sec-ch-ua-platform'] = '"Android"';
   }
@@ -329,6 +401,45 @@ class LibSyncApiClient extends http.BaseClient {
           if (cookiesToSave.isNotEmpty) {
             await saveCookies(cookiesToSave);
             return true;
+          }
+        }
+      }
+
+      final googleRefreshToken = await getGoogleRefreshToken();
+      if (googleRefreshToken != null) {
+        final tokens = await GoogleAuthHelper.refreshAccessToken(
+          googleRefreshToken,
+        );
+        final googleAccessToken = tokens['access_token'] as String?;
+        if (googleAccessToken != null) {
+          final loginHeaders = {'Content-Type': 'application/json'};
+          _injectBrowserHeaders(loginHeaders);
+          final loginResponse = await _inner.post(
+            Uri.parse(LibSyncConfig.authSocialGoogleUrl),
+            headers: loginHeaders,
+            body: jsonEncode({'access_token': googleAccessToken}),
+          );
+
+          if (loginResponse.statusCode == 200) {
+            final responseCookies = parseResponseCookies(loginResponse.headers);
+            final Map<String, String> cookiesToSave = Map.from(responseCookies);
+            try {
+              final body =
+                  jsonDecode(loginResponse.body) as Map<String, dynamic>;
+              final accessVal = body['access'] ?? body['access_token'];
+              final refreshVal = body['refresh'] ?? body['refresh_token'];
+              if (accessVal != null) {
+                cookiesToSave['access'] = accessVal.toString();
+              }
+              if (refreshVal != null) {
+                cookiesToSave['refresh'] = refreshVal.toString();
+              }
+            } catch (_) {}
+
+            if (cookiesToSave.isNotEmpty) {
+              await saveCookies(cookiesToSave);
+              return true;
+            }
           }
         }
       }

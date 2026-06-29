@@ -12,6 +12,8 @@ import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/url_utils.dart';
 import 'package:preconnect/tools/image_shared.dart';
+import 'package:preconnect/tools/token_storage.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
 
 class CachedImage extends StatefulWidget {
   const CachedImage({
@@ -92,7 +94,20 @@ class _CachedImageState extends State<CachedImage> {
       try {
         final headers = <String, String>{
           'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+              '(KHTML, like Gecko) Chrome/125.0 Safari/537.36',
         };
+        if (uri.host == 'connect.bracu.ac.bd') {
+          final token = await TokenStorage.instance.read(key: PreConnectStorageKeys.accessToken);
+          if (token != null && token.isNotEmpty) {
+            headers['Authorization'] = 'Bearer $token';
+          }
+          final idToken = await TokenStorage.instance.read(key: PreConnectStorageKeys.idToken);
+          if (idToken != null && idToken.isNotEmpty) {
+            headers['X-ID-Token'] = idToken;
+          }
+        }
         headers.addAll(compressionHeadersForUri(uri));
         final response = await HttpUtils.client.get(uri, headers: headers);
 

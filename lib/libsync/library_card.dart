@@ -212,7 +212,7 @@ class _LibraryCardFront extends StatelessWidget {
                                     _LibraryCardRow(
                                       label: 'Student ID',
                                       value: displayStudentId,
-                                      enableCopy: true,
+                                      enableCopy: false,
                                       textColor: const Color(0xFF1E293B),
                                     ),
                                     const SizedBox(height: 5),

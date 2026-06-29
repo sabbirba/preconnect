@@ -34,22 +34,37 @@ class LibSyncAuthService extends ChangeNotifier {
   Future<void> initialize() async {
     state.value = const LibSyncAuthState(status: LibSyncAuthStatus.loading);
     try {
-      final profile = await _fetchUserProfile();
-      if (profile != null) {
+      final response = await _apiClient.get(Uri.parse(LibSyncConfig.userMeUrl));
+      if (response.statusCode == 200) {
+        final profile = jsonDecode(response.body) as Map<String, dynamic>;
+        await _apiClient.saveCachedProfile(profile);
         state.value = LibSyncAuthState(
           status: LibSyncAuthStatus.authenticated,
           profile: profile,
+        );
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
+        await _apiClient.clearAuthData();
+        state.value = const LibSyncAuthState(
+          status: LibSyncAuthStatus.unauthenticated,
+        );
+      } else {
+        throw Exception('Server returned ${response.statusCode}');
+      }
+    } catch (e) {
+      final cookies = await _apiClient.getStoredCookies();
+      if (cookies.isNotEmpty) {
+        final cachedProfile = await _apiClient.getCachedProfile();
+        state.value = LibSyncAuthState(
+          status: LibSyncAuthStatus.authenticated,
+          profile:
+              cachedProfile ??
+              const {'student_id': 'Cached User', 'name': 'Offline Mode'},
         );
       } else {
         state.value = const LibSyncAuthState(
           status: LibSyncAuthStatus.unauthenticated,
         );
       }
-    } catch (e) {
-      state.value = LibSyncAuthState(
-        status: LibSyncAuthStatus.error,
-        errorMessage: e.toString(),
-      );
     }
   }
 
@@ -107,6 +122,7 @@ class LibSyncAuthService extends ChangeNotifier {
 
       final profile = await _fetchUserProfile();
       if (profile != null) {
+        await _apiClient.saveCachedProfile(profile);
         state.value = LibSyncAuthState(
           status: LibSyncAuthStatus.authenticated,
           profile: profile,
@@ -218,14 +234,116 @@ class LibSyncAuthService extends ChangeNotifier {
       return decoded;
     }
 
-    String errorMsg = 'Failed to load availability data. Please try again.';
-    if (decoded is Map) {
-      if (decoded.containsKey('message')) {
-        errorMsg = decoded['message'].toString();
-      } else if (decoded.containsKey('detail')) {
-        errorMsg = decoded['detail'].toString();
+    throw Exception(
+      _extractErrorMessage(
+        decoded,
+        'Failed to load availability data. Please try again.',
+      ),
+    );
+  }
+
+  Future<Map<String, dynamic>?> holdSlot({
+    required int roomId,
+    required String date,
+    required List<int> slotIds,
+    int memberCount = 1,
+  }) async {
+    final response = await _apiClient.post(
+      Uri.parse('${LibSyncConfig.apiBaseUrl}/api/reservation/holdslot/create'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'member_count': memberCount,
+        'room_no': roomId,
+        'reserve_start_date': date,
+        'reserve_end_date': date,
+        'slot_ids': slotIds,
+      }),
+    );
+    final decoded = jsonDecode(response.body);
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return decoded as Map<String, dynamic>;
+    }
+    throw Exception(
+      _extractErrorMessage(decoded, 'Failed to hold slot. Please try again.'),
+    );
+  }
+
+  Future<Map<String, dynamic>?> confirmReservation({
+    required String studentId,
+    String note = '',
+  }) async {
+    final response = await _apiClient.post(
+      Uri.parse('${LibSyncConfig.apiBaseUrl}/api/reservation/'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'student_ids': [studentId],
+        'note': note,
+      }),
+    );
+    final decoded = jsonDecode(response.body);
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return decoded as Map<String, dynamic>;
+    }
+    throw Exception(
+      _extractErrorMessage(
+        decoded,
+        'Failed to confirm reservation. Please try again.',
+      ),
+    );
+  }
+
+  Future<void> cancelReservation(String uniqueToken) async {
+    final response = await _apiClient.delete(
+      Uri.parse('${LibSyncConfig.apiBaseUrl}/api/reservation/$uniqueToken/'),
+    );
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      return;
+    }
+    final decoded = jsonDecode(response.body);
+    throw Exception(
+      _extractErrorMessage(
+        decoded,
+        'Failed to cancel reservation. Please try again.',
+      ),
+    );
+  }
+
+  Future<void> checkInAttendance(int reservationCode) async {
+    final response = await _apiClient.patch(
+      Uri.parse(
+        '${LibSyncConfig.apiBaseUrl}/api/reservation/$reservationCode/public_attendance/',
+      ),
+      headers: {'Content-Type': 'application/json'},
+    );
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map && decoded.containsKey('message')) {
+      final msg = decoded['message'].toString();
+      if (msg.toLowerCase().contains('not allowed') ||
+          msg.toLowerCase().contains('connect your device')) {
+        throw Exception(_extractErrorMessage(decoded, msg));
       }
     }
-    throw Exception(errorMsg);
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      return;
+    }
+    throw Exception(
+      _extractErrorMessage(decoded, 'Failed to check in. Please try again.'),
+    );
+  }
+
+  String _extractErrorMessage(dynamic decoded, String defaultMessage) {
+    if (decoded is Map) {
+      if (decoded.containsKey('message')) return decoded['message'].toString();
+      if (decoded.containsKey('detail')) return decoded['detail'].toString();
+      if (decoded.containsKey('error')) return decoded['error'].toString();
+    } else if (decoded is List && decoded.isNotEmpty) {
+      final first = decoded.first;
+      if (first is Map) {
+        if (first.containsKey('message')) return first['message'].toString();
+        if (first.containsKey('detail')) return first['detail'].toString();
+        if (first.containsKey('error')) return first['error'].toString();
+      }
+    }
+    return defaultMessage;
   }
 }

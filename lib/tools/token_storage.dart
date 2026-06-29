@@ -632,9 +632,25 @@ class ProfileImageCache {
 
     try {
       final uri = Uri.parse(photoUrl);
+      final headers = <String, String>{
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+            '(KHTML, like Gecko) Chrome/125.0 Safari/537.36',
+      };
+      if (uri.host == 'connect.bracu.ac.bd') {
+        final token = await TokenStorage.instance.read(key: PreConnectStorageKeys.accessToken);
+        if (token != null && token.isNotEmpty) {
+          headers['Authorization'] = 'Bearer $token';
+        }
+        final idToken = await TokenStorage.instance.read(key: PreConnectStorageKeys.idToken);
+        if (idToken != null && idToken.isNotEmpty) {
+          headers['X-ID-Token'] = idToken;
+        }
+      }
+      headers.addAll(compressionHeadersForUri(uri));
       final response = await HttpUtils.client.get(
         uri,
-        headers: compressionHeadersForUri(uri),
+        headers: headers,
       );
       if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
         await file.writeAsBytes(response.bodyBytes, flush: true);

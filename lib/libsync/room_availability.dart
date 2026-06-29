@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'auth_service.dart';
 import 'package:intl/intl.dart';
@@ -16,11 +17,33 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
   bool _isLoading = false;
   String _selectedLibrary = 'Ayesha Abed Library (Main Campus)';
   String? _errorMessage;
+  int _capacity = 1;
+  late final TextEditingController _capacityController;
+  late final FocusNode _capacityFocusNode;
 
   @override
   void initState() {
     super.initState();
+    _capacityController = TextEditingController(text: '1');
+    _capacityFocusNode = FocusNode()..addListener(_handleCapacityFocusChange);
     _fetchAvailability();
+  }
+
+  @override
+  void dispose() {
+    _capacityController.dispose();
+    _capacityFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleCapacityFocusChange() {
+    if (!_capacityFocusNode.hasFocus) {
+      final val = _capacityController.text.trim();
+      final parsed = int.tryParse(val);
+      if (parsed == null || parsed < 1 || parsed > 9) {
+        _capacityController.text = _capacity.toString();
+      }
+    }
   }
 
   Future<void> _fetchAvailability() async {
@@ -38,10 +61,26 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
       final data = await LibSyncAuthService.instance.fetchCheckAvailability(
         startDate: dateStr,
         endDate: dateStr,
-        startTime: '08:00:00',
+        startTime: '00:00:00',
         endTime: '23:50:00',
+        capacity: _capacity,
         library: _selectedLibrary,
       );
+
+      if (data != null && data.isNotEmpty) {
+        final first = data.first;
+        if (first is Map &&
+            first.containsKey('message') &&
+            !first.containsKey('room')) {
+          if (mounted) {
+            setState(() {
+              _errorMessage = first['message'].toString();
+              _isLoading = false;
+            });
+          }
+          return;
+        }
+      }
 
       if (mounted) {
         setState(() {
@@ -89,6 +128,74 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
     return rawTime;
   }
 
+  Future<void> _handleSlotTap(
+    Map<String, dynamic> room,
+    Map<String, dynamic> slotData,
+  ) async {
+    final roomNo = room['room_no']?.toString() ?? 'Room';
+    final roomCat = room['room_cat']?.toString() ?? 'Study Space';
+    final roomId = room['room_id'] as int? ?? 12;
+    final slotId = slotData['slot_id'] as int? ?? 7;
+    final start = slotData['start_time']?.toString() ?? '';
+    final end = slotData['end_time']?.toString() ?? '';
+    final timeStr = "${_formatTime(start)} - ${_formatTime(end)}";
+
+    final confirm = await showBracuConfirmationWithActionDialog(
+      context,
+      icon: Icons.bookmark_add_outlined,
+      title: 'Confirm Booking?',
+      message: 'Book $roomNo ($roomCat) for $timeStr?',
+      confirmLabel: 'Book',
+      confirmColor: BracuPalette.primary,
+      onConfirm: () async {},
+    );
+
+    if (confirm == true) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      try {
+        final dateStr =
+            "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
+
+        await LibSyncAuthService.instance.holdSlot(
+          roomId: roomId,
+          date: dateStr,
+          slotIds: [slotId],
+          memberCount: _capacity,
+        );
+
+        final studentId =
+            LibSyncAuthService.instance.state.value.profile?['student_id']
+                ?.toString() ??
+            '';
+        if (studentId.isEmpty) {
+          throw Exception(
+            'Student profile data is missing. Please log in again.',
+          );
+        }
+
+        await LibSyncAuthService.instance.confirmReservation(
+          studentId: studentId,
+        );
+
+        if (mounted) {
+          Navigator.of(context).pop();
+          Navigator.of(context).pop(true);
+        }
+      } catch (e) {
+        if (mounted) {
+          Navigator.of(context).pop();
+          showAppSnackBar(context, e.toString().replaceAll('Exception: ', ''));
+        }
+      }
+    }
+  }
+
   IconData _getFacilityIcon(String iconClass) {
     if (iconClass.contains('plug')) return Icons.power;
     if (iconClass.contains('lightbulb')) return Icons.lightbulb_outline;
@@ -97,116 +204,243 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
     return Icons.star_border;
   }
 
+  void _showHelpBottomSheet(BuildContext context) {
+    showBracuBottomSheet<void>(
+      context,
+      title: 'Libsync Instructions',
+      initialChildSize: 0.55,
+      builder: (sheetContext, textPrimary, textSecondary) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildStepItem(
+                context,
+                stepNumber: '1',
+                title: 'Set Booking Settings',
+                body:
+                    'Choose your reservation date and capacity counter at the top of the availability screen.',
+              ),
+              const SizedBox(height: 14),
+              _buildStepItem(
+                context,
+                stepNumber: '2',
+                title: 'Select Campus Location',
+                body:
+                    'Use the Campus button in the settings row to toggle between Main Campus and Savar Campus availability slots.',
+              ),
+              const SizedBox(height: 14),
+              _buildStepItem(
+                context,
+                stepNumber: '3',
+                title: 'Choose Room & Time Slot',
+                body:
+                    'Browse through the list of rooms and tap on an available time slot to start the reservation workflow.',
+              ),
+              const SizedBox(height: 14),
+              _buildStepItem(
+                context,
+                stepNumber: '4',
+                title: 'Confirm Reservation',
+                body:
+                    'Confirm the booking when prompted. The slot is held and then booked instantly.',
+              ),
+              const SizedBox(height: 14),
+              _buildStepItem(
+                context,
+                stepNumber: '5',
+                title: 'Check In on Campus',
+                body:
+                    'When you arrive at the library, tap the Check In button on your active reservation card. Ensure you are connected to the campus network.',
+              ),
+              const SizedBox(height: 14),
+              _buildStepItem(
+                context,
+                stepNumber: '6',
+                title: 'Cancel Booking',
+                body:
+                    'If your plans change, you can cancel your confirmed reservation from the dashboard to free up slots.',
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStepItem(
+    BuildContext context, {
+    required String stepNumber,
+    required String title,
+    required String body,
+  }) {
+    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = BracuPalette.textSecondary(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: BracuPalette.primary.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              stepNumber,
+              style: const TextStyle(
+                color: BracuPalette.primary,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                body,
+                style: TextStyle(
+                  color: textSecondary,
+                  fontSize: 11,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final textSecondary = BracuPalette.textSecondary(context);
     final textPrimary = BracuPalette.textPrimary(context);
 
     final dateDisplay = DateFormat('dd MMM yyyy').format(_selectedDate);
+    final errorMessage = _errorMessage;
+    final availabilityData = _availabilityData;
 
     return BracuPageScaffold(
       title: 'Room Availability',
       subtitle: 'Ayesha Abed Library',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.help_outline_rounded),
+          onPressed: () => _showHelpBottomSheet(context),
+        ),
+      ],
       body: BracuRefreshList(
         onRefresh: _fetchAvailability,
         children: [
-          BracuCard(
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Booking Date',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: textSecondary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          dateDisplay,
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: textPrimary,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: BracuPalette.primary,
-                        side: BorderSide(
-                          color: BracuPalette.primary.withValues(alpha: 0.4),
-                          width: 1,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      onPressed: () => _selectDate(context),
-                      icon: const Icon(Icons.calendar_month, size: 16),
-                      label: const Text('Change'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const BracuSectionTitle(title: 'Available Rooms & Slots'),
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    if (_selectedLibrary ==
-                        'Ayesha Abed Library (Main Campus)') {
-                      _selectedLibrary = 'Ayesha Abed Library (Savar Campus)';
-                    } else {
-                      _selectedLibrary = 'Ayesha Abed Library (Main Campus)';
-                    }
-                  });
-                  _fetchAvailability();
+              _CounterControl(
+                controller: _capacityController,
+                focusNode: _capacityFocusNode,
+                onDecrement: _capacity <= 1
+                    ? null
+                    : () {
+                        final next = _capacity - 1;
+                        _capacityController.text = next.toString();
+                        setState(() {
+                          _capacity = next;
+                        });
+                        _fetchAvailability();
+                      },
+                onIncrement: _capacity >= 9
+                    ? null
+                    : () {
+                        final next = _capacity + 1;
+                        _capacityController.text = next.toString();
+                        setState(() {
+                          _capacity = next;
+                        });
+                        _fetchAvailability();
+                      },
+                onChanged: (val) {
+                  final parsed = int.tryParse(val);
+                  if (parsed != null && parsed >= 1 && parsed <= 9) {
+                    setState(() {
+                      _capacity = parsed;
+                    });
+                    _fetchAvailability();
+                  }
                 },
-                child: Text(
-                  _selectedLibrary == 'Ayesha Abed Library (Savar Campus)'
-                      ? 'Savar Campus'
-                      : 'Main Campus',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: BracuPalette.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 5,
+                child: _SelectionButton(
+                  label: dateDisplay,
+                  onTap: () => _selectDate(context),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 4,
+                child: BracuActionButton(
+                  onPressed: () {
+                    setState(() {
+                      if (_selectedLibrary ==
+                          'Ayesha Abed Library (Main Campus)') {
+                        _selectedLibrary = 'Ayesha Abed Library (Savar Campus)';
+                      } else {
+                        _selectedLibrary = 'Ayesha Abed Library (Main Campus)';
+                      }
+                    });
+                    _fetchAvailability();
+                  },
+                  outlined: true,
+                  borderRadius: 4,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
                   ),
+                  label: _selectedLibrary == 'Ayesha Abed Library (Main Campus)'
+                      ? 'Main'
+                      : 'Savar',
+                  fontSize: 13,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
           if (_isLoading)
             const Padding(
               padding: EdgeInsets.only(top: 140),
               child: Center(child: CircularProgressIndicator()),
             )
-          else if (_errorMessage != null)
+          else if (errorMessage != null)
             Padding(
               padding: const EdgeInsets.only(top: 140),
-              child: BracuEmptyState(message: _errorMessage!),
+              child: BracuEmptyState(message: errorMessage),
             )
-          else if (_availabilityData == null)
+          else if (availabilityData == null)
             const Padding(
               padding: EdgeInsets.only(top: 140),
               child: BracuEmptyState(
                 message: 'Failed to load availability data. Please try again.',
               ),
             )
-          else if (_availabilityData!.isEmpty)
+          else if (availabilityData.isEmpty)
             const Padding(
               padding: EdgeInsets.only(top: 140),
               child: BracuEmptyState(
@@ -217,9 +451,9 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: _availabilityData!.length,
+              itemCount: availabilityData.length,
               itemBuilder: (context, index) {
-                final item = _availabilityData![index];
+                final item = availabilityData[index];
                 final room = item['room'] as Map<String, dynamic>? ?? {};
                 final slots = item['slots'] as List<dynamic>? ?? [];
 
@@ -310,29 +544,32 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
                                   slotData['start_time']?.toString() ?? '';
                               final end =
                                   slotData['end_time']?.toString() ?? '';
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: BracuPalette.primary.withValues(
-                                    alpha: 0.08,
+                              return GestureDetector(
+                                onTap: () => _handleSlotTap(room, slotData),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
                                   ),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
+                                  decoration: BoxDecoration(
                                     color: BracuPalette.primary.withValues(
-                                      alpha: 0.15,
+                                      alpha: 0.08,
                                     ),
-                                    width: 1,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: BracuPalette.primary.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      width: 1,
+                                    ),
                                   ),
-                                ),
-                                child: Text(
-                                  "${_formatTime(start)} - ${_formatTime(end)}",
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: BracuPalette.primary,
-                                    fontWeight: FontWeight.w800,
+                                  child: Text(
+                                    "${_formatTime(start)} - ${_formatTime(end)}",
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: BracuPalette.primary,
+                                      fontWeight: FontWeight.w800,
+                                    ),
                                   ),
                                 ),
                               );
@@ -346,6 +583,107 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _CounterControl extends StatelessWidget {
+  const _CounterControl({
+    required this.controller,
+    required this.focusNode,
+    required this.onDecrement,
+    required this.onIncrement,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final VoidCallback? onDecrement;
+  final VoidCallback? onIncrement;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 38,
+          height: 38,
+          child: BracuActionButton(
+            onPressed: onDecrement,
+            outlined: true,
+            borderRadius: 4,
+            padding: EdgeInsets.zero,
+            label: '−',
+            fontSize: 18,
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 32,
+          height: 38,
+          child: Center(
+            child: TextField(
+              controller: controller,
+              focusNode: focusNode,
+              keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.done,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp('[1-9]')),
+                LengthLimitingTextInputFormatter(1),
+              ],
+              textAlign: TextAlign.center,
+              textAlignVertical: TextAlignVertical.center,
+              maxLines: 1,
+              onChanged: onChanged,
+              onSubmitted: (_) => FocusScope.of(context).unfocus(),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: BracuPalette.textPrimary(context),
+              ),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 8),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 38,
+          height: 38,
+          child: BracuActionButton(
+            onPressed: onIncrement,
+            outlined: true,
+            borderRadius: 4,
+            padding: EdgeInsets.zero,
+            label: '+',
+            fontSize: 18,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SelectionButton extends StatelessWidget {
+  const _SelectionButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuActionButton(
+      onPressed: onTap,
+      outlined: true,
+      borderRadius: 4,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      label: label,
+      fontSize: 13,
     );
   }
 }
