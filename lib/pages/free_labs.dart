@@ -667,73 +667,29 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   }
 
   List<_TimeSlot> _freeWithinDay(List<_TimeSlot> busy) {
-    final List<_TimeSlot> periods = [
-      _TimeSlot(
-        start: const TimeOfDay(hour: 8, minute: 0),
-        end: const TimeOfDay(hour: 9, minute: 20),
-      ),
-      _TimeSlot(
-        start: const TimeOfDay(hour: 9, minute: 30),
-        end: const TimeOfDay(hour: 10, minute: 50),
-      ),
-      _TimeSlot(
-        start: const TimeOfDay(hour: 11, minute: 0),
-        end: const TimeOfDay(hour: 12, minute: 20),
-      ),
-      _TimeSlot(
-        start: const TimeOfDay(hour: 12, minute: 30),
-        end: const TimeOfDay(hour: 13, minute: 50),
-      ),
-      _TimeSlot(
-        start: const TimeOfDay(hour: 14, minute: 0),
-        end: const TimeOfDay(hour: 15, minute: 20),
-      ),
-      _TimeSlot(
-        start: const TimeOfDay(hour: 15, minute: 30),
-        end: const TimeOfDay(hour: 16, minute: 50),
-      ),
-      _TimeSlot(
-        start: const TimeOfDay(hour: 17, minute: 0),
-        end: const TimeOfDay(hour: 18, minute: 20),
-      ),
-      _TimeSlot(
-        start: const TimeOfDay(hour: 18, minute: 30),
-        end: const TimeOfDay(hour: 19, minute: 50),
-      ),
-    ];
-    final freePeriods = <_TimeSlot>[];
-    for (final period in periods) {
-      final pStart = _minutesOfDay(period.start);
-      final pEnd = _minutesOfDay(period.end);
-      bool overlaps = false;
-      for (final b in busy) {
-        final bStart = _minutesOfDay(b.start);
-        final bEnd = _minutesOfDay(b.end);
-        if (pStart < bEnd && bStart < pEnd) {
-          overlaps = true;
-          break;
-        }
+    const dayStart = TimeOfDay(hour: 8, minute: 0);
+    const dayEnd = TimeOfDay(hour: 20, minute: 0);
+    if (busy.isEmpty) {
+      return const <_TimeSlot>[_TimeSlot(start: dayStart, end: dayEnd)];
+    }
+    final free = <_TimeSlot>[];
+    var current = dayStart;
+    for (final slot in busy) {
+      if (_minutesOfDay(current) < _minutesOfDay(slot.start)) {
+        free.add(_TimeSlot(start: current, end: slot.start));
       }
-      if (!overlaps) {
-        freePeriods.add(period);
+      if (_minutesOfDay(slot.end) > _minutesOfDay(current)) {
+        current = slot.end;
       }
     }
-    final merged = <_TimeSlot>[];
-    for (final fp in freePeriods) {
-      if (merged.isEmpty) {
-        merged.add(fp);
-      } else {
-        final last = merged.last;
-        final lastEnd = _minutesOfDay(last.end);
-        final currentStart = _minutesOfDay(fp.start);
-        if (currentStart - lastEnd <= 10) {
-          merged[merged.length - 1] = _TimeSlot(start: last.start, end: fp.end);
-        } else {
-          merged.add(fp);
-        }
-      }
+    if (_minutesOfDay(current) < _minutesOfDay(dayEnd)) {
+      free.add(_TimeSlot(start: current, end: dayEnd));
     }
-    return merged;
+    return free
+        .where(
+          (slot) => (_minutesOfDay(slot.end) - _minutesOfDay(slot.start)) > 10,
+        )
+        .toList();
   }
 
   String _statusLabel(TimeOfDay start, TimeOfDay end) {
