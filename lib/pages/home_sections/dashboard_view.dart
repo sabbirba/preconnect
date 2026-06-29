@@ -858,7 +858,6 @@ extension _HomeDashboardView on _HomeDashboardState {
       subtitle: 'Support',
       color: const Color(0xFF2C9DFF),
     ),
-    // Secondary options (from MoreQuickAccessPage):
     _DashboardQuickAccess(
       tab: HomeTab.libSync,
       icon: Icons.local_library_outlined,

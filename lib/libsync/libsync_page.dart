@@ -4,9 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/home_tab.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'auth_service.dart';
-import 'google_auth_helper.dart';
 import 'libsync_config.dart';
 import 'library_card.dart';
 import 'room_availability.dart';
@@ -19,13 +18,11 @@ class LibSyncPage extends StatefulWidget {
 }
 
 class _LibSyncPageState extends State<LibSyncPage> {
-  late final WebViewController _webViewController;
   List<dynamic>? _reservationByYear;
   List<dynamic>? _recentReservations;
   List<dynamic>? _checkQuota;
   Map<String, dynamic>? _totalReservationCount;
   bool _loadingData = false;
-  bool _webViewLoading = false;
   int? _selectedChartIndex;
 
   static List<dynamic>? _cachedReservationByYear;
@@ -49,7 +46,6 @@ class _LibSyncPageState extends State<LibSyncPage> {
         setState(() {});
       }
     });
-    _initWebViewController();
     LibSyncAuthService.instance.state.addListener(_onAuthStateChanged);
     _onAuthStateChanged();
   }
@@ -100,9 +96,11 @@ class _LibSyncPageState extends State<LibSyncPage> {
   }
 
   void _onAuthStateChanged() {
-    if (LibSyncAuthService.instance.state.value.status ==
-        LibSyncAuthStatus.authenticated) {
+    final status = LibSyncAuthService.instance.state.value.status;
+    if (status == LibSyncAuthStatus.authenticated) {
       _loadReservationData();
+    } else if (status == LibSyncAuthStatus.unauthenticated) {
+      _handleGoogleSignIn();
     }
   }
 
@@ -216,53 +214,39 @@ class _LibSyncPageState extends State<LibSyncPage> {
     }
   }
 
-  void _initWebViewController() {
-    _webViewController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.transparent)
-      ..setUserAgent(
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      )
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onNavigationRequest: (NavigationRequest request) {
-            final url = request.url;
-            if (url.startsWith(LibSyncConfig.googleRedirectUri) ||
-                url.startsWith('https://preconnect.app/api/auth/callback')) {
-              final uri = Uri.parse(url);
-              final code = uri.queryParameters['code'];
-              if (code != null) {
-                LibSyncAuthService.instance.authenticateWithCode(code);
-                return NavigationDecision.prevent;
-              }
-            }
-            return NavigationDecision.navigate;
-          },
-          onPageStarted: (String url) {
-            if (mounted) {
-              setState(() {
-                _webViewLoading = true;
-              });
-            }
-            if (url.startsWith(LibSyncConfig.googleRedirectUri) ||
-                url.startsWith('https://preconnect.app/api/auth/callback')) {
-              final uri = Uri.parse(url);
-              final code = uri.queryParameters['code'];
-              if (code != null) {
-                LibSyncAuthService.instance.authenticateWithCode(code);
-              }
-            }
-          },
-          onPageFinished: (String url) {
-            if (mounted) {
-              setState(() {
-                _webViewLoading = false;
-              });
-            }
-          },
-        ),
-      )
-      ..loadRequest(Uri.parse(GoogleAuthHelper.buildAuthorizationUrl()));
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      final googleSignIn = GoogleSignIn(
+        serverClientId: LibSyncConfig.googleClientId,
+        scopes: LibSyncConfig.googleScopes.isEmpty
+            ? ['email', 'profile']
+            : LibSyncConfig.googleScopes.split(' '),
+      );
+      final account = await googleSignIn.signIn();
+      if (account == null) {
+        if (mounted) {
+          showAppSnackBar(context, 'Sign in cancelled.');
+          Navigator.of(context).maybePop();
+        }
+        return;
+      }
+      final authCode = account.serverAuthCode;
+      if (authCode != null) {
+        await LibSyncAuthService.instance.authenticateWithCode(authCode);
+      } else {
+        throw Exception(
+          'Failed to retrieve authorization code from native sign-in.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackBar(
+          context,
+          'Google Sign In failed: ${e.toString().replaceAll('Exception: ', '')}',
+        );
+        Navigator.of(context).maybePop();
+      }
+    }
   }
 
   @override
@@ -322,60 +306,11 @@ class _LibSyncPageState extends State<LibSyncPage> {
               ),
             );
           case LibSyncAuthStatus.unauthenticated:
-            return Scaffold(
-              backgroundColor: Colors.transparent,
-              body: SafeArea(
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: WebViewWidget(controller: _webViewController),
-                    ),
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        height: 48,
-                        color: Colors.transparent,
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.arrow_back_rounded),
-                              onPressed: () {
-                                final navigator = Navigator.of(context);
-                                _webViewController.canGoBack().then((canGo) {
-                                  if (canGo) {
-                                    _webViewController.goBack();
-                                  } else {
-                                    navigator.maybePop();
-                                  }
-                                });
-                              },
-                            ),
-                            const Spacer(),
-                            IconButton(
-                              icon: _webViewLoading
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: BracuPalette.primary,
-                                      ),
-                                    )
-                                  : const Icon(Icons.refresh_rounded),
-                              onPressed: _webViewLoading
-                                  ? null
-                                  : () => _webViewController.reload(),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            return const BracuPageScaffold(
+              title: 'BRACU Libsync',
+              subtitle: 'Ayesha Abed Library',
+              icon: Icons.local_library_outlined,
+              body: Center(child: BracuLoading()),
             );
           case LibSyncAuthStatus.authenticated:
             final profile = state.profile;
@@ -621,7 +556,7 @@ class _LibSyncPageState extends State<LibSyncPage> {
         lower.contains('internal')) {
       return 'The library server is temporarily unavailable. Please try again later.';
     }
-    return 'Could not complete authentication. Please try again.';
+    return 'Could not complete authentication. Please try again.\nError: $error';
   }
 }
 

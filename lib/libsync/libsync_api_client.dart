@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'libsync_config.dart';
@@ -405,41 +407,57 @@ class LibSyncApiClient extends http.BaseClient {
         }
       }
 
-      final googleRefreshToken = await getGoogleRefreshToken();
-      if (googleRefreshToken != null) {
-        final tokens = await GoogleAuthHelper.refreshAccessToken(
-          googleRefreshToken,
-        );
-        final googleAccessToken = tokens['access_token'] as String?;
-        if (googleAccessToken != null) {
-          final loginHeaders = {'Content-Type': 'application/json'};
-          _injectBrowserHeaders(loginHeaders);
-          final loginResponse = await _inner.post(
-            Uri.parse(LibSyncConfig.authSocialGoogleUrl),
-            headers: loginHeaders,
-            body: jsonEncode({'access_token': googleAccessToken}),
+      String? googleAccessToken;
+      if (!kIsWeb) {
+        try {
+          final googleSignIn = GoogleSignIn(
+            scopes: LibSyncConfig.googleScopes.isEmpty
+                ? ['email', 'profile']
+                : LibSyncConfig.googleScopes.split(' '),
           );
+          final account = await googleSignIn.signInSilently();
+          final auth = await account?.authentication;
+          googleAccessToken = auth?.accessToken;
+        } catch (_) {}
+      }
 
-          if (loginResponse.statusCode == 200) {
-            final responseCookies = parseResponseCookies(loginResponse.headers);
-            final Map<String, String> cookiesToSave = Map.from(responseCookies);
-            try {
-              final body =
-                  jsonDecode(loginResponse.body) as Map<String, dynamic>;
-              final accessVal = body['access'] ?? body['access_token'];
-              final refreshVal = body['refresh'] ?? body['refresh_token'];
-              if (accessVal != null) {
-                cookiesToSave['access'] = accessVal.toString();
-              }
-              if (refreshVal != null) {
-                cookiesToSave['refresh'] = refreshVal.toString();
-              }
-            } catch (_) {}
+      if (googleAccessToken == null) {
+        final googleRefreshToken = await getGoogleRefreshToken();
+        if (googleRefreshToken != null) {
+          final tokens = await GoogleAuthHelper.refreshAccessToken(
+            googleRefreshToken,
+          );
+          googleAccessToken = tokens['access_token'] as String?;
+        }
+      }
 
-            if (cookiesToSave.isNotEmpty) {
-              await saveCookies(cookiesToSave);
-              return true;
+      if (googleAccessToken != null) {
+        final loginHeaders = {'Content-Type': 'application/json'};
+        _injectBrowserHeaders(loginHeaders);
+        final loginResponse = await _inner.post(
+          Uri.parse(LibSyncConfig.authSocialGoogleUrl),
+          headers: loginHeaders,
+          body: jsonEncode({'access_token': googleAccessToken}),
+        );
+
+        if (loginResponse.statusCode == 200) {
+          final responseCookies = parseResponseCookies(loginResponse.headers);
+          final Map<String, String> cookiesToSave = Map.from(responseCookies);
+          try {
+            final body = jsonDecode(loginResponse.body) as Map<String, dynamic>;
+            final accessVal = body['access'] ?? body['access_token'];
+            final refreshVal = body['refresh'] ?? body['refresh_token'];
+            if (accessVal != null) {
+              cookiesToSave['access'] = accessVal.toString();
             }
+            if (refreshVal != null) {
+              cookiesToSave['refresh'] = refreshVal.toString();
+            }
+          } catch (_) {}
+
+          if (cookiesToSave.isNotEmpty) {
+            await saveCookies(cookiesToSave);
+            return true;
           }
         }
       }

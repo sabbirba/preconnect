@@ -85,57 +85,75 @@ class LibSyncAuthService extends ChangeNotifier {
         await _apiClient.storeGoogleRefreshToken(googleRefreshToken);
       }
 
-      final libsyncAuthResponse = await _apiClient.post(
-        Uri.parse(LibSyncConfig.authSocialGoogleUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'access_token': googleAccessToken}),
-      );
-
-      if (libsyncAuthResponse.statusCode != 200) {
-        throw Exception(
-          'LibSync social auth failed: ${libsyncAuthResponse.body}',
-        );
-      }
-
-      final Map<String, String> cookiesToSave = {};
-      try {
-        final body =
-            jsonDecode(libsyncAuthResponse.body) as Map<String, dynamic>;
-        final accessVal = body['access'] ?? body['access_token'];
-        final refreshVal = body['refresh'] ?? body['refresh_token'];
-        if (accessVal != null) {
-          cookiesToSave['access'] = accessVal.toString();
-        }
-        if (refreshVal != null) {
-          cookiesToSave['refresh'] = refreshVal.toString();
-        }
-      } catch (_) {}
-
-      final parsedCookies = _apiClient.parseResponseCookies(
-        libsyncAuthResponse.headers,
-      );
-      cookiesToSave.addAll(parsedCookies);
-
-      if (cookiesToSave.isNotEmpty) {
-        await _apiClient.saveCookies(cookiesToSave);
-      }
-
-      final profile = await _fetchUserProfile();
-      if (profile != null) {
-        await _apiClient.saveCachedProfile(profile);
-        state.value = LibSyncAuthState(
-          status: LibSyncAuthStatus.authenticated,
-          profile: profile,
-        );
-      } else {
-        throw Exception('Failed to fetch profile after login');
-      }
+      await _authenticateWithGoogleAccessToken(googleAccessToken);
     } catch (e) {
       await _apiClient.clearAuthData();
       state.value = LibSyncAuthState(
         status: LibSyncAuthStatus.error,
         errorMessage: e.toString(),
       );
+    }
+  }
+
+  Future<void> authenticateWithAccessToken(String googleAccessToken) async {
+    state.value = const LibSyncAuthState(status: LibSyncAuthStatus.loading);
+    try {
+      await _authenticateWithGoogleAccessToken(googleAccessToken);
+    } catch (e) {
+      await _apiClient.clearAuthData();
+      state.value = LibSyncAuthState(
+        status: LibSyncAuthStatus.error,
+        errorMessage: e.toString(),
+      );
+    }
+  }
+
+  Future<void> _authenticateWithGoogleAccessToken(
+    String googleAccessToken,
+  ) async {
+    final libsyncAuthResponse = await _apiClient.post(
+      Uri.parse(LibSyncConfig.authSocialGoogleUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'access_token': googleAccessToken}),
+    );
+
+    if (libsyncAuthResponse.statusCode != 200) {
+      throw Exception(
+        'LibSync social auth failed: ${libsyncAuthResponse.body}',
+      );
+    }
+
+    final Map<String, String> cookiesToSave = {};
+    try {
+      final body = jsonDecode(libsyncAuthResponse.body) as Map<String, dynamic>;
+      final accessVal = body['access'] ?? body['access_token'];
+      final refreshVal = body['refresh'] ?? body['refresh_token'];
+      if (accessVal != null) {
+        cookiesToSave['access'] = accessVal.toString();
+      }
+      if (refreshVal != null) {
+        cookiesToSave['refresh'] = refreshVal.toString();
+      }
+    } catch (_) {}
+
+    final parsedCookies = _apiClient.parseResponseCookies(
+      libsyncAuthResponse.headers,
+    );
+    cookiesToSave.addAll(parsedCookies);
+
+    if (cookiesToSave.isNotEmpty) {
+      await _apiClient.saveCookies(cookiesToSave);
+    }
+
+    final profile = await _fetchUserProfile();
+    if (profile != null) {
+      await _apiClient.saveCachedProfile(profile);
+      state.value = LibSyncAuthState(
+        status: LibSyncAuthStatus.authenticated,
+        profile: profile,
+      );
+    } else {
+      throw Exception('Failed to fetch profile after login');
     }
   }
 

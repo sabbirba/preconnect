@@ -5,24 +5,8 @@ import 'libsync_config.dart';
 class GoogleAuthHelper {
   GoogleAuthHelper._();
 
-  static String buildAuthorizationUrl() {
-    final queryParams = {
-      'client_id': LibSyncConfig.googleClientId,
-      'redirect_uri': LibSyncConfig.googleRedirectUri,
-      'response_type': 'code',
-      'scope': LibSyncConfig.googleScopes,
-      'access_type': 'offline',
-      'prompt': 'consent',
-    };
-    final uri = Uri.https(
-      'accounts.google.com',
-      '/o/oauth2/v2/auth',
-      queryParams,
-    );
-    return uri.toString();
-  }
-
   static Future<Map<String, dynamic>> exchangeCode(String code) async {
+    const isWeb = identical(0, 0.0);
     final response = await http.post(
       Uri.parse('https://oauth2.googleapis.com/token'),
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -30,7 +14,7 @@ class GoogleAuthHelper {
         'code': code,
         'client_id': LibSyncConfig.googleClientId,
         'client_secret': LibSyncConfig.googleClientSecret,
-        'redirect_uri': LibSyncConfig.googleRedirectUri,
+        'redirect_uri': isWeb ? LibSyncConfig.googleRedirectUri : '',
         'grant_type': 'authorization_code',
       },
     );
