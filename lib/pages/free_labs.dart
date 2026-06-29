@@ -469,9 +469,16 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     }
 
     final slots = <_FreeRoomSlot>[];
+    final nowTime = TimeOfDay.now();
+    final nowMinutes = _minutesOfDay(nowTime);
+    final isFuture = _isViewingFutureDate();
+
     for (final room in grouped.values) {
       final freeSlots = _freeWithinDay(_mergeSlots(room.busySlots));
       for (final free in freeSlots) {
+        if (!isFuture && _minutesOfDay(free.end) <= nowMinutes) {
+          continue;
+        }
         slots.add(
           _FreeRoomSlot(
             roomNumber: room.roomNumber,

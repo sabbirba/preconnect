@@ -425,27 +425,18 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
           const SizedBox(height: 16),
           if (_isLoading)
             const Padding(
-              padding: EdgeInsets.only(top: 140),
+              padding: EdgeInsets.symmetric(vertical: 40),
               child: Center(child: CircularProgressIndicator()),
             )
           else if (errorMessage != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 140),
-              child: BracuEmptyState(message: errorMessage),
-            )
+            BracuEmptyState(message: errorMessage)
           else if (availabilityData == null)
-            const Padding(
-              padding: EdgeInsets.only(top: 140),
-              child: BracuEmptyState(
-                message: 'Failed to load availability data. Please try again.',
-              ),
+            const BracuEmptyState(
+              message: 'Failed to load availability data. Please try again.',
             )
           else if (availabilityData.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 140),
-              child: BracuEmptyState(
-                message: 'No available rooms or slots found for this date.',
-              ),
+            const BracuEmptyState(
+              message: 'No available rooms or slots found for this date.',
             )
           else
             ListView.builder(
