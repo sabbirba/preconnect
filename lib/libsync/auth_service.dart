@@ -26,6 +26,7 @@ class LibSyncAuthService extends ChangeNotifier {
   static final LibSyncAuthService instance = LibSyncAuthService._();
 
   final LibSyncApiClient _apiClient;
+  String? _lastProcessedCode;
   final ValueNotifier<LibSyncAuthState> state = ValueNotifier<LibSyncAuthState>(
     const LibSyncAuthState(status: LibSyncAuthStatus.loading),
   );
@@ -53,6 +54,8 @@ class LibSyncAuthService extends ChangeNotifier {
   }
 
   Future<void> authenticateWithCode(String code) async {
+    if (code == _lastProcessedCode) return;
+    _lastProcessedCode = code;
     state.value = const LibSyncAuthState(status: LibSyncAuthStatus.loading);
     try {
       final googleTokens = await GoogleAuthHelper.exchangeCode(code);
@@ -121,6 +124,7 @@ class LibSyncAuthService extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    _lastProcessedCode = null;
     state.value = const LibSyncAuthState(status: LibSyncAuthStatus.loading);
     await _apiClient.clearAuthData();
     state.value = const LibSyncAuthState(
