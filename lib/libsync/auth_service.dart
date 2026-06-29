@@ -204,19 +204,28 @@ class LibSyncAuthService extends ChangeNotifier {
     int capacity = 1,
     String library = 'Ayesha Abed Library (Main Campus)',
   }) async {
-    try {
-      final response = await _apiClient.get(
-        Uri.parse(
-          '${LibSyncConfig.apiBaseUrl}/api/reservation/check-availability/?'
-          'start_date=$startDate&end_date=$endDate&'
-          'start_time=$startTime&end_time=$endTime&'
-          'capacity=$capacity&library=${Uri.encodeComponent(library)}',
-        ),
-      );
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body) as List<dynamic>;
+    final response = await _apiClient.get(
+      Uri.parse(
+        '${LibSyncConfig.apiBaseUrl}/api/reservation/check-availability/?'
+        'start_date=$startDate&end_date=$endDate&'
+        'start_time=$startTime&end_time=$endTime&'
+        'capacity=$capacity&library=${Uri.encodeComponent(library)}',
+      ),
+    );
+
+    final decoded = jsonDecode(response.body);
+    if (response.statusCode == 200 && decoded is List) {
+      return decoded;
+    }
+
+    String errorMsg = 'Failed to load availability data. Please try again.';
+    if (decoded is Map) {
+      if (decoded.containsKey('message')) {
+        errorMsg = decoded['message'].toString();
+      } else if (decoded.containsKey('detail')) {
+        errorMsg = decoded['detail'].toString();
       }
-    } catch (_) {}
-    return null;
+    }
+    throw Exception(errorMsg);
   }
 }

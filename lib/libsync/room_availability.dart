@@ -14,6 +14,8 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
   DateTime _selectedDate = DateTime.now();
   List<dynamic>? _availabilityData;
   bool _isLoading = false;
+  String _selectedLibrary = 'Ayesha Abed Library (Main Campus)';
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -26,32 +28,45 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
     setState(() {
       _isLoading = true;
       _availabilityData = null;
+      _errorMessage = null;
     });
 
     final dateStr =
         "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
 
-    final data = await LibSyncAuthService.instance.fetchCheckAvailability(
-      startDate: dateStr,
-      endDate: dateStr,
-      startTime: '08:00:00',
-      endTime: '23:50:00',
-    );
+    try {
+      final data = await LibSyncAuthService.instance.fetchCheckAvailability(
+        startDate: dateStr,
+        endDate: dateStr,
+        startTime: '08:00:00',
+        endTime: '23:50:00',
+        library: _selectedLibrary,
+      );
 
-    if (mounted) {
-      setState(() {
-        _availabilityData = data;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _availabilityData = data;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString().replaceAll('Exception: ', '');
+          _isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _selectDate(BuildContext context) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 7)),
-      lastDate: DateTime.now().add(const Duration(days: 30)),
+      initialDate: _selectedDate.isBefore(today) ? today : _selectedDate,
+      firstDate: today,
+      lastDate: today.add(const Duration(days: 30)),
     );
     if (picked != null && picked != _selectedDate) {
       setState(() {
@@ -105,7 +120,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Select Booking Date',
+                          'Booking Date',
                           style: TextStyle(
                             fontSize: 12,
                             color: textSecondary,
@@ -123,11 +138,13 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
                         ),
                       ],
                     ),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: BracuPalette.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: BracuPalette.primary,
+                        side: BorderSide(
+                          color: BracuPalette.primary.withValues(alpha: 0.4),
+                          width: 1,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -142,20 +159,59 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
             ),
           ),
           const SizedBox(height: 16),
-          const BracuSectionTitle(title: 'Available Rooms & Slots'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const BracuSectionTitle(title: 'Available Rooms & Slots'),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if (_selectedLibrary ==
+                        'Ayesha Abed Library (Main Campus)') {
+                      _selectedLibrary = 'Ayesha Abed Library (Savar Campus)';
+                    } else {
+                      _selectedLibrary = 'Ayesha Abed Library (Main Campus)';
+                    }
+                  });
+                  _fetchAvailability();
+                },
+                child: Text(
+                  _selectedLibrary == 'Ayesha Abed Library (Savar Campus)'
+                      ? 'Savar Campus'
+                      : 'Main Campus',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: BracuPalette.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 10),
           if (_isLoading)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 40),
+              padding: EdgeInsets.only(top: 140),
               child: Center(child: CircularProgressIndicator()),
             )
+          else if (_errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 140),
+              child: BracuEmptyState(message: _errorMessage!),
+            )
           else if (_availabilityData == null)
-            const BracuEmptyState(
-              message: 'Failed to load availability data. Please try again.',
+            const Padding(
+              padding: EdgeInsets.only(top: 140),
+              child: BracuEmptyState(
+                message: 'Failed to load availability data. Please try again.',
+              ),
             )
           else if (_availabilityData!.isEmpty)
-            const BracuEmptyState(
-              message: 'No available rooms or slots found for this date.',
+            const Padding(
+              padding: EdgeInsets.only(top: 140),
+              child: BracuEmptyState(
+                message: 'No available rooms or slots found for this date.',
+              ),
             )
           else
             ListView.builder(
@@ -235,15 +291,6 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
                             ),
                           ),
                         ],
-                        const SizedBox(height: 12),
-                        Text(
-                          'Available Slots (24 Hours Format):',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: textSecondary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
                         const SizedBox(height: 8),
                         if (slots.isEmpty)
                           Text(

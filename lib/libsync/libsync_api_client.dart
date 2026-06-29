@@ -123,12 +123,25 @@ class LibSyncApiClient extends http.BaseClient {
   Future<http.StreamedResponse> _sendWithEtag(http.BaseRequest request) async {
     final isGet = request.method == 'GET';
     final urlKey = request.url.toString();
+    final isMedia =
+        urlKey.contains('/media/') ||
+        urlKey.endsWith('.png') ||
+        urlKey.endsWith('.jpg') ||
+        urlKey.endsWith('.jpeg');
 
-    if (isGet && _etagCache.containsKey(urlKey)) {
+    if (isGet && !isMedia && _etagCache.containsKey(urlKey)) {
       request.headers['If-None-Match'] = _etagCache[urlKey]!;
     }
 
     final response = await _inner.send(request);
+
+    if (isMedia) {
+      final responseCookies = parseResponseCookies(response.headers);
+      if (responseCookies.isNotEmpty) {
+        await saveCookies(responseCookies);
+      }
+      return response;
+    }
 
     if (response.statusCode == 429) {
       final retryAfterStr =
@@ -163,27 +176,27 @@ class LibSyncApiClient extends http.BaseClient {
     }
 
     if (isGet && response.statusCode == 200) {
+      final bytes = await response.stream.toBytes();
       final etag = response.headers['etag'] ?? response.headers['ETag'];
       if (etag != null) {
-        final bytes = await response.stream.toBytes();
         _etagCache[urlKey] = etag;
-        _bodyCache[urlKey] = utf8.decode(bytes);
-        _headersCache[urlKey] = response.headers;
-        final store = AppPreferencesStore();
-        await store.setJson(_etagCacheKey, _etagCache);
-        await store.setJson(_bodyCacheKey, _bodyCache);
-        await store.setJson(_headersCacheKey, _headersCache);
-        return http.StreamedResponse(
-          Stream.value(bytes),
-          200,
-          contentLength: bytes.length,
-          request: request,
-          headers: response.headers,
-          isRedirect: response.isRedirect,
-          persistentConnection: response.persistentConnection,
-          reasonPhrase: response.reasonPhrase,
-        );
       }
+      _bodyCache[urlKey] = utf8.decode(bytes);
+      _headersCache[urlKey] = response.headers;
+      final store = AppPreferencesStore();
+      await store.setJson(_etagCacheKey, _etagCache);
+      await store.setJson(_bodyCacheKey, _bodyCache);
+      await store.setJson(_headersCacheKey, _headersCache);
+      return http.StreamedResponse(
+        Stream.value(bytes),
+        200,
+        contentLength: bytes.length,
+        request: request,
+        headers: response.headers,
+        isRedirect: response.isRedirect,
+        persistentConnection: response.persistentConnection,
+        reasonPhrase: response.reasonPhrase,
+      );
     }
 
     return response;
