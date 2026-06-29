@@ -305,17 +305,6 @@ class _LibSyncPageState extends State<LibSyncPage> {
               icon: Icons.local_library_outlined,
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.calendar_month_outlined),
-                  tooltip: 'Check Availability',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const RoomAvailabilityPage(),
-                      ),
-                    );
-                  },
-                ),
-                IconButton(
                   icon: const Icon(Icons.logout),
                   onPressed: () async {
                     final shouldLogout =
@@ -350,14 +339,14 @@ class _LibSyncPageState extends State<LibSyncPage> {
                 children: [
                   LibraryCard(profile: profile),
                   const SizedBox(height: 18),
+                  const BracuSectionTitle(title: 'Overview'),
+                  const SizedBox(height: 10),
                   if (_totalReservationCount != null ||
                       (_reservationByYear != null &&
                           _reservationByYear!.isNotEmpty &&
                           _reservationByYear!.any(
                             (monthData) => _hasReservations(monthData),
                           ))) ...[
-                    const BracuSectionTitle(title: 'Overview'),
-                    const SizedBox(height: 10),
                     BracuCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,8 +428,21 @@ class _LibSyncPageState extends State<LibSyncPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
                   ],
+                  BracuActionBannerCard(
+                    icon: Icons.calendar_month_outlined,
+                    title: 'Room Availability',
+                    subtitle: 'Book available rooms and slots',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const RoomAvailabilityPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 18),
                   if (_loadingData && _checkQuota == null)
                     const BracuLoading()
                   else ...[
