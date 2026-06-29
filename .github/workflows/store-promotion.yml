@@ -107,13 +107,11 @@ jobs:
         if: matrix.run_chrome
         shell: bash
         run: |
-          cat > .env <<'EOF'
-          GITHUB_TOKEN=${{ secrets.GH_TOKEN }}
-          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
-          GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
-          GOOGLE_SCOPES=${{ secrets.GOOGLE_SCOPES }}
-          EOF
+          echo "GITHUB_TOKEN=${{ secrets.GH_TOKEN }}" > .env
+          echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env
+          echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env
+          echo "GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}" >> .env
+          echo "GOOGLE_SCOPES=${{ secrets.GOOGLE_SCOPES }}" >> .env
 
       - name: Chrome Extension
         if: matrix.run_chrome

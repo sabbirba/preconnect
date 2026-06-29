@@ -267,14 +267,12 @@ jobs:
       - name: Release Env
         shell: bash
         run: |
-          cat > .env <<'EOF'
-          GITHUB_TOKEN=${{ secrets.GH_TOKEN }}
-          DEVELOPMENT_TEAM=${{ secrets.DEVELOPMENT_TEAM }}
-          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
-          GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
-          GOOGLE_SCOPES=${{ secrets.GOOGLE_SCOPES }}
-          EOF
+          echo "GITHUB_TOKEN=${{ secrets.GH_TOKEN }}" > .env
+          echo "DEVELOPMENT_TEAM=${{ secrets.DEVELOPMENT_TEAM }}" >> .env
+          echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env
+          echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env
+          echo "GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}" >> .env
+          echo "GOOGLE_SCOPES=${{ secrets.GOOGLE_SCOPES }}" >> .env
 
       - name: Build Chrome Extension
         if: matrix.platform == 'chrome_extension'
