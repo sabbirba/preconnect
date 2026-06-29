@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'libsync_config.dart';
 import 'client_creator.dart';
+import 'package:preconnect/api/preferences_store.dart';
 
 import 'auth_service.dart';
 
@@ -13,13 +14,87 @@ class LibSyncApiClient extends http.BaseClient {
   static const _secureStorage = FlutterSecureStorage();
   static const String _cookiesStorageKey = 'libsync_cookies';
   static const String _googleRefreshTokenKey = 'libsync_google_refresh_token';
+  static const String _etagCacheKey = 'libsync_etag_cache';
+  static const String _bodyCacheKey = 'libsync_body_cache';
+  static const String _headersCacheKey = 'libsync_headers_cache';
+  static const String _throttledUntilKey = 'libsync_throttled_until';
 
   static final Map<String, String> _etagCache = {};
   static final Map<String, String> _bodyCache = {};
   static final Map<String, Map<String, String>> _headersCache = {};
 
+  bool _cacheInitialized = false;
+
+  Future<void> _ensureCacheLoaded() async {
+    if (_cacheInitialized) return;
+    try {
+      final store = AppPreferencesStore();
+      final etags = await store.getJsonMap(_etagCacheKey);
+      if (etags != null) {
+        _etagCache.addAll(etags.map((k, v) => MapEntry(k, v.toString())));
+      }
+      final bodies = await store.getJsonMap(_bodyCacheKey);
+      if (bodies != null) {
+        _bodyCache.addAll(bodies.map((k, v) => MapEntry(k, v.toString())));
+      }
+      final headers = await store.getJsonMap(_headersCacheKey);
+      if (headers != null) {
+        _headersCache.addAll(
+          headers.map((k, v) {
+            final val = v as Map<String, dynamic>;
+            return MapEntry(
+              k,
+              val.map((hk, hv) => MapEntry(hk, hv.toString())),
+            );
+          }),
+        );
+      }
+    } catch (_) {}
+    _cacheInitialized = true;
+  }
+
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    await _ensureCacheLoaded();
+    final store = AppPreferencesStore();
+    final throttledUntilStr = await store.getString(_throttledUntilKey);
+    if (throttledUntilStr != null) {
+      final throttledUntil = DateTime.tryParse(throttledUntilStr);
+      if (throttledUntil != null && DateTime.now().isBefore(throttledUntil)) {
+        if (request.method == 'GET') {
+          final urlKey = request.url.toString();
+          final cachedBody = _bodyCache[urlKey];
+          if (cachedBody != null) {
+            final bodyBytes = utf8.encode(cachedBody);
+            return http.StreamedResponse(
+              Stream.value(bodyBytes),
+              200,
+              contentLength: bodyBytes.length,
+              request: request,
+              headers: _headersCache[urlKey] ?? {},
+            );
+          }
+        }
+        final waitSeconds = throttledUntil.difference(DateTime.now()).inSeconds;
+        return http.StreamedResponse(
+          Stream.value(
+            utf8.encode(
+              jsonEncode({
+                'detail':
+                    'Request was throttled. Expected available in $waitSeconds seconds.',
+              }),
+            ),
+          ),
+          429,
+          headers: {
+            'content-type': 'application/json',
+            'retry-after': '$waitSeconds',
+          },
+          request: request,
+        );
+      }
+    }
+
     _injectBrowserHeaders(request.headers);
     final cookies = await getStoredCookies();
     if (cookies.isNotEmpty) {
@@ -55,6 +130,19 @@ class LibSyncApiClient extends http.BaseClient {
 
     final response = await _inner.send(request);
 
+    if (response.statusCode == 429) {
+      final retryAfterStr =
+          response.headers['retry-after'] ?? response.headers['Retry-After'];
+      if (retryAfterStr != null) {
+        final seconds = int.tryParse(retryAfterStr);
+        if (seconds != null) {
+          final until = DateTime.now().add(Duration(seconds: seconds));
+          final store = AppPreferencesStore();
+          await store.setString(_throttledUntilKey, until.toIso8601String());
+        }
+      }
+    }
+
     if (isGet && response.statusCode == 304) {
       final cachedBody = _bodyCache[urlKey];
       if (cachedBody != null) {
@@ -81,6 +169,10 @@ class LibSyncApiClient extends http.BaseClient {
         _etagCache[urlKey] = etag;
         _bodyCache[urlKey] = utf8.decode(bytes);
         _headersCache[urlKey] = response.headers;
+        final store = AppPreferencesStore();
+        await store.setJson(_etagCacheKey, _etagCache);
+        await store.setJson(_bodyCacheKey, _bodyCache);
+        await store.setJson(_headersCacheKey, _headersCache);
         return http.StreamedResponse(
           Stream.value(bytes),
           200,
@@ -108,6 +200,14 @@ class LibSyncApiClient extends http.BaseClient {
   Future<void> clearAuthData() async {
     await _secureStorage.delete(key: _cookiesStorageKey);
     await _secureStorage.delete(key: _googleRefreshTokenKey);
+    final store = AppPreferencesStore();
+    await store.remove(_etagCacheKey);
+    await store.remove(_bodyCacheKey);
+    await store.remove(_headersCacheKey);
+    await store.remove(_throttledUntilKey);
+    _etagCache.clear();
+    _bodyCache.clear();
+    _headersCache.clear();
   }
 
   Future<Map<String, String>> getStoredCookies() async {
@@ -179,6 +279,23 @@ class LibSyncApiClient extends http.BaseClient {
           headers: refreshHeaders,
           body: jsonEncode({'refresh': refreshCookie}),
         );
+
+        if (refreshResponse.statusCode == 429) {
+          final retryAfterStr =
+              refreshResponse.headers['retry-after'] ??
+              refreshResponse.headers['Retry-After'];
+          if (retryAfterStr != null) {
+            final seconds = int.tryParse(retryAfterStr);
+            if (seconds != null) {
+              final until = DateTime.now().add(Duration(seconds: seconds));
+              final store = AppPreferencesStore();
+              await store.setString(
+                _throttledUntilKey,
+                until.toIso8601String(),
+              );
+            }
+          }
+        }
 
         if (refreshResponse.statusCode == 200) {
           final responseCookies = parseResponseCookies(refreshResponse.headers);
