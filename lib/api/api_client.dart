@@ -19,16 +19,22 @@ class ApiClient {
   final Map<String, _CachedHttpResponse> _cachedResponses =
       <String, _CachedHttpResponse>{};
   static const Duration _requestTimeout = Duration(seconds: 12);
+  static const Duration _connectivityProbeTimeout = Duration(seconds: 2);
   static const Duration _defaultGetCacheTtl = Duration(seconds: 2);
   static const Duration _accessTokenCacheTtl = Duration(seconds: 2);
+  static const Duration _connectionCacheTtl = Duration(seconds: 5);
 
   String? _cachedAccessToken;
   DateTime? _cachedAccessTokenAt;
+  bool? _cachedHasConnection;
+  DateTime? _cachedHasConnectionAt;
 
   void clearTransientCaches() {
     _cachedResponses.clear();
     _cachedAccessToken = null;
     _cachedAccessTokenAt = null;
+    _cachedHasConnection = null;
+    _cachedHasConnectionAt = null;
   }
 
   void _purgeExpiredResponseCache() {
@@ -45,7 +51,32 @@ class ApiClient {
   }
 
   Future<bool> hasConnection({bool forceRefresh = false}) async {
-    return true;
+    if (!forceRefresh) {
+      final cached = _cachedHasConnection;
+      final cachedAt = _cachedHasConnectionAt;
+      if (cached != null &&
+          cachedAt != null &&
+          DateTime.now().difference(cachedAt) <= _connectionCacheTtl) {
+        return cached;
+      }
+    }
+
+    try {
+      final response = await HttpUtils.client
+          .get(
+            Uri.parse(ApiConfig.connectApiBase),
+            headers: compressionHeaders(),
+          )
+          .timeout(_connectivityProbeTimeout);
+      final connected = response.statusCode < 500;
+      _cachedHasConnection = connected;
+      _cachedHasConnectionAt = DateTime.now();
+      return connected;
+    } catch (_) {
+      _cachedHasConnection = false;
+      _cachedHasConnectionAt = DateTime.now();
+      return false;
+    }
   }
 
   Future<String?> getAccessToken({int retries = 3}) async {
@@ -339,7 +370,7 @@ class ApiClient {
     Duration cacheDuration = _defaultGetCacheTtl,
   }) async {
     if (!await hasConnection()) {
-      return readCache(fromFetch: true);
+      return fromGet ? null : readCache(fromFetch: true);
     }
 
     try {
@@ -363,13 +394,13 @@ class ApiClient {
       await cacheResponse(response);
       return readCache(fromFetch: true);
     } on UnauthenticatedException {
-      return readCache(fromFetch: true);
+      return fromGet ? null : readCache(fromFetch: true);
     } on SessionExpiredException {
-      return readCache(fromFetch: true);
+      return fromGet ? null : readCache(fromFetch: true);
     } on ApiException {
-      return readCache(fromFetch: true);
+      return fromGet ? null : readCache(fromFetch: true);
     } catch (_) {
-      return readCache(fromFetch: true);
+      return fromGet ? null : readCache(fromFetch: true);
     }
   }
 
@@ -530,15 +561,8 @@ class _CachedHttpResponse {
 }
 
 Map<String, String> compressionHeaders() {
-  final headers = <String, String>{
-    'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-        '(KHTML, like Gecko) Chrome/125.0 Safari/537.36',
-  };
-  if (!kIsWeb) {
-    headers['Accept-Encoding'] = 'gzip';
-  }
-  return headers;
+  if (kIsWeb) return const <String, String>{};
+  return const <String, String>{'Accept-Encoding': 'gzip'};
 }
 
 Map<String, String> compressionHeadersForUri(Uri? uri) {
