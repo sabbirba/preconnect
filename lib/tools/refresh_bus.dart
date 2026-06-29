@@ -1,43 +1,51 @@
 import 'package:flutter/material.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
-class RefreshBus extends ChangeNotifier {
+class RefreshBus {
   RefreshBus._();
-
   static final RefreshBus instance = RefreshBus._();
 
-  String? _reason;
-  int _tick = 0;
+  final reason = signal<String?>(null);
+  final tick = signal<int>(0);
 
-  String? get reason => _reason;
-  int get tick => _tick;
-
-  bool isReason(String value) => _reason == value;
-
-  bool isAnyReason(Iterable<String> values) => values.contains(_reason);
+  bool isReason(String value) => reason.value == value;
+  bool isAnyReason(Iterable<String> values) => values.contains(reason.value);
 
   void notify({String? reason}) {
-    _reason = reason;
-    _tick++;
-    notifyListeners();
+    this.reason.value = reason;
+    tick.value++;
   }
 }
 
 mixin RefreshBusState<T extends StatefulWidget> on State<T> {
-  String? get refreshBusReason => RefreshBus.instance.reason;
+  final Map<void Function(), VoidCallback> _subscribers = {};
 
-  bool isRefreshingFrom(String reason) => RefreshBus.instance.isReason(reason);
-
-  bool isRefreshingFromAny(Iterable<String> reasons) =>
-      RefreshBus.instance.isAnyReason(reasons);
+  String? get refreshBusReason => RefreshBus.instance.reason.value;
+  bool isRefreshingFrom(String r) => RefreshBus.instance.isReason(r);
+  bool isRefreshingFromAny(Iterable<String> r) =>
+      RefreshBus.instance.isAnyReason(r);
 
   void bindRefreshBus(void Function() handler) {
-    RefreshBus.instance.addListener(handler);
+    if (_subscribers.containsKey(handler)) return;
+    _subscribers[handler] = RefreshBus.instance.tick.subscribe(
+      (_) => handler(),
+    );
   }
 
   void unbindRefreshBus(void Function() handler) {
-    RefreshBus.instance.removeListener(handler);
+    final dispose = _subscribers.remove(handler);
+    if (dispose != null) dispose();
+  }
+
+  @override
+  void dispose() {
+    for (final dispose in _subscribers.values) {
+      dispose();
+    }
+    _subscribers.clear();
+    super.dispose();
   }
 }
 

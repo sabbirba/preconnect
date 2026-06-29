@@ -1,4 +1,7 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -41,9 +44,53 @@ class _LibSyncPageState extends State<LibSyncPage> {
     if (_reservationByYear != null) {
       _setDefaultChartIndex();
     }
+    _loadDiskCache().then((_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
     _initWebViewController();
     LibSyncAuthService.instance.state.addListener(_onAuthStateChanged);
     _onAuthStateChanged();
+  }
+
+  Future<void> _loadDiskCache() async {
+    if (_cachedReservationByYear != null) return;
+    try {
+      final store = AppPreferencesStore();
+      final yearRaw = await store.getString(
+        'libsync_cache_reservation_by_year',
+      );
+      final recentRaw = await store.getString(
+        'libsync_cache_recent_reservations',
+      );
+      final quotaRaw = await store.getString('libsync_cache_check_quota');
+      final countRaw = await store.getString(
+        'libsync_cache_total_reservation_count',
+      );
+
+      if (yearRaw != null) {
+        _cachedReservationByYear = jsonDecode(yearRaw) as List<dynamic>?;
+      }
+      if (recentRaw != null) {
+        _cachedRecentReservations = jsonDecode(recentRaw) as List<dynamic>?;
+      }
+      if (quotaRaw != null) {
+        _cachedCheckQuota = jsonDecode(quotaRaw) as List<dynamic>?;
+      }
+      if (countRaw != null) {
+        _cachedTotalReservationCount =
+            jsonDecode(countRaw) as Map<String, dynamic>?;
+      }
+
+      _reservationByYear = _cachedReservationByYear;
+      _recentReservations = _cachedRecentReservations;
+      _checkQuota = _cachedCheckQuota;
+      _totalReservationCount = _cachedTotalReservationCount;
+      if (_reservationByYear != null) {
+        _setDefaultChartIndex();
+      }
+    } catch (_) {}
   }
 
   @override
@@ -115,6 +162,40 @@ class _LibSyncPageState extends State<LibSyncPage> {
           (results[1] as Map<String, dynamic>?)?['results'] as List<dynamic>?;
       _cachedCheckQuota = results[2] as List<dynamic>?;
       _cachedTotalReservationCount = results[3] as Map<String, dynamic>?;
+
+      final store = AppPreferencesStore();
+      if (_cachedReservationByYear != null) {
+        unawaited(
+          store.setString(
+            'libsync_cache_reservation_by_year',
+            jsonEncode(_cachedReservationByYear),
+          ),
+        );
+      }
+      if (_cachedRecentReservations != null) {
+        unawaited(
+          store.setString(
+            'libsync_cache_recent_reservations',
+            jsonEncode(_cachedRecentReservations),
+          ),
+        );
+      }
+      if (_cachedCheckQuota != null) {
+        unawaited(
+          store.setString(
+            'libsync_cache_check_quota',
+            jsonEncode(_cachedCheckQuota),
+          ),
+        );
+      }
+      if (_cachedTotalReservationCount != null) {
+        unawaited(
+          store.setString(
+            'libsync_cache_total_reservation_count',
+            jsonEncode(_cachedTotalReservationCount),
+          ),
+        );
+      }
 
       if (mounted) {
         setState(() {
@@ -728,17 +809,26 @@ class _BarItem extends StatelessWidget {
   }
 }
 
-class _RecentReservationsList extends StatelessWidget {
+class _RecentReservationsList extends StatefulWidget {
   const _RecentReservationsList({
     required this.reservations,
     required this.onRefresh,
   });
+
   final List<dynamic> reservations;
   final VoidCallback onRefresh;
 
   @override
+  State<_RecentReservationsList> createState() =>
+      _RecentReservationsListState();
+}
+
+class _RecentReservationsListState extends State<_RecentReservationsList> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
-    if (reservations.isEmpty) {
+    if (widget.reservations.isEmpty) {
       return const BracuCard(
         child: Center(
           child: Padding(
@@ -752,155 +842,229 @@ class _RecentReservationsList extends StatelessWidget {
     final textSecondary = BracuPalette.textSecondary(context);
     final textPrimary = BracuPalette.textPrimary(context);
 
+    final showCount = _expanded ? widget.reservations.length : 3;
+    final visibleReservations = widget.reservations.take(showCount).toList();
+
     return Column(
-      children: reservations.map((res) {
-        final room = (res['room_no'] ?? {})['room_no'] ?? 'N/A';
-        final category = (res['room_no'] ?? {})['room_cat'] ?? 'N/A';
-        final date = formatDate(res['reserve_start_date']?.toString());
-        final code = res['reservation_code']?.toString() ?? 'N/A';
-        final uniqueToken = res['unique_token']?.toString() ?? '';
-        final status = (res['status'] ?? '').toString();
+      children: [
+        ...visibleReservations.map((res) {
+          final room = (res['room_no'] ?? {})['room_no'] ?? 'N/A';
+          final category = (res['room_no'] ?? {})['room_cat'] ?? 'N/A';
+          final date = formatDate(res['reserve_start_date']?.toString());
+          final code = res['reservation_code']?.toString() ?? 'N/A';
+          final uniqueToken = res['unique_token']?.toString() ?? '';
+          final status = (res['status'] ?? '').toString();
 
-        Color statusColor;
-        switch (status.toLowerCase()) {
-          case 'confirmed':
-          case 'presented':
-            statusColor = Colors.green;
-            break;
-          case 'cancelled':
-            statusColor = Colors.red;
-            break;
-          default:
-            statusColor = Colors.orange;
-        }
+          Color statusColor;
+          switch (status.toLowerCase()) {
+            case 'confirmed':
+            case 'presented':
+              statusColor = Colors.green;
+              break;
+            case 'cancelled':
+              statusColor = Colors.red;
+              break;
+            default:
+              statusColor = Colors.orange;
+          }
 
-        final cardBorder = statusColor.withValues(alpha: 0.35);
+          final cardBorder = statusColor.withValues(alpha: 0.35);
 
-        return Container(
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: cardBorder),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.bookmark_outline_rounded,
-                          size: 18,
-                          color: statusColor,
-                        ),
-                        const SizedBox(width: 10),
-                        Flexible(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              GestureDetector(
-                                onTap: () => copyToClipboard(context, code),
-                                child: Text(
-                                  code,
-                                  style: TextStyle(
-                                    color: textPrimary,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 15,
-                                    letterSpacing: 0.2,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              GestureDetector(
-                                onTap: () => copyToClipboard(context, code),
-                                child: Icon(
-                                  Icons.copy_rounded,
-                                  size: 15,
-                                  color: textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    room,
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.right,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              _InfoLine(
-                label: 'Category',
-                value: category,
-                isLabelBold: true,
-                isValueBold: true,
-              ),
-              const SizedBox(height: 8),
-              _InfoLine(
-                label: 'Date',
-                value: date,
-                isLabelBold: false,
-                isValueBold: false,
-              ),
-              const SizedBox(height: 6),
-              _InfoLine(
-                label: 'Time Slot',
-                value: _formatSlot(res['slot']),
-                isLabelBold: true,
-                isValueBold: true,
-              ),
-              const SizedBox(height: 6),
-              _InfoLine(
-                label: 'Status',
-                value: status,
-                isLabelBold: true,
-                isValueBold: true,
-                valueColor: statusColor,
-              ),
-              if (status.toLowerCase() == 'confirmed') ...[
-                const SizedBox(height: 12),
+          return Container(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: cardBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: BorderSide(
-                            color: Colors.red.withValues(alpha: 0.4),
-                            width: 1.2,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.bookmark_outline_rounded,
+                            size: 18,
+                            color: statusColor,
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                GestureDetector(
+                                  onTap: () => copyToClipboard(context, code),
+                                  child: Text(
+                                    code,
+                                    style: TextStyle(
+                                      color: textPrimary,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 15,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: () => copyToClipboard(context, code),
+                                  child: Icon(
+                                    Icons.copy_rounded,
+                                    size: 15,
+                                    color: textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                        ),
-                        onPressed: () async {
-                          final confirm =
-                              await showBracuConfirmationWithActionDialog(
-                                context,
-                                icon: Icons.cancel_outlined,
-                                title: 'Cancel Booking?',
-                                message:
-                                    'Are you sure you want to cancel this booking?',
-                                confirmLabel: 'Cancel',
-                                confirmColor: Colors.red,
-                                onConfirm: () async {},
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      room,
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.right,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                _InfoLine(
+                  label: 'Category',
+                  value: category,
+                  isLabelBold: true,
+                  isValueBold: true,
+                ),
+                const SizedBox(height: 8),
+                _InfoLine(
+                  label: 'Date',
+                  value: date,
+                  isLabelBold: false,
+                  isValueBold: false,
+                ),
+                const SizedBox(height: 6),
+                _InfoLine(
+                  label: 'Time Slot',
+                  value: _formatSlot(res['slot']),
+                  isLabelBold: true,
+                  isValueBold: true,
+                ),
+                const SizedBox(height: 6),
+                _InfoLine(
+                  label: 'Status',
+                  value: status,
+                  isLabelBold: true,
+                  isValueBold: true,
+                  valueColor: statusColor,
+                ),
+                if (status.toLowerCase() == 'confirmed') ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: BorderSide(
+                              color: Colors.red.withValues(alpha: 0.4),
+                              width: 1.2,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                          onPressed: () async {
+                            final confirm =
+                                await showBracuConfirmationWithActionDialog(
+                                  context,
+                                  icon: Icons.cancel_outlined,
+                                  title: 'Cancel Booking?',
+                                  message:
+                                      'Are you sure you want to cancel this booking?',
+                                  confirmLabel: 'Cancel',
+                                  confirmColor: Colors.red,
+                                  onConfirm: () async {},
+                                );
+                            if (confirm == true) {
+                              if (!context.mounted) return;
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
                               );
-                          if (confirm == true) {
+                              try {
+                                if (uniqueToken.isNotEmpty) {
+                                  await LibSyncAuthService.instance
+                                      .cancelReservation(uniqueToken);
+                                  if (context.mounted) {
+                                    Navigator.of(context).pop();
+                                    showAppSnackBar(
+                                      context,
+                                      'Reservation cancelled',
+                                    );
+                                    widget.onRefresh();
+                                  }
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  Navigator.of(context).pop();
+                                  showAppSnackBar(
+                                    context,
+                                    e.toString().replaceAll('Exception: ', ''),
+                                  );
+                                }
+                              }
+                            }
+                          },
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: BracuPalette.primary,
+                            side: BorderSide(
+                              color: BracuPalette.primary.withValues(
+                                alpha: 0.4,
+                              ),
+                              width: 1.2,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                          onPressed: () async {
+                            final confirm =
+                                await showBracuConfirmationWithActionDialog(
+                                  context,
+                                  icon: Icons.location_on_outlined,
+                                  title: 'Confirm Check In?',
+                                  message:
+                                      'Are you at the library and ready to check in?',
+                                  confirmLabel: 'Check In',
+                                  confirmColor: BracuPalette.primary,
+                                  onConfirm: () async {},
+                                );
+                            if (confirm != true) return;
                             if (!context.mounted) return;
                             showDialog(
                               context: context,
@@ -910,16 +1074,17 @@ class _RecentReservationsList extends StatelessWidget {
                               ),
                             );
                             try {
-                              if (uniqueToken.isNotEmpty) {
+                              final intCode = int.tryParse(code);
+                              if (intCode != null) {
                                 await LibSyncAuthService.instance
-                                    .cancelReservation(uniqueToken);
+                                    .checkInAttendance(intCode);
                                 if (context.mounted) {
                                   Navigator.of(context).pop();
                                   showAppSnackBar(
                                     context,
-                                    'Reservation cancelled',
+                                    'Attendance checked in successfully!',
                                   );
-                                  onRefresh();
+                                  widget.onRefresh();
                                 }
                               }
                             } catch (e) {
@@ -931,92 +1096,36 @@ class _RecentReservationsList extends StatelessWidget {
                                 );
                               }
                             }
-                          }
-                        },
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: BracuPalette.primary,
-                          side: BorderSide(
-                            color: BracuPalette.primary.withValues(alpha: 0.4),
-                            width: 1.2,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                        ),
-                        onPressed: () async {
-                          final confirm =
-                              await showBracuConfirmationWithActionDialog(
-                                context,
-                                icon: Icons.location_on_outlined,
-                                title: 'Confirm Check In?',
-                                message:
-                                    'Are you at the library and ready to check in?',
-                                confirmLabel: 'Check In',
-                                confirmColor: BracuPalette.primary,
-                                onConfirm: () async {},
-                              );
-                          if (confirm != true) return;
-                          if (!context.mounted) return;
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (context) => const Center(
-                              child: CircularProgressIndicator(),
+                          },
+                          child: const Text(
+                            'Check In',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
                             ),
-                          );
-                          try {
-                            final intCode = int.tryParse(code);
-                            if (intCode != null) {
-                              await LibSyncAuthService.instance
-                                  .checkInAttendance(intCode);
-                              if (context.mounted) {
-                                Navigator.of(context).pop();
-                                showAppSnackBar(
-                                  context,
-                                  'Attendance checked in successfully!',
-                                );
-                                onRefresh();
-                              }
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              Navigator.of(context).pop();
-                              showAppSnackBar(
-                                context,
-                                e.toString().replaceAll('Exception: ', ''),
-                              );
-                            }
-                          }
-                        },
-                        child: const Text(
-                          'Check In',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ],
-            ],
+            ),
+          );
+        }),
+        if (widget.reservations.length > 3)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: buildCenteredOutlinedActionButton(
+              label: _expanded ? 'Show Less' : 'Show More',
+              onPressed: () {
+                setState(() {
+                  _expanded = !_expanded;
+                });
+              },
+            ),
           ),
-        );
-      }).toList(),
+      ],
     );
   }
 

@@ -8,8 +8,11 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/pages/home_tab.dart';
+import 'package:preconnect/model/section_info.dart' as section;
+import 'package:preconnect/pages/shared_widgets/entry_card.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 class FreeLabsPage extends StatefulWidget {
@@ -56,6 +59,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   Timer? _liveRefreshTimer;
   _RoomFilter _selectedFilter = _RoomFilter.labs;
   bool _showNextDayAfterHours = false;
+  bool _isRamadan = false;
 
   @override
   void initState() {
@@ -69,6 +73,13 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     _liveRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (!mounted) return;
       setState(() {});
+    });
+    RamadanTiming.isRamadan().then((value) {
+      if (mounted) {
+        setState(() {
+          _isRamadan = value;
+        });
+      }
     });
   }
 
@@ -335,10 +346,17 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                     children: [
                       Expanded(
                         child: BracuSectionTitle(
-                          title: formatTimeRange(
-                            firstSlot.startTime,
-                            firstSlot.endTime,
-                          ),
+                          title: (() {
+                            final adjusted = RamadanTiming.adjustRange(
+                              firstSlot.startTime,
+                              firstSlot.endTime,
+                              isRamadan: _isRamadan,
+                            );
+                            return formatTimeRange(
+                              adjusted.startTime,
+                              adjusted.endTime,
+                            );
+                          })(),
                         ),
                       ),
                       Text(
@@ -368,6 +386,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                             : null,
                         slot: slot,
                         isHighlighted: isHighlighted,
+                        isRamadan: _isRamadan,
                         onTap: () => _showRoomDetails(slot, roomSlots),
                       ),
                     );
@@ -450,6 +469,10 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
         roomName: detailsEntry.roomName,
         courseCode: detailsEntry.courseCode,
         courseTitle: detailsEntry.courseName,
+        sectionName: detailsEntry.sectionName,
+        facultyInitial: detailsEntry.faculty?.shortName ?? '',
+        consumedSeat: detailsEntry.consumedSeat,
+        courseType: detailsEntry.courseType,
         schedules: detailsEntry.sectionSchedule.classSchedules,
         day: day,
       );
@@ -462,6 +485,10 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
           roomName: detailsEntry.labName ?? detailsEntry.labRoomName!,
           courseCode: detailsEntry.labCourseCode ?? '',
           courseTitle: detailsEntry.labName ?? detailsEntry.labCourseCode ?? '',
+          sectionName: detailsEntry.sectionName,
+          facultyInitial: detailsEntry.labFaculties ?? '',
+          consumedSeat: detailsEntry.consumedSeat,
+          courseType: 'LAB',
           schedules: detailsEntry.labSchedules,
           day: day,
         );
@@ -474,7 +501,30 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     final isFuture = _isViewingFutureDate();
 
     for (final room in grouped.values) {
-      final freeSlots = _freeWithinDay(_mergeSlots(room.busySlots));
+      final busyTimeSlots = room.busySlots
+          .map((b) => _TimeSlot(start: b.start, end: b.end))
+          .toList();
+      final freeSlots = _freeWithinDay(_mergeSlots(busyTimeSlots));
+      final occupiedClasses = room.busySlots
+          .map(
+            (b) => _OccupiedClass(
+              courseCode: b.courseCode,
+              sectionName: b.sectionName,
+              facultyInitial: b.facultyInitial,
+              startTime: _formatTimeOfDay(b.start),
+              endTime: _formatTimeOfDay(b.end),
+              roomNumber: b.roomNumber,
+              consumedSeat: b.consumedSeat,
+              courseType: b.courseType,
+            ),
+          )
+          .toList();
+      occupiedClasses.sort((a, b) {
+        final aStart = _minutesFromString(a.startTime) ?? 0;
+        final bStart = _minutesFromString(b.startTime) ?? 0;
+        return aStart.compareTo(bStart);
+      });
+
       for (final free in freeSlots) {
         if (!isFuture && _minutesOfDay(free.end) <= nowMinutes) {
           continue;
@@ -488,6 +538,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
             startTime: _formatTimeOfDay(free.start),
             endTime: _formatTimeOfDay(free.end),
             statusLabel: _statusLabel(free.start, free.end),
+            occupiedClasses: occupiedClasses,
           ),
         );
       }
@@ -588,6 +639,10 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     required String roomName,
     required String courseCode,
     required String courseTitle,
+    required String sectionName,
+    required String facultyInitial,
+    required int consumedSeat,
+    required String courseType,
     required List<SeatStatusClassSchedule> schedules,
     required String day,
   }) {
@@ -623,7 +678,16 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
           '$normalizedRoomNumber|${slot.day}|${slot.startTime}|${slot.endTime}';
       if (!seenBusyKeys.add(key)) continue;
       room.busySlots.add(
-        _TimeSlot.fromStrings(startTime: slot.startTime, endTime: slot.endTime),
+        _BusySlotDetails(
+          start: _FreeRoomTime.parse(slot.startTime),
+          end: _FreeRoomTime.parse(slot.endTime),
+          courseCode: normalizedCourseCode,
+          sectionName: sectionName.trim(),
+          facultyInitial: facultyInitial.trim(),
+          roomNumber: normalizedRoomNumber,
+          consumedSeat: consumedSeat,
+          courseType: courseType,
+        ),
       );
     }
   }
@@ -812,7 +876,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
               children: [
                 Expanded(
                   child: Text(
-                    'Today',
+                    'Free Slots',
                     style: TextStyle(
                       color: textPrimary,
                       fontSize: 14,
@@ -831,38 +895,99 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
               ],
             ),
             const SizedBox(height: 10),
-            ...visibleRoomSlots.map(
-              (item) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: BracuCard(
-                  isHighlighted: false,
-                  highlightColor: BracuPalette.primary,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          formatTimeRange(item.startTime, item.endTime),
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
+            if (visibleRoomSlots.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'No free slots left for today.',
+                  style: TextStyle(
+                    color: textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              )
+            else
+              ...visibleRoomSlots.map(
+                (item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: BracuCard(
+                    isHighlighted: false,
+                    highlightColor: BracuPalette.primary,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            (() {
+                              final adjusted = RamadanTiming.adjustRange(
+                                item.startTime,
+                                item.endTime,
+                                isRamadan: _isRamadan,
+                              );
+                              return formatTimeRange(
+                                adjusted.startTime,
+                                adjusted.endTime,
+                              );
+                            })(),
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      ),
-                      if (item.statusLabel.isNotEmpty)
-                        Text(
-                          item.statusLabel,
-                          style: TextStyle(
-                            color: textSecondary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                        if (item.statusLabel.isNotEmpty)
+                          Text(
+                            item.statusLabel,
+                            style: TextStyle(
+                              color: textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
+            if (slot.occupiedClasses.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Scheduled ${_selectedFilter.label}',
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ...slot.occupiedClasses.map(
+                (item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: ScheduleEntryCard(
+                    sectionName: item.sectionName,
+                    courseCode: item.courseCode,
+                    schedule: section.ClassSchedule(
+                      startTime: item.startTime,
+                      endTime: item.endTime,
+                      day: '',
+                    ),
+                    isRamadan: _isRamadan,
+                    faculties: item.facultyInitial,
+                    roomNumber: item.roomNumber,
+                    consumedSeat: item.consumedSeat,
+                    courseType: item.courseType,
+                    wrapInCard: true,
+                  ),
+                ),
+              ),
+            ],
           ],
         );
       },
@@ -973,12 +1098,14 @@ class _CompactRoomRow extends StatelessWidget {
     super.key,
     required this.slot,
     required this.onTap,
+    required this.isRamadan,
     this.isHighlighted = false,
   });
 
   final _FreeRoomSlot slot;
   final VoidCallback onTap;
   final bool isHighlighted;
+  final bool isRamadan;
 
   @override
   Widget build(BuildContext context) {
@@ -1020,7 +1147,17 @@ class _CompactRoomRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    formatTimeRange(slot.startTime, slot.endTime),
+                    (() {
+                      final adjusted = RamadanTiming.adjustRange(
+                        slot.startTime,
+                        slot.endTime,
+                        isRamadan: isRamadan,
+                      );
+                      return formatTimeRange(
+                        adjusted.startTime,
+                        adjusted.endTime,
+                      );
+                    })(),
                     style: TextStyle(
                       color: BracuPalette.textPrimary(context),
                       fontWeight: FontWeight.w700,
@@ -1073,6 +1210,28 @@ class _CompactRoomRow extends StatelessWidget {
   }
 }
 
+class _OccupiedClass {
+  const _OccupiedClass({
+    required this.courseCode,
+    required this.sectionName,
+    required this.facultyInitial,
+    required this.startTime,
+    required this.endTime,
+    required this.roomNumber,
+    required this.consumedSeat,
+    required this.courseType,
+  });
+
+  final String courseCode;
+  final String sectionName;
+  final String facultyInitial;
+  final String startTime;
+  final String endTime;
+  final String roomNumber;
+  final int consumedSeat;
+  final String courseType;
+}
+
 class _FreeRoomSlot {
   const _FreeRoomSlot({
     required this.roomNumber,
@@ -1082,6 +1241,7 @@ class _FreeRoomSlot {
     required this.startTime,
     required this.endTime,
     required this.statusLabel,
+    required this.occupiedClasses,
   });
 
   final String roomNumber;
@@ -1091,6 +1251,29 @@ class _FreeRoomSlot {
   final String startTime;
   final String endTime;
   final String statusLabel;
+  final List<_OccupiedClass> occupiedClasses;
+}
+
+class _BusySlotDetails {
+  const _BusySlotDetails({
+    required this.start,
+    required this.end,
+    required this.courseCode,
+    required this.sectionName,
+    required this.facultyInitial,
+    required this.roomNumber,
+    required this.consumedSeat,
+    required this.courseType,
+  });
+
+  final TimeOfDay start;
+  final TimeOfDay end;
+  final String courseCode;
+  final String sectionName;
+  final String facultyInitial;
+  final String roomNumber;
+  final int consumedSeat;
+  final String courseType;
 }
 
 class _RoomSeed {
@@ -1099,16 +1282,12 @@ class _RoomSeed {
   final String roomNumber;
   final String roomName;
   final Map<String, int> programCounts = <String, int>{};
-  final List<_TimeSlot> busySlots = <_TimeSlot>[];
+  final List<_BusySlotDetails> busySlots = <_BusySlotDetails>[];
   final Set<String> courseTitles = <String>{};
 }
 
 class _TimeSlot {
   const _TimeSlot({required this.start, required this.end});
-
-  _TimeSlot.fromStrings({required String startTime, required String endTime})
-    : start = _FreeRoomTime.parse(startTime),
-      end = _FreeRoomTime.parse(endTime);
 
   final TimeOfDay start;
   final TimeOfDay end;

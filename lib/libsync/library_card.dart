@@ -1,73 +1,23 @@
-import 'dart:math' as math;
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_flip_card/flutter_flip_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/cached_image.dart';
 
 const String _bracuLogoUrl =
     'https://www.bracu.ac.bd/sites/default/files/resources/media/bracu_logo_12-0-2022.png';
 
-class LibraryCard extends StatefulWidget {
+class LibraryCard extends StatelessWidget {
   const LibraryCard({super.key, required this.profile});
   final Map<String, dynamic> profile;
 
   @override
-  State<LibraryCard> createState() => _LibraryCardState();
-}
-
-class _LibraryCardState extends State<LibraryCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 300),
-  );
-  late final Animation<double> _turn = CurvedAnimation(
-    parent: _controller,
-    curve: Curves.easeInOutCubic,
-  );
-
-  bool _showFront = true;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _toggle() {
-    if (_controller.isAnimating) return;
-    setState(() => _showFront = !_showFront);
-    if (_showFront) {
-      _controller.reverse();
-    } else {
-      _controller.forward();
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _toggle,
-      child: AnimatedBuilder(
-        animation: _turn,
-        builder: (context, child) {
-          final val = _turn.value * math.pi;
-          final isFront = val < math.pi / 2;
-          return Transform(
-            transform: Matrix4.identity()
-              ..setEntry(3, 2, 0.001)
-              ..rotateY(val),
-            alignment: Alignment.center,
-            child: isFront
-                ? _LibraryCardFront(profile: widget.profile)
-                : Transform(
-                    transform: Matrix4.identity()..rotateY(math.pi),
-                    alignment: Alignment.center,
-                    child: _LibraryCardBack(profile: widget.profile),
-                  ),
-          );
-        },
-      ),
+    return GestureFlipCard(
+      animationDuration: const Duration(milliseconds: 300),
+      axis: FlipAxis.vertical,
+      frontWidget: _LibraryCardFront(profile: profile),
+      backWidget: _LibraryCardBack(profile: profile),
     );
   }
 }

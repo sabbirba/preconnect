@@ -20,7 +20,7 @@ import 'package:preconnect/tools/snapshot_store.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
-import 'package:preconnect/tools/exam_sorting.dart';
+import 'package:preconnect/tools/string_utils.dart';
 import 'package:preconnect/tools/exam_visibility.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/time_utils.dart';

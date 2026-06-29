@@ -46,7 +46,7 @@ import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/wifi_http.dart';
-import 'package:preconnect/tools/exam_sorting.dart';
+import 'package:preconnect/tools/string_utils.dart';
 import 'package:preconnect/tools/exam_visibility.dart';
 import 'package:preconnect/tools/holiday.dart';
 import 'package:preconnect/tools/ramadan.dart';

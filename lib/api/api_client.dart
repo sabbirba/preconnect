@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
@@ -62,6 +63,13 @@ class ApiClient {
     }
 
     try {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      if (connectivityResult.contains(ConnectivityResult.none)) {
+        _cachedHasConnection = false;
+        _cachedHasConnectionAt = DateTime.now();
+        return false;
+      }
+
       final response = await HttpUtils.client
           .get(
             Uri.parse(ApiConfig.connectApiBase),

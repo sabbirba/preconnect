@@ -23,6 +23,10 @@ dependencies:
   dart_pdf_reader: ^2.2.0
   flutter_alarmkit: ^0.3.0
   barcode_widget: ^2.0.4
+  flutter_flip_card: ^0.0.6
+  cached_network_image: ^3.4.1
+  signals_flutter: ^5.5.0
+  connectivity_plus: ^6.1.1
   url_launcher: ^6.3.2
   file_selector: ^1.1.0
   share_plus: ^13.2.0
