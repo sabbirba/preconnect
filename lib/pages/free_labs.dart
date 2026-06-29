@@ -274,7 +274,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
               snapshot.data == null) {
             return buildRefreshLoadingState(onRefresh: _refresh);
           }
-          final visibleSlots = _visibleRoomSlots(slots);
+          final visibleSlots = slots;
           if (visibleSlots.isEmpty) {
             if (_shouldOfferNextDayLabs()) {
               return _buildAfterHoursPromptState();
@@ -487,9 +487,18 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     }
 
     slots.sort((a, b) {
-      final startCompare = (_minutesFromString(a.startTime) ?? 0).compareTo(
-        _minutesFromString(b.startTime) ?? 0,
-      );
+      final now = TimeOfDay.now();
+      final nowMinutes = now.hour * 60 + now.minute;
+      final aStart = _minutesFromString(a.startTime) ?? 0;
+      final aEnd = _minutesFromString(a.endTime) ?? 0;
+      final bStart = _minutesFromString(b.startTime) ?? 0;
+      final bEnd = _minutesFromString(b.endTime) ?? 0;
+      final aSpent = !_isViewingFutureDate() && nowMinutes >= aEnd;
+      final bSpent = !_isViewingFutureDate() && nowMinutes >= bEnd;
+      if (aSpent != bSpent) {
+        return aSpent ? 1 : -1;
+      }
+      final startCompare = aStart.compareTo(bStart);
       if (startCompare != 0) return startCompare;
       return a.roomNumber.compareTo(b.roomNumber);
     });
@@ -658,27 +667,73 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   }
 
   List<_TimeSlot> _freeWithinDay(List<_TimeSlot> busy) {
-    const dayStart = TimeOfDay(hour: 8, minute: 0);
-    const dayEnd = TimeOfDay(hour: 20, minute: 0);
-    if (busy.isEmpty) {
-      return const <_TimeSlot>[_TimeSlot(start: dayStart, end: dayEnd)];
-    }
-    final free = <_TimeSlot>[];
-    var current = dayStart;
-    for (final slot in busy) {
-      if (_minutesOfDay(current) < _minutesOfDay(slot.start)) {
-        free.add(_TimeSlot(start: current, end: slot.start));
+    final List<_TimeSlot> periods = [
+      _TimeSlot(
+        start: const TimeOfDay(hour: 8, minute: 0),
+        end: const TimeOfDay(hour: 9, minute: 20),
+      ),
+      _TimeSlot(
+        start: const TimeOfDay(hour: 9, minute: 30),
+        end: const TimeOfDay(hour: 10, minute: 50),
+      ),
+      _TimeSlot(
+        start: const TimeOfDay(hour: 11, minute: 0),
+        end: const TimeOfDay(hour: 12, minute: 20),
+      ),
+      _TimeSlot(
+        start: const TimeOfDay(hour: 12, minute: 30),
+        end: const TimeOfDay(hour: 13, minute: 50),
+      ),
+      _TimeSlot(
+        start: const TimeOfDay(hour: 14, minute: 0),
+        end: const TimeOfDay(hour: 15, minute: 20),
+      ),
+      _TimeSlot(
+        start: const TimeOfDay(hour: 15, minute: 30),
+        end: const TimeOfDay(hour: 16, minute: 50),
+      ),
+      _TimeSlot(
+        start: const TimeOfDay(hour: 17, minute: 0),
+        end: const TimeOfDay(hour: 18, minute: 20),
+      ),
+      _TimeSlot(
+        start: const TimeOfDay(hour: 18, minute: 30),
+        end: const TimeOfDay(hour: 19, minute: 50),
+      ),
+    ];
+    final freePeriods = <_TimeSlot>[];
+    for (final period in periods) {
+      final pStart = _minutesOfDay(period.start);
+      final pEnd = _minutesOfDay(period.end);
+      bool overlaps = false;
+      for (final b in busy) {
+        final bStart = _minutesOfDay(b.start);
+        final bEnd = _minutesOfDay(b.end);
+        if (pStart < bEnd && bStart < pEnd) {
+          overlaps = true;
+          break;
+        }
       }
-      if (_minutesOfDay(slot.end) > _minutesOfDay(current)) {
-        current = slot.end;
+      if (!overlaps) {
+        freePeriods.add(period);
       }
     }
-    if (_minutesOfDay(current) < _minutesOfDay(dayEnd)) {
-      free.add(_TimeSlot(start: current, end: dayEnd));
+    final merged = <_TimeSlot>[];
+    for (final fp in freePeriods) {
+      if (merged.isEmpty) {
+        merged.add(fp);
+      } else {
+        final last = merged.last;
+        final lastEnd = _minutesOfDay(last.end);
+        final currentStart = _minutesOfDay(fp.start);
+        if (currentStart - lastEnd <= 10) {
+          merged[merged.length - 1] = _TimeSlot(start: last.start, end: fp.end);
+        } else {
+          merged.add(fp);
+        }
+      }
     }
-    return free
-        .where((slot) => _minutesOfDay(slot.start) < _minutesOfDay(slot.end))
-        .toList();
+    return merged;
   }
 
   String _statusLabel(TimeOfDay start, TimeOfDay end) {
@@ -781,7 +836,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     _FreeRoomSlot slot,
     List<_FreeRoomSlot> roomSlots,
   ) async {
-    final visibleRoomSlots = _visibleRoomSlots(roomSlots);
+    final visibleRoomSlots = roomSlots;
     await showBracuBottomSheet<void>(
       context,
       title: _sheetRoomTitle(slot),
@@ -849,17 +904,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
         );
       },
     );
-  }
-
-  List<_FreeRoomSlot> _visibleRoomSlots(List<_FreeRoomSlot> roomSlots) {
-    if (_isViewingFutureDate()) {
-      return roomSlots;
-    }
-    final nowMinutes = _minutesOfDay(TimeOfDay.now());
-    return roomSlots.where((item) {
-      final end = _minutesFromString(item.endTime);
-      return end != null && end > nowMinutes;
-    }).toList();
   }
 
   bool _matchesFilter(String roomNumber, [_RoomFilter? filter]) {
