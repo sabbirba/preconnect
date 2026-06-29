@@ -79,6 +79,29 @@ class LibSyncAuthService extends ChangeNotifier {
         );
       }
 
+      final Map<String, String> cookiesToSave = {};
+      try {
+        final body =
+            jsonDecode(libsyncAuthResponse.body) as Map<String, dynamic>;
+        final accessVal = body['access'] ?? body['access_token'];
+        final refreshVal = body['refresh'] ?? body['refresh_token'];
+        if (accessVal != null) {
+          cookiesToSave['access'] = accessVal.toString();
+        }
+        if (refreshVal != null) {
+          cookiesToSave['refresh'] = refreshVal.toString();
+        }
+      } catch (_) {}
+
+      final parsedCookies = _apiClient.parseResponseCookies(
+        libsyncAuthResponse.headers,
+      );
+      cookiesToSave.addAll(parsedCookies);
+
+      if (cookiesToSave.isNotEmpty) {
+        await _apiClient.saveCookies(cookiesToSave);
+      }
+
       final profile = await _fetchUserProfile();
       if (profile != null) {
         state.value = LibSyncAuthState(
@@ -164,6 +187,30 @@ class LibSyncAuthService extends ChangeNotifier {
       );
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<List<dynamic>?> fetchCheckAvailability({
+    required String startDate,
+    required String endDate,
+    required String startTime,
+    required String endTime,
+    int capacity = 1,
+    String library = 'Ayesha Abed Library (Main Campus)',
+  }) async {
+    try {
+      final response = await _apiClient.get(
+        Uri.parse(
+          '${LibSyncConfig.apiBaseUrl}/api/reservation/check-availability/?'
+          'start_date=$startDate&end_date=$endDate&'
+          'start_time=$startTime&end_time=$endTime&'
+          'capacity=$capacity&library=${Uri.encodeComponent(library)}',
+        ),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
       }
     } catch (_) {}
     return null;

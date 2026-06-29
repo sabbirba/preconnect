@@ -2,8 +2,9 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'libsync_config.dart';
-import 'google_auth_helper.dart';
 import 'client_creator.dart';
+
+import 'auth_service.dart';
 
 class LibSyncApiClient extends http.BaseClient {
   LibSyncApiClient() : _inner = createLibSyncClient();
@@ -19,6 +20,7 @@ class LibSyncApiClient extends http.BaseClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    _injectBrowserHeaders(request.headers);
     final cookies = await getStoredCookies();
     if (cookies.isNotEmpty) {
       request.headers['Cookie'] = _buildCookieHeaderString(cookies);
@@ -35,6 +37,8 @@ class LibSyncApiClient extends http.BaseClient {
           newRequest.headers['Cookie'] = _buildCookieHeaderString(newCookies);
         }
         return _sendWithEtag(newRequest);
+      } else {
+        LibSyncAuthService.instance.logout();
       }
     }
 
@@ -65,7 +69,7 @@ class LibSyncApiClient extends http.BaseClient {
       }
     }
 
-    final responseCookies = _parseResponseCookies(response.headers);
+    final responseCookies = parseResponseCookies(response.headers);
     if (responseCookies.isNotEmpty) {
       await saveCookies(responseCookies);
     }
@@ -130,7 +134,7 @@ class LibSyncApiClient extends http.BaseClient {
     return cookies.entries.map((e) => '${e.key}=${e.value}').join('; ');
   }
 
-  Map<String, String> _parseResponseCookies(Map<String, String> headers) {
+  Map<String, String> parseResponseCookies(Map<String, String> headers) {
     final Map<String, String> cookies = {};
     final setCookieHeader = headers['set-cookie'] ?? headers['Set-Cookie'];
     if (setCookieHeader == null) return cookies;
@@ -150,57 +154,51 @@ class LibSyncApiClient extends http.BaseClient {
     return cookies;
   }
 
+  void _injectBrowserHeaders(Map<String, String> headers) {
+    headers['User-Agent'] =
+        'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Mobile Safari/537.36';
+    headers['Accept'] = '*/*';
+    headers['Accept-Language'] = 'en-US,en;q=0.9';
+    headers['Referer'] = 'https://libsync.bracu.ac.bd/';
+    headers['sec-ch-ua-mobile'] = '?1';
+    headers['sec-ch-ua-platform'] = '"Android"';
+  }
+
   Future<bool> _attemptTokenRefresh() async {
     try {
       final cookies = await getStoredCookies();
       final refreshCookie = cookies['refresh'];
       if (refreshCookie != null) {
+        final refreshHeaders = {
+          'Cookie': _buildCookieHeaderString(cookies),
+          'Content-Type': 'application/json',
+        };
+        _injectBrowserHeaders(refreshHeaders);
         final refreshResponse = await _inner.post(
           Uri.parse(LibSyncConfig.tokenRefreshUrl),
-          headers: {
-            'Cookie': _buildCookieHeaderString(cookies),
-            'Content-Type': 'application/json',
-          },
+          headers: refreshHeaders,
+          body: jsonEncode({'refresh': refreshCookie}),
         );
 
         if (refreshResponse.statusCode == 200) {
-          final responseCookies = _parseResponseCookies(
-            refreshResponse.headers,
-          );
-          if (responseCookies.isNotEmpty) {
-            await saveCookies(responseCookies);
-            return true;
-          }
-        }
-      }
-    } catch (_) {}
-
-    try {
-      final googleRefreshToken = await getGoogleRefreshToken();
-      if (googleRefreshToken != null) {
-        final googleTokens = await GoogleAuthHelper.refreshAccessToken(
-          googleRefreshToken,
-        );
-        final googleAccessToken = googleTokens['access_token'] as String?;
-        if (googleAccessToken != null) {
-          final libsyncAuthResponse = await _inner.post(
-            Uri.parse(LibSyncConfig.authSocialGoogleUrl),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'access_token': googleAccessToken}),
-          );
-
-          if (libsyncAuthResponse.statusCode == 200) {
-            final responseCookies = _parseResponseCookies(
-              libsyncAuthResponse.headers,
-            );
-            if (responseCookies.isNotEmpty) {
-              await saveCookies(responseCookies);
-              final newGoogleRefresh = googleTokens['refresh_token'] as String?;
-              if (newGoogleRefresh != null) {
-                await storeGoogleRefreshToken(newGoogleRefresh);
-              }
-              return true;
+          final responseCookies = parseResponseCookies(refreshResponse.headers);
+          final Map<String, String> cookiesToSave = Map.from(responseCookies);
+          try {
+            final body =
+                jsonDecode(refreshResponse.body) as Map<String, dynamic>;
+            final accessVal = body['access'] ?? body['access_token'];
+            final refreshVal = body['refresh'] ?? body['refresh_token'];
+            if (accessVal != null) {
+              cookiesToSave['access'] = accessVal.toString();
             }
+            if (refreshVal != null) {
+              cookiesToSave['refresh'] = refreshVal.toString();
+            }
+          } catch (_) {}
+
+          if (cookiesToSave.isNotEmpty) {
+            await saveCookies(cookiesToSave);
+            return true;
           }
         }
       }

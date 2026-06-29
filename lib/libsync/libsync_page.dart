@@ -6,6 +6,7 @@ import 'auth_service.dart';
 import 'google_auth_helper.dart';
 import 'libsync_config.dart';
 import 'library_card.dart';
+import 'room_availability.dart';
 
 class LibSyncPage extends StatefulWidget {
   const LibSyncPage({super.key});
@@ -304,6 +305,17 @@ class _LibSyncPageState extends State<LibSyncPage> {
               icon: Icons.local_library_outlined,
               actions: [
                 IconButton(
+                  icon: const Icon(Icons.calendar_month_outlined),
+                  tooltip: 'Check Availability',
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const RoomAvailabilityPage(),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
                   icon: const Icon(Icons.logout),
                   onPressed: () async {
                     final shouldLogout =
@@ -511,7 +523,7 @@ class _LibSyncPageState extends State<LibSyncPage> {
         lower.contains('internal')) {
       return 'The library server is temporarily unavailable. Please try again later.';
     }
-    return 'Could not complete library authentication. Please try again.';
+    return 'Could not complete authentication. Please try again.';
   }
 }
 
