@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -340,6 +341,11 @@ class LibSyncApiClient extends http.BaseClient {
     return cookies;
   }
 
+  String _generateRandomIP() {
+    final random = Random();
+    return '${random.nextInt(223) + 1}.${random.nextInt(254) + 1}.${random.nextInt(254) + 1}.${random.nextInt(254) + 1}';
+  }
+
   void _injectBrowserHeaders(Map<String, String> headers) {
     headers['User-Agent'] =
         'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Mobile Safari/537.36';
@@ -349,6 +355,11 @@ class LibSyncApiClient extends http.BaseClient {
     headers['Origin'] = 'https://libsync.bracu.ac.bd';
     headers['sec-ch-ua-mobile'] = '?1';
     headers['sec-ch-ua-platform'] = '"Android"';
+
+    final spoofedIp = _generateRandomIP();
+    headers['X-Forwarded-For'] = spoofedIp;
+    headers['X-Real-IP'] = spoofedIp;
+    headers['Client-IP'] = spoofedIp;
   }
 
   Future<bool> _attemptTokenRefresh() async {
