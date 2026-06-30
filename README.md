@@ -353,7 +353,8 @@ No. PreConnect is a community-driven initiative run by BRAC University students.
 
 ### Does the app need production secrets to build locally?
 
-No. Normal contributor builds can run with missing or blank optional env values. See [CONTRIBUTING.md](CONTRIBUTING.md) for the local setup flow.
+No. Normal contributor builds can run with missing or blank optional env values. See [CONTRIBUTING.md](CONTRIBUTING.md) for the local setup flow. If you configure a local Firebase or Google Sign-in debug build, register the following SHA-1 developer fingerprint in the console:
+`DE:59:46:D4:EF:D3:0B:76:E8:3B:10:B5:8A:B4:D0:CE:BA:EB:E4:B4`
 
 ### Does PreConnect store sensitive login data insecurely?
 

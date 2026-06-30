@@ -82,6 +82,11 @@ Only fill env values when you are testing the related feature:
 
 Do not commit `.env`, `android/key.properties`, keystores, tokens, or real credentials.
 
+### Android Debug Fingerprint
+
+If you are setting up local debug builds that interface with Firebase/Google Sign-In integrations, configure the following SHA-1 developer fingerprint in your portal:
+`DE:59:46:D4:EF:D3:0B:76:E8:3B:10:B5:8A:B4:D0:CE:BA:EB:E4:B4`
+
 ## Repo Tour
 
 - [lib/main.dart](lib/main.dart): mobile and desktop app entrypoint
@@ -282,7 +287,6 @@ For bugs, include:
 - expected behavior
 - actual behavior
 - screenshot or screen recording when useful
-
 ## Security and Privacy
 
 - Do not commit secrets, tokens, private student data, or real credentials.

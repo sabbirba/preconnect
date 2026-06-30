@@ -98,6 +98,14 @@ class _CachedImageState extends State<CachedImage> {
       return widget.error ?? const SizedBox.shrink();
     }
 
+    final dpr = MediaQuery.of(context).devicePixelRatio;
+    final cacheWidth = widget.width != null && widget.width! > 0
+        ? (widget.width! * dpr).round()
+        : null;
+    final cacheHeight = widget.height != null && widget.height! > 0
+        ? (widget.height! * dpr).round()
+        : null;
+
     if (rawUrl.startsWith('data:image/')) {
       try {
         final commaIdx = rawUrl.indexOf(',');
@@ -111,6 +119,8 @@ class _CachedImageState extends State<CachedImage> {
             fit: widget.fit,
             alignment: widget.alignment,
             filterQuality: widget.filterQuality,
+            cacheWidth: cacheWidth,
+            cacheHeight: cacheHeight,
           );
         }
       } catch (_) {}
@@ -134,6 +144,8 @@ class _CachedImageState extends State<CachedImage> {
       fit: widget.fit,
       alignment: widget.alignment as Alignment,
       filterQuality: widget.filterQuality,
+      memCacheWidth: cacheWidth,
+      memCacheHeight: cacheHeight,
       placeholder: (context, url) =>
           widget.placeholder ?? const SizedBox.shrink(),
       errorWidget: (context, url, error) =>
