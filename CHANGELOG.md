@@ -9,9 +9,9 @@ Entries are written for students, not developers — plain language, no commit h
 
 July Major Update
 
-- Google Identity-Federated SSO Flow: Direct Google-first login redirection bypassing the 400 Token Exchange block.
-- Antiban Session Caching: Consistent session IP mapping protecting your credentials.
-- Logout Spinner & Redirection: Clean spinner tracking in confirmation dialogs transitioning instantly to onboarding.
+- Direct Google-first login redirection bypassing the 400 Token Exchange block.
+- Consistent session IP mapping protecting your credentials.
+- Clean spinner tracking in confirmation dialogs transitioning instantly to onboarding.
 
 ## [1.6.8] — 2026-06-27
 

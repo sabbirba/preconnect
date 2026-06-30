@@ -8,14 +8,12 @@ class LibSyncConfig {
   static const String tokenRefreshUrl =
       '$apiBaseUrl/api/user/auth/token/refresh/';
 
-  static const String googleClientId = String.fromEnvironment(
-    'GOOGLE_CLIENT_ID',
-  );
+  static const String googleClientId =
+      '53508941136-rkgrsch5oa60g4absotjj7lgg7s6e7ji.apps.googleusercontent.com';
   static const String googleClientSecret = String.fromEnvironment(
     'GOOGLE_CLIENT_SECRET',
   );
-  static const String googleRedirectUri = String.fromEnvironment(
-    'GOOGLE_REDIRECT_URI',
-  );
-  static const String googleScopes = String.fromEnvironment('GOOGLE_SCOPES');
+  static const String googleRedirectUri =
+      'https://preconnect.app/api/auth/callback';
+  static const String googleScopes = 'openid email profile';
 }

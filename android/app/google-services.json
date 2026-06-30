@@ -16,6 +16,22 @@
         {
           "client_id": "53508941136-rkgrsch5oa60g4absotjj7lgg7s6e7ji.apps.googleusercontent.com",
           "client_type": 3
+        },
+        {
+          "client_id": "53508941136-j5949tpk64g7frgi6uu4mal9bote36b9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sabbirba.preconnect",
+            "certificate_hash": "8b568392c0a993d858b408f5e0df22dbecd44167"
+          }
+        },
+        {
+          "client_id": "53508941136-00eda45a0562d4208d1349cf9391317e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sabbirba.preconnect",
+            "certificate_hash": "00eda45a0562d4208d1349cf9391317e19be2675"
+          }
         }
       ],
       "api_key": [

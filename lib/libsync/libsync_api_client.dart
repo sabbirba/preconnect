@@ -144,7 +144,10 @@ class LibSyncApiClient extends http.BaseClient {
     return response;
   }
 
-  Future<http.StreamedResponse> _sendWithEtag(http.BaseRequest request) async {
+  Future<http.StreamedResponse> _sendWithEtag(
+    http.BaseRequest request, {
+    bool isRetry = false,
+  }) async {
     final isGet = request.method == 'GET';
     final urlKey = request.url.toString();
     final isMedia =
@@ -191,6 +194,24 @@ class LibSyncApiClient extends http.BaseClient {
         await saveCookies(responseCookies);
       }
       return response;
+    }
+
+    if (response.statusCode == 429 && !isRetry) {
+      final spoofedIp = _generateRandomIP();
+      final newRequest = _cloneRequest(request);
+      newRequest.headers['X-Forwarded-For'] = spoofedIp;
+      newRequest.headers['X-Real-IP'] = spoofedIp;
+      newRequest.headers['Client-IP'] = spoofedIp;
+
+      final secondResponse = await _sendWithEtag(newRequest, isRetry: true);
+      if (secondResponse.statusCode == 200 ||
+          secondResponse.statusCode == 304) {
+        _sessionIp = spoofedIp;
+        return secondResponse;
+      } else {
+        _sessionIp = null;
+        response = secondResponse;
+      }
     }
 
     if (response.statusCode == 429) {
@@ -360,10 +381,11 @@ class LibSyncApiClient extends http.BaseClient {
     headers['sec-ch-ua-mobile'] = '?1';
     headers['sec-ch-ua-platform'] = '"Android"';
 
-    _sessionIp ??= _generateRandomIP();
-    headers['X-Forwarded-For'] = _sessionIp!;
-    headers['X-Real-IP'] = _sessionIp!;
-    headers['Client-IP'] = _sessionIp!;
+    if (_sessionIp != null) {
+      headers['X-Forwarded-For'] = _sessionIp!;
+      headers['X-Real-IP'] = _sessionIp!;
+      headers['Client-IP'] = _sessionIp!;
+    }
   }
 
   Future<bool> _attemptTokenRefresh() async {
