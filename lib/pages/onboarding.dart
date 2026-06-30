@@ -18,6 +18,7 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/pages/shared_widgets/import_dialog.dart';
 import 'package:preconnect/pages/home.dart';
+import 'package:preconnect/libsync/libsync_page.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key, this.isLoggedIn = false});
@@ -318,8 +319,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     builder: (context, constraints) {
                       final layout = quickAccessGridLayout(
                         constraints.maxWidth,
-                        targetColumns: 5,
-                        minItemWidth: 48,
+                        targetColumns: 6,
+                        minItemWidth: 40,
                       );
                       return Center(
                         child: Wrap(
@@ -353,6 +354,14 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               onTap: () => _openOnboardingQuickPage(
                                 const SeatStatusPage(),
                               ),
+                            ),
+                            _CompactQuickAccessCard(
+                              width: layout.itemWidth,
+                              icon: Icons.local_library_outlined,
+                              color: const Color(0xFF1B8EFF),
+                              showLabels: false,
+                              onTap: () =>
+                                  _openOnboardingQuickPage(const LibSyncPage()),
                             ),
                             _CompactQuickAccessCard(
                               width: layout.itemWidth,
