@@ -25,9 +25,9 @@ dependencies:
   barcode_widget: ^2.0.4
   flutter_flip_card: ^0.0.6
   cached_network_image: ^3.4.1
-  signals_flutter: ^5.5.0
-  google_sign_in: ^6.2.1
-  connectivity_plus: ^6.1.1
+  signals_flutter: ^7.1.0
+  google_sign_in: ^7.2.0
+  connectivity_plus: ^7.2.0
   url_launcher: ^6.3.2
   file_selector: ^1.1.0
   share_plus: ^13.2.0
