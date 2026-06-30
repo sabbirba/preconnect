@@ -6,6 +6,7 @@ import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:preconnect/pages/onboarding.dart';
 import 'auth_service.dart';
 import 'libsync_config.dart';
 import 'library_card.dart';
@@ -346,7 +347,7 @@ class _LibSyncPageState extends State<LibSyncPage> {
                   onPressed: () async {
                     final logoutContext = context;
                     if (!logoutContext.mounted) return;
-                    await showBracuConfirmationWithActionDialog(
+                    final confirmed = await showBracuConfirmationWithActionDialog(
                       context,
                       icon: Icons.logout,
                       title: 'Confirm Sign Out?',
@@ -359,15 +360,27 @@ class _LibSyncPageState extends State<LibSyncPage> {
                           _onAuthStateChanged,
                         );
                         await LibSyncAuthService.instance.logout();
-                        if (logoutContext.mounted) {
+                      },
+                    );
+                    if (confirmed == true && logoutContext.mounted) {
+                      final globallyLoggedIn = await AuthService().isLoggedIn();
+                      if (logoutContext.mounted) {
+                        if (globallyLoggedIn) {
                           if (Navigator.of(logoutContext).canPop()) {
                             Navigator.of(logoutContext).pop();
                           } else {
                             HomeTabRegistry.setActive(HomeTab.dashboard);
                           }
+                        } else {
+                          Navigator.of(logoutContext).pushAndRemoveUntil(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const OnboardingPage(),
+                            ),
+                            (route) => false,
+                          );
                         }
-                      },
-                    );
+                      }
+                    }
                   },
                 ),
               ],

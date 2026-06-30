@@ -269,7 +269,6 @@ jobs:
         run: |
           echo "GITHUB_TOKEN=${{ secrets.GH_TOKEN }}" > .env
           echo "DEVELOPMENT_TEAM=${{ secrets.DEVELOPMENT_TEAM }}" >> .env
-          echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env
 
       - name: Build Chrome Extension
         if: matrix.platform == 'chrome_extension'
