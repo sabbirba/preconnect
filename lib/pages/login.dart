@@ -41,19 +41,21 @@ bool get _shouldUseMobileUserAgent {
 }
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({super.key, this.customAuthUrl});
+
+  final String? customAuthUrl;
 
   static WebViewController? _preloadedWebViewController;
   static bool _isPreloadingWebView = false;
-  static String? _pkceVerifier;
+  static String? pkceVerifier;
 
   static Future<void> preloadNextPage() async {
     if (kIsWeb) return;
     if (_preloadedWebViewController != null || _isPreloadingWebView) return;
     _isPreloadingWebView = true;
     try {
-      _pkceVerifier = generatePkceVerifier();
-      final codeChallenge = codeChallengeS256(_pkceVerifier!);
+      pkceVerifier = generatePkceVerifier();
+      final codeChallenge = codeChallengeS256(pkceVerifier!);
       final controller = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setBackgroundColor(Colors.transparent);
@@ -91,7 +93,7 @@ class LoginPage extends StatefulWidget {
   static Future<void> clearSessionArtifacts() async {
     _preloadedWebViewController = null;
     _isPreloadingWebView = false;
-    _pkceVerifier = null;
+    pkceVerifier = null;
     if (kIsWeb) return;
     try {
       final manager = WebViewCookieManager();
@@ -204,22 +206,25 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     if (kIsWeb) return;
-    final controller =
-        LoginPage.takePreloadedWebView() ?? _buildMobileWebView();
+    final controller = widget.customAuthUrl != null
+        ? _buildMobileWebView()
+        : (LoginPage.takePreloadedWebView() ?? _buildMobileWebView());
     _attachNavigationDelegate(controller);
     _webViewController = controller;
   }
 
   WebViewController _buildMobileWebView() {
-    LoginPage._pkceVerifier ??= generatePkceVerifier();
-    final codeChallenge = codeChallengeS256(LoginPage._pkceVerifier!);
+    LoginPage.pkceVerifier ??= generatePkceVerifier();
+    final codeChallenge = codeChallengeS256(LoginPage.pkceVerifier!);
     final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.transparent);
     if (_shouldUseMobileUserAgent) {
       controller.setUserAgent(kPreConnectUserAgent);
     }
-    controller.loadRequest(Uri.parse(ApiConfig.authUrlWithPkce(codeChallenge)));
+    final url =
+        widget.customAuthUrl ?? ApiConfig.authUrlWithPkce(codeChallenge);
+    controller.loadRequest(Uri.parse(url));
     unawaited(LoginPage._configureCookies(controller));
     return controller;
   }
@@ -286,7 +291,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<bool> _exchangeCodeForToken(String code) async {
     try {
-      final verifier = LoginPage._pkceVerifier;
+      final verifier = LoginPage.pkceVerifier;
       if (verifier == null || verifier.isEmpty) return false;
 
       final uri = Uri.parse(ApiConfig.tokenEndpoint);

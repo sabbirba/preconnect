@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'libsync_config.dart';
 import 'google_auth_helper.dart';
 import 'libsync_api_client.dart';
+import 'package:preconnect/libsync/libsync_page.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 enum LibSyncAuthStatus { authenticated, unauthenticated, loading, error }
 
@@ -160,7 +162,19 @@ class LibSyncAuthService extends ChangeNotifier {
   Future<void> logout() async {
     _lastProcessedCode = null;
     state.value = const LibSyncAuthState(status: LibSyncAuthStatus.loading);
+    if (!kIsWeb) {
+      try {
+        final googleSignIn = GoogleSignIn(
+          scopes: LibSyncConfig.googleScopes.isEmpty
+              ? ['email', 'profile']
+              : LibSyncConfig.googleScopes.split(' '),
+        );
+        await googleSignIn.signOut();
+        await googleSignIn.disconnect();
+      } catch (_) {}
+    }
     await _apiClient.clearAuthData();
+    await LibSyncPage.clearReservationCache();
     state.value = const LibSyncAuthState(
       status: LibSyncAuthStatus.unauthenticated,
     );

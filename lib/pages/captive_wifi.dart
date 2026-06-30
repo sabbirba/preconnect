@@ -1074,7 +1074,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _networkStatusSubscription?.cancel();
+    _networkStatusSubscription?.cancel().catchError((_) {});
     _studentIdController.removeListener(_handleStudentIdChanged);
     _studentIdController.dispose();
     _ssidController.dispose();

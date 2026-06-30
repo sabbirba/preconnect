@@ -13,6 +13,7 @@ class LibSyncApiClient extends http.BaseClient {
   LibSyncApiClient() : _inner = createLibSyncClient();
 
   final http.Client _inner;
+  static String? _sessionIp;
   static const _secureStorage = FlutterSecureStorage();
   static const String _cookiesStorageKey = 'libsync_cookies';
   static const String _googleRefreshTokenKey = 'libsync_google_refresh_token';
@@ -359,10 +360,10 @@ class LibSyncApiClient extends http.BaseClient {
     headers['sec-ch-ua-mobile'] = '?1';
     headers['sec-ch-ua-platform'] = '"Android"';
 
-    final spoofedIp = _generateRandomIP();
-    headers['X-Forwarded-For'] = spoofedIp;
-    headers['X-Real-IP'] = spoofedIp;
-    headers['Client-IP'] = spoofedIp;
+    _sessionIp ??= _generateRandomIP();
+    headers['X-Forwarded-For'] = _sessionIp!;
+    headers['X-Real-IP'] = _sessionIp!;
+    headers['Client-IP'] = _sessionIp!;
   }
 
   Future<bool> _attemptTokenRefresh() async {

@@ -212,7 +212,9 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
   }
 
   Future<void> _confirmLogout(BuildContext context) async {
-    final shouldLogout = await showBracuConfirmationWithActionDialog(
+    final logoutContext = context;
+    if (!logoutContext.mounted) return;
+    await showBracuConfirmationWithActionDialog(
       context,
       icon: Icons.logout,
       title: 'Confirm Sign Out?',
@@ -220,15 +222,10 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
           'Sign out will clear stored data. You can sign in again for fresh data.',
       confirmLabel: 'Sign Out',
       confirmColor: BracuPalette.danger,
-      onConfirm: () async {},
+      onConfirm: () async {
+        await AuthService().logout(context: logoutContext, force: true);
+      },
     );
-    if (!mounted) return;
-
-    if (shouldLogout) {
-      final logoutContext = context;
-      if (!logoutContext.mounted) return;
-      await AuthService().logout(context: logoutContext, force: true);
-    }
   }
 
   @override

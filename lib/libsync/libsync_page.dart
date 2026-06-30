@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/preferences_store.dart';
+import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -12,6 +13,10 @@ import 'room_availability.dart';
 
 class LibSyncPage extends StatefulWidget {
   const LibSyncPage({super.key});
+
+  static Future<void> clearReservationCache() async {
+    await _LibSyncPageState.clearReservationCache();
+  }
 
   @override
   State<LibSyncPage> createState() => _LibSyncPageState();
@@ -30,6 +35,20 @@ class _LibSyncPageState extends State<LibSyncPage> {
   static List<dynamic>? _cachedCheckQuota;
   static Map<String, dynamic>? _cachedTotalReservationCount;
   static final List<DateTime> _fetchTimestamps = [];
+
+  static Future<void> clearReservationCache() async {
+    _cachedReservationByYear = null;
+    _cachedRecentReservations = null;
+    _cachedCheckQuota = null;
+    _cachedTotalReservationCount = null;
+    _fetchTimestamps.clear();
+
+    final store = AppPreferencesStore();
+    await store.remove('libsync_cache_reservation_by_year');
+    await store.remove('libsync_cache_recent_reservations');
+    await store.remove('libsync_cache_check_quota');
+    await store.remove('libsync_cache_total_reservation_count');
+  }
 
   @override
   void initState() {
@@ -100,6 +119,7 @@ class _LibSyncPageState extends State<LibSyncPage> {
     if (status == LibSyncAuthStatus.authenticated) {
       _loadReservationData();
     } else if (status == LibSyncAuthStatus.unauthenticated) {
+      if (AuthService.isLoggingOut) return;
       _handleGoogleSignIn();
     }
   }
@@ -324,27 +344,30 @@ class _LibSyncPageState extends State<LibSyncPage> {
                 IconButton(
                   icon: const Icon(Icons.logout),
                   onPressed: () async {
-                    final shouldLogout =
-                        await showBracuConfirmationWithActionDialog(
-                          context,
-                          icon: Icons.logout,
-                          title: 'Confirm Sign Out?',
-                          message:
-                              'Are you sure you want to sign out from BRACU Libsync?',
-                          confirmLabel: 'Sign Out',
-                          confirmColor: BracuPalette.danger,
-                          onConfirm: () async {},
+                    final logoutContext = context;
+                    if (!logoutContext.mounted) return;
+                    await showBracuConfirmationWithActionDialog(
+                      context,
+                      icon: Icons.logout,
+                      title: 'Confirm Sign Out?',
+                      message:
+                          'Are you sure you want to sign out from BRACU Libsync?',
+                      confirmLabel: 'Sign Out',
+                      confirmColor: BracuPalette.danger,
+                      onConfirm: () async {
+                        LibSyncAuthService.instance.state.removeListener(
+                          _onAuthStateChanged,
                         );
-                    if (shouldLogout) {
-                      await LibSyncAuthService.instance.logout();
-                      if (context.mounted) {
-                        if (Navigator.of(context).canPop()) {
-                          Navigator.of(context).pop();
-                        } else {
-                          HomeTabRegistry.setActive(HomeTab.dashboard);
+                        await LibSyncAuthService.instance.logout();
+                        if (logoutContext.mounted) {
+                          if (Navigator.of(logoutContext).canPop()) {
+                            Navigator.of(logoutContext).pop();
+                          } else {
+                            HomeTabRegistry.setActive(HomeTab.dashboard);
+                          }
                         }
-                      }
-                    }
+                      },
+                    );
                   },
                 ),
               ],

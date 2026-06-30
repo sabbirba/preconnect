@@ -19,6 +19,7 @@ import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/pages/shared_widgets/import_dialog.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/libsync/libsync_page.dart';
+import 'package:preconnect/tools/pkce.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key, this.isLoggedIn = false});
@@ -36,6 +37,51 @@ class _OnboardingPageState extends State<OnboardingPage> {
   WebExtensionLoginFlow? _webExtensionLoginFlow;
   StreamSubscription<WebExtensionLoginState>? _webLoginSub;
   bool _isStartingWebLogin = false;
+  bool _isGoogleLoggingIn = false;
+
+  Future<void> _handleGoogleSignIn() async {
+    if (_isGoogleLoggingIn) return;
+    setState(() {
+      _isGoogleLoggingIn = true;
+    });
+    try {
+      LoginPage.takePreloadedWebView();
+      LoginPage.pkceVerifier = generatePkceVerifier();
+      final challenge = codeChallengeS256(LoginPage.pkceVerifier!);
+
+      final googleSsoUri = Uri.parse(ApiConfig.authUrlWithPkce(challenge))
+          .replace(
+            queryParameters: {
+              ...Uri.parse(
+                ApiConfig.authUrlWithPkce(challenge),
+              ).queryParameters,
+              'kc_idp_hint': 'google',
+            },
+          );
+
+      if (!mounted) return;
+
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => LoginPage(customAuthUrl: googleSsoUri.toString()),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        showAppSnackBar(
+          context,
+          'Google Sign In failed: ${e.toString().replaceAll('Exception: ', '')}',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGoogleLoggingIn = false;
+        });
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -268,47 +314,25 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                 'PreConnect is actively improved by students with open-source contributions, feedback, and community support.',
                             color: const Color(0xFF0EA5A4),
                           ),
-                          InkWell(
+                          const SizedBox(height: 12),
+                          BracuActionBannerCard(
+                            iconWidget: const PreConnectGithubIcon(size: 24),
+                            title: 'Open GitHub Repository',
+                            subtitle: 'Explore the source code and contribute.',
                             onTap: () => _openLink(
                               context,
                               'https://github.com/sabbirba/preconnect',
                             ),
-                            borderRadius: BorderRadius.circular(14),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: 6,
-                              ),
-                              child: Text(
-                                'Open GitHub Repository',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: BracuPalette.primary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
                           ),
-                          InkWell(
+                          const SizedBox(height: 10),
+                          BracuActionBannerCard(
+                            icon: Icons.public_rounded,
+                            iconColor: BracuPalette.accent,
+                            title: 'Open PreConnect Website',
+                            subtitle:
+                                'Visit our official website for more things.',
                             onTap: () =>
                                 _openLink(context, ApiConfig.websiteBase),
-                            borderRadius: BorderRadius.circular(14),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: 6,
-                              ),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  'Open PreConnect Website',
-                                  style: TextStyle(
-                                    color: BracuPalette.accent,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
                           ),
                         ],
                       ),
@@ -375,24 +399,43 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: BracuActionButton(
-                      onPressed: _isStartingWebLogin
-                          ? null
-                          : () => _completeOnboarding(context),
-                      outlined: false,
-                      isLoading: _isStartingWebLogin,
-                      label: 'Continue',
-                      backgroundColor: const Color(0xFF1E5BFF),
-                      foregroundColor: Colors.white,
-                      borderRadius: 12,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: BracuActionButton(
+                          onPressed: _isGoogleLoggingIn
+                              ? null
+                              : _handleGoogleSignIn,
+                          label: 'Sign in with Google',
+                          borderRadius: 12,
+                          isLoading: _isGoogleLoggingIn,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 16,
+                          ),
+                          fontSize: 15,
+                        ),
                       ),
-                      fontSize: 18,
-                    ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: BracuActionButton(
+                          onPressed: _isStartingWebLogin
+                              ? null
+                              : () => _completeOnboarding(context),
+                          outlined: false,
+                          isLoading: _isStartingWebLogin,
+                          label: 'Continue SSO',
+                          backgroundColor: const Color(0xFF1E5BFF),
+                          foregroundColor: Colors.white,
+                          borderRadius: 12,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 16,
+                          ),
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

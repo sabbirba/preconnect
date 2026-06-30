@@ -5,6 +5,14 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
+## [1.6.8] — 2026-06-30
+
+July Major Update
+
+- Google Identity-Federated SSO Flow: Direct Google-first login redirection bypassing the 400 Token Exchange block.
+- Antiban Session Caching: Consistent session IP mapping protecting your credentials.
+- Logout Spinner & Redirection: Clean spinner tracking in confirmation dialogs transitioning instantly to onboarding.
+
 ## [1.6.8] — 2026-06-27
 
 - Added help instructions and an automated Connect/Disconnect button to Captive Wi-Fi

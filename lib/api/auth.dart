@@ -18,6 +18,7 @@ import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/token_refresh.dart';
 import 'package:preconnect/tools/web_shared.dart';
 import 'package:preconnect/tools/token_storage.dart';
+import 'package:preconnect/libsync/auth_service.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/api/fcm.dart';
 
@@ -43,6 +44,7 @@ class AuthService {
   static const Duration _bootstrapGracePeriod = Duration(seconds: 10);
 
   static bool _isLoggingOut = false;
+  static bool get isLoggingOut => _isLoggingOut;
 
   Future<void> login(BuildContext context) async {
     Navigator.push(
@@ -217,6 +219,7 @@ class AuthService {
     await FriendScheduleStore().clearAll();
     await ProfileImageCache.instance.clear();
     CachedImage.clearMemoryCache();
+    await LibSyncAuthService.instance.logout();
   }
 
   Future<void> _clearStoredProfileAndSessionData() async {

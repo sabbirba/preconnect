@@ -331,7 +331,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   @override
   void dispose() {
-    _networkStatusSubscription?.cancel();
+    _networkStatusSubscription?.cancel().catchError((_) {});
     _copiesController.removeListener(_handleCopiesControllerChanged);
     _copiesController.dispose();
     _studentIdController.removeListener(_handleStudentIdControllerChanged);

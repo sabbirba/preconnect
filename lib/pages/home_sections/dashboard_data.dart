@@ -89,7 +89,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   @override
   void dispose() {
     unbindRefreshBus(_onRefreshSignal);
-    _networkStatusSubscription?.cancel();
+    _networkStatusSubscription?.cancel().catchError((_) {});
     _todayScheduleAutoRefreshTimer?.cancel();
     super.dispose();
   }
