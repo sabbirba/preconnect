@@ -6,6 +6,7 @@ import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:preconnect/pages/onboarding.dart';
 import 'auth_service.dart';
 import 'libsync_config.dart';
 import 'library_card.dart';
@@ -359,11 +360,22 @@ class _LibSyncPageState extends State<LibSyncPage> {
                           _onAuthStateChanged,
                         );
                         await LibSyncAuthService.instance.logout();
+                        final globallyLoggedIn = await AuthService()
+                            .isLoggedIn();
                         if (logoutContext.mounted) {
-                          if (Navigator.of(logoutContext).canPop()) {
-                            Navigator.of(logoutContext).pop();
+                          if (globallyLoggedIn) {
+                            if (Navigator.of(logoutContext).canPop()) {
+                              Navigator.of(logoutContext).pop();
+                            } else {
+                              HomeTabRegistry.setActive(HomeTab.dashboard);
+                            }
                           } else {
-                            HomeTabRegistry.setActive(HomeTab.dashboard);
+                            Navigator.of(logoutContext).pushAndRemoveUntil(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const OnboardingPage(),
+                              ),
+                              (route) => false,
+                            );
                           }
                         }
                       },
