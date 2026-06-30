@@ -1034,14 +1034,12 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                             try {
                               final intCode = int.tryParse(code);
                               if (intCode != null) {
-                                await LibSyncAuthService.instance
+                                final message = await LibSyncAuthService
+                                    .instance
                                     .checkInAttendance(intCode);
                                 if (context.mounted) {
                                   Navigator.of(context).pop();
-                                  showAppSnackBar(
-                                    context,
-                                    'Attendance checked in successfully!',
-                                  );
+                                  showAppSnackBar(context, message);
                                   widget.onRefresh();
                                 }
                               }

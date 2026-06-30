@@ -340,7 +340,7 @@ class LibSyncAuthService extends ChangeNotifier {
     );
   }
 
-  Future<void> checkInAttendance(int reservationCode) async {
+  Future<String> checkInAttendance(int reservationCode) async {
     final response = await _apiClient.patch(
       Uri.parse(
         '${LibSyncConfig.apiBaseUrl}/api/reservation/$reservationCode/public_attendance/',
@@ -348,15 +348,18 @@ class LibSyncAuthService extends ChangeNotifier {
       headers: {'Content-Type': 'application/json'},
     );
     final decoded = jsonDecode(response.body);
-    if (decoded is Map && decoded.containsKey('message')) {
-      final msg = decoded['message'].toString();
-      if (msg.toLowerCase().contains('not allowed') ||
-          msg.toLowerCase().contains('connect your device')) {
-        throw Exception(_extractErrorMessage(decoded, msg));
+
+    String? serverMessage;
+    if (decoded is Map) {
+      if (decoded.containsKey('message')) {
+        serverMessage = decoded['message'].toString();
+      } else if (decoded.containsKey('detail')) {
+        serverMessage = decoded['detail'].toString();
       }
     }
+
     if (response.statusCode == 200 || response.statusCode == 204) {
-      return;
+      return serverMessage ?? 'Attendance checked in successfully!';
     }
     throw Exception(
       _extractErrorMessage(decoded, 'Failed to check in. Please try again.'),
