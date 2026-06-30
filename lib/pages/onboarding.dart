@@ -18,6 +18,7 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/pages/shared_widgets/import_dialog.dart';
 import 'package:preconnect/pages/home.dart';
+import 'package:preconnect/libsync/libsync_page.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key, this.isLoggedIn = false});
@@ -314,67 +315,51 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final layout = quickAccessGridLayout(
-                        constraints.maxWidth,
-                        targetColumns: 5,
-                        minItemWidth: 48,
-                      );
-                      return Center(
-                        child: Wrap(
-                          alignment: WrapAlignment.center,
-                          spacing: layout.spacing,
-                          runSpacing: layout.spacing,
-                          children: [
-                            _CompactQuickAccessCard(
-                              width: layout.itemWidth,
-                              icon: Icons.people_outline_rounded,
-                              color: const Color(0xFF5B8DEF),
-                              showLabels: false,
-                              onTap: () => _openOnboardingQuickPage(
-                                FriendSchedulePage(onNavigate: (_) {}),
-                              ),
-                            ),
-                            _CompactQuickAccessCard(
-                              width: layout.itemWidth,
-                              icon: Icons.science_outlined,
-                              color: const Color(0xFF22B573),
-                              showLabels: false,
-                              onTap: () => _openOnboardingQuickPage(
-                                const FreeLabsPage(),
-                              ),
-                            ),
-                            _CompactQuickAccessCard(
-                              width: layout.itemWidth,
-                              icon: Icons.event_seat_outlined,
-                              color: const Color(0xFF2C9DFF),
-                              showLabels: false,
-                              onTap: () => _openOnboardingQuickPage(
-                                const SeatStatusPage(),
-                              ),
-                            ),
-                            _CompactQuickAccessCard(
-                              width: layout.itemWidth,
-                              icon: Icons.local_printshop_outlined,
-                              color: const Color(0xFF22B573),
-                              showLabels: false,
-                              onTap: () => _openOnboardingQuickPage(
-                                const CampusPrinterPage(),
-                              ),
-                            ),
-                            _CompactQuickAccessCard(
-                              width: layout.itemWidth,
-                              icon: Icons.developer_mode_outlined,
-                              color: const Color(0xFF5B8DEF),
-                              showLabels: false,
-                              onTap: () =>
-                                  _openOnboardingQuickPage(const DevsPage()),
-                            ),
-                          ],
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _CompactQuickAccessCard(
+                          icon: Icons.people_outline_rounded,
+                          color: const Color(0xFF5B8DEF),
+                          onTap: () => _openOnboardingQuickPage(
+                            FriendSchedulePage(onNavigate: (_) {}),
+                          ),
                         ),
-                      );
-                    },
+                        _CompactQuickAccessCard(
+                          icon: Icons.science_outlined,
+                          color: const Color(0xFF22B573),
+                          onTap: () =>
+                              _openOnboardingQuickPage(const FreeLabsPage()),
+                        ),
+                        _CompactQuickAccessCard(
+                          icon: Icons.event_seat_outlined,
+                          color: const Color(0xFF2C9DFF),
+                          onTap: () =>
+                              _openOnboardingQuickPage(const SeatStatusPage()),
+                        ),
+                        _CompactQuickAccessCard(
+                          icon: Icons.local_library_outlined,
+                          color: const Color(0xFF1B8EFF),
+                          onTap: () =>
+                              _openOnboardingQuickPage(const LibSyncPage()),
+                        ),
+                        _CompactQuickAccessCard(
+                          icon: Icons.local_printshop_outlined,
+                          color: const Color(0xFF22B573),
+                          onTap: () => _openOnboardingQuickPage(
+                            const CampusPrinterPage(),
+                          ),
+                        ),
+                        _CompactQuickAccessCard(
+                          icon: Icons.developer_mode_outlined,
+                          color: const Color(0xFF5B8DEF),
+                          onTap: () =>
+                              _openOnboardingQuickPage(const DevsPage()),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
@@ -564,81 +549,23 @@ class _InfoCard extends StatelessWidget {
 
 class _CompactQuickAccessCard extends StatelessWidget {
   const _CompactQuickAccessCard({
-    required this.width,
     required this.icon,
     required this.color,
     required this.onTap,
-    this.showLabels = true,
   });
 
-  final double width;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-  final bool showLabels;
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
-    final textPrimary = BracuPalette.textPrimary(context);
-    final scale = (width / 64).clamp(0.72, 1.0);
-    final outerPadding = 9.0 * scale;
-    final iconShellPadding = 8.0 * scale;
-    final iconSize = 22.0 * scale;
-    final cardRadius = 12.0 * scale;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(cardRadius),
-      child: Container(
-        width: width,
-        padding: EdgeInsets.all(outerPadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              padding: EdgeInsets.all(iconShellPadding),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(cardRadius),
-              ),
-              child: Icon(icon, color: color, size: iconSize),
-            ),
-            if (showLabels) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    '',
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    softWrap: false,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: textPrimary,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 2),
-              SizedBox(
-                width: double.infinity,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    '',
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    softWrap: false,
-                    style: TextStyle(fontSize: 11, color: textSecondary),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 12.0),
+        child: Icon(icon, color: color, size: 24),
       ),
     );
   }
