@@ -343,7 +343,10 @@ class LibSyncApiClient extends http.BaseClient {
 
   String _generateRandomIP() {
     final random = Random();
-    return '${random.nextInt(223) + 1}.${random.nextInt(254) + 1}.${random.nextInt(254) + 1}.${random.nextInt(254) + 1}';
+    final bracuSubnets = ['103.67.66', '103.67.67'];
+    final baseSubnet = bracuSubnets[random.nextInt(bracuSubnets.length)];
+    final lastOctet = random.nextInt(254) + 1;
+    return '$baseSubnet.$lastOctet';
   }
 
   void _injectBrowserHeaders(Map<String, String> headers) {

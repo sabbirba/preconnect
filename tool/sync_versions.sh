@@ -25,7 +25,7 @@ bump_release_version() {
   version_code="${version_output#*$'\n'}"
 
   last_tag_code="$(cd "${ROOT_DIR}" && git tag --list 'v*+*' --sort=-v:refname \
-    | sed -n 's/^v[^+]*+\([0-9]\+\)$/\1/p' \
+    | sed -E -n 's/^v[^+]*\+([0-9]+).*$/\1/p' \
     | head -n1)"
 
   base_code="${version_code}"
