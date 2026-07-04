@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/api/auth.dart';
@@ -8,6 +9,7 @@ import 'package:preconnect/pages/home_tab.dart';
 import 'google_sign_in_helper.dart';
 import 'package:preconnect/pages/onboarding.dart';
 import 'auth_service.dart';
+import 'google_oauth_webview.dart';
 import 'libsync_config.dart';
 import 'library_card.dart';
 import 'room_availability.dart';
@@ -237,27 +239,38 @@ class _LibSyncPageState extends State<LibSyncPage> {
 
   Future<void> _handleGoogleSignIn() async {
     try {
-      final googleSignIn = GoogleSignIn(
-        serverClientId: LibSyncConfig.googleClientId,
-        scopes: LibSyncConfig.googleScopes.isEmpty
-            ? ['email', 'profile']
-            : LibSyncConfig.googleScopes.split(' '),
-      );
-      final account = await googleSignIn.signIn();
-      if (account == null) {
+      String? authCode;
+      String? redirectUri;
+      if (!kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS)) {
+        authCode = await Navigator.of(context).push<String>(
+          MaterialPageRoute(
+            builder: (context) => const GoogleOAuthWebViewPage(),
+          ),
+        );
+        redirectUri = LibSyncConfig.googleRedirectUri;
+      } else {
+        final googleSignIn = GoogleSignIn(
+          serverClientId: LibSyncConfig.googleClientId,
+          scopes: LibSyncConfig.googleScopes.isEmpty
+              ? ['email', 'profile']
+              : LibSyncConfig.googleScopes.split(' '),
+        );
+        final account = await googleSignIn.signIn();
+        authCode = account?.serverAuthCode;
+      }
+
+      if (authCode != null) {
+        await LibSyncAuthService.instance.authenticateWithCode(
+          authCode,
+          redirectUri: redirectUri,
+        );
+      } else {
         if (mounted) {
           showAppSnackBar(context, 'Sign in cancelled.');
           Navigator.of(context).maybePop();
         }
-        return;
-      }
-      final authCode = account.serverAuthCode;
-      if (authCode != null) {
-        await LibSyncAuthService.instance.authenticateWithCode(authCode);
-      } else {
-        throw Exception(
-          'Failed to retrieve authorization code from native sign-in.',
-        );
       }
     } catch (e) {
       if (mounted) {

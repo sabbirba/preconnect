@@ -70,12 +70,12 @@ class LibSyncAuthService extends ChangeNotifier {
     }
   }
 
-  Future<void> authenticateWithCode(String code) async {
+  Future<void> authenticateWithCode(String code, {String? redirectUri}) async {
     if (code == _lastProcessedCode) return;
     _lastProcessedCode = code;
     state.value = const LibSyncAuthState(status: LibSyncAuthStatus.loading);
     try {
-      final googleTokens = await GoogleAuthHelper.exchangeCode(code);
+      final googleTokens = await GoogleAuthHelper.exchangeCode(code, redirectUri: redirectUri);
       final googleAccessToken = googleTokens['access_token'] as String?;
       final googleRefreshToken = googleTokens['refresh_token'] as String?;
 

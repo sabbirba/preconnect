@@ -5,7 +5,7 @@ import 'libsync_config.dart';
 class GoogleAuthHelper {
   GoogleAuthHelper._();
 
-  static Future<Map<String, dynamic>> exchangeCode(String code) async {
+  static Future<Map<String, dynamic>> exchangeCode(String code, {String? redirectUri}) async {
     const isWeb = identical(0, 0.0);
     final response = await http.post(
       Uri.parse('https://oauth2.googleapis.com/token'),
@@ -14,7 +14,7 @@ class GoogleAuthHelper {
         'code': code,
         'client_id': LibSyncConfig.googleClientId,
         'client_secret': LibSyncConfig.googleClientSecret,
-        'redirect_uri': isWeb ? LibSyncConfig.googleRedirectUri : '',
+        'redirect_uri': redirectUri ?? (isWeb ? LibSyncConfig.googleRedirectUri : ''),
         'grant_type': 'authorization_code',
       },
     );
