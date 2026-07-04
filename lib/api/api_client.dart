@@ -378,7 +378,7 @@ class ApiClient {
     Duration cacheDuration = _defaultGetCacheTtl,
   }) async {
     if (!await hasConnection()) {
-      return fromGet ? null : readCache(fromFetch: true);
+      return readCache(fromFetch: true);
     }
 
     try {
@@ -402,13 +402,13 @@ class ApiClient {
       await cacheResponse(response);
       return readCache(fromFetch: true);
     } on UnauthenticatedException {
-      return fromGet ? null : readCache(fromFetch: true);
+      return readCache(fromFetch: true);
     } on SessionExpiredException {
-      return fromGet ? null : readCache(fromFetch: true);
+      return readCache(fromFetch: true);
     } on ApiException {
-      return fromGet ? null : readCache(fromFetch: true);
+      return readCache(fromFetch: true);
     } catch (_) {
-      return fromGet ? null : readCache(fromFetch: true);
+      return readCache(fromFetch: true);
     }
   }
 
