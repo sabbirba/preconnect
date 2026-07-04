@@ -4,7 +4,7 @@ import 'libsync_config.dart';
 import 'google_auth_helper.dart';
 import 'libsync_api_client.dart';
 import 'package:preconnect/libsync/libsync_page.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'google_sign_in_helper.dart';
 
 enum LibSyncAuthStatus { authenticated, unauthenticated, loading, error }
 

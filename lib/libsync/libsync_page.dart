@@ -5,7 +5,7 @@ import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/home_tab.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'google_sign_in_helper.dart';
 import 'package:preconnect/pages/onboarding.dart';
 import 'auth_service.dart';
 import 'libsync_config.dart';
