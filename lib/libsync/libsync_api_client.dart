@@ -33,6 +33,7 @@ class LibSyncApiClient extends http.BaseClient {
     if (_cacheInitialized) return;
     try {
       final store = AppPreferencesStore();
+      _sessionIp = await store.getString('libsync_session_ip');
       final etags = await store.getJsonMap(_etagCacheKey);
       if (etags != null) {
         _etagCache.addAll(etags.map((k, v) => MapEntry(k, v.toString())));
@@ -207,9 +208,13 @@ class LibSyncApiClient extends http.BaseClient {
       if (secondResponse.statusCode == 200 ||
           secondResponse.statusCode == 304) {
         _sessionIp = spoofedIp;
+        final store = AppPreferencesStore();
+        await store.setString('libsync_session_ip', spoofedIp);
         return secondResponse;
       } else {
         _sessionIp = null;
+        final store = AppPreferencesStore();
+        await store.remove('libsync_session_ip');
         response = secondResponse;
       }
     }
@@ -381,11 +386,13 @@ class LibSyncApiClient extends http.BaseClient {
     headers['sec-ch-ua-mobile'] = '?1';
     headers['sec-ch-ua-platform'] = '"Android"';
 
-    if (_sessionIp != null) {
-      headers['X-Forwarded-For'] = _sessionIp!;
-      headers['X-Real-IP'] = _sessionIp!;
-      headers['Client-IP'] = _sessionIp!;
+    if (_sessionIp == null) {
+      _sessionIp = _generateRandomIP();
+      AppPreferencesStore().setString('libsync_session_ip', _sessionIp!);
     }
+    headers['X-Forwarded-For'] = _sessionIp!;
+    headers['X-Real-IP'] = _sessionIp!;
+    headers['Client-IP'] = _sessionIp!;
   }
 
   Future<bool> _attemptTokenRefresh() async {
