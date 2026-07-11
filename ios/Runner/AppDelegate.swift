@@ -17,7 +17,6 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
       cacheShortcutAction(shortcutItem.type)
     }
     if let controller = window?.rootViewController as? FlutterViewController {
-      registerBuildInfoChannel(binaryMessenger: controller.binaryMessenger)
       registerQuietModeChannel(binaryMessenger: controller.binaryMessenger)
       registerNativePrintChannel(binaryMessenger: controller.binaryMessenger)
     }
@@ -34,9 +33,6 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
-    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreConnectBuildInfo") {
-      registerBuildInfoChannel(binaryMessenger: registrar.messenger())
-    }
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreConnectQuietMode") {
       registerQuietModeChannel(binaryMessenger: registrar.messenger())
     }
@@ -45,26 +41,6 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
     }
 
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-  }
-
-  private func registerBuildInfoChannel(binaryMessenger: FlutterBinaryMessenger) {
-    let channel = FlutterMethodChannel(
-      name: "preconnect/build_info",
-      binaryMessenger: binaryMessenger
-    )
-    channel.setMethodCallHandler { call, result in
-      switch call.method {
-      case "getBuildInfo":
-        result([
-          "version": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString")
-            as? String ?? "",
-          "buildNumber": Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion")
-            as? String ?? "",
-        ])
-      default:
-        result(FlutterMethodNotImplemented)
-      }
-    }
   }
 
   private func registerQuietModeChannel(binaryMessenger: FlutterBinaryMessenger) {

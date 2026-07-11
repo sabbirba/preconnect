@@ -19,8 +19,8 @@ class ExamSchedule extends StatefulWidget {
 
   static final ValueNotifier<int> jumpSignal = ValueNotifier<int>(0);
 
-  static Future<void> preload() async {
-    await _ExamScheduleState.preloadData();
+  static Future<void> preload({bool forceRefresh = false}) async {
+    await _ExamScheduleState.preloadData(forceRefresh: forceRefresh);
   }
 
   static void requestJump() {

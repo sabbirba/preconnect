@@ -168,11 +168,7 @@ class LibSyncAuthService extends ChangeNotifier {
     if (!kIsWeb) {
       try {
         final googleSignIn = GoogleSignIn.instance;
-        await googleSignIn.initialize(
-          scopes: LibSyncConfig.googleScopes.isEmpty
-              ? ['email', 'profile']
-              : LibSyncConfig.googleScopes.split(' '),
-        );
+        await googleSignIn.initialize();
         await googleSignIn.signOut();
         await googleSignIn.disconnect();
       } catch (_) {}

@@ -308,7 +308,9 @@ class CaptiveWifiHttp {
             }
           }
         }
-      } catch (_) { assert(true); }
+      } catch (_) {
+        assert(true);
+      }
 
       Uri apiLoginUri;
       final formReg = RegExp(
@@ -421,7 +423,9 @@ class CaptiveWifiHttp {
             unawaited(CaptiveLoginStore.instance.saveSuccessUrl(successUrl));
           }
         }
-      } catch (_) { assert(true); }
+      } catch (_) {
+        assert(true);
+      }
 
       try {
         final apiSyncUri = loginUri.replace(
@@ -581,7 +585,9 @@ class CaptiveWifiHttp {
 
           return false;
         }
-      } catch (_) { assert(true); }
+      } catch (_) {
+        assert(true);
+      }
 
       sessionCookies.clear();
 

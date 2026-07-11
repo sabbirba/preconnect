@@ -35,7 +35,6 @@ Future<TokenRefreshStatus> refreshBracuSessionTokens({
           uri,
           headers: <String, String>{
             'Content-Type': 'application/x-www-form-urlencoded',
-            ..._compressionHeadersForUri(uri),
           },
           body: body,
         )
@@ -71,8 +70,4 @@ Future<TokenRefreshStatus> refreshBracuSessionTokens({
   } catch (_) {
     return TokenRefreshStatus.retryableFailure;
   }
-}
-
-Map<String, String> _compressionHeadersForUri(Uri? uri) {
-  return const <String, String>{};
 }

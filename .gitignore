@@ -132,3 +132,16 @@ crashlytics-build.properties
 # Ephemeral
 **/flutter/ephemeral/
 **/ephemeral/
+
+**/.cxx/
+**/.gradle/
+**/android/app/.cxx/
+**/android/app/build/
+**/*.apk
+**/*.aab
+**/*.ap_
+**/*.dex
+**/.history/
+**/.idea/
+**/.vscode/
+**/.DS_Store

@@ -6,10 +6,8 @@ Entries are written for students, not developers — plain language, no commit h
 ## [Unreleased]
 
 ## [1.6.8] — 2026-06-30
-
-July Major Update
-
-- Direct Google-first login redirection bypassing the 400 Token Exchange block.
+- Updated preload methods in ClassSchedule, ExamSchedule, and StudentProfile to accept online app open forceRefresh parameter.
+- Simplified OAuth flow handling in libsync by creating a dedicated function for Chrome extension OAuth.
 - Consistent session IP mapping protecting your credentials.
 - Clean spinner tracking in confirmation dialogs transitioning instantly to onboarding.
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -29,7 +30,7 @@ class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal() {
-    _bootstrapStartTime = DateTime.now();
+    _bootstrapStartTime = clock.now();
   }
 
   final TokenStorage _storage = TokenStorage.instance;
@@ -69,9 +70,7 @@ class AuthService {
       } catch (_) {}
 
       if (!force && !instant && _bootstrapStartTime != null) {
-        final timeSinceBootstrap = DateTime.now().difference(
-          _bootstrapStartTime!,
-        );
+        final timeSinceBootstrap = clock.now().difference(_bootstrapStartTime!);
         if (timeSinceBootstrap < _bootstrapGracePeriod) {
           return;
         }
@@ -280,7 +279,7 @@ class AuthService {
 
   Future<TokenRefreshStatus> refreshTokenStatus() async {
     if (_lastRefreshStatus != null && _lastRefreshTime != null) {
-      final age = DateTime.now().difference(_lastRefreshTime!);
+      final age = clock.now().difference(_lastRefreshTime!);
       if (age < _refreshResultTtl) {
         return _lastRefreshStatus!;
       }
@@ -347,7 +346,7 @@ class AuthService {
 
   void _cacheRefreshResult(TokenRefreshStatus status) {
     _lastRefreshStatus = status;
-    _lastRefreshTime = DateTime.now();
+    _lastRefreshTime = clock.now();
   }
 
   Future<bool> refreshToken() async {
@@ -372,9 +371,7 @@ class AuthService {
       return true;
     }
     if (_bootstrapStartTime != null) {
-      final timeSinceBootstrap = DateTime.now().difference(
-        _bootstrapStartTime!,
-      );
+      final timeSinceBootstrap = clock.now().difference(_bootstrapStartTime!);
       if (timeSinceBootstrap < _bootstrapGracePeriod) {
         return true;
       }
@@ -390,9 +387,7 @@ class AuthService {
       return true;
     }
     if (_bootstrapStartTime != null) {
-      final timeSinceBootstrap = DateTime.now().difference(
-        _bootstrapStartTime!,
-      );
+      final timeSinceBootstrap = clock.now().difference(_bootstrapStartTime!);
       if (timeSinceBootstrap < _bootstrapGracePeriod) {
         return false;
       }
@@ -469,6 +464,6 @@ class AuthService {
 
   Future<bool> isTokenExpired() async {
     final expiryTime = await getTokenExpiryTime();
-    return DateTime.now().isAfter(expiryTime);
+    return clock.now().isAfter(expiryTime);
   }
 }

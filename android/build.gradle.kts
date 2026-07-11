@@ -11,25 +11,37 @@ allprojects {
 
 val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
 rootProject.layout.buildDirectory.value(newBuildDir)
-
 subprojects {
-    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
+    val newSubprojectBuildDir: Directory = rootProject.layout.buildDirectory.dir(project.name).get()
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+
 subprojects {
     project.evaluationDependsOn(":app")
 }
 
 subprojects {
     plugins.withId("com.android.library") {
+        if (project.name == "in_app_update") {
+            project.plugins.apply("kotlin-android")
+        }
         extensions.configure<LibraryExtension> {
-            val hasNamespace = namespace?.isNotEmpty() == true
-            if (!hasNamespace) {
-                namespace = "com.preconnect.${project.name.replace('-', '_')}"
+            if (project.name == "in_app_update") {
+                namespace = "de.ffuf.in_app_update"
             }
             compileOptions {
                 sourceCompatibility = JavaVersion.VERSION_17
                 targetCompatibility = JavaVersion.VERSION_17
+            }
+        }
+        project.afterEvaluate {
+            extensions.configure<LibraryExtension> {
+                if (project.name != "in_app_update") {
+                    val hasNamespace = namespace?.isNotEmpty() == true
+                    if (!hasNamespace) {
+                        namespace = "com.preconnect.${project.name.replace('-', '_')}"
+                    }
+                }
             }
         }
     }

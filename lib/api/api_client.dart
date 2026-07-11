@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:io' show SocketException;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:retry/retry.dart';
+import 'package:clock/clock.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
@@ -57,7 +60,7 @@ class ApiClient {
       final cachedAt = _cachedHasConnectionAt;
       if (cached != null &&
           cachedAt != null &&
-          DateTime.now().difference(cachedAt) <= _connectionCacheTtl) {
+          clock.now().difference(cachedAt) <= _connectionCacheTtl) {
         return cached;
       }
     }
@@ -66,7 +69,7 @@ class ApiClient {
       final connectivityResult = await Connectivity().checkConnectivity();
       if (connectivityResult.contains(ConnectivityResult.none)) {
         _cachedHasConnection = false;
-        _cachedHasConnectionAt = DateTime.now();
+        _cachedHasConnectionAt = clock.now();
         return false;
       }
 
@@ -78,11 +81,11 @@ class ApiClient {
           .timeout(_connectivityProbeTimeout);
       final connected = response.statusCode < 500;
       _cachedHasConnection = connected;
-      _cachedHasConnectionAt = DateTime.now();
+      _cachedHasConnectionAt = clock.now();
       return connected;
     } catch (_) {
       _cachedHasConnection = false;
-      _cachedHasConnectionAt = DateTime.now();
+      _cachedHasConnectionAt = clock.now();
       return false;
     }
   }
@@ -93,7 +96,7 @@ class ApiClient {
     if (cachedToken != null &&
         cachedToken.isNotEmpty &&
         cachedAt != null &&
-        DateTime.now().difference(cachedAt) <= _accessTokenCacheTtl) {
+        clock.now().difference(cachedAt) <= _accessTokenCacheTtl) {
       return cachedToken;
     }
 
@@ -104,7 +107,7 @@ class ApiClient {
         );
         if (token != null && token.isNotEmpty) {
           _cachedAccessToken = token;
-          _cachedAccessTokenAt = DateTime.now();
+          _cachedAccessTokenAt = clock.now();
           return token;
         }
       } catch (_) {}
@@ -114,13 +117,31 @@ class ApiClient {
       }
     }
     _cachedAccessToken = null;
-    _cachedAccessTokenAt = DateTime.now();
+    _cachedAccessTokenAt = clock.now();
     return null;
   }
 
   Future<bool> hasAccessToken() async {
     final token = await getAccessToken();
     return token != null && token.trim().isNotEmpty;
+  }
+
+  Future<void> _refreshTokensWithRetry() async {
+    try {
+      final status = await retry(() async {
+        final s = await AuthService().refreshTokenStatus();
+        if (s == TokenRefreshStatus.retryableFailure) {
+          throw const SocketException('Retryable session refresh failure');
+        }
+        return s;
+      }, maxAttempts: 3);
+      if (status == TokenRefreshStatus.invalidSession) {
+        await AuthService().logout(force: true);
+        throw const SessionExpiredException();
+      }
+    } catch (_) {
+      throw const SessionExpiredException();
+    }
   }
 
   Future<http.Response> authenticatedGet(
@@ -150,25 +171,7 @@ class ApiClient {
     }
 
     if (response.statusCode == 401) {
-      TokenRefreshStatus refreshStatus = TokenRefreshStatus.retryableFailure;
-      for (int retryAttempt = 0; retryAttempt < 3; retryAttempt++) {
-        try {
-          refreshStatus = await AuthService().refreshTokenStatus();
-
-          if (refreshStatus == TokenRefreshStatus.refreshed) {
-            break;
-          }
-
-          if (refreshStatus == TokenRefreshStatus.invalidSession) {
-            await AuthService().logout(force: true);
-            throw const SessionExpiredException();
-          }
-        } catch (_) {}
-      }
-
-      if (refreshStatus != TokenRefreshStatus.refreshed) {
-        throw const SessionExpiredException();
-      }
+      await _refreshTokensWithRetry();
 
       final newToken = await getAccessToken();
       if (newToken == null || newToken.isEmpty) {
@@ -249,23 +252,7 @@ class ApiClient {
     }
 
     if (response.statusCode == 401) {
-      TokenRefreshStatus refreshStatus = TokenRefreshStatus.retryableFailure;
-      for (int retryAttempt = 0; retryAttempt < 3; retryAttempt++) {
-        refreshStatus = await AuthService().refreshTokenStatus();
-
-        if (refreshStatus == TokenRefreshStatus.refreshed) {
-          break;
-        }
-
-        if (refreshStatus == TokenRefreshStatus.invalidSession) {
-          await AuthService().logout(force: true);
-          throw const SessionExpiredException();
-        }
-      }
-
-      if (refreshStatus != TokenRefreshStatus.refreshed) {
-        throw const SessionExpiredException();
-      }
+      await _refreshTokensWithRetry();
 
       final newToken = await getAccessToken();
       if (newToken == null || newToken.isEmpty) {
@@ -498,7 +485,7 @@ class ApiClient {
           if (cacheDuration > Duration.zero && response.statusCode == 200) {
             _cachedResponses[inFlightKey] = _CachedHttpResponse(
               response: response,
-              expiresAt: DateTime.now().add(cacheDuration),
+              expiresAt: clock.now().add(cacheDuration),
             );
           }
           return response;
@@ -565,7 +552,7 @@ class _CachedHttpResponse {
   final http.Response response;
   final DateTime expiresAt;
 
-  bool get isExpired => DateTime.now().isAfter(expiresAt);
+  bool get isExpired => clock.now().isAfter(expiresAt);
 }
 
 Map<String, String> compressionHeaders() {
@@ -638,7 +625,7 @@ Future<String?> resolvePortfolioId({
 }) async {
   var id = await prefs.getString('id');
   if (id == null || id.isEmpty) {
-    final now = DateTime.now();
+    final now = clock.now();
     final recentFailures = _portfolioIdResolutionFailures
         .where((t) => now.difference(t) < _portfolioIdQuarantinePeriod)
         .toList();

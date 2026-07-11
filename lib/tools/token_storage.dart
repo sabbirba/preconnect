@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 import 'package:flutter/foundation.dart'
     show ValueNotifier, defaultTargetPlatform, kIsWeb, TargetPlatform;
-import 'package:preconnect/tools/http/http_utils.dart';
 
 import 'package:in_app_review/in_app_review.dart';
 import 'package:local_auth/local_auth.dart';
@@ -12,7 +12,6 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:preconnect/tools/platform_stub.dart'
@@ -605,30 +604,18 @@ class ProfileImageCache {
   ProfileImageCache._();
   static final instance = ProfileImageCache._();
 
-  static const _cachedUrlKey = 'profile_image_cached_url';
-  static const _legacyCachedBytesKey = 'profile_image_cached_bytes';
+  static const _cacheKey = 'profile_image_cache';
 
-  File? _cachedFile;
+  final CacheManager _cacheManager = CacheManager(
+    Config(
+      _cacheKey,
+      stalePeriod: const Duration(days: 30),
+      maxNrOfCacheObjects: 5,
+    ),
+  );
 
   Future<File?> getProfileImage(String? photoUrl) async {
     if (photoUrl == null || photoUrl.isEmpty) return null;
-
-    if (_cachedFile != null && _cachedFile!.existsSync()) {
-      return _cachedFile;
-    }
-
-    final dir = await AppPaths.supportDirectory();
-    final file = File('${dir.path}/profile_photo.jpg');
-
-    final cachedUrl = await AppStorage.instance.getString(_cachedUrlKey);
-    await AppStorage.instance.remove(_legacyCachedBytesKey);
-
-    if (file.existsSync() &&
-        file.lengthSync() > 0 &&
-        (cachedUrl == null || cachedUrl == photoUrl)) {
-      _cachedFile = file;
-      return file;
-    }
 
     try {
       final uri = Uri.parse(photoUrl);
@@ -652,32 +639,19 @@ class ProfileImageCache {
         }
       }
       headers.addAll(compressionHeadersForUri(uri));
-      final response = await HttpUtils.client.get(uri, headers: headers);
-      if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
-        await file.writeAsBytes(response.bodyBytes, flush: true);
-        await AppStorage.instance.setString(_cachedUrlKey, photoUrl);
-        _cachedFile = file;
-        return file;
-      }
+      final fileInfo = await _cacheManager.downloadFile(
+        photoUrl,
+        authHeaders: headers,
+      );
+      return fileInfo.file;
     } catch (_) {}
 
     return null;
   }
 
-  void invalidate() {
-    _cachedFile = null;
-  }
+  void invalidate() {}
 
   Future<void> clear() async {
-    try {
-      final dir = await AppPaths.supportDirectory();
-      final file = File('${dir.path}/profile_photo.jpg');
-      if (await file.exists()) {
-        await file.delete();
-      }
-    } catch (_) {}
-    await AppStorage.instance.remove(_cachedUrlKey);
-    await AppStorage.instance.remove(_legacyCachedBytesKey);
-    _cachedFile = null;
+    await _cacheManager.emptyCache();
   }
 }

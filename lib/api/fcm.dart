@@ -159,7 +159,9 @@ class FCMService {
           'Content-Type': 'application/json',
         },
       );
-    } catch (_) { assert(true); }
+    } catch (_) {
+      assert(true);
+    }
   }
 
   Future<void> _unsubscribeFromTopicWeb(String token, String topic) async {
@@ -176,7 +178,9 @@ class FCMService {
           'Content-Type': 'application/json',
         },
       );
-    } catch (_) { assert(true); }
+    } catch (_) {
+      assert(true);
+    }
   }
 
   Future<bool> syncSeatEmailAlert(
@@ -337,7 +341,9 @@ class FCMService {
     // API is not enabled in Google Cloud Console for this project — harmless).
     try {
       await FirebaseMessaging.instance.subscribeToTopic(topic);
-    } catch (_) { assert(true); }
+    } catch (_) {
+      assert(true);
+    }
     return true;
   }
 
@@ -371,7 +377,9 @@ class FCMService {
     }
     try {
       await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
-    } catch (_) { assert(true); }
+    } catch (_) {
+      assert(true);
+    }
     return true;
   }
 
@@ -392,7 +400,9 @@ class FCMService {
           'Content-Type': 'application/json',
         },
       );
-    } catch (_) { assert(true); }
+    } catch (_) {
+      assert(true);
+    }
   }
 
   Future<bool> requestNotificationPermission() async {
@@ -495,14 +505,18 @@ class FCMService {
       for (String seat in pinnedSeats) {
         await _subscribeToTopicWeb(token, PreConnectPushConfig.seatTopic(seat));
       }
-    } catch (_) { assert(true); }
+    } catch (_) {
+      assert(true);
+    }
 
     if (!isChromeRuntimeAvailable()) {
       try {
         FirebaseMessaging.onMessage.listen((RemoteMessage message) {
           RefreshBus.instance.notify(reason: 'push_notification');
         });
-      } catch (_) { assert(true); }
+      } catch (_) {
+        assert(true);
+      }
     }
   }
 
@@ -524,7 +538,9 @@ class FCMService {
           cachedToken: token,
         );
       }
-    } catch (_) { assert(true); }
+    } catch (_) {
+      assert(true);
+    }
   }
 
   Future<void> _initNative() async {
@@ -532,7 +548,9 @@ class FCMService {
 
     try {
       await messaging.requestPermission(alert: true, badge: true, sound: true);
-    } catch (_) { assert(true); }
+    } catch (_) {
+      assert(true);
+    }
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       _showLocalNotification(message);
@@ -603,9 +621,13 @@ class FCMService {
               try {
                 final uri = Uri.parse(url);
                 launchUrl(uri, mode: LaunchMode.externalApplication);
-              } catch (_) { assert(true); }
+              } catch (_) {
+                assert(true);
+              }
             }
-          } catch (_) { assert(true); }
+          } catch (_) {
+            assert(true);
+          }
         }
       },
     );
@@ -685,7 +707,9 @@ class FCMService {
       try {
         final uri = Uri.parse(url);
         launchUrl(uri, mode: LaunchMode.externalApplication);
-      } catch (_) { assert(true); }
+      } catch (_) {
+        assert(true);
+      }
     }
   }
 
@@ -731,7 +755,9 @@ class FCMService {
           },
         ),
       );
-    } catch (_) { assert(true); }
+    } catch (_) {
+      assert(true);
+    }
   }
 
   Future<void> showNotification({

@@ -1,4 +1,4 @@
-import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class BuildInfo {
   const BuildInfo._();
@@ -6,8 +6,6 @@ class BuildInfo {
   static const String version = String.fromEnvironment('APP_VERSION');
 
   static const String buildNumber = String.fromEnvironment('APP_BUILD_NUMBER');
-
-  static const MethodChannel _channel = MethodChannel('preconnect/build_info');
 
   static Future<String> displayVersion() async {
     final info = await _info();
@@ -27,11 +25,7 @@ class BuildInfo {
     return '$cleanVersion+$cleanBuild';
   }
 
-  static Future<_BuildInfoData> _info() {
-    return _loadInfo();
-  }
-
-  static Future<_BuildInfoData> _loadInfo() async {
+  static Future<_BuildInfoData> _info() async {
     final definedVersion = version.trim();
     final definedBuildNumber = buildNumber.trim();
     if (definedVersion.isNotEmpty || definedBuildNumber.isNotEmpty) {
@@ -42,16 +36,12 @@ class BuildInfo {
     }
 
     try {
-      final payload = await _channel.invokeMapMethod<String, String>(
-        'getBuildInfo',
-      );
+      final packageInfo = await PackageInfo.fromPlatform();
       return _BuildInfoData(
-        version: (payload?['version'] ?? '').trim(),
-        buildNumber: (payload?['buildNumber'] ?? '').trim(),
+        version: packageInfo.version.trim(),
+        buildNumber: packageInfo.buildNumber.trim(),
       );
-    } on MissingPluginException {
-      return const _BuildInfoData();
-    } on PlatformException {
+    } catch (_) {
       return const _BuildInfoData();
     }
   }

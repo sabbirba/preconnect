@@ -10,7 +10,8 @@ import 'google_sign_in_helper.dart';
 import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.html) 'package:preconnect/tools/runtime_web.dart';
-import 'package:chrome_extension/tabs.dart';
+import 'package:preconnect/libsync/chrome_flow_stub.dart'
+    if (dart.library.js_interop) 'package:preconnect/libsync/chrome_flow_web.dart';
 import 'auth_service.dart';
 import 'google_oauth_webview.dart';
 import 'libsync_config.dart';
@@ -266,49 +267,25 @@ class _LibSyncPageState extends State<LibSyncPage> {
                   'prompt': 'consent',
                 },
               );
-          final tab = await chrome.tabs.create(
-            CreateProperties(url: oauthUrl.toString(), active: true),
+          authCode = await openChromeExtensionOAuthFlow(
+            oauthUrl.toString(),
+            LibSyncConfig.googleRedirectUri,
           );
-          final tabId = tab.id;
-          if (tabId != null) {
-            final codeCompleter = Completer<String?>();
-            final subscription = chrome.tabs.onUpdated.listen((event) {
-              if (event.tabId == tabId && event.changeInfo.url != null) {
-                final url = event.changeInfo.url!;
-                if (url.startsWith(LibSyncConfig.googleRedirectUri)) {
-                  final uri = Uri.parse(url);
-                  final code = uri.queryParameters['code'];
-                  if (!codeCompleter.isCompleted) {
-                    codeCompleter.complete(code);
-                  }
-                }
-              }
-            });
-            final removalSubscription = chrome.tabs.onRemoved.listen((event) {
-              if (event.tabId == tabId) {
-                if (!codeCompleter.isCompleted) {
-                  codeCompleter.complete(null);
-                }
-              }
-            });
-            authCode = await codeCompleter.future;
-            await subscription.cancel();
-            await removalSubscription.cancel();
-            try {
-              await chrome.tabs.remove(tabId);
-            } catch (_) {}
-          }
           redirectUri = LibSyncConfig.googleRedirectUri;
         } else {
           final googleSignIn = GoogleSignIn.instance;
           await googleSignIn.initialize(
             serverClientId: LibSyncConfig.googleClientId,
-            scopes: LibSyncConfig.googleScopes.isEmpty
-                ? ['email', 'profile']
-                : LibSyncConfig.googleScopes.split(' '),
           );
           final account = await googleSignIn.authenticate();
-          authCode = account?.serverAuthCode;
+          if (account != null) {
+            final scopes = LibSyncConfig.googleScopes.isEmpty
+                ? ['email', 'profile']
+                : LibSyncConfig.googleScopes.split(' ');
+            final serverAuth = await account.authorizationClient
+                .authorizeServer(scopes);
+            authCode = serverAuth?.serverAuthCode;
+          }
         }
       }
 

@@ -129,21 +129,10 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        configureBuildInfoChannel(flutterEngine)
         configureAndroidAlarmChannel(flutterEngine)
         configureNetworkAssistChannels(flutterEngine)
         configureQuietModeChannel(flutterEngine)
         configureNativePrintChannel(flutterEngine)
-    }
-
-    private fun configureBuildInfoChannel(flutterEngine: FlutterEngine) {
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "preconnect/build_info")
-            .setMethodCallHandler { call, result ->
-                when (call.method) {
-                    "getBuildInfo" -> result.success(currentBuildInfo())
-                    else -> result.notImplemented()
-                }
-            }
     }
 
     private fun configureAndroidAlarmChannel(flutterEngine: FlutterEngine) {
@@ -183,27 +172,6 @@ class MainActivity : FlutterFragmentActivity() {
                     else -> result.notImplemented()
                 }
             }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun currentBuildInfo(): Map<String, String> {
-        val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            packageManager.getPackageInfo(
-                packageName,
-                PackageManager.PackageInfoFlags.of(0),
-            )
-        } else {
-            packageManager.getPackageInfo(packageName, 0)
-        }
-        val buildNumber = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            packageInfo.longVersionCode.toString()
-        } else {
-            packageInfo.versionCode.toString()
-        }
-        return mapOf(
-            "version" to (packageInfo.versionName ?: ""),
-            "buildNumber" to buildNumber,
-        )
     }
 
     private fun configureNetworkAssistChannels(flutterEngine: FlutterEngine) {

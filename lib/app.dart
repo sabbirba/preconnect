@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:clock/clock.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.html) 'package:preconnect/tools/runtime_web.dart';
@@ -17,6 +19,7 @@ import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/schedule.dart';
+import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/cdn_warmup.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/home_tab.dart';
@@ -222,28 +225,33 @@ class MyApp extends StatefulWidget {
     return studentId.isNotEmpty && fullName.isNotEmpty;
   }
 
-  static Future<void> _warmStartupCaches() async {
-    final tasks = _buildWarmupTasks(includeCampusPrinter: false);
+  static Future<void> _warmStartupCaches({bool forceRefresh = false}) async {
+    final tasks = _buildWarmupTasks(
+      includeCampusPrinter: false,
+      forceRefresh: forceRefresh,
+    );
     await Future.wait(tasks.map((task) => task.catchError((_) {})));
   }
 
   static List<Future<void>> _buildWarmupTasks({
     required bool includeCampusPrinter,
+    bool forceRefresh = false,
   }) {
     final tasks = <Future<void>>[
-      preloadHomeDashboardData().then((_) {}),
-      ProfileService().getProfile().then((_) {}),
+      preloadHomeDashboardData(forceRefresh: forceRefresh).then((_) {}),
+      ProfileService().getProfile(fromFetch: forceRefresh).then((_) {}),
       () async {
         final semesterSessionId =
             await resolveCurrentSessionSemesterIdWithRetry();
         if (semesterSessionId == null) return;
         await ScheduleService().getStudentScheduleForSemester(
           semesterSessionId: semesterSessionId,
+          fromFetch: forceRefresh,
         );
       }(),
-      StudentProfile.preload(),
-      ClassSchedule.preload(),
-      ExamSchedule.preload(),
+      StudentProfile.preload(forceRefresh: forceRefresh),
+      ClassSchedule.preload(forceRefresh: forceRefresh),
+      ExamSchedule.preload(forceRefresh: forceRefresh),
     ];
     if (includeCampusPrinter) {
       tasks.add(CampusPrinterPage.preload());
@@ -299,6 +307,10 @@ class _MyAppState extends State<MyApp>
   WebExtensionSessionFlow? _webExtensionSessionFlow;
   StreamSubscription<WebExtensionSessionEvent>? _webSessionSub;
   WebExtensionShortcutBridge? _webShortcutBridge;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+  bool _lastWasOffline = false;
+  DateTime? _lastAppRefreshAt;
+  bool _appRefreshInFlight = false;
 
   @override
   void initState() {
@@ -335,6 +347,9 @@ class _MyAppState extends State<MyApp>
         unawaited(_runDeferredStartupWork());
       });
       unawaited(FCMService.instance.init());
+      _connectivitySub = Connectivity().onConnectivityChanged.listen(
+        _onConnectivityChanged,
+      );
     }
   }
 
@@ -347,6 +362,9 @@ class _MyAppState extends State<MyApp>
       _canOpenOffline = next.canOpenOffline;
       _themeMode.value = next.themeMode;
       setState(() {});
+      if (_initialLoggedIn) {
+        unawaited(triggerAppRefresh());
+      }
     } catch (_) {
       if (!mounted) return;
       _resolvedBootstrapState = const AppBootstrapState(
@@ -443,6 +461,9 @@ class _MyAppState extends State<MyApp>
       unawaited(_consumePendingShortcutAction());
       unawaited(_refreshAndUnlockIfNeeded());
       unawaited(QuietModeController.instance.refresh());
+      if (_initialLoggedIn) {
+        unawaited(triggerAppRefresh());
+      }
       return;
     }
     if (state == AppLifecycleState.inactive ||
@@ -458,8 +479,52 @@ class _MyAppState extends State<MyApp>
     }
   }
 
+  void _onConnectivityChanged(List<ConnectivityResult> results) {
+    final isOffline =
+        results.isEmpty || results.every((r) => r == ConnectivityResult.none);
+    if (isOffline) {
+      _lastWasOffline = true;
+      return;
+    }
+    if (!_lastWasOffline) return;
+    _lastWasOffline = false;
+    unawaited(triggerAppRefresh(forceRefresh: true));
+  }
+
+  Future<void> triggerAppRefresh({bool forceRefresh = false}) async {
+    if (_appRefreshInFlight) return;
+    final now = clock.now();
+    if (!forceRefresh &&
+        _lastAppRefreshAt != null &&
+        now.difference(_lastAppRefreshAt!) < const Duration(seconds: 30)) {
+      return;
+    }
+    _appRefreshInFlight = true;
+    _lastAppRefreshAt = now;
+    try {
+      if (await ApiClient().hasConnection()) {
+        ApiClient().clearTransientCaches();
+        await Future.wait<void>([
+          CdnWarmupService.instance.warmPublicCdnData(forceRefresh: true),
+          if (_initialLoggedIn) _warmBackgroundCaches(forceRefresh: true),
+        ]);
+        RefreshBus.instance.notify(reason: 'class_schedule');
+        RefreshBus.instance.notify(reason: 'exam_schedule');
+        RefreshBus.instance.notify(reason: 'student_profile');
+        RefreshBus.instance.notify(reason: 'home_dashboard');
+        RefreshBus.instance.notify(reason: 'degree_progress');
+        RefreshBus.instance.notify(reason: 'calendar');
+        RefreshBus.instance.notify(reason: 'notifications');
+      }
+    } catch (_) {
+    } finally {
+      _appRefreshInFlight = false;
+    }
+  }
+
   @override
   void dispose() {
+    _connectivitySub?.cancel();
     if (!widget.isPreBoot) {
       _webSessionSub?.cancel();
       _webExtensionSessionFlow?.dispose();
@@ -616,17 +681,21 @@ class _MyAppState extends State<MyApp>
     }
   }
 
-  Future<void> _warmBackgroundCaches() async {
+  Future<void> _warmBackgroundCaches({bool forceRefresh = false}) async {
     if (_backgroundWarmupInFlight) return;
-    final now = DateTime.now();
-    if (_lastBackgroundWarmupAt != null &&
+    final now = clock.now();
+    if (!forceRefresh &&
+        _lastBackgroundWarmupAt != null &&
         now.difference(_lastBackgroundWarmupAt!) < const Duration(minutes: 1)) {
       return;
     }
     _backgroundWarmupInFlight = true;
     _lastBackgroundWarmupAt = now;
     try {
-      final tasks = MyApp._buildWarmupTasks(includeCampusPrinter: false);
+      final tasks = MyApp._buildWarmupTasks(
+        includeCampusPrinter: false,
+        forceRefresh: forceRefresh,
+      );
       await Future.wait(tasks.map((task) => task.catchError((_) {})));
     } finally {
       _backgroundWarmupInFlight = false;

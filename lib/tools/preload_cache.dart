@@ -31,29 +31,23 @@ class CachedPageController<T> {
   CachedPageController(this._fetch);
 
   final Future<T> Function({bool forceRefresh}) _fetch;
+  final PreloadCache<T> _cache = PreloadCache<T>();
 
-  T? value;
-  Future<T>? inFlight;
+  T? get value => _cache.value;
+  set value(T? newVal) => _cache.value = newVal;
 
-  Future<T> load({bool forceRefresh = false}) async {
-    if (!forceRefresh && value != null) return value as T;
-    if (!forceRefresh && inFlight != null) return inFlight!;
+  Future<T>? get inFlight => _cache.inFlight;
+  set inFlight(Future<T>? newInFlight) => _cache.inFlight = newInFlight;
 
-    final future = _fetch(forceRefresh: forceRefresh);
-    inFlight = future;
-    try {
-      final loaded = await future;
-      value = loaded;
-      return loaded;
-    } finally {
-      if (identical(inFlight, future)) {
-        inFlight = null;
-      }
-    }
+  Future<T> load({bool forceRefresh = false}) {
+    return _cache.load(
+      forceRefresh: forceRefresh,
+      fetch: () => _fetch(forceRefresh: forceRefresh),
+    );
   }
 
   void clear() {
-    value = null;
-    inFlight = null;
+    _cache.value = null;
+    _cache.inFlight = null;
   }
 }

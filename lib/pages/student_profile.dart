@@ -19,8 +19,8 @@ import 'package:preconnect/tools/refresh_bus.dart';
 class StudentProfile extends StatefulWidget {
   const StudentProfile({super.key});
 
-  static Future<void> preload() async {
-    await _StudentProfileState.preloadData();
+  static Future<void> preload({bool forceRefresh = false}) async {
+    await _StudentProfileState.preloadData(forceRefresh: forceRefresh);
   }
 
   @override
