@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/firebase_options.dart';
 import 'package:preconnect/tools/app_log.dart';
+import 'package:preconnect/tools/app_log_flutter.dart';
 import 'app.dart';
 import 'tools/app_storage.dart';
 
@@ -25,7 +26,7 @@ Future<void> main() async {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
-      unawaited(AppLog.logDeviceInfo());
+      unawaited(AppLogFlutter.logDeviceInfo());
 
       FlutterError.onError = (details) {
         AppLog.write('FlutterError: $details');

@@ -14,7 +14,7 @@ import 'package:preconnect/api/analytics.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/app_log.dart';
+import 'package:preconnect/tools/app_log_observer.dart';
 import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/custom_schedules.dart';
