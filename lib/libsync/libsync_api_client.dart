@@ -454,12 +454,13 @@ class LibSyncApiClient extends http.BaseClient {
       String? googleAccessToken;
       if (!kIsWeb) {
         try {
-          final googleSignIn = GoogleSignIn(
+          final googleSignIn = GoogleSignIn.instance;
+          await googleSignIn.initialize(
             scopes: LibSyncConfig.googleScopes.isEmpty
                 ? ['email', 'profile']
                 : LibSyncConfig.googleScopes.split(' '),
           );
-          final account = await googleSignIn.signInSilently();
+          final account = await googleSignIn.attemptLightweightAuthentication();
           final auth = await account?.authentication;
           googleAccessToken = auth?.accessToken;
         } catch (_) {}

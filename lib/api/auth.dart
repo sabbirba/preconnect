@@ -66,9 +66,7 @@ class AuthService {
     try {
       try {
         await FCMService.instance.unregisterDevice();
-      } catch (e) {
-        debugPrint("FCM unregister error on logout: $e");
-      }
+      } catch (_) {}
 
       if (!force && !instant && _bootstrapStartTime != null) {
         final timeSinceBootstrap = DateTime.now().difference(

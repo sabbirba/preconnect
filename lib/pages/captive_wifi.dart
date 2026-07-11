@@ -292,18 +292,11 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   }
 
   Future<void> _runOneTapConnect({bool isManual = false}) async {
-    debugPrint('[CaptiveWifiUI] _runOneTapConnect triggered');
     if (!mounted || _isConnecting) {
-      debugPrint(
-        '[CaptiveWifiUI] _runOneTapConnect aborted: mounted=$mounted, _isConnecting=$_isConnecting',
-      );
       return;
     }
 
     if (!_validateRequiredInputs()) {
-      debugPrint(
-        '[CaptiveWifiUI] _runOneTapConnect validation failed: SSID=${_ssidController.text}, StudentID=${_studentIdController.text}, PasswordLength=${_passwordController.text.length}',
-      );
       _showLocalSnackBar('Required credentials or SSID are missing.');
       return;
     }
@@ -316,21 +309,17 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       final studentId = _studentIdController.text.trim();
       final password = _passwordController.text;
 
-      debugPrint('[CaptiveWifiUI] Saving credentials password...');
       await CaptiveLoginStore.instance.save(password: password);
 
-      debugPrint('[CaptiveWifiUI] Registering WiFi suggestion...');
       final suggestion = await _registerWifiSuggestion();
-      debugPrint('[CaptiveWifiUI] WiFi suggestion result: $suggestion');
+
       if (!mounted) return;
       if (suggestion == 'permission-required' || suggestion == 'invalid') {
         _showLocalSnackBar('Wi-Fi setup skipped: $suggestion');
       }
 
-      debugPrint('[CaptiveWifiUI] Waiting for association with target SSID...');
       await _waitForTargetWifiAssociation();
 
-      debugPrint('[CaptiveWifiUI] Triggering loginViaCaptiveApi...');
       final loggedIn =
           await _loginViaCaptiveApi(
             studentId: studentId,
@@ -338,26 +327,22 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
           ).timeout(
             _apiLoginTimeout,
             onTimeout: () {
-              debugPrint(
-                '[CaptiveWifiUI] loginViaCaptiveApi timed out after ${_apiLoginTimeout.inSeconds} seconds',
-              );
               CaptiveWifiHttp.instance.lastError =
                   'Connection/API login timed out after ${_apiLoginTimeout.inSeconds} seconds.';
               return false;
             },
           );
-      debugPrint('[CaptiveWifiUI] loginViaCaptiveApi returned: $loggedIn');
+
       if (!mounted) return;
       if (loggedIn) {
         _showLocalSnackBar('Login success. Internet validated.');
         unawaited(AndroidNetworkAssist.reportCaptivePortalDismissed());
       } else {
         final err = CaptiveWifiHttp.instance.lastError;
-        debugPrint('[CaptiveWifiUI] Login failed with error: $err');
+
         _showLocalSnackBar(_toFriendlyError(err));
       }
-    } catch (e, stack) {
-      debugPrint('[CaptiveWifiUI] Exception in _runOneTapConnect: $e\n$stack');
+    } catch (e) {
       _showLocalSnackBar('Exception: $e');
     } finally {
       if (mounted) {
@@ -386,11 +371,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   }
 
   Future<void> _runDisconnect() async {
-    debugPrint('[CaptiveWifiUI] _runDisconnect triggered');
     if (!mounted || _isDisconnecting) {
-      debugPrint(
-        '[CaptiveWifiUI] _runDisconnect aborted: mounted=$mounted, _isDisconnecting=$_isDisconnecting',
-      );
       return;
     }
 
@@ -399,50 +380,39 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
     });
 
     try {
-      debugPrint('[CaptiveWifiUI] Fetching network status for disconnect...');
       final status = await AndroidNetworkAssist.getNetworkStatus();
       if (status == null) {
-        debugPrint(
-          '[CaptiveWifiUI] Network status is null. Cannot disconnect.',
-        );
         _showLocalSnackBar('Not connected to Wi-Fi.');
         return;
       }
-      debugPrint(
-        '[CaptiveWifiUI] Network status: connected=${status.connected}, transport=${status.transport}, ssid=${status.ssid}',
-      );
+
       final captiveWifiUrl = CaptiveWifiHttp.resolvePortalUri(status);
-      debugPrint('[CaptiveWifiUI] Resolved portal URI: $captiveWifiUrl');
+
       if (captiveWifiUrl == null) {
         _showLocalSnackBar('Could not resolve captive portal URL.');
         return;
       }
 
-      debugPrint('[CaptiveWifiUI] Binding to Wi-Fi network...');
       await AndroidNetworkAssist.bindToWifiNetwork();
       bool loggedOut = false;
       try {
-        debugPrint('[CaptiveWifiUI] Triggering logoutViaCaptiveApi...');
         loggedOut = await CaptiveWifiHttp.instance.logoutViaCaptiveApi(
           captiveWifiUrl: captiveWifiUrl,
           ssid: _ssidController.text.trim(),
         );
       } finally {
-        debugPrint('[CaptiveWifiUI] Unbinding from Wi-Fi network...');
         await AndroidNetworkAssist.unbindFromWifiNetwork();
       }
 
-      debugPrint('[CaptiveWifiUI] logoutViaCaptiveApi returned: $loggedOut');
       if (!mounted) return;
       if (loggedOut) {
         _showLocalSnackBar('Disconnected from portal successfully.');
       } else {
         final err = CaptiveWifiHttp.instance.lastError;
-        debugPrint('[CaptiveWifiUI] Logout failed with error: $err');
+
         _showLocalSnackBar(_toFriendlyDisconnectError(err));
       }
-    } catch (e, stack) {
-      debugPrint('[CaptiveWifiUI] Exception in _runDisconnect: $e\n$stack');
+    } catch (e) {
       if (mounted) {
         _showLocalSnackBar(_toFriendlyDisconnectError(e.toString()));
       }

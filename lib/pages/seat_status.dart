@@ -240,9 +240,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
                 );
               }
             }
-          } catch (e) {
-            debugPrint("Error handling permission request during pin: $e");
-          }
+          } catch (_) {}
         }
 
         final topic = PreConnectPushConfig.seatTopic(key);
@@ -308,9 +306,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
             ),
           );
         }
-      } catch (e) {
-        debugPrint("Error in background pin toggle: $e");
-      }
+      } catch (_) {}
     }());
   }
 

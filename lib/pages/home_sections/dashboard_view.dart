@@ -861,7 +861,7 @@ extension _HomeDashboardView on _HomeDashboardState {
     _DashboardQuickAccess(
       tab: HomeTab.libSync,
       icon: Icons.local_library_outlined,
-      title: 'BRACU',
+      title: 'Library',
       subtitle: 'Libsync',
       color: const Color(0xFF007ACC),
     ),

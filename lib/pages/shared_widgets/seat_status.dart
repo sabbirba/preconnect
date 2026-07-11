@@ -777,8 +777,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
           _applyCardsSnapshot(refreshed, isInitialLoading: false);
         }
       }
-    } catch (e) {
-      debugPrint("Failed to sync watchlist pins: $e");
-    }
+    } catch (_) {}
   }
 }

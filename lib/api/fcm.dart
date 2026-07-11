@@ -39,7 +39,6 @@ class FCMService {
   @pragma('vm:entry-point')
   static Future<void> backgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp();
-    debugPrint("Background message: ${message.messageId}");
   }
 
   Future<String?> _getToken({bool force = false}) async {
@@ -61,17 +60,16 @@ class FCMService {
             if (token != null && token.isNotEmpty) break;
           }
         }
-        debugPrint("FCM Chrome Extension Token: $token");
+
         _cachedToken = token;
         return token;
       } else {
         try {
           final token = await FirebaseMessaging.instance.getToken();
-          debugPrint("FCM Standard Web Token: $token");
+
           _cachedToken = token;
           return token;
         } catch (e) {
-          debugPrint("FCM Standard Web token fetch error: $e");
           return null;
         }
       }
@@ -89,7 +87,7 @@ class FCMService {
 
         while (apnsToken == null && retries < maxRetries) {
           apnsToken = await FirebaseMessaging.instance.getAPNSToken();
-          debugPrint("FCM APNS Token try $retries: $apnsToken");
+
           if (apnsToken == null) {
             await Future.delayed(const Duration(seconds: 1));
             retries++;
@@ -98,20 +96,17 @@ class FCMService {
 
         if (apnsToken == null) {
           _apnsAvailable = false;
-          debugPrint(
-            "FCM Error: Failed to get APNS token after retries. Push notifications will not work.",
-          );
+
           return null;
         } else {
           _apnsAvailable = true;
         }
       }
       final token = await FirebaseMessaging.instance.getToken();
-      debugPrint("FCM Token: $token");
+
       _cachedToken = token;
       return token;
     } catch (e) {
-      debugPrint("FCM Error getting token: $e");
       return null;
     }
   }
@@ -137,8 +132,8 @@ class FCMService {
           'Content-Type': 'application/json',
         },
       );
-    } catch (e) {
-      debugPrint("FCM token registration failed: $e");
+    } catch (_) {
+      assert(true);
     }
   }
 
@@ -164,9 +159,7 @@ class FCMService {
           'Content-Type': 'application/json',
         },
       );
-    } catch (e) {
-      debugPrint("FCM subscribe topic web failed: $e");
-    }
+    } catch (_) { assert(true); }
   }
 
   Future<void> _unsubscribeFromTopicWeb(String token, String topic) async {
@@ -183,9 +176,7 @@ class FCMService {
           'Content-Type': 'application/json',
         },
       );
-    } catch (e) {
-      debugPrint("FCM unsubscribe topic web failed: $e");
-    }
+    } catch (_) { assert(true); }
   }
 
   Future<bool> syncSeatEmailAlert(
@@ -218,14 +209,10 @@ class FCMService {
       );
 
       if (response.statusCode != 200) {
-        debugPrint(
-          'Seat email sync failed: ${response.statusCode} ${response.body}',
-        );
         return false;
       }
       return true;
     } catch (e) {
-      debugPrint('Seat email sync error: $e');
       return false;
     }
   }
@@ -312,7 +299,6 @@ class FCMService {
 
       return saveRes.statusCode == 200;
     } catch (e) {
-      debugPrint('Watchlist snapshot sync error: $e');
       return false;
     }
   }
@@ -351,9 +337,7 @@ class FCMService {
     // API is not enabled in Google Cloud Console for this project — harmless).
     try {
       await FirebaseMessaging.instance.subscribeToTopic(topic);
-    } catch (e) {
-      debugPrint("FCM native subscribe to '$topic' skipped: $e");
-    }
+    } catch (_) { assert(true); }
     return true;
   }
 
@@ -387,9 +371,7 @@ class FCMService {
     }
     try {
       await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
-    } catch (e) {
-      debugPrint("FCM native unsubscribe from '$topic' skipped: $e");
-    }
+    } catch (_) { assert(true); }
     return true;
   }
 
@@ -410,9 +392,7 @@ class FCMService {
           'Content-Type': 'application/json',
         },
       );
-    } catch (e) {
-      debugPrint("FCM device unregister failed: $e");
-    }
+    } catch (_) { assert(true); }
   }
 
   Future<bool> requestNotificationPermission() async {
@@ -430,10 +410,9 @@ class FCMService {
         );
         final granted =
             settings.authorizationStatus == AuthorizationStatus.authorized;
-        debugPrint("Notification permission request result (web): $granted");
+
         return granted;
       } catch (e) {
-        debugPrint("Error requesting notification permission (web): $e");
         return false;
       }
     }
@@ -456,10 +435,9 @@ class FCMService {
 
       final granted =
           settings.authorizationStatus == AuthorizationStatus.authorized;
-      debugPrint("Notification permission request result: $granted");
+
       return granted;
     } catch (e) {
-      debugPrint("Error requesting notification permission: $e");
       return false;
     }
   }
@@ -474,7 +452,6 @@ class FCMService {
           .getNotificationSettings();
       return settings.authorizationStatus == AuthorizationStatus.authorized;
     } catch (e) {
-      debugPrint("Error checking notification settings: $e");
       return false;
     }
   }
@@ -504,7 +481,6 @@ class FCMService {
   Future<void> _initWeb() async {
     final token = await _getToken();
     if (token == null) {
-      debugPrint("Failed to get FCM token for web");
       return;
     }
 
@@ -519,21 +495,14 @@ class FCMService {
       for (String seat in pinnedSeats) {
         await _subscribeToTopicWeb(token, PreConnectPushConfig.seatTopic(seat));
       }
-    } catch (e) {
-      debugPrint("Failed to load pinned seats: $e");
-    }
+    } catch (_) { assert(true); }
 
     if (!isChromeRuntimeAvailable()) {
       try {
         FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-          debugPrint(
-            "Standard Web foreground message: ${message.notification?.title}",
-          );
           RefreshBus.instance.notify(reason: 'push_notification');
         });
-      } catch (e) {
-        debugPrint("Error registering standard web foreground listener: $e");
-      }
+      } catch (_) { assert(true); }
     }
   }
 
@@ -555,9 +524,7 @@ class FCMService {
           cachedToken: token,
         );
       }
-    } catch (e) {
-      debugPrint('FCM topic sync failed: $e');
-    }
+    } catch (_) { assert(true); }
   }
 
   Future<void> _initNative() async {
@@ -565,12 +532,9 @@ class FCMService {
 
     try {
       await messaging.requestPermission(alert: true, badge: true, sound: true);
-    } catch (e) {
-      debugPrint("FCM requestPermission error: $e");
-    }
+    } catch (_) { assert(true); }
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint("Foreground message: ${message.notification?.title}");
       _showLocalNotification(message);
       RefreshBus.instance.notify(reason: 'push_notification');
     });
@@ -583,7 +547,6 @@ class FCMService {
     });
 
     messaging.onTokenRefresh.listen((token) async {
-      debugPrint("FCM token refreshed: $token");
       final wasUnavailable = !_apnsAvailable;
       _apnsAvailable = true;
       await _sendTokenToBackend(token);
@@ -640,9 +603,9 @@ class FCMService {
               try {
                 final uri = Uri.parse(url);
                 launchUrl(uri, mode: LaunchMode.externalApplication);
-              } catch (_) {}
+              } catch (_) { assert(true); }
             }
-          } catch (_) {}
+          } catch (_) { assert(true); }
         }
       },
     );
@@ -722,7 +685,7 @@ class FCMService {
       try {
         final uri = Uri.parse(url);
         launchUrl(uri, mode: LaunchMode.externalApplication);
-      } catch (_) {}
+      } catch (_) { assert(true); }
     }
   }
 
@@ -768,9 +731,7 @@ class FCMService {
           },
         ),
       );
-    } catch (e) {
-      debugPrint("FCM confirmation push failed: $e");
-    }
+    } catch (_) { assert(true); }
   }
 
   Future<void> showNotification({

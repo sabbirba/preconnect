@@ -75,7 +75,10 @@ class LibSyncAuthService extends ChangeNotifier {
     _lastProcessedCode = code;
     state.value = const LibSyncAuthState(status: LibSyncAuthStatus.loading);
     try {
-      final googleTokens = await GoogleAuthHelper.exchangeCode(code, redirectUri: redirectUri);
+      final googleTokens = await GoogleAuthHelper.exchangeCode(
+        code,
+        redirectUri: redirectUri,
+      );
       final googleAccessToken = googleTokens['access_token'] as String?;
       final googleRefreshToken = googleTokens['refresh_token'] as String?;
 
@@ -164,7 +167,8 @@ class LibSyncAuthService extends ChangeNotifier {
     state.value = const LibSyncAuthState(status: LibSyncAuthStatus.loading);
     if (!kIsWeb) {
       try {
-        final googleSignIn = GoogleSignIn(
+        final googleSignIn = GoogleSignIn.instance;
+        await googleSignIn.initialize(
           scopes: LibSyncConfig.googleScopes.isEmpty
               ? ['email', 'profile']
               : LibSyncConfig.googleScopes.split(' '),

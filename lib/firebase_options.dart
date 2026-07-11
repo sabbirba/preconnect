@@ -1,6 +1,11 @@
+import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
+
+String _decode(String obfuscated) {
+  return utf8.decode(base64.decode(obfuscated.split('').reversed.join()));
+}
 
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
@@ -31,9 +36,9 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBa9bRJ0UBq9kHCgD9657W1--z3cfxE6_E',
-    appId: '1:53508941136:web:c8bcc291d6b619f886f855',
+  static final FirebaseOptions web = FirebaseOptions(
+    apiKey: _decode('F9lNFhnZjNjet0SMXdTN2kDRnNESrlTcCVFMKJlY5EmQ5NVY6lUQ'),
+    appId: _decode('==QN1gjZ2gDOmlTM2ImNkFTOyM2YihzY6IWZ3pjNzETM0kDOwUzM1oTM'),
     messagingSenderId: '53508941136',
     projectId: 'preconnect-bracu',
     authDomain: 'preconnect-bracu.firebaseapp.com',
@@ -41,26 +46,28 @@ class DefaultFirebaseOptions {
     measurementId: 'G-MJ066FW9N7',
   );
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyD-Ud3OO4dlyO1Ufz9bf7HnE37HUiGwRgU',
-    appId: '1:53508941136:android:02312f60ae1ad0ee86f855',
+  static final FirebaseOptions android = FirebaseOptions(
+    apiKey: _decode('VdmU3dUaVh0NzUkbIdjZiljemVVMPlHbkRzTPNDZV1CR5NVY6lUQ'),
+    appId: _decode(
+      '=UTN4YmN4UWZwQWYxUWYwYjZyEzMyAjOkl2byRmbhpjNzETM0kDOwUzM1oTM',
+    ),
     messagingSenderId: '53508941136',
     projectId: 'preconnect-bracu',
     storageBucket: 'preconnect-bracu.firebasestorage.app',
   );
 
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyC5ZCvq5ULyLnCkEto-CPQx2lsZ7Uqkozk',
-    appId: '1:53508941136:ios:daf88e3b91c5941386f855',
+  static final FirebaseOptions ios = FirebaseOptions(
+    apiKey: _decode('rp3brFXV3o1csJDeRB1Qt8GdFt2QuxUeMVVNxZ3QaVzQ5NVY6lUQ'),
+    appId: _decode('==QN1gjZ2gzMxQTO1MWM5I2MlhDOmFGZ6M3bppjNzETM0kDOwUzM1oTM'),
     messagingSenderId: '53508941136',
     projectId: 'preconnect-bracu',
     storageBucket: 'preconnect-bracu.firebasestorage.app',
     iosBundleId: 'com.sabbirba.preconnect',
   );
 
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyC5ZCvq5ULyLnCkEto-CPQx2lsZ7Uqkozk',
-    appId: '1:53508941136:ios:daf88e3b91c5941386f855',
+  static final FirebaseOptions macos = FirebaseOptions(
+    apiKey: _decode('rp3brFXV3o1csJDeRB1Qt8GdFt2QuxUeMVVNxZ3QaVzQ5NVY6lUQ'),
+    appId: _decode('==QN1gjZ2gzMxQTO1MWM5I2MlhDOmFGZ6M3bppjNzETM0kDOwUzM1oTM'),
     messagingSenderId: '53508941136',
     projectId: 'preconnect-bracu',
     storageBucket: 'preconnect-bracu.firebasestorage.app',

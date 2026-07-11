@@ -17,20 +17,23 @@ class _GoogleOAuthWebViewPageState extends State<GoogleOAuthWebViewPage> {
   void initState() {
     super.initState();
 
-    final oauthUrl = Uri.parse('https://accounts.google.com/o/oauth2/v2/auth').replace(
-      queryParameters: {
-        'client_id': LibSyncConfig.googleClientId,
-        'redirect_uri': LibSyncConfig.googleRedirectUri,
-        'response_type': 'code',
-        'scope': LibSyncConfig.googleScopes,
-        'access_type': 'offline',
-        'prompt': 'consent',
-      },
-    );
+    final oauthUrl = Uri.parse('https://accounts.google.com/o/oauth2/v2/auth')
+        .replace(
+          queryParameters: {
+            'client_id': LibSyncConfig.googleClientId,
+            'redirect_uri': LibSyncConfig.googleRedirectUri,
+            'response_type': 'code',
+            'scope': LibSyncConfig.googleScopes,
+            'access_type': 'offline',
+            'prompt': 'consent',
+          },
+        );
 
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setUserAgent('Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36')
+      ..setUserAgent(
+        'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36',
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onNavigationRequest: (request) {
@@ -70,10 +73,7 @@ class _GoogleOAuthWebViewPageState extends State<GoogleOAuthWebViewPage> {
       body: Stack(
         children: [
           WebViewWidget(controller: _controller),
-          if (_loading)
-            const Center(
-              child: CircularProgressIndicator(),
-            ),
+          if (_loading) const Center(child: CircularProgressIndicator()),
         ],
       ),
     );

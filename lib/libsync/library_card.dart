@@ -252,7 +252,7 @@ class _LibraryCardBack extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Ayesha Abed Library Unauthorized Virtual Card.\nFor BRACU Libsync booking verification & access.',
+                    'Ayesha Abed Library Unauthorized Virtual Card.\nFor Library Libsync booking verification & access.',
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w700,

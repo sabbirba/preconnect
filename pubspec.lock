@@ -644,10 +644,10 @@ packages:
     dependency: transitive
     description:
       name: google_sign_in_android
-      sha256: dd86f662332689df4954cd6ec4f7f9f87b91ea40e3437ad94f159c1df7a08d8c
+      sha256: a01d4fd5a0e4eb0c1961434a0289a436abf9225b0933963c8e4e5ed88c26e40b
       url: "https://pub.dev"
     source: hosted
-    version: "7.2.14"
+    version: "7.2.15"
   google_sign_in_ios:
     dependency: transitive
     description:
