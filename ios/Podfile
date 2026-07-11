@@ -47,6 +47,20 @@ post_install do |installer|
       config.build_settings['SWIFT_VERSION'] ||= '5.0'
       config.build_settings['CLANG_ENABLE_MODULE_VERIFIER'] = 'NO'
       config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
+      config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
+      config.build_settings['SWIFT_SUPPRESS_WARNINGS'] = 'YES'
+      
+      %w[LIBRARY_SEARCH_PATHS FRAMEWORK_SEARCH_PATHS].each do |key|
+        paths = config.build_settings[key]
+        if paths
+          if paths.is_a?(Array)
+            config.build_settings[key] = paths.reject { |p| p.include?('MetalToolchain') }
+          elsif paths.is_a?(String)
+            config.build_settings[key] = paths.split(' ').reject { |p| p.include?('MetalToolchain') }.join(' ')
+          end
+        end
+      end
+
       if target.name == 'flutter_alarmkit'
         config.build_settings['EXCLUDED_SOURCE_FILE_NAMES'] = [
           'AlarmLiveActivityBundle.swift',
@@ -70,6 +84,21 @@ post_install do |installer|
             if phase.isa == 'PBXSourcesBuildPhase'
               phase.remove_build_file(file)
             end
+          end
+        end
+      end
+    end
+  end
+
+  installer.aggregate_targets.each do |target|
+    target.build_configurations.each do |config|
+      %w[LIBRARY_SEARCH_PATHS FRAMEWORK_SEARCH_PATHS].each do |key|
+        paths = config.build_settings[key]
+        if paths
+          if paths.is_a?(Array)
+            config.build_settings[key] = paths.reject { |p| p.include?('MetalToolchain') }
+          elsif paths.is_a?(String)
+            config.build_settings[key] = paths.split(' ').reject { |p| p.include?('MetalToolchain') }.join(' ')
           end
         end
       end
