@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
+import 'package:preconnect/pages/device_diagnostics.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/shared_widgets/export_sheet.dart';
 import 'package:preconnect/tools/quiet_controller.dart';
@@ -410,6 +411,10 @@ class _SettingsPageState extends State<SettingsPage>
               showTrailingIcon: true,
               onTap: _exportSessionForWeb,
             ),
+          ],
+          if (!kIsWeb) ...[
+            const SizedBox(height: _sectionGap),
+            const DeviceDiagnosticsButton(),
           ],
           const SizedBox(height: _sectionGap),
         ],

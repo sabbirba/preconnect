@@ -334,7 +334,11 @@ class HomeCardPreferences {
       final bool showNotificationsIcon =
           AppStorage.instance.getBoolSync(showNotificationsIconKey) ?? true;
 
-      decorationNotifier.value = showDecorations;
+      if (decorationNotifier.value != showDecorations) {
+        scheduleMicrotask(() {
+          decorationNotifier.value = showDecorations;
+        });
+      }
 
       return HomeCardVisibility(
         showQuickAccessSection:

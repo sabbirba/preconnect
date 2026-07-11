@@ -14,6 +14,7 @@ import 'package:preconnect/api/analytics.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/custom_schedules.dart';
@@ -966,7 +967,11 @@ class _MyAppState extends State<MyApp>
             darkTheme: darkTheme,
             themeMode: mode,
             navigatorKey: widget.isPreBoot ? null : AuthService.navigatorKey,
-            navigatorObservers: [_routeObserver, AnalyticsService.observer],
+            navigatorObservers: [
+              _routeObserver,
+              AnalyticsService.observer,
+              AppLogNavigatorObserver(),
+            ],
             builder: (context, child) {
               final isDark = Theme.of(context).brightness == Brightness.dark;
               final mediaQuery = MediaQuery.of(context);

@@ -24,9 +24,7 @@ class CaptiveWifiPage extends StatefulWidget {
 class _CaptiveWifiPageState extends State<CaptiveWifiPage>
     with WidgetsBindingObserver {
   static const Duration _apiLoginTimeout = Duration(seconds: 45);
-  final TextEditingController _ssidController = TextEditingController(
-    text: CaptiveLoginStore.defaultCampusSsid,
-  );
+  final TextEditingController _ssidController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final GlobalKey<ScaffoldMessengerState> _pageMessengerKey =
       GlobalKey<ScaffoldMessengerState>();
@@ -54,7 +52,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       );
     }
     _loadStoredCredentials();
-    unawaited(_checkLocationSetup());
+    unawaited(_forceRequestPermissions());
   }
 
   void _handleStudentIdChanged() {
@@ -62,16 +60,100 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
     AppStorage.instance.setString(StorageKeys.studentId, value);
   }
 
+  Future<void> _forceRequestPermissions() async {
+    if (!AndroidNetworkAssist.isSupported) return;
+    var status = await Permission.locationWhenInUse.status;
+    if (status.isGranted) {
+      final gpsEnabled = await AndroidNetworkAssist.isLocationServiceEnabled();
+      if (!gpsEnabled && mounted) {
+        setState(() {
+          _locationNeedsSetup = true;
+        });
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text('Location Services Disabled'),
+            content: const Text(
+              'Location services (GPS) must be enabled to detect Wi-Fi networks. Please enable it.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await AndroidNetworkAssist.openLocationSettings();
+                },
+                child: const Text('Open Settings'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  unawaited(_forceRequestPermissions());
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+      setState(() {
+        _locationNeedsSetup = false;
+      });
+      await _loadStoredCredentials();
+      return;
+    }
+
+    status = await Permission.locationWhenInUse.request();
+    if (status.isGranted) {
+      final gpsEnabled = await AndroidNetworkAssist.isLocationServiceEnabled();
+      if (!gpsEnabled && mounted) {
+        unawaited(_forceRequestPermissions());
+        return;
+      }
+      setState(() {
+        _locationNeedsSetup = false;
+      });
+      await _loadStoredCredentials();
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _locationNeedsSetup = true;
+      });
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('Location Permission Required'),
+          content: const Text(
+            'Location permission is required to retrieve and configure connected Wi-Fi networks. Please grant the permission to continue.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                unawaited(_forceRequestPermissions());
+              },
+              child: const Text('Grant'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await openAppSettings();
+              },
+              child: const Text('Open Settings'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   Future<void> _checkLocationSetup() async {
     if (!AndroidNetworkAssist.isSupported) return;
-    final status = await AndroidNetworkAssist.getNetworkStatus();
-    final api = status?.androidApi ?? 0;
-    bool hasPermission = false;
-    if (api >= 33) {
-      hasPermission = await Permission.nearbyWifiDevices.status.isGranted;
-    } else {
-      hasPermission = await Permission.locationWhenInUse.status.isGranted;
-    }
+    final hasPermission = await Permission.locationWhenInUse.status.isGranted;
     final gpsEnabled = await AndroidNetworkAssist.isLocationServiceEnabled();
     if (mounted) {
       setState(() {
@@ -81,26 +163,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   }
 
   Future<void> _fixLocationSetup() async {
-    if (!AndroidNetworkAssist.isSupported) return;
-    final status = await AndroidNetworkAssist.getNetworkStatus();
-    final api = status?.androidApi ?? 0;
-    if (api >= 33) {
-      final nearbyOk = await _requestPermissionWithUx(
-        permission: Permission.nearbyWifiDevices,
-      );
-      if (!nearbyOk) return;
-    } else {
-      final locationOk = await _requestPermissionWithUx(
-        permission: Permission.locationWhenInUse,
-      );
-      if (!locationOk) return;
-    }
-    final gpsEnabled = await AndroidNetworkAssist.isLocationServiceEnabled();
-    if (!gpsEnabled) {
-      await AndroidNetworkAssist.openLocationSettings();
-    }
-    await _checkLocationSetup();
-    await _loadStoredCredentials();
+    await _forceRequestPermissions();
   }
 
   Future<void> _loadStoredCredentials() async {
@@ -173,25 +236,41 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
 
   Future<void> _autofillSsidFromSystem({bool force = false}) async {
     if (!AndroidNetworkAssist.isSupported) return;
-    final isGpsEnabled = await AndroidNetworkAssist.isLocationServiceEnabled();
-    if (!isGpsEnabled) {
-      final resolved = await AndroidNetworkAssist.openLocationSettings();
-      if (!resolved) return;
-    }
     final status = await AndroidNetworkAssist.getNetworkStatus();
     if (!mounted) return;
-    final ssid = (status?.ssid ?? '').trim();
-    if (ssid.isEmpty || status?.transport != 'wifi' || !status!.connected) {
-      if (force) {
-        await AndroidNetworkAssist.openWifiSettings();
-      }
+    if (status == null ||
+        status.transport.trim().toLowerCase() != 'wifi' ||
+        !status.connected) {
+      setState(() {
+        _ssidController.text = '';
+      });
       return;
     }
+    bool hasPermission = await Permission.locationWhenInUse.status.isGranted;
+    if (!hasPermission && force) {
+      final ok = await _requestPermissionWithUx(
+        permission: Permission.locationWhenInUse,
+      );
+      if (!ok) return;
+      hasPermission = true;
+    }
+    if (!hasPermission) return;
+    final isGpsEnabled = await AndroidNetworkAssist.isLocationServiceEnabled();
+    if (!isGpsEnabled) {
+      if (force) {
+        final resolved = await AndroidNetworkAssist.openLocationSettings();
+        if (!resolved) return;
+      } else {
+        return;
+      }
+    }
+    final statusWithSsid = await AndroidNetworkAssist.getNetworkStatus();
+    if (!mounted) return;
+    final ssid = (statusWithSsid?.ssid ?? '').trim();
+    if (ssid.isEmpty) return;
     final current = _ssidController.text.trim();
-    final hasCustomValue =
-        current.isNotEmpty && current != CaptiveLoginStore.defaultCampusSsid;
-    if (!force && hasCustomValue) return;
     if (current == ssid) return;
+    if (!force && current.isNotEmpty) return;
     setState(() {
       _ssidController.text = ssid;
     });
@@ -1036,8 +1115,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(_checkLocationSetup());
-      unawaited(_loadStoredCredentials());
+      unawaited(_forceRequestPermissions());
     }
   }
 

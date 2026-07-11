@@ -60,6 +60,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     private val REQUEST_CODE_LOCATION_SETTINGS = 1092
     private var locationSettingsResult: MethodChannel.Result? = null
+    private val mainHandler = android.os.Handler(Looper.getMainLooper())
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -178,7 +179,7 @@ class MainActivity : FlutterFragmentActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "preconnect/network_assist")
             .setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "getNetworkStatus" -> result.success(currentNetworkStatus())
+                    "getNetworkStatus" -> getNetworkStatusWithLocationInfo(result)
                     "isLocationServiceEnabled" -> {
                         val lm = getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
                         val enabled = try {
@@ -552,6 +553,53 @@ class MainActivity : FlutterFragmentActivity() {
         return payload
     }
 
+    private fun getNetworkStatusWithLocationInfo(result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && hasSsidPermission()) {
+            val network = getWifiNetwork() ?: connectivityManager.activeNetwork
+            if (network != null) {
+                val oneShotCallback = object : ConnectivityManager.NetworkCallback(
+                    ConnectivityManager.NetworkCallback.FLAG_INCLUDE_LOCATION_INFO
+                ) {
+                    private var done = false
+                    override fun onCapabilitiesChanged(
+                        net: Network,
+                        networkCapabilities: NetworkCapabilities,
+                    ) {
+                        if (done) return
+                        done = true
+                        try {
+                            connectivityManager.unregisterNetworkCallback(this)
+                        } catch (_: Exception) {}
+                        val payload = currentNetworkStatus(
+                            networkOverride = net,
+                            capabilitiesOverride = networkCapabilities,
+                        ).toMutableMap()
+                        if (!payload.containsKey("ssid") || payload["ssid"] == null) {
+                            val wifiInfo = networkCapabilities.transportInfo as? WifiInfo
+                            val ssid = normalizeSsid(wifiInfo?.ssid?.trim().orEmpty())
+                            if (ssid != null) payload["ssid"] = ssid
+                        }
+                        mainHandler.post { result.success(payload) }
+                    }
+                    override fun onUnavailable() {
+                        if (done) return
+                        done = true
+                        try { connectivityManager.unregisterNetworkCallback(this) } catch (_: Exception) {}
+                        mainHandler.post { result.success(currentNetworkStatus()) }
+                    }
+                }
+                try {
+                    val request = NetworkRequest.Builder()
+                        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                        .build()
+                    connectivityManager.registerNetworkCallback(request, oneShotCallback)
+                    return
+                } catch (_: Exception) {}
+            }
+        }
+        result.success(currentNetworkStatus())
+    }
+
     private fun registerNetworkCallback() {
         if (networkCallback != null) return
         val callback = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -795,21 +843,31 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    private fun hasSsidPermission(): Boolean {
+        return checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
+    }
+
     private fun currentWifiSsid(): String? {
+        if (!hasSsidPermission()) return null
         return try {
-            @Suppress("DEPRECATION")
-            val info = wifiManager.connectionInfo
-            val raw = info?.ssid?.trim().orEmpty()
-            val normalized = normalizeSsid(raw)
-            if (normalized != null) {
-                normalized
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val network = connectivityManager.activeNetwork ?: return null
-                val caps = connectivityManager.getNetworkCapabilities(network) ?: return null
+                val caps = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    connectivityManager.getNetworkCapabilities(network)
+                } else {
+                    connectivityManager.getNetworkCapabilities(network)
+                } ?: return null
                 val wifiInfo = caps.transportInfo as? WifiInfo
-                normalizeSsid(wifiInfo?.ssid?.trim().orEmpty())
+                val fromCaps = normalizeSsid(wifiInfo?.ssid?.trim().orEmpty())
+                if (fromCaps != null) return fromCaps
+                @Suppress("DEPRECATION")
+                val legacyInfo = wifiManager.connectionInfo
+                normalizeSsid(legacyInfo?.ssid?.trim().orEmpty())
             } else {
-                null
+                @Suppress("DEPRECATION")
+                val info = wifiManager.connectionInfo
+                normalizeSsid(info?.ssid?.trim().orEmpty())
             }
         } catch (_: Exception) {
             null
@@ -819,6 +877,7 @@ class MainActivity : FlutterFragmentActivity() {
     private fun normalizeSsid(raw: String): String? {
         if (raw.isBlank()) return null
         if (raw == WifiManager.UNKNOWN_SSID) return null
+        if (raw == "<unknown ssid>") return null
         return if (raw.length >= 2 && raw.startsWith('"') && raw.endsWith('"')) {
             raw.substring(1, raw.length - 1)
         } else {

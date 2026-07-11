@@ -871,7 +871,7 @@ class BracuCommunityLink extends StatelessWidget {
   final bool compact;
 
   static const String _title = 'Discord Community';
-  static const String _subtitle = 'Connect, share ideas, and get support.';
+  static const String _subtitle = 'Connect, share ideas, and get support';
   static const String _label = 'Discord';
 
   @override

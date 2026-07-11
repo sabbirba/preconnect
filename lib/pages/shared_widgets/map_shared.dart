@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -216,6 +218,18 @@ class CampusEmergencyContact {
   }
 }
 
+void _prewarmImages(List<String> urls) {
+  for (final url in urls) {
+    if (url.trim().isNotEmpty) {
+      unawaited(
+        DefaultCacheManager()
+            .getSingleFile(url.trim())
+            .then((_) {}, onError: (_) {}),
+      );
+    }
+  }
+}
+
 Future<CampusMapData?> fetchCampusMapData({bool forceRefresh = false}) async {
   final payload = await ScraperDataService().fetchMap(
     path: ApiConfig.campusMapUrl,
@@ -225,6 +239,11 @@ Future<CampusMapData?> fetchCampusMapData({bool forceRefresh = false}) async {
   );
   if (payload == null) return null;
   final parsed = CampusMapData.fromJson(payload);
+  final List<String> toWarm = [];
+  if (parsed.mapImageUrl.isNotEmpty) toWarm.add(parsed.mapImageUrl);
+  if (parsed.images.isNotEmpty) toWarm.addAll(parsed.images.take(3));
+  _prewarmImages(toWarm);
+
   final hasAnyImage = parsed.mapImageUrl.isNotEmpty || parsed.images.isNotEmpty;
   if (hasAnyImage || forceRefresh) return parsed;
 
@@ -235,7 +254,16 @@ Future<CampusMapData?> fetchCampusMapData({bool forceRefresh = false}) async {
     forceRefresh: true,
   );
   if (freshPayload == null) return parsed;
-  return CampusMapData.fromJson(freshPayload);
+  final freshParsed = CampusMapData.fromJson(freshPayload);
+  final List<String> freshToWarm = [];
+  if (freshParsed.mapImageUrl.isNotEmpty) {
+    freshToWarm.add(freshParsed.mapImageUrl);
+  }
+  if (freshParsed.images.isNotEmpty) {
+    freshToWarm.addAll(freshParsed.images.take(3));
+  }
+  _prewarmImages(freshToWarm);
+  return freshParsed;
 }
 
 Future<String?> fetchTransportScheduleUrl({bool forceRefresh = false}) async {

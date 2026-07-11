@@ -3,22 +3,58 @@ import 'dart:convert';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/tools/app_storage.dart';
 
+class ContributionItem {
+  final String name;
+  final String? picture;
+  final int amount;
+  final int ts;
+
+  const ContributionItem({
+    required this.name,
+    this.picture,
+    required this.amount,
+    required this.ts,
+  });
+
+  factory ContributionItem.fromJson(Map<String, dynamic> json) {
+    return ContributionItem(
+      name: json['name'] as String? ?? 'Anonymous',
+      picture: json['picture'] as String?,
+      amount: (json['amount'] as num?)?.toInt() ?? 0,
+      ts: (json['ts'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'name': name, 'picture': picture, 'amount': amount, 'ts': ts};
+  }
+}
+
 class FundingStatus {
   final int totalRaised;
   final int goal;
   final int contributorsCount;
+  final List<ContributionItem> contributions;
 
   const FundingStatus({
     required this.totalRaised,
     required this.goal,
     required this.contributorsCount,
+    required this.contributions,
   });
 
   factory FundingStatus.fromJson(Map<String, dynamic> json) {
+    final list = json['contributions'] as List?;
+    final contribs = list != null
+        ? list
+              .map((e) => ContributionItem.fromJson(e as Map<String, dynamic>))
+              .toList()
+        : const <ContributionItem>[];
     return FundingStatus(
       totalRaised: json['totalRaised'] as int? ?? 0,
       goal: json['goal'] as int? ?? 0,
       contributorsCount: json['contributorsCount'] as int? ?? 0,
+      contributions: contribs,
     );
   }
 
@@ -27,6 +63,7 @@ class FundingStatus {
       'totalRaised': totalRaised,
       'goal': goal,
       'contributorsCount': contributorsCount,
+      'contributions': contributions.map((e) => e.toJson()).toList(),
     };
   }
 }

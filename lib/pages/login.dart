@@ -49,6 +49,10 @@ class LoginPage extends StatefulWidget {
   static bool _isPreloadingWebView = false;
   static String? pkceVerifier;
 
+  static WebViewController? _preloadedGoogleWebViewController;
+  static bool _isPreloadingGoogleWebView = false;
+  static String? pkceVerifierGoogle;
+
   static Future<void> preloadNextPage() async {
     if (kIsWeb) return;
     if (_preloadedWebViewController != null || _isPreloadingWebView) return;
@@ -74,9 +78,50 @@ class LoginPage extends StatefulWidget {
     }
   }
 
+  static Future<void> preloadGoogleLogin() async {
+    if (kIsWeb) return;
+    if (_preloadedGoogleWebViewController != null ||
+        _isPreloadingGoogleWebView) {
+      return;
+    }
+    _isPreloadingGoogleWebView = true;
+    try {
+      pkceVerifierGoogle = generatePkceVerifier();
+      final codeChallenge = codeChallengeS256(pkceVerifierGoogle!);
+      final googleSsoUri = Uri.parse(ApiConfig.authUrlWithPkce(codeChallenge))
+          .replace(
+            queryParameters: {
+              ...Uri.parse(
+                ApiConfig.authUrlWithPkce(codeChallenge),
+              ).queryParameters,
+              'kc_idp_hint': 'google',
+            },
+          );
+      final controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setBackgroundColor(Colors.transparent);
+      if (_shouldUseMobileUserAgent) {
+        controller.setUserAgent(kPreConnectUserAgent);
+      }
+      controller.loadRequest(googleSsoUri);
+      await _configureCookies(controller);
+      _preloadedGoogleWebViewController = controller;
+    } catch (_) {
+      _preloadedGoogleWebViewController = null;
+    } finally {
+      _isPreloadingGoogleWebView = false;
+    }
+  }
+
   static WebViewController? takePreloadedWebView() {
     final controller = _preloadedWebViewController;
     _preloadedWebViewController = null;
+    return controller;
+  }
+
+  static WebViewController? takePreloadedGoogleWebView() {
+    final controller = _preloadedGoogleWebViewController;
+    _preloadedGoogleWebViewController = null;
     return controller;
   }
 
@@ -94,6 +139,9 @@ class LoginPage extends StatefulWidget {
     _preloadedWebViewController = null;
     _isPreloadingWebView = false;
     pkceVerifier = null;
+    _preloadedGoogleWebViewController = null;
+    _isPreloadingGoogleWebView = false;
+    pkceVerifierGoogle = null;
     if (kIsWeb) return;
     try {
       final manager = WebViewCookieManager();
@@ -206,9 +254,17 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     if (kIsWeb) return;
-    final controller = widget.customAuthUrl != null
-        ? _buildMobileWebView()
-        : (LoginPage.takePreloadedWebView() ?? _buildMobileWebView());
+    final isGoogle =
+        widget.customAuthUrl != null &&
+        widget.customAuthUrl!.contains('kc_idp_hint=google');
+    if (isGoogle && LoginPage._preloadedGoogleWebViewController != null) {
+      LoginPage.pkceVerifier = LoginPage.pkceVerifierGoogle;
+    }
+    final controller = isGoogle
+        ? (LoginPage.takePreloadedGoogleWebView() ?? _buildMobileWebView())
+        : (widget.customAuthUrl != null
+              ? _buildMobileWebView()
+              : (LoginPage.takePreloadedWebView() ?? _buildMobileWebView()));
     _attachNavigationDelegate(controller);
     _webViewController = controller;
   }

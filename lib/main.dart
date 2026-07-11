@@ -7,34 +7,60 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/firebase_options.dart';
+import 'package:preconnect/tools/app_log.dart';
 import 'app.dart';
 import 'tools/app_storage.dart';
 
 Future<void> main() async {
-  runZonedGuarded(() async {
-    WidgetsFlutterBinding.ensureInitialized();
-    if (kDebugMode) {
-      debugInvertOversizedImages = true;
+  final oldDebugPrint = debugPrint;
+  debugPrint = (String? message, {int? wrapWidth}) {
+    if (message != null) {
+      AppLog.write(message);
     }
+    if (!kReleaseMode) {
+      oldDebugPrint(message, wrapWidth: wrapWidth);
+    }
+  };
 
-    FlutterError.onError = (details) {
-      FlutterError.presentError(details);
-    };
-    PlatformDispatcher.instance.onError = (error, stackTrace) {
-      return false;
-    };
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    FirebaseMessaging.onBackgroundMessage(FCMService.backgroundHandler);
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      unawaited(AppLog.logDeviceInfo());
 
-    await AppStorage.initialize();
-    PaintingBinding.instance.imageCache.maximumSize = 200;
-    PaintingBinding.instance.imageCache.maximumSizeBytes = 100 << 20;
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      FlutterError.onError = (details) {
+        AppLog.write('FlutterError: $details');
+        if (!kReleaseMode) {
+          FlutterError.presentError(details);
+        }
+      };
+      PlatformDispatcher.instance.onError = (error, stackTrace) {
+        AppLog.write('PlatformError: $error\n$stackTrace');
+        return false;
+      };
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      FirebaseMessaging.onBackgroundMessage(FCMService.backgroundHandler);
 
-    final initialState = MyApp.bootstrapSync();
+      await AppStorage.initialize();
+      PaintingBinding.instance.imageCache.maximumSize = 200;
+      PaintingBinding.instance.imageCache.maximumSizeBytes = 100 << 20;
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-    runApp(MyApp(bootstrapState: initialState));
-  }, (error, stackTrace) {});
+      final initialState = MyApp.bootstrapSync();
+
+      runApp(MyApp(bootstrapState: initialState));
+    },
+    (error, stackTrace) {
+      AppLog.write('FatalError: $error\n$stackTrace');
+    },
+    zoneSpecification: ZoneSpecification(
+      print: (Zone self, ZoneDelegate parent, Zone zone, String line) {
+        AppLog.write(line);
+        if (!kReleaseMode) {
+          parent.print(zone, line);
+        }
+      },
+    ),
+  );
 }

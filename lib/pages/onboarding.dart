@@ -13,6 +13,7 @@ import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.html) 'package:preconnect/tools/runtime_web.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
@@ -38,6 +39,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   StreamSubscription<WebExtensionLoginState>? _webLoginSub;
   bool _isStartingWebLogin = false;
   bool _isGoogleLoggingIn = false;
+  String _appVersion = '';
 
   Future<void> _handleGoogleSignIn() async {
     if (_isGoogleLoggingIn) return;
@@ -85,12 +87,25 @@ class _OnboardingPageState extends State<OnboardingPage> {
   @override
   void initState() {
     super.initState();
+    _loadVersion();
     if (!widget.isLoggedIn) {
       unawaited(LoginPage.preloadNextPage());
+      unawaited(LoginPage.preloadGoogleLogin());
+      _campusMapFuture = fetchCampusMapData();
+      _transportScheduleUrlFuture = fetchTransportScheduleUrl();
     }
     if (kIsWeb && !widget.isLoggedIn) {
       _webExtensionLoginFlow = WebExtensionLoginFlow();
       _webLoginSub = _webExtensionLoginFlow!.events.listen(_handleWebLogin);
+    }
+  }
+
+  Future<void> _loadVersion() async {
+    final ver = await BuildInfo.displayVersion();
+    if (mounted) {
+      setState(() {
+        _appVersion = ver;
+      });
     }
   }
 
@@ -272,8 +287,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Academic companion for BRACU students.\n'
-                            'Open source built and maintained by students.',
+                            'Academic Companion for BRACU\n'
+                            'Open Source Built by BRACU Students',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 14,
@@ -282,6 +297,18 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               fontWeight: FontWeight.w500,
                             ),
                           ),
+                          if (_appVersion.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              _appVersion,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: bodyColor.withValues(alpha: 0.65),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 20),
                           _InfoCard(
                             icon: Icons.info_outline_rounded,
@@ -299,13 +326,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             color: BracuPalette.accent,
                           ),
                           const SizedBox(height: 10),
-                          _InfoCard(
-                            icon: Icons.auto_awesome_rounded,
-                            title: 'Built for Daily Use',
-                            body:
-                                'Quickly check class schedules, notifications, exams, reminders, free labs, and more from one student-friendly app.',
-                            color: const Color(0xFF7C4DFF),
-                          ),
                           const SizedBox(height: 10),
                           _InfoCard(
                             icon: Icons.groups_rounded,
@@ -318,7 +338,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           BracuActionBannerCard(
                             iconWidget: const PreConnectGithubIcon(size: 24),
                             title: 'Open GitHub Repository',
-                            subtitle: 'Explore the source code and contribute.',
+                            subtitle: 'Explore the source code and contribute',
                             onTap: () => _openLink(
                               context,
                               'https://github.com/sabbirba/preconnect',
