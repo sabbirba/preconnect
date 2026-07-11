@@ -55,117 +55,6 @@ Installation is available for multiple platforms through:
   ```
   Or, use GitHub Releases as mentioned before.
 
-## Project Map
-
-A detailed visual directory structure of the repository, including core files, models, APIs, and cross-platform configurations:
-
-```bash
-preconnect/
-├── 📂 .github/workflows/          # CI/CD pipelines
-│   ├── 📄 release.yml             # Handles auto-bumps, builds APK/AAB/Extension/Web
-│   └── 📄 store-promotion.yml     # Weekly scheduled production deployment track
-├── 📂 android/                    # Android native project configuration and Kotlin settings
-├── 📂 ios/                        # iOS native project runner configs and Swift setups
-├── 📂 macos/                      # macOS desktop application runner configs
-├── 📂 web/                        # Chrome Extension & Web app build shell
-│   ├── 📄 manifest.json           # Extension configuration (permissions, scripts, icons, keys)
-│   └── 📄 background.dart.js      # Compiled service worker executing in the extension background
-├── 📂 assets/                     # App-wide visual elements, vector SVGs, and launcher icons
-└── 📂 lib/                        # Core Flutter codebase
-    ├── 📄 main.dart               # App entry point (initializes storage, firebase, routing)
-    ├── 📄 app.dart                # Top-level shell widget (hosts router, themes, status page observer)
-    ├── 📄 firebase_options.dart   # Firebase app configurations (generated)
-    │
-    ├── 📂 api/                    # HTTP clients and remote server controllers
-    │   ├── 📄 api_client.dart     # HTTP client wrapper (handles SSO tokens, headers, and errors)
-    │   ├── 📄 api_config.dart     # Backend base URL and API endpoints mapping
-    │   ├── 📄 auth.dart           # Connection SSO authorization logic and login status checker
-    │   ├── 📄 calendar.dart       # Fetches university academic calendar milestones
-    │   ├── 📄 cdn_warmup.dart     # Service to pre-ping and warm up CDNs on launch
-    │   ├── 📄 custom_schedules.dart # Sync utility for custom/personal student routines
-    │   ├── 📄 exam_map.dart       # API queries to fetch campus building/exam hall map URLs
-    │   ├── 📄 fcm.dart            # Firebase Cloud Messaging device registration & token updates
-    │   ├── 📄 friend_store.dart   # Dynamic peer schedule sync & storage manager
-    │   ├── 📄 grade_sheet.dart    # Academic grades, credits, and CGPA retrieval connectors
-    │   ├── 📄 notification.dart   # In-app notifications fetcher and target action parsing
-    │   ├── 📄 preferences_store.dart # Remote configuration sync for user-specific choices
-    │   ├── 📄 profile.dart        # Connect Profile, photos, and ID-based details retrieval
-    │   ├── 📄 progress.dart       # Degree audit tracker backend helper
-    │   ├── 📄 repository_cache.dart # Cache wrapper for database resources (offline-first behavior)
-    │   ├── 📄 schedule.dart       # API handlers to pull academic routines and timings
-    │   └── 📄 seat_status.dart    # WebSocket connector & HTTP client for real-time section seat tracking
-    │
-    ├── 📂 model/                  # Data serialization models and JSON converters
-    │   ├── 📄 calendar_info.dart  # Calendar event entities and lists
-    │   ├── 📄 custom_schedule.dart # Custom routines, class slots, and times parsing
-    │   ├── 📄 friend_schedule.dart # Peer routine formats, QR compression structure
-    │   ├── 📄 progress_info.dart  # Grades, GPA sheets, and course credentials representation
-    │   └── 📄 section_info.dart   # Course sections details (seats, timings, faculty)
-    │
-    ├── 📂 tools/                  # Shared utilities, cache managers, and system bridges
-    │   ├── 📂 http/               # HTTP client variants for mobile, web, and sandbox environments
-    │   ├── 📄 app_paths.dart      # Resolves platform-specific file directories
-    │   ├── 📄 app_storage.dart    # Persistent storage engine utilizing SharedPreferences
-    │   ├── 📄 storage_keys.dart   # Unique constants representing keys in SharedPreferences
-    │   ├── 📄 client_bridge.dart  # Native JS bridge execution helper (Chrome Extension API)
-    │   ├── 📄 token_storage.dart  # Vault for storing SSO access keys securely (Keychain/KeyStore)
-    │   ├── 📄 time_utils.dart     # Routine conflict detection, timings, and Ramadan offset helpers
-    │   └── 📄 cached_image.dart   # Network image optimizer utilizing storage cache
-    │
-    ├── 📂 widgets/                # Shared global UI elements
-    │   └── 📄 image_web.dart      # Platform-specific image asset handling for web extension
-    │
-    └── 📂 pages/                  # Application screens and main sub-modules
-        ├── 📄 login.dart          # Connection SSO login screen (OAuth2 WebView / Auth Flow)
-        ├── 📄 onboarding.dart     # Welcome onboarding slider and first-time setup UI
-        ├── 📄 home.dart           # Hub container managing layout navigation tabs
-        ├── 📄 home_tab.dart       # Tab state wrapper controls
-        │
-        ├── 📂 home_sections/      # UI components under the dashboard tab
-        │   ├── 📄 dashboard_view.dart    # Daily class schedules, quick actions grid
-        │   ├── 📄 student_overview.dart  # Academic status summaries card (GPA, credits)
-        │   └── 📄 exam_countdown.dart    # Upcoming exam reminder cards
-        │
-        ├── 📄 class_schedule.dart # Student routine view, class details, classroom finder
-        ├── 📄 exam_schedule.dart  # Dynamic midterm and final exam schedules viewer
-        ├── 📄 seat_status.dart    # Section seats tracker with filters, real-time sync
-        ├── 📄 alarms.dart         # Class and exam alarms scheduling dashboard
-        ├── 📄 notifications.dart  # Feed list of system alerts, news, and seat-alert triggers
-        │
-        ├── 📂 shared_widgets/     # Reusable modals, filters, and cards
-        │   ├── 📄 seat_status.dart       # Card for checking seats capacity metrics
-        │   ├── 📄 ui_core.dart           # Standard wrappers, buttons, alerts, and texts
-        │   └── 📄 grade_card.dart        # Cards representing GPA scores, letter grades
-        │
-        ├── 📂 friend_schedule_sections/  # Peer routines management and comparative tools
-        │   ├── 📄 friend_detail.dart     # Synced details of individual peer schedules
-        │   └── 📄 compare_schedules.dart  # Matrix comparing availability overlaps between friends
-        │
-        ├── 📂 custom_schedules_sections/ # Draft routines planner tools
-        │
-        ├── 📂 student_profile_sections/  # Full academic profile view tabs
-        │   ├── 📄 academic_summary.dart  # Semester-wise transcript details
-        │   ├── 📄 payment_list.dart      # Student invoice logs, tuition payments, and balances
-        │   └── 📄 attendance_summary.dart # Course-wise recorded attendance analysis
-        │
-        ├── 📄 degree_progress.dart  # Graduation checklist, program outline audit
-        ├── 📄 cgpa_calculator.dart  # Cumulative GPA simulator, goal trackers
-        ├── 📄 calendar.dart         # University academic calendar event lists
-        ├── 📂 bus/                  # Shuttle routes, departure lists, bus tracking pages
-        ├── 📄 free_labs.dart        # Real-time computer lab slots status
-        ├── 📄 wifi_printer.dart     # Local printing services connection guidelines
-        ├── 📄 captive_wifi.dart     # Auto-configuration helper for campus captive portal Wi-Fi
-        ├── 📄 share_schedule.dart   # QR compression and schedule exporting page
-        ├── 📄 scan_schedule.dart    # QR camera scanner for peer schedules
-        ├── 📄 custom_schedules.dart # Custom ROUTINE creator and editor dashboard
-        ├── 📄 all_courses.dart      # Course catalogue and database searcher
-        ├── 📄 requirement_courses.dart # Departmental course requirements details
-        ├── 📄 api_test.dart         # Diagnostic tool for testing Connect APIs
-        ├── 📄 devs.dart             # Developer team details and donor funding methods
-        ├── 📄 ui_kit.dart           # Custom styling guidelines and component sandbox
-        └── 📄 settings.dart         # App language, cache, theme, and notification configs
-```
-
 ## Documentation
 
 - Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
@@ -404,16 +293,121 @@ Please see our [trademark guidelines](https://github.com/sabbirba/preconnect/blo
 
 ## Star History
 
-<a href="https://star-history.com/#sabbirba/preconnect">
-  <picture>
-    <source
-      media="(prefers-color-scheme: dark)"
-      srcset="https://api.star-history.com/svg?repos=sabbirba/preconnect&type=Date&theme=dark"
-    />
-    <source
-      media="(prefers-color-scheme: light)"
-      srcset="https://api.star-history.com/svg?repos=sabbirba/preconnect&type=Date"
-    />
-    <img src="https://api.star-history.com/svg?repos=sabbirba/preconnect&type=Date" alt="Star History Chart" width="100%" />
-  </picture>
+<a href="https://www.star-history.com/?repos=sabbirba%2Fpreconnect&type=timeline&logscale=&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=sabbirba/preconnect&type=timeline&theme=dark&logscale&legend=bottom-right&sealed_token=dmgRscdO9TU6KDPZAIl9d9x1UPoG0u1WT3n3lHxjOxK7l_wa-i5gkJBMR0AoyflKYpnZ0LVU7QT94gZcKnJGqWhmq96kpGAdte5eUelsusm4o0-kEJ-91g" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=sabbirba/preconnect&type=timeline&logscale&legend=bottom-right&sealed_token=dmgRscdO9TU6KDPZAIl9d9x1UPoG0u1WT3n3lHxjOxK7l_wa-i5gkJBMR0AoyflKYpnZ0LVU7QT94gZcKnJGqWhmq96kpGAdte5eUelsusm4o0-kEJ-91g" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=sabbirba/preconnect&type=timeline&logscale&legend=bottom-right&sealed_token=dmgRscdO9TU6KDPZAIl9d9x1UPoG0u1WT3n3lHxjOxK7l_wa-i5gkJBMR0AoyflKYpnZ0LVU7QT94gZcKnJGqWhmq96kpGAdte5eUelsusm4o0-kEJ-91g" />
+ </picture>
 </a>
+
+## Project Map
+
+A detailed visual directory structure of the repository, including core files, models, APIs, and cross-platform configurations:
+
+```bash
+preconnect/
+├── 📂 .github/workflows/          # CI/CD pipelines
+│   ├── 📄 release.yml             # Handles auto-bumps, builds APK/AAB/Extension/Web
+│   └── 📄 store-promotion.yml     # Weekly scheduled production deployment track
+├── 📂 android/                    # Android native project configuration and Kotlin settings
+├── 📂 ios/                        # iOS native project runner configs and Swift setups
+├── 📂 macos/                      # macOS desktop application runner configs
+├── 📂 web/                        # Chrome Extension & Web app build shell
+│   ├── 📄 manifest.json           # Extension configuration (permissions, scripts, icons, keys)
+│   └── 📄 background.dart.js      # Compiled service worker executing in the extension background
+├── 📂 assets/                     # App-wide visual elements, vector SVGs, and launcher icons
+└── 📂 lib/                        # Core Flutter codebase
+    ├── 📄 main.dart               # App entry point (initializes storage, firebase, routing)
+    ├── 📄 app.dart                # Top-level shell widget (hosts router, themes, status page observer)
+    ├── 📄 firebase_options.dart   # Firebase app configurations (generated)
+    │
+    ├── 📂 api/                    # HTTP clients and remote server controllers
+    │   ├── 📄 api_client.dart     # HTTP client wrapper (handles SSO tokens, headers, and errors)
+    │   ├── 📄 api_config.dart     # Backend base URL and API endpoints mapping
+    │   ├── 📄 auth.dart           # Connection SSO authorization logic and login status checker
+    │   ├── 📄 calendar.dart       # Fetches university academic calendar milestones
+    │   ├── 📄 cdn_warmup.dart     # Service to pre-ping and warm up CDNs on launch
+    │   ├── 📄 custom_schedules.dart # Sync utility for custom/personal student routines
+    │   ├── 📄 exam_map.dart       # API queries to fetch campus building/exam hall map URLs
+    │   ├── 📄 fcm.dart            # Firebase Cloud Messaging device registration & token updates
+    │   ├── 📄 friend_store.dart   # Dynamic peer schedule sync & storage manager
+    │   ├── 📄 grade_sheet.dart    # Academic grades, credits, and CGPA retrieval connectors
+    │   ├── 📄 notification.dart   # In-app notifications fetcher and target action parsing
+    │   ├── 📄 preferences_store.dart # Remote configuration sync for user-specific choices
+    │   ├── 📄 profile.dart        # Connect Profile, photos, and ID-based details retrieval
+    │   ├── 📄 progress.dart       # Degree audit tracker backend helper
+    │   ├── 📄 repository_cache.dart # Cache wrapper for database resources (offline-first behavior)
+    │   ├── 📄 schedule.dart       # API handlers to pull academic routines and timings
+    │   └── 📄 seat_status.dart    # WebSocket connector & HTTP client for real-time section seat tracking
+    │
+    ├── 📂 model/                  # Data serialization models and JSON converters
+    │   ├── 📄 calendar_info.dart  # Calendar event entities and lists
+    │   ├── 📄 custom_schedule.dart # Custom routines, class slots, and times parsing
+    │   ├── 📄 friend_schedule.dart # Peer routine formats, QR compression structure
+    │   ├── 📄 progress_info.dart  # Grades, GPA sheets, and course credentials representation
+    │   └── 📄 section_info.dart   # Course sections details (seats, timings, faculty)
+    │
+    ├── 📂 tools/                  # Shared utilities, cache managers, and system bridges
+    │   ├── 📂 http/               # HTTP client variants for mobile, web, and sandbox environments
+    │   ├── 📄 app_paths.dart      # Resolves platform-specific file directories
+    │   ├── 📄 app_storage.dart    # Persistent storage engine utilizing SharedPreferences
+    │   ├── 📄 storage_keys.dart   # Unique constants representing keys in SharedPreferences
+    │   ├── 📄 client_bridge.dart  # Native JS bridge execution helper (Chrome Extension API)
+    │   ├── 📄 token_storage.dart  # Vault for storing SSO access keys securely (Keychain/KeyStore)
+    │   ├── 📄 time_utils.dart     # Routine conflict detection, timings, and Ramadan offset helpers
+    │   └── 📄 cached_image.dart   # Network image optimizer utilizing storage cache
+    │
+    ├── 📂 widgets/                # Shared global UI elements
+    │   └── 📄 image_web.dart      # Platform-specific image asset handling for web extension
+    │
+    └── 📂 pages/                  # Application screens and main sub-modules
+        ├── 📄 login.dart          # Connection SSO login screen (OAuth2 WebView / Auth Flow)
+        ├── 📄 onboarding.dart     # Welcome onboarding slider and first-time setup UI
+        ├── 📄 home.dart           # Hub container managing layout navigation tabs
+        ├── 📄 home_tab.dart       # Tab state wrapper controls
+        │
+        ├── 📂 home_sections/      # UI components under the dashboard tab
+        │   ├── 📄 dashboard_view.dart    # Daily class schedules, quick actions grid
+        │   ├── 📄 student_overview.dart  # Academic status summaries card (GPA, credits)
+        │   └── 📄 exam_countdown.dart    # Upcoming exam reminder cards
+        │
+        ├── 📄 class_schedule.dart # Student routine view, class details, classroom finder
+        ├── 📄 exam_schedule.dart  # Dynamic midterm and final exam schedules viewer
+        ├── 📄 seat_status.dart    # Section seats tracker with filters, real-time sync
+        ├── 📄 alarms.dart         # Class and exam alarms scheduling dashboard
+        ├── 📄 notifications.dart  # Feed list of system alerts, news, and seat-alert triggers
+        │
+        ├── 📂 shared_widgets/     # Reusable modals, filters, and cards
+        │   ├── 📄 seat_status.dart       # Card for checking seats capacity metrics
+        │   ├── 📄 ui_core.dart           # Standard wrappers, buttons, alerts, and texts
+        │   └── 📄 grade_card.dart        # Cards representing GPA scores, letter grades
+        │
+        ├── 📂 friend_schedule_sections/  # Peer routines management and comparative tools
+        │   ├── 📄 friend_detail.dart     # Synced details of individual peer schedules
+        │   └── 📄 compare_schedules.dart  # Matrix comparing availability overlaps between friends
+        │
+        ├── 📂 custom_schedules_sections/ # Draft routines planner tools
+        │
+        ├── 📂 student_profile_sections/  # Full academic profile view tabs
+        │   ├── 📄 academic_summary.dart  # Semester-wise transcript details
+        │   ├── 📄 payment_list.dart      # Student invoice logs, tuition payments, and balances
+        │   └── 📄 attendance_summary.dart # Course-wise recorded attendance analysis
+        │
+        ├── 📄 degree_progress.dart  # Graduation checklist, program outline audit
+        ├── 📄 cgpa_calculator.dart  # Cumulative GPA simulator, goal trackers
+        ├── 📄 calendar.dart         # University academic calendar event lists
+        ├── 📂 bus/                  # Shuttle routes, departure lists, bus tracking pages
+        ├── 📄 free_labs.dart        # Real-time computer lab slots status
+        ├── 📄 wifi_printer.dart     # Local printing services connection guidelines
+        ├── 📄 captive_wifi.dart     # Auto-configuration helper for campus captive portal Wi-Fi
+        ├── 📄 share_schedule.dart   # QR compression and schedule exporting page
+        ├── 📄 scan_schedule.dart    # QR camera scanner for peer schedules
+        ├── 📄 custom_schedules.dart # Custom ROUTINE creator and editor dashboard
+        ├── 📄 all_courses.dart      # Course catalogue and database searcher
+        ├── 📄 requirement_courses.dart # Departmental course requirements details
+        ├── 📄 api_test.dart         # Diagnostic tool for testing Connect APIs
+        ├── 📄 devs.dart             # Developer team details and donor funding methods
+        ├── 📄 ui_kit.dart           # Custom styling guidelines and component sandbox
+        └── 📄 settings.dart         # App language, cache, theme, and notification configs
+```
