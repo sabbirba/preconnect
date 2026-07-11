@@ -68,17 +68,33 @@ post_install do |installer|
   end
 
   installer.aggregate_targets.each do |target|
-    target.build_configurations.each do |config|
+    target.xcconfigs.each do |config_name, xcconfig|
       %w[LIBRARY_SEARCH_PATHS FRAMEWORK_SEARCH_PATHS].each do |key|
-        paths = config.build_settings[key]
+        paths = xcconfig.attributes[key]
         if paths
           if paths.is_a?(Array)
-            config.build_settings[key] = paths.reject { |p| p.include?('MetalToolchain') }
+            xcconfig.attributes[key] = paths.reject { |p| p.include?('MetalToolchain') }
           elsif paths.is_a?(String)
-            config.build_settings[key] = paths.split(' ').reject { |p| p.include?('MetalToolchain') }.join(' ')
+            xcconfig.attributes[key] = paths.split(' ').reject { |p| p.include?('MetalToolchain') }.join(' ')
           end
         end
       end
     end
+
+    target.user_project.targets.each do |user_target|
+      user_target.build_configurations.each do |config|
+        %w[LIBRARY_SEARCH_PATHS FRAMEWORK_SEARCH_PATHS].each do |key|
+          paths = config.build_settings[key]
+          if paths
+            if paths.is_a?(Array)
+              config.build_settings[key] = paths.reject { |p| p.include?('MetalToolchain') }
+            elsif paths.is_a?(String)
+              config.build_settings[key] = paths.split(' ').reject { |p| p.include?('MetalToolchain') }.join(' ')
+            end
+          end
+        end
+      end
+    end
+    target.user_project.save
   end
 end
