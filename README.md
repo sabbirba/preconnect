@@ -295,9 +295,9 @@ Please see our [trademark guidelines](https://github.com/sabbirba/preconnect/blo
 
 <a href="https://www.star-history.com/?repos=sabbirba%2Fpreconnect&type=timeline&logscale=&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=sabbirba/preconnect&type=timeline&theme=dark&logscale&legend=bottom-right&sealed_token=dmgRscdO9TU6KDPZAIl9d9x1UPoG0u1WT3n3lHxjOxK7l_wa-i5gkJBMR0AoyflKYpnZ0LVU7QT94gZcKnJGqWhmq96kpGAdte5eUelsusm4o0-kEJ-91g" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=sabbirba/preconnect&type=timeline&logscale&legend=bottom-right&sealed_token=dmgRscdO9TU6KDPZAIl9d9x1UPoG0u1WT3n3lHxjOxK7l_wa-i5gkJBMR0AoyflKYpnZ0LVU7QT94gZcKnJGqWhmq96kpGAdte5eUelsusm4o0-kEJ-91g" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=sabbirba/preconnect&type=timeline&logscale&legend=bottom-right&sealed_token=dmgRscdO9TU6KDPZAIl9d9x1UPoG0u1WT3n3lHxjOxK7l_wa-i5gkJBMR0AoyflKYpnZ0LVU7QT94gZcKnJGqWhmq96kpGAdte5eUelsusm4o0-kEJ-91g" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=sabbirba/preconnect&type=timeline&theme=dark&logscale&legend=top-left&sealed_token=Ag1I2dIzxyH3nMh5IpWlMvpxC7LyuJivosi_OSce_Wcf6LFmYcgMuJFsIibo4AUlI3pgAmbXl_jKXqNJdrXllCa1NE74Wt5D0q85JIGbsP0zGt2x07WIkg" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=sabbirba/preconnect&type=timeline&logscale&legend=top-left&sealed_token=Ag1I2dIzxyH3nMh5IpWlMvpxC7LyuJivosi_OSce_Wcf6LFmYcgMuJFsIibo4AUlI3pgAmbXl_jKXqNJdrXllCa1NE74Wt5D0q85JIGbsP0zGt2x07WIkg" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=sabbirba/preconnect&type=timeline&logscale&legend=top-left&sealed_token=Ag1I2dIzxyH3nMh5IpWlMvpxC7LyuJivosi_OSce_Wcf6LFmYcgMuJFsIibo4AUlI3pgAmbXl_jKXqNJdrXllCa1NE74Wt5D0q85JIGbsP0zGt2x07WIkg" />
  </picture>
 </a>
 
