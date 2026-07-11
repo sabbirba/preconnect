@@ -10,6 +10,7 @@ class BracuSelectChip extends StatelessWidget {
     this.showArrow = true,
     this.compact = false,
     this.borderRadius = 18,
+    this.showBorder = true,
   });
 
   final String? label;
@@ -19,6 +20,7 @@ class BracuSelectChip extends StatelessWidget {
   final bool showArrow;
   final bool compact;
   final double borderRadius;
+  final bool showBorder;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +51,7 @@ class BracuSelectChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(resolvedRadius),
-          border: Border.all(color: borderColor),
+          border: showBorder ? Border.all(color: borderColor) : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -57,7 +59,7 @@ class BracuSelectChip extends StatelessWidget {
             if (icon != null) ...[
               Icon(
                 icon,
-                size: label == null ? (compact ? 20 : 22) : (compact ? 15 : 16),
+                size: label == null ? (compact ? 22 : 24) : (compact ? 15 : 16),
                 color: primaryColor,
               ),
               if (label != null || showArrow) const SizedBox(width: 6),

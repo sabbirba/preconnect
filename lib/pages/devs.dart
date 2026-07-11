@@ -7,7 +7,6 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/pages/api_test.dart';
 import 'package:preconnect/pages/device_diagnostics.dart';
-import 'package:preconnect/api/funding.dart';
 import 'package:preconnect/pages/settings.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/build_info.dart';
@@ -325,9 +324,10 @@ class _DevsPageState extends State<DevsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(height: 10),
-        BracuFundingPromoDivider(),
-        SizedBox(height: 10),
-        _FundingCard(),
+        BracuFundingPromoDivider(showSupporters: false),
+        SizedBox(height: 12),
+        BracuFundingSupportContent(),
+        BracuCampaignSupporters(showToggle: true),
       ],
     );
   }
@@ -442,213 +442,6 @@ class _ContributorsGrid extends StatelessWidget {
           },
         );
       },
-    );
-  }
-}
-
-class _SupporterTile extends StatelessWidget {
-  const _SupporterTile({required this.item});
-  final ContributionItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    Widget avatar;
-    if (item.picture != null && item.picture!.startsWith('http')) {
-      avatar = ClipOval(
-        child: CachedImage(url: item.picture!, fit: BoxFit.cover),
-      );
-    } else {
-      avatar = CircleAvatar(
-        backgroundColor: isDark
-            ? const Color(0xFF1E293B)
-            : const Color(0xFFE2E8F0),
-        child: Icon(
-          Icons.person_rounded,
-          size: 20,
-          color: BracuPalette.textPrimary(context),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          SizedBox(width: 38, height: 38, child: avatar),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              item.name,
-              style: TextStyle(
-                color: BracuPalette.textPrimary(context),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          Text(
-            '৳${item.amount}',
-            style: TextStyle(
-              color: BracuPalette.primary,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FundingCard extends StatefulWidget {
-  const _FundingCard();
-
-  @override
-  State<_FundingCard> createState() => _FundingCardState();
-}
-
-class _FundingCardState extends State<_FundingCard> {
-  FundingStatus? _status;
-  bool _expanded = false;
-  bool _refreshing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _status = FundingService.cached;
-    _loadStatus();
-  }
-
-  Future<void> _loadStatus() async {
-    if (_refreshing) return;
-    if (mounted) setState(() => _refreshing = true);
-    final res = await FundingService.fetchStatus();
-    if (mounted) {
-      setState(() {
-        if (res != null) _status = res;
-        _refreshing = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final rawContributions =
-        _status?.contributions ?? const <ContributionItem>[];
-
-    final Map<String, ContributionItem> grouped = {};
-    for (final item in rawContributions) {
-      final key = item.name.trim();
-      final existing = grouped[key];
-      if (existing == null) {
-        grouped[key] = item;
-      } else {
-        grouped[key] = ContributionItem(
-          name: existing.name,
-          picture: existing.picture ?? item.picture,
-          amount: existing.amount + item.amount,
-          ts: existing.ts > item.ts ? existing.ts : item.ts,
-        );
-      }
-    }
-
-    final contributions = grouped.values.toList();
-    contributions.sort((a, b) {
-      final cmp = b.amount.compareTo(a.amount);
-      if (cmp != 0) return cmp;
-      return b.ts.compareTo(a.ts);
-    });
-
-    final showCount = _expanded
-        ? contributions.length
-        : (contributions.length > 5 ? 5 : contributions.length);
-    final hasMore = contributions.length > 5;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 12),
-        const BracuFundingSupportContent(),
-        if (contributions.isNotEmpty) ...[
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const BracuSectionTitle(title: 'Campaign Supporters'),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${contributions.length}',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: BracuPalette.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  SizedBox(
-                    width: 28,
-                    height: 28,
-                    child: _refreshing
-                        ? Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: BracuPalette.primary,
-                            ),
-                          )
-                        : IconButton(
-                            padding: EdgeInsets.zero,
-                            visualDensity: VisualDensity.compact,
-                            icon: Icon(
-                              Icons.refresh_rounded,
-                              size: 18,
-                              color: BracuPalette.primary,
-                            ),
-                            onPressed: _loadStatus,
-                          ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          for (int i = 0; i < showCount; i++) ...[
-            _SupporterTile(item: contributions[i]),
-            if (i < showCount - 1)
-              Divider(
-                height: 12,
-                thickness: 1,
-                color: BracuPalette.textSecondary(
-                  context,
-                ).withValues(alpha: isDark ? 0.22 : 0.14),
-              ),
-          ],
-          if (hasMore) ...[
-            const SizedBox(height: 10),
-            Center(
-              child: TextButton(
-                onPressed: () {
-                  setState(() {
-                    _expanded = !_expanded;
-                  });
-                },
-                child: Text(
-                  _expanded ? 'Show Less' : 'Show More',
-                  style: TextStyle(
-                    color: BracuPalette.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ],
     );
   }
 }

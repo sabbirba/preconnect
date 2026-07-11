@@ -461,6 +461,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
           selected: _showDoneSections,
           compact: true,
           showArrow: false,
+          showBorder: false,
           onTap: _toggleDoneView,
         ),
       ],

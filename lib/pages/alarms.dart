@@ -788,6 +788,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           selected: _showDoneAlarms,
           compact: true,
           showArrow: false,
+          showBorder: false,
           onTap: () {
             setState(() {
               _showDoneAlarms = !_showDoneAlarms;

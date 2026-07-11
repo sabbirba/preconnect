@@ -363,6 +363,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           selected: _showDoneExams,
           compact: true,
           showArrow: false,
+          showBorder: false,
           onTap: _toggleExamView,
         ),
       ],

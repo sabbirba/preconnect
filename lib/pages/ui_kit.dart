@@ -10,6 +10,7 @@ import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/api/progress.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/api/grade_sheet.dart';
+import 'package:preconnect/api/funding.dart';
 import 'package:preconnect/model/progress_info.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/cgpa_calculator.dart';
@@ -911,7 +912,8 @@ class BracuCommunityLink extends StatelessWidget {
 }
 
 class BracuFundingPromoDivider extends StatelessWidget {
-  const BracuFundingPromoDivider({super.key});
+  const BracuFundingPromoDivider({super.key, this.showSupporters = false});
+  final bool showSupporters;
 
   @override
   Widget build(BuildContext context) {
@@ -983,7 +985,227 @@ class BracuFundingPromoDivider extends StatelessWidget {
             style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
           ),
         ),
+        if (showSupporters)
+          const BracuCampaignSupporters(showToggle: false, maxCount: 5),
       ],
+    );
+  }
+}
+
+class BracuCampaignSupporters extends StatefulWidget {
+  const BracuCampaignSupporters({
+    super.key,
+    this.showToggle = true,
+    this.maxCount,
+  });
+  final bool showToggle;
+  final int? maxCount;
+
+  @override
+  State<BracuCampaignSupporters> createState() =>
+      _BracuCampaignSupportersState();
+}
+
+class _BracuCampaignSupportersState extends State<BracuCampaignSupporters> {
+  FundingStatus? _status;
+  bool _expanded = false;
+  bool _refreshing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _status = FundingService.cached;
+    _loadStatus();
+  }
+
+  Future<void> _loadStatus() async {
+    if (_refreshing) return;
+    if (mounted) setState(() => _refreshing = true);
+    final res = await FundingService.fetchStatus();
+    if (mounted) {
+      setState(() {
+        if (res != null) _status = res;
+        _refreshing = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final rawContributions =
+        _status?.contributions ?? const <ContributionItem>[];
+
+    final Map<String, ContributionItem> grouped = {};
+    for (final item in rawContributions) {
+      final key = item.name.trim();
+      final existing = grouped[key];
+      if (existing == null) {
+        grouped[key] = item;
+      } else {
+        grouped[key] = ContributionItem(
+          name: existing.name,
+          picture: existing.picture ?? item.picture,
+          amount: existing.amount + item.amount,
+          ts: existing.ts > item.ts ? existing.ts : item.ts,
+        );
+      }
+    }
+
+    final contributions = grouped.values.toList();
+    contributions.sort((a, b) {
+      final cmp = b.amount.compareTo(a.amount);
+      if (cmp != 0) return cmp;
+      return b.ts.compareTo(a.ts);
+    });
+
+    final bool expanded = !widget.showToggle || _expanded;
+    int showCount = expanded
+        ? contributions.length
+        : (contributions.length > 5 ? 5 : contributions.length);
+    if (widget.maxCount != null && showCount > widget.maxCount!) {
+      showCount = widget.maxCount!;
+    }
+    final hasMore = widget.showToggle && contributions.length > 5;
+
+    if (contributions.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const BracuSectionTitle(title: 'Campaign Supporters'),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${contributions.length}',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: BracuPalette.primary,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: _refreshing
+                      ? Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: BracuPalette.primary,
+                          ),
+                        )
+                      : InkWell(
+                          onTap: _loadStatus,
+                          borderRadius: BorderRadius.circular(14),
+                          child: Center(
+                            child: Icon(
+                              Icons.refresh_rounded,
+                              size: 26,
+                              color: BracuPalette.primary,
+                            ),
+                          ),
+                        ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        for (int i = 0; i < showCount; i++) ...[
+          _BracuSupporterTile(item: contributions[i]),
+          if (i < showCount - 1)
+            Divider(
+              height: 12,
+              thickness: 1,
+              color: BracuPalette.textSecondary(
+                context,
+              ).withValues(alpha: isDark ? 0.22 : 0.14),
+            ),
+        ],
+        if (hasMore) ...[
+          const SizedBox(height: 10),
+          Center(
+            child: TextButton(
+              onPressed: () {
+                setState(() {
+                  _expanded = !_expanded;
+                });
+              },
+              child: Text(
+                _expanded ? 'Show Less' : 'Show More',
+                style: TextStyle(
+                  color: BracuPalette.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _BracuSupporterTile extends StatelessWidget {
+  const _BracuSupporterTile({required this.item});
+  final ContributionItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    Widget avatar;
+    if (item.picture != null && item.picture!.startsWith('http')) {
+      avatar = ClipOval(
+        child: CachedImage(url: item.picture!, fit: BoxFit.cover),
+      );
+    } else {
+      avatar = CircleAvatar(
+        backgroundColor: isDark
+            ? const Color(0xFF1E293B)
+            : const Color(0xFFE2E8F0),
+        child: Icon(
+          Icons.person_rounded,
+          size: 20,
+          color: BracuPalette.textPrimary(context),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          SizedBox(width: 38, height: 38, child: avatar),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              item.name,
+              style: TextStyle(
+                color: BracuPalette.textPrimary(context),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Text(
+            '৳${item.amount}',
+            style: TextStyle(
+              color: BracuPalette.primary,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

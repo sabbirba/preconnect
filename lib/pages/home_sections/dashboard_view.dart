@@ -550,7 +550,9 @@ extension _HomeDashboardView on _HomeDashboardState {
                                 ],
                                 if (cardVisibility.showFundingSection) ...[
                                   const SizedBox(height: 12),
-                                  const BracuFundingPromoDivider(),
+                                  const BracuFundingPromoDivider(
+                                    showSupporters: true,
+                                  ),
                                 ],
                                 const SizedBox(height: 12),
                                 if (data == null)
