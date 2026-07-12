@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -272,9 +273,15 @@ class _LoginPageState extends State<LoginPage> {
   WebViewController _buildMobileWebView() {
     LoginPage.pkceVerifier ??= generatePkceVerifier();
     final codeChallenge = codeChallengeS256(LoginPage.pkceVerifier!);
-    final controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.transparent);
+
+    final WebViewController controller =
+        !(Platform.isMacOS)
+              ? (WebViewController()
+                  ..setJavaScriptMode(JavaScriptMode.unrestricted)
+                  ..setBackgroundColor(Colors.transparent))
+              : WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted);
+
     if (_shouldUseMobileUserAgent) {
       controller.setUserAgent(kPreConnectUserAgent);
     }
