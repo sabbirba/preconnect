@@ -103,12 +103,9 @@ extension _HomeDashboardView on _HomeDashboardState {
                               (photoUrl ?? '').trim().isNotEmpty;
                           final isTopBarLoading =
                               data == null || !hasTopBarData;
-                          final hasScheduleData = (data?.scheduleJson ?? '')
-                              .trim()
-                              .isNotEmpty;
                           final isTodayScheduleLoading =
                               cardVisibility.showTodaySchedule &&
-                              (data == null || !hasScheduleData);
+                              data == null;
                           final ramadan =
                               data?.ramadan ??
                               const RamadanStatus(isRamadan: false);

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -29,7 +30,7 @@ class LibSyncPage extends StatefulWidget {
   State<LibSyncPage> createState() => _LibSyncPageState();
 }
 
-class _LibSyncPageState extends State<LibSyncPage> {
+class _LibSyncPageState extends State<LibSyncPage> with RefreshBusState<LibSyncPage> {
   List<dynamic>? _reservationByYear;
   List<dynamic>? _recentReservations;
   List<dynamic>? _checkQuota;
@@ -74,6 +75,7 @@ class _LibSyncPageState extends State<LibSyncPage> {
     });
     LibSyncAuthService.instance.state.addListener(_onAuthStateChanged);
     _onAuthStateChanged();
+    bindRefreshBus(_onRefreshSignal);
   }
 
   Future<void> _loadDiskCache() async {
@@ -117,8 +119,17 @@ class _LibSyncPageState extends State<LibSyncPage> {
 
   @override
   void dispose() {
+    unbindRefreshBus(_onRefreshSignal);
     LibSyncAuthService.instance.state.removeListener(_onAuthStateChanged);
     super.dispose();
+  }
+
+  void _onRefreshSignal() {
+    if (!mounted) return;
+    final reason = refreshBusReason;
+    if (reason == 'libsync' || reason == 'auth') {
+      unawaited(_loadReservationData());
+    }
   }
 
   void _onAuthStateChanged() {

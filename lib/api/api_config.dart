@@ -35,20 +35,19 @@ class ApiConfig {
 
   static String get authEndpoint => '$ssoBase/auth';
 
-  static const String cdnApiBase = 'https://cdn.preconnect.app/api';
   static const String realtimeApiBase = 'https://api.preconnect.app';
   static const String seatStatusProxyBase = realtimeApiBase;
-  static const String publicJsonBase = cdnApiBase;
+  static const String publicJsonBase = realtimeApiBase;
   static const String seatStatusDataUrl = '$realtimeApiBase/connect.json';
-  static const String busDataUrl = '$cdnApiBase/data/bus.json';
-  static const String freeLabsDataUrl = '$cdnApiBase/freelabs.json';
-  static const String examMapIndexUrl = '$cdnApiBase/data/exammap.json';
+  static const String busDataUrl = '$realtimeApiBase/data/bus.json';
+  static const String freeLabsDataUrl = '$realtimeApiBase/freelabs.json';
+  static const String examMapIndexUrl = '$realtimeApiBase/data/exammap.json';
   static const String announcementFeedUrl =
-      '$cdnApiBase/data/announcements.json';
-  static const String newsFeedUrl = '$cdnApiBase/data/news.json';
-  static const String academicDatesUrl = '$cdnApiBase/data/academic-dates.json';
-  static const String campusMapUrl = '$cdnApiBase/data/map.json';
-  static const String transportUrl = '$cdnApiBase/data/transport.json';
+      '$realtimeApiBase/data/announcements.json';
+  static const String newsFeedUrl = '$realtimeApiBase/data/news.json';
+  static const String academicDatesUrl = '$realtimeApiBase/data/academic-dates.json';
+  static const String campusMapUrl = '$realtimeApiBase/data/map.json';
+  static const String transportUrl = '$realtimeApiBase/data/transport.json';
 
   static String get connectApiBase {
     if (_kIsWeb && !isChromeRuntimeAvailable()) {
@@ -76,7 +75,7 @@ class ApiConfig {
   static const String websiteBase = 'https://preconnect.app';
   static const String websiteMueenAvatarUrl =
       'https://preconnect.app/Mueen-Ahmmed.jpeg';
-  static const String filesBase = 'https://cdn.preconnect.app';
+  static const String filesBase = 'https://api.preconnect.app';
 
   static const String clientId = 'slm';
   static String get redirectUri => _kIsWeb

@@ -516,6 +516,7 @@ class _MyAppState extends State<MyApp>
         RefreshBus.instance.notify(reason: 'degree_progress');
         RefreshBus.instance.notify(reason: 'calendar');
         RefreshBus.instance.notify(reason: 'notifications');
+        RefreshBus.instance.notify(reason: 'libsync');
       }
     } catch (_) {
     } finally {

@@ -213,7 +213,7 @@ Play Console crash/ANR symbolication without bundling full debug symbols.
 iOS no-codesign build:
 
 ```bash
-flutter build ipa --no-codesign --tree-shake-icons --obfuscate --split-debug-info=build/symbols/ios --extra-gen-snapshot-options=--strip --dart-define-from-file=.env
+flutter build ipa --no-codesign --tree-shake-icons --obfuscate --split-debug-info=build/symbols/ios --extra-gen-snapshot-options=--strip
 ```
 
 iOS no-codesign build with env values:
