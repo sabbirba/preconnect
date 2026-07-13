@@ -800,6 +800,8 @@ class _StatsGrid extends StatelessWidget {
   }
 }
 
+enum CheckInAvailability { yes, no, awaiting }
+
 class _BarItem extends StatelessWidget {
   const _BarItem({
     required this.label,
@@ -891,6 +893,7 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
           final code = res['reservation_code']?.toString() ?? 'N/A';
           final uniqueToken = res['unique_token']?.toString() ?? '';
           final status = (res['status'] ?? '').toString();
+          final checkInStatus = _getCheckInAvailability(res);
 
           Color statusColor;
           switch (status.toLowerCase()) {
@@ -1002,8 +1005,12 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                   isValueBold: true,
                   valueColor: statusColor,
                 ),
+                const SizedBox(height: 6),
+                if (checkInStatus == CheckInAvailability.awaiting)
+                  _InfoLine(label: 'Check-In?', value: 'Awaiting (later)'),
+                const SizedBox(height: 6),
                 if (status.toLowerCase() == 'confirmed' &&
-                    _isCheckInAvailable(res)) ...[
+                    checkInStatus == CheckInAvailability.yes) ...[
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -1188,18 +1195,18 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
     return DateTime.tryParse(cleaned);
   }
 
-  bool _isCheckInAvailable(dynamic res) {
+  CheckInAvailability _getCheckInAvailability(dynamic res) {
     try {
       final slots = res['slot'];
-      if (slots is! List || slots.isEmpty) return true;
+      if (slots is! List || slots.isEmpty) return CheckInAvailability.yes;
 
       final slot = slots.first;
       final startTod = BracuTime.parseTime(slot['start_time']?.toString());
       final endTod = BracuTime.parseTime(slot['end_time']?.toString());
-      if (startTod == null || endTod == null) return true;
+      if (startTod == null || endTod == null) return CheckInAvailability.yes;
 
       final date = _parseReservationDate(res['reserve_start_date']?.toString());
-      if (date == null) return true;
+      if (date == null) return CheckInAvailability.yes;
 
       final slotStart = DateTime(
         date.year,
@@ -1217,9 +1224,12 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
       );
       final now = DateTime.now();
 
-      return !now.isBefore(slotStart) && now.isBefore(slotEnd);
+      if (now.isBefore(slotStart)) return CheckInAvailability.awaiting;
+      if (now.isBefore(slotEnd)) return CheckInAvailability.yes;
+      return CheckInAvailability.no;
     } catch (_) {
-      return true; // fail open rather than hiding check-in on a parse error
+      return CheckInAvailability
+          .yes; // fail open rather than hiding check-in on a parse error
     }
   }
 
