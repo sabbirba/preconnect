@@ -35,15 +35,15 @@ String? normalizeImageUrl(String raw, {String? baseUrl}) {
     return normalizeMediaUrl(parsed.toString());
   }
 
-  final base = baseUrl?.trim();
-  if (base != null && base.isNotEmpty) {
-    final baseUri = Uri.tryParse(base);
-    if (baseUri != null) {
-      try {
-        final resolved = baseUri.resolve(value).toString();
-        return normalizeMediaUrl(resolved);
-      } catch (_) {}
-    }
+  final base = (baseUrl != null && baseUrl.trim().isNotEmpty)
+      ? baseUrl.trim()
+      : 'https://connect.bracu.ac.bd';
+  final baseUri = Uri.tryParse(base);
+  if (baseUri != null) {
+    try {
+      final resolved = baseUri.resolve(value).toString();
+      return normalizeMediaUrl(resolved);
+    } catch (_) {}
   }
 
   return null;

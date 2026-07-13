@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -35,6 +36,7 @@ class CachedImage extends StatefulWidget {
 
 class _CachedImageState extends State<CachedImage> {
   Map<String, String>? _headers;
+  File? _localFile;
   bool _loading = true;
 
   @override
@@ -57,12 +59,27 @@ class _CachedImageState extends State<CachedImage> {
       if (mounted) {
         setState(() {
           _headers = null;
+          _localFile = null;
           _loading = false;
         });
       }
       return;
     }
     final uri = Uri.parse(normalized);
+    if (uri.host == 'connect.bracu.ac.bd') {
+      try {
+        final localFile = await ProfileImageCache.instance.getProfileImage(normalized);
+        if (localFile != null && await localFile.exists()) {
+          if (mounted) {
+            setState(() {
+              _localFile = localFile;
+              _loading = false;
+            });
+            return;
+          }
+        }
+      } catch (_) {}
+    }
     final headers = <String, String>{
       'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
       'User-Agent':
@@ -86,6 +103,7 @@ class _CachedImageState extends State<CachedImage> {
     if (mounted) {
       setState(() {
         _headers = headers;
+        _localFile = null;
         _loading = false;
       });
     }
@@ -98,12 +116,20 @@ class _CachedImageState extends State<CachedImage> {
       return widget.error ?? const SizedBox.shrink();
     }
 
+    if (_localFile != null) {
+      return Image.file(
+        _localFile!,
+        width: widget.width,
+        height: widget.height,
+        fit: widget.fit,
+        alignment: widget.alignment,
+        filterQuality: widget.filterQuality,
+      );
+    }
+
     final dpr = MediaQuery.of(context).devicePixelRatio;
     final cacheWidth = widget.width != null && widget.width! > 0
         ? (widget.width! * dpr).round()
-        : null;
-    final cacheHeight = widget.height != null && widget.height! > 0
-        ? (widget.height! * dpr).round()
         : null;
 
     if (rawUrl.startsWith('data:image/')) {
@@ -120,7 +146,6 @@ class _CachedImageState extends State<CachedImage> {
             alignment: widget.alignment,
             filterQuality: widget.filterQuality,
             cacheWidth: cacheWidth,
-            cacheHeight: cacheHeight,
           );
         }
       } catch (_) {}
@@ -145,7 +170,6 @@ class _CachedImageState extends State<CachedImage> {
       alignment: widget.alignment as Alignment,
       filterQuality: widget.filterQuality,
       memCacheWidth: cacheWidth,
-      memCacheHeight: cacheHeight,
       placeholder: (context, url) =>
           widget.placeholder ?? const SizedBox.shrink(),
       errorWidget: (context, url, error) =>
