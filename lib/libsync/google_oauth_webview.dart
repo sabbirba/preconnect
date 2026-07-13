@@ -1,22 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:preconnect/pages/shared_widgets/preconnect_webview.dart';
 import 'libsync_config.dart';
 
-class GoogleOAuthWebViewPage extends StatefulWidget {
+class GoogleOAuthWebViewPage extends StatelessWidget {
   const GoogleOAuthWebViewPage({super.key});
 
   @override
-  State<GoogleOAuthWebViewPage> createState() => _GoogleOAuthWebViewPageState();
-}
-
-class _GoogleOAuthWebViewPageState extends State<GoogleOAuthWebViewPage> {
-  late final WebViewController _controller;
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-
+  Widget build(BuildContext context) {
     final oauthUrl = Uri.parse('https://accounts.google.com/o/oauth2/v2/auth')
         .replace(
           queryParameters: {
@@ -29,53 +20,24 @@ class _GoogleOAuthWebViewPageState extends State<GoogleOAuthWebViewPage> {
           },
         );
 
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setUserAgent(
-        'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36',
-      )
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onNavigationRequest: (request) {
-            if (request.url.startsWith(LibSyncConfig.googleRedirectUri)) {
-              final uri = Uri.parse(request.url);
-              final code = uri.queryParameters['code'];
-              if (code != null) {
-                Navigator.of(context).pop(code);
-              } else {
-                Navigator.of(context).pop();
-              }
-              return NavigationDecision.prevent;
+    return PreConnectWebViewPage(
+      initialUrl: oauthUrl.toString(),
+      userAgent:
+          'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36',
+      delayLoadUntilTransition: true,
+      onNavigationRequest: (request) {
+        if (request.url.startsWith(LibSyncConfig.googleRedirectUri)) {
+          final uri = Uri.parse(request.url);
+          final code = uri.queryParameters['code'];
+          Future.delayed(Duration.zero, () {
+            if (context.mounted) {
+              Navigator.of(context).pop(code);
             }
-            return NavigationDecision.navigate;
-          },
-          onPageStarted: (_) {
-            if (mounted) setState(() => _loading = true);
-          },
-          onPageFinished: (_) {
-            if (mounted) setState(() => _loading = false);
-          },
-        ),
-      )
-      ..loadRequest(oauthUrl);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Google Sign-In'),
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
-      body: Stack(
-        children: [
-          WebViewWidget(controller: _controller),
-          if (_loading) const Center(child: CircularProgressIndicator()),
-        ],
-      ),
+          });
+          return NavigationDecision.prevent;
+        }
+        return NavigationDecision.navigate;
+      },
     );
   }
 }

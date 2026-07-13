@@ -303,6 +303,7 @@ class _SettingsPageState extends State<SettingsPage>
                   value: _showQuickAccessSection,
                   onChanged: _setShowQuickAccessSection,
                 ),
+
                 divider,
                 _ToggleRow(
                   title: 'Funding Campaign',

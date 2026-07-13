@@ -104,8 +104,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                           final isTopBarLoading =
                               data == null || !hasTopBarData;
                           final isTodayScheduleLoading =
-                              cardVisibility.showTodaySchedule &&
-                              data == null;
+                              cardVisibility.showTodaySchedule && data == null;
                           final ramadan =
                               data?.ramadan ??
                               const RamadanStatus(isRamadan: false);
@@ -548,7 +547,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                 if (cardVisibility.showFundingSection) ...[
                                   const SizedBox(height: 12),
                                   const BracuFundingPromoDivider(
-                                    showSupporters: true,
+                                    showSupporters: false,
                                   ),
                                 ],
                                 const SizedBox(height: 12),

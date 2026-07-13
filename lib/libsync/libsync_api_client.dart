@@ -18,12 +18,10 @@ class LibSyncApiClient extends http.BaseClient {
   static const String _cookiesStorageKey = 'libsync_cookies';
   static const String _googleRefreshTokenKey = 'libsync_google_refresh_token';
   static const String _profileStorageKey = 'libsync_profile';
-  static const String _etagCacheKey = 'libsync_etag_cache';
   static const String _bodyCacheKey = 'libsync_body_cache';
   static const String _headersCacheKey = 'libsync_headers_cache';
   static const String _throttledUntilKey = 'libsync_throttled_until';
 
-  static final Map<String, String> _etagCache = {};
   static final Map<String, String> _bodyCache = {};
   static final Map<String, Map<String, String>> _headersCache = {};
 
@@ -34,10 +32,6 @@ class LibSyncApiClient extends http.BaseClient {
     try {
       final store = AppPreferencesStore();
       _sessionIp = await store.getString('libsync_session_ip');
-      final etags = await store.getJsonMap(_etagCacheKey);
-      if (etags != null) {
-        _etagCache.addAll(etags.map((k, v) => MapEntry(k, v.toString())));
-      }
       final bodies = await store.getJsonMap(_bodyCacheKey);
       if (bodies != null) {
         _bodyCache.addAll(bodies.map((k, v) => MapEntry(k, v.toString())));
@@ -110,7 +104,7 @@ class LibSyncApiClient extends http.BaseClient {
       }
     }
 
-    final response = await _sendWithEtag(request);
+    final response = await _sendWithCacheFallback(request);
 
     if (response.statusCode == 401 || response.statusCode == 403) {
       final refreshed = await _attemptTokenRefresh();
@@ -124,7 +118,7 @@ class LibSyncApiClient extends http.BaseClient {
             newRequest.headers['X-CSRFToken'] = csrf;
           }
         }
-        return _sendWithEtag(newRequest);
+        return _sendWithCacheFallback(newRequest);
       } else {
         final urlKey = request.url.toString();
         final isGet = request.method == 'GET';
@@ -145,7 +139,7 @@ class LibSyncApiClient extends http.BaseClient {
     return response;
   }
 
-  Future<http.StreamedResponse> _sendWithEtag(
+  Future<http.StreamedResponse> _sendWithCacheFallback(
     http.BaseRequest request, {
     bool isRetry = false,
   }) async {
@@ -158,17 +152,11 @@ class LibSyncApiClient extends http.BaseClient {
         urlKey.endsWith('.jpeg');
 
     if (request.method != 'GET') {
-      _etagCache.removeWhere((key, _) => key.contains('/api/reservation/'));
       _bodyCache.removeWhere((key, _) => key.contains('/api/reservation/'));
       _headersCache.removeWhere((key, _) => key.contains('/api/reservation/'));
       final store = AppPreferencesStore();
-      await store.setJson(_etagCacheKey, _etagCache);
       await store.setJson(_bodyCacheKey, _bodyCache);
       await store.setJson(_headersCacheKey, _headersCache);
-    }
-
-    if (isGet && !isMedia && _etagCache.containsKey(urlKey)) {
-      request.headers['If-None-Match'] = _etagCache[urlKey]!;
     }
 
     http.StreamedResponse response;
@@ -204,9 +192,11 @@ class LibSyncApiClient extends http.BaseClient {
       newRequest.headers['X-Real-IP'] = spoofedIp;
       newRequest.headers['Client-IP'] = spoofedIp;
 
-      final secondResponse = await _sendWithEtag(newRequest, isRetry: true);
-      if (secondResponse.statusCode == 200 ||
-          secondResponse.statusCode == 304) {
+      final secondResponse = await _sendWithCacheFallback(
+        newRequest,
+        isRetry: true,
+      );
+      if (secondResponse.statusCode == 200) {
         _sessionIp = spoofedIp;
         final store = AppPreferencesStore();
         await store.setString('libsync_session_ip', spoofedIp);
@@ -232,20 +222,6 @@ class LibSyncApiClient extends http.BaseClient {
       }
     }
 
-    if (isGet && response.statusCode == 304) {
-      final cachedBody = _bodyCache[urlKey];
-      if (cachedBody != null) {
-        final bodyBytes = utf8.encode(cachedBody);
-        return http.StreamedResponse(
-          Stream.value(bodyBytes),
-          200,
-          contentLength: bodyBytes.length,
-          request: request,
-          headers: _headersCache[urlKey] ?? response.headers,
-        );
-      }
-    }
-
     final responseCookies = parseResponseCookies(response.headers);
     if (responseCookies.isNotEmpty) {
       await saveCookies(responseCookies);
@@ -253,16 +229,9 @@ class LibSyncApiClient extends http.BaseClient {
 
     if (isGet && response.statusCode == 200) {
       final bytes = await response.stream.toBytes();
-      final etag = response.headers['etag'] ?? response.headers['ETag'];
-      if (etag != null) {
-        _etagCache[urlKey] = etag;
-      } else {
-        _etagCache.remove(urlKey);
-      }
       _bodyCache[urlKey] = utf8.decode(bytes);
       _headersCache[urlKey] = response.headers;
       final store = AppPreferencesStore();
-      await store.setJson(_etagCacheKey, _etagCache);
       await store.setJson(_bodyCacheKey, _bodyCache);
       await store.setJson(_headersCacheKey, _headersCache);
       return http.StreamedResponse(
@@ -280,18 +249,46 @@ class LibSyncApiClient extends http.BaseClient {
     return response;
   }
 
+  Future<void> _safeWrite(String key, String value) async {
+    try {
+      await _secureStorage.write(key: key, value: value);
+      final store = AppPreferencesStore();
+      await store.remove(key);
+    } catch (_) {
+      final store = AppPreferencesStore();
+      await store.setString(key, value);
+    }
+  }
+
+  Future<String?> _safeRead(String key) async {
+    try {
+      final val = await _secureStorage.read(key: key);
+      if (val != null) return val;
+    } catch (_) {}
+    final store = AppPreferencesStore();
+    return await store.getString(key);
+  }
+
+  Future<void> _safeDelete(String key) async {
+    try {
+      await _secureStorage.delete(key: key);
+    } catch (_) {}
+    final store = AppPreferencesStore();
+    await store.remove(key);
+  }
+
   Future<void> storeGoogleRefreshToken(String token) async {
-    await _secureStorage.write(key: _googleRefreshTokenKey, value: token);
+    await _safeWrite(_googleRefreshTokenKey, token);
   }
 
   Future<String?> getGoogleRefreshToken() async {
-    return await _secureStorage.read(key: _googleRefreshTokenKey);
+    return await _safeRead(_googleRefreshTokenKey);
   }
 
   Future<void> clearAuthData() async {
-    await _secureStorage.delete(key: _cookiesStorageKey);
-    await _secureStorage.delete(key: _googleRefreshTokenKey);
-    await _secureStorage.delete(key: _profileStorageKey);
+    await _safeDelete(_cookiesStorageKey);
+    await _safeDelete(_googleRefreshTokenKey);
+    await _safeDelete(_profileStorageKey);
     await clearCache();
     final store = AppPreferencesStore();
     await store.remove(_throttledUntilKey);
@@ -299,24 +296,19 @@ class LibSyncApiClient extends http.BaseClient {
 
   Future<void> clearCache() async {
     final store = AppPreferencesStore();
-    await store.remove(_etagCacheKey);
     await store.remove(_bodyCacheKey);
     await store.remove(_headersCacheKey);
-    _etagCache.clear();
     _bodyCache.clear();
     _headersCache.clear();
   }
 
   Future<void> saveCachedProfile(Map<String, dynamic> profile) async {
-    await _secureStorage.write(
-      key: _profileStorageKey,
-      value: jsonEncode(profile),
-    );
+    await _safeWrite(_profileStorageKey, jsonEncode(profile));
   }
 
   Future<Map<String, dynamic>?> getCachedProfile() async {
     try {
-      final data = await _secureStorage.read(key: _profileStorageKey);
+      final data = await _safeRead(_profileStorageKey);
       if (data == null) return null;
       return jsonDecode(data) as Map<String, dynamic>;
     } catch (_) {
@@ -326,7 +318,7 @@ class LibSyncApiClient extends http.BaseClient {
 
   Future<Map<String, String>> getStoredCookies() async {
     try {
-      final data = await _secureStorage.read(key: _cookiesStorageKey);
+      final data = await _safeRead(_cookiesStorageKey);
       if (data == null) return {};
       final Map<String, dynamic> decoded = jsonDecode(data);
       return decoded.map((key, value) => MapEntry(key, value.toString()));
@@ -338,10 +330,7 @@ class LibSyncApiClient extends http.BaseClient {
   Future<void> saveCookies(Map<String, String> newCookies) async {
     final currentCookies = await getStoredCookies();
     currentCookies.addAll(newCookies);
-    await _secureStorage.write(
-      key: _cookiesStorageKey,
-      value: jsonEncode(currentCookies),
-    );
+    await _safeWrite(_cookiesStorageKey, jsonEncode(currentCookies));
   }
 
   String _buildCookieHeaderString(Map<String, String> cookies) {

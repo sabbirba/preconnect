@@ -14,6 +14,8 @@ import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/api/fcm.dart';
+import 'package:preconnect/tools/ramadan.dart';
+import 'package:preconnect/pages/shared_widgets/faculty_schedule_sheet.dart';
 part 'shared_widgets/seat_status.dart';
 
 String seatStatusFacultySummaryLabel(section.SectionFaculty? faculty) {
@@ -94,10 +96,17 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   String _selectedModeFilter = '';
   SeatTimetable _selectedTimeFilter = SeatTimetable(startTime: '', endTime: '');
   late bool hitsLab;
+  bool _isRamadan = false;
 
   @override
   void initState() {
     super.initState();
+    RamadanTiming.isRamadan().then((value) {
+      if (!mounted) return;
+      setState(() {
+        _isRamadan = value;
+      });
+    });
     _seedCachedCards();
     _searchController.addListener(() {
       _searchDebounce?.cancel();
@@ -366,11 +375,13 @@ class _SeatStatusCard extends StatelessWidget {
     required this.item,
     this.onPinTap,
     this.pinned = false,
+    this.onTap,
   });
 
   final _SeatStatusCardData item;
   final VoidCallback? onPinTap;
   final bool pinned;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -606,7 +617,17 @@ class _SeatStatusCard extends StatelessWidget {
         ],
       ),
     );
-    return card;
+    if (onTap == null) {
+      return card;
+    }
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: card,
+      ),
+    );
   }
 
   bool _hasExam(String? date, String? start, String? end) {

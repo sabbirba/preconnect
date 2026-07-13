@@ -1,5 +1,3 @@
-import 'package:http/http.dart' as http;
-import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/preferences_store.dart';
 
 class RepositoryCache {
@@ -7,28 +5,7 @@ class RepositoryCache {
 
   static final RepositoryCache instance = RepositoryCache._();
 
-  final ApiClient _client = ApiClient();
   final AppPreferencesStore _store = AppPreferencesStore();
-
-  Future<T?> fetchWithStoredEtag<T>({
-    required String url,
-    required bool fromGet,
-    required String etagKey,
-    required Future<void> Function(http.Response response) cacheResponse,
-    required Future<T?> Function({required bool fromFetch}) readCache,
-    Duration cacheDuration = const Duration(seconds: 2),
-  }) async {
-    final etag = await _store.getString(etagKey);
-    return _client.fetchWithFallback<T>(
-      url: url,
-      fromGet: fromGet,
-      cacheResponse: cacheResponse,
-      readCache: readCache,
-      etag: etag,
-      cacheEtag: (newEtag) => _store.setString(etagKey, newEtag),
-      cacheDuration: cacheDuration,
-    );
-  }
 
   Future<String?> readString(String key) async {
     return _store.getString(key);

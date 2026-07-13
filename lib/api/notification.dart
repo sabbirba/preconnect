@@ -270,7 +270,6 @@ class NotificationService {
   final ScraperDataService _scraper = ScraperDataService();
   final RepositoryCache _repo = RepositoryCache.instance;
 
-  static const String _recentFeedEtagKey = 'recent_notifications_etag_v1';
   static const String _recentFeedKey = 'RecentNotificationsFeed';
   static const String _scraperFeedCacheKey = 'scraper_notifications_feed_v1';
   static const String _scraperSeenIdsCacheKey = 'scraper_notifications_seen_v1';
@@ -357,20 +356,20 @@ class NotificationService {
   Future<NotificationsFeed?> fetchRecentNotifications({
     bool fromGet = false,
   }) async {
-    return _repo.fetchWithStoredEtag<NotificationsFeed>(
-      url: '${ApiConfig.connectApiBase}${ApiConfig.recentNotificationsPath}',
-      fromGet: fromGet,
-      etagKey: _recentFeedEtagKey,
-      cacheDuration: const Duration(seconds: 10),
-      cacheResponse: (response) async {
+    final url =
+        '${ApiConfig.connectApiBase}${ApiConfig.recentNotificationsPath}';
+    try {
+      final response = await _client.authenticatedGet(
+        url,
+        cacheDuration: const Duration(seconds: 10),
+      );
+      if (response.statusCode == 200) {
         await _repo.writeString(_recentFeedKey, response.body);
-      },
-      readCache: ({required bool fromFetch}) async {
-        final cached = await _readCachedFeed();
-        if (cached != null || fromFetch) return cached;
-        return fetchRecentNotifications(fromGet: true);
-      },
-    );
+      }
+    } catch (_) {}
+
+    if (fromGet) return null;
+    return getRecentNotifications(fromFetch: true);
   }
 
   Future<NotificationsFeed?> getRecentNotifications({

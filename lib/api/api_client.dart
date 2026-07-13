@@ -7,6 +7,7 @@ import 'package:retry/retry.dart';
 import 'package:clock/clock.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_refresh.dart';
@@ -336,69 +337,6 @@ class ApiClient {
     throw ApiException(response.statusCode, response.body);
   }
 
-  Future<http.Response> authenticatedGetWithEtag(
-    String url, {
-    String? etag,
-    Map<String, String> additionalHeaders = const <String, String>{},
-    Set<int> acceptedStatusCodes = const <int>{200, 304},
-    Duration cacheDuration = _defaultGetCacheTtl,
-  }) {
-    final headers = <String, String>{...additionalHeaders};
-    if (etag != null && etag.isNotEmpty) {
-      headers['If-None-Match'] = etag;
-    }
-    return authenticatedGet(
-      url,
-      additionalHeaders: headers,
-      acceptedStatusCodes: acceptedStatusCodes,
-      cacheDuration: cacheDuration,
-    );
-  }
-
-  Future<T?> fetchWithFallback<T>({
-    required String url,
-    required Future<void> Function(http.Response response) cacheResponse,
-    required Future<T?> Function({required bool fromFetch}) readCache,
-    required bool fromGet,
-    String? etag,
-    Future<void> Function(String etag)? cacheEtag,
-    Duration cacheDuration = _defaultGetCacheTtl,
-  }) async {
-    if (!await hasConnection()) {
-      return readCache(fromFetch: true);
-    }
-
-    try {
-      final headers = <String, String>{};
-      if (etag != null && etag.isNotEmpty) {
-        headers['If-None-Match'] = etag;
-      }
-      final response = await authenticatedGet(
-        url,
-        additionalHeaders: headers,
-        acceptedStatusCodes: const <int>{200, 304},
-        cacheDuration: cacheDuration,
-      );
-      if (response.statusCode == 304) {
-        return readCache(fromFetch: true);
-      }
-      final newEtag = response.headers['etag'];
-      if (newEtag != null && newEtag.isNotEmpty && cacheEtag != null) {
-        await cacheEtag(newEtag);
-      }
-      await cacheResponse(response);
-      return readCache(fromFetch: true);
-    } on UnauthenticatedException {
-      return readCache(fromFetch: true);
-    } on SessionExpiredException {
-      return readCache(fromFetch: true);
-    } on ApiException {
-      return readCache(fromFetch: true);
-    } catch (_) {
-      return readCache(fromFetch: true);
-    }
-  }
-
   Future<Map<String, String>> _authHeaders(
     String token, {
     required String method,
@@ -448,7 +386,7 @@ class ApiClient {
     required Map<String, String> headers,
     String body = '',
     Duration cacheDuration = Duration.zero,
-  }) {
+  }) async {
     final normalizedMethod = method.trim().toUpperCase();
     if (normalizedMethod != 'GET') {
       return _sendRawRequest(
@@ -459,16 +397,32 @@ class ApiClient {
       );
     }
 
+    final isPreconnectUrl = url.contains('api.preconnect.app');
+    final finalHeaders = Map<String, String>.from(headers);
+    String? cachedEtag;
+    String? cachedBody;
+
+    if (isPreconnectUrl) {
+      cachedEtag = await AppStorage.instance.getString('etag_$url');
+      cachedBody = await AppStorage.instance.getString('etag_resp_$url');
+      if (cachedEtag != null &&
+          cachedEtag.isNotEmpty &&
+          cachedBody != null &&
+          cachedBody.isNotEmpty) {
+        finalHeaders['If-None-Match'] = cachedEtag;
+      }
+    }
+
     final inFlightKey = _inFlightRequestKey(
       normalizedMethod,
       url,
-      headers: headers,
+      headers: finalHeaders,
       body: body,
     );
     _purgeExpiredResponseCache();
     final cachedResponse = _cachedResponses[inFlightKey];
     if (cachedResponse != null && !cachedResponse.isExpired) {
-      return Future<http.Response>.value(cachedResponse.response);
+      return cachedResponse.response;
     }
     final inFlight = _inFlightRequests[inFlightKey];
     if (inFlight != null) return inFlight;
@@ -476,21 +430,46 @@ class ApiClient {
     final request = _sendRawRequest(
       normalizedMethod,
       url,
-      headers: headers,
+      headers: finalHeaders,
       body: body,
     );
     _inFlightRequests[inFlightKey] = request;
-    return request
-        .then((response) {
-          if (cacheDuration > Duration.zero && response.statusCode == 200) {
-            _cachedResponses[inFlightKey] = _CachedHttpResponse(
-              response: response,
-              expiresAt: clock.now().add(cacheDuration),
+
+    try {
+      var response = await request;
+      if (isPreconnectUrl) {
+        if (response.statusCode == 304 && cachedBody != null) {
+          response = http.Response(
+            cachedBody,
+            200,
+            headers: response.headers,
+            request: response.request,
+            isRedirect: response.isRedirect,
+            persistentConnection: response.persistentConnection,
+            reasonPhrase: 'OK',
+          );
+        } else if (response.statusCode == 200) {
+          final etag = response.headers['etag'] ?? response.headers['ETag'];
+          if (etag != null && etag.isNotEmpty) {
+            await AppStorage.instance.setString('etag_$url', etag);
+            await AppStorage.instance.setString(
+              'etag_resp_$url',
+              response.body,
             );
           }
-          return response;
-        })
-        .whenComplete(() => _inFlightRequests.remove(inFlightKey));
+        }
+      }
+
+      if (cacheDuration > Duration.zero && response.statusCode == 200) {
+        _cachedResponses[inFlightKey] = _CachedHttpResponse(
+          response: response,
+          expiresAt: clock.now().add(cacheDuration),
+        );
+      }
+      return response;
+    } finally {
+      _inFlightRequests.remove(inFlightKey);
+    }
   }
 
   Future<http.Response> _sendRawRequest(

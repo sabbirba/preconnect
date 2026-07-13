@@ -14,8 +14,6 @@ class ProfileService {
   final ApiClient _client = ApiClient();
   final Map<String, Future<Map<String, String?>?>> _profileFetchInFlight =
       <String, Future<Map<String, String?>?>>{};
-  static const String _profileEtagKey = 'profile_etag_v1';
-  static const String _advisingEtagKey = 'advising_etag_v1';
   static const Map<String, String> _bloodTypeIdToLabel = {
     '7157': 'A+',
     '7158': 'B+',
@@ -165,14 +163,14 @@ class ProfileService {
     required bool fromGet,
   }) async {
     final url = '${ApiConfig.connectApiBase}${ApiConfig.profilePath}';
-
     final repo = RepositoryCache.instance;
-    final profile = await repo.fetchWithStoredEtag<Map<String, String?>>(
-      url: url,
-      fromGet: fromGet,
-      etagKey: _profileEtagKey,
-      cacheDuration: const Duration(seconds: 15),
-      cacheResponse: (response) async {
+
+    try {
+      final response = await ApiClient().authenticatedGet(
+        url,
+        cacheDuration: const Duration(seconds: 15),
+      );
+      if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data is List && data.isNotEmpty) {
           final profile = data[0];
@@ -266,10 +264,10 @@ class ProfileService {
             );
           }
         }
-      },
-      readCache: ({required bool fromFetch}) =>
-          getProfile(fromFetch: fromFetch),
-    );
+      }
+    } catch (_) {}
+
+    final profile = await getProfile(fromFetch: true);
 
     if (profile == null) return null;
 
@@ -612,40 +610,55 @@ class AdvisingService {
       return getAdvisingInfo(fromFetch: true);
     }
 
-    final url = ApiConfig.advisingUrl(studentId);
+    try {
+      final advisingUrl = ApiConfig.advisingUrl(studentId);
+      final response = await ApiClient().authenticatedGet(
+        advisingUrl,
+        cacheDuration: cacheDuration,
+      );
 
-    return repo.fetchWithStoredEtag<Map<String, String?>>(
-      url: url,
-      fromGet: fromGet,
-      etagKey: ProfileService._advisingEtagKey,
-      cacheResponse: (response) async {
-        try {
-          final decoded = jsonDecode(response.body);
-          final dataList = decoded is List ? decoded : <dynamic>[];
-          if (dataList.isEmpty) return;
+      dynamic data;
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        final dataList = decoded is List ? decoded : <dynamic>[];
+        if (dataList.isNotEmpty) {
+          data = dataList.first;
+        }
+      }
 
-          final data = dataList.first is Map
-              ? dataList.first as Map<String, dynamic>
-              : null;
-          if (data == null) return;
+      if (data == null) {
+        final wishlistUrl = ApiConfig.wishlistUrl(studentId);
+        final wlResponse = await ApiClient().authenticatedGet(
+          wishlistUrl,
+          cacheDuration: cacheDuration,
+        );
+        if (wlResponse.statusCode == 200) {
+          final wlDecoded = jsonDecode(wlResponse.body);
+          final wlDataList = wlDecoded is List ? wlDecoded : <dynamic>[];
+          if (wlDataList.isNotEmpty) {
+            data = wlDataList.first;
+          }
+        }
+      }
 
-          await repo.writeStringMap(<String, String>{
-            'advisingStartDate': '${data['startDate'] ?? ''}',
-            'advisingEndDate': '${data['endDate'] ?? ''}',
-            'activeSemesterSessionId':
-                '${data['activeSemesterSessionId'] ?? ''}',
-            'advisingPhase': '${data['advisingPhase'] ?? ''}',
-            'totalCredit': '${data['totalCredit'] ?? ''}',
-            'earnedCredit': '${data['earnedCredit'] ?? ''}',
-            'noOfSemester': '${data['noOfSemester'] ?? ''}',
-            'semesterSession': '${data['semesterSession'] ?? ''}',
-          });
-        } catch (_) {}
-      },
-      readCache: ({required bool fromFetch}) =>
-          getAdvisingInfo(fromFetch: fromFetch),
-      cacheDuration: cacheDuration,
-    );
+      if (data is Map) {
+        final mapData = <String, String>{
+          'advisingStartDate': '${data['startDate'] ?? ''}',
+          'advisingEndDate': '${data['endDate'] ?? ''}',
+          'activeSemesterSessionId': '${data['activeSemesterSessionId'] ?? ''}',
+          'advisingPhase': '${data['advisingPhase'] ?? ''}',
+          'totalCredit': '${data['totalCredit'] ?? ''}',
+          'earnedCredit': '${data['earnedCredit'] ?? ''}',
+          'noOfSemester': '${data['noOfSemester'] ?? ''}',
+          'semesterSession': '${data['semesterSession'] ?? ''}',
+        };
+        await repo.writeStringMap(mapData);
+        return mapData;
+      }
+    } catch (_) {}
+
+    if (fromGet) return null;
+    return getAdvisingInfo(fromFetch: true);
   }
 
   Future<Map<String, String?>?> getAdvisingInfo({
@@ -678,7 +691,6 @@ class AttendanceService {
   AttendanceService._internal();
 
   static const String _attendanceKey = 'attendance';
-  static const String _attendanceEtagKey = 'attendance_etag_v1';
 
   Future<String?> fetchAttendanceInfo({
     bool fromGet = false,
@@ -697,17 +709,18 @@ class AttendanceService {
     final url = '${ApiConfig.connectApiBase}${ApiConfig.attendancePath(id)}';
 
     final repo = RepositoryCache.instance;
-    return repo.fetchWithStoredEtag<String>(
-      url: url,
-      fromGet: fromGet,
-      etagKey: _attendanceEtagKey,
-      cacheResponse: (response) async {
+    try {
+      final response = await ApiClient().authenticatedGet(
+        url,
+        cacheDuration: cacheDuration,
+      );
+      if (response.statusCode == 200) {
         await repo.writeString(_attendanceKey, response.body);
-      },
-      readCache: ({required bool fromFetch}) =>
-          getAttendanceInfo(fromFetch: fromFetch),
-      cacheDuration: cacheDuration,
-    );
+      }
+    } catch (_) {}
+
+    if (fromGet) return null;
+    return getAttendanceInfo(fromFetch: true);
   }
 
   Future<String?> getAttendanceInfo({bool fromFetch = false}) async {
@@ -726,7 +739,6 @@ class PaymentService {
   PaymentService._internal();
 
   static const String _paymentInfoKey = 'SemesterPaymentInfo';
-  static const String _paymentInfoEtagKey = 'SemesterPaymentInfo_etag_v1';
 
   Future<String?> fetchPaymentInfo({
     bool fromGet = false,
@@ -745,17 +757,18 @@ class PaymentService {
     final url = ApiConfig.paymentUrl(id);
 
     final repo = RepositoryCache.instance;
-    return repo.fetchWithStoredEtag<String>(
-      url: url,
-      fromGet: fromGet,
-      etagKey: _paymentInfoEtagKey,
-      cacheResponse: (response) async {
+    try {
+      final response = await ApiClient().authenticatedGet(
+        url,
+        cacheDuration: cacheDuration,
+      );
+      if (response.statusCode == 200) {
         await repo.writeString(_paymentInfoKey, response.body);
-      },
-      readCache: ({required bool fromFetch}) =>
-          getPaymentInfo(fromFetch: fromFetch),
-      cacheDuration: cacheDuration,
-    );
+      }
+    } catch (_) {}
+
+    if (fromGet) return null;
+    return getPaymentInfo(fromFetch: true);
   }
 
   Future<String?> getPaymentInfo({bool fromFetch = false}) async {

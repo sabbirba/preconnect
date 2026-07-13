@@ -40,6 +40,7 @@ class _LibSyncPageState extends State<LibSyncPage>
   Map<String, dynamic>? _totalReservationCount;
   bool _loadingData = false;
   int? _selectedChartIndex;
+  bool _isGoogleSigningIn = false;
 
   static List<dynamic>? _cachedReservationByYear;
   static List<dynamic>? _cachedRecentReservations;
@@ -256,12 +257,12 @@ class _LibSyncPageState extends State<LibSyncPage>
   }
 
   Future<void> _handleGoogleSignIn() async {
+    if (_isGoogleSigningIn) return;
+    _isGoogleSigningIn = true;
     try {
       String? authCode;
       String? redirectUri;
-      if (!kIsWeb &&
-          (defaultTargetPlatform == TargetPlatform.android ||
-              defaultTargetPlatform == TargetPlatform.iOS)) {
+      if (!kIsWeb) {
         authCode = await Navigator.of(context).push<String>(
           MaterialPageRoute(
             builder: (context) => const GoogleOAuthWebViewPage(),
@@ -311,7 +312,11 @@ class _LibSyncPageState extends State<LibSyncPage>
       } else {
         if (mounted) {
           showAppSnackBar(context, 'Sign in cancelled.');
-          Navigator.of(context).maybePop();
+          Future.delayed(Duration.zero, () {
+            if (mounted) {
+              Navigator.of(context).maybePop();
+            }
+          });
         }
       }
     } catch (e) {
@@ -320,8 +325,14 @@ class _LibSyncPageState extends State<LibSyncPage>
           context,
           'Google Sign In failed: ${e.toString().replaceAll('Exception: ', '')}',
         );
-        Navigator.of(context).maybePop();
+        Future.delayed(Duration.zero, () {
+          if (mounted) {
+            Navigator.of(context).maybePop();
+          }
+        });
       }
+    } finally {
+      _isGoogleSigningIn = false;
     }
   }
 

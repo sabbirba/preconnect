@@ -15,11 +15,8 @@ class ScheduleService {
       <String, Future<String?>>{};
 
   static const String _scheduleKey = 'student_schedule_v1';
-  static const String _scheduleEtagKey = 'student_schedule_etag_v1';
   String _cacheKeyForSemester(int semesterSessionId) =>
       '${_scheduleKey}_$semesterSessionId';
-  String _etagKeyForSemester(int semesterSessionId) =>
-      '${_scheduleEtagKey}_$semesterSessionId';
 
   List<section.Section> parseStudentSections(
     String? scheduleJson, {
@@ -73,7 +70,6 @@ class ScheduleService {
     required bool fromGet,
   }) async {
     final cacheKey = _cacheKeyForSemester(semesterSessionId);
-    final etagKey = _etagKeyForSemester(semesterSessionId);
     final repo = RepositoryCache.instance;
     final asyncPrefs = AppStorage.instance;
     final id = await resolvePortfolioId(
@@ -92,18 +88,21 @@ class ScheduleService {
         '${ApiConfig.connectApiBase}'
         '${ApiConfig.schedulePath(id, semesterSessionId: semesterSessionId)}';
 
-    return repo.fetchWithStoredEtag<String>(
-      url: url,
-      fromGet: fromGet,
-      etagKey: etagKey,
-      cacheResponse: (response) async {
+    try {
+      final response = await ApiClient().authenticatedGet(
+        url,
+        cacheDuration: const Duration(seconds: 2),
+      );
+      if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         await repo.writeJson(cacheKey, data);
-      },
-      readCache: ({required bool fromFetch}) => getStudentScheduleForSemester(
-        semesterSessionId: semesterSessionId,
-        fromFetch: fromFetch,
-      ),
+      }
+    } catch (_) {}
+
+    if (fromGet) return null;
+    return getStudentScheduleForSemester(
+      semesterSessionId: semesterSessionId,
+      fromFetch: true,
     );
   }
 
