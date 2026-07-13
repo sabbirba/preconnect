@@ -274,7 +274,6 @@ class _SettingsPageState extends State<SettingsPage>
       ],
       body: BracuRefreshList(
         onRefresh: _load,
-        showScrollTopButton: false,
         children: [
           BracuActionBannerCard(
             icon: Icons.wifi_rounded,

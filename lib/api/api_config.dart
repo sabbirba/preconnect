@@ -41,6 +41,7 @@ class ApiConfig {
   static const String seatStatusDataUrl = '$realtimeApiBase/connect.json';
   static const String busDataUrl = '$realtimeApiBase/data/bus.json';
   static const String freeLabsDataUrl = '$realtimeApiBase/data/freelabs.json';
+  static const String dspaceDataUrl = '$realtimeApiBase/data/dspace.json';
   static const String examMapIndexUrl = '$realtimeApiBase/data/exammap.json';
   static const String announcementFeedUrl =
       '$realtimeApiBase/data/announcements.json';

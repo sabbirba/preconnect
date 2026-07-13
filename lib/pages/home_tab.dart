@@ -20,6 +20,7 @@ enum HomeTab {
   devs,
   personalSchedules,
   libSync,
+  dspace,
 }
 
 class HomeTabRegistry {

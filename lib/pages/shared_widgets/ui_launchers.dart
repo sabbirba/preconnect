@@ -94,3 +94,31 @@ Widget buildCenteredOutlinedActionButton({
     ),
   );
 }
+
+Widget buildLoadMoreButton({required VoidCallback onPressed}) {
+  return buildCenteredOutlinedActionButton(
+    label: 'Load More',
+    onPressed: onPressed,
+  );
+}
+
+Widget buildScrollToTopButton({required ScrollController controller}) {
+  return Padding(
+    padding: const EdgeInsets.only(top: 16, bottom: 8),
+    child: Center(
+      child: IconButton(
+        icon: const Icon(
+          Icons.arrow_upward_rounded,
+          color: BracuPalette.primary,
+        ),
+        onPressed: () {
+          controller.animateTo(
+            0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        },
+      ),
+    ),
+  );
+}

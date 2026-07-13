@@ -38,7 +38,9 @@ class TokenStorage {
     'wifi_captive_password',
   };
 
-  static const _secureStorage = FlutterSecureStorage();
+  static const _secureStorage = FlutterSecureStorage(
+    mOptions: MacOsOptions(usesDataProtectionKeychain: false),
+  );
 
   Future<String?> read({required String key}) async {
     if (kIsWeb) {

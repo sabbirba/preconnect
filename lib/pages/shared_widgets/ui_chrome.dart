@@ -199,11 +199,13 @@ class _PageHeader extends StatelessWidget {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () {
-                if (canPop && navigator != null) {
-                  navigator.maybePop();
+                if (canScopeBack && backScope != null) {
+                  backScope.onBack();
                   return;
                 }
-                backScope?.onBack();
+                if (canPop && navigator != null) {
+                  navigator.maybePop();
+                }
               },
               child: Padding(
                 padding: const EdgeInsets.all(2),

@@ -60,7 +60,6 @@ extension _HomeDashboardView on _HomeDashboardState {
                           if (isLoading) {
                             return BracuRefreshScroll(
                               onRefresh: _handleRefresh,
-                              showScrollTopButton: false,
                               padding: const EdgeInsets.fromLTRB(
                                 20,
                                 16,
@@ -158,7 +157,6 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     : todayEntries);
                           return BracuRefreshScroll(
                             onRefresh: _handleRefresh,
-                            showScrollTopButton: false,
                             padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -593,7 +591,6 @@ extension _HomeDashboardView on _HomeDashboardState {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Static Grid (Always shows 8 items)
         Center(
           child: Wrap(
             alignment: WrapAlignment.center,
@@ -848,7 +845,7 @@ extension _HomeDashboardView on _HomeDashboardState {
       subtitle: 'Progress',
       color: const Color(0xFF2C9DFF),
     ),
-    // Devs is now the 8th item (last item in the static list)
+
     _DashboardQuickAccess(
       tab: HomeTab.devs,
       icon: Icons.developer_mode_outlined,
@@ -878,7 +875,7 @@ extension _HomeDashboardView on _HomeDashboardState {
       color: const Color(0xFF00A8E8),
     ),
     _DashboardQuickAccess(
-      tab: null, // Advising Helper is an external URL
+      tab: null,
       icon: Icons.school_outlined,
       title: 'Advising',
       subtitle: 'Helper',
@@ -900,21 +897,18 @@ extension _HomeDashboardView on _HomeDashboardState {
       color: const Color(0xFF00A8E8),
     ),
     _DashboardQuickAccess(
-      tab: null,
-      icon: Icons.find_in_page_outlined,
-      title: 'Course',
-      subtitle: 'Leaks',
-      color: const Color(0xFFE05252),
-      onTap: (context) {
-        showAppSnackBar(context, 'Coming in the next update');
-      },
-    ),
-    _DashboardQuickAccess(
       tab: HomeTab.campusPrinter,
       icon: Icons.local_printshop_outlined,
       title: 'Printer',
       subtitle: 'Campus',
       color: const Color(0xFF22B573),
+    ),
+    _DashboardQuickAccess(
+      tab: HomeTab.dspace,
+      icon: Icons.account_balance_rounded,
+      title: 'DSpace',
+      subtitle: 'Repository',
+      color: const Color(0xFF3CA947),
     ),
     _DashboardQuickAccess(
       tab: HomeTab.calendar,

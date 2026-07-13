@@ -29,6 +29,7 @@ import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/settings.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/libsync/libsync_page.dart';
+import 'package:preconnect/pages/dspace_browser.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/home_sections/exam_countdown.dart';
@@ -109,6 +110,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
     HomeTab.devs: (_) => const DevsPage(),
     HomeTab.personalSchedules: (_) => const CustomSchedulesPage(),
     HomeTab.libSync: (_) => const LibSyncPage(),
+    HomeTab.dspace: (_) => const DSpaceBrowserPage(),
   };
   late final List<HomeTab> _tabOrder = HomeTab.values;
   final Set<HomeTab> _builtTabs = {HomeTab.dashboard};

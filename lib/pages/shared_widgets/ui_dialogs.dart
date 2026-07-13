@@ -55,6 +55,8 @@ Future<T?> showBracuBottomSheet<T>(
                         if (liveTitle == null)
                           Text(
                             title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: textPrimary,
                               fontSize: 16,
@@ -67,6 +69,8 @@ Future<T?> showBracuBottomSheet<T>(
                             builder: (context, value, _) {
                               return Text(
                                 value,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   color: textPrimary,
                                   fontSize: 16,

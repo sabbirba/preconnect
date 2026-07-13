@@ -313,8 +313,6 @@ class FCMService {
     return _subscribeToTopicInternal(topic, cachedToken: token);
   }
 
-  /// Internal subscribe that accepts an already-fetched token to avoid
-  /// re-calling [_getToken] for every topic in bulk operations.
   Future<bool> _subscribeToTopicInternal(
     String topic, {
     String? cachedToken,
@@ -333,12 +331,11 @@ class FCMService {
         !_apnsAvailable) {
       return true;
     }
-    // Always sync via backend first (reliable path regardless of FCM API status)
+
     if (token != null) {
       unawaited(_subscribeToTopicWeb(token, topic));
     }
-    // Also attempt native subscription (may log "Not Found" if FCM Registration
-    // API is not enabled in Google Cloud Console for this project — harmless).
+
     try {
       await FirebaseMessaging.instance.subscribeToTopic(topic);
     } catch (_) {
@@ -371,7 +368,7 @@ class FCMService {
         !_apnsAvailable) {
       return true;
     }
-    // Always sync via backend first (reliable path)
+
     if (token != null) {
       unawaited(_unsubscribeFromTopicWeb(token, topic));
     }
@@ -521,8 +518,6 @@ class FCMService {
   }
 
   Future<void> _subscribeToDefaultTopics() async {
-    // Fetch the token once and reuse it for every subscription — avoids
-    // calling _getToken() (and printing the FCM token) for every topic.
     final token = await _getToken();
     try {
       for (final topic in PreConnectPushConfig.defaultTopics) {
@@ -573,10 +568,6 @@ class FCMService {
       }
     });
 
-    // Delay topic subscription on Android to allow the FCM token to fully
-    // register with Google's servers before attempting subscriptions.
-    // The native SDK may log "Not Found" if the FCM Registration API is not
-    // enabled in the Google Cloud Console — we always fall back to the backend.
     if (defaultTargetPlatform == TargetPlatform.android) {
       await Future<void>.delayed(const Duration(seconds: 3));
     }

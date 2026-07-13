@@ -26,6 +26,7 @@ class _NotificationsPageState extends State<NotificationsPage>
   static final PreloadCache<NotificationsViewData> cache =
       PreloadCache<NotificationsViewData>();
 
+  late final ScrollController _scrollController = ScrollController();
   late Future<NotificationsViewData> _future;
   NotificationsViewData? _lastData;
   int _visibleItemCount = _pageSize;
@@ -46,6 +47,7 @@ class _NotificationsPageState extends State<NotificationsPage>
   @override
   void dispose() {
     unbindRefreshBus(_onRefreshSignal);
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -308,8 +310,10 @@ class _NotificationsPageState extends State<NotificationsPage>
           final visibleItems = items.take(visibleCount).toList(growable: false);
           final groupedItems = _groupItemsByDate(visibleItems);
           final hasMore = visibleCount < items.length;
+          final showBackToTop = _visibleItemCount > _pageSize;
 
           return BracuRefreshScroll(
+            controller: _scrollController,
             onRefresh: _refresh,
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
             child: Column(
@@ -336,8 +340,7 @@ class _NotificationsPageState extends State<NotificationsPage>
                   ),
                 ),
                 if (hasMore)
-                  buildCenteredOutlinedActionButton(
-                    label: 'Load More',
+                  buildLoadMoreButton(
                     onPressed: () {
                       setState(() {
                         _visibleItemCount = math.min(
@@ -347,6 +350,8 @@ class _NotificationsPageState extends State<NotificationsPage>
                       });
                     },
                   ),
+                if (showBackToTop)
+                  buildScrollToTopButton(controller: _scrollController),
               ],
             ),
           );
