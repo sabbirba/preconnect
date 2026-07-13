@@ -32,7 +32,7 @@ import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:preconnect/pages/shared_widgets/preconnect_webview.dart';
 
 bool get _shouldUseMobileUserAgent {
   if (kIsWeb) return false;
@@ -61,15 +61,17 @@ class LoginPage extends StatefulWidget {
       pkceVerifier = generatePkceVerifier();
       final codeChallenge = codeChallengeS256(pkceVerifier!);
       final controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setBackgroundColor(Colors.transparent);
+        ..setJavaScriptMode(JavaScriptMode.unrestricted);
+      try {
+        controller.setBackgroundColor(Colors.transparent);
+      } catch (_) {}
       if (_shouldUseMobileUserAgent) {
         controller.setUserAgent(kPreConnectUserAgent);
       }
       controller.loadRequest(
         Uri.parse(ApiConfig.authUrlWithPkce(codeChallenge)),
       );
-      await _configureCookies(controller);
+      await PreConnectWebViewPage.configureCookies(controller);
       _preloadedWebViewController = controller;
     } catch (_) {
       _preloadedWebViewController = null;
@@ -98,13 +100,15 @@ class LoginPage extends StatefulWidget {
             },
           );
       final controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setBackgroundColor(Colors.transparent);
+        ..setJavaScriptMode(JavaScriptMode.unrestricted);
+      try {
+        controller.setBackgroundColor(Colors.transparent);
+      } catch (_) {}
       if (_shouldUseMobileUserAgent) {
         controller.setUserAgent(kPreConnectUserAgent);
       }
       controller.loadRequest(googleSsoUri);
-      await _configureCookies(controller);
+      await PreConnectWebViewPage.configureCookies(controller);
       _preloadedGoogleWebViewController = controller;
     } catch (_) {
       _preloadedGoogleWebViewController = null;
@@ -123,16 +127,6 @@ class LoginPage extends StatefulWidget {
     final controller = _preloadedGoogleWebViewController;
     _preloadedGoogleWebViewController = null;
     return controller;
-  }
-
-  static Future<void> _configureCookies(WebViewController controller) async {
-    final platform = controller.platform;
-    if (platform is AndroidWebViewController) {
-      final cookieManager = AndroidWebViewCookieManager(
-        PlatformWebViewCookieManagerCreationParams(),
-      );
-      await cookieManager.setAcceptThirdPartyCookies(platform, true);
-    }
   }
 
   static Future<void> clearSessionArtifacts() async {
@@ -180,42 +174,13 @@ class _MobileLogoutWebViewPage extends StatefulWidget {
 class _MobileLogoutWebViewPageState extends State<_MobileLogoutWebViewPage> {
   static const Duration _logoutTimeout = Duration(seconds: 12);
 
-  late final WebViewController _controller;
   Timer? _timeoutTimer;
   bool _didComplete = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.transparent)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onNavigationRequest: (request) {
-            if (_isLogoutRedirect(request.url)) {
-              _complete();
-              return NavigationDecision.prevent;
-            }
-            return NavigationDecision.navigate;
-          },
-          onPageStarted: (url) {
-            if (_isLogoutRedirect(url)) {
-              _complete();
-            }
-          },
-        ),
-      )
-      ..loadRequest(widget.logoutUrl);
-    if (_shouldUseMobileUserAgent) {
-      _controller.setUserAgent(kPreConnectUserAgent);
-    }
-    unawaited(LoginPage._configureCookies(_controller));
     _timeoutTimer = Timer(_logoutTimeout, _complete);
-  }
-
-  bool _isLogoutRedirect(String url) {
-    return BracuLogout.isConnectLogoutRedirect(url);
   }
 
   void _complete() {
@@ -235,9 +200,22 @@ class _MobileLogoutWebViewPageState extends State<_MobileLogoutWebViewPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: SafeArea(child: WebViewWidget(controller: _controller)),
+    return PreConnectWebViewPage(
+      initialUrl: widget.logoutUrl.toString(),
+      userAgent: _shouldUseMobileUserAgent ? kPreConnectUserAgent : null,
+      enablePullToRefresh: false,
+      onNavigationRequest: (request) {
+        if (BracuLogout.isConnectLogoutRedirect(request.url)) {
+          _complete();
+          return NavigationDecision.prevent;
+        }
+        return NavigationDecision.navigate;
+      },
+      onPageStarted: (url) {
+        if (BracuLogout.isConnectLogoutRedirect(url)) {
+          _complete();
+        }
+      },
     );
   }
 }
@@ -248,7 +226,6 @@ class _LoginPageState extends State<LoginPage> {
   WebViewController? _webViewController;
   bool _handledRedirect = false;
   bool _isLoggingIn = false;
-  bool _webViewLoading = false;
 
   @override
   void initState() {
@@ -273,15 +250,17 @@ class _LoginPageState extends State<LoginPage> {
     LoginPage.pkceVerifier ??= generatePkceVerifier();
     final codeChallenge = codeChallengeS256(LoginPage.pkceVerifier!);
     final controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.transparent);
+      ..setJavaScriptMode(JavaScriptMode.unrestricted);
+    try {
+      controller.setBackgroundColor(Colors.transparent);
+    } catch (_) {}
     if (_shouldUseMobileUserAgent) {
       controller.setUserAgent(kPreConnectUserAgent);
     }
     final url =
         widget.customAuthUrl ?? ApiConfig.authUrlWithPkce(codeChallenge);
     controller.loadRequest(Uri.parse(url));
-    unawaited(LoginPage._configureCookies(controller));
+    unawaited(PreConnectWebViewPage.configureCookies(controller));
     return controller;
   }
 
@@ -294,20 +273,6 @@ class _LoginPageState extends State<LoginPage> {
             return NavigationDecision.prevent;
           }
           return NavigationDecision.navigate;
-        },
-        onPageStarted: (url) {
-          if (mounted) {
-            setState(() {
-              _webViewLoading = true;
-            });
-          }
-        },
-        onPageFinished: (url) {
-          if (mounted) {
-            setState(() {
-              _webViewLoading = false;
-            });
-          }
         },
       ),
     );
@@ -335,7 +300,6 @@ class _LoginPageState extends State<LoginPage> {
           if (!didLogin) {
             showAppSnackBar(context, 'Login failed. Please try again.');
             _handledRedirect = false;
-            _webViewController?.loadRequest(Uri.parse(ApiConfig.authUrl));
           }
         })
         .catchError((_) {
@@ -348,7 +312,10 @@ class _LoginPageState extends State<LoginPage> {
   Future<bool> _exchangeCodeForToken(String code) async {
     try {
       final verifier = LoginPage.pkceVerifier;
-      if (verifier == null || verifier.isEmpty) return false;
+      if (verifier == null || verifier.isEmpty) {
+        debugPrint('LoginPage pkceVerifier is null or empty!');
+        return false;
+      }
 
       final uri = Uri.parse(ApiConfig.tokenEndpoint);
       final body = HttpUtils.formBody(<String, String>{
@@ -369,7 +336,11 @@ class _LoginPageState extends State<LoginPage> {
           )
           .timeout(_loginRequestTimeout);
 
-      if (response.statusCode != 200) return false;
+      if (response.statusCode != 200) {
+        debugPrint('Token exchange failed with status: ${response.statusCode}');
+        debugPrint('Response body: ${response.body}');
+        return false;
+      }
 
       final data = json.decode(response.body);
       if (data is! Map<String, dynamic>) return false;
@@ -413,15 +384,10 @@ class _LoginPageState extends State<LoginPage> {
       }
       unawaited(_warmAuthenticatedData());
       return true;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Token exchange threw exception: $e');
       return false;
     }
-  }
-
-  Future<void> _handlePullToRefresh() async {
-    if (_isLoggingIn) return;
-    _handledRedirect = false;
-    await _webViewController?.reload();
   }
 
   Future<void> _warmAuthenticatedData() async {
@@ -463,97 +429,20 @@ class _LoginPageState extends State<LoginPage> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) => BracuRefreshList(
-            onRefresh: _handlePullToRefresh,
-            padding: EdgeInsets.zero,
-            children: [
-              SizedBox(
-                height: constraints.maxHeight,
-                child: PopScope(
-                  canPop: false,
-                  onPopInvokedWithResult: (didPop, result) async {
-                    final controller = _webViewController;
-                    if (controller == null || !mounted) return;
-                    final navigator = Navigator.of(context);
-                    if (await controller.canGoBack()) {
-                      await controller.goBack();
-                    } else {
-                      navigator.pushAndRemoveUntil(
-                        MaterialPageRoute(
-                          builder: (context) => const OnboardingPage(),
-                        ),
-                        (route) => false,
-                      );
-                    }
-                  },
-                  child: Stack(
-                    children: [
-                      if (_webViewController != null)
-                        Positioned.fill(
-                          child: WebViewWidget(controller: _webViewController!),
-                        ),
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        child: Container(
-                          height: 48,
-                          color: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.arrow_back_rounded),
-                                onPressed: () async {
-                                  final controller = _webViewController;
-                                  if (controller == null || !mounted) return;
-                                  final navigator = Navigator.of(context);
-                                  if (await controller.canGoBack()) {
-                                    await controller.goBack();
-                                  } else {
-                                    navigator.pushAndRemoveUntil(
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            const OnboardingPage(),
-                                      ),
-                                      (route) => false,
-                                    );
-                                  }
-                                },
-                              ),
-                              const Spacer(),
-                              IconButton(
-                                icon: _webViewLoading
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: BracuPalette.primary,
-                                        ),
-                                      )
-                                    : const Icon(Icons.refresh_rounded),
-                                onPressed: _webViewLoading
-                                    ? null
-                                    : () => _webViewController?.reload(),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return PreConnectWebViewPage(
+      initialUrl: widget.customAuthUrl ?? '',
+      preloadedController: _webViewController,
+      onBackPress: (context, ctrl) async {
+        final navigator = Navigator.of(context);
+        if (await ctrl.canGoBack()) {
+          await ctrl.goBack();
+        } else {
+          navigator.pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const OnboardingPage()),
+            (route) => false,
+          );
+        }
+      },
     );
   }
 

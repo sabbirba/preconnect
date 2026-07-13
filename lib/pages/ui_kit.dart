@@ -982,23 +982,22 @@ class BracuFundingPromoDivider extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           child: Text(
             textContent,
-            style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
+            style: TextStyle(
+              color: textSecondary,
+              fontSize: 13.0,
+              height: 1.4,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
-        if (showSupporters)
-          const BracuCampaignSupporters(showToggle: false, maxCount: 5),
+        if (showSupporters) const BracuCampaignSupporters(maxCount: 5),
       ],
     );
   }
 }
 
 class BracuCampaignSupporters extends StatefulWidget {
-  const BracuCampaignSupporters({
-    super.key,
-    this.showToggle = true,
-    this.maxCount,
-  });
-  final bool showToggle;
+  const BracuCampaignSupporters({super.key, this.maxCount});
   final int? maxCount;
 
   @override
@@ -1008,7 +1007,6 @@ class BracuCampaignSupporters extends StatefulWidget {
 
 class _BracuCampaignSupportersState extends State<BracuCampaignSupporters> {
   FundingStatus? _status;
-  bool _expanded = false;
   bool _refreshing = false;
 
   @override
@@ -1032,19 +1030,20 @@ class _BracuCampaignSupportersState extends State<BracuCampaignSupporters> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final rawContributions =
-        _status?.contributions ?? const <ContributionItem>[];
+    final status = _status;
+    if (status == null) return const SizedBox.shrink();
 
-    final Map<String, ContributionItem> grouped = {};
-    for (final item in rawContributions) {
-      final key = item.name.trim();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final grouped = <String, ContributionItem>{};
+    for (final item in status.contributions) {
+      final name = item.name.trim();
+      final key = name.isEmpty ? 'Anonymous' : name;
       final existing = grouped[key];
       if (existing == null) {
         grouped[key] = item;
       } else {
         grouped[key] = ContributionItem(
-          name: existing.name,
+          name: key,
           picture: existing.picture ?? item.picture,
           amount: existing.amount + item.amount,
           ts: existing.ts > item.ts ? existing.ts : item.ts,
@@ -1059,14 +1058,10 @@ class _BracuCampaignSupportersState extends State<BracuCampaignSupporters> {
       return b.ts.compareTo(a.ts);
     });
 
-    final bool expanded = !widget.showToggle || _expanded;
-    int showCount = expanded
-        ? contributions.length
-        : (contributions.length > 5 ? 5 : contributions.length);
+    int showCount = contributions.length;
     if (widget.maxCount != null && showCount > widget.maxCount!) {
       showCount = widget.maxCount!;
     }
-    final hasMore = widget.showToggle && contributions.length > 5;
 
     if (contributions.isEmpty) return const SizedBox.shrink();
 
@@ -1130,25 +1125,6 @@ class _BracuCampaignSupportersState extends State<BracuCampaignSupporters> {
                 context,
               ).withValues(alpha: isDark ? 0.22 : 0.14),
             ),
-        ],
-        if (hasMore) ...[
-          const SizedBox(height: 10),
-          Center(
-            child: TextButton(
-              onPressed: () {
-                setState(() {
-                  _expanded = !_expanded;
-                });
-              },
-              child: Text(
-                _expanded ? 'Show Less' : 'Show More',
-                style: TextStyle(
-                  color: BracuPalette.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
         ],
       ],
     );

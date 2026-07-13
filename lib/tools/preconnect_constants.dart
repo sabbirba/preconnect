@@ -8,7 +8,6 @@ class PreConnectStorageKeys {
   static const String pendingShortcutAction = 'pending_shortcut_action';
   static const String pkceVerifier = '_pkce_verifier';
   static const String seatStatusCacheJson = 'seat_status_cache_json';
-  static const String seatStatusEtag = 'seat_status_etag';
 }
 
 class PreConnectRouteTokens {

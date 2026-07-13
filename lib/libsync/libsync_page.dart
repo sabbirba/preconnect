@@ -30,13 +30,15 @@ class LibSyncPage extends StatefulWidget {
   State<LibSyncPage> createState() => _LibSyncPageState();
 }
 
-class _LibSyncPageState extends State<LibSyncPage> with RefreshBusState<LibSyncPage> {
+class _LibSyncPageState extends State<LibSyncPage>
+    with RefreshBusState<LibSyncPage> {
   List<dynamic>? _reservationByYear;
   List<dynamic>? _recentReservations;
   List<dynamic>? _checkQuota;
   Map<String, dynamic>? _totalReservationCount;
   bool _loadingData = false;
   int? _selectedChartIndex;
+  bool _isGoogleSigningIn = false;
 
   static List<dynamic>? _cachedReservationByYear;
   static List<dynamic>? _cachedRecentReservations;
@@ -253,12 +255,12 @@ class _LibSyncPageState extends State<LibSyncPage> with RefreshBusState<LibSyncP
   }
 
   Future<void> _handleGoogleSignIn() async {
+    if (_isGoogleSigningIn) return;
+    _isGoogleSigningIn = true;
     try {
       String? authCode;
       String? redirectUri;
-      if (!kIsWeb &&
-          (defaultTargetPlatform == TargetPlatform.android ||
-              defaultTargetPlatform == TargetPlatform.iOS)) {
+      if (!kIsWeb) {
         authCode = await Navigator.of(context).push<String>(
           MaterialPageRoute(
             builder: (context) => const GoogleOAuthWebViewPage(),
@@ -308,7 +310,11 @@ class _LibSyncPageState extends State<LibSyncPage> with RefreshBusState<LibSyncP
       } else {
         if (mounted) {
           showAppSnackBar(context, 'Sign in cancelled.');
-          Navigator.of(context).maybePop();
+          Future.delayed(Duration.zero, () {
+            if (mounted) {
+              Navigator.of(context).maybePop();
+            }
+          });
         }
       }
     } catch (e) {
@@ -317,8 +323,14 @@ class _LibSyncPageState extends State<LibSyncPage> with RefreshBusState<LibSyncP
           context,
           'Google Sign In failed: ${e.toString().replaceAll('Exception: ', '')}',
         );
-        Navigator.of(context).maybePop();
+        Future.delayed(Duration.zero, () {
+          if (mounted) {
+            Navigator.of(context).maybePop();
+          }
+        });
       }
+    } finally {
+      _isGoogleSigningIn = false;
     }
   }
 

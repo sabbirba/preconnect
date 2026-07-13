@@ -45,7 +45,8 @@ class ApiConfig {
   static const String announcementFeedUrl =
       '$realtimeApiBase/data/announcements.json';
   static const String newsFeedUrl = '$realtimeApiBase/data/news.json';
-  static const String academicDatesUrl = '$realtimeApiBase/data/academic-dates.json';
+  static const String academicDatesUrl =
+      '$realtimeApiBase/data/academic-dates.json';
   static const String campusMapUrl = '$realtimeApiBase/data/map.json';
   static const String transportUrl = '$realtimeApiBase/data/transport.json';
 
@@ -92,6 +93,9 @@ class ApiConfig {
 
   static String advisingPath(String studentId) =>
       '/adv/v1/advising/$studentId/active-advising-sessions';
+
+  static String wishlistPath(String studentId) =>
+      '/adv/v1/advising/$studentId/active-wishlist-sessions';
 
   static String schedulePath(String portfolioId, {int? semesterSessionId}) {
     final semesterQuery = semesterSessionId == null
@@ -161,6 +165,10 @@ class ApiConfig {
   static String advisingUrl(String studentId) {
     final phasesQuery = advisingPhases.map((p) => 'advisingPhase=$p').join('&');
     return '$connectApiBase${advisingPath(studentId)}?$phasesQuery';
+  }
+
+  static String wishlistUrl(String studentId) {
+    return '$connectApiBase${wishlistPath(studentId)}';
   }
 
   static String get authUrl =>

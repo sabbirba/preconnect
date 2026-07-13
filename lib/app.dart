@@ -1004,8 +1004,8 @@ class _MyAppState extends State<MyApp>
                 value: overlayStyle,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final isWide = constraints.maxWidth >= 480.0;
-                    final shellWidth = isWide ? 480.0 : constraints.maxWidth;
+                    final isWide = constraints.maxWidth >= 728.0;
+                    final shellWidth = isWide ? 728.0 : constraints.maxWidth;
                     final shellHeight = mediaQuery.size.height;
                     final shellSize = Size(shellWidth, shellHeight);
                     final shellMediaQuery = mediaQuery.copyWith(

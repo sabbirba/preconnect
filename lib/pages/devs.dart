@@ -324,10 +324,9 @@ class _DevsPageState extends State<DevsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(height: 10),
-        BracuFundingPromoDivider(showSupporters: false),
+        BracuFundingPromoDivider(showSupporters: true),
         SizedBox(height: 12),
         BracuFundingSupportContent(),
-        BracuCampaignSupporters(showToggle: true),
       ],
     );
   }
