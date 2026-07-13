@@ -21,6 +21,7 @@ enum HomeTab {
   personalSchedules,
   libSync,
   dspace,
+  wishlist,
 }
 
 class HomeTabRegistry {

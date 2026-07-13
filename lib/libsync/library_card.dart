@@ -1,5 +1,6 @@
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:flutter_flip_card/flutter_flip_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/cached_image.dart';
@@ -76,7 +77,7 @@ class _LibraryCardFront extends StatelessWidget {
               child: Row(
                 children: [
                   const _BracuLogo(width: 34, height: 34),
-                  const SizedBox(width: 8),
+                  const Gap(8),
                   const Expanded(
                     child: Align(
                       alignment: Alignment.centerRight,
@@ -149,7 +150,7 @@ class _LibraryCardFront extends StatelessWidget {
                                         fontWeight: FontWeight.w800,
                                       ),
                                     ),
-                                    const SizedBox(height: 5),
+                                    const Gap(5),
                                     Text(
                                       displayProgram,
                                       style: const TextStyle(
@@ -158,14 +159,14 @@ class _LibraryCardFront extends StatelessWidget {
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    const Gap(8),
                                     _LibraryCardRow(
                                       label: 'Student ID',
                                       value: displayStudentId,
                                       enableCopy: false,
                                       textColor: const Color(0xFF1E293B),
                                     ),
-                                    const SizedBox(height: 5),
+                                    const Gap(5),
                                     _LibraryCardRow(
                                       label: 'Validity',
                                       value: expireDate,
@@ -174,7 +175,7 @@ class _LibraryCardFront extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 10),
+                              const Gap(10),
                               SizedBox(
                                 width: 90,
                                 height: 106,
@@ -259,7 +260,7 @@ class _LibraryCardBack extends StatelessWidget {
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const Gap(6),
                   const Text(
                     'BRAC University Library\n'
                     'Kha 224 Bir Uttam Rafiqul Islam Ave,\n'
@@ -270,7 +271,7 @@ class _LibraryCardBack extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const Gap(5),
                   const Text(
                     'Tel : +8809638464646 ext. 1653',
                     style: TextStyle(
@@ -279,7 +280,7 @@ class _LibraryCardBack extends StatelessWidget {
                       color: Colors.white70,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const Gap(12),
                   Row(
                     children: [
                       const Expanded(child: SizedBox.shrink()),
@@ -297,7 +298,7 @@ class _LibraryCardBack extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const Gap(4),
                   Row(
                     children: [
                       const Expanded(child: SizedBox.shrink()),
@@ -314,9 +315,9 @@ class _LibraryCardBack extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const Gap(8),
                   Container(width: 80, height: 1, color: Colors.white30),
-                  const SizedBox(height: 2),
+                  const Gap(2),
                   const Text(
                     'Authorized Signature',
                     style: TextStyle(
@@ -375,7 +376,7 @@ class _LibraryCardRow extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(width: 8),
+        const Gap(8),
         Expanded(
           child: enableCopy
               ? GestureDetector(

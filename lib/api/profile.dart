@@ -1,15 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:json_annotation/json_annotation.dart';
+import 'package:preconnect/di/service_locator.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 
+part 'profile.g.dart';
+
 class ProfileService {
-  static final ProfileService _instance = ProfileService._internal();
-  factory ProfileService() => _instance;
-  ProfileService._internal();
+  factory ProfileService() => getIt<ProfileService>();
+  ProfileService.create();
 
   final ApiClient _client = ApiClient();
   final Map<String, Future<Map<String, String?>?>> _profileFetchInFlight =
@@ -495,14 +498,23 @@ class ProfileService {
   }
 }
 
+@JsonSerializable()
 class AttendanceInfo {
+  @JsonKey(defaultValue: 0)
   final int courseSectionId;
+  @JsonKey(defaultValue: 0)
   final int studentPortfolioId;
+  @JsonKey(defaultValue: '')
   final String courseName;
+  @JsonKey(defaultValue: '')
   final String courseCode;
+  @JsonKey(defaultValue: 0)
   final int attend;
+  @JsonKey(defaultValue: 0)
   final int missed;
+  @JsonKey(defaultValue: 0)
   final int remaining;
+  @JsonKey(defaultValue: 0)
   final int totalClasses;
 
   AttendanceInfo({
@@ -516,27 +528,25 @@ class AttendanceInfo {
     required this.totalClasses,
   });
 
-  factory AttendanceInfo.fromJson(Map<String, dynamic> json) {
-    return AttendanceInfo(
-      courseSectionId: json['courseSectionId'] ?? 0,
-      studentPortfolioId: json['studentPortfolioId'] ?? 0,
-      courseName: json['courseName'] ?? '',
-      courseCode: json['courseCode'] ?? '',
-      attend: json['attend'] ?? 0,
-      missed: json['missed'] ?? 0,
-      remaining: json['remaining'] ?? 0,
-      totalClasses: json['totalClasses'] ?? 0,
-    );
-  }
+  factory AttendanceInfo.fromJson(Map<String, dynamic> json) =>
+      _$AttendanceInfoFromJson(json);
+
+  Map<String, dynamic> toJson() => _$AttendanceInfoToJson(this);
 }
 
+@JsonSerializable()
 class PaymentInfo {
+  @JsonKey(defaultValue: '')
   final String paymentStatus;
+  @JsonKey(defaultValue: '')
   final String payslipNumber;
+  @JsonKey(defaultValue: '')
   final String paymentType;
   final DateTime requestDate;
   final DateTime dueDate;
+  @JsonKey(defaultValue: 0.0)
   final double totalAmount;
+  @JsonKey(defaultValue: 0)
   final int semesterSessionId;
 
   PaymentInfo({
@@ -549,38 +559,15 @@ class PaymentInfo {
     required this.semesterSessionId,
   });
 
-  factory PaymentInfo.fromJson(Map<String, dynamic> json) {
-    return PaymentInfo(
-      paymentStatus: '${json['paymentStatus'] ?? ''}',
-      payslipNumber: '${json['payslipNumber'] ?? ''}',
-      paymentType: '${json['paymentType'] ?? ''}',
-      requestDate:
-          DateTime.tryParse('${json['requestDate'] ?? ''}') ??
-          DateTime.fromMillisecondsSinceEpoch(0),
-      dueDate:
-          DateTime.tryParse('${json['dueDate'] ?? ''}') ??
-          DateTime.fromMillisecondsSinceEpoch(0),
-      totalAmount: _toDouble(json['totalAmount']),
-      semesterSessionId: _toInt(json['semesterSessionId']),
-    );
-  }
-}
+  factory PaymentInfo.fromJson(Map<String, dynamic> json) =>
+      _$PaymentInfoFromJson(json);
 
-double _toDouble(dynamic value) {
-  if (value is num) return value.toDouble();
-  return double.tryParse('$value') ?? 0.0;
-}
-
-int _toInt(dynamic value) {
-  if (value is int) return value;
-  if (value is num) return value.toInt();
-  return int.tryParse('$value') ?? 0;
+  Map<String, dynamic> toJson() => _$PaymentInfoToJson(this);
 }
 
 class AdvisingService {
-  static final AdvisingService _instance = AdvisingService._internal();
-  factory AdvisingService() => _instance;
-  AdvisingService._internal();
+  factory AdvisingService() => getIt<AdvisingService>();
+  AdvisingService.create();
 
   static const List<String> storedProfileKeys = [
     'advisingStartDate',

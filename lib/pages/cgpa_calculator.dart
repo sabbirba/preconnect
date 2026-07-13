@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:preconnect/model/progress_info.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
@@ -129,9 +130,9 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
           _buildSummaryCard(context, expectedResult),
           if (autoRetakeCurrentCourses.isNotEmpty ||
               manualRetakeCourses.isNotEmpty) ...[
-            const SizedBox(height: 14),
+            const Gap(14),
             const BracuSectionTitle(title: 'Retake Courses'),
-            const SizedBox(height: 10),
+            const Gap(10),
             ...autoRetakeCurrentCourses.map((draft) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
@@ -145,18 +146,18 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
               );
             }),
           ],
-          const SizedBox(height: 14),
+          const Gap(14),
           const BracuSectionTitle(title: 'Current Courses'),
-          const SizedBox(height: 10),
+          const Gap(10),
           ..._currentCourses.map((draft) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: _buildCurrentCourseCard(context, draft),
             );
           }),
-          const SizedBox(height: 18),
+          const Gap(18),
           const BracuSectionTitle(title: 'Completed Courses'),
-          const SizedBox(height: 10),
+          const Gap(10),
           ..._completedCourses.map((draft) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -221,7 +222,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 12),
+          const Gap(12),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -239,13 +240,13 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
               }),
             ),
           ),
-          const SizedBox(height: 12),
+          const Gap(12),
           Row(
             children: [
               Expanded(
                 child: SimpleProgressBar(value: deltaValue, color: deltaColor),
               ),
-              const SizedBox(width: 8),
+              const Gap(8),
               Text(
                 '${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(3)}',
                 style: TextStyle(
@@ -458,7 +459,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
           size: 40,
           fontSize: 13,
         ),
-        const SizedBox(width: 10),
+        const Gap(10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -471,7 +472,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 3),
+              const Gap(3),
               Text(
                 resolvedTitle,
                 style: TextStyle(
@@ -482,7 +483,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
             ],
           ),
         ),
-        const SizedBox(width: 10),
+        const Gap(10),
         SizedBox(
           width: 96,
           child: Column(
@@ -496,7 +497,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 2),
+              const Gap(2),
               Text(
                 statusLabel,
                 style: TextStyle(
@@ -506,7 +507,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
                 ),
               ),
               if (trailingNote != null && trailingNote.trim().isNotEmpty) ...[
-                const SizedBox(height: 2),
+                const Gap(2),
                 Text(
                   trailingNote.trim(),
                   style: TextStyle(
@@ -670,7 +671,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
                   );
                 }).toList(),
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               _buildGradeGuideLegend(sheetContext, textPrimary, textSecondary),
             ],
           ),

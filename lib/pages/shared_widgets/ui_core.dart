@@ -138,11 +138,7 @@ class BracuActionButton extends StatelessWidget {
         style: _textButtonStyle(context),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            iconWidget!,
-            SizedBox(width: iconGap),
-            _label(),
-          ],
+          children: [iconWidget!, Gap(iconGap), _label()],
         ),
       );
     }
@@ -155,7 +151,7 @@ class BracuActionButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: iconSize),
-            SizedBox(width: iconGap),
+            Gap(iconGap),
             _label(),
           ],
         ),
@@ -176,11 +172,7 @@ class BracuActionButton extends StatelessWidget {
         style: _outlinedStyle(context),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            iconWidget!,
-            SizedBox(width: iconGap),
-            _label(),
-          ],
+          children: [iconWidget!, Gap(iconGap), _label()],
         ),
       );
     }
@@ -193,7 +185,7 @@ class BracuActionButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: iconSize),
-            SizedBox(width: iconGap),
+            Gap(iconGap),
             _label(),
           ],
         ),
@@ -276,7 +268,7 @@ class BracuActionCard extends StatelessWidget {
             children: [
               if (leadingIcon != null) ...[
                 Icon(leadingIcon, size: 20),
-                const SizedBox(width: 12),
+                const Gap(12),
               ],
               Expanded(
                 child: Column(
@@ -292,7 +284,7 @@ class BracuActionCard extends StatelessWidget {
                       ),
                     ),
                     if (subtitle != null) ...[
-                      const SizedBox(height: 4),
+                      const Gap(4),
                       Text(
                         subtitle!,
                         style: TextStyle(

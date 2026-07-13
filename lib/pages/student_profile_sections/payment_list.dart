@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -71,7 +72,7 @@ class PaymentList extends StatelessWidget {
                                   color: iconColor,
                                 ),
                               ),
-                              const SizedBox(width: 10),
+                              const Gap(10),
                               Flexible(
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -91,7 +92,7 @@ class PaymentList extends StatelessWidget {
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 4),
+                                    const Gap(4),
                                     GestureDetector(
                                       onTap: () {
                                         copyToClipboard(
@@ -111,7 +112,7 @@ class PaymentList extends StatelessWidget {
                             ],
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const Gap(10),
                         GestureDetector(
                           onTap: () => copyToClipboard(context, amount),
                           child: Text(
@@ -128,28 +129,28 @@ class PaymentList extends StatelessWidget {
                     );
                   },
                 ),
-                const SizedBox(height: 8),
+                const Gap(8),
                 _InfoLine(
                   label: paymentType,
                   value: semester,
                   isLabelBold: true,
                   isValueBold: true,
                 ),
-                const SizedBox(height: 8),
+                const Gap(8),
                 _InfoLine(
                   label: 'Requested',
                   value: formatDate(payment.requestDate.toIso8601String()),
                   isLabelBold: false,
                   isValueBold: false,
                 ),
-                const SizedBox(height: 6),
+                const Gap(6),
                 _InfoLine(
                   label: 'Due Date',
                   value: dueDate,
                   isLabelBold: true,
                   isValueBold: true,
                 ),
-                const SizedBox(height: 6),
+                const Gap(6),
                 _InfoLine(
                   label: 'Status',
                   value: isPaid ? 'Paid' : 'Due',
@@ -199,7 +200,7 @@ class _InfoLine extends StatelessWidget {
               textAlign: TextAlign.left,
             ),
           ),
-          const SizedBox(width: 12),
+          const Gap(12),
           Expanded(
             flex: 7,
             child: Text(

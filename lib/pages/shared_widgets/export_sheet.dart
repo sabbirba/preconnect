@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
 import 'package:archive/archive.dart';
 import 'package:barcode_widget/barcode_widget.dart';
@@ -225,7 +226,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
                 fontSize: 14,
               ),
             ),
-            const SizedBox(height: 16),
+            const Gap(16),
             BracuActionButton(
               onPressed: _checkAndAuthenticate,
               label: 'Authenticate',
@@ -252,7 +253,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
               backgroundColor: BracuPalette.primary,
               foregroundColor: Colors.white,
             ),
-          if (_expired) const SizedBox(height: 20),
+          if (_expired) const Gap(20),
           Center(
             child: Stack(
               alignment: Alignment.center,
@@ -302,7 +303,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const Gap(20),
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -323,7 +324,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
                 ],
               ),
               if (!_expired) ...[
-                const SizedBox(height: 16),
+                const Gap(16),
                 BracuActionButton(
                   onPressed: _copyToClipboard,
                   label: _copied ? 'Copied' : 'Copy Code',
@@ -337,7 +338,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
                   foregroundColor: Colors.white,
                 ),
               ],
-              const SizedBox(height: 16),
+              const Gap(16),
               BracuActionBannerCard(
                 icon: Icons.language_rounded,
                 title: 'Web App',
@@ -345,7 +346,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
                 onTap: () =>
                     openExternalUrl(context, 'https://web.preconnect.app'),
               ),
-              const SizedBox(height: 18),
+              const Gap(18),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -365,7 +366,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const Gap(20),
               Row(
                 children: [
                   Expanded(
@@ -418,7 +419,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const Gap(16),
                 Text(
                   'Sync Session',
                   textAlign: TextAlign.center,
@@ -429,7 +430,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
                   ),
                 ),
 
-                const SizedBox(height: 18),
+                const Gap(18),
                 bodyContent,
               ],
             ),

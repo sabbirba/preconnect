@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/friend_store.dart';
 import 'package:preconnect/model/friend_schedule.dart';
@@ -300,7 +301,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                         Icons.edit_outlined,
                         color: BracuPalette.primary,
                       ),
-                      const SizedBox(width: 8),
+                      const Gap(8),
                       Expanded(
                         child: Text(
                           'Edit Nickname',
@@ -317,7 +318,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const Gap(14),
                   TextField(
                     controller: controller,
                     autofocus: true,
@@ -334,7 +335,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const Gap(16),
                   Row(
                     children: [
                       Expanded(
@@ -343,7 +344,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                           label: 'Cancel',
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const Gap(12),
                       Expanded(
                         child: BracuActionButton(
                           onPressed: () =>
@@ -470,7 +471,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
               );
             },
           ),
-          const SizedBox(height: 22),
+          const Gap(22),
           Row(
             children: [
               Expanded(
@@ -493,7 +494,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const Gap(12),
           if (decodedSchedules.isNotEmpty) ...[
             BracuSearchField(
               controller: _searchController,
@@ -506,7 +507,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
               ),
               keySuffix: 'friend-schedule',
             ),
-            const SizedBox(height: 12),
+            const Gap(12),
           ],
           if (_filteredSchedules.isEmpty && decodedSchedules.isEmpty)
             const BracuEmptyState(message: "No schedules found")
@@ -543,7 +544,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                 },
               ),
             ),
-          if (_filteredSchedules.isNotEmpty) ...[const SizedBox(height: 12)],
+          if (_filteredSchedules.isNotEmpty) ...[const Gap(12)],
         ],
       ),
     );

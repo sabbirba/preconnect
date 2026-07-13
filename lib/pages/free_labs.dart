@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
@@ -369,7 +370,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const Gap(10),
                   ...timeSlots.map((slot) {
                     final slotToken =
                         '${slot.roomNumber}_${slot.startTime}_${slot.endTime}';
@@ -391,7 +392,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                       ),
                     );
                   }),
-                  const SizedBox(height: 6),
+                  const Gap(6),
                 ],
               ),
             );
@@ -824,7 +825,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
       onRefresh: _refresh,
       controller: _scrollController,
       children: [
-        const SizedBox(height: 160),
+        const Gap(160),
         Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -837,7 +838,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 8),
+            const Gap(8),
             Text(
               'Show next day labs for $nextDateLabel?',
               textAlign: TextAlign.center,
@@ -847,7 +848,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 14),
+            const Gap(14),
             BracuActionButton(
               onPressed: _showNextDayLabs,
               icon: Icons.arrow_forward_rounded,
@@ -895,7 +896,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const Gap(10),
             if (visibleRoomSlots.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
@@ -952,7 +953,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                 ),
               ),
             if (slot.occupiedClasses.isNotEmpty) ...[
-              const SizedBox(height: 16),
+              const Gap(16),
               Row(
                 children: [
                   Expanded(
@@ -967,7 +968,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const Gap(10),
               ...slot.occupiedClasses.map(
                 (item) => Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -1146,7 +1147,7 @@ class _CompactRoomRow extends StatelessWidget {
                       fontSize: 14,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const Gap(4),
                   Text(
                     (() {
                       final adjusted = RamadanTiming.adjustRange(
@@ -1167,7 +1168,7 @@ class _CompactRoomRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            const Gap(12),
             Expanded(
               flex: 4,
               child: Column(
@@ -1191,7 +1192,7 @@ class _CompactRoomRow extends StatelessWidget {
                     textAlign: TextAlign.right,
                   ),
                   if (slot.statusLabel.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+                    const Gap(2),
                     Text(
                       slot.statusLabel,
                       textAlign: TextAlign.right,

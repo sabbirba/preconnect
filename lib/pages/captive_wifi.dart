@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/api/profile.dart';
@@ -674,7 +675,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                               border: OutlineInputBorder(),
                             ),
                           ),
-                          const SizedBox(height: 10),
+                          const Gap(10),
                           TextField(
                             controller: _studentIdController,
                             decoration: const InputDecoration(
@@ -682,7 +683,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                               border: OutlineInputBorder(),
                             ),
                           ),
-                          const SizedBox(height: 10),
+                          const Gap(10),
                           TextField(
                             controller: _passwordController,
                             obscureText: _obscurePassword,
@@ -711,7 +712,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                       ),
                     ),
                     if (_locationNeedsSetup) ...[
-                      const SizedBox(height: 12),
+                      const Gap(12),
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
@@ -733,7 +734,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            const Gap(10),
                             TextButton(
                               onPressed: _fixLocationSetup,
                               child: const Text('Fix'),
@@ -742,7 +743,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                         ),
                       ),
                     ],
-                    const SizedBox(height: 12),
+                    const Gap(12),
                     Row(
                       children: [
                         Expanded(
@@ -754,7 +755,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                             label: 'Save',
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const Gap(10),
                         Expanded(
                           child: BracuActionButton(
                             onPressed:
@@ -778,7 +779,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const Gap(12),
                     SizedBox(
                       width: double.infinity,
                       child: BracuActionButton(
@@ -810,7 +811,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                         label: 'Open Portal In App',
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const Gap(4),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Auto Extend Session'),
@@ -820,11 +821,11 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                     ),
                     if (_extractedParams != null &&
                         _extractedParams!.isNotEmpty) ...[
-                      const SizedBox(height: 12),
+                      const Gap(12),
                       _buildPortalParamsCard(context),
                     ],
                     if (_responseLog.isNotEmpty) ...[
-                      const SizedBox(height: 12),
+                      const Gap(12),
                       _buildGatewayResponsesCard(context),
                     ],
                   ],
@@ -961,7 +962,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
           Row(
             children: [
               Icon(Icons.info_outline, size: 18, color: BracuPalette.primary),
-              const SizedBox(width: 8),
+              const Gap(8),
               Text(
                 'Captured Portal Parameters',
                 style: TextStyle(
@@ -972,7 +973,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const Gap(16),
           for (var i = 0; i < rows.length; i++) ...[
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -988,7 +989,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const Gap(10),
                 Expanded(
                   flex: 6,
                   child: Text(
@@ -1049,7 +1050,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
         children: [
           for (var i = 0; i < sections.length; i++) ...[
             _buildResponseSection(context, sections[i], isDark),
-            if (i != sections.length - 1) const SizedBox(height: 16),
+            if (i != sections.length - 1) const Gap(16),
           ],
         ],
       ),
@@ -1148,7 +1149,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                 body:
                     'Ensure your device Wi-Fi is turned on and connected to the Student-WiFi network.',
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               _buildStepItem(
                 context,
                 stepNumber: '2',
@@ -1156,7 +1157,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                 body:
                     'Provide your campus Student ID and Portal password correctly in the input fields.',
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               _buildStepItem(
                 context,
                 stepNumber: '3',
@@ -1164,7 +1165,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                 body:
                     'Tap the Connect button. PreConnect will automatically configure and authenticate you.',
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               _buildStepItem(
                 context,
                 stepNumber: '4',
@@ -1172,7 +1173,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                 body:
                     'Enable Auto Extend to allow PreConnect to run in the background and auto-renew your connectivity.',
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               _buildStepItem(
                 context,
                 stepNumber: '5',
@@ -1218,7 +1219,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const Gap(12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1231,7 +1232,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 2),
+              const Gap(2),
               Text(
                 body,
                 style: TextStyle(

@@ -1,14 +1,16 @@
 import 'dart:convert';
-
+import 'package:json_annotation/json_annotation.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/di/service_locator.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/model/section_info.dart';
 
+part 'exam_map.g.dart';
+
 class ExamMapService {
-  ExamMapService._internal();
-  static final ExamMapService _instance = ExamMapService._internal();
-  factory ExamMapService() => _instance;
+  factory ExamMapService() => getIt<ExamMapService>();
+  ExamMapService.create();
 
   final ApiClient _client = ApiClient();
   final RepositoryCache _repo = RepositoryCache.instance;
@@ -285,6 +287,7 @@ class ExamMapService {
   }
 }
 
+@JsonSerializable()
 class ExamScheduleOverride {
   const ExamScheduleOverride({
     this.midDate,
@@ -329,31 +332,10 @@ class ExamScheduleOverride {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'midDate': midDate,
-      'midStartTime': midStartTime,
-      'midEndTime': midEndTime,
-      'midRoomNumber': midRoomNumber,
-      'finalDate': finalDate,
-      'finalStartTime': finalStartTime,
-      'finalEndTime': finalEndTime,
-      'finalRoomNumber': finalRoomNumber,
-    };
-  }
+  factory ExamScheduleOverride.fromJson(Map<String, dynamic> json) =>
+      _$ExamScheduleOverrideFromJson(json);
 
-  factory ExamScheduleOverride.fromJson(Map<String, dynamic> json) {
-    return ExamScheduleOverride(
-      midDate: json['midDate']?.toString(),
-      midStartTime: json['midStartTime']?.toString(),
-      midEndTime: json['midEndTime']?.toString(),
-      midRoomNumber: json['midRoomNumber']?.toString(),
-      finalDate: json['finalDate']?.toString(),
-      finalStartTime: json['finalStartTime']?.toString(),
-      finalEndTime: json['finalEndTime']?.toString(),
-      finalRoomNumber: json['finalRoomNumber']?.toString(),
-    );
-  }
+  Map<String, dynamic> toJson() => _$ExamScheduleOverrideToJson(this);
 }
 
 class ExamSectionResolved {

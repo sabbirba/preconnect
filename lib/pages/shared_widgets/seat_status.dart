@@ -233,7 +233,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _buildSearchField(context),
-          const SizedBox(height: 10),
+          const Gap(10),
           _buildFilterActions(context),
         ],
       ),

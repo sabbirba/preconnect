@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/api/preferences_store.dart';
@@ -365,7 +366,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                         size: 64,
                         color: Colors.red,
                       ),
-                      const SizedBox(height: 16),
+                      const Gap(16),
                       Text(
                         'Authentication Error',
                         style: TextStyle(
@@ -374,7 +375,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const Gap(8),
                       Text(
                         _getFriendlyErrorMessage(state.errorMessage),
                         textAlign: TextAlign.center,
@@ -382,7 +383,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                           color: BracuPalette.textSecondary(context),
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const Gap(24),
                       ElevatedButton(
                         onPressed: () => LibSyncAuthService.instance.logout(),
                         child: const Text('Sign In Again'),
@@ -457,9 +458,9 @@ class _LibSyncPageState extends State<LibSyncPage>
                 },
                 children: [
                   LibraryCard(profile: profile),
-                  const SizedBox(height: 18),
+                  const Gap(18),
                   const BracuSectionTitle(title: 'Overview'),
-                  const SizedBox(height: 10),
+                  const Gap(10),
                   () {
                     final reservationByYear = _reservationByYear;
                     final totalReservationCount = _totalReservationCount;
@@ -481,7 +482,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                               reservationByYear.any(
                                 (monthData) => _hasReservations(monthData),
                               )) ...[
-                            const SizedBox(height: 14),
+                            const Gap(14),
                             Divider(
                               height: 1,
                               thickness: 1,
@@ -489,7 +490,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                                 context,
                               ).withValues(alpha: 0.12),
                             ),
-                            const SizedBox(height: 14),
+                            const Gap(14),
                             LayoutBuilder(
                               builder: (context, constraints) {
                                 final chartData = _getDynamicChartData();
@@ -539,7 +540,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                       ),
                     );
                   }(),
-                  const SizedBox(height: 18),
+                  const Gap(18),
                   BracuActionBannerCard(
                     icon: Icons.calendar_month_outlined,
                     title: 'Room Availability',
@@ -575,16 +576,16 @@ class _LibSyncPageState extends State<LibSyncPage>
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 18),
+                        const Gap(18),
                         if (hasQuota) ...[
                           const BracuSectionTitle(title: 'Daily Quota'),
-                          const SizedBox(height: 10),
+                          const Gap(10),
                           _QuotaCard(quota: checkQuota),
-                          const SizedBox(height: 18),
+                          const Gap(18),
                         ],
                         if (recentReservations != null) ...[
                           const BracuSectionTitle(title: 'Recent Reservations'),
-                          const SizedBox(height: 10),
+                          const Gap(10),
                           _RecentReservationsList(
                             reservations: recentReservations,
                             onRefresh: _loadReservationData,
@@ -593,7 +594,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                       ],
                     );
                   }(),
-                  const SizedBox(height: 12),
+                  const Gap(12),
                 ],
               ),
             );
@@ -707,13 +708,13 @@ class _QuotaCard extends StatelessWidget {
                   ],
                 ),
                 if (allowed > 0) ...[
-                  const SizedBox(height: 6),
+                  const Gap(6),
                   SimpleProgressBar(
                     value: percentage.clamp(0.0, 1.0),
                     color: BracuPalette.primary,
                   ),
                 ],
-                if (!isLast) const SizedBox(height: 12),
+                if (!isLast) const Gap(12),
                 if (!isLast)
                   Divider(
                     height: 1,
@@ -762,7 +763,7 @@ class _StatsGrid extends StatelessWidget {
                 color: Colors.green,
               ),
             ),
-            const SizedBox(width: 16),
+            const Gap(16),
             Expanded(
               child: _BarItem(
                 label: 'Cancelled',
@@ -773,7 +774,7 @@ class _StatsGrid extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const Gap(12),
         Row(
           children: [
             Expanded(
@@ -784,7 +785,7 @@ class _StatsGrid extends StatelessWidget {
                 color: const Color(0xFF1E6BE3),
               ),
             ),
-            const SizedBox(width: 16),
+            const Gap(16),
             Expanded(
               child: _BarItem(
                 label: 'Today',
@@ -841,7 +842,7 @@ class _BarItem extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        const Gap(4),
         SimpleProgressBar(value: value, color: color),
       ],
     );
@@ -936,7 +937,7 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                             size: 18,
                             color: statusColor,
                           ),
-                          const SizedBox(width: 10),
+                          const Gap(10),
                           Flexible(
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -953,7 +954,7 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 4),
+                                const Gap(4),
                                 GestureDetector(
                                   onTap: () => copyToClipboard(context, code),
                                   child: Icon(
@@ -968,7 +969,7 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const Gap(10),
                     Text(
                       room,
                       style: TextStyle(
@@ -980,28 +981,28 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const Gap(8),
                 _InfoLine(
                   label: 'Category',
                   value: category,
                   isLabelBold: true,
                   isValueBold: true,
                 ),
-                const SizedBox(height: 8),
+                const Gap(8),
                 _InfoLine(
                   label: 'Date',
                   value: date,
                   isLabelBold: false,
                   isValueBold: false,
                 ),
-                const SizedBox(height: 6),
+                const Gap(6),
                 _InfoLine(
                   label: 'Time Slot',
                   value: _formatSlot(res['slot']),
                   isLabelBold: true,
                   isValueBold: true,
                 ),
-                const SizedBox(height: 6),
+                const Gap(6),
                 _InfoLine(
                   label: 'Status',
                   value: status,
@@ -1012,13 +1013,13 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                 if (checkInStatus == CheckInAvailability.awaiting)
                   Column(
                     children: [
-                      const SizedBox(height: 6),
+                      const Gap(6),
                       _InfoLine(label: 'Check-In?', value: 'Awaiting (later)'),
                     ],
                   ),
                 if (status.toLowerCase() == 'confirmed' &&
                     checkInStatus == CheckInAvailability.yes) ...[
-                  const SizedBox(height: 12),
+                  const Gap(12),
                   Row(
                     children: [
                       Expanded(
@@ -1088,7 +1089,7 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const Gap(12),
                       Expanded(
                         child: OutlinedButton(
                           style: OutlinedButton.styleFrom(
@@ -1235,8 +1236,7 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
       if (now.isBefore(slotEnd)) return CheckInAvailability.yes;
       return CheckInAvailability.no;
     } catch (_) {
-      return CheckInAvailability
-          .yes; 
+      return CheckInAvailability.yes;
     }
   }
 
@@ -1287,7 +1287,7 @@ class _InfoLine extends StatelessWidget {
               textAlign: TextAlign.left,
             ),
           ),
-          const SizedBox(width: 10),
+          const Gap(10),
           Expanded(
             flex: 6,
             child: Text(

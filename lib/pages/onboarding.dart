@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/app.dart';
@@ -271,9 +272,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
-                          const SizedBox(height: 10),
+                          const Gap(10),
                           _HeroCard(isDark: isDark),
-                          const SizedBox(height: 28),
+                          const Gap(28),
                           Text(
                             'Welcome to PreConnect',
                             textAlign: TextAlign.center,
@@ -285,7 +286,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               letterSpacing: -0.6,
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const Gap(12),
                           Text(
                             'Academic Companion for BRACU\n'
                             'Open Source Built by BRACU Students',
@@ -298,7 +299,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             ),
                           ),
                           if (_appVersion.isNotEmpty) ...[
-                            const SizedBox(height: 6),
+                            const Gap(6),
                             Text(
                               _appVersion,
                               textAlign: TextAlign.center,
@@ -309,7 +310,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               ),
                             ),
                           ],
-                          const SizedBox(height: 20),
+                          const Gap(20),
                           _InfoCard(
                             icon: Icons.info_outline_rounded,
                             title: 'About the App',
@@ -317,7 +318,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                 'Track classes, exams, and reminders in one place with your BRACU SSO account.',
                             color: BracuPalette.primary,
                           ),
-                          const SizedBox(height: 10),
+                          const Gap(10),
                           _InfoCard(
                             icon: Icons.privacy_tip_outlined,
                             title: 'Privacy First',
@@ -325,8 +326,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                 'PreConnect is not an official BRAC University app. It is an initiative run by BRAC University students. Your data stays on your device with sign-in tokens kept locally.',
                             color: BracuPalette.accent,
                           ),
-                          const SizedBox(height: 10),
-                          const SizedBox(height: 10),
+                          const Gap(10),
+                          const Gap(10),
                           _InfoCard(
                             icon: Icons.groups_rounded,
                             title: 'Student Maintained',
@@ -334,7 +335,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                 'PreConnect is actively improved by students with open-source contributions, feedback, and community support.',
                             color: const Color(0xFF0EA5A4),
                           ),
-                          const SizedBox(height: 12),
+                          const Gap(12),
                           BracuActionBannerCard(
                             iconWidget: const PreConnectGithubIcon(size: 24),
                             title: 'Open GitHub Repository',
@@ -344,7 +345,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               'https://github.com/sabbirba/preconnect',
                             ),
                           ),
-                          const SizedBox(height: 10),
+                          const Gap(10),
                           BracuActionBannerCard(
                             icon: Icons.public_rounded,
                             iconColor: BracuPalette.accent,
@@ -358,7 +359,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const Gap(8),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4.0),
                     child: Row(
@@ -405,7 +406,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const Gap(12),
                   SizedBox(
                     width: double.infinity,
                     child: BracuActionButton(
@@ -418,7 +419,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const Gap(8),
                   Row(
                     children: [
                       Expanded(
@@ -436,7 +437,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           fontSize: 15,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const Gap(8),
                       Expanded(
                         child: BracuActionButton(
                           onPressed: _isStartingWebLogin
@@ -520,7 +521,7 @@ class _HeroCard extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 14),
+        const Gap(14),
         Text(
           'Prepare. Connect. Succeed.',
           style: TextStyle(
@@ -579,7 +580,7 @@ class _InfoCard extends StatelessWidget {
             ),
             child: Icon(icon, size: 18, color: color),
           ),
-          const SizedBox(width: 10),
+          const Gap(10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -592,7 +593,7 @@ class _InfoCard extends StatelessWidget {
                     color: BracuPalette.textPrimary(context),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const Gap(4),
                 Text(
                   body,
                   style: TextStyle(

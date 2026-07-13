@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
@@ -531,7 +532,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
 
     final scheduleWidgets = <Widget>[
       _buildPeopleCard(context),
-      const SizedBox(height: 12),
+      const Gap(12),
       if (entries.isEmpty)
         const BracuCard(
           child: Text('No overlap found in available schedule data.'),
@@ -556,7 +557,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
                   : null,
             );
           }
-          yield const SizedBox(height: 8);
+          yield const Gap(8);
         }),
     ];
 
@@ -661,7 +662,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
       child: Row(
         children: [
           FriendAvatar(name: label, photoUrl: photoUrl),
-          const SizedBox(width: 10),
+          const Gap(10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -674,7 +675,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
                     color: textPrimary,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const Gap(2),
                 Text(
                   '$courseCount $courseWord',
                   style: TextStyle(fontSize: 11, color: textSecondary),
@@ -710,7 +711,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SectionBadge(label: badgeLabel, color: color),
-            const SizedBox(width: 12),
+            const Gap(12),
             Expanded(
               flex: 7,
               child: Column(
@@ -724,7 +725,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
                       color: BracuPalette.textPrimary(context),
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const Gap(2),
                   Text(
                     item.subtitle,
                     style: TextStyle(

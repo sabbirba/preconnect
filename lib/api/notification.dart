@@ -1,11 +1,23 @@
 import 'dart:convert';
-
 import 'package:intl/intl.dart';
+import 'package:json_annotation/json_annotation.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/url_utils.dart';
 
+part 'notification.g.dart';
+
+DateTime? _dateTimeFromJson(String? value) =>
+    value != null ? DateTime.tryParse(value.trim()) : null;
+
+String? _dateTimeToJson(DateTime? value) => value?.toIso8601String();
+
+String _trimString(String? value) => (value ?? '').trim();
+
+String? _trimNullableString(String? value) => value?.trim();
+
+@JsonSerializable()
 class RecentConnectNotification {
   const RecentConnectNotification({
     required this.id,
@@ -17,37 +29,25 @@ class RecentConnectNotification {
     required this.seen,
   });
 
+  @JsonKey(defaultValue: 0)
   final int id;
+  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String title;
+  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String module;
+  @JsonKey(fromJson: _trimNullableString)
   final String? link;
+  @JsonKey(fromJson: _dateTimeFromJson, toJson: _dateTimeToJson)
   final DateTime? createdOn;
+  @JsonKey(fromJson: _dateTimeFromJson, toJson: _dateTimeToJson)
   final DateTime? expireAt;
+  @JsonKey(defaultValue: false)
   final bool seen;
 
-  factory RecentConnectNotification.fromJson(Map<String, dynamic> json) {
-    return RecentConnectNotification(
-      id: (json['id'] as num?)?.toInt() ?? 0,
-      title: (json['title'] as String? ?? '').trim(),
-      module: (json['module'] as String? ?? '').trim(),
-      link: (json['link'] as String?)?.trim(),
-      createdOn: DateTime.tryParse((json['createdOn'] as String? ?? '').trim()),
-      expireAt: DateTime.tryParse((json['expireAt'] as String? ?? '').trim()),
-      seen: json['seen'] == true,
-    );
-  }
+  factory RecentConnectNotification.fromJson(Map<String, dynamic> json) =>
+      _$RecentConnectNotificationFromJson(json);
 
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'id': id,
-      'title': title,
-      'module': module,
-      'link': link,
-      'createdOn': createdOn?.toIso8601String(),
-      'expireAt': expireAt?.toIso8601String(),
-      'seen': seen,
-    };
-  }
+  Map<String, dynamic> toJson() => _$RecentConnectNotificationToJson(this);
 }
 
 class ScraperDataService {
@@ -133,36 +133,19 @@ class ScraperDataService {
   }
 }
 
+@JsonSerializable()
 class NotificationsFeed {
   const NotificationsFeed({required this.newCount, required this.items});
 
+  @JsonKey(name: 'new', defaultValue: 0)
   final int newCount;
+  @JsonKey(defaultValue: <RecentConnectNotification>[])
   final List<RecentConnectNotification> items;
 
-  factory NotificationsFeed.fromJson(Map<String, dynamic> json) {
-    final rawItems = json['items'];
-    final items = rawItems is List
-        ? rawItems
-              .whereType<Map>()
-              .map(
-                (item) => RecentConnectNotification.fromJson(
-                  Map<String, dynamic>.from(item),
-                ),
-              )
-              .toList()
-        : const <RecentConnectNotification>[];
-    return NotificationsFeed(
-      newCount: (json['new'] as num?)?.toInt() ?? 0,
-      items: items,
-    );
-  }
+  factory NotificationsFeed.fromJson(Map<String, dynamic> json) =>
+      _$NotificationsFeedFromJson(json);
 
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'new': newCount,
-      'items': items.map((item) => item.toJson()).toList(),
-    };
-  }
+  Map<String, dynamic> toJson() => _$NotificationsFeedToJson(this);
 
   NotificationsFeed copyWith({
     int? newCount,
@@ -175,6 +158,7 @@ class NotificationsFeed {
   }
 }
 
+@JsonSerializable()
 class ConnectNotificationDetail {
   const ConnectNotificationDetail({
     required this.id,
@@ -186,27 +170,28 @@ class ConnectNotificationDetail {
     required this.details,
   });
 
+  @JsonKey(defaultValue: 0)
   final int id;
+  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String title;
+  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String module;
+  @JsonKey(fromJson: _trimNullableString)
   final String? link;
+  @JsonKey(fromJson: _dateTimeFromJson, toJson: _dateTimeToJson)
   final DateTime? expireAt;
+  @JsonKey(fromJson: _dateTimeFromJson, toJson: _dateTimeToJson)
   final DateTime? createdOn;
+  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String details;
 
-  factory ConnectNotificationDetail.fromJson(Map<String, dynamic> json) {
-    return ConnectNotificationDetail(
-      id: (json['id'] as num?)?.toInt() ?? 0,
-      title: (json['title'] as String? ?? '').trim(),
-      module: (json['module'] as String? ?? '').trim(),
-      link: (json['link'] as String?)?.trim(),
-      expireAt: DateTime.tryParse((json['expireAt'] as String? ?? '').trim()),
-      createdOn: DateTime.tryParse((json['createdOn'] as String? ?? '').trim()),
-      details: (json['details'] as String? ?? '').trim(),
-    );
-  }
+  factory ConnectNotificationDetail.fromJson(Map<String, dynamic> json) =>
+      _$ConnectNotificationDetailFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ConnectNotificationDetailToJson(this);
 }
 
+@JsonSerializable()
 class ScraperContentItem {
   const ScraperContentItem({
     required this.id,
@@ -219,46 +204,27 @@ class ScraperContentItem {
     this.imageUrls = const <String>[],
   });
 
+  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String id;
+  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String source;
+  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String title;
+  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String message;
+  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String url;
+  @JsonKey(fromJson: _dateTimeFromJson, toJson: _dateTimeToJson)
   final DateTime? publishedAt;
+  @JsonKey(fromJson: _trimNullableString)
   final String? imageUrl;
+  @JsonKey(defaultValue: <String>[])
   final List<String> imageUrls;
 
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'id': id,
-      'source': source,
-      'title': title,
-      'message': message,
-      'url': url,
-      'publishedAt': publishedAt?.toIso8601String(),
-      'imageUrl': imageUrl,
-      'imageUrls': imageUrls,
-    };
-  }
+  Map<String, dynamic> toJson() => _$ScraperContentItemToJson(this);
 
-  factory ScraperContentItem.fromJson(Map<String, dynamic> json) {
-    final rawImageUrls = json['imageUrls'];
-    final imageUrls = rawImageUrls is List
-        ? rawImageUrls.map((e) => '$e').toList(growable: false)
-        : const <String>[];
-    return ScraperContentItem(
-      id: (json['id'] as String? ?? '').trim(),
-      source: (json['source'] as String? ?? '').trim(),
-      title: (json['title'] as String? ?? '').trim(),
-      message: (json['message'] as String? ?? '').trim(),
-      url: (json['url'] as String? ?? '').trim(),
-      publishedAt: DateTime.tryParse(
-        (json['publishedAt'] as String? ?? '').trim(),
-      ),
-      imageUrl: (json['imageUrl'] as String?)?.trim(),
-      imageUrls: imageUrls,
-    );
-  }
+  factory ScraperContentItem.fromJson(Map<String, dynamic> json) =>
+      _$ScraperContentItemFromJson(json);
 }
 
 class NotificationService {

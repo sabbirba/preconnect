@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
@@ -35,7 +36,7 @@ class AttendanceSummary extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const Gap(8),
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
@@ -58,12 +59,12 @@ class AttendanceSummary extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const Gap(8),
                 SimpleProgressBar(
                   value: (percentage / 100).clamp(0.0, 1.0),
                   color: BracuPalette.primary,
                 ),
-                if (!isLast) const SizedBox(height: 10),
+                if (!isLast) const Gap(10),
                 if (!isLast)
                   Divider(
                     height: 1,

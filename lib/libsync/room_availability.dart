@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'auth_service.dart';
@@ -222,7 +223,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
                 body:
                     'Choose your reservation date and capacity counter at the top of the availability screen.',
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               _buildStepItem(
                 context,
                 stepNumber: '2',
@@ -230,7 +231,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
                 body:
                     'Use the Campus button in the settings row to toggle between Main Campus and Savar Campus availability slots.',
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               _buildStepItem(
                 context,
                 stepNumber: '3',
@@ -238,7 +239,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
                 body:
                     'Browse through the list of rooms and tap on an available time slot to start the reservation workflow.',
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               _buildStepItem(
                 context,
                 stepNumber: '4',
@@ -246,7 +247,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
                 body:
                     'Confirm the booking when prompted. The slot is held and then booked instantly.',
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               _buildStepItem(
                 context,
                 stepNumber: '5',
@@ -254,7 +255,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
                 body:
                     'When you arrive at the library, tap the Check In button on your active reservation card. Ensure you are connected to the campus network.',
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               _buildStepItem(
                 context,
                 stepNumber: '6',
@@ -300,7 +301,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const Gap(12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -313,7 +314,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 4),
+              const Gap(4),
               Text(
                 body,
                 style: TextStyle(
@@ -385,7 +386,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
                   }
                 },
               ),
-              const SizedBox(width: 8),
+              const Gap(8),
               Expanded(
                 flex: 5,
                 child: _SelectionButton(
@@ -393,7 +394,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
                   onTap: () => _selectDate(context),
                 ),
               ),
-              const SizedBox(width: 8),
+              const Gap(8),
               Expanded(
                 flex: 4,
                 child: BracuActionButton(
@@ -422,7 +423,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const Gap(16),
           if (_isLoading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 40),
@@ -476,7 +477,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
+                                  const Gap(2),
                                   Text(
                                     roomCat,
                                     style: TextStyle(
@@ -506,7 +507,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
                           ],
                         ),
                         if (location.isNotEmpty) ...[
-                          const SizedBox(height: 6),
+                          const Gap(6),
                           Text(
                             location,
                             style: TextStyle(
@@ -516,7 +517,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
                             ),
                           ),
                         ],
-                        const SizedBox(height: 8),
+                        const Gap(8),
                         if (slots.isEmpty)
                           Text(
                             'No active slots available',
@@ -610,7 +611,7 @@ class _CounterControl extends StatelessWidget {
             fontSize: 18,
           ),
         ),
-        const SizedBox(width: 8),
+        const Gap(8),
         SizedBox(
           width: 32,
           height: 38,
@@ -642,7 +643,7 @@ class _CounterControl extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        const Gap(8),
         SizedBox(
           width: 38,
           height: 38,

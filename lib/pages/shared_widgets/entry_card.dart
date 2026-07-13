@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ramadan.dart';
@@ -58,7 +59,7 @@ class ScheduleEntryCard extends StatelessWidget {
               label: formatSectionBadge(sectionName),
               color: BracuPalette.primary,
             ),
-            const SizedBox(width: 12),
+            const Gap(12),
             Expanded(
               flex: 7,
               child: Column(
@@ -82,7 +83,7 @@ class ScheduleEntryCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const Gap(4),
                   Text(
                     formatTimeRange(adjusted.startTime, adjusted.endTime),
                     style: TextStyle(
@@ -93,7 +94,7 @@ class ScheduleEntryCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            const Gap(12),
             Expanded(
               flex: 4,
               child: Column(
@@ -109,7 +110,7 @@ class ScheduleEntryCard extends StatelessWidget {
                     ),
                   ),
                   if (facultyLabel.isNotEmpty || consumedLabel.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+                    const Gap(2),
                     Text.rich(
                       TextSpan(
                         children: [

@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart'
     show ValueListenable, TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/notification.dart';
@@ -526,7 +527,7 @@ class BracuActionBannerCard extends StatelessWidget {
           children: [
             if (iconWidget != null) ...[
               iconWidget!,
-              const SizedBox(width: 12),
+              const Gap(12),
             ] else if (icon != null) ...[
               if (iconDecoration)
                 Container(
@@ -537,7 +538,7 @@ class BracuActionBannerCard extends StatelessWidget {
                 )
               else
                 Icon(icon, color: iconColor, size: 30),
-              const SizedBox(width: 12),
+              const Gap(12),
             ],
             Expanded(
               child: Column(
@@ -553,7 +554,7 @@ class BracuActionBannerCard extends StatelessWidget {
                     ),
                   ),
                   if (subtitle != null && subtitle!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+                    const Gap(2),
                     Text(
                       subtitle!,
                       style: TextStyle(
@@ -612,7 +613,7 @@ class BracuCountdownDigital extends StatelessWidget {
       children: [
         for (var i = 0; i < units.length; i++) ...[
           _BracuCountdownCell(value: units[i].value, label: units[i].label),
-          if (i != units.length - 1) const SizedBox(width: 8),
+          if (i != units.length - 1) const Gap(8),
         ],
       ],
     );
@@ -641,7 +642,7 @@ class _BracuCountdownCell extends StatelessWidget {
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
-          const SizedBox(height: 2),
+          const Gap(2),
           Text(
             label,
             style: TextStyle(
@@ -956,7 +957,7 @@ class BracuFundingPromoDivider extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.share_outlined, size: 14, color: textPrimary),
-                    const SizedBox(width: 6),
+                    const Gap(6),
                     Text(
                       'Share',
                       softWrap: false,
@@ -972,7 +973,7 @@ class BracuFundingPromoDivider extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const Gap(10),
         InkWell(
           onTap: () => openExternalUrl(
             context,
@@ -1069,7 +1070,7 @@ class _BracuCampaignSupportersState extends State<BracuCampaignSupporters> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const SizedBox(height: 20),
+        const Gap(20),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -1086,7 +1087,7 @@ class _BracuCampaignSupportersState extends State<BracuCampaignSupporters> {
                     color: BracuPalette.primary,
                   ),
                 ),
-                const SizedBox(width: 6),
+                const Gap(6),
                 SizedBox(
                   width: 28,
                   height: 28,
@@ -1114,7 +1115,7 @@ class _BracuCampaignSupportersState extends State<BracuCampaignSupporters> {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const Gap(8),
         for (int i = 0; i < showCount; i++) ...[
           _BracuSupporterTile(item: contributions[i]),
           if (i < showCount - 1)
@@ -1161,7 +1162,7 @@ class _BracuSupporterTile extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(width: 38, height: 38, child: avatar),
-          const SizedBox(width: 12),
+          const Gap(12),
           Expanded(
             child: Text(
               item.name,
@@ -1209,7 +1210,7 @@ class BracuFundingSupportContent extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
         ),
-        const SizedBox(height: 16),
+        const Gap(16),
         Center(
           child: Wrap(
             alignment: WrapAlignment.center,
@@ -1301,7 +1302,7 @@ class _BracuSponsorActionChip extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               iconWidget!,
-              const SizedBox(width: 8),
+              const Gap(8),
               Text(
                 label,
                 style: TextStyle(

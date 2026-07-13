@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
@@ -341,7 +342,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 18),
+            const Gap(18),
             if (item.abstractText.trim().isNotEmpty) ...[
               Text(
                 'Abstract',
@@ -351,7 +352,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 6),
+              const Gap(6),
               Text(
                 item.abstractText.trim(),
                 style: TextStyle(
@@ -361,7 +362,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 16),
+              const Gap(16),
             ],
             if (item.files.isNotEmpty) ...[
               Text(
@@ -372,7 +373,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 10),
+              const Gap(10),
               ...item.files.map((file) {
                 final ext = file.name.contains('.')
                     ? file.name.split('.').last.toUpperCase()
@@ -420,7 +421,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const Gap(16),
                 BracuActionButton(label: 'Retry', onPressed: _loadCategories),
               ],
             ),
@@ -483,7 +484,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const Gap(16),
                 BracuActionButton(
                   label: 'Retry',
                   onPressed: () => _loadCategoryItems(_selectedCategory!),
@@ -561,14 +562,14 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'DSpace BRACU IR is the official academic repository of BRAC University.',
+                'BRACU IR is the official academic repository of BRAC University.',
                 style: TextStyle(
                   color: textPrimary,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 16),
+              const Gap(16),
               _buildHelpItem(
                 context,
                 icon: Icons.category_rounded,
@@ -576,7 +577,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                 body:
                     'Browse academic documents divided into specific collections such as Thesis, Journal, and Conference Papers.',
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               _buildHelpItem(
                 context,
                 icon: Icons.search_rounded,
@@ -584,7 +585,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                 body:
                     'Use the search bar at the top to filter categories or quickly locate documents matching titles or authors.',
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               _buildHelpItem(
                 context,
                 icon: Icons.description_rounded,
@@ -592,7 +593,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                 body:
                     'Tap any document card to view its metadata, read the publication abstract, and access attachments.',
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               _buildHelpItem(
                 context,
                 icon: Icons.download_rounded,
@@ -617,7 +618,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, color: BracuPalette.primary, size: 20),
-        const SizedBox(width: 12),
+        const Gap(12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -630,7 +631,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 4),
+              const Gap(4),
               Text(
                 body,
                 style: TextStyle(
@@ -683,7 +684,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
         child: BracuPageScaffold(
           title: title,
           subtitle: subtitle,
-          icon: Icons.account_balance_rounded,
+          icon: Icons.library_books_rounded,
           showBack: true,
           actions: [
             if (_selectedCategory == null)
@@ -715,7 +716,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                       ? 'Search categories...'
                       : 'Search documents...',
                 ),
-                const SizedBox(height: 16),
+                const Gap(16),
                 if (_selectedCategory == null)
                   _buildCategoriesView(context)
                 else

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:preconnect/api/api_config.dart';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/cached_image.dart';
@@ -45,7 +46,7 @@ class FriendHeaderCard extends StatelessWidget {
         child: Row(
           children: [
             FriendAvatar(name: friend.name, photoUrl: friend.photoUrl),
-            const SizedBox(width: 12),
+            const Gap(12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,7 +82,7 @@ class FriendHeaderCard extends StatelessWidget {
                     ],
                   ),
                   if (subtitle != null) ...[
-                    const SizedBox(height: 4),
+                    const Gap(4),
                     Text(
                       subtitle!,
                       style: TextStyle(fontSize: 11, color: textSecondary),

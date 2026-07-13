@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -34,21 +35,21 @@ class PaymentGraph extends StatelessWidget {
             'Paid vs Due',
             style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary),
           ),
-          const SizedBox(height: 10),
+          const Gap(10),
           _BarRow(
             label: 'Paid',
             value: paidRatio,
             amount: paidTotal,
             color: BracuPalette.accent,
           ),
-          const SizedBox(height: 8),
+          const Gap(8),
           _BarRow(
             label: 'Due',
             value: dueRatio,
             amount: dueTotal,
             color: const Color(0xFFFF8A34),
           ),
-          const SizedBox(height: 6),
+          const Gap(6),
           Text(
             'Total: ${_formatAmountStatic(overall)}',
             style: TextStyle(color: textSecondary),
@@ -102,7 +103,7 @@ class _BarRow extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 6),
+        const Gap(6),
         SimpleProgressBar(value: value, color: color),
       ],
     );

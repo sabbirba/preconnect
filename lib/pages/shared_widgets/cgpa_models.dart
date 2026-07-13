@@ -316,7 +316,7 @@ Widget _buildGradeGuideLegend(
           ),
         ],
       ),
-      const SizedBox(height: 8),
+      const Gap(8),
       ..._gradeGuideRows.map((row) {
         final details = row.point.isEmpty && row.comment.isEmpty
             ? ''
@@ -377,7 +377,7 @@ Widget _buildGradeGuideLegend(
           ),
         );
       }),
-      const SizedBox(height: 4),
+      const Gap(4),
     ],
   );
 }
@@ -460,7 +460,7 @@ class _Metric extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-          if (title.isNotEmpty) const SizedBox(height: 4),
+          if (title.isNotEmpty) const Gap(4),
           Text(
             value,
             textAlign: TextAlign.center,

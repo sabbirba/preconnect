@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
@@ -135,7 +136,7 @@ class _BusPageState extends State<BusPage> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const Gap(10),
                   BracuActionButton(
                     onPressed: () => _load(forceRefresh: true),
                     icon: Icons.refresh_rounded,
@@ -166,23 +167,20 @@ class _BusPageState extends State<BusPage> {
                     );
                   },
                 ),
-                if (!isLast) const SizedBox(height: 10),
+                if (!isLast) const Gap(10),
               ];
             }),
           if (outbound != null) ...[
-            const SizedBox(height: 2),
+            const Gap(2),
             _OutboundTripsCard(outbound: outbound),
           ],
-          if (fares.isNotEmpty) ...[
-            const SizedBox(height: 2),
-            _FareCard(fares: fares),
-          ],
+          if (fares.isNotEmpty) ...[const Gap(2), _FareCard(fares: fares)],
           if (contacts.isNotEmpty) ...[
-            const SizedBox(height: 2),
+            const Gap(2),
             _ContactsCard(contacts: contacts),
           ],
           if (instructions.isNotEmpty) ...[
-            const SizedBox(height: 2),
+            const Gap(2),
             _GeneralInstructionsCard(instructions: instructions),
           ],
         ],
@@ -247,7 +245,7 @@ class _SectionHeader extends StatelessWidget {
           alignment: Alignment.center,
           child: Icon(icon, size: 16, color: BracuPalette.primary),
         ),
-        const SizedBox(width: 8),
+        const Gap(8),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,7 +288,7 @@ class _InfoChip extends StatelessWidget {
             iconWidget!
           else if (icon != null)
             Icon(icon, size: 12, color: BracuPalette.primary),
-          const SizedBox(width: 4),
+          const Gap(4),
           Text(
             text,
             style: TextStyle(

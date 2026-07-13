@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:flutter/rendering.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/schedule.dart';
@@ -362,7 +363,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const Gap(12),
                   Row(
                     children: [
                       Expanded(
@@ -399,7 +400,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
                                     color: BracuPalette.primary,
                                   ),
                                 ),
-                                const SizedBox(width: 10),
+                                const Gap(10),
                                 const Expanded(
                                   child: Text(
                                     'Share via QR',
@@ -416,9 +417,9 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const Gap(14),
                   const BracuSectionTitle(title: 'How to Use'),
-                  const SizedBox(height: 10),
+                  const Gap(10),
                   BracuCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,7 +433,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const Gap(12),
                 ],
               ],
             ),

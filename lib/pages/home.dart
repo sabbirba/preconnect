@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
@@ -30,6 +31,7 @@ import 'package:preconnect/pages/settings.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/libsync/libsync_page.dart';
 import 'package:preconnect/pages/dspace_browser.dart';
+import 'package:preconnect/pages/wishlist.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/home_sections/exam_countdown.dart';
@@ -111,6 +113,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
     HomeTab.personalSchedules: (_) => const CustomSchedulesPage(),
     HomeTab.libSync: (_) => const LibSyncPage(),
     HomeTab.dspace: (_) => const DSpaceBrowserPage(),
+    HomeTab.wishlist: (_) => const WishlistPage(),
   };
   late final List<HomeTab> _tabOrder = HomeTab.values;
   final Set<HomeTab> _builtTabs = {HomeTab.dashboard};
@@ -299,7 +302,7 @@ class _TopBar extends StatelessWidget {
                       error: const SizedBox.shrink(),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const Gap(12),
                 ],
                 Expanded(
                   child: Column(
@@ -312,7 +315,7 @@ class _TopBar extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 12, color: textSecondary),
                       ),
-                      const SizedBox(height: 2),
+                      const Gap(2),
                       Text(
                         name,
                         maxLines: 1,
@@ -395,7 +398,7 @@ class _ScheduleTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SectionBadge(label: badge, color: color),
-              const SizedBox(width: 12),
+              const Gap(12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -410,7 +413,7 @@ class _ScheduleTile extends StatelessWidget {
                         color: textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const Gap(4),
                     Text(
                       subtitle,
                       maxLines: 2,
@@ -425,7 +428,7 @@ class _ScheduleTile extends StatelessWidget {
                 ),
               ),
               if (trailing != null) ...[
-                const SizedBox(width: 12),
+                const Gap(12),
                 SizedBox(
                   width: rightColumnWidth,
                   child: Column(
@@ -444,7 +447,7 @@ class _ScheduleTile extends StatelessWidget {
                       ),
                       if (trailingSub != null &&
                           trailingSub!.trim().isNotEmpty) ...[
-                        const SizedBox(height: 2),
+                        const Gap(2),
                         Text(
                           trailingSub!,
                           textAlign: TextAlign.right,
@@ -490,7 +493,7 @@ class _RamadanHeroTime extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 14, color: BracuPalette.textSecondary(context)),
-            const SizedBox(width: 5),
+            const Gap(5),
             Text(
               label,
               style: TextStyle(
@@ -501,7 +504,7 @@ class _RamadanHeroTime extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 6),
+        const Gap(6),
         Text(
           value,
           textAlign: alignRight ? TextAlign.right : TextAlign.left,
@@ -558,7 +561,7 @@ class _RamadanTopCountdown extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const Gap(2),
                     Text(
                       ramadanDay == null
                           ? 'Ramadan'
@@ -572,7 +575,7 @@ class _RamadanTopCountdown extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const Gap(8),
               _RamadanCountdownDigital(remaining: remaining),
             ],
           );
@@ -626,7 +629,7 @@ class _RamadanCountdownDigital extends StatelessWidget {
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
-            const SizedBox(height: 2),
+            const Gap(2),
             Text(
               label,
               style: TextStyle(
@@ -651,7 +654,7 @@ class _RamadanCountdownDigital extends StatelessWidget {
       children: [
         for (var i = 0; i < units.length; i++) ...[
           cell(units[i].value, units[i].label),
-          if (i != units.length - 1) const SizedBox(width: 8),
+          if (i != units.length - 1) const Gap(8),
         ],
       ],
     );

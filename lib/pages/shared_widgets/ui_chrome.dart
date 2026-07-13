@@ -217,7 +217,7 @@ class _PageHeader extends StatelessWidget {
               ),
             ),
           ),
-        const SizedBox(width: 8),
+        const Gap(8),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,7 +229,7 @@ class _PageHeader extends StatelessWidget {
                   color: BracuPalette.textSecondary(context),
                 ),
               ),
-              const SizedBox(height: 2),
+              const Gap(2),
               Text(
                 title,
                 style: TextStyle(
@@ -420,7 +420,7 @@ class _BracuMetricTile extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(data.icon, color: BracuPalette.primary, size: 15),
-              const SizedBox(width: 6),
+              const Gap(6),
               Flexible(
                 child: Text(
                   data.title,
@@ -435,7 +435,7 @@ class _BracuMetricTile extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 3),
+          const Gap(3),
           Text(
             data.value,
             maxLines: 2,
@@ -644,7 +644,7 @@ class QuickAccessCard extends StatelessWidget {
                   ? Icon(icon, color: color, size: 22)
                   : Icon(icon, color: color, size: 22),
             ),
-            const SizedBox(height: 12),
+            const Gap(12),
             SizedBox(
               width: double.infinity,
               child: FittedBox(
@@ -662,7 +662,7 @@ class QuickAccessCard extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 2),
+            const Gap(2),
             SizedBox(
               width: double.infinity,
               child: FittedBox(
@@ -719,7 +719,7 @@ class FriendActionCard extends StatelessWidget {
               decoration: const BoxDecoration(color: Colors.transparent),
               child: Icon(icon, color: color, size: 20),
             ),
-            const SizedBox(height: 8),
+            const Gap(8),
             SizedBox(
               width: double.infinity,
               child: FittedBox(
@@ -737,7 +737,7 @@ class FriendActionCard extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 2),
+            const Gap(2),
             SizedBox(
               width: double.infinity,
               child: FittedBox(

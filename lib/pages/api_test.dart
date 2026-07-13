@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/pages/wishlist.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_refresh.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -211,6 +213,75 @@ class _ApiTestPageState extends State<ApiTestPage> {
     return _TokenField(label: 'Access Token Details', value: claims);
   }
 
+  Widget _buildDeveloperTools(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Developer Tools',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: BracuPalette.textSecondary(context),
+          ),
+        ),
+        const Gap(6),
+        BracuCard(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          backgroundColor: BracuPalette.card(context).withValues(alpha: 0.35),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final layout = quickAccessGridLayout(
+                constraints.maxWidth,
+                targetColumns: 2,
+              );
+              return Center(
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  runAlignment: WrapAlignment.center,
+                  spacing: layout.spacing,
+                  runSpacing: layout.spacing,
+                  children: [
+                    QuickAccessCard(
+                      width: layout.itemWidth,
+                      icon: Icons.star_outline_rounded,
+                      title: 'Wishlist',
+                      subtitle: 'Advising',
+                      color: const Color(0xFFFF8A34),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const WishlistPage(),
+                          ),
+                        );
+                      },
+                    ),
+                    QuickAccessCard(
+                      width: layout.itemWidth,
+                      icon: Icons.school_outlined,
+                      title: 'Advising',
+                      subtitle: 'Helper',
+                      color: const Color(0xFF5B8DEF),
+                      onTap: () {
+                        unawaited(
+                          openExternalUrl(
+                            context,
+                            'https://chromewebstore.google.com/detail/preconnect/fcfkbdogaciifaihbfhnaijfhdcjokca',
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BracuPageScaffold(
@@ -220,14 +291,16 @@ class _ApiTestPageState extends State<ApiTestPage> {
       body: BracuRefreshList(
         onRefresh: _sendRequest,
         children: [
+          _buildDeveloperTools(context),
+          const Gap(16),
           _buildAccessTokenSnapshot(context),
-          const SizedBox(height: 12),
+          const Gap(12),
           _TokenField(label: 'Access Token', value: _accessToken),
-          const SizedBox(height: 12),
+          const Gap(12),
           _TokenField(label: 'Refresh Token', value: _refreshToken),
-          const SizedBox(height: 12),
+          const Gap(12),
           _TokenField(label: 'ID Token', value: _idToken),
-          const SizedBox(height: 20),
+          const Gap(20),
           DropdownButtonFormField<String>(
             initialValue: _method,
             decoration: const InputDecoration(
@@ -244,7 +317,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
               });
             },
           ),
-          const SizedBox(height: 10),
+          const Gap(10),
           TextField(
             controller: _urlController,
             decoration: InputDecoration(
@@ -253,7 +326,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
               isDense: true,
             ),
           ),
-          const SizedBox(height: 12),
+          const Gap(12),
           SizedBox(
             width: double.infinity,
             child: BracuActionButton(
@@ -263,7 +336,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
               isLoading: _isLoading,
             ),
           ),
-          const SizedBox(height: 20),
+          const Gap(20),
           if (_responseText.isNotEmpty)
             SelectableText(
               _responseText,
@@ -306,7 +379,7 @@ class _TokenField extends StatelessWidget {
             color: BracuPalette.textSecondary(context),
           ),
         ),
-        const SizedBox(height: 6),
+        const Gap(6),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(12),

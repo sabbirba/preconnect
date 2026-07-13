@@ -1,4 +1,10 @@
-class CalendarFeed {
+import 'package:json_annotation/json_annotation.dart';
+import 'package:equatable/equatable.dart';
+
+part 'calendar_info.g.dart';
+
+@JsonSerializable()
+class CalendarFeed extends Equatable {
   const CalendarFeed({
     required this.rangeStart,
     required this.rangeEnd,
@@ -6,38 +12,26 @@ class CalendarFeed {
     required this.items,
   });
 
+  @JsonKey(defaultValue: '')
   final String rangeStart;
+  @JsonKey(defaultValue: '')
   final String rangeEnd;
+  @JsonKey(defaultValue: '')
   final String sourceFingerprint;
+  @JsonKey(defaultValue: <CalendarEntry>[])
   final List<CalendarEntry> items;
 
-  Map<String, dynamic> toJson() => <String, dynamic>{
-    'rangeStart': rangeStart,
-    'rangeEnd': rangeEnd,
-    'sourceFingerprint': sourceFingerprint,
-    'items': items.map((item) => item.toJson()).toList(),
-  };
+  @override
+  List<Object?> get props => [rangeStart, rangeEnd, sourceFingerprint, items];
 
-  factory CalendarFeed.fromJson(Map<String, dynamic> json) {
-    final rawItems = json['items'];
-    return CalendarFeed(
-      rangeStart: (json['rangeStart'] ?? '').toString().trim(),
-      rangeEnd: (json['rangeEnd'] ?? '').toString().trim(),
-      sourceFingerprint: (json['sourceFingerprint'] ?? '').toString().trim(),
-      items: rawItems is List
-          ? rawItems
-                .whereType<Map>()
-                .map(
-                  (item) =>
-                      CalendarEntry.fromJson(item.cast<String, dynamic>()),
-                )
-                .toList()
-          : const <CalendarEntry>[],
-    );
-  }
+  Map<String, dynamic> toJson() => _$CalendarFeedToJson(this);
+
+  factory CalendarFeed.fromJson(Map<String, dynamic> json) =>
+      _$CalendarFeedFromJson(json);
 }
 
-class CalendarEntry {
+@JsonSerializable()
+class CalendarEntry extends Equatable {
   const CalendarEntry({
     required this.id,
     required this.label,
@@ -60,71 +54,72 @@ class CalendarEntry {
     required this.actor,
   });
 
+  @JsonKey(defaultValue: '')
   final String id;
+  @JsonKey(defaultValue: '')
   final String label;
+  @JsonKey(defaultValue: '')
   final String typeKey;
+  @JsonKey(defaultValue: '')
   final String date;
+  @JsonKey(defaultValue: '')
   final String startDate;
+  @JsonKey(defaultValue: '')
   final String endDate;
+  @JsonKey(defaultValue: '')
   final String startTime;
+  @JsonKey(defaultValue: '')
   final String endTime;
+  @JsonKey(defaultValue: '')
   final String place;
+  @JsonKey(defaultValue: false)
   final bool isRepeatable;
+  @JsonKey(defaultValue: false)
   final bool isCancelled;
+  @JsonKey(defaultValue: '')
   final String ref;
+  @JsonKey(defaultValue: '')
   final String roomName;
+  @JsonKey(defaultValue: '')
   final String roomNumber;
+  @JsonKey(defaultValue: '')
   final String sessionLabel;
+  @JsonKey(defaultValue: '')
   final String building;
+  @JsonKey(defaultValue: '')
   final String faculty;
+  @JsonKey(defaultValue: '')
   final String department;
+  @JsonKey(defaultValue: '')
   final String actor;
 
   String get primaryDate => date.isNotEmpty ? date : startDate;
 
-  Map<String, dynamic> toJson() => <String, dynamic>{
-    'id': id,
-    'label': label,
-    'typeKey': typeKey,
-    'date': date,
-    'startDate': startDate,
-    'endDate': endDate,
-    'startTime': startTime,
-    'endTime': endTime,
-    'place': place,
-    'isRepeatable': isRepeatable,
-    'isCancelled': isCancelled,
-    'ref': ref,
-    'roomName': roomName,
-    'roomNumber': roomNumber,
-    'sessionLabel': sessionLabel,
-    'building': building,
-    'faculty': faculty,
-    'department': department,
-    'actor': actor,
-  };
+  @override
+  List<Object?> get props => [
+    id,
+    label,
+    typeKey,
+    date,
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    place,
+    isRepeatable,
+    isCancelled,
+    ref,
+    roomName,
+    roomNumber,
+    sessionLabel,
+    building,
+    faculty,
+    department,
+    actor,
+  ];
 
-  factory CalendarEntry.fromJson(Map<String, dynamic> json) {
-    return CalendarEntry(
-      id: (json['id'] ?? '').toString().trim(),
-      label: (json['label'] ?? '').toString().trim(),
-      typeKey: (json['typeKey'] ?? '').toString().trim(),
-      date: (json['date'] ?? '').toString().trim(),
-      startDate: (json['startDate'] ?? '').toString().trim(),
-      endDate: (json['endDate'] ?? '').toString().trim(),
-      startTime: (json['startTime'] ?? '').toString().trim(),
-      endTime: (json['endTime'] ?? '').toString().trim(),
-      place: (json['place'] ?? '').toString().trim(),
-      isRepeatable: json['isRepeatable'] == true,
-      isCancelled: json['isCancelled'] == true,
-      ref: (json['ref'] ?? '').toString().trim(),
-      roomName: (json['roomName'] ?? '').toString().trim(),
-      roomNumber: (json['roomNumber'] ?? '').toString().trim(),
-      sessionLabel: (json['sessionLabel'] ?? '').toString().trim(),
-      building: (json['building'] ?? '').toString().trim(),
-      faculty: (json['faculty'] ?? '').toString().trim(),
-      department: (json['department'] ?? '').toString().trim(),
-      actor: (json['actor'] ?? '').toString().trim(),
-    );
-  }
+  Map<String, dynamic> toJson() => _$CalendarEntryToJson(this);
+
+  factory CalendarEntry.fromJson(Map<String, dynamic> json) =>
+      _$CalendarEntryFromJson(json);
 }

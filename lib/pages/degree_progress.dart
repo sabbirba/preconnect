@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:preconnect/api/progress.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/progress_info.dart';
@@ -364,7 +365,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const Gap(12),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
@@ -385,7 +386,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                         }),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const Gap(10),
                     Row(
                       children: [
                         Expanded(
@@ -394,7 +395,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                             color: BracuPalette.primary,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const Gap(8),
                         Text(
                           '${summaryPercent.toStringAsFixed(1)}%',
                           style: TextStyle(
@@ -408,7 +409,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                   ],
                 ),
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               BracuActionBannerCard(
                 icon: Icons.calculate_outlined,
                 title: 'CGPA Calculator',
@@ -425,7 +426,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                   );
                 },
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               BracuActionBannerCard(
                 icon: Icons.tune,
                 title: 'All Courses',
@@ -438,12 +439,12 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                   );
                 },
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               const GradeSheetCard(),
-              const SizedBox(height: 14),
+              const Gap(14),
               if (info.headerProgress.isNotEmpty) ...[
                 const BracuSectionTitle(title: 'Requirement Progress'),
-                const SizedBox(height: 10),
+                const Gap(10),
                 ...info.headerProgress.map((item) {
                   final requiredCredit = item.requiredCredit;
                   final earnedCredit = item.earnedCredit;
@@ -493,7 +494,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
-                                      const SizedBox(height: 2),
+                                      const Gap(2),
                                       Text(
                                         'Required ${_formatCredit(requiredCredit)} Credits • Remaining ${_formatCredit(remainingForHeader)} Credits',
                                         style: TextStyle(
@@ -507,7 +508,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 10),
+                                const Gap(10),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
@@ -525,7 +526,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 8),
+                            const Gap(8),
                             Row(
                               children: [
                                 Expanded(
@@ -534,7 +535,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                     color: BracuPalette.accent,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
+                                const Gap(8),
                                 Text(
                                   '${(item.percent * 100).toStringAsFixed(1)}%',
                                   style: TextStyle(
@@ -551,7 +552,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                     ),
                   );
                 }),
-                const SizedBox(height: 4),
+                const Gap(4),
               ],
               if (info.majorOptions.isNotEmpty || info.minorOptions.isNotEmpty)
                 BracuCard(
@@ -567,20 +568,20 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                         ),
                       ),
                       if (info.majorOptions.isNotEmpty) ...[
-                        const SizedBox(height: 10),
+                        const Gap(10),
                         _OptionWrap(title: 'Majors', items: info.majorOptions),
                       ],
                       if (info.minorOptions.isNotEmpty) ...[
-                        const SizedBox(height: 10),
+                        const Gap(10),
                         _OptionWrap(title: 'Minors', items: info.minorOptions),
                       ],
                     ],
                   ),
                 ),
               if (info.majorOptions.isNotEmpty || info.minorOptions.isNotEmpty)
-                const SizedBox(height: 14),
+                const Gap(14),
               const BracuSectionTitle(title: 'Wishlist for Next Semester'),
-              const SizedBox(height: 10),
+              const Gap(10),
               if (wishlistCourses.isEmpty)
                 BracuCard(
                   child: Text(
@@ -605,7 +606,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                             size: 40,
                             fontSize: 13,
                           ),
-                          const SizedBox(width: 10),
+                          const Gap(10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -618,7 +619,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                const SizedBox(height: 3),
+                                const Gap(3),
                                 Text(
                                   item.title.isEmpty ? item.code : item.title,
                                   style: TextStyle(
@@ -629,7 +630,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                               ],
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const Gap(10),
                           SizedBox(
                             width: 108,
                             child: Column(
@@ -643,7 +644,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const Gap(2),
                                 Text(
                                   item.isMandatory ? 'Required' : 'Elective',
                                   style: TextStyle(
@@ -673,11 +674,11 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                       },
                     ),
                   ),
-                const SizedBox(height: 4),
+                const Gap(4),
               ],
               if (currentSectionsForDisplay.isNotEmpty) ...[
                 const BracuSectionTitle(title: 'Current Semester Courses'),
-                const SizedBox(height: 10),
+                const Gap(10),
                 ...currentSectionsVisible.map((current) {
                   final isRequired =
                       mandatoryByCode[current.courseCode.toUpperCase()] ??
@@ -702,7 +703,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                             size: 40,
                             fontSize: 13,
                           ),
-                          const SizedBox(width: 10),
+                          const Gap(10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -716,7 +717,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                   ),
                                 ),
                                 if (showSubtitle) ...[
-                                  const SizedBox(height: 3),
+                                  const Gap(3),
                                   Text(
                                     rawSubtitle,
                                     style: TextStyle(
@@ -730,7 +731,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                               ],
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const Gap(10),
                           SizedBox(
                             width: 96,
                             child: Column(
@@ -744,7 +745,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const Gap(2),
                                 Text(
                                   isRequired ? 'Required' : 'Elective',
                                   style: TextStyle(
@@ -775,10 +776,10 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                       },
                     ),
                   ),
-                const SizedBox(height: 4),
+                const Gap(4),
               ],
               const BracuSectionTitle(title: 'Completed Courses'),
-              const SizedBox(height: 10),
+              const Gap(10),
               if (topCourses.isEmpty)
                 BracuCard(
                   child: Text(
@@ -806,7 +807,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                             size: 40,
                             fontSize: 13,
                           ),
-                          const SizedBox(width: 10),
+                          const Gap(10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -819,7 +820,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                const SizedBox(height: 3),
+                                const Gap(3),
                                 Text(
                                   course.title.isEmpty
                                       ? course.code
@@ -832,7 +833,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                               ],
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const Gap(10),
                           SizedBox(
                             width: 96,
                             child: Column(
@@ -846,7 +847,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const Gap(2),
                                 Text(
                                   (mandatoryByCode[course.code.toUpperCase()] ??
                                           false)

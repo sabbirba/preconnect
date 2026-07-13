@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -428,7 +429,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const Gap(12),
               SizedBox(
                 width: double.infinity,
                 child: BracuActionButton(
@@ -438,7 +439,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
-              const SizedBox(height: 8),
+              const Gap(8),
               Row(
                 children: [
                   Expanded(
@@ -448,7 +449,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                       borderRadius: 14,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const Gap(8),
                   Expanded(
                     child: BracuActionButton(
                       onPressed: pickEndTime,
@@ -460,7 +461,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const Gap(8),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
@@ -501,7 +502,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                                 color: BracuPalette.textPrimary(context),
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            const Gap(2),
                             Text(
                               DateFormat('dd MMM yyyy, hh:mm a').format(
                                 startTime.subtract(
@@ -535,7 +536,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const Gap(8),
               SizedBox(
                 width: double.infinity,
                 child: BracuActionButton(
@@ -576,7 +577,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const Gap(12),
               TextFormField(
                 initialValue: notesValue,
                 onChanged: (value) => notesValue = value,
@@ -594,7 +595,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                   counterText: '',
                 ),
               ),
-              const SizedBox(height: 16),
+              const Gap(16),
               SizedBox(
                 width: double.infinity,
                 child: BracuActionButton(
@@ -609,7 +610,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                 ),
               ),
               if (item != null) ...[
-                const SizedBox(height: 10),
+                const Gap(10),
                 SizedBox(
                   width: double.infinity,
                   child: BracuActionButton(
@@ -621,7 +622,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                     borderRadius: 12,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const Gap(8),
                 SizedBox(
                   width: double.infinity,
                   child: BracuActionButton(

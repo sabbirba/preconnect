@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/api/friend_store.dart';
@@ -125,7 +126,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                 onRefresh: _handleRefresh,
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                 children: [
-                  const SizedBox(height: 28),
+                  const Gap(28),
                   BracuCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,7 +175,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                                                 color: Colors.white,
                                                 size: 34,
                                               ),
-                                              const SizedBox(height: 10),
+                                              const Gap(10),
                                               const Text(
                                                 'Camera unavailable',
                                                 textAlign: TextAlign.center,
@@ -183,7 +184,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                                                   fontSize: 16,
                                                 ),
                                               ),
-                                              const SizedBox(height: 12),
+                                              const Gap(12),
                                               TextButton(
                                                 onPressed: () =>
                                                     _ensureCameraPermission(
@@ -264,7 +265,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                                 size: 72,
                                 color: BracuPalette.accent,
                               ),
-                              const SizedBox(height: 12),
+                              const Gap(12),
                               const Text(
                                 'Schedule Added!',
                                 style: TextStyle(
@@ -272,14 +273,14 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              const SizedBox(height: 6),
+                              const Gap(6),
                               Text(
                                 'You can scan another QR anytime.',
                                 style: TextStyle(
                                   color: BracuPalette.textSecondary(context),
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              const Gap(16),
                               BracuActionButton(
                                 onPressed: _isRescanning
                                     ? null
@@ -288,7 +289,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                                 label: 'Scan Again',
                                 isLoading: _isRescanning,
                               ),
-                              const SizedBox(height: 10),
+                              const Gap(10),
                               InkWell(
                                 onTap: () {
                                   Navigator.of(context).maybePop();
@@ -313,7 +314,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                                           size: 20,
                                         ),
                                       ),
-                                      const SizedBox(width: 12),
+                                      const Gap(12),
                                       const Expanded(
                                         child: Text(
                                           'Done',
@@ -332,7 +333,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                         ),
                       ],
                     ),
-                  const SizedBox(height: 12),
+                  const Gap(12),
                 ],
               ),
       ),

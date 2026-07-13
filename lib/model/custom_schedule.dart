@@ -1,10 +1,10 @@
-// ignore: depend_on_referenced_packages
 import 'package:json_annotation/json_annotation.dart';
+import 'package:equatable/equatable.dart';
 
 part 'custom_schedule.g.dart';
 
 @JsonSerializable()
-class CustomSchedule {
+class CustomSchedule extends Equatable {
   const CustomSchedule({
     required this.itemId,
     required this.kind,
@@ -32,6 +32,22 @@ class CustomSchedule {
   final bool isDone;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  @override
+  List<Object?> get props => [
+    itemId,
+    kind,
+    title,
+    courseCode,
+    sectionName,
+    startTime,
+    endTime,
+    reminderAt,
+    notes,
+    isDone,
+    createdAt,
+    updatedAt,
+  ];
 
   factory CustomSchedule.fromJson(Map<String, dynamic> json) =>
       _$CustomScheduleFromJson(json);

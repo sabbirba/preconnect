@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/exam_map.dart';
 import 'package:preconnect/api/schedule.dart';
@@ -602,7 +603,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const Gap(8),
                       BracuCard(
                         key: isHighlighted
                             ? _highlightScroll.highlightKey
@@ -615,7 +616,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                               label: formatSectionBadge(section.sectionName),
                               color: BracuPalette.primary,
                             ),
-                            const SizedBox(width: 12),
+                            const Gap(12),
                             Expanded(
                               flex: 7,
                               child: Column(
@@ -628,7 +629,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
+                                  const Gap(6),
                                   Text(
                                     _formatExamTimeLabel(
                                       midStart(section),
@@ -642,7 +643,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const Gap(12),
                             Expanded(
                               flex: 4,
                               child: Column(
@@ -659,7 +660,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                                   ),
                                   if (section.faculties.trim().isNotEmpty ||
                                       section.consumedSeat > 0) ...[
-                                    const SizedBox(height: 2),
+                                    const Gap(2),
                                     Text.rich(
                                       TextSpan(
                                         children: [
@@ -742,7 +743,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const Gap(8),
                       BracuCard(
                         key: isHighlighted
                             ? _highlightScroll.highlightKey
@@ -755,7 +756,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                               label: formatSectionBadge(section.sectionName),
                               color: BracuPalette.accent,
                             ),
-                            const SizedBox(width: 12),
+                            const Gap(12),
                             Expanded(
                               flex: 7,
                               child: Column(
@@ -768,7 +769,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
+                                  const Gap(6),
                                   Text(
                                     _formatExamTimeLabel(
                                       finalStart(section),
@@ -782,7 +783,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const Gap(12),
                             Expanded(
                               flex: 4,
                               child: Column(
@@ -799,7 +800,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                                   ),
                                   if (section.faculties.trim().isNotEmpty ||
                                       section.consumedSeat > 0) ...[
-                                    const SizedBox(height: 2),
+                                    const Gap(2),
                                     Text.rich(
                                       TextSpan(
                                         children: [
@@ -846,7 +847,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
             );
           }
 
-          children.add(const SizedBox(height: 8));
+          children.add(const Gap(8));
           unawaited(
             _highlightScroll.scrollToTarget(
               targetToken: highlightedKey,

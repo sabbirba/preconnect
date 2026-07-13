@@ -227,7 +227,7 @@ class _Metric extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 4),
+          const Gap(4),
           Text(
             value,
             textAlign: TextAlign.center,
@@ -262,7 +262,7 @@ class _OptionWrap extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 6),
+        const Gap(6),
         Wrap(
           spacing: 6,
           runSpacing: 6,

@@ -122,7 +122,7 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage>
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const Gap(10),
                     BracuActionButton(
                       onPressed: _refreshing ? null : _refreshRouteData,
                       isLoading: _refreshing,
@@ -134,17 +134,17 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage>
               ),
             if (hasLivePosition && !kIsWeb) ...[
               _RouteLiveMapCard(route: route, vehicle: vehicle),
-              const SizedBox(height: 2),
+              const Gap(2),
               if (hasLiveStats) _LiveTrackingCard(route: route),
-              const SizedBox(height: 2),
+              const Gap(2),
             ],
             if (hasLivePosition && kIsWeb) ...[
               _RouteGoogleMapsLink(route: route),
-              const SizedBox(height: 2),
+              const Gap(2),
             ],
             _RouteStopsCard(route: route),
             if (route.attendantPhone.trim().isNotEmpty) ...[
-              const SizedBox(height: 2),
+              const Gap(2),
               _RouteAttendantFooter(
                 phone: route.attendantPhone,
                 onCallAttendant: _callAttendant,
@@ -240,7 +240,7 @@ class _RouteLiveMapCard extends StatelessWidget {
             ),
           ),
           if (hasLocation) ...[
-            const SizedBox(height: 10),
+            const Gap(10),
             _RouteActionButton(
               label: 'Open in Google Maps',
               onPressed: () {
@@ -573,7 +573,7 @@ class _NextStopHighlightCard extends StatelessWidget {
                 size: 22,
               ),
             ),
-            const SizedBox(width: 12),
+            const Gap(12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -587,7 +587,7 @@ class _NextStopHighlightCard extends StatelessWidget {
                       letterSpacing: 0.2,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const Gap(2),
                   Text(
                     stopName,
                     style: TextStyle(
@@ -687,7 +687,7 @@ class _RouteStopTimelineTile extends StatelessWidget {
             width: 32,
             child: Column(
               children: [
-                const SizedBox(height: 14),
+                const Gap(14),
                 Container(
                   width: 14,
                   height: 14,
@@ -716,7 +716,7 @@ class _RouteStopTimelineTile extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const Gap(8),
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(12),
@@ -749,7 +749,7 @@ class _RouteStopTimelineTile extends StatelessWidget {
                         ),
                       ),
                       if (isHighlighted) ...[
-                        const SizedBox(width: 8),
+                        const Gap(8),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -767,7 +767,7 @@ class _RouteStopTimelineTile extends StatelessWidget {
                                 color: BracuPalette.primary,
                                 size: 12,
                               ),
-                              const SizedBox(width: 4),
+                              const Gap(4),
                               Text(
                                 'LIVE',
                                 style: TextStyle(
@@ -784,7 +784,7 @@ class _RouteStopTimelineTile extends StatelessWidget {
                     ],
                   ),
                   if (stop.times.isNotEmpty) ...[
-                    const SizedBox(height: 8),
+                    const Gap(8),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -798,7 +798,7 @@ class _RouteStopTimelineTile extends StatelessWidget {
                           .toList(growable: false),
                     ),
                   ] else ...[
-                    const SizedBox(height: 4),
+                    const Gap(4),
                     Text(
                       'No time data available.',
                       style: TextStyle(color: textSecondary),

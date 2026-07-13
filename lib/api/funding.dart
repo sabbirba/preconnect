@@ -1,12 +1,19 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:json_annotation/json_annotation.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/tools/app_storage.dart';
 
+part 'funding.g.dart';
+
+@JsonSerializable()
 class ContributionItem {
+  @JsonKey(defaultValue: 'Anonymous')
   final String name;
   final String? picture;
+  @JsonKey(defaultValue: 0)
   final int amount;
+  @JsonKey(defaultValue: 0)
   final int ts;
 
   const ContributionItem({
@@ -16,24 +23,21 @@ class ContributionItem {
     required this.ts,
   });
 
-  factory ContributionItem.fromJson(Map<String, dynamic> json) {
-    return ContributionItem(
-      name: json['name'] as String? ?? 'Anonymous',
-      picture: json['picture'] as String?,
-      amount: (json['amount'] as num?)?.toInt() ?? 0,
-      ts: (json['ts'] as num?)?.toInt() ?? 0,
-    );
-  }
+  factory ContributionItem.fromJson(Map<String, dynamic> json) =>
+      _$ContributionItemFromJson(json);
 
-  Map<String, dynamic> toJson() {
-    return {'name': name, 'picture': picture, 'amount': amount, 'ts': ts};
-  }
+  Map<String, dynamic> toJson() => _$ContributionItemToJson(this);
 }
 
+@JsonSerializable()
 class FundingStatus {
+  @JsonKey(defaultValue: 0)
   final int totalRaised;
+  @JsonKey(defaultValue: 0)
   final int goal;
+  @JsonKey(defaultValue: 0)
   final int contributorsCount;
+  @JsonKey(defaultValue: <ContributionItem>[])
   final List<ContributionItem> contributions;
 
   const FundingStatus({
@@ -43,29 +47,10 @@ class FundingStatus {
     required this.contributions,
   });
 
-  factory FundingStatus.fromJson(Map<String, dynamic> json) {
-    final list = json['contributions'] as List?;
-    final contribs = list != null
-        ? list
-              .map((e) => ContributionItem.fromJson(e as Map<String, dynamic>))
-              .toList()
-        : const <ContributionItem>[];
-    return FundingStatus(
-      totalRaised: json['totalRaised'] as int? ?? 0,
-      goal: json['goal'] as int? ?? 0,
-      contributorsCount: json['contributorsCount'] as int? ?? 0,
-      contributions: contribs,
-    );
-  }
+  factory FundingStatus.fromJson(Map<String, dynamic> json) =>
+      _$FundingStatusFromJson(json);
 
-  Map<String, dynamic> toJson() {
-    return {
-      'totalRaised': totalRaised,
-      'goal': goal,
-      'contributorsCount': contributorsCount,
-      'contributions': contributions.map((e) => e.toJson()).toList(),
-    };
-  }
+  Map<String, dynamic> toJson() => _$FundingStatusToJson(this);
 }
 
 class FundingService {

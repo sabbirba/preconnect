@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -108,7 +109,7 @@ class NotificationCardItem extends StatelessWidget {
                             : FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const Gap(6),
                     Row(
                       children: [
                         if (!item.seen) ...[
@@ -120,7 +121,7 @@ class NotificationCardItem extends StatelessWidget {
                               shape: BoxShape.circle,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const Gap(8),
                         ],
                         Flexible(
                           child: Text(
@@ -135,7 +136,7 @@ class NotificationCardItem extends StatelessWidget {
                           ),
                         ),
                         if (createdLabel.isNotEmpty) ...[
-                          const SizedBox(width: 8),
+                          const Gap(8),
                           Text(
                             '•',
                             style: TextStyle(
@@ -144,7 +145,7 @@ class NotificationCardItem extends StatelessWidget {
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const Gap(8),
                           Expanded(
                             child: Text(
                               createdLabel,

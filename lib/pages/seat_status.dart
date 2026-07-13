@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/seat_status.dart';
@@ -426,7 +427,7 @@ class _SeatStatusCard extends StatelessWidget {
                         ),
                       ),
                     if (item.courseName.trim().isNotEmpty) ...[
-                      const SizedBox(height: 2),
+                      const Gap(2),
                       Text(
                         item.courseName.trim(),
                         style: TextStyle(
@@ -438,7 +439,7 @@ class _SeatStatusCard extends StatelessWidget {
                     ],
                     if (item.facultyInitial.trim().isNotEmpty ||
                         item.credits > 0) ...[
-                      const SizedBox(height: 4),
+                      const Gap(4),
                       RichText(
                         text: TextSpan(
                           style: TextStyle(fontSize: 13, color: textSecondary),
@@ -473,7 +474,7 @@ class _SeatStatusCard extends StatelessWidget {
                       ),
                     ],
                     if (seatStatusFacultyHasVisuals(faculty)) ...[
-                      const SizedBox(height: 8),
+                      const Gap(8),
                       Row(
                         children: [
                           if (faculty?.imgUrl?.trim().isNotEmpty == true) ...[
@@ -485,7 +486,7 @@ class _SeatStatusCard extends StatelessWidget {
                               size: 40,
                               radius: 20,
                             ),
-                            const SizedBox(width: 10),
+                            const Gap(10),
                           ],
                           Expanded(
                             child: Column(
@@ -501,7 +502,7 @@ class _SeatStatusCard extends StatelessWidget {
                                     ),
                                   ),
                                 if (facultyEmail.isNotEmpty) ...[
-                                  const SizedBox(height: 2),
+                                  const Gap(2),
                                   InkWell(
                                     borderRadius: BorderRadius.circular(6),
                                     onTap: () =>
@@ -538,24 +539,24 @@ class _SeatStatusCard extends StatelessWidget {
             ],
           ),
           if (classLines.isNotEmpty) ...[
-            const SizedBox(height: 14),
+            const Gap(14),
             _SeatScheduleBlock(title: 'Class', lines: classLines),
           ],
           if (labLines.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const Gap(12),
             _SeatScheduleBlock(title: 'Lab', lines: labLines),
           ],
           if (item.room.isNotEmpty || item.labRoom.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const Gap(12),
             _RoomBlock(
               theoryLabel: theoryLabel,
               theoryRoom: item.room,
               labRoom: item.labRoom,
             ),
-            const SizedBox(height: 12),
+            const Gap(12),
           ],
           if (hasMidExam || hasFinalExam) ...[
-            const SizedBox(height: 12),
+            const Gap(12),
             Row(
               children: [
                 Expanded(
@@ -568,7 +569,7 @@ class _SeatStatusCard extends StatelessWidget {
                     textSecondary: textSecondary,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const Gap(16),
                 Expanded(
                   child: _ExamBlock(
                     label: 'Final',
@@ -583,9 +584,9 @@ class _SeatStatusCard extends StatelessWidget {
             ),
           ],
           if (item.remaining >= 0 || item.consumed >= 0 || item.total >= 0) ...[
-            const SizedBox(height: 12),
+            const Gap(12),
             Divider(color: textSecondary.withValues(alpha: 0.2), height: 1),
-            const SizedBox(height: 12),
+            const Gap(12),
             Row(
               children: [
                 Expanded(
@@ -726,7 +727,7 @@ class _RoomBlock extends StatelessWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 3),
+        const Gap(3),
         RichText(
           text: TextSpan(
             style: TextStyle(
@@ -762,7 +763,7 @@ class _SeatScheduleBlock extends StatelessWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 3),
+        const Gap(3),
         for (final line in lines)
           Text(
             line,
@@ -964,7 +965,7 @@ class _SeatMetric extends StatelessWidget {
             color: color,
           ),
         ),
-        const SizedBox(height: 3),
+        const Gap(3),
         Text(
           label,
           textAlign: TextAlign.center,
@@ -1014,7 +1015,7 @@ class _ExamBlock extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 3),
+        const Gap(3),
         if (hasDate)
           Text(
             dateLabel,
@@ -1024,7 +1025,7 @@ class _ExamBlock extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-        if (hasDate && hasTime) const SizedBox(height: 1),
+        if (hasDate && hasTime) const Gap(1),
         if (hasTime)
           Text(
             timeLabel,

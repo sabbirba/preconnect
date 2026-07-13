@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/progress.dart';
@@ -346,38 +347,38 @@ class _StudentProfileState extends State<StudentProfile>
             const BracuLoading()
           else
             CardSection(profile: _profile, photoUrl: _photoUrl),
-          const SizedBox(height: 18),
+          const Gap(18),
           if (!isLoading)
             AcademicSummaryCard(
               profile: _profile ?? const {},
               advising: _advising,
               progressSummary: _progressSummary,
             ),
-          const SizedBox(height: 18),
+          const Gap(18),
           if (!isLoading) ...[
             const BracuSectionTitle(title: 'Documents'),
-            const SizedBox(height: 10),
+            const Gap(10),
             const GradeSheetCard(),
-            const SizedBox(height: 18),
+            const Gap(18),
             const BracuSectionTitle(title: 'Personal Info'),
-            const SizedBox(height: 10),
+            const Gap(10),
             PersonalInfoCard(profile: _profile ?? const {}),
-            const SizedBox(height: 18),
+            const Gap(18),
             const BracuSectionTitle(title: 'Attendance'),
-            const SizedBox(height: 10),
+            const Gap(10),
             if (_attendances.isNotEmpty) ...[
               AttendanceSummary(attendances: _attendances),
-              const SizedBox(height: 12),
+              const Gap(12),
             ],
-            const SizedBox(height: 18),
+            const Gap(18),
             const BracuSectionTitle(title: 'Payments'),
-            const SizedBox(height: 10),
+            const Gap(10),
             _payments.isEmpty
                 ? const BracuEmptyState(message: 'No payments found')
                 : PaymentGraph(payments: _payments),
-            if (_payments.isNotEmpty) const SizedBox(height: 12),
+            if (_payments.isNotEmpty) const Gap(12),
             if (_payments.isNotEmpty) PaymentList(payments: _payments),
-            const SizedBox(height: 12),
+            const Gap(12),
           ],
         ],
       ),

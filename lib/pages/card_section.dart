@@ -1,5 +1,6 @@
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:flutter_flip_card/flutter_flip_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/cached_image.dart';
@@ -35,7 +36,7 @@ class CardSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 4),
+        const Gap(4),
         GestureFlipCard(
           animationDuration: const Duration(milliseconds: 300),
           axis: FlipAxis.vertical,
@@ -94,7 +95,7 @@ class _CardFront extends StatelessWidget {
               child: Row(
                 children: [
                   const _BracuLogo(width: 34, height: 34),
-                  const SizedBox(width: 8),
+                  const Gap(8),
                   const Expanded(
                     child: Align(
                       alignment: Alignment.centerRight,
@@ -178,7 +179,7 @@ class _CardFront extends StatelessWidget {
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
-                                    const SizedBox(height: 5),
+                                    const Gap(5),
                                     Text(
                                       displayProgram,
                                       style: const TextStyle(
@@ -187,18 +188,18 @@ class _CardFront extends StatelessWidget {
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    const Gap(8),
                                     _InfoRow(
                                       label: 'Student ID',
                                       value: displayStudentId,
                                       enableCopy: false,
                                     ),
-                                    const SizedBox(height: 5),
+                                    const Gap(5),
                                     _InfoRow(
                                       label: 'Blood Group',
                                       value: displayBloodGroup,
                                     ),
-                                    const SizedBox(height: 5),
+                                    const Gap(5),
                                     _InfoRow(
                                       label: 'Validity',
                                       value: validation,
@@ -206,7 +207,7 @@ class _CardFront extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 10),
+                              const Gap(10),
                               SizedBox(
                                 width: 90,
                                 height: 106,
@@ -286,7 +287,7 @@ class _CardBack extends StatelessWidget {
                     color: Colors.black,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const Gap(16),
                 const Text(
                   'Contact:',
                   style: TextStyle(
@@ -295,7 +296,7 @@ class _CardBack extends StatelessWidget {
                     color: Colors.black,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const Gap(6),
                 const Text(
                   'BRAC University\n'
                   'Kha 224 Bir Uttam Rafiqul Islam Ave,\n'
@@ -306,7 +307,7 @@ class _CardBack extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 5),
+                const Gap(5),
                 const Text(
                   'Tel : +8809638464646 ext. 1653',
                   style: TextStyle(
@@ -386,7 +387,7 @@ class _InfoRow extends StatelessWidget {
       children: [
         SizedBox(width: 74, child: Text(label, style: textStyle)),
         const Text(':', style: textStyle),
-        const SizedBox(width: 8),
+        const Gap(8),
         Expanded(
           child: enableCopy
               ? GestureDetector(

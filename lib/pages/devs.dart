@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
@@ -280,11 +281,11 @@ class _DevsPageState extends State<DevsPage> {
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
                 const _IntroCard(),
-                const SizedBox(height: 14),
+                const Gap(14),
                 _buildPeopleSection(),
-                const SizedBox(height: 14),
+                const Gap(14),
                 _buildSponsoredSection(),
-                const SizedBox(height: 14),
+                const Gap(14),
                 _buildFundingSection(),
               ],
             ),
@@ -299,7 +300,7 @@ class _DevsPageState extends State<DevsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const BracuSectionTitle(title: 'People Behind It'),
-        const SizedBox(height: 10),
+        const Gap(10),
         if (_contributors.isEmpty && _contributorsLoading)
           const BracuLoading()
         else
@@ -313,7 +314,7 @@ class _DevsPageState extends State<DevsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         BracuSectionTitle(title: 'Sponsored'),
-        SizedBox(height: 10),
+        Gap(10),
         _SponsoredStrip(),
       ],
     );
@@ -323,9 +324,9 @@ class _DevsPageState extends State<DevsPage> {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(height: 10),
+        Gap(10),
         BracuFundingPromoDivider(showSupporters: true),
-        SizedBox(height: 12),
+        Gap(12),
         BracuFundingSupportContent(),
       ],
     );
@@ -374,18 +375,18 @@ class _IntroCard extends StatelessWidget {
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 6),
+        const Gap(6),
         Text(
           'If you have an idea, spot a bug, or want to help, '
           'we would love to hear from you on GitHub. '
           'You can open an issue, share suggestions, or send a pull request.',
           style: TextStyle(color: textSecondary),
         ),
-        const SizedBox(height: 12),
+        const Gap(12),
         const _RepoButton(),
-        const SizedBox(height: 12),
+        const Gap(12),
         const BracuCommunityLink(),
-        const SizedBox(height: 12),
+        const Gap(12),
         const DeviceDiagnosticsButton(),
       ],
     );
@@ -496,7 +497,7 @@ class _SponsoredTile extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         iconWidget ?? const SizedBox.shrink(),
-        const SizedBox(width: 10),
+        const Gap(10),
         Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -511,7 +512,7 @@ class _SponsoredTile extends StatelessWidget {
                 color: BracuPalette.textPrimary(context),
               ),
             ),
-            const SizedBox(height: 2),
+            const Gap(2),
             Text(
               subtitle,
               maxLines: 1,
@@ -629,7 +630,7 @@ class _DevGridTile extends StatelessWidget {
                 url: contributor.avatarUrl,
                 size: avatarSize,
               ),
-              const SizedBox(height: 10),
+              const Gap(10),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.center,
@@ -644,7 +645,7 @@ class _DevGridTile extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 6),
+              const Gap(6),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.center,

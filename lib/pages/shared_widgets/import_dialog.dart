@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:archive/archive.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
@@ -248,7 +249,7 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
                 ),
             ],
           ),
-          const SizedBox(height: 16),
+          const Gap(16),
           BracuActionButton(
             onPressed: _isProcessing ? null : _importFromClipboard,
             label: _isProcessing ? 'Importing...' : 'Import from Clipboard',
@@ -258,7 +259,7 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
             borderRadius: 24,
           ),
           if (hasValidClipboard) ...[
-            const SizedBox(height: 8),
+            const Gap(8),
             const Center(
               child: Text(
                 'Sync code detected in clipboard',
@@ -270,7 +271,7 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
               ),
             ),
           ],
-          const SizedBox(height: 10),
+          const Gap(10),
           BracuActionButton(
             onPressed: _isProcessing ? null : _pickAndScanQrImage,
             label: 'Select QR Image',
@@ -278,7 +279,7 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
             foregroundColor: BracuPalette.textPrimary(context),
             borderRadius: 24,
           ),
-          const SizedBox(height: 14),
+          const Gap(14),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -299,7 +300,7 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const Gap(8),
                 Text(
                   '1. Open app on phone\n'
                   '2. Go to Settings > Sync Session\n'
@@ -314,7 +315,7 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
             ),
           ),
           if (_errorMessage != null) ...[
-            const SizedBox(height: 10),
+            const Gap(10),
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
@@ -335,7 +336,7 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
             ),
           ],
           if (widget.showCancelButton) ...[
-            const SizedBox(height: 12),
+            const Gap(12),
             BracuActionButton(
               onPressed: () => Navigator.pop(context),
               label: 'Cancel',

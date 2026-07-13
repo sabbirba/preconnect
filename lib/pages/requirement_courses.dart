@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:preconnect/model/progress_info.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/string_utils.dart';
@@ -133,7 +134,7 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
                           size: 40,
                           fontSize: 13,
                         ),
-                        const SizedBox(width: 10),
+                        const Gap(10),
                       ],
                       Expanded(
                         child: Column(
@@ -200,7 +201,7 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 3),
+                            const Gap(3),
                             Text(
                               course.title.isEmpty ? '--' : course.title,
                               style: TextStyle(
@@ -211,7 +212,7 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const Gap(10),
                       SizedBox(
                         width: 96,
                         child: Column(
@@ -225,7 +226,7 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            const SizedBox(height: 1),
+                            const Gap(1),
                             Text(
                               infoLabel,
                               style: TextStyle(
@@ -237,7 +238,7 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
                               ),
                             ),
                             if (done && gradeLabel == null) ...[
-                              const SizedBox(height: 2),
+                              const Gap(2),
                               Text(
                                 'Completed',
                                 style: TextStyle(
@@ -247,7 +248,7 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
                                 ),
                               ),
                             ] else if (takingNow) ...[
-                              const SizedBox(height: 2),
+                              const Gap(2),
                               Text(
                                 'This semester',
                                 style: TextStyle(

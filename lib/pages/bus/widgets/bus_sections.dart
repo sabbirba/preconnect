@@ -18,7 +18,7 @@ class _OutboundTripsCard extends StatelessWidget {
               title: '1st Outbound',
               entries: outbound.firstOutbound,
             ),
-            const SizedBox(height: 10),
+            const Gap(10),
           ],
           if (outbound.secondOutbound.isNotEmpty) ...[
             _TripGroupPanel(
@@ -63,7 +63,7 @@ class _FareCard extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const Gap(6),
                   Row(
                     children: [
                       Expanded(
@@ -72,7 +72,7 @@ class _FareCard extends StatelessWidget {
                           text: 'Per: ${entry.value.amountPerTrip}',
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const Gap(8),
                       Expanded(
                         child: _InfoChip(
                           icon: Icons.repeat_rounded,
@@ -126,7 +126,7 @@ class _ContactsCard extends StatelessWidget {
                       color: BracuPalette.primary,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const Gap(8),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -212,7 +212,7 @@ class _GeneralInstructionsCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const Gap(8),
                   Expanded(
                     child: Text(
                       entry.value,
@@ -257,7 +257,7 @@ class _TripGroupPanel extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 8),
+          const Gap(8),
           ...entries.asMap().entries.map(
             (entry) => Padding(
               padding: EdgeInsets.only(
@@ -278,7 +278,7 @@ class _TripGroupPanel extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const Gap(8),
                   _InfoChip(
                     icon: Icons.schedule_outlined,
                     text: entry.value.time,
@@ -312,7 +312,7 @@ class _BusSectionFrame extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SectionHeader(icon: icon, title: title),
-          const SizedBox(height: 8),
+          const Gap(8),
           child,
         ],
       ),

@@ -8,6 +8,7 @@ import 'package:preconnect/tools/runtime_stub.dart'
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:preconnect/api/analytics.dart';
@@ -761,7 +762,7 @@ class _MyAppState extends State<MyApp>
           physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           children: [
-            const SizedBox(height: 120),
+            const Gap(120),
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -775,7 +776,7 @@ class _MyAppState extends State<MyApp>
                     size: 42,
                     color: BracuPalette.textPrimary(context),
                   ),
-                  const SizedBox(height: 12),
+                  const Gap(12),
                   Text(
                     'App Locked',
                     style: TextStyle(
@@ -785,7 +786,7 @@ class _MyAppState extends State<MyApp>
                       decoration: TextDecoration.none,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const Gap(6),
                   Text(
                     'Use your system lock to continue',
                     textAlign: TextAlign.center,
@@ -795,7 +796,7 @@ class _MyAppState extends State<MyApp>
                       decoration: TextDecoration.none,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const Gap(14),
                   OutlinedButton.icon(
                     onPressed: _isUnlocking
                         ? null

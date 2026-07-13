@@ -45,7 +45,7 @@ Future<T?> showBracuBottomSheet<T>(
                   ),
                 ),
               ),
-              const SizedBox(height: 6),
+              const Gap(6),
               Row(
                 children: [
                   Expanded(
@@ -97,7 +97,7 @@ Future<T?> showBracuBottomSheet<T>(
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
+              const Gap(4),
               Expanded(
                 child: builder(sheetContext, textPrimary, textSecondary),
               ),
@@ -278,7 +278,7 @@ Future<bool> showBracuConfirmationDialog(
               Row(
                 children: [
                   Icon(icon, color: confirmColor),
-                  const SizedBox(width: 8),
+                  const Gap(8),
                   Expanded(
                     child: Text(
                       title,
@@ -291,7 +291,7 @@ Future<bool> showBracuConfirmationDialog(
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const Gap(10),
               Text(
                 message,
                 style: TextStyle(
@@ -299,7 +299,7 @@ Future<bool> showBracuConfirmationDialog(
                   fontSize: 13,
                 ),
               ),
-              const SizedBox(height: 16),
+              const Gap(16),
               Row(
                 children: [
                   Expanded(
@@ -314,7 +314,7 @@ Future<bool> showBracuConfirmationDialog(
                       child: Text(cancelLabel),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const Gap(12),
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -442,7 +442,7 @@ class _BracuConfirmationActionDialogState
               Row(
                 children: [
                   Icon(widget.icon, color: widget.confirmColor),
-                  const SizedBox(width: 8),
+                  const Gap(8),
                   Expanded(
                     child: Text(
                       widget.title,
@@ -455,7 +455,7 @@ class _BracuConfirmationActionDialogState
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const Gap(10),
               Text(
                 widget.message,
                 style: TextStyle(
@@ -463,7 +463,7 @@ class _BracuConfirmationActionDialogState
                   fontSize: 13,
                 ),
               ),
-              const SizedBox(height: 16),
+              const Gap(16),
               Row(
                 children: [
                   Expanded(
@@ -476,7 +476,7 @@ class _BracuConfirmationActionDialogState
                       borderRadius: 12,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const Gap(12),
                   Expanded(
                     child: BracuActionButton(
                       onPressed: _isLoading ? null : _handleConfirm,
@@ -518,7 +518,7 @@ Future<T?> showBracuSelectSheet<T>(
       return ListView.separated(
         shrinkWrap: true,
         itemCount: options.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        separatorBuilder: (_, _) => const Gap(10),
         itemBuilder: (context, index) {
           final option = options[index];
           final selected = option.value == selectedValue;
@@ -567,7 +567,7 @@ Future<T?> showBracuSelectSheet<T>(
                               : textSecondary,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const Gap(12),
                     ],
                     Expanded(
                       child: Column(
@@ -583,7 +583,7 @@ Future<T?> showBracuSelectSheet<T>(
                           ),
                           if (option.subtitle != null &&
                               option.subtitle!.trim().isNotEmpty) ...[
-                            const SizedBox(height: 2),
+                            const Gap(2),
                             Text(
                               option.subtitle!.trim(),
                               style: TextStyle(
@@ -596,7 +596,7 @@ Future<T?> showBracuSelectSheet<T>(
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const Gap(12),
                     Icon(
                       selected
                           ? Icons.check_circle_rounded
@@ -722,7 +722,7 @@ Future<T?> showBracuSelectDropdown<T>(
                                       ),
                                     ),
                                     if (selected) ...[
-                                      const SizedBox(width: 8),
+                                      const Gap(8),
                                       Icon(
                                         Icons.check_rounded,
                                         size: 18,

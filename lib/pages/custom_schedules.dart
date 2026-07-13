@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_alarmkit/flutter_alarmkit.dart';
 import 'package:intl/intl.dart';
@@ -616,7 +617,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
             return BracuRefreshList(
               onRefresh: () => _refresh(forceRefresh: true),
               children: [
-                const SizedBox(height: 160),
+                const Gap(160),
                 _MyContentWrap(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -630,7 +631,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const Gap(8),
                       Text(
                         'Tap plus to add your first one.',
                         textAlign: TextAlign.center,
@@ -640,7 +641,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const Gap(14),
                       BracuActionButton(
                         onPressed: _openEditor,
                         icon: Icons.add_rounded,
@@ -665,9 +666,9 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
                     groupIndex < dayGroups.length;
                     groupIndex++
                   ) ...[
-                    if (groupIndex > 0) const SizedBox(height: 10),
+                    if (groupIndex > 0) const Gap(10),
                     _DayDateHeader(date: dayGroups[groupIndex].date),
-                    const SizedBox(height: 8),
+                    const Gap(8),
                     ...dayGroups[groupIndex].items.map(
                       (item) => Padding(
                         padding: const EdgeInsets.only(bottom: 8),
@@ -823,7 +824,7 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
                     color: BracuPalette.primary,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const Gap(12),
                 Expanded(
                   flex: 7,
                   child: Column(
@@ -835,7 +836,7 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
                           children: [TextSpan(text: title, style: titleStyle)],
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const Gap(4),
                       Text(
                         endTime == null
                             ? DateFormat('hh:mm a').format(startTime)
@@ -848,11 +849,11 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                const Gap(12),
               ],
             ),
             if (item.notes.trim().isNotEmpty) ...[
-              const SizedBox(height: 10),
+              const Gap(10),
               Divider(
                 height: 1,
                 thickness: 1,
@@ -860,7 +861,7 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
                   context,
                 ).withValues(alpha: 0.14),
               ),
-              const SizedBox(height: 8),
+              const Gap(8),
               Text(
                 item.notes.trim(),
                 softWrap: true,

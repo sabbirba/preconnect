@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:preconnect/api/funding.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
@@ -61,19 +62,19 @@ class StudentOverviewCard extends StatelessWidget {
                   ),
                 ),
                 if (showSupportButton) ...[
-                  const SizedBox(width: 8),
+                  const Gap(8),
                   _SupportButton(onTap: onOpenSupport),
                 ],
-                const SizedBox(width: 8),
+                const Gap(8),
                 _IconButton(
                   icon: Icons.settings_outlined,
                   onTap: onOpenSettings,
                 ),
-                const SizedBox(width: 8),
+                const Gap(8),
                 _IconButton(icon: Icons.logout, onTap: onLogout),
               ],
             ),
-            const SizedBox(height: 12),
+            const Gap(12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -90,10 +91,7 @@ class StudentOverviewCard extends StatelessWidget {
                   _OverviewLoadingShimmer(
                     child: _OverviewLoadingCard(isDark: isDark),
                   ),
-                if (countdown != null) ...[
-                  const SizedBox(height: 12),
-                  countdown!,
-                ],
+                if (countdown != null) ...[const Gap(12), countdown!],
               ],
             ),
           ],
@@ -142,7 +140,7 @@ class _OverviewLoadingCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 ShimmerContainer(width: maxWidth * 0.62, height: 14),
-                const SizedBox(height: 6),
+                const Gap(6),
                 ShimmerContainer(width: maxWidth * 0.88, height: 11),
               ],
             );
@@ -350,7 +348,7 @@ class _OverviewHeader extends StatelessWidget {
                     letterSpacing: -0.2,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const Gap(2),
                 Text(
                   department.isEmpty ? '' : department,
                   overflow: TextOverflow.fade,

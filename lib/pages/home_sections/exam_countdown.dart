@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
 class ExamCountdownCard extends StatelessWidget {
@@ -36,7 +37,7 @@ class ExamCountdownCard extends StatelessWidget {
                         fontSize: 14,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const Gap(2),
                     Text(
                       dateTimeLabel,
                       style: TextStyle(

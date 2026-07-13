@@ -176,7 +176,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     onProfileTap: () =>
                                         widget.onNavigate(HomeTab.profile),
                                   ),
-                                const SizedBox(height: 12),
+                                const Gap(12),
                                 StudentOverviewCard(
                                   studentId: profile['studentId'] ?? '',
                                   shortCode: profile['shortCode'] ?? '',
@@ -212,7 +212,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                           ),
                                         ),
                                 ),
-                                const SizedBox(height: 12),
+                                const Gap(12),
                                 if (isTodayScheduleLoading) ...[
                                   const Shimmer(
                                     child: _TodayScheduleLoadingSkeleton(),
@@ -253,7 +253,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                       ],
                                     ),
                                   ),
-                                  const SizedBox(height: 12),
+                                  const Gap(12),
                                   if (todayExams.isNotEmpty)
                                     ...todayExams
                                         .take(3)
@@ -399,7 +399,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                 if (ramadan.sehriEndsAt !=
                                                         null &&
                                                     ramadan.iftarAt != null)
-                                                  const SizedBox(width: 10),
+                                                  const Gap(10),
                                                 if (ramadan.iftarAt != null)
                                                   Expanded(
                                                     child: _RamadanHeroTime(
@@ -412,7 +412,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                   ),
                                               ],
                                             ),
-                                            const SizedBox(height: 2),
+                                            const Gap(2),
                                           ],
                                         ],
                                       ),
@@ -457,7 +457,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                           ),
                                                     ),
                                                   ),
-                                                  const SizedBox(width: 6),
+                                                  const Gap(6),
                                                   Text(
                                                     'Rate',
                                                     softWrap: false,
@@ -475,7 +475,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                               ),
                                             ),
                                           ),
-                                          const SizedBox(width: 4),
+                                          const Gap(4),
                                           InkWell(
                                             borderRadius: BorderRadius.circular(
                                               8,
@@ -511,7 +511,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                           ),
                                                     ),
                                                   ),
-                                                  const SizedBox(width: 6),
+                                                  const Gap(6),
                                                   Text(
                                                     'Share',
                                                     softWrap: false,
@@ -533,7 +533,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 12),
+                                  const Gap(12),
                                   LayoutBuilder(
                                     builder: (context, constraints) {
                                       return _buildQuickAccessGrid(
@@ -543,12 +543,12 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   ),
                                 ],
                                 if (cardVisibility.showFundingSection) ...[
-                                  const SizedBox(height: 12),
+                                  const Gap(12),
                                   const BracuFundingPromoDivider(
                                     showSupporters: false,
                                   ),
                                 ],
-                                const SizedBox(height: 12),
+                                const Gap(12),
                                 if (data == null)
                                   const Padding(
                                     padding: EdgeInsets.only(bottom: 12),
@@ -650,7 +650,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const Gap(16),
                     InkWell(
                       onTap: _toggleQuickAccess,
                       borderRadius: BorderRadius.circular(20),
@@ -675,7 +675,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                 color: primaryColor,
                               ),
                             ),
-                            const SizedBox(width: 4),
+                            const Gap(4),
                             AnimatedRotation(
                               turns: 0.5,
                               duration: const Duration(milliseconds: 250),
@@ -774,7 +774,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                 color: primaryColor,
                               ),
                             ),
-                            const SizedBox(width: 4),
+                            const Gap(4),
                             AnimatedRotation(
                               turns: 0.0,
                               duration: const Duration(milliseconds: 250),
@@ -875,21 +875,6 @@ extension _HomeDashboardView on _HomeDashboardState {
       color: const Color(0xFF00A8E8),
     ),
     _DashboardQuickAccess(
-      tab: null,
-      icon: Icons.school_outlined,
-      title: 'Advising',
-      subtitle: 'Helper',
-      color: const Color(0xFF5B8DEF),
-      onTap: (context) {
-        unawaited(
-          openExternalUrl(
-            context,
-            'https://chromewebstore.google.com/detail/preconnect/fcfkbdogaciifaihbfhnaijfhdcjokca',
-          ),
-        );
-      },
-    ),
-    _DashboardQuickAccess(
       tab: HomeTab.bus,
       icon: Icons.directions_bus_rounded,
       title: 'Bus',
@@ -905,7 +890,7 @@ extension _HomeDashboardView on _HomeDashboardState {
     ),
     _DashboardQuickAccess(
       tab: HomeTab.dspace,
-      icon: Icons.account_balance_rounded,
+      icon: Icons.library_books_outlined,
       title: 'DSpace',
       subtitle: 'Repository',
       color: const Color(0xFF3CA947),
@@ -927,6 +912,7 @@ class _DashboardQuickAccess {
     required this.title,
     required this.subtitle,
     required this.color,
+    // ignore: unused_element_parameter
     this.onTap,
   });
 
@@ -957,7 +943,7 @@ class _HomeDashboardLoadingShell extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _HomeTopBarLoadingSkeleton(),
-          const SizedBox(height: 12),
+          const Gap(12),
           StudentOverviewCard(
             studentId: '',
             shortCode: '',
@@ -970,10 +956,10 @@ class _HomeDashboardLoadingShell extends StatelessWidget {
             isLoading: true,
             showSupportButton: showSupport,
           ),
-          const SizedBox(height: 12),
+          const Gap(12),
           const _TodayScheduleLoadingSkeleton(),
           const _QuickAccessLoadingSkeleton(),
-          const SizedBox(height: 12),
+          const Gap(12),
           const _CampusMapLoadingSkeleton(),
         ],
       ),
@@ -993,18 +979,18 @@ class _HomeTopBarLoadingSkeleton extends StatelessWidget {
           height: 42,
           borderRadius: BorderRadius.all(Radius.circular(14)),
         ),
-        SizedBox(width: 12),
+        Gap(12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ShimmerContainer(width: 92, height: 10),
-              SizedBox(height: 8),
+              Gap(8),
               ShimmerContainer(width: 148, height: 18),
             ],
           ),
         ),
-        SizedBox(width: 12),
+        Gap(12),
         ShimmerContainer(
           width: 44,
           height: 44,
@@ -1038,19 +1024,19 @@ class _ActionBannerLoadingSkeleton extends StatelessWidget {
                 height: 30,
                 borderRadius: BorderRadius.all(Radius.circular(10)),
               ),
-              const SizedBox(width: 12),
+              const Gap(12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ShimmerContainer(width: titleWidth, height: 15),
-                    const SizedBox(height: 5),
+                    const Gap(5),
                     ShimmerContainer(width: subtitleWidth, height: 11),
                   ],
                 ),
               ),
               if (showTrailingIcon) ...[
-                const SizedBox(width: 12),
+                const Gap(12),
                 const ShimmerContainer(
                   width: 24,
                   height: 24,
@@ -1077,11 +1063,11 @@ class _TodayScheduleLoadingSkeleton extends StatelessWidget {
           Row(
             children: [
               Expanded(child: ShimmerContainer(width: 140, height: 18)),
-              SizedBox(width: 16),
+              Gap(16),
               ShimmerContainer(width: 116, height: 18),
             ],
           ),
-          SizedBox(height: 12),
+          Gap(12),
           _ScheduleTileLoadingSkeleton(),
         ],
       ),
@@ -1105,13 +1091,13 @@ class _ScheduleTileLoadingSkeleton extends StatelessWidget {
                 height: 40,
                 borderRadius: BorderRadius.all(Radius.circular(12)),
               ),
-              const SizedBox(width: 12),
+              const Gap(12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ShimmerContainer(width: maxWidth * 0.46, height: 14),
-                    const SizedBox(height: 6),
+                    const Gap(6),
                     ShimmerContainer(width: maxWidth * 0.58, height: 11),
                   ],
                 ),
@@ -1135,13 +1121,13 @@ class _QuickAccessLoadingSkeleton extends StatelessWidget {
         const Row(
           children: [
             Expanded(child: ShimmerContainer(width: 128, height: 20)),
-            SizedBox(width: 16),
+            Gap(16),
             ShimmerContainer(width: 68, height: 18),
-            SizedBox(width: 14),
+            Gap(14),
             ShimmerContainer(width: 74, height: 18),
           ],
         ),
-        const SizedBox(height: 12),
+        const Gap(12),
         LayoutBuilder(
           builder: (context, constraints) {
             final layout = quickAccessGridLayout(constraints.maxWidth);
@@ -1185,9 +1171,9 @@ class _QuickAccessItemLoadingSkeleton extends StatelessWidget {
               height: 38,
               borderRadius: BorderRadius.all(Radius.circular(12)),
             ),
-            const SizedBox(height: 12),
+            const Gap(12),
             ShimmerContainer(width: itemWidth * 0.76, height: 14),
-            const SizedBox(height: 2),
+            const Gap(2),
             ShimmerContainer(width: itemWidth * 0.62, height: 11),
           ],
         ),

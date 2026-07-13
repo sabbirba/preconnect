@@ -1,17 +1,25 @@
 import 'dart:convert';
+import 'package:json_annotation/json_annotation.dart';
+import 'package:equatable/equatable.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
-class FriendSchedule {
+part 'friend_schedule.g.dart';
+
+@JsonSerializable()
+class FriendSchedule extends Equatable {
+  @JsonKey(defaultValue: '')
   final String name;
+  @JsonKey(defaultValue: '')
   final String id;
   final String? photoFilePath;
   final String? photoUrl;
+  @JsonKey(defaultValue: <Course>[])
   final List<Course> courses;
   final String? shortCode;
   final String? semester;
 
-  FriendSchedule({
+  const FriendSchedule({
     required this.name,
     required this.id,
     required this.photoFilePath,
@@ -21,21 +29,31 @@ class FriendSchedule {
     this.semester,
   });
 
+  @override
+  List<Object?> get props => [
+    name,
+    id,
+    photoFilePath,
+    photoUrl,
+    courses,
+    shortCode,
+    semester,
+  ];
+
   factory FriendSchedule.fromJson(Map<String, dynamic> json) {
-    final photoFilePath = json['photoFilePath']?.toString();
-    final providedUrl = json['photoUrl']?.toString();
+    final temp = _$FriendScheduleFromJson(json);
     return FriendSchedule(
-      name: json['name'] ?? '',
-      id: json['id'] ?? '',
-      photoFilePath: photoFilePath,
-      photoUrl: providedUrl ?? _buildPhotoUrl(photoFilePath),
-      courses: (json['courses'] as List<dynamic>? ?? [])
-          .map((e) => Course.fromJson(e))
-          .toList(),
-      shortCode: json['shortCode']?.toString(),
-      semester: json['semester']?.toString(),
+      name: temp.name,
+      id: temp.id,
+      photoFilePath: temp.photoFilePath,
+      photoUrl: temp.photoUrl ?? _buildPhotoUrl(temp.photoFilePath),
+      courses: temp.courses,
+      shortCode: temp.shortCode,
+      semester: temp.semester,
     );
   }
+
+  Map<String, dynamic> toJson() => _$FriendScheduleToJson(this);
 }
 
 String? _buildPhotoUrl(String? photoFilePath) {
@@ -46,20 +64,31 @@ String? _buildPhotoUrl(String? photoFilePath) {
   return '${ApiConfig.connectCdnBase}/img/thumb/$encoded.jpg';
 }
 
-class Course {
+class Course extends Equatable {
+  @JsonKey(defaultValue: '')
   final String courseCode;
   final String? sectionName;
   final String? roomNumber;
   final String? faculties;
+  @JsonKey(defaultValue: <CourseSchedule>[])
   final List<CourseSchedule> schedule;
 
-  Course({
+  const Course({
     required this.courseCode,
     required this.schedule,
     required this.sectionName,
     required this.roomNumber,
     required this.faculties,
   });
+
+  @override
+  List<Object?> get props => [
+    courseCode,
+    sectionName,
+    roomNumber,
+    faculties,
+    schedule,
+  ];
 
   factory Course.fromJson(Map<String, dynamic> json) {
     final roomNumber =
@@ -101,7 +130,7 @@ class Course {
       }
     } else if (json['schedule'] != null) {
       schedules = (json['schedule'] as List<dynamic>? ?? [])
-          .map((e) => CourseSchedule.fromJson(e))
+          .map((e) => CourseSchedule.fromJson(e as Map<String, dynamic>))
           .toList();
     }
 
@@ -113,54 +142,63 @@ class Course {
       schedule: schedules,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'courseCode': courseCode,
+      'sectionName': sectionName,
+      'roomNumber': roomNumber,
+      'faculties': faculties,
+      'schedule': schedule.map((e) => e.toJson()).toList(),
+    };
+  }
 }
 
-class CourseSchedule {
+@JsonSerializable()
+class CourseSchedule extends Equatable {
+  @JsonKey(defaultValue: '')
   final String day;
+  @JsonKey(defaultValue: '')
   final String startTime;
+  @JsonKey(defaultValue: '')
   final String endTime;
 
-  CourseSchedule({
+  const CourseSchedule({
     required this.day,
     required this.startTime,
     required this.endTime,
   });
 
-  factory CourseSchedule.fromJson(Map<String, dynamic> json) {
-    return CourseSchedule(
-      day: json['day'] ?? '',
-      startTime: json['startTime'] ?? '',
-      endTime: json['endTime'] ?? '',
-    );
-  }
+  @override
+  List<Object?> get props => [day, startTime, endTime];
+
+  factory CourseSchedule.fromJson(Map<String, dynamic> json) =>
+      _$CourseScheduleFromJson(json);
+
+  Map<String, dynamic> toJson() => _$CourseScheduleToJson(this);
 }
 
-class FriendMetadata {
+@JsonSerializable()
+class FriendMetadata extends Equatable {
+  @JsonKey(defaultValue: '')
   final String friendId;
   final String? nickname;
+  @JsonKey(defaultValue: false)
   final bool isFavorite;
 
-  FriendMetadata({
+  const FriendMetadata({
     required this.friendId,
     this.nickname,
     this.isFavorite = false,
   });
 
-  factory FriendMetadata.fromJson(Map<String, dynamic> json) {
-    return FriendMetadata(
-      friendId: json['friendId'] ?? '',
-      nickname: json['nickname']?.toString(),
-      isFavorite: json['isFavorite'] ?? false,
-    );
-  }
+  @override
+  List<Object?> get props => [friendId, nickname, isFavorite];
 
-  Map<String, dynamic> toJson() {
-    return {
-      'friendId': friendId,
-      'nickname': nickname,
-      'isFavorite': isFavorite,
-    };
-  }
+  factory FriendMetadata.fromJson(Map<String, dynamic> json) =>
+      _$FriendMetadataFromJson(json);
+
+  Map<String, dynamic> toJson() => _$FriendMetadataToJson(this);
 
   static const Object _unsetNickname = Object();
 

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -278,7 +279,7 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const Gap(10),
           Expanded(
             flex: 6,
             child: GestureDetector(
@@ -426,7 +427,7 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
         _buildInfoRow('System Locale', _deviceInfo['System Locale'] ?? 'en_US'),
         _buildDivider(isDark),
         _buildInfoRow('Local Time Zone', _deviceInfo['Time Zone'] ?? 'UTC'),
-        const SizedBox(height: 24),
+        const Gap(24),
         BracuActionBannerCard(
           icon: Icons.bug_report_outlined,
           title: 'Export Debug Logs',

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/calendar.dart';
 import 'package:preconnect/model/calendar_info.dart';
@@ -149,7 +150,7 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const Gap(10),
                     ...entry.value.asMap().entries.map((itemEntry) {
                       final isTargetCard =
                           isTargetSection && itemEntry.key == 0;
@@ -263,13 +264,13 @@ class _CalendarCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const Gap(12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildTitle(context, item),
-                const SizedBox(height: 4),
+                const Gap(4),
                 Text(
                   timeLabel,
                   style: TextStyle(
@@ -281,7 +282,7 @@ class _CalendarCard extends StatelessWidget {
                 if (item.department.isNotEmpty ||
                     item.faculty.isNotEmpty ||
                     item.actor.isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  const Gap(4),
                   RichText(
                     text: TextSpan(
                       style: TextStyle(color: textSecondary, fontSize: 11),
@@ -311,7 +312,7 @@ class _CalendarCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const Gap(12),
           if (trailing.trim().isNotEmpty)
             SizedBox(
               width: 96,
@@ -328,7 +329,7 @@ class _CalendarCard extends StatelessWidget {
                     ),
                   ),
                   if (trailingSub.trim().isNotEmpty) ...[
-                    const SizedBox(height: 2),
+                    const Gap(2),
                     Text(
                       trailingSub,
                       textAlign: TextAlign.right,

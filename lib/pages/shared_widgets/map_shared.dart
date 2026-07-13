@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/notification.dart';
@@ -377,7 +378,7 @@ Future<void> showCampusMapBottomSheet(
                         aspectRatio: 16 / 10,
                         imageFit: BoxFit.fitWidth,
                       ),
-                      const SizedBox(height: 10),
+                      const Gap(10),
                     ],
                     Text(
                       mapData.campusName.isEmpty
@@ -390,7 +391,7 @@ Future<void> showCampusMapBottomSheet(
                       ),
                     ),
                     if (mapData.address.isNotEmpty) ...[
-                      const SizedBox(height: 6),
+                      const Gap(6),
                       Text(
                         mapData.address,
                         style: TextStyle(
@@ -403,7 +404,7 @@ Future<void> showCampusMapBottomSheet(
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const Gap(12),
               LayoutBuilder(
                 builder: (context, constraints) {
                   const gap = 8.0;
@@ -527,7 +528,7 @@ Future<void> showCampusMapBottomSheet(
                                     color: BracuPalette.primary,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
+                                const Gap(8),
                                 Expanded(
                                   child: Text(
                                     item,
@@ -588,7 +589,7 @@ Future<void> showCampusMapBottomSheet(
                                     ),
                                   ),
                                   if (office.emails.isNotEmpty) ...[
-                                    const SizedBox(height: 6),
+                                    const Gap(6),
                                     ...office.emails.map(
                                       (email) => Row(
                                         children: [
@@ -617,7 +618,7 @@ Future<void> showCampusMapBottomSheet(
                                       ),
                                     ),
                                   ] else ...[
-                                    const SizedBox(height: 4),
+                                    const Gap(4),
                                     Text(
                                       'No email listed',
                                       style: TextStyle(
@@ -675,7 +676,7 @@ Future<void> showCampusMapBottomSheet(
                                     ),
                                   ),
                                   if (item.services.isNotEmpty) ...[
-                                    const SizedBox(height: 2),
+                                    const Gap(2),
                                     Text(
                                       item.services,
                                       style: TextStyle(
@@ -686,7 +687,7 @@ Future<void> showCampusMapBottomSheet(
                                     ),
                                   ],
                                   if (item.phones.isNotEmpty) ...[
-                                    const SizedBox(height: 6),
+                                    const Gap(6),
                                     ...item.phones.map(
                                       (phone) => Row(
                                         children: [
@@ -726,7 +727,7 @@ Future<void> showCampusMapBottomSheet(
                                       ),
                                     ),
                                   ] else ...[
-                                    const SizedBox(height: 4),
+                                    const Gap(4),
                                     Text(
                                       'No phone listed',
                                       style: TextStyle(

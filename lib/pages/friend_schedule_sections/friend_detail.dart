@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/friend_schedule.dart';
@@ -251,7 +252,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                     name: widget.friend.name,
                     photoUrl: widget.friend.photoUrl,
                   ),
-                  const SizedBox(width: 12),
+                  const Gap(12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,7 +290,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const Gap(20),
             if (widget.friend.courses.isEmpty)
               BracuCard(
                 child: Padding(
@@ -381,7 +382,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             BracuSectionTitle(title: day),
-            const SizedBox(height: 10),
+            const Gap(10),
             ...entries.map((entry) {
               final isHighlighted = entry['entryKey'] == highlightedEntryKey;
               _highlightScroll.markHighlighted(isHighlighted);
@@ -400,7 +401,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                         ),
                         color: BracuPalette.primary,
                       ),
-                      const SizedBox(width: 12),
+                      const Gap(12),
                       Expanded(
                         flex: 7,
                         child: Column(
@@ -412,7 +413,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const Gap(4),
                             Text(
                               formatTimeRange(
                                 entry['startTime']?.toString(),
@@ -425,7 +426,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const Gap(12),
                       Expanded(
                         flex: 4,
                         child: Column(
@@ -442,7 +443,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                             ),
                             if (entry['faculties'] != null &&
                                 entry['faculties'].trim().isNotEmpty) ...[
-                              const SizedBox(height: 2),
+                              const Gap(2),
                               Text(
                                 entry['faculties'],
                                 textAlign: TextAlign.right,
@@ -460,7 +461,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                 ),
               );
             }),
-            const SizedBox(height: 6),
+            const Gap(6),
           ],
         ),
       );

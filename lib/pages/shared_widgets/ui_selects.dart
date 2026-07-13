@@ -62,12 +62,11 @@ class BracuSelectChip extends StatelessWidget {
                 size: label == null ? (compact ? 22 : 24) : (compact ? 15 : 16),
                 color: primaryColor,
               ),
-              if (label != null || showArrow) const SizedBox(width: 6),
+              if (label != null || showArrow) const Gap(6),
             ],
             if (label != null) Text(label!, style: labelStyle),
             if (showArrow) ...[
-              if (label != null && icon == null)
-                SizedBox(width: compact ? 4 : 6),
+              if (label != null && icon == null) Gap(compact ? 4 : 6),
               Icon(
                 Icons.expand_more_rounded,
                 size: compact ? 16 : 18,

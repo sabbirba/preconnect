@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:flutter_alarmkit/flutter_alarmkit.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -992,7 +993,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                 label: 'AD',
                                 color: BracuPalette.primary,
                               ),
-                              const SizedBox(width: 12),
+                              const Gap(12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1003,7 +1004,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                    const SizedBox(height: 6),
+                                    const Gap(6),
                                     Text(
                                       subtitle,
                                       style: TextStyle(
@@ -1018,7 +1019,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 14),
+                          const Gap(14),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
@@ -1099,7 +1100,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                               ],
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const Gap(12),
                           (() {
                             final isDone =
                                 AppStorage.instance.getBoolSync(
@@ -1175,7 +1176,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                               ),
                               color: BracuPalette.primary,
                             ),
-                            const SizedBox(width: 12),
+                            const Gap(12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1186,7 +1187,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
+                                  const Gap(6),
                                   Text(
                                     subtitle,
                                     style: TextStyle(
@@ -1199,7 +1200,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
+                        const Gap(10),
                         SizedBox(
                           width: double.infinity,
                           child: Wrap(
@@ -1229,7 +1230,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                           ),
                         ),
                         if (item.notes.trim().isNotEmpty) ...[
-                          const SizedBox(height: 8),
+                          const Gap(8),
                           Text(
                             item.notes.trim(),
                             style: TextStyle(
@@ -1238,7 +1239,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             ),
                           ),
                         ],
-                        const SizedBox(height: 14),
+                        const Gap(14),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
@@ -1317,7 +1318,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const Gap(12),
                         (() {
                           final isDone =
                               AppStorage.instance.getBoolSync(
@@ -1385,7 +1386,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                       ? BracuPalette.accent
                                       : BracuPalette.primary,
                                 ),
-                                const SizedBox(width: 12),
+                                const Gap(12),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
@@ -1413,7 +1414,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                           ],
                                         ),
                                       ),
-                                      const SizedBox(height: 6),
+                                      const Gap(6),
                                       Text(
                                         formatTimeRange(
                                           exam.startTime,
@@ -1429,7 +1430,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 8),
+                                const Gap(8),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
@@ -1446,7 +1447,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                     ),
                                     if (exam.faculties.trim().isNotEmpty ||
                                         exam.consumedSeat > 0) ...[
-                                      const SizedBox(height: 2),
+                                      const Gap(2),
                                       Text.rich(
                                         TextSpan(
                                           children: [
@@ -1485,7 +1486,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 10),
+                            const Gap(10),
                             SizedBox(
                               width: double.infinity,
                               child: Wrap(
@@ -1538,7 +1539,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 14),
+                            const Gap(14),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
@@ -1619,7 +1620,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const Gap(12),
                             (() {
                               final isDone =
                                   AppStorage.instance.getBoolSync(
@@ -1683,7 +1684,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                         courseType: section.courseType,
                         wrapInCard: false,
                       ),
-                      const SizedBox(height: 12),
+                      const Gap(12),
                       SizedBox(
                         width: double.infinity,
                         child: Wrap(
@@ -1716,7 +1717,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                           }).toList(),
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const Gap(14),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,
@@ -1793,7 +1794,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const Gap(12),
                       (() {
                         final isDone =
                             AppStorage.instance.getBoolSync(

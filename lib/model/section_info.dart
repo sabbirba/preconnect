@@ -1,11 +1,19 @@
 import 'dart:convert';
-
+import 'package:json_annotation/json_annotation.dart';
+import 'package:equatable/equatable.dart';
 import 'package:preconnect/tools/string_utils.dart';
 
-class SectionFaculty {
+part 'section_info.g.dart';
+
+@JsonSerializable()
+class SectionFaculty extends Equatable {
+  @JsonKey(defaultValue: '')
   final String id;
+  @JsonKey(defaultValue: '')
   final String staffName;
+  @JsonKey(defaultValue: '')
   final String shortName;
+  @JsonKey(defaultValue: '')
   final String email;
   final String? imgUrl;
 
@@ -17,25 +25,13 @@ class SectionFaculty {
     required this.imgUrl,
   });
 
-  factory SectionFaculty.fromJson(Map<String, dynamic> json) {
-    return SectionFaculty(
-      id: _stringValue(json, 'id'),
-      staffName: _stringValue(json, 'staffName'),
-      shortName: _stringValue(json, 'shortName'),
-      email: _stringValue(json, 'email'),
-      imgUrl: _nullableStringValue(json, 'imgUrl'),
-    );
-  }
+  @override
+  List<Object?> get props => [id, staffName, shortName, email, imgUrl];
 
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'id': id,
-      'staffName': staffName,
-      'shortName': shortName,
-      'email': email,
-      'imgUrl': imgUrl,
-    };
-  }
+  factory SectionFaculty.fromJson(Map<String, dynamic> json) =>
+      _$SectionFacultyFromJson(json);
+
+  Map<String, dynamic> toJson() => _$SectionFacultyToJson(this);
 }
 
 class Section {
@@ -145,7 +141,8 @@ class Section {
   }
 }
 
-class SectionSchedule {
+@JsonSerializable()
+class SectionSchedule extends Equatable {
   final String? finalExamDate;
   final String? finalExamStartTime;
   final String? finalExamEndTime;
@@ -154,11 +151,14 @@ class SectionSchedule {
   final String? midExamEndTime;
   final String? finalExamDetail;
   final String? midExamDetail;
+  @JsonKey(defaultValue: '')
   final String classStartDate;
+  @JsonKey(defaultValue: '')
   final String classEndDate;
+  @JsonKey(defaultValue: <ClassSchedule>[])
   final List<ClassSchedule> classSchedules;
 
-  SectionSchedule({
+  const SectionSchedule({
     this.finalExamDate,
     this.finalExamStartTime,
     this.finalExamEndTime,
@@ -172,74 +172,49 @@ class SectionSchedule {
     required this.classSchedules,
   });
 
-  factory SectionSchedule.fromJson(Map<String, dynamic> json) {
-    return SectionSchedule(
-      finalExamDate: json['finalExamDate']?.toString(),
-      finalExamStartTime: json['finalExamStartTime']?.toString(),
-      finalExamEndTime: json['finalExamEndTime']?.toString(),
-      midExamDate: json['midExamDate']?.toString(),
-      midExamStartTime: json['midExamStartTime']?.toString(),
-      midExamEndTime: json['midExamEndTime']?.toString(),
-      finalExamDetail: json['finalExamDetail']?.toString(),
-      midExamDetail: json['midExamDetail']?.toString(),
-      classStartDate: _stringValue(json, 'classStartDate'),
-      classEndDate: _stringValue(json, 'classEndDate'),
-      classSchedules: _classSchedulesFromJson(json['classSchedules']),
-    );
-  }
+  @override
+  List<Object?> get props => [
+    finalExamDate,
+    finalExamStartTime,
+    finalExamEndTime,
+    midExamDate,
+    midExamStartTime,
+    midExamEndTime,
+    finalExamDetail,
+    midExamDetail,
+    classStartDate,
+    classEndDate,
+    classSchedules,
+  ];
 
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'finalExamDate': finalExamDate,
-      'finalExamStartTime': finalExamStartTime,
-      'finalExamEndTime': finalExamEndTime,
-      'midExamDate': midExamDate,
-      'midExamStartTime': midExamStartTime,
-      'midExamEndTime': midExamEndTime,
-      'finalExamDetail': finalExamDetail,
-      'midExamDetail': midExamDetail,
-      'classStartDate': classStartDate,
-      'classEndDate': classEndDate,
-      'classSchedules': classSchedules.map((e) => e.toJson()).toList(),
-    };
-  }
+  factory SectionSchedule.fromJson(Map<String, dynamic> json) =>
+      _$SectionScheduleFromJson(json);
+
+  Map<String, dynamic> toJson() => _$SectionScheduleToJson(this);
 }
 
-class ClassSchedule {
+@JsonSerializable()
+class ClassSchedule extends Equatable {
+  @JsonKey(defaultValue: '')
   final String startTime;
+  @JsonKey(defaultValue: '')
   final String endTime;
+  @JsonKey(defaultValue: '')
   final String day;
 
-  ClassSchedule({
+  const ClassSchedule({
     required this.startTime,
     required this.endTime,
     required this.day,
   });
 
-  factory ClassSchedule.fromJson(Map<String, dynamic> json) {
-    return ClassSchedule(
-      startTime: json['startTime'],
-      endTime: json['endTime'],
-      day: json['day'],
-    );
-  }
+  @override
+  List<Object?> get props => [startTime, endTime, day];
 
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'startTime': startTime,
-      'endTime': endTime,
-      'day': day,
-    };
-  }
-}
+  factory ClassSchedule.fromJson(Map<String, dynamic> json) =>
+      _$ClassScheduleFromJson(json);
 
-List<ClassSchedule> _classSchedulesFromJson(dynamic value) {
-  final parsed = _jsonValue(value);
-  if (parsed is! List) return const <ClassSchedule>[];
-  return parsed
-      .whereType<Map>()
-      .map((e) => ClassSchedule.fromJson(e.cast<String, dynamic>()))
-      .toList(growable: false);
+  Map<String, dynamic> toJson() => _$ClassScheduleToJson(this);
 }
 
 dynamic _jsonValue(dynamic value) {
@@ -265,12 +240,6 @@ Map<String, dynamic> _scheduleMapFromJson(dynamic value) {
 
 String _stringValue(Map<String, dynamic> json, String key) {
   return '${json[key] ?? ''}'.trim();
-}
-
-String _nullableStringValue(Map<String, dynamic> json, String key) {
-  final value = json[key];
-  if (value == null) return '';
-  return value.toString().trim();
 }
 
 int _intValue(Map<String, dynamic> json, String key) {

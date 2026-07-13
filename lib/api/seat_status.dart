@@ -1,5 +1,6 @@
 import 'dart:convert';
-
+import 'package:json_annotation/json_annotation.dart';
+import 'package:preconnect/di/service_locator.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/model/section_info.dart' show SectionFaculty;
@@ -7,10 +8,11 @@ import 'package:preconnect/pages/seat_status.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 
+part 'seat_status.g.dart';
+
 class SeatStatusService {
-  SeatStatusService._internal();
-  static final SeatStatusService _instance = SeatStatusService._internal();
-  factory SeatStatusService() => _instance;
+  factory SeatStatusService() => getIt<SeatStatusService>();
+  SeatStatusService.create();
 
   final ApiClient _client = ApiClient();
 
@@ -33,7 +35,7 @@ class SeatStatusService {
   }
 
   static Future<void> preload() async {
-    await _instance.preloadData();
+    await SeatStatusService().preloadData();
   }
 
   Future<Map<int, SeatStatusDetailsResponse>> fetchAllSectionsDetailsFromApi({
@@ -257,6 +259,7 @@ class SeatStatusDetailsResponse {
   }
 }
 
+@JsonSerializable()
 class SeatStatusSchedule {
   SeatStatusSchedule({
     required this.classSchedules,
@@ -268,6 +271,7 @@ class SeatStatusSchedule {
     this.finalExamEndTime,
   });
 
+  @JsonKey(defaultValue: <SeatStatusClassSchedule>[])
   final List<SeatStatusClassSchedule> classSchedules;
   final String? midExamDate;
   final String? midExamStartTime;
@@ -276,45 +280,13 @@ class SeatStatusSchedule {
   final String? finalExamStartTime;
   final String? finalExamEndTime;
 
-  factory SeatStatusSchedule.fromJson(Map<String, dynamic> json) {
-    final classSchedules = _classSchedulesFromJson(json['classSchedules']);
+  factory SeatStatusSchedule.fromJson(Map<String, dynamic> json) =>
+      _$SeatStatusScheduleFromJson(json);
 
-    return SeatStatusSchedule(
-      classSchedules: classSchedules,
-      midExamDate: _toNullableString(json['midExamDate']),
-      midExamStartTime: _toNullableString(json['midExamStartTime']),
-      midExamEndTime: _toNullableString(json['midExamEndTime']),
-      finalExamDate: _toNullableString(json['finalExamDate']),
-      finalExamStartTime: _toNullableString(json['finalExamStartTime']),
-      finalExamEndTime: _toNullableString(json['finalExamEndTime']),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'classSchedules': classSchedules.map((e) => e.toJson()).toList(),
-      'midExamDate': midExamDate,
-      'midExamStartTime': midExamStartTime,
-      'midExamEndTime': midExamEndTime,
-      'finalExamDate': finalExamDate,
-      'finalExamStartTime': finalExamStartTime,
-      'finalExamEndTime': finalExamEndTime,
-    };
-  }
+  Map<String, dynamic> toJson() => _$SeatStatusScheduleToJson(this);
 }
 
-List<SeatStatusClassSchedule> _classSchedulesFromJson(dynamic value) {
-  final parsed = _jsonValue(value);
-  if (parsed is! List) return const <SeatStatusClassSchedule>[];
-  return parsed
-      .whereType<Map>()
-      .map(
-        (item) =>
-            SeatStatusClassSchedule.fromJson(item.cast<String, dynamic>()),
-      )
-      .toList(growable: false);
-}
-
+@JsonSerializable()
 class SeatStatusClassSchedule {
   SeatStatusClassSchedule({
     required this.day,
@@ -322,25 +294,17 @@ class SeatStatusClassSchedule {
     required this.endTime,
   });
 
+  @JsonKey(defaultValue: '')
   final String day;
+  @JsonKey(defaultValue: '')
   final String startTime;
+  @JsonKey(defaultValue: '')
   final String endTime;
 
-  factory SeatStatusClassSchedule.fromJson(Map<String, dynamic> json) {
-    return SeatStatusClassSchedule(
-      day: _toString(json['day']),
-      startTime: _toString(json['startTime']),
-      endTime: _toString(json['endTime']),
-    );
-  }
+  factory SeatStatusClassSchedule.fromJson(Map<String, dynamic> json) =>
+      _$SeatStatusClassScheduleFromJson(json);
 
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'day': day,
-      'startTime': startTime,
-      'endTime': endTime,
-    };
-  }
+  Map<String, dynamic> toJson() => _$SeatStatusClassScheduleToJson(this);
 
   SeatTimetable toTimetable() {
     return SeatTimetable(startTime: startTime, endTime: endTime);

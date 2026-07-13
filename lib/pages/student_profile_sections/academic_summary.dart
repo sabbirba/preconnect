@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:preconnect/model/progress_info.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
@@ -97,7 +98,7 @@ class _AcademicSummary extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const Gap(6),
                   Text(
                     enrolledSemester,
                     style: TextStyle(
@@ -121,7 +122,7 @@ class _AcademicSummary extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const Gap(6),
                   Text(
                     semesterCountDisplay,
                     textAlign: TextAlign.center,
@@ -146,7 +147,7 @@ class _AcademicSummary extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const Gap(6),
                   GestureDetector(
                     onTap: () => copyToClipboard(context, cgpa),
                     child: Text(
@@ -163,7 +164,7 @@ class _AcademicSummary extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const Gap(8),
         Row(
           children: [
             Expanded(
@@ -188,7 +189,7 @@ class _AcademicSummary extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const Gap(8),
         SimpleProgressBar(
           value: completionRatio,
           color: BracuPalette.primary,

@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:dart_pdf_reader/dart_pdf_reader.dart' deferred as pdf_reader;
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
@@ -877,7 +878,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               ],
             ),
           ),
-          const SizedBox(height: 4),
+          const Gap(4),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
             child: Column(
@@ -929,11 +930,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                       onClear: !_busy ? () => _clearFileAt(i) : null,
                       borderRadius: 8,
                     ),
-                    if (i < _selectedFiles.length - 1)
-                      const SizedBox(height: 6),
+                    if (i < _selectedFiles.length - 1) const Gap(6),
                   ],
                 ],
-                const SizedBox(height: 6),
+                const Gap(6),
                 _PrinterPreferencesPanel(
                   copiesController: _copiesController,
                   copies: _copies,
@@ -948,7 +948,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   },
                   onHelpPressed: () => _showHelpBottomSheet(context),
                 ),
-                const SizedBox(height: 12),
+                const Gap(12),
                 Row(
                   children: [
                     Expanded(
@@ -958,7 +958,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                         label: 'Choose',
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const Gap(10),
                     Expanded(
                       child: BracuActionButton(
                         onPressed: canPrint ? _sendToPrinter : null,
@@ -970,7 +970,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   ],
                 ),
                 if (_history.isNotEmpty) ...[
-                  const SizedBox(height: 10),
+                  const Gap(10),
                   SizedBox(
                     width: double.infinity,
                     child: BracuActionButton(
@@ -985,7 +985,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const Gap(12),
           _PrintHistoryCard(history: _history),
         ],
       ),
@@ -1010,7 +1010,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 body:
                     'Make sure your device is connected to the Student-WiFi or university network.',
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               _buildStepItem(
                 context,
                 stepNumber: '2',
@@ -1018,7 +1018,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 body:
                     'Ensure your student ID is entered correctly in the printer identity section above.',
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               _buildStepItem(
                 context,
                 stepNumber: '3',
@@ -1026,7 +1026,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 body:
                     'Pick the files you want to print. You can select multiple PDF, JPEG, or PNG files.',
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               _buildStepItem(
                 context,
                 stepNumber: '4',
@@ -1034,7 +1034,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 body:
                     'Tap the Print button. Files will be sent sequentially with a 1-second delay.',
               ),
-              const SizedBox(height: 14),
+              const Gap(14),
               _buildStepItem(
                 context,
                 stepNumber: '5',
@@ -1080,7 +1080,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const Gap(12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1093,7 +1093,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 2),
+              const Gap(2),
               Text(
                 body,
                 style: TextStyle(
@@ -1258,7 +1258,7 @@ class _PrinterIdentityPanel extends StatelessWidget {
           ),
           onChanged: onGuestNameChanged,
         ),
-        const SizedBox(height: 10),
+        const Gap(10),
         TextFormField(
           initialValue: guestId?.toString() ?? '',
           decoration: const InputDecoration(
@@ -1304,7 +1304,7 @@ class _PrintHistoryCard extends StatelessWidget {
         children: [
           for (var index = 0; index < history.length; index++) ...[
             _PrintHistoryRow(entry: history[index]),
-            if (index != history.length - 1) const SizedBox(height: 8),
+            if (index != history.length - 1) const Gap(8),
           ],
         ],
       ),
@@ -1375,7 +1375,7 @@ class _PrinterFileCard extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const Gap(2),
                 Text(
                   title,
                   maxLines: 1,
@@ -1390,7 +1390,7 @@ class _PrinterFileCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const Gap(8),
           if (isEmpty && emptyAction != null)
             emptyAction!
           else if (onClear != null)
@@ -1722,7 +1722,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
                       fontSize: controlFont,
                     ),
                   ),
-                  SizedBox(width: gap),
+                  Gap(gap),
                   Expanded(
                     flex: 52,
                     child: SizedBox(
@@ -1755,7 +1755,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
                       ),
                     ),
                   ),
-                  SizedBox(width: gap),
+                  Gap(gap),
                   Expanded(
                     flex: 42,
                     child: BracuActionButton(
@@ -1770,7 +1770,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
                 ],
               ),
             ),
-            SizedBox(width: compact ? 8 : 10),
+            Gap(compact ? 8 : 10),
             Expanded(
               flex: 68,
               child: Row(
@@ -1793,7 +1793,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
                       fontSize: toggleFont,
                     ),
                   ),
-                  SizedBox(width: gap),
+                  Gap(gap),
                   Expanded(
                     child: BracuActionButton(
                       onPressed: () {
@@ -1812,7 +1812,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
                       fontSize: toggleFont,
                     ),
                   ),
-                  SizedBox(width: gap),
+                  Gap(gap),
                   SizedBox(
                     width: controlHeight,
                     child: BracuActionButton(

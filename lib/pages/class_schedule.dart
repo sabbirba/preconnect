@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:preconnect/api/exam_map.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/section_info.dart' as section;
@@ -568,7 +569,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const Gap(10),
                   ...(() {
                     final scheduleWidgets = <Widget>[];
                     for (final entry in schedules) {
@@ -617,7 +618,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
                     }
                     return scheduleWidgets;
                   })(),
-                  const SizedBox(height: 6),
+                  const Gap(6),
                 ],
               ),
             );
@@ -640,7 +641,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
               ),
             );
           }
-          children.add(const SizedBox(height: 8));
+          children.add(const Gap(8));
 
           if (highlightToken != null) {
             unawaited(

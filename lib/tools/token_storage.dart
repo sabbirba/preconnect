@@ -568,7 +568,9 @@ class AppLockService {
   Future<bool> authenticate({String reason = ''}) async {
     try {
       return await _auth.authenticate(
-        localizedReason: reason,
+        localizedReason: reason.isEmpty
+            ? 'Authenticate to unlock PreConnect'
+            : reason,
         biometricOnly: false,
         sensitiveTransaction: true,
         persistAcrossBackgrounding: true,
@@ -595,7 +597,9 @@ class AppLockService {
     try {
       if (!await isBiometricAvailable()) return false;
       return await _auth.authenticate(
-        localizedReason: reason,
+        localizedReason: reason.isEmpty
+            ? 'Authenticate to unlock PreConnect'
+            : reason,
         biometricOnly: true,
         sensitiveTransaction: true,
         persistAcrossBackgrounding: true,

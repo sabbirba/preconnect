@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/calendar.dart';
@@ -507,25 +508,25 @@ class _WebLoginPage extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 40),
+                  const Gap(40),
                   const Icon(
                     Icons.school_rounded,
                     size: 52,
                     color: Color(0xFF1E6BE3),
                   ),
-                  const SizedBox(height: 16),
+                  const Gap(16),
                   const Text(
                     'PreConnect',
                     style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 6),
+                  const Gap(6),
                   Text(
                     'Sign in with your BRACU student account',
                     style: TextStyle(fontSize: 13.5, color: textSecondary),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 40),
+                  const Gap(40),
                   FilledButton.icon(
                     onPressed: () => unawaited(onOpenLogin()),
                     icon: const Icon(Icons.login_rounded),
@@ -538,7 +539,7 @@ class _WebLoginPage extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const Gap(20),
                   Row(
                     children: [
                       Expanded(
@@ -556,7 +557,7 @@ class _WebLoginPage extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const Gap(20),
                   OutlinedButton.icon(
                     onPressed: onImportPressed,
                     icon: const Icon(Icons.qr_code_scanner_rounded),
@@ -569,7 +570,7 @@ class _WebLoginPage extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const Gap(20),
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -589,7 +590,7 @@ class _WebLoginPage extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const Gap(40),
                 ],
               ),
             ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/time_utils.dart';
@@ -160,7 +161,7 @@ class _InfoRow extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        const Gap(10),
         Expanded(
           flex: 6,
           child: GestureDetector(

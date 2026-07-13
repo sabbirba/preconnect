@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/pages/notifications_sections/list_widgets.dart';
@@ -44,10 +45,10 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
             ),
           ),
           if (imageUrls.isNotEmpty) ...[
-            const SizedBox(height: 14),
+            const Gap(14),
             BracuImageCarousel(imageUrls: imageUrls, borderRadius: 14),
           ],
-          const SizedBox(height: 18),
+          const Gap(18),
           Text(
             parts.body.isEmpty
                 ? 'No additional details were provided.'
@@ -60,7 +61,7 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
             ),
           ),
           if (parts.links.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            const Gap(16),
             Text(
               'Source links:',
               style: TextStyle(
@@ -69,7 +70,7 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 8),
+            const Gap(8),
             ...parts.links.map(
               (link) => Padding(
                 padding: const EdgeInsets.only(bottom: 4),
@@ -95,7 +96,7 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
             ),
           ],
           if ((item.url ?? '').trim().isNotEmpty) ...[
-            const SizedBox(height: 16),
+            const Gap(16),
             SizedBox(
               width: double.infinity,
               child: BracuActionButton(
@@ -163,7 +164,7 @@ class _ConnectNotificationDetailPanelState
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const Gap(12),
                 Text(
                   'Pull to refresh the list and try again.',
                   textAlign: TextAlign.center,
@@ -198,7 +199,7 @@ class _ConnectNotificationDetailPanelState
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 18),
+              const Gap(18),
               Text(
                 parts.body.isEmpty
                     ? 'No additional details were provided.'
@@ -211,7 +212,7 @@ class _ConnectNotificationDetailPanelState
                 ),
               ),
               if (parts.links.isNotEmpty) ...[
-                const SizedBox(height: 16),
+                const Gap(16),
                 Text(
                   'Source links:',
                   style: TextStyle(
@@ -220,7 +221,7 @@ class _ConnectNotificationDetailPanelState
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const Gap(8),
                 ...parts.links.map(
                   (link) => Padding(
                     padding: const EdgeInsets.only(bottom: 4),
