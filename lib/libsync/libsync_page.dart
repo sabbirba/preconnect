@@ -1236,7 +1236,7 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
       return CheckInAvailability.no;
     } catch (_) {
       return CheckInAvailability
-          .yes; // fail open rather than hiding check-in on a parse error
+          .yes; 
     }
   }
 
