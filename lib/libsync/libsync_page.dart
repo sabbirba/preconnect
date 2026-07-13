@@ -896,16 +896,20 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
           final checkInStatus = _getCheckInAvailability(res);
 
           Color statusColor;
-          switch (status.toLowerCase()) {
-            case 'confirmed':
-            case 'presented':
-              statusColor = Colors.green;
-              break;
-            case 'cancelled':
-              statusColor = Colors.red;
-              break;
-            default:
-              statusColor = Colors.orange;
+          if (checkInStatus == CheckInAvailability.no) {
+            statusColor = Colors.grey;
+          } else {
+            switch (status.toLowerCase()) {
+              case 'confirmed':
+              case 'presented':
+                statusColor = Colors.green;
+                break;
+              case 'cancelled':
+                statusColor = Colors.red;
+                break;
+              default:
+                statusColor = Colors.orange;
+            }
           }
 
           final cardBorder = statusColor.withValues(alpha: 0.35);
@@ -1005,10 +1009,13 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                   isValueBold: true,
                   valueColor: statusColor,
                 ),
-                const SizedBox(height: 6),
                 if (checkInStatus == CheckInAvailability.awaiting)
-                  _InfoLine(label: 'Check-In?', value: 'Awaiting (later)'),
-                const SizedBox(height: 6),
+                  Column(
+                    children: [
+                      const SizedBox(height: 6),
+                      _InfoLine(label: 'Check-In?', value: 'Awaiting (later)'),
+                    ],
+                  ),
                 if (status.toLowerCase() == 'confirmed' &&
                     checkInStatus == CheckInAvailability.yes) ...[
                   const SizedBox(height: 12),
