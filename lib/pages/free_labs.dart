@@ -869,8 +869,9 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
       title: _sheetRoomTitle(slot),
       subtitle: _roomHeaderSubtitle(slot),
       builder: (sheetContext, textPrimary, textSecondary) {
+        final dragController = bracuBottomSheetScrollController(sheetContext);
         return ListView(
-          shrinkWrap: true,
+          controller: dragController,
           children: [
             Row(
               children: [

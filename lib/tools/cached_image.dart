@@ -68,7 +68,9 @@ class _CachedImageState extends State<CachedImage> {
     final uri = Uri.parse(normalized);
     if (uri.host == 'connect.bracu.ac.bd') {
       try {
-        final localFile = await ProfileImageCache.instance.getProfileImage(normalized);
+        final localFile = await ProfileImageCache.instance.getProfileImage(
+          normalized,
+        );
         if (localFile != null && await localFile.exists()) {
           if (mounted) {
             setState(() {

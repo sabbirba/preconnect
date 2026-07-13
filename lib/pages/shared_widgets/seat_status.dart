@@ -213,6 +213,10 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
                     item: item,
                     onPinTap: () => _togglePin(item.sectionId),
                     pinned: _isPinnedSection(item.sectionId),
+                    onTap: () => _showFacultyScheduleSheet(
+                      item.facultyInitial,
+                      item.faculty?.staffName,
+                    ),
                   ),
                 );
               },
@@ -782,5 +786,52 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         }
       }
     } catch (_) {}
+  }
+
+  void _showFacultyScheduleSheet(String facultyInitial, String? staffName) {
+    if (facultyInitial.trim().isEmpty) return;
+
+    final items = <FacultyScheduleItem>[];
+    for (final card in _cards) {
+      if (card.facultyInitial.trim().toUpperCase() ==
+          facultyInitial.trim().toUpperCase()) {
+        for (final sc in card.classSchedule) {
+          items.add(
+            FacultyScheduleItem(
+              courseCode: card.courseCode,
+              sectionName: card.sectionName,
+              day: sc.day,
+              startTime: sc.startTime,
+              endTime: sc.endTime,
+              roomNumber: card.room,
+              consumedSeat: card.consumed,
+              courseType: card.courseType,
+            ),
+          );
+        }
+        for (final sc in card.labSchedule) {
+          items.add(
+            FacultyScheduleItem(
+              courseCode: card.courseCode,
+              sectionName: card.sectionName,
+              day: sc.day,
+              startTime: sc.startTime,
+              endTime: sc.endTime,
+              roomNumber: card.labRoom.isNotEmpty ? card.labRoom : card.room,
+              consumedSeat: card.consumed,
+              courseType: 'Lab',
+            ),
+          );
+        }
+      }
+    }
+
+    showBracuFacultyScheduleSheet(
+      context,
+      facultyInitial: facultyInitial,
+      staffName: staffName,
+      items: items,
+      isRamadan: _isRamadan,
+    );
   }
 }
