@@ -364,3 +364,106 @@ class _LoadingButton extends StatelessWidget {
     );
   }
 }
+
+class BracuLocationPermissionBanner extends StatefulWidget {
+  const BracuLocationPermissionBanner({super.key, required this.onFixed});
+
+  final VoidCallback onFixed;
+
+  @override
+  State<BracuLocationPermissionBanner> createState() =>
+      _BracuLocationPermissionBannerState();
+}
+
+class _BracuLocationPermissionBannerState
+    extends State<BracuLocationPermissionBanner>
+    with WidgetsBindingObserver {
+  bool _needsSetup = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkSetup();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkSetup();
+    }
+  }
+
+  Future<void> _checkSetup() async {
+    if (!AndroidNetworkAssist.isSupported) return;
+    final hasPermission = await Permission.locationWhenInUse.status.isGranted;
+    final gpsEnabled = await AndroidNetworkAssist.isLocationServiceEnabled();
+    final needs = !hasPermission || !gpsEnabled;
+    if (needs != _needsSetup && mounted) {
+      setState(() {
+        _needsSetup = needs;
+      });
+    }
+  }
+
+  Future<void> _fix() async {
+    if (!AndroidNetworkAssist.isSupported) return;
+    var status = await Permission.locationWhenInUse.status;
+    if (!status.isGranted) {
+      status = await Permission.locationWhenInUse.request();
+      if (!status.isGranted) {
+        await openAppSettings();
+        return;
+      }
+    }
+    final gpsEnabled = await AndroidNetworkAssist.isLocationServiceEnabled();
+    if (!gpsEnabled) {
+      await AndroidNetworkAssist.openLocationSettings();
+      return;
+    }
+    widget.onFixed();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_needsSetup) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: BracuPalette.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: BracuPalette.primary.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Needs location access and services to detect Wi-Fi.',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: BracuPalette.textSecondary(context),
+              ),
+            ),
+          ),
+          const Gap(10),
+          BracuActionButton(
+            onPressed: _fix,
+            outlined: false,
+            borderRadius: 4,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            label: 'Fix',
+          ),
+        ],
+      ),
+    );
+  }
+}

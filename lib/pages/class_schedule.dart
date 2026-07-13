@@ -116,114 +116,51 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   static Future<_ScheduleData> _loadScheduleData({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh) {
-      final snapshotData =
-          await JsonSnapshotStore.read<_ClassScheduleSnapshotData>(
-            key: StorageKeys.alarmsSnapshot,
-            decode: (decoded) {
-              final sectionsRaw = decoded['sections'];
-              if (sectionsRaw is! List) return null;
-              final sections = sectionsRaw
-                  .whereType<Map>()
-                  .map(
-                    (entry) =>
-                        section.Section.fromJson(entry.cast<String, dynamic>()),
-                  )
-                  .toList(growable: false);
-              final isRamadan = decoded['isRamadan'] == true;
-              return _ClassScheduleSnapshotData(
-                sections: sections,
-                isRamadan: isRamadan,
-              );
-            },
-          );
-      if (snapshotData != null && snapshotData.sections.isNotEmpty) {
-        final examOverrides = await ExamScheduleService()
-            .getOverridesForSections(
-              snapshotData.sections,
-              forceRefresh: false,
-            );
-        return _buildScheduleDataFromSectionsStatic(
-          snapshotData.sections,
-          shouldHighlightCurrentSemester: true,
-          isRamadan: snapshotData.isRamadan,
-          examOverrides: examOverrides,
+    final currentSessionSemesterId = forceRefresh
+        ? null
+        : await resolveCurrentSessionSemesterIdWithRetry();
+
+    List<section.Section>? sections;
+    bool isRamadan = false;
+
+    if (currentSessionSemesterId != null) {
+      final service = ScheduleService();
+      final cachedJson = await service.getCachedStudentScheduleForSemester(
+        semesterSessionId: currentSessionSemesterId,
+      );
+      final jsonString =
+          cachedJson ??
+          (forceRefresh
+              ? await service.fetchStudentScheduleForSemester(
+                  semesterSessionId: currentSessionSemesterId,
+                  fromGet: true,
+                )
+              : await service.getStudentScheduleForSemester(
+                  semesterSessionId: currentSessionSemesterId,
+                ));
+      sections = service.parseStudentSections(
+        jsonString,
+        semesterSessionId: currentSessionSemesterId,
+      );
+      isRamadan = await RamadanTiming.isRamadan(forceRefresh: forceRefresh);
+      if (sections.isNotEmpty) {
+        unawaited(
+          JsonSnapshotStore.updateSections(sections, isRamadan: isRamadan),
         );
       }
     }
 
-    final currentSessionSemesterId =
-        await resolveCurrentSessionSemesterIdWithRetry();
-    if (currentSessionSemesterId == null) {
-      final snapshotData =
-          await JsonSnapshotStore.read<_ClassScheduleSnapshotData>(
-            key: StorageKeys.alarmsSnapshot,
-            decode: (decoded) {
-              final sectionsRaw = decoded['sections'];
-              if (sectionsRaw is! List) return null;
-              final sections = sectionsRaw
-                  .whereType<Map>()
-                  .map(
-                    (entry) =>
-                        section.Section.fromJson(entry.cast<String, dynamic>()),
-                  )
-                  .toList(growable: false);
-              final isRamadan = decoded['isRamadan'] == true;
-              return _ClassScheduleSnapshotData(
-                sections: sections,
-                isRamadan: isRamadan,
-              );
-            },
-          );
-      if (snapshotData != null && snapshotData.sections.isNotEmpty) {
-        final examOverrides = await ExamScheduleService()
-            .getOverridesForSections(
-              snapshotData.sections,
-              forceRefresh: false,
-            );
-        return _buildScheduleDataFromSectionsStatic(
-          snapshotData.sections,
-          shouldHighlightCurrentSemester: true,
-          isRamadan: snapshotData.isRamadan,
-          examOverrides: examOverrides,
-        );
-      }
+    if (sections == null || sections.isEmpty) {
+      sections = await JsonSnapshotStore.readSections();
+      final existingMap = await JsonSnapshotStore.read<Map<String, dynamic>>(
+        key: StorageKeys.alarmsSnapshot,
+        decode: (decoded) => decoded,
+      );
+      isRamadan = existingMap?['isRamadan'] == true;
+    }
 
-      final isRamadan = await RamadanTiming.isRamadan(
-        forceRefresh: forceRefresh,
-      );
-      return _buildScheduleDataFromSectionsStatic(
-        const <section.Section>[],
-        shouldHighlightCurrentSemester: true,
-        isRamadan: isRamadan,
-        examOverrides: const <String, ExamScheduleOverride>{},
-      );
-    }
-    final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
-    final service = ScheduleService();
-    final cachedJson = await service.getCachedStudentScheduleForSemester(
-      semesterSessionId: currentSessionSemesterId,
-    );
-    final jsonString =
-        cachedJson ??
-        (forceRefresh
-            ? await service.fetchStudentScheduleForSemester(
-                semesterSessionId: currentSessionSemesterId,
-                fromGet: true,
-              )
-            : await service.getStudentScheduleForSemester(
-                semesterSessionId: currentSessionSemesterId,
-              ));
-    final sections = service.parseStudentSections(
-      jsonString,
-      semesterSessionId: currentSessionSemesterId,
-    );
-    final isRamadan = await ramadanFuture;
-    if (sections.isNotEmpty) {
-      unawaited(
-        JsonSnapshotStore.updateSections(sections, isRamadan: isRamadan),
-      );
-    }
+    sections ??= const <section.Section>[];
+
     final examOverrides = sections.isEmpty
         ? const <String, ExamScheduleOverride>{}
         : await ExamScheduleService().getOverridesForSections(
@@ -231,6 +168,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
             forceRefresh: forceRefresh,
             forcedSemesterSessionId: currentSessionSemesterId,
           );
+
     return _buildScheduleDataFromSectionsStatic(
       sections,
       shouldHighlightCurrentSemester: true,
@@ -684,16 +622,6 @@ class _ScheduleData {
   final Map<String, ExamScheduleOverride> examOverrides;
   final section.ClassSchedule? scrollSchedule;
   final DateTime? scrollDateTime;
-  final bool isRamadan;
-}
-
-class _ClassScheduleSnapshotData {
-  const _ClassScheduleSnapshotData({
-    required this.sections,
-    required this.isRamadan,
-  });
-
-  final List<section.Section> sections;
   final bool isRamadan;
 }
 

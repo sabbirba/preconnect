@@ -90,8 +90,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
     super.initState();
     _loadVersion();
     if (!widget.isLoggedIn) {
-      unawaited(LoginPage.preloadNextPage());
-      unawaited(LoginPage.preloadGoogleLogin());
       _campusMapFuture = fetchCampusMapData();
       _transportScheduleUrlFuture = fetchTransportScheduleUrl();
     }

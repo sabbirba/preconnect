@@ -300,17 +300,39 @@ class LibSyncAuthService extends ChangeNotifier {
     );
   }
 
+  Future<Map<String, dynamic>?> checkMember(String studentId) async {
+    final response = await _apiClient.get(
+      Uri.parse(
+        '${LibSyncConfig.apiBaseUrl}/api/reservation/check-member/$studentId/',
+      ),
+    );
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final body = response.body.trim();
+      if (body.isEmpty) {
+        return null;
+      }
+      try {
+        final decoded = jsonDecode(body);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+      } catch (_) {}
+      return null;
+    }
+    final decoded = jsonDecode(response.body);
+    throw Exception(
+      _extractErrorMessage(decoded, 'Failed to check member ID.'),
+    );
+  }
+
   Future<Map<String, dynamic>?> confirmReservation({
-    required String studentId,
+    required List<String> studentIds,
     String note = '',
   }) async {
     final response = await _apiClient.post(
       Uri.parse('${LibSyncConfig.apiBaseUrl}/api/reservation/'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'student_ids': [studentId],
-        'note': note,
-      }),
+      body: jsonEncode({'student_ids': studentIds, 'note': note}),
     );
     final decoded = jsonDecode(response.body);
     if (response.statusCode == 200 || response.statusCode == 201) {

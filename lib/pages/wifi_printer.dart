@@ -142,6 +142,23 @@ class CampusPrinterPage extends StatefulWidget {
     final copiesValue = copiesRaw == null
         ? 1
         : (copiesRaw < 1 ? 1 : (copiesRaw > 999 ? 999 : copiesRaw));
+    final pagesPerSheet =
+        await AppStorage.instance.getString('campus_printer_nup') ?? '1-in-1';
+    final fittingMode =
+        await AppStorage.instance.getString('campus_printer_fit') ??
+        'Fit on Paper';
+    final staple =
+        await AppStorage.instance.getString('campus_printer_staple') ?? 'Off';
+    final punch =
+        await AppStorage.instance.getString('campus_printer_punch') ?? 'Off';
+    final jobOffset =
+        await AppStorage.instance.getString('campus_printer_joboffset') ??
+        'Off';
+    final slipSheet =
+        await AppStorage.instance.getString('campus_printer_slipsheet') ??
+        'Off';
+    final booklet =
+        await AppStorage.instance.getString('campus_printer_booklet') ?? 'Off';
     return _CampusPrinterBootstrap(
       copies: copiesValue,
       history: history,
@@ -152,6 +169,13 @@ class CampusPrinterPage extends StatefulWidget {
       guestName: guestName,
       guestId: guestIdNumber,
       clientName: clientName,
+      pagesPerSheet: pagesPerSheet,
+      fittingMode: fittingMode,
+      staple: staple,
+      punch: punch,
+      jobOffset: jobOffset,
+      slipSheet: slipSheet,
+      booklet: booklet,
     );
   }
 
@@ -190,8 +214,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const int _printerPort = 515;
   static const String _printerQueue = 'secure';
   static const String _historyKey = 'campus_printer_history';
-  static const String _lastPrinterHostKey = 'campus_printer_last_host';
-  static const String _lastPrinterWifiKey = 'campus_printer_last_wifi';
   static const int _maxHistoryEntries = 50;
   static const String _copiesKey = 'campus_printer_copies';
   static const String _snackFileReadFailed = "Couldn't read selected file";
@@ -216,6 +238,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _wifiName = '';
   String _duplexMode = 'OFF';
   String _collateMode = 'OFF';
+  String _pagesPerSheet = '1-in-1';
+  String _fittingMode = 'Fit on Paper';
+  String _staple = 'Off';
+  String _punch = 'Off';
+  String _jobOffset = 'Off';
+  String _slipSheet = 'Off';
+  String _booklet = 'Off';
   String _printerHost = '';
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
   int _copies = 1;
@@ -300,6 +329,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _guestName = bootstrap.guestName;
       _guestId = bootstrap.guestId;
       _clientName = bootstrap.clientName;
+      _pagesPerSheet = bootstrap.pagesPerSheet;
+      _fittingMode = bootstrap.fittingMode;
+      _staple = bootstrap.staple;
+      _punch = bootstrap.punch;
+      _jobOffset = bootstrap.jobOffset;
+      _slipSheet = bootstrap.slipSheet;
+      _booklet = bootstrap.booklet;
     });
     _setCopiesControllerText(bootstrap.copies);
     unawaited(_refreshWifiName());
@@ -320,14 +356,28 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _guestName = bootstrap.guestName;
       _guestId = bootstrap.guestId;
       _clientName = bootstrap.clientName;
+      _pagesPerSheet = bootstrap.pagesPerSheet;
+      _fittingMode = bootstrap.fittingMode;
+      _staple = bootstrap.staple;
+      _punch = bootstrap.punch;
+      _jobOffset = bootstrap.jobOffset;
+      _slipSheet = bootstrap.slipSheet;
+      _booklet = bootstrap.booklet;
     });
     _setCopiesControllerText(bootstrap.copies);
     unawaited(_refreshWifiName());
-    await _discoverPrinter(forceRescan: true);
+    await _discoverPrinter();
   }
 
   Future<void> _savePrinterPreferences() async {
     await AppStorage.instance.setInt(_copiesKey, _copies);
+    await AppStorage.instance.setString('campus_printer_nup', _pagesPerSheet);
+    await AppStorage.instance.setString('campus_printer_fit', _fittingMode);
+    await AppStorage.instance.setString('campus_printer_staple', _staple);
+    await AppStorage.instance.setString('campus_printer_punch', _punch);
+    await AppStorage.instance.setString('campus_printer_joboffset', _jobOffset);
+    await AppStorage.instance.setString('campus_printer_slipsheet', _slipSheet);
+    await AppStorage.instance.setString('campus_printer_booklet', _booklet);
   }
 
   @override
@@ -357,10 +407,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       return;
     }
     _lastNetworkFingerprint = currentNetworkFingerprint;
-    unawaited(_discoverPrinter(forceRescan: true));
+    unawaited(_discoverPrinter());
   }
 
-  Future<void> _discoverPrinter({bool forceRescan = false}) async {
+  Future<void> _discoverPrinter() async {
     if (_discovering) return;
     setState(() {
       _discovering = true;
@@ -379,14 +429,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _setWifiNameFromStatus(wifiStatus);
       final networkKey = await _currentNetworkFingerprint();
       _lastNetworkFingerprint = networkKey;
-      final savedHost =
-          (await AppStorage.instance.getString(_lastPrinterHostKey) ?? '')
-              .trim();
       final printers = await _WifiPrinterDiscovery.findLprPrinters(
         port: _printerPort,
-        preferredHosts: savedHost.isEmpty
-            ? const <String>[]
-            : <String>[savedHost],
       );
       if (!mounted) return;
       if (printers.isEmpty) {
@@ -396,8 +440,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         return;
       }
       final printer = printers.first;
-      await AppStorage.instance.setString(_lastPrinterHostKey, printer.address);
-      await AppStorage.instance.setString(_lastPrinterWifiKey, networkKey);
       setState(() {
         _printerHost = printer.address;
       });
@@ -667,6 +709,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         copies: copies,
         duplexMode: _duplexMode,
         collateMode: _collateMode,
+        pagesPerSheet: _pagesPerSheet,
+        fittingMode: _fittingMode,
+        staple: _staple,
+        punch: _punch,
+        jobOffset: _jobOffset,
+        slipSheet: _slipSheet,
+        booklet: _booklet,
       );
 
       for (int i = 0; i < _selectedFiles.length; i++) {
@@ -800,7 +849,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         (_studentId.isNotEmpty || _guestId != null) &&
         (_studentName.isNotEmpty || _guestName.isNotEmpty);
     final printerSubtitle = _discovering
-        ? 'Scanning...'
+        ? 'Scanning..'
         : _printerHost.isNotEmpty
         ? 'Connected'
         : 'Not found';
@@ -810,41 +859,29 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       icon: Icons.local_printshop_outlined,
       actions: [
         IconButton(
-          onPressed: _busy || _discovering
-              ? null
-              : () => unawaited(_discoverPrinter(forceRescan: true)),
+          onPressed: () => _showHelpBottomSheet(context),
           style: bracuCompactIconButtonStyle(
             foregroundColor: BracuPalette.primary,
             borderColor: Colors.transparent,
             padding: EdgeInsets.zero,
             borderRadius: 12,
           ),
-          icon: _discovering
-              ? SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: _printerHost.isNotEmpty
-                        ? const Color(0xFF22B573)
-                        : BracuPalette.primary,
-                  ),
-                )
-              : Icon(
-                  _printerHost.isNotEmpty
-                      ? Icons.wifi_tethering_rounded
-                      : Icons.wifi_find_outlined,
-                  color: _printerHost.isNotEmpty
-                      ? const Color(0xFF22B573)
-                      : BracuPalette.primary,
-                ),
-          tooltip: 'Scan',
+          icon: const Icon(
+            Icons.help_outline_rounded,
+            color: BracuPalette.primary,
+          ),
+          tooltip: 'Help',
         ),
       ],
       body: BracuRefreshList(
         onRefresh: _refreshPrinterInfo,
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
         children: [
+          BracuLocationPermissionBanner(
+            onFixed: () {
+              unawaited(_discoverPrinter());
+            },
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
             child: Column(
@@ -946,7 +983,58 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   onCollateChanged: (mode) {
                     setState(() => _collateMode = mode);
                   },
-                  onHelpPressed: () => _showHelpBottomSheet(context),
+                ),
+                const Gap(6),
+                _PrinterLayoutPreferencesPanel(
+                  pagesPerSheet: _pagesPerSheet,
+                  fittingMode: _fittingMode,
+                  staple: _staple,
+                  punch: _punch,
+                  jobOffset: _jobOffset,
+                  slipSheet: _slipSheet,
+                  booklet: _booklet,
+                  onPagesPerSheetChanged: (value) {
+                    setState(() {
+                      _pagesPerSheet = value;
+                    });
+                    unawaited(_savePrinterPreferences());
+                  },
+                  onFittingModeChanged: (value) {
+                    setState(() {
+                      _fittingMode = value;
+                    });
+                    unawaited(_savePrinterPreferences());
+                  },
+                  onStapleChanged: (value) {
+                    setState(() {
+                      _staple = value;
+                    });
+                    unawaited(_savePrinterPreferences());
+                  },
+                  onPunchChanged: (value) {
+                    setState(() {
+                      _punch = value;
+                    });
+                    unawaited(_savePrinterPreferences());
+                  },
+                  onJobOffsetChanged: (value) {
+                    setState(() {
+                      _jobOffset = value;
+                    });
+                    unawaited(_savePrinterPreferences());
+                  },
+                  onSlipSheetChanged: (value) {
+                    setState(() {
+                      _slipSheet = value;
+                    });
+                    unawaited(_savePrinterPreferences());
+                  },
+                  onBookletChanged: (value) {
+                    setState(() {
+                      _booklet = value;
+                    });
+                    unawaited(_savePrinterPreferences());
+                  },
                 ),
                 const Gap(12),
                 Row(
@@ -996,7 +1084,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     showBracuBottomSheet<void>(
       context,
       title: 'Printer Instructions',
-      initialChildSize: 0.52,
+      initialChildSize: 0.75,
       builder: (sheetContext, textPrimary, textSecondary) {
         return SingleChildScrollView(
           padding: const EdgeInsets.only(bottom: 24),
@@ -1042,6 +1130,104 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 body:
                     'Tap your physical ID card on any campus card-reader printer to release and print the files.',
               ),
+              const Gap(20),
+              Text(
+                'Layout & Print Options',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const Gap(14),
+              _buildStepItem(
+                context,
+                stepNumber: '•',
+                title: 'Copies',
+                body:
+                    'Specify the exact number of page copies to print by tapping the minus/plus buttons or typing directly.',
+              ),
+              const Gap(14),
+              _buildStepItem(
+                context,
+                stepNumber: '•',
+                title: 'Duplex Mode (One/Both Side)',
+                body:
+                    'Toggle between single-sided or double-sided (both sides) printing to save paper.',
+              ),
+              const Gap(14),
+              _buildStepItem(
+                context,
+                stepNumber: '•',
+                title: 'Collate Mode',
+                body:
+                    'Sort pages in multi-page documents sequentially (1-2-3, 1-2-3) instead of grouping identical pages.',
+              ),
+              const Gap(14),
+              _buildStepItem(
+                context,
+                stepNumber: '•',
+                title: 'Pages Per Sheet',
+                body:
+                    'Choose "1-in-1" (default) for standard layout. Use "2-in-1" or "4-in-1" to fit multiple pages on a single sheet of paper to save page quota.',
+              ),
+              const Gap(14),
+              _buildStepItem(
+                context,
+                stepNumber: '•',
+                title: 'Fitting Mode',
+                body:
+                    'Select "Fit Paper" (default) for normal margins, "Fit Printable" to shrink to margins, or "Edge-to-Edge" to print borderless full pages.',
+              ),
+              const Gap(14),
+              _buildStepItem(
+                context,
+                stepNumber: '•',
+                title: 'Stapling & Hole Punching',
+                body:
+                    'Configure staple location (Left Corner / Right Corner) or punch hole counts (2 Holes / 3 Holes) for automatic document binding.',
+              ),
+              const Gap(14),
+              _buildStepItem(
+                context,
+                stepNumber: '•',
+                title: 'Offset & Slip Sheets',
+                body:
+                    'Toggle "Offset" to shift printed sets sideways for easy separation. Toggle "Slip Sheet" to insert blank separator sheets between print jobs.',
+              ),
+              const Gap(14),
+              _buildStepItem(
+                context,
+                stepNumber: '•',
+                title: 'Booklet Printing',
+                bodyWidget: Text.rich(
+                  TextSpan(
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 12,
+                      height: 1.4,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    children: [
+                      const TextSpan(
+                        text:
+                            'Enable "Booklet" to auto-impose document pages, fold them down the center, and saddle-stitch them like a booklet/pamphlet.\n',
+                      ),
+                      TextSpan(
+                        text: 'Note: ',
+                        style: TextStyle(
+                          color: textSecondary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const TextSpan(
+                        text:
+                            'Total pages should be a multiple of 4 for ideal saddle stitching.',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         );
@@ -1053,7 +1239,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     BuildContext context, {
     required String stepNumber,
     required String title,
-    required String body,
+    String? body,
+    Widget? bodyWidget,
   }) {
     final textPrimary = BracuPalette.textPrimary(context);
     final textSecondary = BracuPalette.textSecondary(context);
@@ -1094,15 +1281,16 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 ),
               ),
               const Gap(2),
-              Text(
-                body,
-                style: TextStyle(
-                  color: textSecondary,
-                  fontSize: 12,
-                  height: 1.4,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              bodyWidget ??
+                  Text(
+                    body ?? '',
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 12,
+                      height: 1.4,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
             ],
           ),
         ),
@@ -1122,6 +1310,13 @@ class _CampusPrinterBootstrap {
     required this.guestName,
     required this.guestId,
     required this.clientName,
+    required this.pagesPerSheet,
+    required this.fittingMode,
+    required this.staple,
+    required this.punch,
+    required this.jobOffset,
+    required this.slipSheet,
+    required this.booklet,
   });
 
   final int copies;
@@ -1133,6 +1328,13 @@ class _CampusPrinterBootstrap {
   final String guestName;
   final int? guestId;
   final String clientName;
+  final String pagesPerSheet;
+  final String fittingMode;
+  final String staple;
+  final String punch;
+  final String jobOffset;
+  final String slipSheet;
+  final String booklet;
 }
 
 class _StudentPrintDetails extends StatelessWidget {
@@ -1550,6 +1752,13 @@ class _LprPrintClient {
         duplexMode: duplexMode,
         collateMode: collateMode,
         isPostScript: isPostScript,
+        pagesPerSheet: preferences.pagesPerSheet,
+        fittingMode: preferences.fittingMode,
+        staple: preferences.staple,
+        punch: preferences.punch,
+        jobOffset: preferences.jobOffset,
+        slipSheet: preferences.slipSheet,
+        booklet: preferences.booklet,
       );
 
       await _sendLprJob(
@@ -1671,7 +1880,6 @@ class _PrinterPreferencesPanel extends StatelessWidget {
     required this.onCopiesStep,
     required this.onDuplexChanged,
     required this.onCollateChanged,
-    required this.onHelpPressed,
   });
 
   final TextEditingController copiesController;
@@ -1681,7 +1889,6 @@ class _PrinterPreferencesPanel extends StatelessWidget {
   final ValueChanged<int> onCopiesStep;
   final ValueChanged<String> onDuplexChanged;
   final ValueChanged<String> onCollateChanged;
-  final VoidCallback onHelpPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -1715,7 +1922,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
                     flex: 42,
                     child: BracuActionButton(
                       onPressed: copies <= 0 ? null : () => onCopiesStep(-1),
-                      outlined: true,
+                      outlined: false,
                       borderRadius: 4,
                       padding: buttonPadding,
                       label: '−',
@@ -1760,7 +1967,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
                     flex: 42,
                     child: BracuActionButton(
                       onPressed: copies >= 999 ? null : () => onCopiesStep(1),
-                      outlined: true,
+                      outlined: false,
                       borderRadius: 4,
                       padding: buttonPadding,
                       label: '+',
@@ -1812,22 +2019,267 @@ class _PrinterPreferencesPanel extends StatelessWidget {
                       fontSize: toggleFont,
                     ),
                   ),
-                  Gap(gap),
-                  SizedBox(
-                    width: controlHeight,
-                    child: BracuActionButton(
-                      onPressed: onHelpPressed,
-                      outlined: true,
-                      borderRadius: 4,
-                      padding: togglePadding,
-                      label: '?',
-                      fontSize: toggleFont,
-                    ),
-                  ),
                 ],
               ),
             ),
           ],
+        );
+      },
+    );
+  }
+}
+
+class _PrinterLayoutPreferencesPanel extends StatelessWidget {
+  const _PrinterLayoutPreferencesPanel({
+    required this.pagesPerSheet,
+    required this.fittingMode,
+    required this.staple,
+    required this.punch,
+    required this.jobOffset,
+    required this.slipSheet,
+    required this.booklet,
+    required this.onPagesPerSheetChanged,
+    required this.onFittingModeChanged,
+    required this.onStapleChanged,
+    required this.onPunchChanged,
+    required this.onJobOffsetChanged,
+    required this.onSlipSheetChanged,
+    required this.onBookletChanged,
+  });
+
+  final String pagesPerSheet;
+  final String fittingMode;
+  final String staple;
+  final String punch;
+  final String jobOffset;
+  final String slipSheet;
+  final String booklet;
+  final ValueChanged<String> onPagesPerSheetChanged;
+  final ValueChanged<String> onFittingModeChanged;
+  final ValueChanged<String> onStapleChanged;
+  final ValueChanged<String> onPunchChanged;
+  final ValueChanged<String> onJobOffsetChanged;
+  final ValueChanged<String> onSlipSheetChanged;
+  final ValueChanged<String> onBookletChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 420;
+        final gap = compact ? 6.0 : 8.0;
+        final toggleFont = compact ? 12.0 : 13.0;
+        final buttonPadding = EdgeInsets.symmetric(
+          horizontal: compact ? 4 : 6,
+          vertical: compact ? 8 : 9,
+        );
+
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: BracuPalette.textSecondary(
+                context,
+              ).withValues(alpha: 0.20),
+            ),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: gap / 2),
+                      child: BracuActionButton(
+                        onPressed: () {
+                          final nextVal = pagesPerSheet == '1-in-1'
+                              ? '2-in-1'
+                              : (pagesPerSheet == '2-in-1'
+                                    ? '4-in-1'
+                                    : '1-in-1');
+                          onPagesPerSheetChanged(nextVal);
+                        },
+                        outlined: true,
+                        backgroundColor: pagesPerSheet != '1-in-1'
+                            ? BracuPalette.primary.withValues(alpha: 0.12)
+                            : Colors.transparent,
+                        foregroundColor: pagesPerSheet != '1-in-1'
+                            ? BracuPalette.primary
+                            : BracuPalette.textPrimary(context),
+                        borderRadius: 4,
+                        padding: buttonPadding,
+                        label: pagesPerSheet,
+                        fontSize: toggleFont,
+                      ),
+                    ),
+                  ),
+                  Gap(gap),
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: gap / 2),
+                      child: BracuActionButton(
+                        onPressed: () {
+                          final nextVal = fittingMode == 'Fit on Paper'
+                              ? 'Fit on Printable Area'
+                              : (fittingMode == 'Fit on Printable Area'
+                                    ? 'Edge-to-Edge'
+                                    : 'Fit on Paper');
+                          onFittingModeChanged(nextVal);
+                        },
+                        outlined: true,
+                        backgroundColor: fittingMode != 'Fit on Paper'
+                            ? BracuPalette.primary.withValues(alpha: 0.12)
+                            : Colors.transparent,
+                        foregroundColor: fittingMode != 'Fit on Paper'
+                            ? BracuPalette.primary
+                            : BracuPalette.textPrimary(context),
+                        borderRadius: 4,
+                        padding: buttonPadding,
+                        label: fittingMode == 'Fit on Paper'
+                            ? 'Fit Paper'
+                            : (fittingMode == 'Fit on Printable Area'
+                                  ? 'Fit Printable'
+                                  : 'Edge-to-Edge'),
+                        fontSize: toggleFont,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Gap(gap),
+              Row(
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: gap / 2),
+                      child: BracuActionButton(
+                        onPressed: () {
+                          final nextVal = staple == 'Off'
+                              ? 'Left Corner'
+                              : (staple == 'Left Corner'
+                                    ? 'Right Corner'
+                                    : 'Off');
+                          onStapleChanged(nextVal);
+                        },
+                        outlined: true,
+                        backgroundColor: staple != 'Off'
+                            ? BracuPalette.primary.withValues(alpha: 0.12)
+                            : Colors.transparent,
+                        foregroundColor: staple != 'Off'
+                            ? BracuPalette.primary
+                            : BracuPalette.textPrimary(context),
+                        borderRadius: 4,
+                        padding: buttonPadding,
+                        label: staple == 'Off'
+                            ? 'Staple Off'
+                            : (staple == 'Left Corner'
+                                  ? 'Staple Left'
+                                  : 'Staple Right'),
+                        fontSize: toggleFont,
+                      ),
+                    ),
+                  ),
+                  Gap(gap),
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: gap / 2),
+                      child: BracuActionButton(
+                        onPressed: () {
+                          final nextVal = punch == 'Off'
+                              ? '2 Holes'
+                              : (punch == '2 Holes' ? '3 Holes' : 'Off');
+                          onPunchChanged(nextVal);
+                        },
+                        outlined: true,
+                        backgroundColor: punch != 'Off'
+                            ? BracuPalette.primary.withValues(alpha: 0.12)
+                            : Colors.transparent,
+                        foregroundColor: punch != 'Off'
+                            ? BracuPalette.primary
+                            : BracuPalette.textPrimary(context),
+                        borderRadius: 4,
+                        padding: buttonPadding,
+                        label: punch == 'Off' ? 'Punch Off' : punch,
+                        fontSize: toggleFont,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Gap(gap),
+              Row(
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: gap / 2),
+                      child: BracuActionButton(
+                        onPressed: () {
+                          onJobOffsetChanged(jobOffset == 'On' ? 'Off' : 'On');
+                        },
+                        outlined: true,
+                        backgroundColor: jobOffset == 'On'
+                            ? BracuPalette.primary.withValues(alpha: 0.12)
+                            : Colors.transparent,
+                        foregroundColor: jobOffset == 'On'
+                            ? BracuPalette.primary
+                            : BracuPalette.textPrimary(context),
+                        borderRadius: 4,
+                        padding: buttonPadding,
+                        label: 'Offset',
+                        fontSize: toggleFont,
+                      ),
+                    ),
+                  ),
+                  Gap(gap),
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: gap / 2),
+                      child: BracuActionButton(
+                        onPressed: () {
+                          onSlipSheetChanged(slipSheet == 'On' ? 'Off' : 'On');
+                        },
+                        outlined: true,
+                        backgroundColor: slipSheet == 'On'
+                            ? BracuPalette.primary.withValues(alpha: 0.12)
+                            : Colors.transparent,
+                        foregroundColor: slipSheet == 'On'
+                            ? BracuPalette.primary
+                            : BracuPalette.textPrimary(context),
+                        borderRadius: 4,
+                        padding: buttonPadding,
+                        label: 'Slip Sheet',
+                        fontSize: toggleFont,
+                      ),
+                    ),
+                  ),
+                  Gap(gap),
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: gap / 2),
+                      child: BracuActionButton(
+                        onPressed: () {
+                          onBookletChanged(booklet == 'On' ? 'Off' : 'On');
+                        },
+                        outlined: true,
+                        backgroundColor: booklet == 'On'
+                            ? BracuPalette.primary.withValues(alpha: 0.12)
+                            : Colors.transparent,
+                        foregroundColor: booklet == 'On'
+                            ? BracuPalette.primary
+                            : BracuPalette.textPrimary(context),
+                        borderRadius: 4,
+                        padding: buttonPadding,
+                        label: 'Booklet',
+                        fontSize: toggleFont,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         );
       },
     );
@@ -1839,11 +2291,25 @@ class _PrintTicket {
     required this.copies,
     required this.duplexMode,
     required this.collateMode,
+    required this.pagesPerSheet,
+    required this.fittingMode,
+    required this.staple,
+    required this.punch,
+    required this.jobOffset,
+    required this.slipSheet,
+    required this.booklet,
   });
 
   final int copies;
   final String duplexMode;
   final String collateMode;
+  final String pagesPerSheet;
+  final String fittingMode;
+  final String staple;
+  final String punch;
+  final String jobOffset;
+  final String slipSheet;
+  final String booklet;
 
   String get postScriptPreamble => '%!PS-Adobe-3.0';
 }

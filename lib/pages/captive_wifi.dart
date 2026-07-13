@@ -35,7 +35,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   bool _autoExtendEnabled = true;
   bool _obscurePassword = true;
   bool _scanning = false;
-  bool _locationNeedsSetup = false;
   StreamSubscription<AndroidNetworkStatus>? _networkStatusSubscription;
   final TextEditingController _studentIdController = TextEditingController();
   Map<String, String>? _extractedParams;
@@ -67,9 +66,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
     if (status.isGranted) {
       final gpsEnabled = await AndroidNetworkAssist.isLocationServiceEnabled();
       if (!gpsEnabled && mounted) {
-        setState(() {
-          _locationNeedsSetup = true;
-        });
         await showDialog<void>(
           context: context,
           barrierDismissible: false,
@@ -98,9 +94,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
         );
         return;
       }
-      setState(() {
-        _locationNeedsSetup = false;
-      });
       await _loadStoredCredentials();
       return;
     }
@@ -112,17 +105,11 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
         unawaited(_forceRequestPermissions());
         return;
       }
-      setState(() {
-        _locationNeedsSetup = false;
-      });
       await _loadStoredCredentials();
       return;
     }
 
     if (mounted) {
-      setState(() {
-        _locationNeedsSetup = true;
-      });
       await showDialog<void>(
         context: context,
         barrierDismissible: false,
@@ -150,21 +137,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
         ),
       );
     }
-  }
-
-  Future<void> _checkLocationSetup() async {
-    if (!AndroidNetworkAssist.isSupported) return;
-    final hasPermission = await Permission.locationWhenInUse.status.isGranted;
-    final gpsEnabled = await AndroidNetworkAssist.isLocationServiceEnabled();
-    if (mounted) {
-      setState(() {
-        _locationNeedsSetup = !hasPermission || !gpsEnabled;
-      });
-    }
-  }
-
-  Future<void> _fixLocationSetup() async {
-    await _forceRequestPermissions();
   }
 
   Future<void> _loadStoredCredentials() async {
@@ -521,7 +493,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
         _extractedParams = null;
       }
     });
-    unawaited(_checkLocationSetup());
     _setSsidFromStatus(status);
     final transport = status.transport.trim().toLowerCase();
     if (transport != 'wifi' || !status.connected) {
@@ -711,38 +682,11 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                         ],
                       ),
                     ),
-                    if (_locationNeedsSetup) ...[
-                      const Gap(12),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: BracuPalette.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: BracuPalette.primary.withValues(alpha: 0.22),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Needs location access and services to detect Wi-Fi.',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: BracuPalette.textSecondary(context),
-                                ),
-                              ),
-                            ),
-                            const Gap(10),
-                            TextButton(
-                              onPressed: _fixLocationSetup,
-                              child: const Text('Fix'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                    BracuLocationPermissionBanner(
+                      onFixed: () {
+                        unawaited(_loadStoredCredentials());
+                      },
+                    ),
                     const Gap(12),
                     Row(
                       children: [

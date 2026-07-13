@@ -7,7 +7,6 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/pages/api_test.dart';
-import 'package:preconnect/pages/device_diagnostics.dart';
 import 'package:preconnect/pages/settings.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/build_info.dart';
@@ -386,8 +385,6 @@ class _IntroCard extends StatelessWidget {
         const _RepoButton(),
         const Gap(12),
         const BracuCommunityLink(),
-        const Gap(12),
-        const DeviceDiagnosticsButton(),
       ],
     );
   }

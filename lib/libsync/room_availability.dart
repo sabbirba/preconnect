@@ -148,50 +148,74 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
       message: 'Book $roomNo ($roomCat) for $timeStr?',
       confirmLabel: 'Book',
       confirmColor: BracuPalette.primary,
-      onConfirm: () async {},
+      onConfirm: () async {
+        try {
+          final dateStr =
+              "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
+          await LibSyncAuthService.instance.holdSlot(
+            roomId: roomId,
+            date: dateStr,
+            slotIds: [slotId],
+            memberCount: _capacity,
+          );
+        } catch (e) {
+          if (mounted) {
+            showAppSnackBar(
+              context,
+              e.toString().replaceAll('Exception: ', ''),
+            );
+          }
+          rethrow;
+        }
+      },
     );
 
     if (confirm == true) {
-      if (!mounted) return;
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
+      final selfStudentId =
+          LibSyncAuthService.instance.state.value.profile?['student_id']
+              ?.toString() ??
+          '';
 
-      try {
-        final dateStr =
-            "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
-
-        await LibSyncAuthService.instance.holdSlot(
-          roomId: roomId,
-          date: dateStr,
-          slotIds: [slotId],
-          memberCount: _capacity,
+      if (_capacity == 1) {
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) =>
+              const Center(child: CircularProgressIndicator()),
         );
-
-        final studentId =
-            LibSyncAuthService.instance.state.value.profile?['student_id']
-                ?.toString() ??
-            '';
-        if (studentId.isEmpty) {
-          throw Exception(
-            'Student profile data is missing. Please log in again.',
+        try {
+          await LibSyncAuthService.instance.confirmReservation(
+            studentIds: [selfStudentId],
           );
+          if (mounted) {
+            Navigator.of(context).pop();
+            Navigator.of(context).pop(true);
+          }
+        } catch (e) {
+          if (mounted) {
+            Navigator.of(context).pop();
+            showAppSnackBar(
+              context,
+              e.toString().replaceAll('Exception: ', ''),
+            );
+          }
         }
-
-        await LibSyncAuthService.instance.confirmReservation(
-          studentId: studentId,
+      } else {
+        if (!mounted) return;
+        final ids = await showDialog<List<String>>(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) {
+            return _MemberIdsDialog(
+              selfStudentId: selfStudentId,
+              totalCapacity: _capacity,
+            );
+          },
         );
 
-        if (mounted) {
-          Navigator.of(context).pop();
+        if (ids != null && ids.isNotEmpty && mounted) {
           Navigator.of(context).pop(true);
-        }
-      } catch (e) {
-        if (mounted) {
-          Navigator.of(context).pop();
-          showAppSnackBar(context, e.toString().replaceAll('Exception: ', ''));
         }
       }
     }
@@ -243,14 +267,22 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
               _buildStepItem(
                 context,
                 stepNumber: '4',
-                title: 'Confirm Reservation',
+                title: 'Hold Slot & Enter Member IDs',
                 body:
-                    'Confirm the booking when prompted. The slot is held and then booked instantly.',
+                    'Tapping a time slot holds it temporarily. A dialog will open where you must enter the student IDs for all members.',
               ),
               const Gap(14),
               _buildStepItem(
                 context,
                 stepNumber: '5',
+                title: 'Verify & Confirm Booking',
+                body:
+                    'Tap the Verify button next to each external student ID. Once all member IDs are verified successfully, tap Confirm Booking.',
+              ),
+              const Gap(14),
+              _buildStepItem(
+                context,
+                stepNumber: '6',
                 title: 'Check In on Campus',
                 body:
                     'When you arrive at the library, tap the Check In button on your active reservation card. Ensure you are connected to the campus network.',
@@ -258,7 +290,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
               const Gap(14),
               _buildStepItem(
                 context,
-                stepNumber: '6',
+                stepNumber: '7',
                 title: 'Cancel Booking',
                 body:
                     'If your plans change, you can cancel your confirmed reservation from the dashboard to free up slots.',
@@ -604,7 +636,7 @@ class _CounterControl extends StatelessWidget {
           height: 38,
           child: BracuActionButton(
             onPressed: onDecrement,
-            outlined: true,
+            outlined: false,
             borderRadius: 4,
             padding: EdgeInsets.zero,
             label: '−',
@@ -649,7 +681,7 @@ class _CounterControl extends StatelessWidget {
           height: 38,
           child: BracuActionButton(
             onPressed: onIncrement,
-            outlined: true,
+            outlined: false,
             borderRadius: 4,
             padding: EdgeInsets.zero,
             label: '+',
@@ -676,6 +708,359 @@ class _SelectionButton extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       label: label,
       fontSize: 13,
+    );
+  }
+}
+
+class _MemberIdsDialog extends StatefulWidget {
+  const _MemberIdsDialog({
+    required this.selfStudentId,
+    required this.totalCapacity,
+  });
+
+  final String selfStudentId;
+  final int totalCapacity;
+
+  @override
+  State<_MemberIdsDialog> createState() => _MemberIdsDialogState();
+}
+
+class _MemberIdsDialogState extends State<_MemberIdsDialog> {
+  late final List<TextEditingController> _controllers;
+  late final List<bool> _verified;
+  late final List<String> _names;
+  late final List<bool> _loading;
+  late final List<String?> _errors;
+  bool _isSubmitting = false;
+  String? _generalError;
+
+  @override
+  void initState() {
+    super.initState();
+    _controllers = List.generate(
+      widget.totalCapacity,
+      (index) =>
+          TextEditingController(text: index == 0 ? widget.selfStudentId : ''),
+    );
+    _verified = List.generate(widget.totalCapacity, (index) => index == 0);
+    _names = List.generate(
+      widget.totalCapacity,
+      (index) => index == 0 ? 'You' : '',
+    );
+    _loading = List.generate(widget.totalCapacity, (_) => false);
+    _errors = List.generate(widget.totalCapacity, (_) => null);
+  }
+
+  @override
+  void dispose() {
+    for (final controller in _controllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _verifyId(int index, String id) async {
+    final cleanId = id.trim();
+    if (cleanId.isEmpty) return;
+    setState(() {
+      _loading[index] = true;
+      _errors[index] = null;
+      _verified[index] = false;
+      _names[index] = '';
+    });
+    try {
+      final res = await LibSyncAuthService.instance.checkMember(cleanId);
+      if (!mounted) return;
+      setState(() {
+        if (res == null) {
+          _verified[index] = true;
+          _errors[index] = null;
+        } else {
+          _verified[index] = false;
+          _errors[index] = res['status']?.toString() ?? 'Pending approval';
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errors[index] = e.toString().replaceAll('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading[index] = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = BracuPalette.textSecondary(context);
+    final allVerified = _verified.every((v) => v);
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: BracuPalette.card(context),
+          border: Border.all(
+            color: BracuPalette.textSecondary(context).withValues(
+              alpha: Theme.of(context).brightness == Brightness.dark
+                  ? 0.22
+                  : 0.16,
+            ),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.group_add_outlined,
+                    color: BracuPalette.primary,
+                  ),
+                  const Gap(8),
+                  Expanded(
+                    child: Text(
+                      'Enter Member IDs',
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const Gap(16),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(widget.totalCapacity, (index) {
+                      final controller = _controllers[index];
+                      final isSelf = index == 0;
+                      final isLoading = _loading[index];
+                      final isVerified = _verified[index];
+                      final error = _errors[index];
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isSelf ? 'Member 1 (You)' : 'Member ${index + 1}',
+                              style: TextStyle(
+                                color: textPrimary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const Gap(6),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: controller,
+                                    keyboardType: TextInputType.number,
+                                    enabled: !isSelf && !isLoading,
+                                    style: TextStyle(
+                                      color: textPrimary,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText: 'Student ID',
+                                      hintStyle: TextStyle(
+                                        color: textSecondary.withValues(
+                                          alpha: 0.5,
+                                        ),
+                                        fontSize: 14,
+                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 10,
+                                          ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: textSecondary.withValues(
+                                            alpha: 0.2,
+                                          ),
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: textSecondary.withValues(
+                                            alpha: 0.2,
+                                          ),
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: const BorderSide(
+                                          color: BracuPalette.primary,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                    ),
+                                    onChanged: (_) {
+                                      if (isVerified) {
+                                        setState(() {
+                                          _verified[index] = false;
+                                          _names[index] = '';
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ),
+                                const Gap(8),
+                                SizedBox(
+                                  height: 42,
+                                  child: BracuActionButton(
+                                    onPressed: (isLoading || isVerified)
+                                        ? null
+                                        : () =>
+                                              _verifyId(index, controller.text),
+                                    isLoading: isLoading,
+                                    label: isVerified ? 'Verified' : 'Verify',
+                                    icon: isVerified
+                                        ? Icons.check_circle_rounded
+                                        : Icons.shield_outlined,
+                                    outlined: !isVerified,
+                                    backgroundColor: isVerified
+                                        ? Colors.green.withValues(alpha: 0.12)
+                                        : null,
+                                    foregroundColor: isVerified
+                                        ? Colors.green
+                                        : null,
+                                    borderRadius: 8,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            if (error != null) ...[
+                              const Gap(4),
+                              Text(
+                                error,
+                                style: TextStyle(
+                                  color:
+                                      error.toLowerCase().contains(
+                                            'invitation',
+                                          ) ||
+                                          error.toLowerCase().contains(
+                                            'approve',
+                                          )
+                                      ? Colors.amber[700]
+                                      : Colors.red,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ),
+              if (_generalError != null) ...[
+                const Gap(10),
+                Text(
+                  _generalError!,
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+              const Gap(18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  BracuActionButton(
+                    onPressed: _isSubmitting
+                        ? null
+                        : () => Navigator.of(context).pop(),
+                    outlined: true,
+                    borderRadius: 12,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    label: 'Cancel',
+                  ),
+                  const Gap(10),
+                  BracuActionButton(
+                    onPressed: (allVerified && !_isSubmitting)
+                        ? () async {
+                            final navigator = Navigator.of(context);
+                            setState(() {
+                              _isSubmitting = true;
+                              _generalError = null;
+                            });
+                            try {
+                              final ids = _controllers
+                                  .map((c) => c.text.trim())
+                                  .toList();
+                              await LibSyncAuthService.instance
+                                  .confirmReservation(studentIds: ids);
+                              if (mounted) {
+                                navigator.pop(ids);
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                setState(() {
+                                  _generalError = e.toString().replaceAll(
+                                    'Exception: ',
+                                    '',
+                                  );
+                                  _isSubmitting = false;
+                                });
+                              }
+                            }
+                          }
+                        : null,
+                    outlined: false,
+                    isLoading: _isSubmitting,
+                    borderRadius: 12,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    label: 'Confirm Booking',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

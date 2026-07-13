@@ -76,10 +76,10 @@ class _LibSyncPageState extends State<LibSyncPage>
     _loadDiskCache().then((_) {
       if (mounted) {
         setState(() {});
+        LibSyncAuthService.instance.state.addListener(_onAuthStateChanged);
+        _onAuthStateChanged();
       }
     });
-    LibSyncAuthService.instance.state.addListener(_onAuthStateChanged);
-    _onAuthStateChanged();
     bindRefreshBus(_onRefreshSignal);
   }
 

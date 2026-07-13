@@ -52,33 +52,8 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
     var status = await Permission.locationWhenInUse.status;
     if (status.isGranted) {
       final gpsEnabled = await AndroidNetworkAssist.isLocationServiceEnabled();
-      if (!gpsEnabled && mounted) {
-        await showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            title: const Text('Location Services Disabled'),
-            content: const Text(
-              'Location services (GPS) must be enabled to view system specifications and read Wi-Fi network information. Please enable it.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                  await AndroidNetworkAssist.openLocationSettings();
-                },
-                child: const Text('Open Settings'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  unawaited(_forceRequestPermissions());
-                },
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        );
+      if (!gpsEnabled) {
+        await AndroidNetworkAssist.openLocationSettings();
         return;
       }
       await _loadAll();
@@ -88,42 +63,15 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
     status = await Permission.locationWhenInUse.request();
     if (status.isGranted) {
       final gpsEnabled = await AndroidNetworkAssist.isLocationServiceEnabled();
-      if (!gpsEnabled && mounted) {
-        unawaited(_forceRequestPermissions());
+      if (!gpsEnabled) {
+        await AndroidNetworkAssist.openLocationSettings();
         return;
       }
       await _loadAll();
       return;
     }
 
-    if (mounted) {
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text('Location Permission Required'),
-          content: const Text(
-            'Location permission is required to view system specifications and read connected Wi-Fi SSID details. Please grant the permission to continue.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                unawaited(_forceRequestPermissions());
-              },
-              child: const Text('Grant'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await openAppSettings();
-              },
-              child: const Text('Open Settings'),
-            ),
-          ],
-        ),
-      );
-    }
+    await openAppSettings();
   }
 
   Future<void> _loadAll() async {
@@ -198,27 +146,21 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
           'UTS Version': iosInfo.utsname.version,
           'Physical Device': iosInfo.isPhysicalDevice ? 'Yes' : 'No',
         });
-      } else if (Platform.isMacOS) {
-        final macInfo = await deviceInfo.macOsInfo;
-        data.addAll(<String, String>{
-          'Platform': 'macOS',
-          'OS Version': macInfo.osRelease,
-          'Model': macInfo.model,
-          'Kernel Version': macInfo.kernelVersion,
-          'Host Name': macInfo.hostName,
-          'Arch': macInfo.arch,
+      }
+      if (mounted) {
+        setState(() {
+          _deviceInfo = data;
         });
       }
-
-      setState(() {
-        _deviceInfo = data;
-      });
     } catch (_) {}
   }
 
   Future<void> _loadNetworkInfo() async {
     final Map<String, String> netData = <String, String>{
-      'Transport': 'Disconnected',
+      'Transport': 'Unknown',
+      'Connected': 'Unknown',
+      'Validated': 'Unknown',
+      'Captive Portal': 'Unknown',
       'SSID': 'Unknown',
       'Gateway IP': 'Unknown',
       'Local IP': 'Unknown',
@@ -242,9 +184,11 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
       } else {
         netData['Transport'] = 'Supported on Android only';
       }
-      setState(() {
-        _networkInfo = netData;
-      });
+      if (mounted) {
+        setState(() {
+          _networkInfo = netData;
+        });
+      }
     } catch (_) {}
   }
 
@@ -341,7 +285,7 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
           _deviceInfo['Physical Device'] ?? 'Yes',
         ),
         _buildDivider(isDark),
-        _buildInfoRow('Build ID', _deviceInfo['Device ID'] ?? 'Unknown'),
+        _buildInfoRow('Bracu Card ID', _deviceInfo['Device ID'] ?? 'Unknown'),
         _buildDivider(isDark),
         if (Platform.isAndroid && _deviceInfo['CPU Architectures'] != null) ...[
           _buildInfoRow('OS Codename', _deviceInfo['OS Codename'] ?? 'Unknown'),
@@ -445,7 +389,12 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
       actions: [
         IconButton(
           tooltip: 'Refresh',
-          onPressed: _forceRequestPermissions,
+          onPressed: () {
+            if (mounted) {
+              setState(() => _loading = true);
+            }
+            unawaited(_forceRequestPermissions());
+          },
           icon: const Icon(Icons.refresh_rounded, color: BracuPalette.primary),
         ),
       ],

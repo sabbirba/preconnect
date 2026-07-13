@@ -454,16 +454,40 @@ class _BracuMetricTile extends StatelessWidget {
 }
 
 class BracuEmptyState extends StatelessWidget {
-  const BracuEmptyState({super.key, required this.message});
+  const BracuEmptyState({
+    super.key,
+    required this.message,
+    this.icon = Icons.info_outline_rounded,
+  });
 
   final String message;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text(
-        message,
-        style: TextStyle(color: BracuPalette.textSecondary(context)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 44,
+              color: BracuPalette.textSecondary(context).withValues(alpha: 0.4),
+            ),
+            const Gap(16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: BracuPalette.textSecondary(context),
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
