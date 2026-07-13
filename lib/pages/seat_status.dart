@@ -86,7 +86,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   final Set<String> _pinnedSections = <String>{};
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounce;
-  Timer? _pollTimer;
+
   bool _pollInFlight = false;
   bool _isInitialLoading = true;
   String _searchQuery = '';
@@ -152,7 +152,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     WidgetsBinding.instance.removeObserver(this);
     HomeTabRegistry.activeTab.removeListener(_onActiveTabChanged);
     _searchDebounce?.cancel();
-    _pollTimer?.cancel();
+
     _searchController.dispose();
     super.dispose();
   }

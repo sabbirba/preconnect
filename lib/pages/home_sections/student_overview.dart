@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/api/funding.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
@@ -196,6 +197,7 @@ class _SupportButtonState extends State<_SupportButton> {
     _fetchLatest();
     _rotationTimer = Timer.periodic(const Duration(seconds: 7), (_) {
       if (mounted) {
+        if (HomeTabRegistry.activeTab.value != HomeTab.dashboard) return;
         setState(() {
           _rotationIndex++;
         });

@@ -34,7 +34,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
   static const MethodChannel _androidAlarmChannel = MethodChannel(
     'preconnect/android_alarm',
   );
-  static const Duration _autoRefreshInterval = Duration(seconds: 20);
+
   static final CachedPageController<List<CustomSchedule>> itemsCache =
       CachedPageController<List<CustomSchedule>>(({
         bool forceRefresh = false,
@@ -56,7 +56,6 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
       const <CustomSchedulesCourseOption>[];
   Future<List<CustomSchedulesCourseOption>>? _courseOptionsLoadInFlight;
   bool _isBusy = false;
-  Timer? _autoRefreshTimer;
 
   @override
   void initState() {
@@ -71,10 +70,6 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
         : Future<List<CustomSchedule>>.value(itemsCache.value!);
     unawaited(_warmAndBind());
     unawaited(_primeCachedItems());
-    _autoRefreshTimer = Timer.periodic(_autoRefreshInterval, (_) {
-      if (!mounted || _isBusy) return;
-      unawaited(_refresh(forceRefresh: true, notify: false));
-    });
     bindRefreshBus(_onRefreshSignal);
   }
 
@@ -172,7 +167,6 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
 
   @override
   void dispose() {
-    _autoRefreshTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     unbindRefreshBus(_onRefreshSignal);
     super.dispose();

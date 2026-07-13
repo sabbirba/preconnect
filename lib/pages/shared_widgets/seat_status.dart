@@ -685,19 +685,10 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   }
 
   void _startPolling() {
-    if (_pollTimer != null) return;
-    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (!mounted) return;
-      if (HomeTabRegistry.activeTab.value != HomeTab.seatStatus) return;
-      unawaited(_refreshDetailsFromApi(forceRefresh: true));
-    });
     unawaited(_refreshDetailsFromApi(forceRefresh: true));
   }
 
-  void _stopPolling() {
-    _pollTimer?.cancel();
-    _pollTimer = null;
-  }
+  void _stopPolling() {}
 
   bool _isPinnedSection(int sectionId) {
     return _pinnedSections.contains(sectionId.toString());

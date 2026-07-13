@@ -26,14 +26,11 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   bool _isAutoExtendingSession = false;
   DateTime? _lastAutoAssistantOpenAt;
   DateTime? _lastSilentLoginAt;
-  Timer? _todayScheduleAutoRefreshTimer;
+
   Future<CampusMapData?>? _campusMapFuture;
   Future<String?>? _transportScheduleUrlFuture;
   bool _quickAccessExpanded = false;
 
-  static const Duration _todayScheduleAutoRefreshInterval = Duration(
-    minutes: 1,
-  );
   static const Duration _silentLoginTimeout = Duration(seconds: 45);
   static const String _homeDashboardSnapshotCacheKey =
       'home_dashboard_snapshot_v1';
@@ -76,13 +73,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       });
       unawaited(_consumePostConnectionEvent());
     }
-    _todayScheduleAutoRefreshTimer = Timer.periodic(
-      _todayScheduleAutoRefreshInterval,
-      (_) {
-        if (!mounted) return;
-        unawaited(_handleRefresh(notify: false));
-      },
-    );
+
     bindRefreshBus(_onRefreshSignal);
   }
 
@@ -90,7 +81,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   void dispose() {
     unbindRefreshBus(_onRefreshSignal);
     _networkStatusSubscription?.cancel().catchError((_) {});
-    _todayScheduleAutoRefreshTimer?.cancel();
+
     super.dispose();
   }
 
@@ -243,100 +234,68 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
   Future<_HomeData> _loadData({bool forceRefresh = false}) async {
     try {
-      final profileFuture =
-          (forceRefresh
-                  ? ProfileService().fetchProfile()
-                  : ProfileService().getProfile())
-              .catchError((e) {
-                return null;
-              });
+      final cardVisibility = await HomeCardPreferences.load().catchError((_) => HomeCardPreferences.defaults);
+      final currentSessionSemesterId = await resolveCurrentSessionSemesterId().catchError((_) => null);
 
-      final customSchedulesFuture =
-          (forceRefresh
-                  ? CustomSchedulesService().getItems(forceRefresh: true)
-                  : CustomSchedulesService().getItems())
-              .catchError((e) {
-                return const <CustomSchedule>[];
-              });
-
-      final advisingFuture =
-          (forceRefresh
-                  ? AdvisingService().fetchAdvisingInfo()
-                  : AdvisingService().getAdvisingInfo())
-              .catchError((e) {
-                return null;
-              });
-
-      final prerequisiteResults = await Future.wait<dynamic>([
-        HomeCardPreferences.load(),
-        resolveCurrentSessionSemesterId(),
-        profileFuture,
-        customSchedulesFuture,
-        advisingFuture,
-      ]);
-
-      final cardVisibility = prerequisiteResults[0] as HomeCardVisibility;
-      final currentSessionSemesterId = prerequisiteResults[1] as int?;
-      var profile = prerequisiteResults[2] as Map<String, String?>?;
-      final personalSchedules = prerequisiteResults[3] as List<CustomSchedule>;
-      final advisingInfo = prerequisiteResults[4] as Map<String, String?>?;
-
-      final needsSchedule =
-          cardVisibility.showTodaySchedule ||
-          cardVisibility.showExamCountdownCard;
-      final needsRamadan =
-          cardVisibility.showRamadanCard || cardVisibility.showTodaySchedule;
+      final needsSchedule = cardVisibility.showTodaySchedule || cardVisibility.showExamCountdownCard;
+      final needsRamadan = cardVisibility.showRamadanCard || cardVisibility.showTodaySchedule;
       final needsHoliday = cardVisibility.showTodaySchedule;
+
+      final profileFuture = (forceRefresh
+              ? ProfileService().fetchProfile()
+              : ProfileService().getProfile())
+          .catchError((e) => null);
+
+      final customSchedulesFuture = (forceRefresh
+              ? CustomSchedulesService().getItems(forceRefresh: true)
+              : CustomSchedulesService().getItems())
+          .catchError((e) => const <CustomSchedule>[]);
+
+      final advisingFuture = (forceRefresh
+              ? AdvisingService().fetchAdvisingInfo()
+              : AdvisingService().getAdvisingInfo())
+          .catchError((e) => null);
 
       final scheduleFuture = currentSessionSemesterId == null || !needsSchedule
           ? Future<String?>.value(null)
           : (forceRefresh
-                    ? ScheduleService().fetchStudentScheduleForSemester(
-                        semesterSessionId: currentSessionSemesterId,
-                      )
-                    : ScheduleService().getStudentScheduleForSemester(
-                        semesterSessionId: currentSessionSemesterId,
-                      ))
-                .catchError((e) {
-                  return null;
-                });
+                  ? ScheduleService().fetchStudentScheduleForSemester(
+                      semesterSessionId: currentSessionSemesterId,
+                    )
+                  : ScheduleService().getStudentScheduleForSemester(
+                      semesterSessionId: currentSessionSemesterId,
+                    ))
+              .catchError((e) => null);
 
       final ramadanFuture = needsRamadan
-          ? RamadanTiming.getRamadanStatus(
-              forceRefresh: forceRefresh,
-            ).catchError((e) {
-              return const RamadanStatus(isRamadan: false);
-            })
+          ? RamadanTiming.getRamadanStatus(forceRefresh: forceRefresh).catchError((e) => const RamadanStatus(isRamadan: false))
           : Future<RamadanStatus>.value(const RamadanStatus(isRamadan: false));
 
       final holidayFuture = needsHoliday
-          ? HolidayTiming.getTodayStatus(forceRefresh: forceRefresh).catchError(
-              (e) {
-                return HolidayStatus.empty;
-              },
-            )
+          ? HolidayTiming.getTodayStatus(forceRefresh: forceRefresh).catchError((e) => HolidayStatus.empty)
           : Future<HolidayStatus>.value(HolidayStatus.empty);
 
-      final secondaryResults = await Future.wait<dynamic>([
+      final results = await Future.wait<dynamic>([
+        profileFuture,
+        customSchedulesFuture,
+        advisingFuture,
         scheduleFuture,
         ramadanFuture,
         holidayFuture,
       ]);
 
-      var scheduleJson = secondaryResults[0] as String?;
-      final ramadan = secondaryResults[1] as RamadanStatus;
+      var profile = results[0] as Map<String, String?>?;
+      final personalSchedules = results[1] as List<CustomSchedule>;
+      final advisingInfo = results[2] as Map<String, String?>?;
+      var scheduleJson = results[3] as String?;
+      final ramadan = results[4] as RamadanStatus;
       final isRamadan = ramadan.isRamadan;
-      final holidayStatus = secondaryResults[2] as HolidayStatus;
+      final holidayStatus = results[5] as HolidayStatus;
 
-      if (!forceRefresh &&
-          (profile == null || (needsSchedule && scheduleJson == null))) {
+      if (!forceRefresh && (profile == null || (needsSchedule && scheduleJson == null))) {
         final fallbackResults = await Future.wait<dynamic>([
-          profile == null
-              ? ProfileService().fetchProfile()
-              : Future.value(profile),
-          scheduleJson == null &&
-                  needsSchedule &&
-                  currentSessionSemesterId != null
+          profile == null ? ProfileService().fetchProfile() : Future.value(profile),
+          scheduleJson == null && needsSchedule && currentSessionSemesterId != null
               ? ScheduleService().fetchStudentScheduleForSemester(
                   semesterSessionId: currentSessionSemesterId,
                 )
@@ -348,9 +307,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
       final photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
       final List<section.Section> sections = [];
-      Map<String, ExamScheduleOverride> examOverrides =
-          const <String, ExamScheduleOverride>{};
-
+      Map<String, ExamScheduleOverride> examOverrides = const <String, ExamScheduleOverride>{};
       Future<Map<String, ExamScheduleOverride>>? examOverridesFuture;
 
       if (scheduleJson != null && scheduleJson.trim().isNotEmpty) {
@@ -362,9 +319,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         if (cardVisibility.showExamCountdownCard && sections.isNotEmpty) {
           examOverridesFuture = ExamScheduleService()
               .getOverridesForSections(sections, forceRefresh: forceRefresh)
-              .catchError((e) {
-                return const <String, ExamScheduleOverride>{};
-              });
+              .catchError((e) => const <String, ExamScheduleOverride>{});
         }
       }
 
@@ -375,9 +330,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
             sections.addAll(cachedSections);
             examOverridesFuture = ExamScheduleService()
                 .getOverridesForSections(sections, forceRefresh: forceRefresh)
-                .catchError((e) {
-                  return const <String, ExamScheduleOverride>{};
-                });
+                .catchError((e) => const <String, ExamScheduleOverride>{});
           }
         } catch (_) {}
       }

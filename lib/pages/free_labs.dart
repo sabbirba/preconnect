@@ -57,7 +57,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   final ScrollController _scrollController = ScrollController();
   late final HighlightScrollCoordinator _highlightScroll =
       HighlightScrollCoordinator(scrollController: _scrollController);
-  Timer? _liveRefreshTimer;
+
   _RoomFilter _selectedFilter = _RoomFilter.labs;
   bool _showNextDayAfterHours = false;
   bool _isRamadan = false;
@@ -71,10 +71,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     _future = _loadSlots();
     _bindSlotsFuture(_future);
     HomeTabRegistry.activeTab.addListener(_onActiveTabChanged);
-    _liveRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (!mounted) return;
-      setState(() {});
-    });
+
     RamadanTiming.isRamadan().then((value) {
       if (mounted) {
         setState(() {
@@ -89,7 +86,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     _searchController.removeListener(_onSearchQueryChanged);
     _searchController.dispose();
     HomeTabRegistry.activeTab.removeListener(_onActiveTabChanged);
-    _liveRefreshTimer?.cancel();
+
     _scrollController.dispose();
     super.dispose();
   }

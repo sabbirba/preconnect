@@ -16,9 +16,7 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_log_observer.dart';
-import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/api/auth.dart';
-import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/api/api_client.dart';
@@ -140,40 +138,10 @@ class MyApp extends StatefulWidget {
       await prefs.getString(StorageKeys.homeTab),
     );
 
-    final token = await TokenStorage.instance.read(
-      key: PreConnectStorageKeys.accessToken,
-    );
-    final refreshToken = await TokenStorage.instance.read(
-      key: PreConnectStorageKeys.refreshToken,
-    );
-    final tokenPresent = token != null && token.isNotEmpty;
-    final refreshTokenPresent = refreshToken != null && refreshToken.isNotEmpty;
-    final hasToken = tokenPresent && refreshTokenPresent;
-
-    if (!hasToken) {
-      await prefs.setBool(PreConnectStorageKeys.cachedHasAuthSession, false);
-      final keepKeys = <String>{
-        PreConnectStorageKeys.accessToken,
-        PreConnectStorageKeys.refreshToken,
-        StorageKeys.themeMode,
-        CustomSchedulesService.cacheKey,
-        HomeCardPreferences.showQuickAccessSectionKey,
-        HomeCardPreferences.showRamadanCardKey,
-        HomeCardPreferences.showExamCountdownCardKey,
-        HomeCardPreferences.showTodayScheduleKey,
-        HomeCardPreferences.showDecorationsKey,
-        HomeCardPreferences.showCampusMapContactsKey,
-        HomeCardPreferences.showFundingSectionKey,
-      };
-      await AppPreferencesStore().clearAllExcept(keepKeys);
-    } else {
-      await prefs.setBool(PreConnectStorageKeys.cachedHasAuthSession, true);
-    }
+    final hasToken =
+        prefs.getBoolSync(PreConnectStorageKeys.cachedHasAuthSession) ?? false;
 
     final canOpenOffline = hasToken && await _hasOfflineSnapshot();
-    if (hasToken) {
-      unawaited(_warmStartupCaches());
-    }
 
     return AppBootstrapState(
       themeMode: _decodeTheme(savedTheme),
@@ -227,12 +195,13 @@ class MyApp extends StatefulWidget {
     return studentId.isNotEmpty && fullName.isNotEmpty;
   }
 
-  static Future<void> _warmStartupCaches({bool forceRefresh = false}) async {
-    final tasks = _buildWarmupTasks(
-      includeCampusPrinter: false,
-      forceRefresh: forceRefresh,
-    );
-    await Future.wait(tasks.map((task) => task.catchError((_) {})));
+  static Future<void> _warmStartupCaches() async {
+    try {
+      await Future.wait(
+        _buildWarmupTasks(includeCampusPrinter: false)
+            .map((t) => t.catchError((_) {})),
+      );
+    } catch (_) {}
   }
 
   static List<Future<void>> _buildWarmupTasks({
@@ -325,7 +294,14 @@ class _MyAppState extends State<MyApp>
     );
     WidgetsBinding.instance.addObserver(this);
     if (!widget.isPreBoot) {
-      unawaited(_bootstrapInBackground());
+      if (!_initialLoggedIn) {
+        unawaited(_bootstrapInBackground());
+      } else {
+        _resolvedBootstrapState ??= widget.bootstrapState;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          unawaited(triggerAppRefresh());
+        });
+      }
       if (kIsWeb) {
         _webExtensionSessionFlow = WebExtensionSessionFlow();
         _webSessionSub = _webExtensionSessionFlow!.events.listen(
@@ -394,7 +370,7 @@ class _MyAppState extends State<MyApp>
       defaultTargetPlatform == TargetPlatform.android;
 
   Future<void> _runDeferredStartupWork() async {
-    await Future<void>.delayed(const Duration(milliseconds: 1800));
+    await Future<void>.delayed(const Duration(milliseconds: 200));
     if (!mounted) return;
     await _loadDeferredServices();
     unawaited(_setupQuickAccessShortcuts());
@@ -504,7 +480,10 @@ class _MyAppState extends State<MyApp>
     _appRefreshInFlight = true;
     _lastAppRefreshAt = now;
     try {
-      if (await ApiClient().hasConnection()) {
+      final connectivity = await Connectivity().checkConnectivity();
+      final isOffline = connectivity.isEmpty ||
+          connectivity.every((r) => r == ConnectivityResult.none);
+      if (!isOffline) {
         ApiClient().clearTransientCaches();
         await Future.wait<void>([
           CdnWarmupService.instance.warmPublicCdnData(forceRefresh: true),

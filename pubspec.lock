@@ -413,10 +413,10 @@ packages:
     dependency: "direct main"
     description:
       name: firebase_analytics
-      sha256: "86acc776d1f826efa266f442dfd1081026fb6b6bebfc4e6cd0554899e0e328ac"
+      sha256: "1c46136d9226e7e070013582097d997248a34cf94856c7e95f4fdf346bf4a397"
       url: "https://pub.dev"
     source: hosted
-    version: "12.4.4"
+    version: "12.4.3"
   firebase_analytics_platform_interface:
     dependency: transitive
     description:
@@ -461,10 +461,10 @@ packages:
     dependency: "direct main"
     description:
       name: firebase_messaging
-      sha256: ae3691770a42741100a33be6fec494b3c88e8fc536e5756fe4e447b8be7cfb4a
+      sha256: ce21a510e5a9aed67a0404476981e19ec0361a0301eeba547dc93dc2e7dec99a
       url: "https://pub.dev"
     source: hosted
-    version: "16.4.2"
+    version: "16.4.1"
   firebase_messaging_platform_interface:
     dependency: transitive
     description:

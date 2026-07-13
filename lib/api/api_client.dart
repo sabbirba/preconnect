@@ -403,8 +403,8 @@ class ApiClient {
     String? cachedBody;
 
     if (isPreconnectUrl) {
-      cachedEtag = await AppStorage.instance.getString('etag_$url');
-      cachedBody = await AppStorage.instance.getString('etag_resp_$url');
+      cachedEtag = AppStorage.instance.getStringSync('etag_$url');
+      cachedBody = AppStorage.instance.getStringSync('etag_resp_$url');
       if (cachedEtag != null &&
           cachedEtag.isNotEmpty &&
           cachedBody != null &&
@@ -451,11 +451,11 @@ class ApiClient {
         } else if (response.statusCode == 200) {
           final etag = response.headers['etag'] ?? response.headers['ETag'];
           if (etag != null && etag.isNotEmpty) {
-            await AppStorage.instance.setString('etag_$url', etag);
-            await AppStorage.instance.setString(
+            unawaited(AppStorage.instance.setString('etag_$url', etag));
+            unawaited(AppStorage.instance.setString(
               'etag_resp_$url',
               response.body,
-            );
+            ));
           }
         }
       }
