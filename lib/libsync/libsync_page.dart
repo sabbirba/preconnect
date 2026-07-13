@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' show DateFormat;
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/home_tab.dart';
+import 'package:preconnect/tools/time_utils.dart' show BracuTime;
 import 'google_sign_in_helper.dart';
 import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
@@ -798,6 +800,8 @@ class _StatsGrid extends StatelessWidget {
   }
 }
 
+enum CheckInAvailability { yes, no, awaiting }
+
 class _BarItem extends StatelessWidget {
   const _BarItem({
     required this.label,
@@ -889,6 +893,7 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
           final code = res['reservation_code']?.toString() ?? 'N/A';
           final uniqueToken = res['unique_token']?.toString() ?? '';
           final status = (res['status'] ?? '').toString();
+          final checkInStatus = _getCheckInAvailability(res);
 
           Color statusColor;
           switch (status.toLowerCase()) {
@@ -1000,7 +1005,12 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                   isValueBold: true,
                   valueColor: statusColor,
                 ),
-                if (status.toLowerCase() == 'confirmed') ...[
+                const SizedBox(height: 6),
+                if (checkInStatus == CheckInAvailability.awaiting)
+                  _InfoLine(label: 'Check-In?', value: 'Awaiting (later)'),
+                const SizedBox(height: 6),
+                if (status.toLowerCase() == 'confirmed' &&
+                    checkInStatus == CheckInAvailability.yes) ...[
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -1160,6 +1170,67 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
           ),
       ],
     );
+  }
+
+  DateTime? _parseReservationDate(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    final cleaned = raw.trim();
+    final candidates = <DateFormat>[
+      DateFormat('yyyy-MM-dd'),
+      DateFormat('yyyy/MM/dd'),
+      DateFormat('yyyy.MM.dd'),
+      DateFormat('dd-MM-yyyy'),
+      DateFormat('dd/MM/yyyy'),
+      DateFormat('d/M/yyyy'),
+      DateFormat('d MMM yyyy'),
+      DateFormat('d MMM, yyyy'),
+      DateFormat('d-MMM-yyyy'),
+      DateFormat('MMM d, yyyy'),
+    ];
+    for (final f in candidates) {
+      try {
+        return f.parseStrict(cleaned);
+      } catch (_) {}
+    }
+    return DateTime.tryParse(cleaned);
+  }
+
+  CheckInAvailability _getCheckInAvailability(dynamic res) {
+    try {
+      final slots = res['slot'];
+      if (slots is! List || slots.isEmpty) return CheckInAvailability.yes;
+
+      final slot = slots.first;
+      final startTod = BracuTime.parseTime(slot['start_time']?.toString());
+      final endTod = BracuTime.parseTime(slot['end_time']?.toString());
+      if (startTod == null || endTod == null) return CheckInAvailability.yes;
+
+      final date = _parseReservationDate(res['reserve_start_date']?.toString());
+      if (date == null) return CheckInAvailability.yes;
+
+      final slotStart = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        startTod.hour,
+        startTod.minute,
+      );
+      final slotEnd = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        endTod.hour,
+        endTod.minute,
+      );
+      final now = DateTime.now();
+
+      if (now.isBefore(slotStart)) return CheckInAvailability.awaiting;
+      if (now.isBefore(slotEnd)) return CheckInAvailability.yes;
+      return CheckInAvailability.no;
+    } catch (_) {
+      return CheckInAvailability
+          .yes; // fail open rather than hiding check-in on a parse error
+    }
   }
 
   String _formatSlot(dynamic slots) {
