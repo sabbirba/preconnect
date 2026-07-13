@@ -1193,10 +1193,10 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
       final slots = res['slot'];
       if (slots is! List || slots.isEmpty) return true;
 
-      final timeOfDay = BracuTime.parseTime(
-        slots.first['start_time']?.toString(),
-      );
-      if (timeOfDay == null) return true;
+      final slot = slots.first;
+      final startTod = BracuTime.parseTime(slot['start_time']?.toString());
+      final endTod = BracuTime.parseTime(slot['end_time']?.toString());
+      if (startTod == null || endTod == null) return true;
 
       final date = _parseReservationDate(res['reserve_start_date']?.toString());
       if (date == null) return true;
@@ -1205,11 +1205,19 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
         date.year,
         date.month,
         date.day,
-        timeOfDay.hour,
-        timeOfDay.minute,
+        startTod.hour,
+        startTod.minute,
       );
-      final cutoff = slotStart.add(const Duration(minutes: 10));
-      return DateTime.now().isBefore(cutoff);
+      final slotEnd = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        endTod.hour,
+        endTod.minute,
+      );
+      final now = DateTime.now();
+
+      return !now.isBefore(slotStart) && now.isBefore(slotEnd);
     } catch (_) {
       return true; // fail open rather than hiding check-in on a parse error
     }
