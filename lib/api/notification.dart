@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/repository_cache.dart';
+import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/url_utils.dart';
 
 part 'notification.g.dart';
@@ -273,7 +275,24 @@ class NotificationService {
       if (bTime == null) return -1;
       return bTime.compareTo(aTime);
     });
+    final oldFeed = await _readCachedScraperFeed();
+    final oldIds = oldFeed?.map((item) => item.id).toSet() ?? {};
+
     await _writeCachedScraperFeed(merged);
+
+    if (oldFeed != null) {
+      for (final item in merged) {
+        if (!oldIds.contains(item.id)) {
+          unawaited(
+            FCMService.instance.showLocalNotificationDirect(
+              title: item.title,
+              body: '${item.source}: ${item.message}',
+              imageUrl: item.imageUrl,
+            ),
+          );
+        }
+      }
+    }
     return merged;
   }
 
@@ -330,7 +349,27 @@ class NotificationService {
         cacheDuration: const Duration(seconds: 10),
       );
       if (response.statusCode == 200) {
+        final oldFeed = await _readCachedFeed();
+        final oldIds = oldFeed?.items.map((item) => item.id).toSet() ?? {};
+
+        final newFeed = NotificationsFeed.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        );
+
         await _repo.writeString(_recentFeedKey, response.body);
+
+        if (oldFeed != null) {
+          for (final item in newFeed.items) {
+            if (!oldIds.contains(item.id)) {
+              unawaited(
+                FCMService.instance.showLocalNotificationDirect(
+                  title: item.title,
+                  body: item.module,
+                ),
+              );
+            }
+          }
+        }
       }
     } catch (_) {}
 

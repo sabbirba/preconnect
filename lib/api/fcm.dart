@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-
+import 'dart:io';
+import 'package:preconnect/tools/app_paths.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -49,6 +50,23 @@ class FCMService {
     await Firebase.initializeApp();
     await AppStorage.initialize();
     await MyApp.warmStartupCachesAsync(forceRefresh: true);
+    _handleIncomingMessage(message);
+  }
+
+  static void _handleIncomingMessage(RemoteMessage message) {
+    if (message.data['type'] == 'libsync_refresh') {
+      final date = message.data['date'];
+      final library = message.data['library'];
+      if (date != null && library != null) {
+        for (int cap = 1; cap <= 9; cap++) {
+          final key = 'libsync_space_avail_${library}_${cap}_$date';
+          AppStorage.instance.remove(key);
+        }
+      }
+      RefreshBus.instance.notify(reason: 'libsync_refresh');
+      return;
+    }
+    RefreshBus.instance.notify(reason: 'push_notification');
   }
 
   Future<String?> _getToken({bool force = false}) async {
@@ -142,9 +160,7 @@ class FCMService {
           'Content-Type': 'application/json',
         },
       );
-    } catch (_) {
-      assert(true);
-    }
+    } catch (_) {}
   }
 
   Future<void> _syncToken() async {
@@ -169,9 +185,7 @@ class FCMService {
           'Content-Type': 'application/json',
         },
       );
-    } catch (_) {
-      assert(true);
-    }
+    } catch (_) {}
   }
 
   Future<void> _unsubscribeFromTopicWeb(String token, String topic) async {
@@ -188,9 +202,7 @@ class FCMService {
           'Content-Type': 'application/json',
         },
       );
-    } catch (_) {
-      assert(true);
-    }
+    } catch (_) {}
   }
 
   Future<bool> syncSeatEmailAlert(
@@ -348,9 +360,7 @@ class FCMService {
 
     try {
       await FirebaseMessaging.instance.subscribeToTopic(topic);
-    } catch (_) {
-      assert(true);
-    }
+    } catch (_) {}
     return true;
   }
 
@@ -384,9 +394,7 @@ class FCMService {
     }
     try {
       await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
-    } catch (_) {
-      assert(true);
-    }
+    } catch (_) {}
     return true;
   }
 
@@ -407,9 +415,7 @@ class FCMService {
           'Content-Type': 'application/json',
         },
       );
-    } catch (_) {
-      assert(true);
-    }
+    } catch (_) {}
   }
 
   Future<bool> requestNotificationPermission() async {
@@ -512,18 +518,14 @@ class FCMService {
       for (String seat in pinnedSeats) {
         await _subscribeToTopicWeb(token, PreConnectPushConfig.seatTopic(seat));
       }
-    } catch (_) {
-      assert(true);
-    }
+    } catch (_) {}
 
     if (!isChromeRuntimeAvailable()) {
       try {
         FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-          RefreshBus.instance.notify(reason: 'push_notification');
+          _handleIncomingMessage(message);
         });
-      } catch (_) {
-        assert(true);
-      }
+      } catch (_) {}
     }
   }
 
@@ -543,9 +545,7 @@ class FCMService {
           cachedToken: token,
         );
       }
-    } catch (_) {
-      assert(true);
-    }
+    } catch (_) {}
   }
 
   Future<void> _initNative() async {
@@ -553,11 +553,13 @@ class FCMService {
 
     try {
       await messaging.requestPermission(alert: true, badge: true, sound: true);
-    } catch (_) {
-      assert(true);
-    }
+    } catch (_) {}
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      if (message.data['type'] == 'libsync_refresh') {
+        _handleIncomingMessage(message);
+        return;
+      }
       _showLocalNotification(message);
       RefreshBus.instance.notify(reason: 'push_notification');
     });
@@ -636,14 +638,10 @@ class FCMService {
             if (url != null && url.isNotEmpty) {
               try {
                 final uri = Uri.parse(url);
-                launchUrl(uri, mode: LaunchMode.inAppWebView);
-              } catch (_) {
-                assert(true);
-              }
+                unawaited(launchUrl(uri, mode: LaunchMode.inAppWebView));
+              } catch (_) {}
             }
-          } catch (_) {
-            assert(true);
-          }
+          } catch (_) {}
         }
       },
     );
@@ -714,6 +712,66 @@ class FCMService {
     }
   }
 
+  Future<void> showLocalNotificationDirect({
+    required String title,
+    required String body,
+    String? imageUrl,
+    Map<String, dynamic> data = const {},
+  }) async {
+    if (kIsWeb) return;
+    StyleInformation? styleInformation;
+    List<DarwinNotificationAttachment>? darwinAttachments;
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      try {
+        final response = await http
+            .get(Uri.parse(imageUrl))
+            .timeout(const Duration(seconds: 5));
+        if (response.statusCode == 200) {
+          if (defaultTargetPlatform == TargetPlatform.android) {
+            styleInformation = BigPictureStyleInformation(
+              ByteArrayAndroidBitmap(response.bodyBytes),
+              hideExpandedLargeIcon: true,
+            );
+          } else if (defaultTargetPlatform == TargetPlatform.iOS ||
+              defaultTargetPlatform == TargetPlatform.macOS) {
+            final tempDir = await AppPaths.temporaryDirectory();
+            final tempFile = File('${tempDir.path}/${imageUrl.hashCode}.png');
+            await tempFile.writeAsBytes(response.bodyBytes);
+            darwinAttachments = [DarwinNotificationAttachment(tempFile.path)];
+          }
+        }
+      } catch (_) {}
+    }
+    await _localNotifications.show(
+      id: (title.hashCode ^ body.hashCode) & 0x7FFFFFFF,
+      title: title,
+      body: body,
+      payload: jsonEncode(data),
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          importance: Importance.max,
+          priority: Priority.high,
+          icon: 'ic_stat_preconnect',
+          styleInformation: styleInformation,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          attachments: darwinAttachments,
+        ),
+        macOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          attachments: darwinAttachments,
+        ),
+      ),
+    );
+  }
+
   void _handleMessageTap(RemoteMessage message) {
     final action = message.data['payload'] ?? message.data['action'];
     if (action == 'captive_wifi') {
@@ -729,10 +787,8 @@ class FCMService {
     if (url != null && url.isNotEmpty) {
       try {
         final uri = Uri.parse(url);
-        launchUrl(uri, mode: LaunchMode.inAppWebView);
-      } catch (_) {
-        assert(true);
-      }
+        unawaited(launchUrl(uri, mode: LaunchMode.inAppWebView));
+      } catch (_) {}
     }
   }
 
@@ -778,9 +834,7 @@ class FCMService {
           },
         ),
       );
-    } catch (_) {
-      assert(true);
-    }
+    } catch (_) {}
   }
 
   Future<void> showNotification({

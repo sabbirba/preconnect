@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:preconnect/tools/app_storage.dart';
 
 import 'package:flutter/material.dart';
 import 'package:preconnect/api/notification.dart';
@@ -31,12 +33,74 @@ class _NotificationsPageState extends State<NotificationsPage>
   NotificationsViewData? _lastData;
   int _visibleItemCount = _pageSize;
 
+  static NotificationsViewData? _loadCachedDataSync() {
+    try {
+      final recentFeedJson = AppStorage.instance.getStringSync(
+        'RecentNotificationsFeed',
+      );
+      final scraperFeedJson = AppStorage.instance.getStringSync(
+        'scraper_notifications_feed_v1',
+      );
+      final seenScraperJson = AppStorage.instance.getStringSync(
+        'scraper_notifications_seen_v1',
+      );
+
+      NotificationsFeed? connect;
+      if (recentFeedJson != null) {
+        connect = NotificationsFeed.fromJson(
+          jsonDecode(recentFeedJson) as Map<String, dynamic>,
+        );
+      }
+
+      List<ScraperContentItem> scraped = [];
+      if (scraperFeedJson != null) {
+        final decoded = jsonDecode(scraperFeedJson) as Map<String, dynamic>;
+        final rawItems = decoded['items'];
+        if (rawItems is List) {
+          scraped = rawItems
+              .whereType<Map>()
+              .map(
+                (item) =>
+                    ScraperContentItem.fromJson(item.cast<String, dynamic>()),
+              )
+              .toList();
+        }
+      }
+
+      Set<String> seenScraperIds = {};
+      if (seenScraperJson != null) {
+        final decoded = jsonDecode(seenScraperJson) as Map<String, dynamic>;
+        final raw = decoded['ids'];
+        if (raw is List) {
+          seenScraperIds = raw
+              .map((v) => '$v'.trim())
+              .where((v) => v.isNotEmpty)
+              .toSet();
+        }
+      }
+
+      if (connect == null && scraped.isEmpty && seenScraperIds.isEmpty) {
+        return null;
+      }
+
+      return NotificationsViewData(
+        connect: connect,
+        scraped: scraped,
+        seenScraperIds: seenScraperIds,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _lastData = cache.value;
-    if (cache.value != null) {
-      _future = Future<NotificationsViewData>.value(cache.value!);
+    final localCached = cache.value ?? _loadCachedDataSync();
+    if (localCached != null) {
+      cache.value = localCached;
+      _lastData = localCached;
+      _future = Future<NotificationsViewData>.value(localCached);
     } else {
       _future = _startWithCache();
     }

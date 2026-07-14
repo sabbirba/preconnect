@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'libsync_config.dart';
@@ -150,16 +151,22 @@ class LibSyncAuthService extends ChangeNotifier {
       await _apiClient.saveCookies(cookiesToSave);
     }
 
-    final profile = await _fetchUserProfile();
-    if (profile != null) {
-      await _apiClient.saveCachedProfile(profile);
-      state.value = LibSyncAuthState(
-        status: LibSyncAuthStatus.authenticated,
-        profile: profile,
-      );
-    } else {
-      throw Exception('Failed to fetch profile after login');
-    }
+    state.value = const LibSyncAuthState(
+      status: LibSyncAuthStatus.authenticated,
+      profile: {'student_id': '', 'name': ''},
+    );
+
+    unawaited(
+      _fetchUserProfile().then((profile) async {
+        if (profile != null) {
+          await _apiClient.saveCachedProfile(profile);
+          state.value = LibSyncAuthState(
+            status: LibSyncAuthStatus.authenticated,
+            profile: profile,
+          );
+        }
+      }),
+    );
   }
 
   Future<void> logout() async {

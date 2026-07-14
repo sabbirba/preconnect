@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
@@ -50,6 +51,7 @@ class LibSyncApiClient extends http.BaseClient {
           }),
         );
       }
+      unawaited(_processOfflineQueue());
     } catch (_) {}
     _cacheInitialized = true;
   }
@@ -175,6 +177,9 @@ class LibSyncApiClient extends http.BaseClient {
           request: request,
           headers: _headersCache[urlKey] ?? {},
         );
+      }
+      if (!isGet) {
+        unawaited(_queueOfflineAction(request));
       }
       rethrow;
     }
@@ -379,7 +384,9 @@ class LibSyncApiClient extends http.BaseClient {
 
     if (_sessionIp == null) {
       _sessionIp = _generateRandomIP();
-      AppPreferencesStore().setString('libsync_session_ip', _sessionIp!);
+      unawaited(
+        AppPreferencesStore().setString('libsync_session_ip', _sessionIp!),
+      );
     }
     headers['X-Forwarded-For'] = _sessionIp!;
     headers['X-Real-IP'] = _sessionIp!;
@@ -517,5 +524,65 @@ class LibSyncApiClient extends http.BaseClient {
       return copy;
     }
     throw ArgumentError('Unsupported request type: ${request.runtimeType}');
+  }
+
+  Future<void> _queueOfflineAction(http.BaseRequest request) async {
+    try {
+      final store = AppPreferencesStore();
+      final queueStr = await store.getString('libsync_offline_actions');
+      final List<dynamic> queue = queueStr != null ? jsonDecode(queueStr) : [];
+
+      String requestBody = '';
+      if (request is http.Request) {
+        requestBody = request.body;
+      }
+
+      queue.add({
+        'method': request.method,
+        'url': request.url.toString(),
+        'headers': request.headers,
+        'body': requestBody,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      });
+
+      await store.setString('libsync_offline_actions', jsonEncode(queue));
+      unawaited(_processOfflineQueue());
+    } catch (_) {}
+  }
+
+  Future<void> _processOfflineQueue() async {
+    try {
+      final store = AppPreferencesStore();
+      final queueStr = await store.getString('libsync_offline_actions');
+      if (queueStr == null) return;
+      final List<dynamic> queue = jsonDecode(queueStr);
+      if (queue.isEmpty) return;
+
+      final remaining = <dynamic>[];
+      for (final item in queue) {
+        try {
+          final method = item['method'] as String;
+          final url = Uri.parse(item['url'] as String);
+          final headers = Map<String, String>.from(item['headers'] as Map);
+          final body = item['body'] as String;
+
+          final req = http.Request(method, url);
+          req.headers.addAll(headers);
+          req.body = body;
+
+          final res = await _inner.send(req);
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            continue;
+          }
+        } catch (_) {}
+        remaining.add(item);
+      }
+
+      if (remaining.isEmpty) {
+        await store.remove('libsync_offline_actions');
+      } else {
+        await store.setString('libsync_offline_actions', jsonEncode(remaining));
+      }
+    } catch (_) {}
   }
 }

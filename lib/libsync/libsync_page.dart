@@ -4,10 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:intl/intl.dart' show DateFormat;
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/tools/time_utils.dart' show BracuTime;
 import 'google_sign_in_helper.dart';
@@ -20,7 +23,7 @@ import 'auth_service.dart';
 import 'google_oauth_webview.dart';
 import 'libsync_config.dart';
 import 'library_card.dart';
-import 'room_availability.dart';
+import 'space_availability.dart';
 
 class LibSyncPage extends StatefulWidget {
   const LibSyncPage({super.key});
@@ -48,6 +51,7 @@ class _LibSyncPageState extends State<LibSyncPage>
   static List<dynamic>? _cachedCheckQuota;
   static Map<String, dynamic>? _cachedTotalReservationCount;
   static final List<DateTime> _fetchTimestamps = [];
+  static DateTime? _lastReservationFetchTime;
 
   static Future<void> clearReservationCache() async {
     _cachedReservationByYear = null;
@@ -55,6 +59,7 @@ class _LibSyncPageState extends State<LibSyncPage>
     _cachedCheckQuota = null;
     _cachedTotalReservationCount = null;
     _fetchTimestamps.clear();
+    _lastReservationFetchTime = null;
 
     final store = AppPreferencesStore();
     await store.remove('libsync_cache_reservation_by_year');
@@ -66,60 +71,37 @@ class _LibSyncPageState extends State<LibSyncPage>
   @override
   void initState() {
     super.initState();
-    _reservationByYear = _cachedReservationByYear;
-    _recentReservations = _cachedRecentReservations;
-    _checkQuota = _cachedCheckQuota;
-    _totalReservationCount = _cachedTotalReservationCount;
-    if (_reservationByYear != null) {
-      _setDefaultChartIndex();
-    }
-    _loadDiskCache().then((_) {
-      if (mounted) {
-        setState(() {});
-        LibSyncAuthService.instance.state.addListener(_onAuthStateChanged);
-        _onAuthStateChanged();
-      }
-    });
-    bindRefreshBus(_onRefreshSignal);
-  }
-
-  Future<void> _loadDiskCache() async {
-    if (_cachedReservationByYear != null) return;
     try {
-      final store = AppPreferencesStore();
-      final yearRaw = await store.getString(
-        'libsync_cache_reservation_by_year',
-      );
-      final recentRaw = await store.getString(
+      final store = AppStorage.instance;
+      final yearRaw = store.getStringSync('libsync_cache_reservation_by_year');
+      final recentRaw = store.getStringSync(
         'libsync_cache_recent_reservations',
       );
-      final quotaRaw = await store.getString('libsync_cache_check_quota');
-      final countRaw = await store.getString(
+      final quotaRaw = store.getStringSync('libsync_cache_check_quota');
+      final countRaw = store.getStringSync(
         'libsync_cache_total_reservation_count',
       );
 
       if (yearRaw != null) {
-        _cachedReservationByYear = jsonDecode(yearRaw) as List<dynamic>?;
+        _reservationByYear = jsonDecode(yearRaw) as List<dynamic>?;
       }
       if (recentRaw != null) {
-        _cachedRecentReservations = jsonDecode(recentRaw) as List<dynamic>?;
+        _recentReservations = jsonDecode(recentRaw) as List<dynamic>?;
       }
       if (quotaRaw != null) {
-        _cachedCheckQuota = jsonDecode(quotaRaw) as List<dynamic>?;
+        _checkQuota = jsonDecode(quotaRaw) as List<dynamic>?;
       }
       if (countRaw != null) {
-        _cachedTotalReservationCount =
-            jsonDecode(countRaw) as Map<String, dynamic>?;
+        _totalReservationCount = jsonDecode(countRaw) as Map<String, dynamic>?;
       }
-
-      _reservationByYear = _cachedReservationByYear;
-      _recentReservations = _cachedRecentReservations;
-      _checkQuota = _cachedCheckQuota;
-      _totalReservationCount = _cachedTotalReservationCount;
       if (_reservationByYear != null) {
         _setDefaultChartIndex();
       }
     } catch (_) {}
+
+    LibSyncAuthService.instance.state.addListener(_onAuthStateChanged);
+    _onAuthStateChanged();
+    bindRefreshBus(_onRefreshSignal);
   }
 
   @override
@@ -140,10 +122,10 @@ class _LibSyncPageState extends State<LibSyncPage>
   void _onAuthStateChanged() {
     final status = LibSyncAuthService.instance.state.value.status;
     if (status == LibSyncAuthStatus.authenticated) {
-      _loadReservationData();
+      unawaited(_loadReservationData());
     } else if (status == LibSyncAuthStatus.unauthenticated) {
       if (AuthService.isLoggingOut) return;
-      _handleGoogleSignIn();
+      unawaited(_handleGoogleSignIn());
     }
   }
 
@@ -176,13 +158,23 @@ class _LibSyncPageState extends State<LibSyncPage>
     }
   }
 
-  Future<void> _loadReservationData() async {
+  Future<void> _loadReservationData({bool force = false}) async {
     final now = DateTime.now();
-    _fetchTimestamps.removeWhere(
-      (t) => now.difference(t) > const Duration(minutes: 1),
-    );
-    if (_fetchTimestamps.length >= 3) {
-      return;
+    if (force) {
+      _fetchTimestamps.clear();
+      _lastReservationFetchTime = null;
+    } else {
+      if (_lastReservationFetchTime != null &&
+          now.difference(_lastReservationFetchTime!) <
+              const Duration(seconds: 15)) {
+        return;
+      }
+      _fetchTimestamps.removeWhere(
+        (t) => now.difference(t) > const Duration(minutes: 1),
+      );
+      if (_fetchTimestamps.length >= 3) {
+        return;
+      }
     }
     if (_loadingData) return;
     setState(() {
@@ -190,6 +182,7 @@ class _LibSyncPageState extends State<LibSyncPage>
     });
     try {
       _fetchTimestamps.add(now);
+      _lastReservationFetchTime = now;
       final dateStr =
           "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
       final results = await Future.wait([
@@ -301,6 +294,7 @@ class _LibSyncPageState extends State<LibSyncPage>
             final serverAuth = await account.authorizationClient
                 .authorizeServer(scopes);
             authCode = serverAuth?.serverAuthCode;
+            redirectUri = 'postmessage';
           }
         }
       }
@@ -543,20 +537,22 @@ class _LibSyncPageState extends State<LibSyncPage>
                   const Gap(18),
                   BracuActionBannerCard(
                     icon: Icons.calendar_month_outlined,
-                    title: 'Room Availability',
-                    subtitle: 'Book available rooms and slots',
+                    title: 'Space Book',
+                    subtitle: 'Book available spaces and slots',
                     onTap: () async {
                       final booked = await Navigator.of(context).push<bool>(
                         MaterialPageRoute(
-                          builder: (context) => const RoomAvailabilityPage(),
+                          builder: (context) => const SpaceAvailabilityPage(),
                         ),
                       );
                       if (booked == true) {
                         if (context.mounted) {
                           showAppSnackBar(context, 'Booking successful!');
                         }
+                        await _loadReservationData(force: true);
+                      } else {
+                        await _loadReservationData();
                       }
-                      _loadReservationData();
                     },
                   ),
                   () {
@@ -588,7 +584,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                           const Gap(10),
                           _RecentReservationsList(
                             reservations: recentReservations,
-                            onRefresh: _loadReservationData,
+                            onRefresh: () => _loadReservationData(force: true),
                           ),
                         ],
                       ],
@@ -866,6 +862,20 @@ class _RecentReservationsList extends StatefulWidget {
 class _RecentReservationsListState extends State<_RecentReservationsList> {
   bool _expanded = false;
 
+  Future<void> _notifyLibSyncCancelEvent(String? dateStr) async {
+    if (dateStr == null || dateStr.isEmpty) return;
+    try {
+      final body = jsonEncode({
+        'date': dateStr.split('T')[0],
+        'library': 'Ayesha Abed Library (Main Campus)',
+      });
+      await ApiClient().publicPost(
+        '${ApiConfig.realtimeApiBase}/push/libsync/event',
+        body: body,
+      );
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.reservations.isEmpty) {
@@ -1060,6 +1070,11 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                                 if (uniqueToken.isNotEmpty) {
                                   await LibSyncAuthService.instance
                                       .cancelReservation(uniqueToken);
+                                  unawaited(
+                                    _notifyLibSyncCancelEvent(
+                                      res['reserve_start_date']?.toString(),
+                                    ),
+                                  );
                                   if (context.mounted) {
                                     Navigator.of(context).pop();
                                     showAppSnackBar(

@@ -26,7 +26,7 @@ PODS:
     - firebase_core
     - FirebaseAnalytics (= 12.15.0)
     - Flutter
-  - firebase_core (4.11.0):
+  - firebase_core (4.12.0):
     - Firebase/CoreOnly (= 12.15.0)
     - Flutter
   - firebase_messaging (16.4.1):
@@ -296,7 +296,7 @@ SPEC CHECKSUMS:
   file_selector_ios: ec57ec07954363dd730b642e765e58f199bb621a
   Firebase: a8539b633d474fbeb654c7043f9c1649e274045b
   firebase_analytics: 5e356f558625ce2d8b21deff00946b56d6e8d0d5
-  firebase_core: fc23178af8ea070194d09031ae4198a9608a3d22
+  firebase_core: 684edaddeb160c68276403e0f21fe7095b0c94c7
   firebase_messaging: 870b2939a7f7cc52bc38ca0250127c45b42f4bad
   FirebaseAnalytics: 9c9fa7915fc52ea03077000d5a7b6a8947b2d76e
   FirebaseCore: 2e86a4ea1684d4381707069e4a6d89ac808e901e
@@ -332,6 +332,6 @@ SPEC CHECKSUMS:
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
   webview_flutter_wkwebview: 8ebf4fded22593026f7dbff1fbff31ea98573c8d
 
-PODFILE CHECKSUM: c00d3a554d80b6e04b6b2a84e4a015db8ba44289
+PODFILE CHECKSUM: 8af04ad873e2c7458ec41a852d20104f350aad4f
 
 COCOAPODS: 1.16.2

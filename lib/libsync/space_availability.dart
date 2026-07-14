@@ -1,18 +1,58 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'auth_service.dart';
 import 'package:intl/intl.dart';
+import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/api/fcm.dart';
+import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/api_client.dart';
 
-class RoomAvailabilityPage extends StatefulWidget {
-  const RoomAvailabilityPage({super.key});
+class SpaceAvailabilityPage extends StatefulWidget {
+  const SpaceAvailabilityPage({super.key});
 
   @override
-  State<RoomAvailabilityPage> createState() => _RoomAvailabilityPageState();
+  State<SpaceAvailabilityPage> createState() => _SpaceAvailabilityPageState();
 }
 
-class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
+class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage>
+    with RefreshBusState<SpaceAvailabilityPage> {
+  String? _subscribedTopic;
+
+  void _updateFcmSubscription() {
+    final dateStr =
+        "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
+    final newTopic = 'libsync_refresh_$dateStr';
+    if (_subscribedTopic == newTopic) return;
+    if (_subscribedTopic != null) {
+      unawaited(FCMService.instance.unsubscribeFromTopic(_subscribedTopic!));
+    }
+    _subscribedTopic = newTopic;
+    unawaited(FCMService.instance.subscribeToTopic(newTopic));
+  }
+
+  void _handleRefreshBusNotify() {
+    if (isRefreshingFrom('libsync_refresh')) {
+      unawaited(_fetchAvailability());
+    }
+  }
+
+  Future<void> _notifyLibSyncEvent() async {
+    try {
+      final dateStr =
+          "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
+      final body = jsonEncode({'date': dateStr, 'library': _selectedLibrary});
+      await ApiClient().publicPost(
+        '${ApiConfig.realtimeApiBase}/push/libsync/event',
+        body: body,
+      );
+    } catch (_) {}
+  }
+
   DateTime _selectedDate = DateTime.now();
   List<dynamic>? _availabilityData;
   bool _isLoading = false;
@@ -22,16 +62,47 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
   late final TextEditingController _capacityController;
   late final FocusNode _capacityFocusNode;
 
+  int _loadCachedAvailability() {
+    try {
+      final dateStr =
+          "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
+      final key =
+          'libsync_space_avail_${_selectedLibrary}_${_capacity}_$dateStr';
+      final cached = AppStorage.instance.getStringSync(key);
+      if (cached != null) {
+        final decoded = jsonDecode(cached) as Map<String, dynamic>;
+        final timestamp = decoded['timestamp'] as int? ?? 0;
+        final now = DateTime.now().millisecondsSinceEpoch;
+        if (now - timestamp < 30000) {
+          _availabilityData = decoded['data'] as List<dynamic>?;
+          return timestamp;
+        }
+      }
+      _availabilityData = null;
+      return 0;
+    } catch (_) {
+      _availabilityData = null;
+      return 0;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _capacityController = TextEditingController(text: '1');
     _capacityFocusNode = FocusNode()..addListener(_handleCapacityFocusChange);
+    bindRefreshBus(_handleRefreshBusNotify);
+    _loadCachedAvailability();
     _fetchAvailability();
+    _updateFcmSubscription();
   }
 
   @override
   void dispose() {
+    unbindRefreshBus(_handleRefreshBusNotify);
+    if (_subscribedTopic != null) {
+      unawaited(FCMService.instance.unsubscribeFromTopic(_subscribedTopic!));
+    }
     _capacityController.dispose();
     _capacityFocusNode.dispose();
     super.dispose();
@@ -48,15 +119,32 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
   }
 
   Future<void> _fetchAvailability() async {
-    if (_isLoading) return;
-    setState(() {
-      _isLoading = true;
-      _availabilityData = null;
-      _errorMessage = null;
-    });
-
     final dateStr =
         "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
+    final key = 'libsync_space_avail_${_selectedLibrary}_${_capacity}_$dateStr';
+
+    final cacheTimestamp = _loadCachedAvailability();
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+
+    if (cacheTimestamp > 0 && (nowMs - cacheTimestamp < 10000)) {
+      setState(() {
+        _errorMessage = null;
+        _isLoading = false;
+      });
+      unawaited(_prefetchOtherCapacities(dateStr));
+      return;
+    }
+
+    if (_availabilityData == null) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    } else {
+      setState(() {
+        _errorMessage = null;
+      });
+    }
 
     try {
       final data = await LibSyncAuthService.instance.fetchCheckAvailability(
@@ -83,19 +171,80 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
         }
       }
 
+      if (data != null) {
+        final cacheObj = {
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+          'data': data,
+        };
+        await AppStorage.instance.setString(key, jsonEncode(cacheObj));
+      }
+
       if (mounted) {
         setState(() {
           _availabilityData = data;
           _isLoading = false;
         });
+        unawaited(_prefetchOtherCapacities(dateStr));
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString().replaceAll('Exception: ', '');
+          if (_availabilityData == null) {
+            _errorMessage = e.toString().replaceAll('Exception: ', '');
+          }
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _prefetchOtherCapacities(String dateStr) async {
+    final currentCapacity = _capacity;
+    final currentLibrary = _selectedLibrary;
+
+    for (int cap = 1; cap <= 9; cap++) {
+      if (cap == currentCapacity) continue;
+      if (!mounted || _selectedLibrary != currentLibrary) {
+        break;
+      }
+
+      final key = 'libsync_space_avail_${_selectedLibrary}_${cap}_$dateStr';
+      try {
+        final cached = AppStorage.instance.getStringSync(key);
+        if (cached != null) {
+          final decoded = jsonDecode(cached) as Map<String, dynamic>;
+          final timestamp = decoded['timestamp'] as int? ?? 0;
+          final now = DateTime.now().millisecondsSinceEpoch;
+          if (now - timestamp < 30000) {
+            continue;
+          }
+        }
+      } catch (_) {}
+
+      try {
+        final data = await LibSyncAuthService.instance.fetchCheckAvailability(
+          startDate: dateStr,
+          endDate: dateStr,
+          startTime: '00:00:00',
+          endTime: '23:50:00',
+          capacity: cap,
+          library: _selectedLibrary,
+        );
+
+        if (data != null && data.isNotEmpty) {
+          final first = data.first;
+          if (first is Map &&
+              first.containsKey('message') &&
+              !first.containsKey('room')) {
+            continue;
+          }
+          final cacheObj = {
+            'timestamp': DateTime.now().millisecondsSinceEpoch,
+            'data': data,
+          };
+          await AppStorage.instance.setString(key, jsonEncode(cacheObj));
+        }
+      } catch (_) {}
     }
   }
 
@@ -112,6 +261,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
       setState(() {
         _selectedDate = picked;
       });
+      _updateFcmSubscription();
       await _fetchAvailability();
     }
   }
@@ -130,12 +280,12 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
   }
 
   Future<void> _handleSlotTap(
-    Map<String, dynamic> room,
+    Map<String, dynamic> space,
     Map<String, dynamic> slotData,
   ) async {
-    final roomNo = room['room_no']?.toString() ?? 'Room';
-    final roomCat = room['room_cat']?.toString() ?? 'Study Space';
-    final roomId = room['room_id'] as int? ?? 12;
+    final spaceNo = space['room_no']?.toString() ?? 'Space';
+    final spaceCat = space['room_cat']?.toString() ?? 'Study Space';
+    final spaceId = space['room_id'] as int? ?? 12;
     final slotId = slotData['slot_id'] as int? ?? 7;
     final start = slotData['start_time']?.toString() ?? '';
     final end = slotData['end_time']?.toString() ?? '';
@@ -145,7 +295,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
       context,
       icon: Icons.bookmark_add_outlined,
       title: 'Confirm Booking?',
-      message: 'Book $roomNo ($roomCat) for $timeStr?',
+      message: 'Book $spaceNo ($spaceCat) for $timeStr?',
       confirmLabel: 'Book',
       confirmColor: BracuPalette.primary,
       onConfirm: () async {
@@ -153,7 +303,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
           final dateStr =
               "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
           await LibSyncAuthService.instance.holdSlot(
-            roomId: roomId,
+            roomId: spaceId,
             date: dateStr,
             slotIds: [slotId],
             memberCount: _capacity,
@@ -188,6 +338,15 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
           await LibSyncAuthService.instance.confirmReservation(
             studentIds: [selfStudentId],
           );
+
+          final dateStr =
+              "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
+          final key =
+              'libsync_space_avail_${_selectedLibrary}_${_capacity}_$dateStr';
+          await AppStorage.instance.remove(key);
+
+          unawaited(_notifyLibSyncEvent());
+
           if (mounted) {
             Navigator.of(context).pop();
             Navigator.of(context).pop(true);
@@ -215,6 +374,13 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
         );
 
         if (ids != null && ids.isNotEmpty && mounted) {
+          final dateStr =
+              "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
+          final key =
+              'libsync_space_avail_${_selectedLibrary}_${_capacity}_$dateStr';
+          await AppStorage.instance.remove(key);
+          unawaited(_notifyLibSyncEvent());
+          if (!mounted) return;
           Navigator.of(context).pop(true);
         }
       }
@@ -259,9 +425,9 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
               _buildStepItem(
                 context,
                 stepNumber: '3',
-                title: 'Choose Room & Time Slot',
+                title: 'Choose Space & Time Slot',
                 body:
-                    'Browse through the list of rooms and tap on an available time slot to start the reservation workflow.',
+                    'Browse through the list of spaces and tap on an available time slot to start the reservation workflow.',
               ),
               const Gap(14),
               _buildStepItem(
@@ -372,7 +538,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
     final availabilityData = _availabilityData;
 
     return BracuPageScaffold(
-      title: 'Room Availability',
+      title: 'Space Availability',
       subtitle: 'Ayesha Abed Library',
       actions: [
         IconButton(
@@ -469,7 +635,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
             )
           else if (availabilityData.isEmpty)
             const BracuEmptyState(
-              message: 'No available rooms or slots found for this date.',
+              message: 'No available spaces or slots found for this date.',
             )
           else
             ListView.builder(
@@ -478,14 +644,14 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
               itemCount: availabilityData.length,
               itemBuilder: (context, index) {
                 final item = availabilityData[index];
-                final room = item['room'] as Map<String, dynamic>? ?? {};
+                final space = item['room'] as Map<String, dynamic>? ?? {};
                 final slots = item['slots'] as List<dynamic>? ?? [];
 
-                final roomNo = room['room_no']?.toString() ?? 'Unknown Room';
-                final roomCat = room['room_cat']?.toString() ?? 'Study Space';
-                final location = room['location']?.toString() ?? '';
+                final spaceNo = space['room_no']?.toString() ?? 'Unknown Space';
+                final spaceCat = space['room_cat']?.toString() ?? 'Study Space';
+                final location = space['location']?.toString() ?? '';
                 final facilityList =
-                    room['facility_list'] as List<dynamic>? ?? [];
+                    space['facility_list'] as List<dynamic>? ?? [];
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -502,7 +668,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    roomNo,
+                                    spaceNo,
                                     style: TextStyle(
                                       fontSize: 16,
                                       color: textPrimary,
@@ -511,7 +677,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
                                   ),
                                   const Gap(2),
                                   Text(
-                                    roomCat,
+                                    spaceCat,
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: BracuPalette.primary,
@@ -569,7 +735,7 @@ class _RoomAvailabilityPageState extends State<RoomAvailabilityPage> {
                               final end =
                                   slotData['end_time']?.toString() ?? '';
                               return GestureDetector(
-                                onTap: () => _handleSlotTap(room, slotData),
+                                onTap: () => _handleSlotTap(space, slotData),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 10,
