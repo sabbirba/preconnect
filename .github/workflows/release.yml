@@ -624,7 +624,7 @@ jobs:
 
       - name: Setup Ruby
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
-        uses: ruby/setup-ruby@v1.316.0
+        uses: ruby/setup-ruby@v1.317.0
         with:
           ruby-version: "3.3"
 
