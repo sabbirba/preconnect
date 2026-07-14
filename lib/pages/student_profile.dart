@@ -366,10 +366,9 @@ class _StudentProfileState extends State<StudentProfile>
             const Gap(18),
             const BracuSectionTitle(title: 'Attendance'),
             const Gap(10),
-            if (_attendances.isNotEmpty) ...[
-              AttendanceSummary(attendances: _attendances),
-              const Gap(12),
-            ],
+            _attendances.isEmpty
+                ? const BracuEmptyState(message: 'No attendance records found')
+                : AttendanceSummary(attendances: _attendances),
             const Gap(18),
             const BracuSectionTitle(title: 'Payments'),
             const Gap(10),

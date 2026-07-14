@@ -195,11 +195,13 @@ class MyApp extends StatefulWidget {
     return studentId.isNotEmpty && fullName.isNotEmpty;
   }
 
-  static Future<void> _warmStartupCaches() async {
+  static Future<void> _warmStartupCaches({bool forceRefresh = false}) async {
     try {
       await Future.wait(
-        _buildWarmupTasks(includeCampusPrinter: false)
-            .map((t) => t.catchError((_) {})),
+        _buildWarmupTasks(
+          includeCampusPrinter: false,
+          forceRefresh: forceRefresh,
+        ).map((t) => t.catchError((_) {})),
       );
     } catch (_) {}
   }
@@ -234,8 +236,8 @@ class MyApp extends StatefulWidget {
     unawaited(_warmStartupCaches());
   }
 
-  static Future<void> warmStartupCachesAsync() {
-    return _warmStartupCaches();
+  static Future<void> warmStartupCachesAsync({bool forceRefresh = false}) {
+    return _warmStartupCaches(forceRefresh: forceRefresh);
   }
 
   static ThemeMode _decodeTheme(String raw) {
@@ -370,7 +372,7 @@ class _MyAppState extends State<MyApp>
       defaultTargetPlatform == TargetPlatform.android;
 
   Future<void> _runDeferredStartupWork() async {
-    await Future<void>.delayed(const Duration(milliseconds: 200));
+    await Future<void>.delayed(Duration.zero);
     if (!mounted) return;
     await _loadDeferredServices();
     unawaited(_setupQuickAccessShortcuts());
@@ -481,7 +483,8 @@ class _MyAppState extends State<MyApp>
     _lastAppRefreshAt = now;
     try {
       final connectivity = await Connectivity().checkConnectivity();
-      final isOffline = connectivity.isEmpty ||
+      final isOffline =
+          connectivity.isEmpty ||
           connectivity.every((r) => r == ConnectivityResult.none);
       if (!isOffline) {
         ApiClient().clearTransientCaches();

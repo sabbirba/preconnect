@@ -4,11 +4,16 @@ import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:http/http.dart' as http;
+import 'package:preconnect/app.dart';
+import 'package:preconnect/pages/captive_wifi.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -19,13 +24,16 @@ import 'package:preconnect/tools/runtime_stub.dart'
 import 'package:url_launcher/url_launcher.dart';
 
 class FCMService {
-  FCMService._();
+  FCMService._internal();
+  static final FCMService _instance = FCMService._internal();
+  factory FCMService() => _instance;
+  static FCMService get instance => _instance;
 
-  static final FCMService instance = FCMService._();
-  final FlutterLocalNotificationsPlugin _localNotifications =
+  static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
-  bool _apnsAvailable = true;
-  String? _cachedToken;
+
+  static String? _cachedToken;
+  static bool _apnsAvailable = true;
 
   bool get isSupported {
     if (kIsWeb) {
@@ -39,6 +47,8 @@ class FCMService {
   @pragma('vm:entry-point')
   static Future<void> backgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp();
+    await AppStorage.initialize();
+    await MyApp.warmStartupCachesAsync(forceRefresh: true);
   }
 
   Future<String?> _getToken({bool force = false}) async {
@@ -601,9 +611,24 @@ class FCMService {
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         final payload = response.payload;
         if (payload != null && payload.isNotEmpty) {
+          if (payload == 'captive_wifi') {
+            AuthService.navigatorKey.currentState?.push(
+              MaterialPageRoute(builder: (context) => const CaptiveWifiPage()),
+            );
+            return;
+          }
           try {
             final Map<String, dynamic> data =
                 jsonDecode(payload) as Map<String, dynamic>;
+            final action = data['payload'] ?? data['action'];
+            if (action == 'captive_wifi') {
+              AuthService.navigatorKey.currentState?.push(
+                MaterialPageRoute(
+                  builder: (context) => const CaptiveWifiPage(),
+                ),
+              );
+              return;
+            }
             var url = data['url'] as String?;
             if ((url == null || url.isEmpty) && data['courseCode'] != null) {
               url = '${ApiConfig.websiteBase}/student/advising/seat-status';
@@ -611,7 +636,7 @@ class FCMService {
             if (url != null && url.isNotEmpty) {
               try {
                 final uri = Uri.parse(url);
-                launchUrl(uri, mode: LaunchMode.externalApplication);
+                launchUrl(uri, mode: LaunchMode.inAppWebView);
               } catch (_) {
                 assert(true);
               }
@@ -690,6 +715,13 @@ class FCMService {
   }
 
   void _handleMessageTap(RemoteMessage message) {
+    final action = message.data['payload'] ?? message.data['action'];
+    if (action == 'captive_wifi') {
+      AuthService.navigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (context) => const CaptiveWifiPage()),
+      );
+      return;
+    }
     var url = message.data['url'] as String?;
     if ((url == null || url.isEmpty) && message.data['courseCode'] != null) {
       url = '${ApiConfig.websiteBase}/student/advising/seat-status';
@@ -697,7 +729,7 @@ class FCMService {
     if (url != null && url.isNotEmpty) {
       try {
         final uri = Uri.parse(url);
-        launchUrl(uri, mode: LaunchMode.externalApplication);
+        launchUrl(uri, mode: LaunchMode.inAppWebView);
       } catch (_) {
         assert(true);
       }

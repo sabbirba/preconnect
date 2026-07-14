@@ -43,9 +43,26 @@ class _BusPageState extends State<BusPage> {
   void initState() {
     super.initState();
     _data = controller.value;
+    controller.addListener(_onCacheUpdated);
     _load();
     _fetchSchedulePdfUrl();
     unawaited(_warmAndBind());
+  }
+
+  @override
+  void dispose() {
+    controller.removeListener(_onCacheUpdated);
+    super.dispose();
+  }
+
+  void _onCacheUpdated() {
+    if (!mounted) return;
+    final val = controller.value;
+    if (val != null) {
+      setState(() {
+        _data = val;
+      });
+    }
   }
 
   static Future<_BusDataPackage> preloadData({
@@ -145,7 +162,9 @@ class _BusPageState extends State<BusPage> {
                 ],
               ),
             ),
-          if (routes.isEmpty)
+          if (_data == null && _error == null)
+            const Center(child: BracuLoading())
+          else if (routes.isEmpty)
             const BracuEmptyState(message: 'No bus route data available')
           else
             ...routes.asMap().entries.expand((entry) {

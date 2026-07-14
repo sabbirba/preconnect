@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/repository_cache.dart';
+import 'package:preconnect/tools/ramadan.dart';
+import 'package:preconnect/tools/snapshot_store.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 
 class ScheduleService {
@@ -77,7 +80,6 @@ class ScheduleService {
       refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
     );
     if (id == null || id.isEmpty) {
-      if (fromGet) return null;
       return getStudentScheduleForSemester(
         semesterSessionId: semesterSessionId,
         fromFetch: true,
@@ -96,10 +98,10 @@ class ScheduleService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         await repo.writeJson(cacheKey, data);
+        return response.body;
       }
     } catch (_) {}
 
-    if (fromGet) return null;
     return getStudentScheduleForSemester(
       semesterSessionId: semesterSessionId,
       fromFetch: true,
@@ -128,5 +130,40 @@ class ScheduleService {
     return RepositoryCache.instance.readString(
       _cacheKeyForSemester(semesterSessionId),
     );
+  }
+
+  Future<List<section.Section>> getUnifiedStudentSchedule({
+    required int semesterSessionId,
+    bool forceRefresh = false,
+  }) async {
+    final cachedJson = await getCachedStudentScheduleForSemester(
+      semesterSessionId: semesterSessionId,
+    );
+    final jsonString =
+        cachedJson ??
+        (forceRefresh
+            ? await fetchStudentScheduleForSemester(
+                semesterSessionId: semesterSessionId,
+                fromGet: true,
+              )
+            : await getStudentScheduleForSemester(
+                semesterSessionId: semesterSessionId,
+              ));
+    var sections = parseStudentSections(
+      jsonString,
+      semesterSessionId: semesterSessionId,
+    );
+    final isRamadan = await RamadanTiming.isRamadan(forceRefresh: forceRefresh);
+    if (sections.isEmpty) {
+      final cachedSections = await JsonSnapshotStore.readSections();
+      if (cachedSections != null && cachedSections.isNotEmpty) {
+        sections = cachedSections;
+      }
+    } else {
+      unawaited(
+        JsonSnapshotStore.updateSections(sections, isRamadan: isRamadan),
+      );
+    }
+    return sections;
   }
 }

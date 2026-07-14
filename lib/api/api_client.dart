@@ -452,10 +452,9 @@ class ApiClient {
           final etag = response.headers['etag'] ?? response.headers['ETag'];
           if (etag != null && etag.isNotEmpty) {
             unawaited(AppStorage.instance.setString('etag_$url', etag));
-            unawaited(AppStorage.instance.setString(
-              'etag_resp_$url',
-              response.body,
-            ));
+            unawaited(
+              AppStorage.instance.setString('etag_resp_$url', response.body),
+            );
           }
         }
       }

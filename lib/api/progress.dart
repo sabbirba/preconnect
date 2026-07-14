@@ -59,12 +59,11 @@ class ProgressService {
     );
 
     if (portfolioId == null || portfolioId.isEmpty) {
-      if (fromGet) return null;
       return getProgress(fromFetch: true);
     }
 
     if (!await _client.hasConnection()) {
-      return fromGet ? null : getProgress(fromFetch: true);
+      return getProgress(fromFetch: true);
     }
 
     try {
@@ -124,7 +123,6 @@ class ProgressService {
       if (majorMinors == null ||
           completedCourses == null ||
           curriculum == null) {
-        if (fromGet) return null;
         return getProgress(fromFetch: true);
       }
 
@@ -140,7 +138,6 @@ class ProgressService {
       await repo.writeJson(_summaryCacheKey, summary.toJson());
       return info;
     } catch (_) {
-      if (fromGet) return null;
       return getProgress(fromFetch: true);
     }
   }

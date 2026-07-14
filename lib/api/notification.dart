@@ -334,7 +334,6 @@ class NotificationService {
       }
     } catch (_) {}
 
-    if (fromGet) return null;
     return getRecentNotifications(fromFetch: true);
   }
 

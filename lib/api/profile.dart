@@ -593,7 +593,6 @@ class AdvisingService {
       studentId = profile?['studentId'];
     }
     if (studentId == null || studentId.isEmpty) {
-      if (fromGet) return null;
       return getAdvisingInfo(fromFetch: true);
     }
 
@@ -644,7 +643,6 @@ class AdvisingService {
       }
     } catch (_) {}
 
-    if (fromGet) return null;
     return getAdvisingInfo(fromFetch: true);
   }
 
@@ -689,7 +687,6 @@ class AttendanceService {
       refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
     );
     if (id == null || id.isEmpty) {
-      if (fromGet) return null;
       return getAttendanceInfo(fromFetch: true);
     }
 
@@ -703,10 +700,10 @@ class AttendanceService {
       );
       if (response.statusCode == 200) {
         await repo.writeString(_attendanceKey, response.body);
+        return response.body;
       }
     } catch (_) {}
 
-    if (fromGet) return null;
     return getAttendanceInfo(fromFetch: true);
   }
 
@@ -737,7 +734,6 @@ class PaymentService {
       refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
     );
     if (id == null || id.isEmpty) {
-      if (fromGet) return null;
       return getPaymentInfo(fromFetch: true);
     }
 
@@ -751,10 +747,10 @@ class PaymentService {
       );
       if (response.statusCode == 200) {
         await repo.writeString(_paymentInfoKey, response.body);
+        return response.body;
       }
     } catch (_) {}
 
-    if (fromGet) return null;
     return getPaymentInfo(fromFetch: true);
   }
 

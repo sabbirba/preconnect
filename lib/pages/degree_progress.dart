@@ -57,6 +57,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
     if (!forceRefresh) {
       _latestInfo = cache.value;
     }
+    cache.addListener(_onCacheUpdated);
     _future = forceRefresh || cache.value == null
         ? preloadData(forceRefresh: forceRefresh).then((info) {
             _latestInfo = info;
@@ -97,8 +98,21 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
 
   @override
   void dispose() {
+    cache.removeListener(_onCacheUpdated);
     unbindRefreshBus(_onRefreshSignal);
     super.dispose();
+  }
+
+  void _onCacheUpdated() {
+    if (!mounted) return;
+    final val = cache.value;
+    if (val != null) {
+      setState(() {
+        _latestInfo = val;
+        _future = Future<ProgressInfo?>.value(val);
+      });
+      unawaited(_loadSummary());
+    }
   }
 
   void _onRefreshSignal() {

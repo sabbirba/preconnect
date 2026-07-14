@@ -42,7 +42,11 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   static const MethodChannel _androidAlarmChannel = MethodChannel(
     'preconnect/android_alarm',
   );
-  static final PreloadCache<_AlarmData> cache = PreloadCache<_AlarmData>();
+  static final CachedPageController<_AlarmData> cache =
+      CachedPageController<_AlarmData>(
+        ({bool forceRefresh = false}) =>
+            _loadAlarmData(forceRefresh: forceRefresh),
+      );
 
   late Future<_AlarmData> _futureData;
   _AlarmData? _latestData;
@@ -59,15 +63,28 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     _futureData = cache.value == null
         ? _fetchSchedule()
         : Future<_AlarmData>.value(cache.value!);
+    cache.addListener(_onCacheUpdated);
     bindRefreshBus(_onRefreshSignal);
     unawaited(_warmAndBind());
   }
 
   @override
   void dispose() {
+    cache.removeListener(_onCacheUpdated);
     unbindRefreshBus(_onRefreshSignal);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onCacheUpdated() {
+    if (!mounted) return;
+    final val = cache.value;
+    if (val != null) {
+      setState(() {
+        _latestData = val;
+        _futureData = Future<_AlarmData>.value(val);
+      });
+    }
   }
 
   void _onRefreshSignal() {
@@ -92,10 +109,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   }
 
   static Future<_AlarmData> preloadData({bool forceRefresh = false}) async {
-    return cache.load(
-      forceRefresh: forceRefresh,
-      fetch: () => _loadAlarmData(forceRefresh: forceRefresh),
-    );
+    return cache.load(forceRefresh: forceRefresh);
   }
 
   Future<_AlarmData> _fetchSchedule({bool forceRefresh = false}) async {
@@ -176,45 +190,15 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         advisingInfo: advisingInfo,
       );
     }
-    final scheduleService = ScheduleService();
-    final cachedJson = await scheduleService
-        .getCachedStudentScheduleForSemester(
-          semesterSessionId: semesterSessionId,
-        );
-    final jsonString =
-        cachedJson ??
-        (forceRefresh
-            ? await scheduleService.fetchStudentScheduleForSemester(
-                semesterSessionId: semesterSessionId,
-                fromGet: true,
-              )
-            : await scheduleService.getStudentScheduleForSemester(
-                semesterSessionId: semesterSessionId,
-              ));
-    final sections = scheduleService.parseStudentSections(
-      jsonString,
+    final sections = await ScheduleService().getUnifiedStudentSchedule(
       semesterSessionId: semesterSessionId,
+      forceRefresh: forceRefresh,
     );
     final overrides = await ExamScheduleService().getOverridesForSections(
       sections,
       forceRefresh: forceRefresh,
     );
     final examEntries = _buildExamEntries(sections, overrides);
-    if (sections.isEmpty) {
-      final isRamadan = await ramadanFuture;
-      final advisingInfo = await advisingFuture;
-      return _AlarmData(
-        sections: const [],
-        examEntries: _pruneExpiredExamEntries(examEntries, now: now),
-        isRamadan: isRamadan,
-        customSchedules: _pruneExpiredCustomSchedules(
-          customSchedules,
-          now: now,
-        ),
-        advisingInfo: advisingInfo,
-      );
-    }
-
     final isRamadan = await ramadanFuture;
     final advisingInfo = await advisingFuture;
     final data = _AlarmData(

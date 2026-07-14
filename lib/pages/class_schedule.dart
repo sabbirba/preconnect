@@ -70,6 +70,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
         : Future<_ScheduleData>.value(cache.value!);
     unawaited(_warmAndBind());
     ClassSchedule.jumpSignal.addListener(_onJumpRequested);
+    cache.addListener(_onCacheUpdated);
     bindRefreshBus(_onRefreshSignal);
   }
 
@@ -120,46 +121,18 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
         ? null
         : await resolveCurrentSessionSemesterIdWithRetry();
 
-    List<section.Section>? sections;
-    bool isRamadan = false;
-
+    List<section.Section> sections = const <section.Section>[];
     if (currentSessionSemesterId != null) {
-      final service = ScheduleService();
-      final cachedJson = await service.getCachedStudentScheduleForSemester(
+      sections = await ScheduleService().getUnifiedStudentSchedule(
         semesterSessionId: currentSessionSemesterId,
+        forceRefresh: forceRefresh,
       );
-      final jsonString =
-          cachedJson ??
-          (forceRefresh
-              ? await service.fetchStudentScheduleForSemester(
-                  semesterSessionId: currentSessionSemesterId,
-                  fromGet: true,
-                )
-              : await service.getStudentScheduleForSemester(
-                  semesterSessionId: currentSessionSemesterId,
-                ));
-      sections = service.parseStudentSections(
-        jsonString,
-        semesterSessionId: currentSessionSemesterId,
-      );
-      isRamadan = await RamadanTiming.isRamadan(forceRefresh: forceRefresh);
-      if (sections.isNotEmpty) {
-        unawaited(
-          JsonSnapshotStore.updateSections(sections, isRamadan: isRamadan),
-        );
-      }
+    } else {
+      sections =
+          await JsonSnapshotStore.readSections() ?? const <section.Section>[];
     }
 
-    if (sections == null || sections.isEmpty) {
-      sections = await JsonSnapshotStore.readSections();
-      final existingMap = await JsonSnapshotStore.read<Map<String, dynamic>>(
-        key: StorageKeys.alarmsSnapshot,
-        decode: (decoded) => decoded,
-      );
-      isRamadan = existingMap?['isRamadan'] == true;
-    }
-
-    sections ??= const <section.Section>[];
+    final isRamadan = await RamadanTiming.isRamadan(forceRefresh: forceRefresh);
 
     final examOverrides = sections.isEmpty
         ? const <String, ExamScheduleOverride>{}
@@ -180,9 +153,21 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
   @override
   void dispose() {
     ClassSchedule.jumpSignal.removeListener(_onJumpRequested);
+    cache.removeListener(_onCacheUpdated);
     _scrollController.dispose();
     unbindRefreshBus(_onRefreshSignal);
     super.dispose();
+  }
+
+  void _onCacheUpdated() {
+    if (!mounted) return;
+    final val = cache.value;
+    if (val != null) {
+      setState(() {
+        _latestData = val;
+        _future = Future<_ScheduleData>.value(val);
+      });
+    }
   }
 
   void _onRefreshSignal() {

@@ -5,11 +5,12 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
-## [1.6.8] — 2026-06-30
-- Updated preload methods in ClassSchedule, ExamSchedule, and StudentProfile to accept online app open forceRefresh parameter.
-- Simplified OAuth flow handling in libsync by creating a dedicated function for Chrome extension OAuth.
-- Consistent session IP mapping protecting your credentials.
-- Clean spinner tracking in confirmation dialogs transitioning instantly to onboarding.
+## [1.6.9] — 2026-07-14
+- Instant 0 ms startup loading: Optimized initial frame settling delay to 0 ms.
+- Real-time silent UI updates: Connected Class Schedule, Exam Schedule, Bus, Alarms, and Degree Progress to background cache update listeners, refreshing the UI instantly without showing visual loading indicators or spinners.
+- Background sync integration: Wired the FCM background handler to silently fetch and update the local database cache when the server broadcasts silent data sync updates.
+- In-app routing for captive portal notifications: Push alerts for campus Wi-Fi redirects and external URLs now open directly inside the app's Captive Wi-Fi interface and in-app WebViews.
+- Fixed UI layout blank spaces: Resolved vertical spacing bugs and added attendance record empty state placeholder cards in the Student Profile.
 
 ## [1.6.8] — 2026-06-27
 
