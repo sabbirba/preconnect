@@ -485,8 +485,8 @@ class FCMService {
       await _setupLocalNotifications();
     }
 
-    RefreshBus.instance.tick.subscribe((_) {
-      if (RefreshBus.instance.reason.value == 'auth') {
+    RefreshBus.instance.stream.listen((reason) {
+      if (reason == 'auth') {
         _syncToken();
       }
     });

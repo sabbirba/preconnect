@@ -1,76 +1,103 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:signals_hooks/signals_hooks.dart';
 import 'package:preconnect/model/progress_info.dart';
 import 'package:preconnect/tools/string_utils.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
-class AllCoursesPage extends HookWidget {
+class AllCoursesPage extends StatefulWidget {
   const AllCoursesPage({super.key, required this.info});
 
   final ProgressInfo info;
 
+  @override
+  State<AllCoursesPage> createState() => _AllCoursesPageState();
+}
+
+class _AllCoursesPageState extends State<AllCoursesPage> {
+  late final TextEditingController _searchController;
+  String _selectedHeader = 'All';
+  bool _mandatoryOnly = false;
+  bool _optionalOnly = false;
+  Set<String> _pinnedCodes = {};
+
   List<String> get _headers {
-    final values =
-        info.curriculumCourses
-            .map((e) => e.headerName)
-            .where((e) => e.trim().isNotEmpty)
-            .toSet()
-            .toList()
-          ..sort();
+    final values = widget.info.curriculumCourses
+        .map((e) => e.headerName)
+        .where((e) => e.trim().isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
     return ['All', ...values];
   }
 
   @override
-  Widget build(BuildContext context) {
-    final searchController = useTextEditingController();
-    useListenable(searchController);
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+    _searchController.addListener(_onSearchChanged);
+    _loadPins();
+  }
 
-    final selectedHeader = useSignal('All');
-    final mandatoryOnly = useSignal(false);
-    final optionalOnly = useSignal(false);
-    final pinnedCodes = useSignal<Set<String>>(<String>{});
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
 
-    useEffect(() {
-      CoursePinStore.load('all_courses').then((pins) {
-        pinnedCodes.value = pins.toSet();
+  void _onSearchChanged() {
+    setState(() {});
+  }
+
+  Future<void> _loadPins() async {
+    final pins = await CoursePinStore.load('all_courses');
+    if (mounted) {
+      setState(() {
+        _pinnedCodes = pins.toSet();
       });
-      return null;
-    }, const []);
-
-    Future<void> togglePin(String code) async {
-      final key = code.trim().toUpperCase();
-      if (key.isEmpty) return;
-      final current = Set<String>.from(pinnedCodes.value);
-      final willPin = !current.contains(key);
-      if (willPin) {
-        current.add(key);
-      } else {
-        current.remove(key);
-      }
-      pinnedCodes.value = current;
-      await CoursePinStore.save('all_courses', current);
-      if (context.mounted) {
-        showAppSnackBar(
-          context,
-          willPin ? '$key pinned to top' : '$key unpinned',
-        );
-      }
     }
+  }
 
-    final query = searchController.text.trim().toLowerCase();
+  Future<void> _togglePin(String code) async {
+    final key = code.trim().toUpperCase();
+    if (key.isEmpty) return;
+    final current = Set<String>.from(_pinnedCodes);
+    final willPin = !current.contains(key);
+    if (willPin) {
+      current.add(key);
+    } else {
+      current.remove(key);
+    }
+    setState(() {
+      _pinnedCodes = current;
+    });
+    await CoursePinStore.save('all_courses', current);
+    if (mounted) {
+      showAppSnackBar(
+        context,
+        willPin ? '$key pinned to top' : '$key unpinned',
+      );
+    }
+  }
 
-    final filtered = info.curriculumCourses.where((course) {
-      if (selectedHeader.value != 'All' &&
-          course.headerName != selectedHeader.value) {
+  String _formatCredit(double value) {
+    if (value % 1 == 0) return value.toStringAsFixed(0);
+    return value.toStringAsFixed(1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _searchController.text.trim().toLowerCase();
+
+    final filtered = widget.info.curriculumCourses.where((course) {
+      if (_selectedHeader != 'All' && course.headerName != _selectedHeader) {
         return false;
       }
-      if (mandatoryOnly.value && !optionalOnly.value && !course.isMandatory) {
+      if (_mandatoryOnly && !_optionalOnly && !course.isMandatory) {
         return false;
       }
-      if (optionalOnly.value && !mandatoryOnly.value && course.isMandatory) {
+      if (_optionalOnly && !_mandatoryOnly && course.isMandatory) {
         return false;
       }
       if (query.isEmpty) {
@@ -85,8 +112,8 @@ class AllCoursesPage extends HookWidget {
     }).toList();
 
     filtered.sort((a, b) {
-      final ap = pinnedCodes.value.contains(a.code.toUpperCase()) ? 0 : 1;
-      final bp = pinnedCodes.value.contains(b.code.toUpperCase()) ? 0 : 1;
+      final ap = _pinnedCodes.contains(a.code.toUpperCase()) ? 0 : 1;
+      final bp = _pinnedCodes.contains(b.code.toUpperCase()) ? 0 : 1;
       if (ap != bp) return ap.compareTo(bp);
       return compareNaturalText(a.code, b.code);
     });
@@ -99,7 +126,7 @@ class AllCoursesPage extends HookWidget {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
         children: [
           BracuSearchField(
-            controller: searchController,
+            controller: _searchController,
             hintText: 'Search by course code or title',
             query: query,
             keySuffix: 'all-courses',
@@ -111,7 +138,7 @@ class AllCoursesPage extends HookWidget {
               spacing: 6,
               runSpacing: 6,
               children: _headers.map((header) {
-                final selected = selectedHeader.value == header;
+                final selected = _selectedHeader == header;
                 return ChoiceChip(
                   label: Text(header),
                   showCheckmark: false,
@@ -133,7 +160,9 @@ class AllCoursesPage extends HookWidget {
                   selectedColor: Colors.transparent,
                   selected: selected,
                   onSelected: (_) {
-                    selectedHeader.value = header;
+                    setState(() {
+                      _selectedHeader = header;
+                    });
                   },
                 );
               }).toList(),
@@ -150,14 +179,14 @@ class AllCoursesPage extends HookWidget {
                   label: const Text('Mandatory'),
                   showCheckmark: false,
                   labelStyle: TextStyle(
-                    color: mandatoryOnly.value
+                    color: _mandatoryOnly
                         ? BracuPalette.primary
                         : BracuPalette.textPrimary(context),
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                   side: BorderSide(
-                    color: mandatoryOnly.value
+                    color: _mandatoryOnly
                         ? BracuPalette.primary.withValues(alpha: 0.8)
                         : BracuPalette.textSecondary(
                             context,
@@ -165,26 +194,28 @@ class AllCoursesPage extends HookWidget {
                   ),
                   backgroundColor: Colors.transparent,
                   selectedColor: Colors.transparent,
-                  selected: mandatoryOnly.value,
+                  selected: _mandatoryOnly,
                   onSelected: (value) {
-                    mandatoryOnly.value = value;
-                    if (value) {
-                      optionalOnly.value = false;
-                    }
+                    setState(() {
+                      _mandatoryOnly = value;
+                      if (value) {
+                        _optionalOnly = false;
+                      }
+                    });
                   },
                 ),
                 FilterChip(
                   label: const Text('Optional'),
                   showCheckmark: false,
                   labelStyle: TextStyle(
-                    color: optionalOnly.value
+                    color: _optionalOnly
                         ? BracuPalette.primary
                         : BracuPalette.textPrimary(context),
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                   side: BorderSide(
-                    color: optionalOnly.value
+                    color: _optionalOnly
                         ? BracuPalette.primary.withValues(alpha: 0.8)
                         : BracuPalette.textSecondary(
                             context,
@@ -192,12 +223,14 @@ class AllCoursesPage extends HookWidget {
                   ),
                   backgroundColor: Colors.transparent,
                   selectedColor: Colors.transparent,
-                  selected: optionalOnly.value,
+                  selected: _optionalOnly,
                   onSelected: (value) {
-                    optionalOnly.value = value;
-                    if (value) {
-                      mandatoryOnly.value = false;
-                    }
+                    setState(() {
+                      _optionalOnly = value;
+                      if (value) {
+                        _mandatoryOnly = false;
+                      }
+                    });
                   },
                 ),
               ],
@@ -208,6 +241,7 @@ class AllCoursesPage extends HookWidget {
             const BracuCard(child: BracuEmptyState(message: 'No course found.'))
           else
             ...filtered.map((course) {
+              final isPinned = _pinnedCodes.contains(course.code.toUpperCase());
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: BracuCard(
@@ -234,32 +268,18 @@ class AllCoursesPage extends HookWidget {
                                               left: 4,
                                             ),
                                             child: Tooltip(
-                                              message:
-                                                  pinnedCodes.value.contains(
-                                                    course.code.toUpperCase(),
-                                                  )
-                                                  ? 'Unpin'
-                                                  : 'Pin to top',
+                                              message: isPinned ? 'Unpin' : 'Pin to top',
                                               child: InkWell(
                                                 borderRadius:
                                                     BorderRadius.circular(999),
                                                 onTap: () =>
-                                                    togglePin(course.code),
+                                                    _togglePin(course.code),
                                                 child: Icon(
-                                                  pinnedCodes.value.contains(
-                                                        course.code
-                                                            .toUpperCase(),
-                                                      )
+                                                  isPinned
                                                       ? Icons.star_rounded
-                                                      : Icons
-                                                            .star_outline_rounded,
+                                                      : Icons.star_outline_rounded,
                                                   size: 16,
-                                                  color:
-                                                      pinnedCodes.value
-                                                          .contains(
-                                                            course.code
-                                                                .toUpperCase(),
-                                                          )
+                                                  color: isPinned
                                                       ? BracuPalette.favorite
                                                       : BracuPalette.textSecondary(
                                                           context,
@@ -328,10 +348,5 @@ class AllCoursesPage extends HookWidget {
         ],
       ),
     );
-  }
-
-  String _formatCredit(double value) {
-    if (value % 1 == 0) return value.toStringAsFixed(0);
-    return value.toStringAsFixed(1);
   }
 }

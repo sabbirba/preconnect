@@ -1,18 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:json_annotation/json_annotation.dart';
-import 'package:preconnect/di/service_locator.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 
-part 'profile.g.dart';
-
 class ProfileService {
-  factory ProfileService() => getIt<ProfileService>();
-  ProfileService.create();
+  static final ProfileService _instance = ProfileService._();
+  factory ProfileService() => _instance;
+  ProfileService._();
 
   final ApiClient _client = ApiClient();
   final Map<String, Future<Map<String, String?>?>> _profileFetchInFlight =
@@ -498,23 +495,14 @@ class ProfileService {
   }
 }
 
-@JsonSerializable()
 class AttendanceInfo {
-  @JsonKey(defaultValue: 0)
   final int courseSectionId;
-  @JsonKey(defaultValue: 0)
   final int studentPortfolioId;
-  @JsonKey(defaultValue: '')
   final String courseName;
-  @JsonKey(defaultValue: '')
   final String courseCode;
-  @JsonKey(defaultValue: 0)
   final int attend;
-  @JsonKey(defaultValue: 0)
   final int missed;
-  @JsonKey(defaultValue: 0)
   final int remaining;
-  @JsonKey(defaultValue: 0)
   final int totalClasses;
 
   AttendanceInfo({
@@ -528,25 +516,40 @@ class AttendanceInfo {
     required this.totalClasses,
   });
 
-  factory AttendanceInfo.fromJson(Map<String, dynamic> json) =>
-      _$AttendanceInfoFromJson(json);
+  factory AttendanceInfo.fromJson(Map<String, dynamic> json) {
+    return AttendanceInfo(
+      courseSectionId: json['courseSectionId'] as int? ?? 0,
+      studentPortfolioId: json['studentPortfolioId'] as int? ?? 0,
+      courseName: json['courseName'] as String? ?? '',
+      courseCode: json['courseCode'] as String? ?? '',
+      attend: json['attend'] as int? ?? 0,
+      missed: json['missed'] as int? ?? 0,
+      remaining: json['remaining'] as int? ?? 0,
+      totalClasses: json['totalClasses'] as int? ?? 0,
+    );
+  }
 
-  Map<String, dynamic> toJson() => _$AttendanceInfoToJson(this);
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'courseSectionId': courseSectionId,
+      'studentPortfolioId': studentPortfolioId,
+      'courseName': courseName,
+      'courseCode': courseCode,
+      'attend': attend,
+      'missed': missed,
+      'remaining': remaining,
+      'totalClasses': totalClasses,
+    };
+  }
 }
 
-@JsonSerializable()
 class PaymentInfo {
-  @JsonKey(defaultValue: '')
   final String paymentStatus;
-  @JsonKey(defaultValue: '')
   final String payslipNumber;
-  @JsonKey(defaultValue: '')
   final String paymentType;
   final DateTime requestDate;
   final DateTime dueDate;
-  @JsonKey(defaultValue: 0.0)
   final double totalAmount;
-  @JsonKey(defaultValue: 0)
   final int semesterSessionId;
 
   PaymentInfo({
@@ -559,15 +562,35 @@ class PaymentInfo {
     required this.semesterSessionId,
   });
 
-  factory PaymentInfo.fromJson(Map<String, dynamic> json) =>
-      _$PaymentInfoFromJson(json);
+  factory PaymentInfo.fromJson(Map<String, dynamic> json) {
+    return PaymentInfo(
+      paymentStatus: json['paymentStatus'] as String? ?? '',
+      payslipNumber: json['payslipNumber'] as String? ?? '',
+      paymentType: json['paymentType'] as String? ?? '',
+      requestDate: DateTime.parse(json['requestDate'] as String),
+      dueDate: DateTime.parse(json['dueDate'] as String),
+      totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
+      semesterSessionId: json['semesterSessionId'] as int? ?? 0,
+    );
+  }
 
-  Map<String, dynamic> toJson() => _$PaymentInfoToJson(this);
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'paymentStatus': paymentStatus,
+      'payslipNumber': payslipNumber,
+      'paymentType': paymentType,
+      'requestDate': requestDate.toIso8601String(),
+      'dueDate': dueDate.toIso8601String(),
+      'totalAmount': totalAmount,
+      'semesterSessionId': semesterSessionId,
+    };
+  }
 }
 
 class AdvisingService {
-  factory AdvisingService() => getIt<AdvisingService>();
-  AdvisingService.create();
+  static final AdvisingService _instance = AdvisingService._();
+  factory AdvisingService() => _instance;
+  AdvisingService._();
 
   static const List<String> storedProfileKeys = [
     'advisingStartDate',

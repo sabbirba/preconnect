@@ -1,9 +1,5 @@
-import 'package:json_annotation/json_annotation.dart';
 import 'package:equatable/equatable.dart';
 
-part 'custom_schedule.g.dart';
-
-@JsonSerializable()
 class CustomSchedule extends Equatable {
   const CustomSchedule({
     required this.itemId,
@@ -49,10 +45,39 @@ class CustomSchedule extends Equatable {
     updatedAt,
   ];
 
-  factory CustomSchedule.fromJson(Map<String, dynamic> json) =>
-      _$CustomScheduleFromJson(json);
+  factory CustomSchedule.fromJson(Map<String, dynamic> json) {
+    return CustomSchedule(
+      itemId: json['itemId'] as int? ?? 0,
+      kind: json['kind'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      courseCode: json['courseCode'] as String? ?? '',
+      sectionName: json['sectionName'] as String? ?? '',
+      startTime: DateTime.parse(json['startTime'] as String),
+      endTime: json['endTime'] != null ? DateTime.parse(json['endTime'] as String) : null,
+      reminderAt: json['reminderAt'] != null ? DateTime.parse(json['reminderAt'] as String) : null,
+      notes: json['notes'] as String? ?? '',
+      isDone: json['isDone'] as bool? ?? false,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
+    );
+  }
 
-  Map<String, dynamic> toJson() => _$CustomScheduleToJson(this);
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'itemId': itemId,
+      'kind': kind,
+      'title': title,
+      'courseCode': courseCode,
+      'sectionName': sectionName,
+      'startTime': startTime.toIso8601String(),
+      'endTime': endTime?.toIso8601String(),
+      'reminderAt': reminderAt?.toIso8601String(),
+      'notes': notes,
+      'isDone': isDone,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+    };
+  }
 
   CustomSchedule copyWith({
     String? kind,

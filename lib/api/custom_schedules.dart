@@ -1,10 +1,10 @@
-import 'package:preconnect/di/service_locator.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/model/custom_schedule.dart';
 
 class CustomSchedulesService {
-  factory CustomSchedulesService() => getIt<CustomSchedulesService>();
-  CustomSchedulesService.create();
+  static final CustomSchedulesService _instance = CustomSchedulesService._();
+  factory CustomSchedulesService() => _instance;
+  CustomSchedulesService._();
 
   final RepositoryCache _repo = RepositoryCache.instance;
 

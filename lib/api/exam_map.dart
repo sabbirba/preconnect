@@ -1,16 +1,13 @@
 import 'dart:convert';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/di/service_locator.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/model/section_info.dart';
 
-part 'exam_map.g.dart';
-
 class ExamMapService {
-  factory ExamMapService() => getIt<ExamMapService>();
-  ExamMapService.create();
+  static final ExamMapService _instance = ExamMapService._();
+  factory ExamMapService() => _instance;
+  ExamMapService._();
 
   final ApiClient _client = ApiClient();
   final RepositoryCache _repo = RepositoryCache.instance;
@@ -287,7 +284,6 @@ class ExamMapService {
   }
 }
 
-@JsonSerializable()
 class ExamScheduleOverride {
   const ExamScheduleOverride({
     this.midDate,
@@ -332,10 +328,31 @@ class ExamScheduleOverride {
     );
   }
 
-  factory ExamScheduleOverride.fromJson(Map<String, dynamic> json) =>
-      _$ExamScheduleOverrideFromJson(json);
+  factory ExamScheduleOverride.fromJson(Map<String, dynamic> json) {
+    return ExamScheduleOverride(
+      midDate: json['midDate'] as String?,
+      midStartTime: json['midStartTime'] as String?,
+      midEndTime: json['midEndTime'] as String?,
+      midRoomNumber: json['midRoomNumber'] as String?,
+      finalDate: json['finalDate'] as String?,
+      finalStartTime: json['finalStartTime'] as String?,
+      finalEndTime: json['finalEndTime'] as String?,
+      finalRoomNumber: json['finalRoomNumber'] as String?,
+    );
+  }
 
-  Map<String, dynamic> toJson() => _$ExamScheduleOverrideToJson(this);
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'midDate': midDate,
+      'midStartTime': midStartTime,
+      'midEndTime': midEndTime,
+      'midRoomNumber': midRoomNumber,
+      'finalDate': finalDate,
+      'finalStartTime': finalStartTime,
+      'finalEndTime': finalEndTime,
+      'finalRoomNumber': finalRoomNumber,
+    };
+  }
 }
 
 class ExamSectionResolved {

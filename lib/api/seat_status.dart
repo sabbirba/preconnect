@@ -1,6 +1,4 @@
 import 'dart:convert';
-import 'package:json_annotation/json_annotation.dart';
-import 'package:preconnect/di/service_locator.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/model/section_info.dart' show SectionFaculty;
@@ -8,11 +6,10 @@ import 'package:preconnect/pages/seat_status.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 
-part 'seat_status.g.dart';
-
 class SeatStatusService {
-  factory SeatStatusService() => getIt<SeatStatusService>();
-  SeatStatusService.create();
+  static final SeatStatusService _instance = SeatStatusService._();
+  factory SeatStatusService() => _instance;
+  SeatStatusService._();
 
   final ApiClient _client = ApiClient();
 
@@ -259,7 +256,6 @@ class SeatStatusDetailsResponse {
   }
 }
 
-@JsonSerializable()
 class SeatStatusSchedule {
   SeatStatusSchedule({
     required this.classSchedules,
@@ -271,7 +267,6 @@ class SeatStatusSchedule {
     this.finalExamEndTime,
   });
 
-  @JsonKey(defaultValue: <SeatStatusClassSchedule>[])
   final List<SeatStatusClassSchedule> classSchedules;
   final String? midExamDate;
   final String? midExamStartTime;
@@ -280,13 +275,36 @@ class SeatStatusSchedule {
   final String? finalExamStartTime;
   final String? finalExamEndTime;
 
-  factory SeatStatusSchedule.fromJson(Map<String, dynamic> json) =>
-      _$SeatStatusScheduleFromJson(json);
+  factory SeatStatusSchedule.fromJson(Map<String, dynamic> json) {
+    final list = json['classSchedules'] as List?;
+    final classSchedulesList = list != null
+        ? list.map((e) => SeatStatusClassSchedule.fromJson(e as Map<String, dynamic>)).toList()
+        : <SeatStatusClassSchedule>[];
 
-  Map<String, dynamic> toJson() => _$SeatStatusScheduleToJson(this);
+    return SeatStatusSchedule(
+      classSchedules: classSchedulesList,
+      midExamDate: json['midExamDate'] as String?,
+      midExamStartTime: json['midExamStartTime'] as String?,
+      midExamEndTime: json['midExamEndTime'] as String?,
+      finalExamDate: json['finalExamDate'] as String?,
+      finalExamStartTime: json['finalExamStartTime'] as String?,
+      finalExamEndTime: json['finalExamEndTime'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'classSchedules': classSchedules.map((e) => e.toJson()).toList(),
+      'midExamDate': midExamDate,
+      'midExamStartTime': midExamStartTime,
+      'midExamEndTime': midExamEndTime,
+      'finalExamDate': finalExamDate,
+      'finalExamStartTime': finalExamStartTime,
+      'finalExamEndTime': finalExamEndTime,
+    };
+  }
 }
 
-@JsonSerializable()
 class SeatStatusClassSchedule {
   SeatStatusClassSchedule({
     required this.day,
@@ -294,17 +312,25 @@ class SeatStatusClassSchedule {
     required this.endTime,
   });
 
-  @JsonKey(defaultValue: '')
   final String day;
-  @JsonKey(defaultValue: '')
   final String startTime;
-  @JsonKey(defaultValue: '')
   final String endTime;
 
-  factory SeatStatusClassSchedule.fromJson(Map<String, dynamic> json) =>
-      _$SeatStatusClassScheduleFromJson(json);
+  factory SeatStatusClassSchedule.fromJson(Map<String, dynamic> json) {
+    return SeatStatusClassSchedule(
+      day: json['day'] as String? ?? '',
+      startTime: json['startTime'] as String? ?? '',
+      endTime: json['endTime'] as String? ?? '',
+    );
+  }
 
-  Map<String, dynamic> toJson() => _$SeatStatusClassScheduleToJson(this);
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'day': day,
+      'startTime': startTime,
+      'endTime': endTime,
+    };
+  }
 
   SeatTimetable toTimetable() {
     return SeatTimetable(startTime: startTime, endTime: endTime);
@@ -354,7 +380,7 @@ String _facultyLabel(dynamic value) {
     final shortName = _toString(map['shortName']);
     if (shortName.isNotEmpty) return shortName;
     final staffName = _toString(map['staffName']);
-    if (staffName.isNotEmpty) return staffName;
+    if (shortName.isNotEmpty) return staffName;
     return '';
   }
   return _toString(value);

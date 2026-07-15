@@ -1,7 +1,4 @@
-import 'package:json_annotation/json_annotation.dart';
 import 'package:preconnect/tools/string_utils.dart';
-
-part 'progress_info.g.dart';
 
 class ProgressInfo {
   ProgressInfo({
@@ -322,7 +319,6 @@ class HeaderProgress {
   }
 }
 
-@JsonSerializable()
 class ProgressSummary {
   const ProgressSummary({
     required this.programName,
@@ -332,15 +328,10 @@ class ProgressSummary {
     required this.remainingCourses,
   });
 
-  @JsonKey(defaultValue: '')
   final String programName;
-  @JsonKey(defaultValue: 0.0)
   final double totalCredit;
-  @JsonKey(defaultValue: 0.0)
   final double completedCredit;
-  @JsonKey(defaultValue: 0.0)
   final double completionPercent;
-  @JsonKey(defaultValue: 0)
   final int remainingCourses;
 
   factory ProgressSummary.fromProgressInfo(ProgressInfo info) {
@@ -356,8 +347,23 @@ class ProgressSummary {
     );
   }
 
-  factory ProgressSummary.fromJson(Map<String, dynamic> json) =>
-      _$ProgressSummaryFromJson(json);
+  factory ProgressSummary.fromJson(Map<String, dynamic> json) {
+    return ProgressSummary(
+      programName: json['programName'] as String? ?? '',
+      totalCredit: (json['totalCredit'] as num?)?.toDouble() ?? 0.0,
+      completedCredit: (json['completedCredit'] as num?)?.toDouble() ?? 0.0,
+      completionPercent: (json['completionPercent'] as num?)?.toDouble() ?? 0.0,
+      remainingCourses: json['remainingCourses'] as int? ?? 0,
+    );
+  }
 
-  Map<String, dynamic> toJson() => _$ProgressSummaryToJson(this);
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'programName': programName,
+      'totalCredit': totalCredit,
+      'completedCredit': completedCredit,
+      'completionPercent': completionPercent,
+      'remainingCourses': remainingCourses,
+    };
+  }
 }

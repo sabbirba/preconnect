@@ -1,14 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:intl/intl.dart';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/url_utils.dart';
-
-part 'notification.g.dart';
 
 DateTime? _dateTimeFromJson(String? value) =>
     value != null ? DateTime.tryParse(value.trim()) : null;
@@ -19,7 +16,6 @@ String _trimString(String? value) => (value ?? '').trim();
 
 String? _trimNullableString(String? value) => value?.trim();
 
-@JsonSerializable()
 class RecentConnectNotification {
   const RecentConnectNotification({
     required this.id,
@@ -31,25 +27,37 @@ class RecentConnectNotification {
     required this.seen,
   });
 
-  @JsonKey(defaultValue: 0)
   final int id;
-  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String title;
-  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String module;
-  @JsonKey(fromJson: _trimNullableString)
   final String? link;
-  @JsonKey(fromJson: _dateTimeFromJson, toJson: _dateTimeToJson)
   final DateTime? createdOn;
-  @JsonKey(fromJson: _dateTimeFromJson, toJson: _dateTimeToJson)
   final DateTime? expireAt;
-  @JsonKey(defaultValue: false)
   final bool seen;
 
-  factory RecentConnectNotification.fromJson(Map<String, dynamic> json) =>
-      _$RecentConnectNotificationFromJson(json);
+  factory RecentConnectNotification.fromJson(Map<String, dynamic> json) {
+    return RecentConnectNotification(
+      id: json['id'] as int? ?? 0,
+      title: _trimString(json['title'] as String?),
+      module: _trimString(json['module'] as String?),
+      link: _trimNullableString(json['link'] as String?),
+      createdOn: _dateTimeFromJson(json['createdOn'] as String?),
+      expireAt: _dateTimeFromJson(json['expireAt'] as String?),
+      seen: json['seen'] as bool? ?? false,
+    );
+  }
 
-  Map<String, dynamic> toJson() => _$RecentConnectNotificationToJson(this);
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'title': title,
+      'module': module,
+      'link': link,
+      'createdOn': _dateTimeToJson(createdOn),
+      'expireAt': _dateTimeToJson(expireAt),
+      'seen': seen,
+    };
+  }
 }
 
 class ScraperDataService {
@@ -135,19 +143,30 @@ class ScraperDataService {
   }
 }
 
-@JsonSerializable()
 class NotificationsFeed {
   const NotificationsFeed({required this.newCount, required this.items});
 
-  @JsonKey(name: 'new', defaultValue: 0)
   final int newCount;
-  @JsonKey(defaultValue: <RecentConnectNotification>[])
   final List<RecentConnectNotification> items;
 
-  factory NotificationsFeed.fromJson(Map<String, dynamic> json) =>
-      _$NotificationsFeedFromJson(json);
+  factory NotificationsFeed.fromJson(Map<String, dynamic> json) {
+    final list = json['items'] as List?;
+    final itemsList = list != null
+        ? list.map((e) => RecentConnectNotification.fromJson(e as Map<String, dynamic>)).toList()
+        : <RecentConnectNotification>[];
 
-  Map<String, dynamic> toJson() => _$NotificationsFeedToJson(this);
+    return NotificationsFeed(
+      newCount: json['new'] as int? ?? json['newCount'] as int? ?? 0,
+      items: itemsList,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'new': newCount,
+      'items': items.map((e) => e.toJson()).toList(),
+    };
+  }
 
   NotificationsFeed copyWith({
     int? newCount,
@@ -160,7 +179,6 @@ class NotificationsFeed {
   }
 }
 
-@JsonSerializable()
 class ConnectNotificationDetail {
   const ConnectNotificationDetail({
     required this.id,
@@ -172,28 +190,39 @@ class ConnectNotificationDetail {
     required this.details,
   });
 
-  @JsonKey(defaultValue: 0)
   final int id;
-  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String title;
-  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String module;
-  @JsonKey(fromJson: _trimNullableString)
   final String? link;
-  @JsonKey(fromJson: _dateTimeFromJson, toJson: _dateTimeToJson)
   final DateTime? expireAt;
-  @JsonKey(fromJson: _dateTimeFromJson, toJson: _dateTimeToJson)
   final DateTime? createdOn;
-  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String details;
 
-  factory ConnectNotificationDetail.fromJson(Map<String, dynamic> json) =>
-      _$ConnectNotificationDetailFromJson(json);
+  factory ConnectNotificationDetail.fromJson(Map<String, dynamic> json) {
+    return ConnectNotificationDetail(
+      id: json['id'] as int? ?? 0,
+      title: _trimString(json['title'] as String?),
+      module: _trimString(json['module'] as String?),
+      link: _trimNullableString(json['link'] as String?),
+      expireAt: _dateTimeFromJson(json['expireAt'] as String?),
+      createdOn: _dateTimeFromJson(json['createdOn'] as String?),
+      details: _trimString(json['details'] as String?),
+    );
+  }
 
-  Map<String, dynamic> toJson() => _$ConnectNotificationDetailToJson(this);
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'title': title,
+      'module': module,
+      'link': link,
+      'expireAt': _dateTimeToJson(expireAt),
+      'createdOn': _dateTimeToJson(createdOn),
+      'details': details,
+    };
+  }
 }
 
-@JsonSerializable()
 class ScraperContentItem {
   const ScraperContentItem({
     required this.id,
@@ -206,27 +235,43 @@ class ScraperContentItem {
     this.imageUrls = const <String>[],
   });
 
-  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String id;
-  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String source;
-  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String title;
-  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String message;
-  @JsonKey(defaultValue: '', fromJson: _trimString)
   final String url;
-  @JsonKey(fromJson: _dateTimeFromJson, toJson: _dateTimeToJson)
   final DateTime? publishedAt;
-  @JsonKey(fromJson: _trimNullableString)
   final String? imageUrl;
-  @JsonKey(defaultValue: <String>[])
   final List<String> imageUrls;
 
-  Map<String, dynamic> toJson() => _$ScraperContentItemToJson(this);
+  factory ScraperContentItem.fromJson(Map<String, dynamic> json) {
+    final list = json['imageUrls'] as List?;
+    final urls = list != null ? list.cast<String>() : <String>[];
 
-  factory ScraperContentItem.fromJson(Map<String, dynamic> json) =>
-      _$ScraperContentItemFromJson(json);
+    return ScraperContentItem(
+      id: _trimString(json['id'] as String?),
+      source: _trimString(json['source'] as String?),
+      title: _trimString(json['title'] as String?),
+      message: _trimString(json['message'] as String?),
+      url: _trimString(json['url'] as String?),
+      publishedAt: _dateTimeFromJson(json['publishedAt'] as String?),
+      imageUrl: _trimNullableString(json['imageUrl'] as String?),
+      imageUrls: urls,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'source': source,
+      'title': title,
+      'message': message,
+      'url': url,
+      'publishedAt': _dateTimeToJson(publishedAt),
+      'imageUrl': imageUrl,
+      'imageUrls': imageUrls,
+    };
+  }
 }
 
 class NotificationService {
@@ -425,7 +470,7 @@ class NotificationService {
     return _repo.readJsonMapWithFallback<NotificationsFeed>(
       key: _recentFeedKey,
       fromFetch: true,
-      decoder: NotificationsFeed.fromJson,
+      decoder: (json) => NotificationsFeed.fromJson(json),
       onCacheMiss: () async => null,
     );
   }
@@ -626,8 +671,8 @@ class NotificationService {
 
     if (trimmed.contains('|')) {
       for (final part in trimmed.split('|')) {
-        final p = part.trim();
-        if (p.isNotEmpty) candidates.add(p);
+         final p = part.trim();
+         if (p.isNotEmpty) candidates.add(p);
       }
     } else if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
       try {

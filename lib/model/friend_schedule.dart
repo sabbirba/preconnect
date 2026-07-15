@@ -1,20 +1,13 @@
 import 'dart:convert';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
-part 'friend_schedule.g.dart';
-
-@JsonSerializable()
 class FriendSchedule extends Equatable {
-  @JsonKey(defaultValue: '')
   final String name;
-  @JsonKey(defaultValue: '')
   final String id;
   final String? photoFilePath;
   final String? photoUrl;
-  @JsonKey(defaultValue: <Course>[])
   final List<Course> courses;
   final String? shortCode;
   final String? semester;
@@ -41,19 +34,35 @@ class FriendSchedule extends Equatable {
   ];
 
   factory FriendSchedule.fromJson(Map<String, dynamic> json) {
-    final temp = _$FriendScheduleFromJson(json);
+    final list = json['courses'] as List?;
+    final coursesList = list != null
+        ? list.map((e) => Course.fromJson(e as Map<String, dynamic>)).toList()
+        : <Course>[];
+    final photoFilePath = json['photoFilePath'] as String?;
+    final photoUrl = json['photoUrl'] as String? ?? _buildPhotoUrl(photoFilePath);
+
     return FriendSchedule(
-      name: temp.name,
-      id: temp.id,
-      photoFilePath: temp.photoFilePath,
-      photoUrl: temp.photoUrl ?? _buildPhotoUrl(temp.photoFilePath),
-      courses: temp.courses,
-      shortCode: temp.shortCode,
-      semester: temp.semester,
+      name: json['name'] as String? ?? '',
+      id: json['id'] as String? ?? '',
+      photoFilePath: photoFilePath,
+      photoUrl: photoUrl,
+      courses: coursesList,
+      shortCode: json['shortCode'] as String?,
+      semester: json['semester'] as String?,
     );
   }
 
-  Map<String, dynamic> toJson() => _$FriendScheduleToJson(this);
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'name': name,
+      'id': id,
+      'photoFilePath': photoFilePath,
+      'photoUrl': photoUrl,
+      'courses': courses.map((e) => e.toJson()).toList(),
+      'shortCode': shortCode,
+      'semester': semester,
+    };
+  }
 }
 
 String? _buildPhotoUrl(String? photoFilePath) {
@@ -65,12 +74,10 @@ String? _buildPhotoUrl(String? photoFilePath) {
 }
 
 class Course extends Equatable {
-  @JsonKey(defaultValue: '')
   final String courseCode;
   final String? sectionName;
   final String? roomNumber;
   final String? faculties;
-  @JsonKey(defaultValue: <CourseSchedule>[])
   final List<CourseSchedule> schedule;
 
   const Course({
@@ -154,13 +161,9 @@ class Course extends Equatable {
   }
 }
 
-@JsonSerializable()
 class CourseSchedule extends Equatable {
-  @JsonKey(defaultValue: '')
   final String day;
-  @JsonKey(defaultValue: '')
   final String startTime;
-  @JsonKey(defaultValue: '')
   final String endTime;
 
   const CourseSchedule({
@@ -172,18 +175,26 @@ class CourseSchedule extends Equatable {
   @override
   List<Object?> get props => [day, startTime, endTime];
 
-  factory CourseSchedule.fromJson(Map<String, dynamic> json) =>
-      _$CourseScheduleFromJson(json);
+  factory CourseSchedule.fromJson(Map<String, dynamic> json) {
+    return CourseSchedule(
+      day: json['day'] as String? ?? '',
+      startTime: json['startTime'] as String? ?? '',
+      endTime: json['endTime'] as String? ?? '',
+    );
+  }
 
-  Map<String, dynamic> toJson() => _$CourseScheduleToJson(this);
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'day': day,
+      'startTime': startTime,
+      'endTime': endTime,
+    };
+  }
 }
 
-@JsonSerializable()
 class FriendMetadata extends Equatable {
-  @JsonKey(defaultValue: '')
   final String friendId;
   final String? nickname;
-  @JsonKey(defaultValue: false)
   final bool isFavorite;
 
   const FriendMetadata({
@@ -195,10 +206,21 @@ class FriendMetadata extends Equatable {
   @override
   List<Object?> get props => [friendId, nickname, isFavorite];
 
-  factory FriendMetadata.fromJson(Map<String, dynamic> json) =>
-      _$FriendMetadataFromJson(json);
+  factory FriendMetadata.fromJson(Map<String, dynamic> json) {
+    return FriendMetadata(
+      friendId: json['friendId'] as String? ?? '',
+      nickname: json['nickname'] as String?,
+      isFavorite: json['isFavorite'] as bool? ?? false,
+    );
+  }
 
-  Map<String, dynamic> toJson() => _$FriendMetadataToJson(this);
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'friendId': friendId,
+      'nickname': nickname,
+      'isFavorite': isFavorite,
+    };
+  }
 
   static const Object _unsetNickname = Object();
 

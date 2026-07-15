@@ -1,19 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/tools/app_storage.dart';
 
-part 'funding.g.dart';
-
-@JsonSerializable()
 class ContributionItem {
-  @JsonKey(defaultValue: 'Anonymous')
   final String name;
   final String? picture;
-  @JsonKey(defaultValue: 0)
   final int amount;
-  @JsonKey(defaultValue: 0)
   final int ts;
 
   const ContributionItem({
@@ -23,21 +16,29 @@ class ContributionItem {
     required this.ts,
   });
 
-  factory ContributionItem.fromJson(Map<String, dynamic> json) =>
-      _$ContributionItemFromJson(json);
+  factory ContributionItem.fromJson(Map<String, dynamic> json) {
+    return ContributionItem(
+      name: json['name'] as String? ?? 'Anonymous',
+      picture: json['picture'] as String?,
+      amount: json['amount'] as int? ?? 0,
+      ts: json['ts'] as int? ?? 0,
+    );
+  }
 
-  Map<String, dynamic> toJson() => _$ContributionItemToJson(this);
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'name': name,
+      'picture': picture,
+      'amount': amount,
+      'ts': ts,
+    };
+  }
 }
 
-@JsonSerializable()
 class FundingStatus {
-  @JsonKey(defaultValue: 0)
   final int totalRaised;
-  @JsonKey(defaultValue: 0)
   final int goal;
-  @JsonKey(defaultValue: 0)
   final int contributorsCount;
-  @JsonKey(defaultValue: <ContributionItem>[])
   final List<ContributionItem> contributions;
 
   const FundingStatus({
@@ -47,10 +48,28 @@ class FundingStatus {
     required this.contributions,
   });
 
-  factory FundingStatus.fromJson(Map<String, dynamic> json) =>
-      _$FundingStatusFromJson(json);
+  factory FundingStatus.fromJson(Map<String, dynamic> json) {
+    final list = json['contributions'] as List?;
+    final contributionsList = list != null
+        ? list.map((e) => ContributionItem.fromJson(e as Map<String, dynamic>)).toList()
+        : <ContributionItem>[];
 
-  Map<String, dynamic> toJson() => _$FundingStatusToJson(this);
+    return FundingStatus(
+      totalRaised: json['totalRaised'] as int? ?? 0,
+      goal: json['goal'] as int? ?? 0,
+      contributorsCount: json['contributorsCount'] as int? ?? 0,
+      contributions: contributionsList,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'totalRaised': totalRaised,
+      'goal': goal,
+      'contributorsCount': contributorsCount,
+      'contributions': contributions.map((e) => e.toJson()).toList(),
+    };
+  }
 }
 
 class FundingService {

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:signals_hooks/signals_hooks.dart';
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/device_diagnostics.dart';
@@ -14,148 +12,172 @@ import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.html) 'package:preconnect/tools/runtime_web.dart';
 
-class SettingsPage extends HookWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver {
   static const double _sectionGap = 14;
+
+  bool _showQuickAccessSection = true;
+  bool _showRamadanCard = true;
+  bool _showExamCountdownCard = true;
+  bool _showTodaySchedule = true;
+  bool _showDecorations = true;
+  bool _showCampusMapContacts = true;
+  bool _showNotificationsIcon = true;
+  bool _showFundingSection = true;
+  bool _appLockEnabled = false;
+  bool _quietModeEnabled = false;
+  bool _quietModeNeedsSetup = false;
+  String? _quietModeSetupPermission;
+  String _quietModeStatusMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _loadSettings();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadSettings();
+    }
+  }
+
+  Future<void> _loadSettings() async {
+    final visibility = await HomeCardPreferences.load();
+    final appLock = await AppLockService().isEnabled();
+    await QuietModeController.instance.load();
+    final quietModeResult = await QuietModeController.instance.refresh();
+
+    if (mounted) {
+      setState(() {
+        _showQuickAccessSection = visibility.showQuickAccessSection;
+        _showRamadanCard = visibility.showRamadanCard;
+        _showDecorations = visibility.showDecorations;
+        _showCampusMapContacts = visibility.showCampusMapContacts;
+        _showNotificationsIcon = visibility.showNotificationsIcon;
+        _showExamCountdownCard = visibility.showExamCountdownCard;
+        _showTodaySchedule = visibility.showTodaySchedule;
+        _showFundingSection = visibility.showFundingSection;
+        _appLockEnabled = appLock;
+        _quietModeEnabled = QuietModeController.instance.isEnabled;
+        _quietModeNeedsSetup = quietModeResult.status == 'permission_required';
+        _quietModeSetupPermission = quietModeResult.permission;
+        _quietModeStatusMessage = _quietModeNeedsSetup ? (quietModeResult.message ?? '') : '';
+      });
+    }
+  }
+
+  Future<void> _setVisibility({
+    required String label,
+    required bool value,
+    required void Function() applyLocal,
+    required Future<void> Function(bool) persist,
+  }) async {
+    setState(() {
+      applyLocal();
+    });
+    await persist(value);
+    RefreshBus.instance.notify(reason: 'home_card_settings_changed');
+    if (mounted) {
+      showAppSnackBar(context, '$label ${value ? 'enabled' : 'disabled'}');
+    }
+  }
+
+  Future<void> _setAppLock(bool value) async {
+    if (value) {
+      final confirmed = await AppLockService().authenticate();
+      if (!confirmed) {
+        if (mounted) {
+          showAppSnackBar(
+            context,
+            'Verification failed. App lock not enabled',
+          );
+        }
+        return;
+      }
+    }
+    await AppLockService().setEnabled(value);
+    setState(() {
+      _appLockEnabled = value;
+    });
+    RefreshBus.instance.notify(reason: 'app_lock_settings_changed');
+    if (mounted) {
+      showAppSnackBar(
+        context,
+        value ? 'App lock enabled' : 'App lock disabled',
+      );
+    }
+  }
+
+  Future<void> _setQuietMode(bool value) async {
+    final result = await QuietModeController.instance.setEnabled(
+      value,
+      promptForPermission: value,
+    );
+    setState(() {
+      _quietModeEnabled = QuietModeController.instance.isEnabled;
+      _quietModeNeedsSetup = result.status == 'permission_required';
+      _quietModeSetupPermission = result.permission;
+      _quietModeStatusMessage = _quietModeNeedsSetup ? (result.message ?? '') : '';
+    });
+    RefreshBus.instance.notify(reason: 'quiet_mode_settings_changed');
+
+    if (mounted) {
+      if (result.status == 'permission_required') {
+        return;
+      }
+      if (result.message != null && result.message!.trim().isNotEmpty) {
+        showAppSnackBar(context, result.message!);
+        return;
+      }
+      if (value) {
+        showAppSnackBar(context, 'Quiet Mode synced with your schedules.');
+      } else {
+        showAppSnackBar(context, 'Quiet Mode disabled.');
+      }
+    }
+  }
+
+  Future<void> _fixQuietModeSetup() async {
+    final result = await QuietModeController.instance.requestSetup();
+    setState(() {
+      _quietModeEnabled = QuietModeController.instance.isEnabled;
+      _quietModeNeedsSetup = result.status == 'permission_required';
+      _quietModeSetupPermission = result.permission;
+      _quietModeStatusMessage = _quietModeNeedsSetup ? (result.message ?? '') : '';
+    });
+    RefreshBus.instance.notify(reason: 'quiet_mode_settings_changed');
+  }
+
+  String _quietModeSetupMsg() {
+    switch (_quietModeSetupPermission) {
+      case 'notification_policy':
+        return 'Needs DND access to automate Quiet Mode.';
+      case 'exact_alarms':
+        return 'Needs device alarm access to keep schedule timing precise.';
+      default:
+        return _quietModeStatusMessage.isNotEmpty
+            ? _quietModeStatusMessage
+            : 'Quiet Mode needs system access to automate schedules.';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final showQuickAccessSection = useSignal(true);
-    final showRamadanCard = useSignal(true);
-    final showExamCountdownCard = useSignal(true);
-    final showTodaySchedule = useSignal(true);
-    final showDecorations = useSignal(true);
-    final showCampusMapContacts = useSignal(true);
-    final showNotificationsIcon = useSignal(true);
-    final showFundingSection = useSignal(true);
-    final appLockEnabled = useSignal(false);
-    final quietModeEnabled = useSignal(false);
-    final quietModeNeedsSetup = useSignal(false);
-    final quietModeSetupPermission = useSignal<String?>(null);
-    final quietModeStatusMessage = useSignal('');
-
-    Future<void> load() async {
-      final visibility = await HomeCardPreferences.load();
-      final appLock = await AppLockService().isEnabled();
-      await QuietModeController.instance.load();
-      final quietModeResult = await QuietModeController.instance.refresh();
-      showQuickAccessSection.value = visibility.showQuickAccessSection;
-      showRamadanCard.value = visibility.showRamadanCard;
-      showDecorations.value = visibility.showDecorations;
-      showCampusMapContacts.value = visibility.showCampusMapContacts;
-      showNotificationsIcon.value = visibility.showNotificationsIcon;
-      showExamCountdownCard.value = visibility.showExamCountdownCard;
-      showTodaySchedule.value = visibility.showTodaySchedule;
-      showFundingSection.value = visibility.showFundingSection;
-      appLockEnabled.value = appLock;
-      quietModeEnabled.value = QuietModeController.instance.isEnabled;
-      quietModeNeedsSetup.value =
-          quietModeResult.status == 'permission_required';
-      quietModeSetupPermission.value = quietModeResult.permission;
-      quietModeStatusMessage.value = quietModeNeedsSetup.value
-          ? (quietModeResult.message ?? '')
-          : '';
-    }
-
-    useEffect(() {
-      final observer = _SettingsLifecycleObserver(onResume: load);
-      WidgetsBinding.instance.addObserver(observer);
-      load();
-      return () => WidgetsBinding.instance.removeObserver(observer);
-    }, const []);
-
-    Future<void> setVisibility({
-      required String label,
-      required bool value,
-      required void Function() applyLocal,
-      required Future<void> Function(bool) persist,
-    }) async {
-      applyLocal();
-      await persist(value);
-      RefreshBus.instance.notify(reason: 'home_card_settings_changed');
-      if (context.mounted) {
-        showAppSnackBar(context, '$label ${value ? 'enabled' : 'disabled'}');
-      }
-    }
-
-    Future<void> setAppLock(bool value) async {
-      if (value) {
-        final confirmed = await AppLockService().authenticate();
-        if (!confirmed) {
-          if (context.mounted) {
-            showAppSnackBar(
-              context,
-              'Verification failed. App lock not enabled',
-            );
-          }
-          return;
-        }
-      }
-      await AppLockService().setEnabled(value);
-      appLockEnabled.value = value;
-      RefreshBus.instance.notify(reason: 'app_lock_settings_changed');
-      if (context.mounted) {
-        showAppSnackBar(
-          context,
-          value ? 'App lock enabled' : 'App lock disabled',
-        );
-      }
-    }
-
-    Future<void> setQuietMode(bool value) async {
-      final result = await QuietModeController.instance.setEnabled(
-        value,
-        promptForPermission: value,
-      );
-      quietModeEnabled.value = QuietModeController.instance.isEnabled;
-      quietModeNeedsSetup.value = result.status == 'permission_required';
-      quietModeSetupPermission.value = result.permission;
-      quietModeStatusMessage.value = quietModeNeedsSetup.value
-          ? (result.message ?? '')
-          : '';
-      RefreshBus.instance.notify(reason: 'quiet_mode_settings_changed');
-
-      if (context.mounted) {
-        if (result.status == 'permission_required') {
-          return;
-        }
-        if (result.message != null && result.message!.trim().isNotEmpty) {
-          showAppSnackBar(context, result.message!);
-          return;
-        }
-        if (value) {
-          showAppSnackBar(context, 'Quiet Mode synced with your schedules.');
-        } else {
-          showAppSnackBar(context, 'Quiet Mode disabled.');
-        }
-      }
-    }
-
-    Future<void> fixQuietModeSetup() async {
-      final result = await QuietModeController.instance.requestSetup();
-      quietModeEnabled.value = QuietModeController.instance.isEnabled;
-      quietModeNeedsSetup.value = result.status == 'permission_required';
-      quietModeSetupPermission.value = result.permission;
-      quietModeStatusMessage.value = quietModeNeedsSetup.value
-          ? (result.message ?? '')
-          : '';
-      RefreshBus.instance.notify(reason: 'quiet_mode_settings_changed');
-    }
-
-    String quietModeSetupMsg() {
-      switch (quietModeSetupPermission.value) {
-        case 'notification_policy':
-          return 'Needs DND access to automate Quiet Mode.';
-        case 'exact_alarms':
-          return 'Needs device alarm access to keep schedule timing precise.';
-        default:
-          return quietModeStatusMessage.value.isNotEmpty
-              ? quietModeStatusMessage.value
-              : 'Quiet Mode needs system access to automate schedules.';
-      }
-    }
-
     Divider divider = Divider(
       height: 12,
       thickness: 1,
@@ -191,7 +213,7 @@ class SettingsPage extends HookWidget {
         ),
       ],
       body: BracuRefreshList(
-        onRefresh: load,
+        onRefresh: _loadSettings,
         children: [
           BracuActionBannerCard(
             icon: Icons.wifi_rounded,
@@ -210,11 +232,11 @@ class SettingsPage extends HookWidget {
                 _ToggleRow(
                   title: 'Today\'s Schedule',
                   subtitle: 'Show today\'s class schedule',
-                  value: showTodaySchedule.value,
-                  onChanged: (val) => setVisibility(
+                  value: _showTodaySchedule,
+                  onChanged: (val) => _setVisibility(
                     label: 'Today\'s Schedule',
                     value: val,
-                    applyLocal: () => showTodaySchedule.value = val,
+                    applyLocal: () => _showTodaySchedule = val,
                     persist: HomeCardPreferences.setShowTodaySchedule,
                   ),
                 ),
@@ -222,11 +244,11 @@ class SettingsPage extends HookWidget {
                 _ToggleRow(
                   title: 'Quick Access',
                   subtitle: 'Show quick shortcuts on home',
-                  value: showQuickAccessSection.value,
-                  onChanged: (val) => setVisibility(
+                  value: _showQuickAccessSection,
+                  onChanged: (val) => _setVisibility(
                     label: 'Quick Access',
                     value: val,
-                    applyLocal: () => showQuickAccessSection.value = val,
+                    applyLocal: () => _showQuickAccessSection = val,
                     persist: HomeCardPreferences.setShowQuickAccessSection,
                   ),
                 ),
@@ -234,11 +256,11 @@ class SettingsPage extends HookWidget {
                 _ToggleRow(
                   title: 'Funding Campaign',
                   subtitle: 'Show funding campaign section',
-                  value: showFundingSection.value,
-                  onChanged: (val) => setVisibility(
+                  value: _showFundingSection,
+                  onChanged: (val) => _setVisibility(
                     label: 'Funding Campaign',
                     value: val,
-                    applyLocal: () => showFundingSection.value = val,
+                    applyLocal: () => _showFundingSection = val,
                     persist: HomeCardPreferences.setShowFundingSection,
                   ),
                 ),
@@ -246,11 +268,11 @@ class SettingsPage extends HookWidget {
                 _ToggleRow(
                   title: 'Exam Countdown',
                   subtitle: 'Show upcoming exam countdown',
-                  value: showExamCountdownCard.value,
-                  onChanged: (val) => setVisibility(
+                  value: _showExamCountdownCard,
+                  onChanged: (val) => _setVisibility(
                     label: 'Exam Countdown',
                     value: val,
-                    applyLocal: () => showExamCountdownCard.value = val,
+                    applyLocal: () => _showExamCountdownCard = val,
                     persist: HomeCardPreferences.setShowExamCountdownCard,
                   ),
                 ),
@@ -258,11 +280,11 @@ class SettingsPage extends HookWidget {
                 _ToggleRow(
                   title: 'Notifications Icon',
                   subtitle: 'Show bell icon on home',
-                  value: showNotificationsIcon.value,
-                  onChanged: (val) => setVisibility(
+                  value: _showNotificationsIcon,
+                  onChanged: (val) => _setVisibility(
                     label: 'Notifications Icon',
                     value: val,
-                    applyLocal: () => showNotificationsIcon.value = val,
+                    applyLocal: () => _showNotificationsIcon = val,
                     persist: HomeCardPreferences.setShowNotificationsIcon,
                   ),
                 ),
@@ -270,11 +292,11 @@ class SettingsPage extends HookWidget {
                 _ToggleRow(
                   title: 'Ramadan Times',
                   subtitle: 'Show Sehri and Iftar times',
-                  value: showRamadanCard.value,
-                  onChanged: (val) => setVisibility(
+                  value: _showRamadanCard,
+                  onChanged: (val) => _setVisibility(
                     label: 'Ramadan Times',
                     value: val,
-                    applyLocal: () => showRamadanCard.value = val,
+                    applyLocal: () => _showRamadanCard = val,
                     persist: HomeCardPreferences.setShowRamadanCard,
                   ),
                 ),
@@ -282,11 +304,11 @@ class SettingsPage extends HookWidget {
                 _ToggleRow(
                   title: 'Campus Map & Contacts',
                   subtitle: 'Show contacts card on home',
-                  value: showCampusMapContacts.value,
-                  onChanged: (val) => setVisibility(
+                  value: _showCampusMapContacts,
+                  onChanged: (val) => _setVisibility(
                     label: 'Campus Map & Contacts',
                     value: val,
-                    applyLocal: () => showCampusMapContacts.value = val,
+                    applyLocal: () => _showCampusMapContacts = val,
                     persist: HomeCardPreferences.setShowCampusMapContacts,
                   ),
                 ),
@@ -294,11 +316,11 @@ class SettingsPage extends HookWidget {
                 _ToggleRow(
                   title: 'Decorations',
                   subtitle: 'Show UI background decorations',
-                  value: showDecorations.value,
-                  onChanged: (val) => setVisibility(
+                  value: _showDecorations,
+                  onChanged: (val) => _setVisibility(
                     label: 'Decorations',
                     value: val,
-                    applyLocal: () => showDecorations.value = val,
+                    applyLocal: () => _showDecorations = val,
                     persist: HomeCardPreferences.setShowDecorations,
                   ),
                 ),
@@ -312,10 +334,10 @@ class SettingsPage extends HookWidget {
                 _ToggleRow(
                   title: 'Quiet Mode',
                   subtitle: 'Auto DND for your schedules',
-                  value: quietModeEnabled.value,
-                  onChanged: setQuietMode,
+                  value: _quietModeEnabled,
+                  onChanged: _setQuietMode,
                 ),
-                if (quietModeNeedsSetup.value) ...[
+                if (_quietModeNeedsSetup) ...[
                   const Gap(12),
                   Container(
                     width: double.infinity,
@@ -331,7 +353,7 @@ class SettingsPage extends HookWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            quietModeSetupMsg(),
+                            _quietModeSetupMsg(),
                             style: TextStyle(
                               fontSize: 12,
                               color: BracuPalette.textSecondary(context),
@@ -340,7 +362,7 @@ class SettingsPage extends HookWidget {
                         ),
                         const Gap(10),
                         TextButton(
-                          onPressed: fixQuietModeSetup,
+                          onPressed: _fixQuietModeSetup,
                           child: const Text('Fix'),
                         ),
                       ],
@@ -355,8 +377,8 @@ class SettingsPage extends HookWidget {
             child: _ToggleRow(
               title: 'App Lock',
               subtitle: 'System lock security for the app',
-              value: appLockEnabled.value,
-              onChanged: setAppLock,
+              value: _appLockEnabled,
+              onChanged: _setAppLock,
             ),
           ),
           if (!kIsWeb || isChromeRuntimeAvailable()) ...[
@@ -377,18 +399,6 @@ class SettingsPage extends HookWidget {
         ],
       ),
     );
-  }
-}
-
-class _SettingsLifecycleObserver extends WidgetsBindingObserver {
-  _SettingsLifecycleObserver({required this.onResume});
-  final VoidCallback onResume;
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      onResume();
-    }
   }
 }
 
