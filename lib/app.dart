@@ -982,8 +982,7 @@ class _MyAppState extends State<MyApp>
                 value: overlayStyle,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final isWide = constraints.maxWidth >= 728.0;
-                    final shellWidth = isWide ? 728.0 : constraints.maxWidth;
+                    final shellWidth = constraints.maxWidth;
                     final shellHeight = mediaQuery.size.height;
                     final shellSize = Size(shellWidth, shellHeight);
                     final shellMediaQuery = mediaQuery.copyWith(
@@ -1011,8 +1010,8 @@ class _MyAppState extends State<MyApp>
                                         ),
                                       )
                                     : BoxDecoration(color: baseColor),
+                                ),
                               ),
-                            ),
                             Center(
                               child: Container(
                                 width: shellWidth,
@@ -1022,20 +1021,7 @@ class _MyAppState extends State<MyApp>
                                   color: Theme.of(
                                     context,
                                   ).scaffoldBackgroundColor,
-                                  borderRadius: BorderRadius.circular(
-                                    isWide ? 32 : 0,
-                                  ),
-                                  boxShadow: isWide
-                                      ? [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(
-                                              alpha: 0.16,
-                                            ),
-                                            blurRadius: 30,
-                                            offset: const Offset(0, 16),
-                                          ),
-                                        ]
-                                      : null,
+                                  borderRadius: BorderRadius.zero,
                                 ),
                                 clipBehavior: Clip.antiAlias,
                                 child: MediaQuery(
