@@ -121,8 +121,8 @@ dart compile js \
 
 mkdir -p "${OUT_DIR}"
 mkdir -p "${FIREFOX_DIR}"
-cp -R "${COMMON_DIR}/" "${OUT_DIR}/"
-cp -R "${COMMON_DIR}/" "${FIREFOX_DIR}/"
+cp -R "${COMMON_DIR}/." "${OUT_DIR}/"
+cp -R "${COMMON_DIR}/." "${FIREFOX_DIR}/"
 
 python3 -c "
 import json
