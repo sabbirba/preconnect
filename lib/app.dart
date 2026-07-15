@@ -16,6 +16,7 @@ import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_log_observer.dart';
 import 'package:preconnect/api/auth.dart';
+import 'package:preconnect/libsync/auth_service.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/api/api_client.dart';
@@ -32,6 +33,7 @@ import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/pages/shared_widgets/session_helper.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/quiet_controller.dart';
+import 'package:app_links/app_links.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/storage_keys.dart';
@@ -280,6 +282,7 @@ class _MyAppState extends State<MyApp>
   StreamSubscription<WebExtensionSessionEvent>? _webSessionSub;
   WebExtensionShortcutBridge? _webShortcutBridge;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+  StreamSubscription<Uri?>? _deepLinkSub;
   bool _lastWasOffline = false;
   DateTime? _lastAppRefreshAt;
   bool _appRefreshInFlight = false;
@@ -329,6 +332,58 @@ class _MyAppState extends State<MyApp>
       _connectivitySub = Connectivity().onConnectivityChanged.listen(
         _onConnectivityChanged,
       );
+      if (!kIsWeb) {
+        _initDeepLinkListener();
+      }
+    }
+  }
+
+  void _initDeepLinkListener() {
+    final appLinks = AppLinks();
+    _deepLinkSub = appLinks.uriLinkStream.listen((uri) {
+      _handleIncomingDeepLink(uri);
+    }, onError: (err) {});
+
+    appLinks
+        .getInitialLink()
+        .then((uri) {
+          if (uri != null) {
+            _handleIncomingDeepLink(uri);
+          }
+        })
+        .catchError((_) {});
+  }
+
+  void _handleIncomingDeepLink(Uri uri) {
+    if (uri.host == 'preconnect.app' &&
+        uri.path.startsWith('/api/auth/callback')) {
+      final accessToken = uri.queryParameters['google_access_token'];
+      final refreshToken = uri.queryParameters['google_refresh_token'];
+      if (accessToken != null && accessToken.isNotEmpty) {
+        unawaited(
+          LibSyncAuthService.instance
+              .authenticateWithTokens(
+                googleAccessToken: accessToken,
+                googleRefreshToken: refreshToken,
+              )
+              .then((_) {
+                if (mounted) {
+                  unawaited(triggerAppRefresh(forceRefresh: true));
+                }
+              }),
+        );
+        return;
+      }
+      final code = uri.queryParameters['code'];
+      if (code != null && code.isNotEmpty) {
+        unawaited(
+          LibSyncAuthService.instance.authenticateWithCode(code).then((_) {
+            if (mounted) {
+              unawaited(triggerAppRefresh(forceRefresh: true));
+            }
+          }),
+        );
+      }
     }
   }
 
@@ -509,6 +564,7 @@ class _MyAppState extends State<MyApp>
   @override
   void dispose() {
     _connectivitySub?.cancel();
+    _deepLinkSub?.cancel();
     if (!widget.isPreBoot) {
       _webSessionSub?.cancel();
       _webExtensionSessionFlow?.dispose();
@@ -1010,8 +1066,8 @@ class _MyAppState extends State<MyApp>
                                         ),
                                       )
                                     : BoxDecoration(color: baseColor),
-                                ),
                               ),
+                            ),
                             Center(
                               child: Container(
                                 width: shellWidth,

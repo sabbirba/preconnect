@@ -148,8 +148,13 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>com.googleusercontent.apps.53508941136-rkgrsch5oa60g4absotjj7lgg7s6e7ji</string>
+				<string>preconnect</string>
 			</array>
 		</dict>
+	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>https</string>
 	</array>
 </dict>
 </plist>

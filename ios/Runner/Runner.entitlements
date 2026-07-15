@@ -6,5 +6,9 @@
 	<array>
 		<string>$(AppIdentifierPrefix)com.sabbirba.preconnect</string>
 	</array>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:preconnect.app</string>
+	</array>
 </dict>
 </plist>

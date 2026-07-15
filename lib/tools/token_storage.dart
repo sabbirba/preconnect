@@ -48,11 +48,13 @@ class TokenStorage {
     }
 
     if (_sensitiveKeys.contains(key)) {
+      final localVal = await AppStorage.instance.getString(key);
+      if (localVal != null && localVal.isNotEmpty) return localVal;
       try {
         final val = await _secureStorage.read(key: key);
         if (val != null) return val;
       } catch (_) {}
-      return await AppStorage.instance.getString(key);
+      return null;
     }
 
     final value = await AppStorage.instance.getString(key);
@@ -84,20 +86,18 @@ class TokenStorage {
     }
 
     if (_sensitiveKeys.contains(key)) {
+      if (value == null || value.isEmpty) {
+        await AppStorage.instance.remove(key);
+      } else {
+        await AppStorage.instance.setString(key, value);
+      }
       try {
         if (value == null || value.isEmpty) {
           await _secureStorage.delete(key: key);
         } else {
           await _secureStorage.write(key: key, value: value);
         }
-        await AppStorage.instance.remove(key);
-      } catch (_) {
-        if (value == null || value.isEmpty) {
-          await AppStorage.instance.remove(key);
-        } else {
-          await AppStorage.instance.setString(key, value);
-        }
-      }
+      } catch (_) {}
     } else {
       if (value == null || value.isEmpty) {
         await AppStorage.instance.remove(key);

@@ -255,23 +255,24 @@ class LibSyncApiClient extends http.BaseClient {
   }
 
   Future<void> _safeWrite(String key, String value) async {
+    final store = AppPreferencesStore();
+    await store.setString(key, value);
     try {
       await _secureStorage.write(key: key, value: value);
-      final store = AppPreferencesStore();
-      await store.remove(key);
-    } catch (_) {
-      final store = AppPreferencesStore();
-      await store.setString(key, value);
-    }
+    } catch (_) {}
   }
 
   Future<String?> _safeRead(String key) async {
-    try {
-      final val = await _secureStorage.read(key: key);
-      if (val != null) return val;
-    } catch (_) {}
     final store = AppPreferencesStore();
-    return await store.getString(key);
+    final localVal = await store.getString(key);
+    if (localVal != null && localVal.isNotEmpty) {
+      return localVal;
+    }
+    try {
+      return await _secureStorage.read(key: key);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _safeDelete(String key) async {

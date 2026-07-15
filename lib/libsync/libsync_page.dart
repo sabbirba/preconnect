@@ -20,8 +20,8 @@ import 'package:preconnect/libsync/chrome_flow_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/libsync/chrome_flow_web.dart';
 import 'package:preconnect/libsync/web_oauth_flow_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/libsync/web_oauth_flow_web.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'auth_service.dart';
-import 'google_oauth_webview.dart';
 import 'libsync_config.dart';
 import 'library_card.dart';
 import 'space_availability.dart';
@@ -258,12 +258,20 @@ class _LibSyncPageState extends State<LibSyncPage>
       String? authCode;
       String? redirectUri;
       if (!kIsWeb) {
-        authCode = await Navigator.of(context).push<String>(
-          MaterialPageRoute(
-            builder: (context) => const GoogleOAuthWebViewPage(),
-          ),
-        );
-        redirectUri = LibSyncConfig.googleRedirectUri;
+        final oauthUrl =
+            Uri.parse('https://accounts.google.com/o/oauth2/v2/auth').replace(
+              queryParameters: {
+                'client_id': LibSyncConfig.googleClientId,
+                'redirect_uri': LibSyncConfig.googleRedirectUri,
+                'response_type': 'code',
+                'scope': LibSyncConfig.googleScopes,
+                'access_type': 'offline',
+                'prompt': 'consent',
+                'state': 'app',
+              },
+            );
+        await launchUrl(oauthUrl, mode: LaunchMode.externalApplication);
+        return;
       } else {
         if (isChromeRuntimeAvailable()) {
           final oauthUrl =
