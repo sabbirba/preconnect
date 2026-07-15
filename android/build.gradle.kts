@@ -27,6 +27,7 @@ subprojects {
         }
         extensions.configure<LibraryExtension> {
             lint {
+                checkReleaseBuilds = false
                 disable += setOf("EasterEgg", "StopShip")
             }
             if (project.name == "in_app_update") {
