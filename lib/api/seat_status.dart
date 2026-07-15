@@ -278,7 +278,12 @@ class SeatStatusSchedule {
   factory SeatStatusSchedule.fromJson(Map<String, dynamic> json) {
     final list = json['classSchedules'] as List?;
     final classSchedulesList = list != null
-        ? list.map((e) => SeatStatusClassSchedule.fromJson(e as Map<String, dynamic>)).toList()
+        ? list
+              .map(
+                (e) =>
+                    SeatStatusClassSchedule.fromJson(e as Map<String, dynamic>),
+              )
+              .toList()
         : <SeatStatusClassSchedule>[];
 
     return SeatStatusSchedule(

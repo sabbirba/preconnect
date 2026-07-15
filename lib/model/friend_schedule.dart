@@ -1,9 +1,8 @@
 import 'dart:convert';
-import 'package:equatable/equatable.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
-class FriendSchedule extends Equatable {
+class FriendSchedule {
   final String name;
   final String id;
   final String? photoFilePath;
@@ -23,15 +22,12 @@ class FriendSchedule extends Equatable {
   });
 
   @override
-  List<Object?> get props => [
-    name,
-    id,
-    photoFilePath,
-    photoUrl,
-    courses,
-    shortCode,
-    semester,
-  ];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FriendSchedule && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 
   factory FriendSchedule.fromJson(Map<String, dynamic> json) {
     final list = json['courses'] as List?;
@@ -39,7 +35,8 @@ class FriendSchedule extends Equatable {
         ? list.map((e) => Course.fromJson(e as Map<String, dynamic>)).toList()
         : <Course>[];
     final photoFilePath = json['photoFilePath'] as String?;
-    final photoUrl = json['photoUrl'] as String? ?? _buildPhotoUrl(photoFilePath);
+    final photoUrl =
+        json['photoUrl'] as String? ?? ApiConfig.photoUrl(photoFilePath);
 
     return FriendSchedule(
       name: json['name'] as String? ?? '',
@@ -65,15 +62,7 @@ class FriendSchedule extends Equatable {
   }
 }
 
-String? _buildPhotoUrl(String? photoFilePath) {
-  if (photoFilePath == null || photoFilePath.isEmpty) return null;
-  final encoded = base64Url
-      .encode(utf8.encode(photoFilePath))
-      .replaceAll('=', '');
-  return '${ApiConfig.connectCdnBase}/img/thumb/$encoded.jpg';
-}
-
-class Course extends Equatable {
+class Course {
   final String courseCode;
   final String? sectionName;
   final String? roomNumber;
@@ -89,13 +78,12 @@ class Course extends Equatable {
   });
 
   @override
-  List<Object?> get props => [
-    courseCode,
-    sectionName,
-    roomNumber,
-    faculties,
-    schedule,
-  ];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Course && courseCode == other.courseCode && sectionName == other.sectionName;
+
+  @override
+  int get hashCode => Object.hash(courseCode, sectionName);
 
   factory Course.fromJson(Map<String, dynamic> json) {
     final roomNumber =
@@ -161,7 +149,7 @@ class Course extends Equatable {
   }
 }
 
-class CourseSchedule extends Equatable {
+class CourseSchedule {
   final String day;
   final String startTime;
   final String endTime;
@@ -173,7 +161,15 @@ class CourseSchedule extends Equatable {
   });
 
   @override
-  List<Object?> get props => [day, startTime, endTime];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CourseSchedule &&
+          day == other.day &&
+          startTime == other.startTime &&
+          endTime == other.endTime;
+
+  @override
+  int get hashCode => Object.hash(day, startTime, endTime);
 
   factory CourseSchedule.fromJson(Map<String, dynamic> json) {
     return CourseSchedule(
@@ -192,7 +188,7 @@ class CourseSchedule extends Equatable {
   }
 }
 
-class FriendMetadata extends Equatable {
+class FriendMetadata {
   final String friendId;
   final String? nickname;
   final bool isFavorite;
@@ -204,7 +200,12 @@ class FriendMetadata extends Equatable {
   });
 
   @override
-  List<Object?> get props => [friendId, nickname, isFavorite];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FriendMetadata && friendId == other.friendId;
+
+  @override
+  int get hashCode => friendId.hashCode;
 
   factory FriendMetadata.fromJson(Map<String, dynamic> json) {
     return FriendMetadata(

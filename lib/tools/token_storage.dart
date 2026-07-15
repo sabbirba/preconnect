@@ -15,7 +15,7 @@ import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:preconnect/tools/platform_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/storage_web.dart';
+    if (dart.library.js_interop) 'package:preconnect/tools/storage_web.dart';
 
 class TokenPersistenceException implements Exception {
   TokenPersistenceException(this.message);

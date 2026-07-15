@@ -51,7 +51,9 @@ class FundingStatus {
   factory FundingStatus.fromJson(Map<String, dynamic> json) {
     final list = json['contributions'] as List?;
     final contributionsList = list != null
-        ? list.map((e) => ContributionItem.fromJson(e as Map<String, dynamic>)).toList()
+        ? list
+              .map((e) => ContributionItem.fromJson(e as Map<String, dynamic>))
+              .toList()
         : <ContributionItem>[];
 
     return FundingStatus(

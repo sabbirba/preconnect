@@ -1,7 +1,33 @@
-import 'package:collection/collection.dart';
-
 int compareNaturalText(String a, String b) {
-  return compareNatural(a.trim().toLowerCase(), b.trim().toLowerCase());
+  return _compareNatural(a.trim().toLowerCase(), b.trim().toLowerCase());
+}
+
+int _compareNatural(String a, String b) {
+  int i = 0, j = 0;
+  while (i < a.length && j < b.length) {
+    final ca = a[i], cb = b[j];
+    final da = ca.codeUnitAt(0), db = cb.codeUnitAt(0);
+    final aIsDigit = da >= 48 && da <= 57;
+    final bIsDigit = db >= 48 && db <= 57;
+    if (aIsDigit && bIsDigit) {
+      int numA = 0, numB = 0;
+      while (i < a.length && a[i].codeUnitAt(0) >= 48 && a[i].codeUnitAt(0) <= 57) {
+        numA = numA * 10 + (a[i].codeUnitAt(0) - 48);
+        i++;
+      }
+      while (j < b.length && b[j].codeUnitAt(0) >= 48 && b[j].codeUnitAt(0) <= 57) {
+        numB = numB * 10 + (b[j].codeUnitAt(0) - 48);
+        j++;
+      }
+      if (numA != numB) return numA.compareTo(numB);
+    } else {
+      final cmp = ca.compareTo(cb);
+      if (cmp != 0) return cmp;
+      i++;
+      j++;
+    }
+  }
+  return a.length.compareTo(b.length);
 }
 
 class ExamSorting {

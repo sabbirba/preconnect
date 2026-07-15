@@ -1,8 +1,7 @@
 import 'dart:convert';
-import 'package:equatable/equatable.dart';
 import 'package:preconnect/tools/string_utils.dart';
 
-class SectionFaculty extends Equatable {
+class SectionFaculty {
   final String id;
   final String staffName;
   final String shortName;
@@ -18,7 +17,12 @@ class SectionFaculty extends Equatable {
   });
 
   @override
-  List<Object?> get props => [id, staffName, shortName, email, imgUrl];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SectionFaculty && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 
   factory SectionFaculty.fromJson(Map<String, dynamic> json) {
     return SectionFaculty(
@@ -148,7 +152,7 @@ class Section {
   }
 }
 
-class SectionSchedule extends Equatable {
+class SectionSchedule {
   final String? finalExamDate;
   final String? finalExamStartTime;
   final String? finalExamEndTime;
@@ -176,24 +180,22 @@ class SectionSchedule extends Equatable {
   });
 
   @override
-  List<Object?> get props => [
-    finalExamDate,
-    finalExamStartTime,
-    finalExamEndTime,
-    midExamDate,
-    midExamStartTime,
-    midExamEndTime,
-    finalExamDetail,
-    midExamDetail,
-    classStartDate,
-    classEndDate,
-    classSchedules,
-  ];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SectionSchedule &&
+          classStartDate == other.classStartDate &&
+          classEndDate == other.classEndDate &&
+          classSchedules == other.classSchedules;
+
+  @override
+  int get hashCode => Object.hash(classStartDate, classEndDate, classSchedules);
 
   factory SectionSchedule.fromJson(Map<String, dynamic> json) {
     final list = json['classSchedules'] as List?;
     final classSchedulesList = list != null
-        ? list.map((e) => ClassSchedule.fromJson(e as Map<String, dynamic>)).toList()
+        ? list
+              .map((e) => ClassSchedule.fromJson(e as Map<String, dynamic>))
+              .toList()
         : <ClassSchedule>[];
 
     return SectionSchedule(
@@ -228,7 +230,7 @@ class SectionSchedule extends Equatable {
   }
 }
 
-class ClassSchedule extends Equatable {
+class ClassSchedule {
   final String startTime;
   final String endTime;
   final String day;
@@ -240,7 +242,15 @@ class ClassSchedule extends Equatable {
   });
 
   @override
-  List<Object?> get props => [startTime, endTime, day];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ClassSchedule &&
+          startTime == other.startTime &&
+          endTime == other.endTime &&
+          day == other.day;
+
+  @override
+  int get hashCode => Object.hash(startTime, endTime, day);
 
   factory ClassSchedule.fromJson(Map<String, dynamic> json) {
     return ClassSchedule(

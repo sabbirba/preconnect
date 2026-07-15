@@ -1,3 +1,4 @@
+export 'picker_shared.dart';
 export 'title_shared.dart';
 export 'session_sync.dart';
 export 'login_shared.dart';

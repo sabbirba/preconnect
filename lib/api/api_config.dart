@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:preconnect/tools/runtime_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/runtime_web.dart';
+    if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 import 'package:preconnect/tools/origin_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/origin_web.dart';
+    if (dart.library.js_interop) 'package:preconnect/tools/origin_web.dart';
 
 const bool _kIsWeb = identical(0, 0.0);
 
@@ -52,13 +52,6 @@ class ApiConfig {
   static const String transportUrl = '$realtimeApiBase/data/transport.json';
 
   static String get connectApiBase {
-    if (_kIsWeb && !isChromeRuntimeAvailable()) {
-      return '$_webProxyBase/api';
-    }
-    return 'https://connect.bracu.ac.bd/api';
-  }
-
-  static String get connectWebApiBase {
     if (_kIsWeb && !isChromeRuntimeAvailable()) {
       return '$_webProxyBase/api';
     }

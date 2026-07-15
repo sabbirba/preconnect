@@ -152,10 +152,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
       _copied = true;
     });
 
-    showAppSnackBar(
-      context,
-      'Session code copied.',
-    );
+    showAppSnackBar(context, 'Session code copied.');
   }
 
   @override
@@ -248,9 +245,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
               BracuActionButton(
                 onPressed: _copyToClipboard,
                 label: _copied ? 'Copied' : 'Copy Code',
-                icon: _copied
-                    ? Icons.check_circle_rounded
-                    : Icons.copy_rounded,
+                icon: _copied ? Icons.check_circle_rounded : Icons.copy_rounded,
                 outlined: false,
                 backgroundColor: _copied
                     ? BracuPalette.accent

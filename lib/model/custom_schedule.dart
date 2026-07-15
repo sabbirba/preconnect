@@ -1,6 +1,5 @@
-import 'package:equatable/equatable.dart';
 
-class CustomSchedule extends Equatable {
+class CustomSchedule {
   const CustomSchedule({
     required this.itemId,
     required this.kind,
@@ -30,20 +29,14 @@ class CustomSchedule extends Equatable {
   final DateTime updatedAt;
 
   @override
-  List<Object?> get props => [
-    itemId,
-    kind,
-    title,
-    courseCode,
-    sectionName,
-    startTime,
-    endTime,
-    reminderAt,
-    notes,
-    isDone,
-    createdAt,
-    updatedAt,
-  ];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CustomSchedule &&
+          itemId == other.itemId &&
+          updatedAt == other.updatedAt;
+
+  @override
+  int get hashCode => Object.hash(itemId, updatedAt);
 
   factory CustomSchedule.fromJson(Map<String, dynamic> json) {
     return CustomSchedule(
@@ -53,8 +46,12 @@ class CustomSchedule extends Equatable {
       courseCode: json['courseCode'] as String? ?? '',
       sectionName: json['sectionName'] as String? ?? '',
       startTime: DateTime.parse(json['startTime'] as String),
-      endTime: json['endTime'] != null ? DateTime.parse(json['endTime'] as String) : null,
-      reminderAt: json['reminderAt'] != null ? DateTime.parse(json['reminderAt'] as String) : null,
+      endTime: json['endTime'] != null
+          ? DateTime.parse(json['endTime'] as String)
+          : null,
+      reminderAt: json['reminderAt'] != null
+          ? DateTime.parse(json['reminderAt'] as String)
+          : null,
       notes: json['notes'] as String? ?? '',
       isDone: json['isDone'] as bool? ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),

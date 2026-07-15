@@ -15,7 +15,7 @@ import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/tools/time_utils.dart' show BracuTime;
 import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/runtime_web.dart';
+    if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 import 'package:preconnect/libsync/chrome_flow_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/libsync/chrome_flow_web.dart';
 import 'package:preconnect/libsync/web_oauth_flow_stub.dart'

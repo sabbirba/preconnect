@@ -1,10 +1,7 @@
 import 'dart:async';
-import 'dart:io' show SocketException;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:retry/retry.dart';
-import 'package:clock/clock.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/tools/app_storage.dart';
@@ -61,7 +58,7 @@ class ApiClient {
       final cachedAt = _cachedHasConnectionAt;
       if (cached != null &&
           cachedAt != null &&
-          clock.now().difference(cachedAt) <= _connectionCacheTtl) {
+          DateTime.now().difference(cachedAt) <= _connectionCacheTtl) {
         return cached;
       }
     }
@@ -70,7 +67,7 @@ class ApiClient {
       final connectivityResult = await Connectivity().checkConnectivity();
       if (connectivityResult.contains(ConnectivityResult.none)) {
         _cachedHasConnection = false;
-        _cachedHasConnectionAt = clock.now();
+        _cachedHasConnectionAt = DateTime.now();
         return false;
       }
 
@@ -82,11 +79,11 @@ class ApiClient {
           .timeout(_connectivityProbeTimeout);
       final connected = response.statusCode < 500;
       _cachedHasConnection = connected;
-      _cachedHasConnectionAt = clock.now();
+      _cachedHasConnectionAt = DateTime.now();
       return connected;
     } catch (_) {
       _cachedHasConnection = false;
-      _cachedHasConnectionAt = clock.now();
+      _cachedHasConnectionAt = DateTime.now();
       return false;
     }
   }
@@ -97,7 +94,7 @@ class ApiClient {
     if (cachedToken != null &&
         cachedToken.isNotEmpty &&
         cachedAt != null &&
-        clock.now().difference(cachedAt) <= _accessTokenCacheTtl) {
+        DateTime.now().difference(cachedAt) <= _accessTokenCacheTtl) {
       return cachedToken;
     }
 
@@ -108,7 +105,7 @@ class ApiClient {
         );
         if (token != null && token.isNotEmpty) {
           _cachedAccessToken = token;
-          _cachedAccessTokenAt = clock.now();
+          _cachedAccessTokenAt = DateTime.now();
           return token;
         }
       } catch (_) {}
@@ -118,7 +115,7 @@ class ApiClient {
       }
     }
     _cachedAccessToken = null;
-    _cachedAccessTokenAt = clock.now();
+    _cachedAccessTokenAt = DateTime.now();
     return null;
   }
 
@@ -129,13 +126,15 @@ class ApiClient {
 
   Future<void> _refreshTokensWithRetry() async {
     try {
-      final status = await retry(() async {
+      TokenRefreshStatus? status;
+      for (var attempt = 0; attempt < 3; attempt++) {
         final s = await AuthService().refreshTokenStatus();
-        if (s == TokenRefreshStatus.retryableFailure) {
-          throw const SocketException('Retryable session refresh failure');
+        if (s != TokenRefreshStatus.retryableFailure) {
+          status = s;
+          break;
         }
-        return s;
-      }, maxAttempts: 3);
+        if (attempt < 2) await Future<void>.delayed(Duration(milliseconds: 200 * (attempt + 1)));
+      }
       if (status == TokenRefreshStatus.invalidSession) {
         await AuthService().logout(force: true);
         throw const SessionExpiredException();
@@ -462,7 +461,7 @@ class ApiClient {
       if (cacheDuration > Duration.zero && response.statusCode == 200) {
         _cachedResponses[inFlightKey] = _CachedHttpResponse(
           response: response,
-          expiresAt: clock.now().add(cacheDuration),
+          expiresAt: DateTime.now().add(cacheDuration),
         );
       }
       return response;
@@ -530,7 +529,7 @@ class _CachedHttpResponse {
   final http.Response response;
   final DateTime expiresAt;
 
-  bool get isExpired => clock.now().isAfter(expiresAt);
+  bool get isExpired => DateTime.now().isAfter(expiresAt);
 }
 
 Map<String, String> compressionHeaders() {
@@ -603,7 +602,7 @@ Future<String?> resolvePortfolioId({
 }) async {
   var id = await prefs.getString('id');
   if (id == null || id.isEmpty) {
-    final now = clock.now();
+    final now = DateTime.now();
     final recentFailures = _portfolioIdResolutionFailures
         .where((t) => now.difference(t) < _portfolioIdQuarantinePeriod)
         .toList();

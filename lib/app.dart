@@ -1,10 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:clock/clock.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/runtime_web.dart';
+    if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -38,7 +37,7 @@ import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/shortcut_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/shortcut_web.dart';
+    if (dart.library.js_interop) 'package:preconnect/tools/shortcut_web.dart';
 
 class AppBootstrapState {
   const AppBootstrapState({
@@ -527,7 +526,7 @@ class _MyAppState extends State<MyApp>
 
   Future<void> triggerAppRefresh({bool forceRefresh = false}) async {
     if (_appRefreshInFlight) return;
-    final now = clock.now();
+    final now = DateTime.now();
     if (!forceRefresh &&
         _lastAppRefreshAt != null &&
         now.difference(_lastAppRefreshAt!) < const Duration(seconds: 30)) {
@@ -723,7 +722,7 @@ class _MyAppState extends State<MyApp>
 
   Future<void> _warmBackgroundCaches({bool forceRefresh = false}) async {
     if (_backgroundWarmupInFlight) return;
-    final now = clock.now();
+    final now = DateTime.now();
     if (!forceRefresh &&
         _lastBackgroundWarmupAt != null &&
         now.difference(_lastBackgroundWarmupAt!) < const Duration(minutes: 1)) {

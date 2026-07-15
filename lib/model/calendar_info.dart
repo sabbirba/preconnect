@@ -1,6 +1,5 @@
-import 'package:equatable/equatable.dart';
 
-class CalendarFeed extends Equatable {
+class CalendarFeed {
   const CalendarFeed({
     required this.rangeStart,
     required this.rangeEnd,
@@ -14,12 +13,22 @@ class CalendarFeed extends Equatable {
   final List<CalendarEntry> items;
 
   @override
-  List<Object?> get props => [rangeStart, rangeEnd, sourceFingerprint, items];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CalendarFeed &&
+          rangeStart == other.rangeStart &&
+          rangeEnd == other.rangeEnd &&
+          sourceFingerprint == other.sourceFingerprint;
+
+  @override
+  int get hashCode => Object.hash(rangeStart, rangeEnd, sourceFingerprint);
 
   factory CalendarFeed.fromJson(Map<String, dynamic> json) {
     final list = json['items'] as List?;
     final itemsList = list != null
-        ? list.map((e) => CalendarEntry.fromJson(e as Map<String, dynamic>)).toList()
+        ? list
+              .map((e) => CalendarEntry.fromJson(e as Map<String, dynamic>))
+              .toList()
         : <CalendarEntry>[];
 
     return CalendarFeed(
@@ -40,7 +49,7 @@ class CalendarFeed extends Equatable {
   }
 }
 
-class CalendarEntry extends Equatable {
+class CalendarEntry {
   const CalendarEntry({
     required this.id,
     required this.label,
@@ -86,27 +95,17 @@ class CalendarEntry extends Equatable {
   String get primaryDate => date.isNotEmpty ? date : startDate;
 
   @override
-  List<Object?> get props => [
-    id,
-    label,
-    typeKey,
-    date,
-    startDate,
-    endDate,
-    startTime,
-    endTime,
-    place,
-    isRepeatable,
-    isCancelled,
-    ref,
-    roomName,
-    roomNumber,
-    sessionLabel,
-    building,
-    faculty,
-    department,
-    actor,
-  ];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CalendarEntry &&
+          id == other.id &&
+          typeKey == other.typeKey &&
+          date == other.date &&
+          startTime == other.startTime &&
+          endTime == other.endTime;
+
+  @override
+  int get hashCode => Object.hash(id, typeKey, date, startTime, endTime);
 
   factory CalendarEntry.fromJson(Map<String, dynamic> json) {
     return CalendarEntry(

@@ -19,9 +19,9 @@ import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/push_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/push_web.dart';
+    if (dart.library.js_interop) 'package:preconnect/tools/push_web.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/runtime_web.dart';
+    if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class FCMService {

@@ -10,7 +10,7 @@ import 'package:preconnect/tools/quiet_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/runtime_web.dart';
+    if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -19,7 +19,8 @@ class SettingsPage extends StatefulWidget {
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver {
+class _SettingsPageState extends State<SettingsPage>
+    with WidgetsBindingObserver {
   static const double _sectionGap = 14;
 
   bool _showQuickAccessSection = true;
@@ -76,7 +77,9 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
         _quietModeEnabled = QuietModeController.instance.isEnabled;
         _quietModeNeedsSetup = quietModeResult.status == 'permission_required';
         _quietModeSetupPermission = quietModeResult.permission;
-        _quietModeStatusMessage = _quietModeNeedsSetup ? (quietModeResult.message ?? '') : '';
+        _quietModeStatusMessage = _quietModeNeedsSetup
+            ? (quietModeResult.message ?? '')
+            : '';
       });
     }
   }
@@ -102,10 +105,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
       final confirmed = await AppLockService().authenticate();
       if (!confirmed) {
         if (mounted) {
-          showAppSnackBar(
-            context,
-            'Verification failed. App lock not enabled',
-          );
+          showAppSnackBar(context, 'Verification failed. App lock not enabled');
         }
         return;
       }
@@ -132,7 +132,9 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
       _quietModeEnabled = QuietModeController.instance.isEnabled;
       _quietModeNeedsSetup = result.status == 'permission_required';
       _quietModeSetupPermission = result.permission;
-      _quietModeStatusMessage = _quietModeNeedsSetup ? (result.message ?? '') : '';
+      _quietModeStatusMessage = _quietModeNeedsSetup
+          ? (result.message ?? '')
+          : '';
     });
     RefreshBus.instance.notify(reason: 'quiet_mode_settings_changed');
 
@@ -158,7 +160,9 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
       _quietModeEnabled = QuietModeController.instance.isEnabled;
       _quietModeNeedsSetup = result.status == 'permission_required';
       _quietModeSetupPermission = result.permission;
-      _quietModeStatusMessage = _quietModeNeedsSetup ? (result.message ?? '') : '';
+      _quietModeStatusMessage = _quietModeNeedsSetup
+          ? (result.message ?? '')
+          : '';
     });
     RefreshBus.instance.notify(reason: 'quiet_mode_settings_changed');
   }

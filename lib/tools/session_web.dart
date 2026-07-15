@@ -2,10 +2,11 @@ import 'dart:async';
 import 'dart:js_interop';
 
 import 'package:chrome_extension/runtime.dart';
+import 'package:preconnect/tools/runtime_web.dart';
 
 class WebExtensionSessionFlow {
   WebExtensionSessionFlow() {
-    if (!_isChromeRuntimeAvailable()) return;
+    if (!isChromeRuntimeAvailable()) return;
     _messageSub = chrome.runtime.onMessage.listen(_handleMessage);
   }
 
@@ -29,14 +30,6 @@ class WebExtensionSessionFlow {
   Future<void> dispose() async {
     await _messageSub?.cancel();
     await _events.close();
-  }
-}
-
-bool _isChromeRuntimeAvailable() {
-  try {
-    return chrome.runtime.isAvailable && Uri.base.scheme == 'chrome-extension';
-  } catch (_) {
-    return false;
   }
 }
 

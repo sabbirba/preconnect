@@ -17,7 +17,7 @@ class BracuLogout {
   }
 
   static Uri get mercureLogoutUri => Uri.parse(
-    '${ApiConfig.connectWebApiBase}${ApiConfig.connectMercureLogoutPath}',
+    '${ApiConfig.connectApiBase}${ApiConfig.connectMercureLogoutPath}',
   );
 
   static Map<String, String> mercureLogoutHeaders({String? accessToken}) {

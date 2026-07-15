@@ -22,12 +22,13 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
   Set<String> _pinnedCodes = {};
 
   List<String> get _headers {
-    final values = widget.info.curriculumCourses
-        .map((e) => e.headerName)
-        .where((e) => e.trim().isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
+    final values =
+        widget.info.curriculumCourses
+            .map((e) => e.headerName)
+            .where((e) => e.trim().isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
     return ['All', ...values];
   }
 
@@ -268,7 +269,9 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
                                               left: 4,
                                             ),
                                             child: Tooltip(
-                                              message: isPinned ? 'Unpin' : 'Pin to top',
+                                              message: isPinned
+                                                  ? 'Unpin'
+                                                  : 'Pin to top',
                                               child: InkWell(
                                                 borderRadius:
                                                     BorderRadius.circular(999),
@@ -277,7 +280,8 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
                                                 child: Icon(
                                                   isPinned
                                                       ? Icons.star_rounded
-                                                      : Icons.star_outline_rounded,
+                                                      : Icons
+                                                            .star_outline_rounded,
                                                   size: 16,
                                                   color: isPinned
                                                       ? BracuPalette.favorite

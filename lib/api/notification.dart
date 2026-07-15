@@ -152,7 +152,13 @@ class NotificationsFeed {
   factory NotificationsFeed.fromJson(Map<String, dynamic> json) {
     final list = json['items'] as List?;
     final itemsList = list != null
-        ? list.map((e) => RecentConnectNotification.fromJson(e as Map<String, dynamic>)).toList()
+        ? list
+              .map(
+                (e) => RecentConnectNotification.fromJson(
+                  e as Map<String, dynamic>,
+                ),
+              )
+              .toList()
         : <RecentConnectNotification>[];
 
     return NotificationsFeed(
@@ -671,8 +677,8 @@ class NotificationService {
 
     if (trimmed.contains('|')) {
       for (final part in trimmed.split('|')) {
-         final p = part.trim();
-         if (p.isNotEmpty) candidates.add(p);
+        final p = part.trim();
+        if (p.isNotEmpty) candidates.add(p);
       }
     } else if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
       try {

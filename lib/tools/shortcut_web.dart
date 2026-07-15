@@ -2,10 +2,11 @@ import 'dart:async';
 import 'dart:js_interop';
 
 import 'package:chrome_extension/runtime.dart';
+import 'package:preconnect/tools/runtime_web.dart';
 
 class WebExtensionShortcutBridge {
   WebExtensionShortcutBridge({required this.onShortcut}) {
-    if (!_isChromeRuntimeAvailable()) return;
+    if (!isChromeRuntimeAvailable()) return;
     _messageSub = chrome.runtime.onMessage.listen(_handleMessage);
   }
 
@@ -27,13 +28,5 @@ class WebExtensionShortcutBridge {
 
   Future<void> dispose() async {
     await _messageSub?.cancel();
-  }
-}
-
-bool _isChromeRuntimeAvailable() {
-  try {
-    return chrome.runtime.isAvailable && Uri.base.scheme == 'chrome-extension';
-  } catch (_) {
-    return false;
   }
 }

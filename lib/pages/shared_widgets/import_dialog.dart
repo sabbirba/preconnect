@@ -141,8 +141,6 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
         throw const FormatException('Invalid sync code.');
       }
 
-
-
       final storage = TokenStorage.instance;
       await storage.write(
         key: PreConnectStorageKeys.accessToken,
@@ -163,7 +161,6 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
       setState(() {
         _errorMessage = 'Invalid sync code. Copy again.';
       });
-
     } catch (e) {
       setState(() {
         _errorMessage = 'Import failed.';

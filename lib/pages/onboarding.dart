@@ -12,7 +12,7 @@ import 'package:preconnect/pages/seat_status.dart';
 import 'package:preconnect/pages/shared_widgets/map_shared.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
-    if (dart.library.html) 'package:preconnect/tools/runtime_web.dart';
+    if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/pages/login.dart';
@@ -162,8 +162,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => page));
   }
-
-
 
   Future<void> _startWebExtensionLogin() async {
     if (_isStartingWebLogin) return;
@@ -443,8 +441,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 }
-
-
 
 class _HeroCard extends StatelessWidget {
   const _HeroCard({required this.isDark});
