@@ -64,16 +64,22 @@ class CaptiveWifiHttp {
     Uri? probeUri,
   }) async {
     final target = probeUri ?? defaultProbeUri;
-    try {
-      final result = await getWithRedirects(
-        client: client,
-        uri: target,
-        cookies: cookies,
-      );
-      return result.statusCode == 204;
-    } catch (_) {
-      return false;
+    for (var i = 0; i < 4; i++) {
+      if (i > 0) {
+        await Future<void>.delayed(Duration(milliseconds: 500 * i));
+      }
+      try {
+        final result = await getWithRedirects(
+          client: client,
+          uri: target,
+          cookies: cookies,
+        );
+        if (result.statusCode == 204) {
+          return true;
+        }
+      } catch (_) {}
     }
+    return false;
   }
 
   Future<CaptiveWifiHttpResult> getWithRedirects({
@@ -343,12 +349,61 @@ class CaptiveWifiHttp {
       final originalParams = captiveWifiUrl.queryParameters;
 
       String getParam(String key, [String defaultValue = '']) {
-        final val = params[key] ?? originalParams[key];
+        var val = params[key] ?? originalParams[key];
+        if (val == null || val.isEmpty) {
+          if (key == 'acip') {
+            val = params['wlanacip'] ??
+                originalParams['wlanacip'] ??
+                params['ac-ip'] ??
+                originalParams['ac-ip'] ??
+                params['ac_ip'] ??
+                originalParams['ac_ip'];
+          } else if (key == 'apmac') {
+            val = params['wlanapmac'] ??
+                originalParams['wlanapmac'] ??
+                params['ap-mac'] ??
+                originalParams['ap-mac'] ??
+                params['ap_mac'] ??
+                originalParams['ap_mac'];
+          } else if (key == 'uaddress') {
+            val = params['wlanuserip'] ??
+                originalParams['wlanuserip'] ??
+                params['user-ip'] ??
+                originalParams['user-ip'] ??
+                params['user_ip'] ??
+                originalParams['user_ip'];
+          } else if (key == 'umac') {
+            val = params['wlanusermac'] ??
+                originalParams['wlanusermac'] ??
+                params['user-mac'] ??
+                originalParams['user-mac'] ??
+                params['user_mac'] ??
+                originalParams['user_mac'];
+          } else if (key == 'accessMac') {
+            val = params['wlanacmac'] ??
+                originalParams['wlanacmac'] ??
+                params['ac-mac'] ??
+                originalParams['ac-mac'] ??
+                params['ac_mac'] ??
+                originalParams['ac_mac'];
+          }
+        }
         return (val != null && val.isNotEmpty) ? val : defaultValue;
       }
 
-      final acip = getParam('acip');
-      final apmac = getParam('apmac');
+      var acip = getParam('acip');
+      if (acip.isEmpty && status?.gatewayAddress != null) {
+        acip = status!.gatewayAddress!;
+      }
+
+      var apmac = getParam('apmac');
+      if (apmac.isEmpty && status?.apMac != null) {
+        apmac = status!.apMac!;
+      }
+      if (apmac.isNotEmpty) {
+        apmac = apmac.replaceAll(':', '').replaceAll('-', '').toLowerCase();
+      }
+
       if (acip.isEmpty || apmac.isEmpty) {
         lastError =
             'Missing gateway parameters (acip/apmac) in portal redirect URL.';
@@ -364,6 +419,19 @@ class CaptiveWifiHttp {
           ? getParam('ssid')
           : base64.encode(utf8.encode(status?.ssid ?? ssid));
 
+      var uaddress = getParam('uaddress');
+      if (uaddress.isEmpty && status?.ipAddress != null) {
+        uaddress = status!.ipAddress!;
+      }
+
+      var umac = getParam('umac');
+      if (umac.isEmpty) {
+        umac = deviceUmac ?? '';
+      }
+      if (umac.isNotEmpty) {
+        umac = umac.replaceAll(':', '').replaceAll('-', '').toLowerCase();
+      }
+
       final payload = <String, String>{
         'pushPageId': pushPageId,
         'userPass': password,
@@ -372,8 +440,8 @@ class CaptiveWifiHttp {
         'armac': getParam('armac'),
         'authType': getParam('authType', '1'),
         'ssid': base64Ssid,
-        'uaddress': getParam('uaddress'),
-        'umac': deviceUmac ?? getParam('umac'),
+        'uaddress': uaddress,
+        'umac': umac,
         'accessMac': getParam('accessMac'),
         'businessType': getParam('businessType'),
         'acip': acip,

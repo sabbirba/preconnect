@@ -64,78 +64,13 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
     if (!AndroidNetworkAssist.isSupported) return;
     var status = await Permission.locationWhenInUse.status;
     if (status.isGranted) {
-      final gpsEnabled = await AndroidNetworkAssist.isLocationServiceEnabled();
-      if (!gpsEnabled && mounted) {
-        await showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            title: const Text('Location Services Disabled'),
-            content: const Text(
-              'Location services (GPS) must be enabled to detect Wi-Fi networks. Please enable it.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                  await AndroidNetworkAssist.openLocationSettings();
-                },
-                child: const Text('Open Settings'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  unawaited(_forceRequestPermissions());
-                },
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        );
-        return;
-      }
       await _loadStoredCredentials();
       return;
     }
 
     status = await Permission.locationWhenInUse.request();
     if (status.isGranted) {
-      final gpsEnabled = await AndroidNetworkAssist.isLocationServiceEnabled();
-      if (!gpsEnabled && mounted) {
-        unawaited(_forceRequestPermissions());
-        return;
-      }
       await _loadStoredCredentials();
-      return;
-    }
-
-    if (mounted) {
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text('Location Permission Required'),
-          content: const Text(
-            'Location permission is required to retrieve and configure connected Wi-Fi networks. Please grant the permission to continue.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                unawaited(_forceRequestPermissions());
-              },
-              child: const Text('Grant'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await openAppSettings();
-              },
-              child: const Text('Open Settings'),
-            ),
-          ],
-        ),
-      );
     }
   }
 
@@ -315,17 +250,11 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   Future<bool> _requestPermissionWithUx({
     required Permission permission,
   }) async {
-    var current = await permission.status;
+    final current = await permission.status;
     if (current.isGranted || current.isLimited) return true;
 
-    current = await permission.request();
-    if (current.isGranted || current.isLimited) return true;
-
-    if (current.isPermanentlyDenied || current.isRestricted) {
-      await openAppSettings();
-      return false;
-    }
-    return false;
+    final requested = await permission.request();
+    return requested.isGranted || requested.isLimited;
   }
 
   Future<void> _checkPostConnectionEvent() async {
@@ -572,13 +501,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        action: SnackBarAction(
-          label: 'Close',
-          textColor: Colors.white,
-          onPressed: () {
-            messenger.hideCurrentSnackBar();
-          },
-        ),
       ),
     );
   }
