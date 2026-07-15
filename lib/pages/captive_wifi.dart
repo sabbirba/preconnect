@@ -106,19 +106,31 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       });
       await _autofillSsidFromSystem(force: false);
       unawaited(_checkPostConnectionEvent());
-      final status = await AndroidNetworkAssist.getNetworkStatus();
-      if (mounted) {
-        setState(() {
-          _currentStatus = status;
-        });
-      }
-      if (status != null) {
-        final captiveWifiUrl = CaptiveWifiHttp.resolvePortalUri(status);
-        if (captiveWifiUrl != null && mounted) {
-          setState(() {
-            _extractedParams = captiveWifiUrl.queryParameters;
-          });
+
+      AndroidNetworkStatus? status;
+      Uri? captiveWifiUrl;
+      for (var i = 0; i < 5; i++) {
+        status = await AndroidNetworkAssist.getNetworkStatus();
+        if (status != null) {
+          if (mounted) {
+            setState(() {
+              _currentStatus = status;
+            });
+          }
+          captiveWifiUrl = CaptiveWifiHttp.resolvePortalUri(status);
+          if (captiveWifiUrl != null) {
+            if (mounted) {
+              setState(() {
+                _extractedParams = captiveWifiUrl!.queryParameters;
+              });
+            }
+            break;
+          }
         }
+        await Future<void>.delayed(const Duration(milliseconds: 600));
+      }
+
+      if (status != null) {
         if (status.transport == 'wifi' && status.connected) {
           final hasPassword = _passwordController.text.isNotEmpty;
           final isCaptive = status.captive || !status.validated;
@@ -144,44 +156,53 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
 
   Future<void> _autofillSsidFromSystem({bool force = false}) async {
     if (!AndroidNetworkAssist.isSupported) return;
-    final status = await AndroidNetworkAssist.getNetworkStatus();
-    if (!mounted) return;
-    if (status == null ||
-        status.transport.trim().toLowerCase() != 'wifi' ||
-        !status.connected) {
-      setState(() {
-        _ssidController.text = '';
-      });
-      return;
-    }
-    bool hasPermission = await Permission.locationWhenInUse.status.isGranted;
-    if (!hasPermission && force) {
-      final ok = await _requestPermissionWithUx(
-        permission: Permission.locationWhenInUse,
-      );
-      if (!ok) return;
-      hasPermission = true;
-    }
-    if (!hasPermission) return;
-    final isGpsEnabled = await AndroidNetworkAssist.isLocationServiceEnabled();
-    if (!isGpsEnabled) {
-      if (force) {
-        final resolved = await AndroidNetworkAssist.openLocationSettings();
-        if (!resolved) return;
-      } else {
-        return;
+    for (var i = 0; i < 5; i++) {
+      if (i > 0) {
+        await Future<void>.delayed(const Duration(milliseconds: 600));
       }
+      final status = await AndroidNetworkAssist.getNetworkStatus();
+      if (!mounted) return;
+      if (status == null ||
+          status.transport.trim().toLowerCase() != 'wifi' ||
+          !status.connected) {
+        if (i == 4) {
+          setState(() {
+            _ssidController.text = '';
+          });
+        }
+        continue;
+      }
+      bool hasPermission = await Permission.locationWhenInUse.status.isGranted;
+      if (!hasPermission && force) {
+        final ok = await _requestPermissionWithUx(
+          permission: Permission.locationWhenInUse,
+        );
+        if (!ok) return;
+        hasPermission = true;
+      }
+      if (!hasPermission) continue;
+      final isGpsEnabled =
+          await AndroidNetworkAssist.isLocationServiceEnabled();
+      if (!isGpsEnabled) {
+        if (force) {
+          final resolved = await AndroidNetworkAssist.openLocationSettings();
+          if (!resolved) return;
+        } else {
+          continue;
+        }
+      }
+      final statusWithSsid = await AndroidNetworkAssist.getNetworkStatus();
+      if (!mounted) return;
+      final ssid = (statusWithSsid?.ssid ?? '').trim();
+      if (ssid.isEmpty) continue;
+      final current = _ssidController.text.trim();
+      if (current == ssid) return;
+      if (!force && current.isNotEmpty) return;
+      setState(() {
+        _ssidController.text = ssid;
+      });
+      break;
     }
-    final statusWithSsid = await AndroidNetworkAssist.getNetworkStatus();
-    if (!mounted) return;
-    final ssid = (statusWithSsid?.ssid ?? '').trim();
-    if (ssid.isEmpty) return;
-    final current = _ssidController.text.trim();
-    if (current == ssid) return;
-    if (!force && current.isNotEmpty) return;
-    setState(() {
-      _ssidController.text = ssid;
-    });
   }
 
   bool _validateRequiredInputs() {

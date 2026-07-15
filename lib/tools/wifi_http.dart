@@ -352,35 +352,40 @@ class CaptiveWifiHttp {
         var val = params[key] ?? originalParams[key];
         if (val == null || val.isEmpty) {
           if (key == 'acip') {
-            val = params['wlanacip'] ??
+            val =
+                params['wlanacip'] ??
                 originalParams['wlanacip'] ??
                 params['ac-ip'] ??
                 originalParams['ac-ip'] ??
                 params['ac_ip'] ??
                 originalParams['ac_ip'];
           } else if (key == 'apmac') {
-            val = params['wlanapmac'] ??
+            val =
+                params['wlanapmac'] ??
                 originalParams['wlanapmac'] ??
                 params['ap-mac'] ??
                 originalParams['ap-mac'] ??
                 params['ap_mac'] ??
                 originalParams['ap_mac'];
           } else if (key == 'uaddress') {
-            val = params['wlanuserip'] ??
+            val =
+                params['wlanuserip'] ??
                 originalParams['wlanuserip'] ??
                 params['user-ip'] ??
                 originalParams['user-ip'] ??
                 params['user_ip'] ??
                 originalParams['user_ip'];
           } else if (key == 'umac') {
-            val = params['wlanusermac'] ??
+            val =
+                params['wlanusermac'] ??
                 originalParams['wlanusermac'] ??
                 params['user-mac'] ??
                 originalParams['user-mac'] ??
                 params['user_mac'] ??
                 originalParams['user_mac'];
           } else if (key == 'accessMac') {
-            val = params['wlanacmac'] ??
+            val =
+                params['wlanacmac'] ??
                 originalParams['wlanacmac'] ??
                 params['ac-mac'] ??
                 originalParams['ac-mac'] ??
