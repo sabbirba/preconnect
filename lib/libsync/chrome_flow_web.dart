@@ -23,7 +23,7 @@ Future<String?> openChromeExtensionOAuthFlow(
       } catch (_) {}
     } else if (raw is Map) {
       resp = Map<String, dynamic>.from(raw);
-    } else {
+    } else if (raw != null && raw.isA<JSObject>()) {
       try {
         final dartified = (raw as JSObject).dartify();
         if (dartified is Map) resp = Map<String, dynamic>.from(dartified);

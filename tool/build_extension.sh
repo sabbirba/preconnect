@@ -73,6 +73,10 @@ flutter build web \
   --target="${ROOT_DIR}/web/extension_app.dart" \
   --output="${COMMON_DIR}"
 
+cp -R "${ROOT_DIR}/web/"* "${COMMON_DIR}/"
+rm -f "${COMMON_DIR}/extension_app.dart"
+rm -f "${COMMON_DIR}/background.dart"
+
 rm -f "${COMMON_DIR}/_headers"
 
 perl -0pi -e 's/serviceWorkerSettings:\s*\{\s*serviceWorkerVersion:\s*"[^"]+"[^}]*\}/serviceWorkerSettings: null/s' \

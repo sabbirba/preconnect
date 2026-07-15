@@ -234,7 +234,7 @@ void _handleRuntimeMessage(dynamic event) {
     } catch (_) {}
   } else if (rawMessage is Map) {
     message = Map<String, dynamic>.from(rawMessage);
-  } else {
+  } else if (rawMessage != null && rawMessage.isA<JSObject>()) {
     try {
       final dartified = (rawMessage as JSObject).dartify();
       if (dartified is Map) message = Map<String, dynamic>.from(dartified);
@@ -773,7 +773,7 @@ Future<void> _startLogin({String? idp}) async {
     );
     await chrome.runtime.sendMessage(
       null,
-      {'type': _loginStartedType, 'tabId': tab.id}.jsify() as Object,
+      jsonEncode({'type': _loginStartedType, 'tabId': tab.id}).toJS,
       null,
     );
   } catch (e) {
@@ -1573,6 +1573,17 @@ Future<void> _handleLibsyncRequest(Map message) async {
     final text = await response.text().toDart;
     final responseBody = text.toDart;
     final Map<String, String> respHeaders = {};
+    try {
+      final headersObj = response.headers as JSObject;
+      if (headersObj.hasProperty('forEach'.toJS).toDart) {
+        headersObj.callMethod(
+          'forEach'.toJS,
+          ((JSString value, JSString key, JSObject parent) {
+            respHeaders[key.toDart] = value.toDart;
+          }).toJS,
+        );
+      }
+    } catch (_) {}
 
     await chrome.runtime.sendMessage(
       null,

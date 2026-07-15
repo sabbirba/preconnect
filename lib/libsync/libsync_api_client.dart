@@ -373,7 +373,7 @@ class LibSyncApiClient extends http.BaseClient {
 
   void _injectBrowserHeaders(Map<String, String> headers) {
     headers['User-Agent'] =
-        'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Mobile Safari/537.36';
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
     headers['Accept'] = '*/*';
     headers['Accept-Language'] = 'en-US,en;q=0.9';
     headers['Referer'] = 'https://libsync.bracu.ac.bd/';
