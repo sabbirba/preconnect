@@ -39,7 +39,7 @@ class TokenStorage {
   };
 
   static const _secureStorage = FlutterSecureStorage(
-    mOptions: MacOsOptions(usesDataProtectionKeychain: false),
+    mOptions: MacOsOptions(usesDataProtectionKeychain: true),
   );
 
   Future<String?> read({required String key}) async {

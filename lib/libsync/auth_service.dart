@@ -5,7 +5,9 @@ import 'libsync_config.dart';
 import 'google_auth_helper.dart';
 import 'libsync_api_client.dart';
 import 'package:preconnect/libsync/libsync_page.dart';
-import 'google_sign_in_helper.dart';
+import 'package:http/http.dart' as http;
+import 'package:preconnect/tools/token_storage.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
 
 enum LibSyncAuthStatus { authenticated, unauthenticated, loading, error }
 
@@ -34,6 +36,44 @@ class LibSyncAuthService extends ChangeNotifier {
     const LibSyncAuthState(status: LibSyncAuthStatus.loading),
   );
 
+  Future<bool> loginSilentlyWithBackend() async {
+    try {
+      final localRefreshToken = await _apiClient.getGoogleRefreshToken();
+      if (localRefreshToken != null && localRefreshToken.isNotEmpty) {
+        try {
+          final googleTokens = await GoogleAuthHelper.refreshAccessToken(
+            localRefreshToken,
+          );
+          final googleAccessToken = googleTokens['access_token'] as String?;
+          if (googleAccessToken != null && googleAccessToken.isNotEmpty) {
+            await authenticateWithAccessToken(googleAccessToken);
+            return true;
+          }
+        } catch (_) {}
+      }
+
+      final idToken = await TokenStorage.instance.read(
+        key: PreConnectStorageKeys.idToken,
+      );
+      if (idToken == null || idToken.isEmpty) return false;
+
+      final refreshResponse = await http.post(
+        Uri.parse('https://preconnect.app/api/auth/refresh'),
+        headers: {'Authorization': 'Bearer $idToken'},
+      );
+
+      if (refreshResponse.statusCode == 200) {
+        final data = jsonDecode(refreshResponse.body);
+        final googleAccessToken = data['access_token'] as String?;
+        if (googleAccessToken != null && googleAccessToken.isNotEmpty) {
+          await authenticateWithAccessToken(googleAccessToken);
+          return true;
+        }
+      }
+    } catch (_) {}
+    return false;
+  }
+
   Future<void> initialize() async {
     state.value = const LibSyncAuthState(status: LibSyncAuthStatus.loading);
     try {
@@ -46,10 +86,13 @@ class LibSyncAuthService extends ChangeNotifier {
           profile: profile,
         );
       } else if (response.statusCode == 401 || response.statusCode == 403) {
-        await _apiClient.clearAuthData();
-        state.value = const LibSyncAuthState(
-          status: LibSyncAuthStatus.unauthenticated,
-        );
+        final ok = await loginSilentlyWithBackend();
+        if (!ok) {
+          await _apiClient.clearAuthData();
+          state.value = const LibSyncAuthState(
+            status: LibSyncAuthStatus.unauthenticated,
+          );
+        }
       } else {
         throw Exception('Server returned ${response.statusCode}');
       }
@@ -64,9 +107,12 @@ class LibSyncAuthService extends ChangeNotifier {
               const {'student_id': 'Cached User', 'name': 'Offline Mode'},
         );
       } else {
-        state.value = const LibSyncAuthState(
-          status: LibSyncAuthStatus.unauthenticated,
-        );
+        final ok = await loginSilentlyWithBackend();
+        if (!ok) {
+          state.value = const LibSyncAuthState(
+            status: LibSyncAuthStatus.unauthenticated,
+          );
+        }
       }
     }
   }
@@ -76,22 +122,27 @@ class LibSyncAuthService extends ChangeNotifier {
     _lastProcessedCode = code;
     state.value = const LibSyncAuthState(status: LibSyncAuthStatus.loading);
     try {
-      final googleTokens = await GoogleAuthHelper.exchangeCode(
-        code,
-        redirectUri: redirectUri,
+      final idToken = await TokenStorage.instance.read(
+        key: PreConnectStorageKeys.idToken,
       );
-      final googleAccessToken = googleTokens['access_token'] as String?;
-      final googleRefreshToken = googleTokens['refresh_token'] as String?;
+      if (idToken == null || idToken.isEmpty) throw Exception('Not signed in');
 
-      if (googleAccessToken == null) {
-        throw Exception('Google Access Token not returned');
-      }
+      final storeResponse = await http.post(
+        Uri.parse('https://preconnect.app/api/auth/token'),
+        headers: {
+          'Authorization': 'Bearer $idToken',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'code': code,
+          'redirect_uri': redirectUri ?? LibSyncConfig.googleRedirectUri,
+        }),
+      );
 
-      if (googleRefreshToken != null) {
-        await _apiClient.storeGoogleRefreshToken(googleRefreshToken);
-      }
+      if (storeResponse.statusCode != 200) throw Exception('Sign in failed');
 
-      await _authenticateWithGoogleAccessToken(googleAccessToken);
+      final loggedIn = await loginSilentlyWithBackend();
+      if (!loggedIn) throw Exception('Sign in failed');
     } catch (e) {
       await _apiClient.clearAuthData();
       state.value = LibSyncAuthState(
@@ -124,9 +175,7 @@ class LibSyncAuthService extends ChangeNotifier {
     );
 
     if (libsyncAuthResponse.statusCode != 200) {
-      throw Exception(
-        'LibSync social auth failed: ${libsyncAuthResponse.body}',
-      );
+      throw Exception('LibSync sign in failed');
     }
 
     final Map<String, String> cookiesToSave = {};
@@ -172,14 +221,6 @@ class LibSyncAuthService extends ChangeNotifier {
   Future<void> logout() async {
     _lastProcessedCode = null;
     state.value = const LibSyncAuthState(status: LibSyncAuthStatus.loading);
-    if (!kIsWeb) {
-      try {
-        final googleSignIn = GoogleSignIn.instance;
-        await googleSignIn.initialize();
-        await googleSignIn.signOut();
-        await googleSignIn.disconnect();
-      } catch (_) {}
-    }
     await _apiClient.clearAuthData();
     await LibSyncPage.clearReservationCache();
     state.value = const LibSyncAuthState(

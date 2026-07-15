@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-import 'package:flutter/foundation.dart';
-import 'google_sign_in_helper.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'libsync_config.dart';
@@ -16,7 +14,7 @@ class LibSyncApiClient extends http.BaseClient {
   final http.Client _inner;
   static String? _sessionIp;
   static const _secureStorage = FlutterSecureStorage(
-    mOptions: MacOsOptions(usesDataProtectionKeychain: false),
+    mOptions: MacOsOptions(usesDataProtectionKeychain: true),
   );
   static const String _cookiesStorageKey = 'libsync_cookies';
   static const String _googleRefreshTokenKey = 'libsync_google_refresh_token';
@@ -450,32 +448,12 @@ class LibSyncApiClient extends http.BaseClient {
       }
 
       String? googleAccessToken;
-      if (!kIsWeb) {
-        try {
-          final googleSignIn = GoogleSignIn.instance;
-          await googleSignIn.initialize(
-            serverClientId: LibSyncConfig.googleClientId,
-          );
-          final account = await googleSignIn.attemptLightweightAuthentication();
-          if (account != null) {
-            final scopes = LibSyncConfig.googleScopes.isEmpty
-                ? ['email', 'profile']
-                : LibSyncConfig.googleScopes.split(' ');
-            final clientAuth = await account.authorizationClient
-                .authorizationForScopes(scopes);
-            googleAccessToken = clientAuth?.accessToken;
-          }
-        } catch (_) {}
-      }
-
-      if (googleAccessToken == null) {
-        final googleRefreshToken = await getGoogleRefreshToken();
-        if (googleRefreshToken != null) {
-          final tokens = await GoogleAuthHelper.refreshAccessToken(
-            googleRefreshToken,
-          );
-          googleAccessToken = tokens['access_token'] as String?;
-        }
+      final googleRefreshToken = await getGoogleRefreshToken();
+      if (googleRefreshToken != null) {
+        final tokens = await GoogleAuthHelper.refreshAccessToken(
+          googleRefreshToken,
+        );
+        googleAccessToken = tokens['access_token'] as String?;
       }
 
       if (googleAccessToken != null) {

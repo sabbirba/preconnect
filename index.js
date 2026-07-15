@@ -20,7 +20,37 @@ export default {
     let targetHost = "";
     let targetOrigin = "";
 
-    if (path.startsWith("/api/")) {
+    if (path === "/api/auth/callback") {
+      const code = url.searchParams.get("code");
+      return new Response(
+        `<!DOCTYPE html>
+<html>
+<head>
+  <title>Auth Success</title>
+  <script>
+    if (window.opener) {
+      window.opener.postMessage({ type: "PRECONNECT_AUTH_CODE", code: "${code}" }, "*");
+      window.close();
+    } else {
+      window.location.href = "/#code=${code}";
+    }
+  </script>
+</head>
+<body>
+  <div style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+    <h2>Authentication Successful</h2>
+    <p>You can close this window now.</p>
+  </div>
+</body>
+</html>`,
+        {
+          headers: {
+            "Content-Type": "text/html",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    } else if (path.startsWith("/api/")) {
       targetUrl = "https://connect.bracu.ac.bd" + path;
       targetHost = "connect.bracu.ac.bd";
       targetOrigin = "https://connect.bracu.ac.bd";

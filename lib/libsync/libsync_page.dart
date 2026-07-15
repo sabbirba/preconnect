@@ -13,12 +13,13 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/tools/time_utils.dart' show BracuTime;
-import 'google_sign_in_helper.dart';
 import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.html) 'package:preconnect/tools/runtime_web.dart';
 import 'package:preconnect/libsync/chrome_flow_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/libsync/chrome_flow_web.dart';
+import 'package:preconnect/libsync/web_oauth_flow_stub.dart'
+    if (dart.library.js_interop) 'package:preconnect/libsync/web_oauth_flow_web.dart';
 import 'auth_service.dart';
 import 'google_oauth_webview.dart';
 import 'libsync_config.dart';
@@ -282,20 +283,22 @@ class _LibSyncPageState extends State<LibSyncPage>
           );
           redirectUri = LibSyncConfig.googleRedirectUri;
         } else {
-          final googleSignIn = GoogleSignIn.instance;
-          await googleSignIn.initialize(
-            serverClientId: LibSyncConfig.googleClientId,
+          final oauthUrl =
+              Uri.parse('https://accounts.google.com/o/oauth2/v2/auth').replace(
+                queryParameters: {
+                  'client_id': LibSyncConfig.googleClientId,
+                  'redirect_uri': LibSyncConfig.googleRedirectUri,
+                  'response_type': 'code',
+                  'scope': LibSyncConfig.googleScopes,
+                  'access_type': 'offline',
+                  'prompt': 'consent',
+                },
+              );
+          authCode = await openWebOAuthFlow(
+            oauthUrl.toString(),
+            LibSyncConfig.googleRedirectUri,
           );
-          final account = await googleSignIn.authenticate();
-          if (account != null) {
-            final scopes = LibSyncConfig.googleScopes.isEmpty
-                ? ['email', 'profile']
-                : LibSyncConfig.googleScopes.split(' ');
-            final serverAuth = await account.authorizationClient
-                .authorizeServer(scopes);
-            authCode = serverAuth?.serverAuthCode;
-            redirectUri = 'postmessage';
-          }
+          redirectUri = LibSyncConfig.googleRedirectUri;
         }
       }
 

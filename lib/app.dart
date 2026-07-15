@@ -11,7 +11,6 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
 import 'package:in_app_update/in_app_update.dart';
-import 'package:preconnect/api/analytics.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/app_storage.dart';
@@ -951,11 +950,7 @@ class _MyAppState extends State<MyApp>
             darkTheme: darkTheme,
             themeMode: mode,
             navigatorKey: widget.isPreBoot ? null : AuthService.navigatorKey,
-            navigatorObservers: [
-              _routeObserver,
-              AnalyticsService.observer,
-              AppLogNavigatorObserver(),
-            ],
+            navigatorObservers: [_routeObserver, AppLogNavigatorObserver()],
             builder: (context, child) {
               final isDark = Theme.of(context).brightness == Brightness.dark;
               final mediaQuery = MediaQuery.of(context);

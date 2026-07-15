@@ -21,12 +21,11 @@ dependencies:
   image_picker: ^1.2.3
   archive: ^4.0.9
   dart_pdf_reader: ^2.2.0
-  flutter_alarmkit: ^0.4.0
+  flutter_alarmkit: ^0.3.0
   barcode_widget: ^2.0.4
   flutter_flip_card: ^0.0.6
   cached_network_image: ^3.4.1
   signals_flutter: ^7.1.0
-  google_sign_in: ^7.2.0
   connectivity_plus: ^7.2.0
   flutter_hooks: ^0.21.3+1
   signals_hooks: ^7.1.0
@@ -41,9 +40,8 @@ dependencies:
   web: ^1.1.1
   http: ^1.6.0
   flutter_secure_storage: ^10.3.1
-  firebase_core: ^4.12.1
-  firebase_messaging: 16.4.3
-  firebase_analytics: 12.4.5
+  firebase_core: ^4.11.0
+  firebase_messaging: 16.4.1
   flutter_local_notifications: ^22.0.1
   retry: ^3.1.2
   clock: ^1.1.2
