@@ -22,7 +22,7 @@ subprojects {
 
 subprojects {
     plugins.withId("com.android.library") {
-        if (project.name == "in_app_update") {
+        if (project.name == "in_app_update" || project.name == "mobile_scanner") {
             project.plugins.apply("kotlin-android")
         }
         extensions.configure<LibraryExtension> {

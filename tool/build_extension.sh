@@ -73,9 +73,25 @@ flutter build web \
   --target="${ROOT_DIR}/web/extension_app.dart" \
   --output="${COMMON_DIR}"
 
-cp -R "${ROOT_DIR}/web/"* "${COMMON_DIR}/"
-rm -f "${COMMON_DIR}/extension_app.dart"
-rm -f "${COMMON_DIR}/background.dart"
+for f in \
+  manifest.json \
+  favicon.ico \
+  favicon.png \
+  apple-touch-icon.png \
+  extension_bootstrap.js \
+  flutter_config.js \
+  auto_click_logout.js \
+  remove_hash.js \
+  remove_loader.js \
+  index.html; do
+  src="${ROOT_DIR}/web/${f}"
+  if [[ -f "${src}" ]]; then
+    cp "${src}" "${COMMON_DIR}/"
+  fi
+done
+if [[ -d "${ROOT_DIR}/web/icons" ]]; then
+  cp -R "${ROOT_DIR}/web/icons" "${COMMON_DIR}/"
+fi
 
 rm -f "${COMMON_DIR}/_headers"
 
