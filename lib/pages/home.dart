@@ -57,6 +57,7 @@ import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/time_utils.dart';
+import 'package:preconnect/tools/background_permission_helper.dart';
 
 part 'home_sections/dashboard_data.dart';
 part 'home_sections/dashboard_view.dart';
@@ -149,6 +150,9 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
           await InAppReviewPrompt.maybePrompt();
         }),
       );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(BackgroundPermissionHelper.checkAndShowPrompt());
+      });
     }
   }
 

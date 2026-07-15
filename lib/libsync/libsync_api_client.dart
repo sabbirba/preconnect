@@ -454,6 +454,10 @@ class LibSyncApiClient extends http.BaseClient {
           googleRefreshToken,
         );
         googleAccessToken = tokens['access_token'] as String?;
+        final newGoogleRefreshToken = tokens['refresh_token'] as String?;
+        if (newGoogleRefreshToken != null && newGoogleRefreshToken.isNotEmpty) {
+          await storeGoogleRefreshToken(newGoogleRefreshToken);
+        }
       }
 
       if (googleAccessToken != null) {

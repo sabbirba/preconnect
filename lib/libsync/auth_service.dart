@@ -65,6 +65,10 @@ class LibSyncAuthService extends ChangeNotifier {
       if (refreshResponse.statusCode == 200) {
         final data = jsonDecode(refreshResponse.body);
         final googleAccessToken = data['access_token'] as String?;
+        final googleRefreshToken = data['refresh_token'] as String?;
+        if (googleRefreshToken != null && googleRefreshToken.isNotEmpty) {
+          await _apiClient.storeGoogleRefreshToken(googleRefreshToken);
+        }
         if (googleAccessToken != null && googleAccessToken.isNotEmpty) {
           await authenticateWithAccessToken(googleAccessToken);
           return true;
@@ -140,6 +144,14 @@ class LibSyncAuthService extends ChangeNotifier {
       );
 
       if (storeResponse.statusCode != 200) throw Exception('Sign in failed');
+
+      try {
+        final data = jsonDecode(storeResponse.body);
+        final googleRefreshToken = data['refresh_token'] as String?;
+        if (googleRefreshToken != null && googleRefreshToken.isNotEmpty) {
+          await _apiClient.storeGoogleRefreshToken(googleRefreshToken);
+        }
+      } catch (_) {}
 
       final loggedIn = await loginSilentlyWithBackend();
       if (!loggedIn) throw Exception('Sign in failed');

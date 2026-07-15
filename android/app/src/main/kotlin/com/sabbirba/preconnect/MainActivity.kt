@@ -17,6 +17,7 @@ import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSuggestion
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.os.CancellationSignal
 import android.os.Looper
 import android.os.ParcelFileDescriptor
@@ -134,6 +135,7 @@ class MainActivity : FlutterFragmentActivity() {
         configureNetworkAssistChannels(flutterEngine)
         configureQuietModeChannel(flutterEngine)
         configureNativePrintChannel(flutterEngine)
+        configureBackgroundPermissionChannel(flutterEngine)
     }
 
     private fun configureAndroidAlarmChannel(flutterEngine: FlutterEngine) {
@@ -952,6 +954,48 @@ class MainActivity : FlutterFragmentActivity() {
         } catch (_: Exception) {
             null
         }
+    }
+
+    private fun configureBackgroundPermissionChannel(flutterEngine: FlutterEngine) {
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "preconnect/background_permission")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "isBatteryOptimizationIgnored" -> {
+                        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+                        val ignored = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            pm.isIgnoringBatteryOptimizations(packageName)
+                        } else {
+                            true
+                        }
+                        result.success(ignored)
+                    }
+                    "requestIgnoreBatteryOptimization" -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            try {
+                                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                    data = Uri.parse("package:$packageName")
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                startActivity(intent)
+                                result.success(true)
+                            } catch (e: Exception) {
+                                try {
+                                    val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    startActivity(intent)
+                                    result.success(true)
+                                } catch (e2: Exception) {
+                                    result.success(false)
+                                }
+                            }
+                        } else {
+                            result.success(true)
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
     }
 }
 

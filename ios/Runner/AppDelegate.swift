@@ -19,6 +19,7 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
     if let controller = window?.rootViewController as? FlutterViewController {
       registerQuietModeChannel(binaryMessenger: controller.binaryMessenger)
       registerNativePrintChannel(binaryMessenger: controller.binaryMessenger)
+      registerBackgroundPermissionChannel(binaryMessenger: controller.binaryMessenger)
     }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
@@ -38,6 +39,9 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
     }
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreConnectNativePrint") {
       registerNativePrintChannel(binaryMessenger: registrar.messenger())
+    }
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreConnectBackgroundPermission") {
+      registerBackgroundPermissionChannel(binaryMessenger: registrar.messenger())
     }
 
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
@@ -229,6 +233,43 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
           return
         }
         result(completed)
+      }
+    }
+  }
+
+  private func registerBackgroundPermissionChannel(binaryMessenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(
+      name: "preconnect/background_permission",
+      binaryMessenger: binaryMessenger
+    )
+    channel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "getBackgroundRefreshStatus":
+        let status = UIApplication.shared.backgroundRefreshStatus
+        switch status {
+        case .available:
+          result("allowed")
+        case .denied:
+          result("denied")
+        case .restricted:
+          result("restricted")
+        @unknown default:
+          result("unknown")
+        }
+      case "openBackgroundSettings":
+        DispatchQueue.main.async {
+          if let url = URL(string: UIApplication.openSettingsURLString) {
+            if UIApplication.shared.canOpenURL(url) {
+              UIApplication.shared.open(url, options: [:]) { success in
+                result(success)
+              }
+              return
+            }
+          }
+          result(false)
+        }
+      default:
+        result(FlutterMethodNotImplemented)
       }
     }
   }

@@ -26,6 +26,9 @@ subprojects {
             project.plugins.apply("kotlin-android")
         }
         extensions.configure<LibraryExtension> {
+            lint {
+                disable += setOf("EasterEgg", "StopShip")
+            }
             if (project.name == "in_app_update") {
                 namespace = "de.ffuf.in_app_update"
             }
