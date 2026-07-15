@@ -23,8 +23,7 @@ class FriendSchedule {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is FriendSchedule && id == other.id;
+      identical(this, other) || other is FriendSchedule && id == other.id;
 
   @override
   int get hashCode => id.hashCode;
@@ -80,7 +79,9 @@ class Course {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is Course && courseCode == other.courseCode && sectionName == other.sectionName;
+      other is Course &&
+          courseCode == other.courseCode &&
+          sectionName == other.sectionName;
 
   @override
   int get hashCode => Object.hash(courseCode, sectionName);

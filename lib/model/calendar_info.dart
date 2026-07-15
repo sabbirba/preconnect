@@ -1,4 +1,3 @@
-
 class CalendarFeed {
   const CalendarFeed({
     required this.rangeStart,

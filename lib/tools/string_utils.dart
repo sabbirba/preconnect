@@ -11,11 +11,15 @@ int _compareNatural(String a, String b) {
     final bIsDigit = db >= 48 && db <= 57;
     if (aIsDigit && bIsDigit) {
       int numA = 0, numB = 0;
-      while (i < a.length && a[i].codeUnitAt(0) >= 48 && a[i].codeUnitAt(0) <= 57) {
+      while (i < a.length &&
+          a[i].codeUnitAt(0) >= 48 &&
+          a[i].codeUnitAt(0) <= 57) {
         numA = numA * 10 + (a[i].codeUnitAt(0) - 48);
         i++;
       }
-      while (j < b.length && b[j].codeUnitAt(0) >= 48 && b[j].codeUnitAt(0) <= 57) {
+      while (j < b.length &&
+          b[j].codeUnitAt(0) >= 48 &&
+          b[j].codeUnitAt(0) <= 57) {
         numB = numB * 10 + (b[j].codeUnitAt(0) - 48);
         j++;
       }

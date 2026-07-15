@@ -133,7 +133,11 @@ class ApiClient {
           status = s;
           break;
         }
-        if (attempt < 2) await Future<void>.delayed(Duration(milliseconds: 200 * (attempt + 1)));
+        if (attempt < 2) {
+          await Future<void>.delayed(
+            Duration(milliseconds: 200 * (attempt + 1)),
+          );
+        }
       }
       if (status == TokenRefreshStatus.invalidSession) {
         await AuthService().logout(force: true);

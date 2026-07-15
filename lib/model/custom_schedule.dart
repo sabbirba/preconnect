@@ -1,4 +1,3 @@
-
 class CustomSchedule {
   const CustomSchedule({
     required this.itemId,

@@ -69,7 +69,9 @@ class AuthService {
       } catch (_) {}
 
       if (!force && !instant && _bootstrapStartTime != null) {
-        final timeSinceBootstrap = DateTime.now().difference(_bootstrapStartTime!);
+        final timeSinceBootstrap = DateTime.now().difference(
+          _bootstrapStartTime!,
+        );
         if (timeSinceBootstrap < _bootstrapGracePeriod) {
           return;
         }
@@ -370,7 +372,9 @@ class AuthService {
       return true;
     }
     if (_bootstrapStartTime != null) {
-      final timeSinceBootstrap = DateTime.now().difference(_bootstrapStartTime!);
+      final timeSinceBootstrap = DateTime.now().difference(
+        _bootstrapStartTime!,
+      );
       if (timeSinceBootstrap < _bootstrapGracePeriod) {
         return true;
       }
@@ -386,7 +390,9 @@ class AuthService {
       return true;
     }
     if (_bootstrapStartTime != null) {
-      final timeSinceBootstrap = DateTime.now().difference(_bootstrapStartTime!);
+      final timeSinceBootstrap = DateTime.now().difference(
+        _bootstrapStartTime!,
+      );
       if (timeSinceBootstrap < _bootstrapGracePeriod) {
         return false;
       }
