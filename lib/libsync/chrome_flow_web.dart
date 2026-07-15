@@ -1,42 +1,66 @@
 import 'dart:async';
-import 'package:chrome_extension/tabs.dart';
+import 'dart:convert';
+import 'dart:js_interop';
+import 'dart:math';
+import 'package:chrome_extension/runtime.dart';
 
 Future<String?> openChromeExtensionOAuthFlow(
   String oauthUrl,
   String redirectUri,
 ) async {
-  final tab = await chrome.tabs.create(
-    CreateProperties(url: oauthUrl, active: true),
+  final completer = Completer<String?>();
+  final requestId =
+      '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(1000000)}';
+
+  StreamSubscription? subscription;
+  subscription = chrome.runtime.onMessage.listen((event) {
+    Map<String, dynamic>? resp;
+    final raw = event.message;
+    if (raw is String) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) resp = Map<String, dynamic>.from(decoded);
+      } catch (_) {}
+    } else if (raw is Map) {
+      resp = Map<String, dynamic>.from(raw);
+    } else {
+      try {
+        final dartified = (raw as JSObject).dartify();
+        if (dartified is Map) resp = Map<String, dynamic>.from(dartified);
+      } catch (_) {}
+    }
+    if (resp == null) return;
+    if (resp['type'] != 'preconnect.libsyncOauthResponse') return;
+    if ('${resp['requestId']}' != requestId) return;
+    subscription?.cancel();
+    if (resp.containsKey('error')) {
+      completer.complete(null);
+    } else {
+      completer.complete('${resp['code'] ?? ''}');
+    }
+  });
+
+  await chrome.runtime.sendMessage(
+    null,
+    jsonEncode({
+      'type': 'preconnect.startLibsyncOauth',
+      'requestId': requestId,
+      'oauthUrl': oauthUrl,
+      'redirectUri': redirectUri,
+    }).toJS,
+    null,
   );
-  final tabId = tab.id;
-  if (tabId != null) {
-    final codeCompleter = Completer<String?>();
-    final subscription = chrome.tabs.onUpdated.listen((event) {
-      if (event.tabId == tabId && event.changeInfo.url != null) {
-        final url = event.changeInfo.url!;
-        if (url.startsWith(redirectUri)) {
-          final uri = Uri.parse(url);
-          final code = uri.queryParameters['code'];
-          if (!codeCompleter.isCompleted) {
-            codeCompleter.complete(code);
-          }
-        }
-      }
-    });
-    final removalSubscription = chrome.tabs.onRemoved.listen((event) {
-      if (event.tabId == tabId) {
-        if (!codeCompleter.isCompleted) {
-          codeCompleter.complete(null);
-        }
-      }
-    });
-    final authCode = await codeCompleter.future;
-    await subscription.cancel();
-    await removalSubscription.cancel();
-    try {
-      await chrome.tabs.remove(tabId);
-    } catch (_) {}
-    return authCode;
-  }
-  return null;
+
+  return completer.future;
+}
+
+Future<void> openCaptivePortalFlow(String portalUrl) async {
+  await chrome.runtime.sendMessage(
+    null,
+    jsonEncode({
+      'type': 'preconnect.startCaptivePortalFlow',
+      'portalUrl': portalUrl,
+    }).toJS,
+    null,
+  );
 }

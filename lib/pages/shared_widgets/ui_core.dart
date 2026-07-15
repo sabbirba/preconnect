@@ -115,42 +115,31 @@ class BracuActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      final spinnerColor = foregroundColor ?? BracuPalette.textPrimary(context);
-      return _LoadingButton(
-        outlined: outlined,
-        onPressed: onPressed,
-        padding: padding,
-        borderRadius: borderRadius,
-        backgroundColor: backgroundColor,
-        foregroundColor: spinnerColor,
-        iconSize: iconSize,
-      );
-    }
-
     return outlined ? _buildOutlined(context) : _buildText(context);
   }
 
-  Widget _buildText(BuildContext context) {
-    if (iconWidget != null) {
-      return TextButton(
-        onPressed: onPressed,
-        style: _textButtonStyle(context),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [iconWidget!, Gap(iconGap), _label()],
-        ),
-      );
-    }
+  Widget _buildSpinner(BuildContext context) {
+    final spinnerColor =
+        foregroundColor ??
+        (outlined ? BracuPalette.textPrimary(context) : Colors.white);
+    return BracuSpinner(size: iconSize, color: spinnerColor, strokeWidth: 2.2);
+  }
 
-    if (icon != null) {
+  Widget _buildText(BuildContext context) {
+    final hasIcon = iconWidget != null || icon != null || isLoading;
+    if (hasIcon) {
       return TextButton(
-        onPressed: onPressed,
+        onPressed: isLoading ? () {} : onPressed,
         style: _textButtonStyle(context),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: iconSize),
+            if (isLoading)
+              _buildSpinner(context)
+            else if (iconWidget != null)
+              iconWidget!
+            else
+              Icon(icon!, size: iconSize),
             Gap(iconGap),
             _label(),
           ],
@@ -166,25 +155,20 @@ class BracuActionButton extends StatelessWidget {
   }
 
   Widget _buildOutlined(BuildContext context) {
-    if (iconWidget != null) {
+    final hasIcon = iconWidget != null || icon != null || isLoading;
+    if (hasIcon) {
       return OutlinedButton(
-        onPressed: onPressed,
-        style: _outlinedStyle(context),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [iconWidget!, Gap(iconGap), _label()],
-        ),
-      );
-    }
-
-    if (icon != null) {
-      return OutlinedButton(
-        onPressed: onPressed,
+        onPressed: isLoading ? () {} : onPressed,
         style: _outlinedStyle(context),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: iconSize),
+            if (isLoading)
+              _buildSpinner(context)
+            else if (iconWidget != null)
+              iconWidget!
+            else
+              Icon(icon!, size: iconSize),
             Gap(iconGap),
             _label(),
           ],
@@ -305,66 +289,6 @@ class BracuActionCard extends StatelessWidget {
   }
 }
 
-class _LoadingButton extends StatelessWidget {
-  const _LoadingButton({
-    required this.outlined,
-    required this.onPressed,
-    required this.padding,
-    required this.borderRadius,
-    required this.backgroundColor,
-    required this.foregroundColor,
-    required this.iconSize,
-  });
-
-  final bool outlined;
-  final VoidCallback? onPressed;
-  final EdgeInsetsGeometry padding;
-  final double borderRadius;
-  final Color? backgroundColor;
-  final Color foregroundColor;
-  final double iconSize;
-
-  @override
-  Widget build(BuildContext context) {
-    final spinner = SizedBox(
-      width: iconSize,
-      height: iconSize,
-      child: CircularProgressIndicator(
-        strokeWidth: 2.4,
-        valueColor: AlwaysStoppedAnimation<Color>(foregroundColor),
-      ),
-    );
-
-    if (!outlined) {
-      return TextButton(
-        onPressed: onPressed,
-        style: TextButton.styleFrom(
-          foregroundColor: foregroundColor,
-          backgroundColor: backgroundColor,
-          splashFactory: NoSplash.splashFactory,
-          overlayColor: Colors.transparent,
-          enableFeedback: false,
-          padding: padding,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(borderRadius),
-          ),
-        ),
-        child: spinner,
-      );
-    }
-
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: bracuCompactOutlinedButtonStyle(
-        context,
-        padding: padding,
-        borderRadius: borderRadius,
-      ),
-      child: spinner,
-    );
-  }
-}
-
 class BracuLocationPermissionBanner extends StatefulWidget {
   const BracuLocationPermissionBanner({super.key, required this.onFixed});
 
@@ -464,6 +388,88 @@ class _BracuLocationPermissionBannerState
           ),
         ],
       ),
+    );
+  }
+}
+
+class BracuSpinner extends StatefulWidget {
+  const BracuSpinner({
+    super.key,
+    this.size = 20,
+    this.color,
+    this.strokeWidth = 2.2,
+  });
+
+  final double size;
+  final Color? color;
+  final double strokeWidth;
+
+  @override
+  State<BracuSpinner> createState() => _BracuSpinnerState();
+}
+
+class _BracuSpinnerState extends State<BracuSpinner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RotationTransition(
+      turns: _controller,
+      child: SizedBox(
+        width: widget.size,
+        height: widget.size,
+        child: CircularProgressIndicator(
+          strokeWidth: widget.strokeWidth,
+          valueColor: widget.color != null
+              ? AlwaysStoppedAnimation<Color>(widget.color!)
+              : null,
+        ),
+      ),
+    );
+  }
+}
+
+class BracuRefreshButton extends StatelessWidget {
+  const BracuRefreshButton({
+    super.key,
+    required this.onPressed,
+    required this.isLoading,
+    this.color,
+  });
+
+  final VoidCallback onPressed;
+  final bool isLoading;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColor = color ?? BracuPalette.primary;
+    if (isLoading) {
+      return Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: BracuSpinner(size: 20, color: themeColor, strokeWidth: 2.2),
+      );
+    }
+    return IconButton(
+      tooltip: 'Refresh',
+      onPressed: onPressed,
+      icon: Icon(Icons.refresh_rounded, color: themeColor),
     );
   }
 }

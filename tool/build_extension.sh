@@ -4,6 +4,9 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="${1:-${ROOT_DIR}/build/chrome-extension}"
 ZIP_OUT="${ZIP_OUT:-${ROOT_DIR}/build/chrome-extension.zip}"
+FIREFOX_DIR="${ROOT_DIR}/build/firefox-extension"
+FIREFOX_ZIP="${ROOT_DIR}/build/firefox-extension.zip"
+COMMON_DIR="${ROOT_DIR}/build/extension-common"
 
 VERSION_OUTPUT="$("${ROOT_DIR}/tool/sync_versions.sh" read)"
 APP_VERSION="$(printf '%s\n' "${VERSION_OUTPUT}" | sed -n '1p')"
@@ -40,6 +43,7 @@ cleanup() {
   if [[ -n "${TEMP_ENV_FILE}" ]]; then
     rm -f "${TEMP_ENV_FILE}"
   fi
+  rm -rf "${COMMON_DIR}"
 }
 trap cleanup EXIT
 
@@ -49,8 +53,8 @@ if [[ ! -f "${ENV_FILE}" ]]; then
   echo "No .env file found; continuing with empty optional dart defines." >&2
 fi
 
-rm -rf "${OUT_DIR}"
-mkdir -p "${OUT_DIR}"
+rm -rf "${OUT_DIR}" "${FIREFOX_DIR}" "${COMMON_DIR}"
+mkdir -p "${COMMON_DIR}"
 rm -rf "${ROOT_DIR}/.dart_tool/flutter_build"
 
 flutter build web \
@@ -67,33 +71,25 @@ flutter build web \
   --dart-define="APP_VERSION=${APP_VERSION}" \
   --dart-define="APP_BUILD_NUMBER=${APP_BUILD_NUMBER}" \
   --target="${ROOT_DIR}/web/extension_app.dart" \
-  --output="${OUT_DIR}"
+  --output="${COMMON_DIR}"
 
-MANIFEST_FILE="${OUT_DIR}/manifest.json"
-if [[ -f "${MANIFEST_FILE}" ]]; then
-  perl -0pi -e "s/\"version\":\s*\"[^\"]+\"/\"version\": \"${CHROME_VERSION}\"/" "${MANIFEST_FILE}"
-  if rg -n '"version_name"\s*:' "${MANIFEST_FILE}" >/dev/null 2>&1; then
-    perl -0pi -e "s/\"version_name\":\s*\"[^\"]+\"/\"version_name\": \"${CHROME_VERSION_NAME}\"/" "${MANIFEST_FILE}"
-  else
-    perl -0pi -e "s/(\"version\":\s*\"[^\"]+\")/\$1,\\n  \"version_name\": \"${CHROME_VERSION_NAME}\"/" "${MANIFEST_FILE}"
-  fi
-fi
+rm -f "${COMMON_DIR}/_headers"
 
 perl -0pi -e 's/serviceWorkerSettings:\s*\{\s*serviceWorkerVersion:\s*"[^"]+"[^}]*\}/serviceWorkerSettings: null/s' \
-  "${OUT_DIR}/flutter_bootstrap.js"
+  "${COMMON_DIR}/flutter_bootstrap.js"
 perl -0pi -e 's/"renderer":"canvaskit"/"renderer":"html"/g' \
-  "${OUT_DIR}/flutter_bootstrap.js"
+  "${COMMON_DIR}/flutter_bootstrap.js"
 perl -pi -e 's/_flutter\.loader\.load\(\)/_flutter.loader.load({config:{renderer:"html"}})/g' \
-  "${OUT_DIR}/flutter_bootstrap.js"
-rm -f "${OUT_DIR}/flutter_service_worker.js"
+  "${COMMON_DIR}/flutter_bootstrap.js"
+rm -f "${COMMON_DIR}/flutter_service_worker.js"
 
 perl -0pi -e 's#https://www\.gstatic\.com/flutter-canvaskit#canvaskit#g' \
-  "${OUT_DIR}"/*.js
+  "${COMMON_DIR}"/*.js
 
 perl -pi -e 's/new Function\(s\)\(\)/throw new Error("Deferred loading not supported")/g' \
-  "${OUT_DIR}"/*.js
+  "${COMMON_DIR}"/*.js
 
-if rg -n "unpkg\.com|gstatic\.com/flutter-canvaskit|eval\\(|new Function" "${OUT_DIR}"/*.js >/dev/null 2>&1; then
+if rg -n "unpkg\.com|gstatic\.com/flutter-canvaskit|eval\\(|new Function" "${COMMON_DIR}"/*.js >/dev/null 2>&1; then
   echo "Unexpected remote code reference found in Chrome extension JS output" >&2
   exit 1
 fi
@@ -101,8 +97,48 @@ fi
 dart compile js \
   "${ROOT_DIR}/web/background.dart" \
   -O2 \
-  -o "${OUT_DIR}/background.dart.js"
+  -o "${COMMON_DIR}/background.dart.js"
+
+mkdir -p "${OUT_DIR}"
+mkdir -p "${FIREFOX_DIR}"
+cp -R "${COMMON_DIR}/" "${OUT_DIR}/"
+cp -R "${COMMON_DIR}/" "${FIREFOX_DIR}/"
+
+python3 -c "
+import json
+manifest_path = '${OUT_DIR}/manifest.json'
+with open(manifest_path, 'r') as f:
+    d = json.load(f)
+d['version'] = '${CHROME_VERSION}'
+d['version_name'] = '${CHROME_VERSION_NAME}'
+d.pop('sidebar_action', None)
+d.pop('browser_specific_settings', None)
+with open(manifest_path, 'w') as f:
+    json.dump(d, f, indent=2)
+"
+
+python3 -c "
+import json
+manifest_path = '${FIREFOX_DIR}/manifest.json'
+with open(manifest_path, 'r') as f:
+    d = json.load(f)
+d['version'] = '${CHROME_VERSION}'
+d['version_name'] = '${CHROME_VERSION_NAME}'
+d.pop('side_panel', None)
+if 'permissions' in d:
+    d['permissions'] = [p for p in d['permissions'] if p not in ('sidePanel', 'gcm')]
+with open(manifest_path, 'w') as f:
+    json.dump(d, f, indent=2)
+"
 
 mkdir -p "$(dirname "${ZIP_OUT}")"
 rm -f "${ZIP_OUT}"
 (cd "${OUT_DIR}" && zip -qr "${ZIP_OUT}" .)
+
+mkdir -p "$(dirname "${FIREFOX_ZIP}")"
+rm -f "${FIREFOX_ZIP}"
+(cd "${FIREFOX_DIR}" && zip -qr "${FIREFOX_ZIP}" .)
+
+echo "Build complete!"
+echo "Chrome extension: ${OUT_DIR} (Archive: ${ZIP_OUT})"
+echo "Firefox extension: ${FIREFOX_DIR} (Archive: ${FIREFOX_ZIP})"

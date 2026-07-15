@@ -41,6 +41,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
   String _appVersion = '';
 
   Future<void> _handleGoogleSignIn() async {
+    if (kIsWeb && isChromeRuntimeAvailable()) {
+      await _startWebExtensionLogin(idp: 'google');
+      return;
+    }
     if (_isGoogleLoggingIn) return;
     setState(() {
       _isGoogleLoggingIn = true;
@@ -163,18 +167,23 @@ class _OnboardingPageState extends State<OnboardingPage> {
     ).push(MaterialPageRoute<void>(builder: (_) => page));
   }
 
-  Future<void> _startWebExtensionLogin() async {
-    if (_isStartingWebLogin) return;
+  Future<void> _startWebExtensionLogin({String? idp}) async {
+    if (_isStartingWebLogin || _isGoogleLoggingIn) return;
     setState(() {
-      _isStartingWebLogin = true;
+      if (idp == 'google') {
+        _isGoogleLoggingIn = true;
+      } else {
+        _isStartingWebLogin = true;
+      }
     });
     try {
       MyApp.warmStartupCaches();
-      await _webExtensionLoginFlow?.start();
+      await _webExtensionLoginFlow?.start(idp: idp);
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isStartingWebLogin = false;
+        _isGoogleLoggingIn = false;
       });
     }
   }
@@ -182,14 +191,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
   Future<void> _handleWebLogin(WebExtensionLoginState state) async {
     if (!mounted) return;
     if (state.isStarted) {
-      setState(() {
-        _isStartingWebLogin = true;
-      });
       return;
     }
     if (state.isComplete) {
       setState(() {
         _isStartingWebLogin = false;
+        _isGoogleLoggingIn = false;
       });
       await MyApp.warmStartupCachesAsync();
       if (!mounted) return;
@@ -202,6 +209,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     if (state.isFailed) {
       setState(() {
         _isStartingWebLogin = false;
+        _isGoogleLoggingIn = false;
       });
     }
   }

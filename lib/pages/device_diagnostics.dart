@@ -387,15 +387,14 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
       subtitle: 'System & Logs',
       icon: Icons.developer_board_rounded,
       actions: [
-        IconButton(
-          tooltip: 'Refresh',
+        BracuRefreshButton(
           onPressed: () {
             if (mounted) {
               setState(() => _loading = true);
             }
             unawaited(_forceRequestPermissions());
           },
-          icon: const Icon(Icons.refresh_rounded, color: BracuPalette.primary),
+          isLoading: _loading,
         ),
       ],
       body: _loading

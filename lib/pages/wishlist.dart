@@ -472,9 +472,9 @@ class _WishlistPageState extends State<WishlistPage> {
       subtitle: 'Wishlist',
       icon: Icons.star_outline_rounded,
       actions: [
-        IconButton(
-          icon: const Icon(Icons.refresh_rounded),
+        BracuRefreshButton(
           onPressed: _refreshWishlistData,
+          isLoading: _isLoading,
         ),
       ],
       body: Column(

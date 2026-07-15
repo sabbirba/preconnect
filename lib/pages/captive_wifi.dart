@@ -12,6 +12,9 @@ import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:preconnect/libsync/chrome_flow_stub.dart'
+    if (dart.library.js_interop) 'package:preconnect/libsync/chrome_flow_web.dart';
 
 class CaptiveWifiPage extends StatefulWidget {
   const CaptiveWifiPage({super.key, this.autoOpenCaptiveWifiOnStart = false});
@@ -155,6 +158,14 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   }
 
   Future<void> _autofillSsidFromSystem({bool force = false}) async {
+    if (kIsWeb) {
+      if (_ssidController.text.trim().isEmpty || force) {
+        setState(() {
+          _ssidController.text = 'Student-WiFi';
+        });
+      }
+      return;
+    }
     if (!AndroidNetworkAssist.isSupported) return;
     for (var i = 0; i < 5; i++) {
       if (i > 0) {
@@ -687,6 +698,10 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                           }
                           url ??= CaptiveWifiHttp.defaultProbeUri;
                           if (!context.mounted) return;
+                          if (kIsWeb) {
+                            unawaited(openCaptivePortalFlow(url.toString()));
+                            return;
+                          }
                           await Navigator.of(context).push(
                             MaterialPageRoute<void>(
                               builder: (context) =>
@@ -1211,13 +1226,10 @@ class _CaptivePortalWebViewState extends State<CaptivePortalWebView> {
                     const Spacer(),
                     IconButton(
                       icon: _loading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: BracuPalette.primary,
-                              ),
+                          ? const BracuSpinner(
+                              size: 18,
+                              strokeWidth: 2,
+                              color: BracuPalette.primary,
                             )
                           : const Icon(Icons.refresh_rounded),
                       onPressed: _loading ? null : () => _controller.reload(),

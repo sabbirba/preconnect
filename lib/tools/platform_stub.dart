@@ -41,7 +41,7 @@ class WebExtensionLoginFlow {
 
   Stream<WebExtensionLoginState> get events async* {}
 
-  Future<void> start() async {}
+  Future<void> start({String? idp}) async {}
 
   Future<void> dispose() async {}
 }
@@ -97,6 +97,8 @@ Future<String?> webExtensionStorageGet(String key) async => null;
 Future<void> webExtensionStorageSet(String key, String? value) async {}
 
 Future<void> webExtensionStorageRemoveKeys(Iterable<String> keys) async {}
+
+Future<Map<String, String>> webExtensionStorageGetAll() async => const {};
 
 Future<String?> pickQrFromSystemImage() async {
   throw UnsupportedError(

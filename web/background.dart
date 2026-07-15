@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+
+import 'dart:js_interop_unsafe';
 import 'package:chrome_extension/src/internal_helpers.dart';
 
 import 'package:chrome_extension/cookies.dart' as ck;
@@ -23,6 +25,13 @@ import 'package:preconnect/tools/pkce.dart';
 
 const String _pendingLoginKey = 'preconnect.pendingLogin';
 const String _pendingLogoutKey = 'preconnect.pendingLogout';
+
+int? _pendingLibsyncOauthTabId;
+String? _pendingLibsyncOauthRedirectUri;
+String? _pendingLibsyncOauthRequestId;
+
+int? _pendingCaptivePortalTabId;
+Timer? _captivePortalTimer;
 const String _loginStartedType = 'preconnect.loginStarted';
 const String _loginCompleteType = 'preconnect.loginComplete';
 const String _loginFailedType = 'preconnect.loginFailed';
@@ -155,6 +164,9 @@ Future<void> main() async {
   chrome.webNavigation.onCommitted.listen((details) {
     unawaited(_guarded(() => _handleNavigation(details)));
   });
+  chrome.webNavigation.onHistoryStateUpdated.listen((details) {
+    unawaited(_guarded(() => _handleHistoryNavigation(details)));
+  });
 
   chrome.tabs.onRemoved.listen((event) {
     unawaited(_guarded(() => _handleTabRemoved(event)));
@@ -211,13 +223,31 @@ Future<void> _guarded(Future<void> Function() task) async {
 }
 
 void _handleRuntimeMessage(dynamic event) {
-  final message = event.message;
-  if (message is! Map) return;
-  final type = '${message['type'] ?? ''}';
+  final rawMessage = event.message;
+  Map<String, dynamic>? message;
+  if (rawMessage is String) {
+    try {
+      final decoded = jsonDecode(rawMessage);
+      if (decoded is Map) {
+        message = Map<String, dynamic>.from(decoded);
+      }
+    } catch (_) {}
+  } else if (rawMessage is Map) {
+    message = Map<String, dynamic>.from(rawMessage);
+  } else {
+    try {
+      final dartified = (rawMessage as JSObject).dartify();
+      if (dartified is Map) message = Map<String, dynamic>.from(dartified);
+    } catch (_) {}
+  }
+  if (message == null) return;
+  final msg = message;
+  final type = '${msg['type'] ?? ''}';
   Future<void> Function()? action;
   switch (type) {
     case _startLoginType:
-      action = _startLogin;
+      final idp = msg['idp'] as String?;
+      action = () => _startLogin(idp: idp);
       break;
     case _startLogoutType:
       action = _startLogout;
@@ -225,12 +255,18 @@ void _handleRuntimeMessage(dynamic event) {
     case PreConnectPushConfig.syncPushTokenMessageType:
       action = _registerGcmAndSyncToken;
       break;
+    case 'preconnect.libsyncRequest':
+      action = () => _handleLibsyncRequest(msg);
+      break;
+    case 'preconnect.startLibsyncOauth':
+      action = () => _startLibsyncOauth(msg);
+      break;
+    case 'preconnect.startCaptivePortalFlow':
+      action = () => _startCaptivePortalFlow(msg);
+      break;
     default:
       return;
   }
-  try {
-    event.sendResponse.callAsFunction(null, {'ok': true}.jsify());
-  } catch (_) {}
   unawaited(_guarded(action));
 }
 
@@ -682,7 +718,7 @@ class _PendingLogin {
   }
 }
 
-Future<void> _startLogin() async {
+Future<void> _startLogin({String? idp}) async {
   if (!chrome.tabs.isAvailable) {
     await _broadcastFailure('Tabs API is not available.');
     return;
@@ -708,7 +744,17 @@ Future<void> _startLogin() async {
 
   final verifier = generatePkceVerifier();
   final challenge = codeChallengeS256(verifier);
-  final authUrl = WebExtensionApiConfig.authUrlWithPkce(challenge);
+  var authUrl = WebExtensionApiConfig.authUrlWithPkce(challenge);
+  if (idp != null && idp.isNotEmpty) {
+    try {
+      final parsed = Uri.parse(authUrl);
+      authUrl = parsed
+          .replace(
+            queryParameters: {...parsed.queryParameters, 'kc_idp_hint': idp},
+          )
+          .toString();
+    } catch (_) {}
+  }
 
   try {
     final tab = await chrome.tabs.create(
@@ -725,10 +771,11 @@ Future<void> _startLogin() async {
         startedAtMillis: DateTime.now().millisecondsSinceEpoch,
       ),
     );
-    await chrome.runtime.sendMessage(null, {
-      'type': _loginStartedType,
-      'tabId': tab.id,
-    }, null);
+    await chrome.runtime.sendMessage(
+      null,
+      {'type': _loginStartedType, 'tabId': tab.id}.jsify() as Object,
+      null,
+    );
   } catch (e) {
     await _broadcastFailure('Unable to start login: $e');
   }
@@ -818,15 +865,84 @@ Future<void> _completeMercureLogout(int? appTabId) async {
 }
 
 Future<void> _handleNavigation(OnCommittedDetails details) async {
-  if (await _handleLogoutNavigation(details)) {
+  await _processNavigation(details.tabId, details.url);
+}
+
+Future<void> _handleHistoryNavigation(
+  OnHistoryStateUpdatedDetails details,
+) async {
+  await _processNavigation(details.tabId, details.url);
+}
+
+Future<void> _processNavigation(int tabId, String url) async {
+  if (_pendingLibsyncOauthTabId == null) {
+    try {
+      final values = await chrome.storage.session.get([
+        'libsync.pendingTabId',
+        'libsync.pendingRedirectUri',
+        'libsync.pendingRequestId',
+      ]);
+      final storedTabId = values['libsync.pendingTabId'];
+      if (storedTabId != null) {
+        _pendingLibsyncOauthTabId = (storedTabId as num).toInt();
+        _pendingLibsyncOauthRedirectUri =
+            values['libsync.pendingRedirectUri'] as String?;
+        _pendingLibsyncOauthRequestId =
+            values['libsync.pendingRequestId'] as String?;
+      }
+    } catch (_) {}
+  }
+
+  if (_pendingLibsyncOauthTabId != null && tabId == _pendingLibsyncOauthTabId) {
+    bool isRedirectMatch = false;
+    if (_pendingLibsyncOauthRedirectUri != null) {
+      final parsedRedirect = Uri.tryParse(_pendingLibsyncOauthRedirectUri!);
+      final parsedUrl = Uri.tryParse(url);
+      if (parsedRedirect != null && parsedUrl != null) {
+        isRedirectMatch =
+            parsedUrl.scheme == parsedRedirect.scheme &&
+            parsedUrl.host == parsedRedirect.host &&
+            parsedUrl.path == parsedRedirect.path;
+      }
+    }
+    if (isRedirectMatch) {
+      final uri = Uri.tryParse(url);
+      if (uri != null) {
+        final code = uri.queryParameters['code'];
+        try {
+          await chrome.tabs.remove(_pendingLibsyncOauthTabId!);
+        } catch (_) {}
+        final reqId = _pendingLibsyncOauthRequestId;
+        _pendingLibsyncOauthTabId = null;
+        _pendingLibsyncOauthRedirectUri = null;
+        _pendingLibsyncOauthRequestId = null;
+        try {
+          await chrome.storage.session.remove([
+            'libsync.pendingTabId',
+            'libsync.pendingRedirectUri',
+            'libsync.pendingRequestId',
+          ]);
+        } catch (_) {}
+        unawaited(
+          _broadcastRuntimeMessage({
+            'type': 'preconnect.libsyncOauthResponse',
+            'requestId': reqId,
+            'code': code,
+          }),
+        );
+      }
+    }
+  }
+
+  if (await _handleLogoutNavigation(tabId, url)) {
     return;
   }
 
-  await _autoClickLogoutIfNeeded(details.tabId, url: details.url);
+  await _autoClickLogoutIfNeeded(tabId, url: url);
 
   final pending = await _loadPendingLogin();
-  if (pending == null || pending.tabId != details.tabId) return;
-  final uri = Uri.tryParse(details.url);
+  if (pending == null || pending.tabId != tabId) return;
+  final uri = Uri.tryParse(url);
   if (uri == null) return;
   if (uri.scheme != 'https') return;
   if (uri.host != 'connect.bracu.ac.bd') return;
@@ -841,7 +957,7 @@ Future<void> _handleNavigation(OnCommittedDetails details) async {
   }
 
   try {
-    await chrome.tabs.remove(details.tabId);
+    await chrome.tabs.remove(tabId);
   } catch (_) {}
 
   try {
@@ -863,11 +979,15 @@ Future<void> _handleNavigation(OnCommittedDetails details) async {
     if (!chrome.sidePanel.isAvailable) {
       unawaited(_openOrFocusAppTab());
     }
-    await chrome.runtime.sendMessage(null, {
-      'type': _loginCompleteType,
-      'accessToken': tokens.accessToken,
-      'refreshToken': tokens.refreshToken,
-    }, null);
+    await chrome.runtime.sendMessage(
+      null,
+      jsonEncode({
+        'type': _loginCompleteType,
+        'accessToken': tokens.accessToken,
+        'refreshToken': tokens.refreshToken,
+      }).toJS,
+      null,
+    );
   } catch (e) {
     await _failAndClear('Unable to complete login: $e');
   }
@@ -909,11 +1029,11 @@ class _PendingLogout {
   }
 }
 
-Future<bool> _handleLogoutNavigation(OnCommittedDetails details) async {
+Future<bool> _handleLogoutNavigation(int tabId, String url) async {
   final pending = await _loadPendingLogout();
-  if (pending == null || pending.logoutTabId != details.tabId) return false;
+  if (pending == null || pending.logoutTabId != tabId) return false;
 
-  if (!BracuLogout.isConnectLogoutRedirect(details.url)) return false;
+  if (!BracuLogout.isConnectLogoutRedirect(url)) return false;
 
   await _unregisterGcmToken();
   await _clearPendingLogout();
@@ -937,25 +1057,42 @@ Future<bool> _handleLogoutNavigation(OnCommittedDetails details) async {
     await chrome.action.setTitle(action.SetTitleDetails(title: 'PreConnect'));
   }
   try {
-    await chrome.tabs.remove(details.tabId);
+    await chrome.tabs.remove(tabId);
   } catch (_) {}
-
   if (pending.appTabId != null) {
     try {
       await chrome.tabs.update(
-        pending.appTabId,
+        pending.appTabId!,
         UpdateProperties(active: true),
       );
     } catch (_) {}
-  } else {
-    await _openOrFocusAppTab();
   }
-
   unawaited(_broadcastRuntimeMessage({'type': _logoutCompleteType}));
   return true;
 }
 
 Future<void> _handleTabRemoved(OnRemovedEvent event) async {
+  if (event.tabId == _pendingLibsyncOauthTabId) {
+    final reqId = _pendingLibsyncOauthRequestId;
+    _pendingLibsyncOauthTabId = null;
+    _pendingLibsyncOauthRedirectUri = null;
+    _pendingLibsyncOauthRequestId = null;
+    unawaited(
+      _broadcastRuntimeMessage({
+        'type': 'preconnect.libsyncOauthResponse',
+        'requestId': reqId,
+        'error': 'Tab closed by user',
+      }),
+    );
+    return;
+  }
+
+  if (event.tabId == _pendingCaptivePortalTabId) {
+    _pendingCaptivePortalTabId = null;
+    _captivePortalTimer?.cancel();
+    return;
+  }
+
   final pendingLogout = await _loadPendingLogout();
   if (pendingLogout != null && pendingLogout.logoutTabId == event.tabId) {
     await _clearPendingLogout();
@@ -980,7 +1117,7 @@ Future<void> _broadcastFailure(String error) async {
 
 Future<void> _broadcastRuntimeMessage(Map<String, Object?> message) async {
   try {
-    await chrome.runtime.sendMessage(null, message, null);
+    await chrome.runtime.sendMessage(null, jsonEncode(message).toJS, null);
   } catch (_) {}
 }
 
@@ -1286,17 +1423,20 @@ Future<void> _createChromeNotification(
   if (payload.isNotEmpty) {
     await _saveNotificationPayload(notificationId, payload);
   }
-  await chrome.notifications.create(
-    notificationId,
-    notifications.NotificationOptions(
-      type: notifications.TemplateType.basic,
-      iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
-      title: title,
-      message: message,
-      priority: 0,
-      requireInteraction: requireInteraction,
-    ),
-  );
+  final isFirefox = chrome.runtime.getURL('').startsWith('moz-extension');
+  try {
+    await chrome.notifications.create(
+      notificationId,
+      notifications.NotificationOptions(
+        type: notifications.TemplateType.basic,
+        iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
+        title: title,
+        message: message,
+        priority: isFirefox ? null : 0,
+        requireInteraction: isFirefox ? null : requireInteraction,
+      ),
+    );
+  } catch (_) {}
 }
 
 Future<void> _saveNotificationPayload(
@@ -1407,4 +1547,126 @@ Future<void> _handleNotificationClick(String notificationId) async {
   final url = _notificationUrlForPayload(payload);
   if (url.isNotEmpty && await _openNotificationUrl(url)) return;
   await _activateBrowserShortcut(_notificationShortcutForPayload(payload));
+}
+
+Future<void> _handleLibsyncRequest(Map message) async {
+  final String requestId = '${message['requestId'] ?? ''}';
+  final String method = '${message['method'] ?? 'GET'}';
+  final String url = '${message['url'] ?? ''}';
+  final String headersJson = '${message['headers'] ?? '{}'}';
+  final Map headers = jsonDecode(headersJson) as Map;
+  final String bodyBase64 = '${message['body'] ?? ''}';
+
+  try {
+    final reqHeaders = Headers();
+    headers.forEach((k, v) {
+      reqHeaders.append(k.toString(), v.toString());
+    });
+
+    final init = RequestInit(method: method, headers: reqHeaders);
+    if (bodyBase64.isNotEmpty) {
+      final bodyStr = utf8.decode(base64Decode(bodyBase64));
+      init.setProperty('body'.toJS, bodyStr.toJS);
+    }
+
+    final response = await _fetch(url, init).toDart;
+    final text = await response.text().toDart;
+    final responseBody = text.toDart;
+    final Map<String, String> respHeaders = {};
+
+    await chrome.runtime.sendMessage(
+      null,
+      jsonEncode({
+        'type': 'preconnect.libsyncResponse',
+        'requestId': requestId,
+        'statusCode': response.status,
+        'headers': respHeaders,
+        'body': base64Encode(utf8.encode(responseBody)),
+      }).toJS,
+      null,
+    );
+  } catch (e) {
+    await chrome.runtime.sendMessage(
+      null,
+      jsonEncode({
+        'type': 'preconnect.libsyncResponse',
+        'requestId': requestId,
+        'error': e.toString(),
+      }).toJS,
+      null,
+    );
+  }
+}
+
+Future<void> _startLibsyncOauth(Map message) async {
+  final String oauthUrl = '${message['oauthUrl']}';
+  final String redirectUri = '${message['redirectUri']}';
+  final String requestId = '${message['requestId'] ?? ''}';
+
+  try {
+    final tab = await chrome.tabs.create(
+      CreateProperties(url: oauthUrl, active: true),
+    );
+    final tabId = tab.id;
+    if (tabId != null) {
+      _pendingLibsyncOauthTabId = tabId;
+      _pendingLibsyncOauthRedirectUri = redirectUri;
+      _pendingLibsyncOauthRequestId = requestId;
+      await chrome.storage.session.set({
+        'libsync.pendingTabId': tabId,
+        'libsync.pendingRedirectUri': redirectUri,
+        'libsync.pendingRequestId': requestId,
+      });
+    }
+  } catch (_) {}
+}
+
+Future<void> _startCaptivePortalFlow(Map message) async {
+  final String portalUrl = '${message['portalUrl']}';
+
+  try {
+    final tab = await chrome.tabs.create(
+      CreateProperties(url: portalUrl, active: true),
+    );
+    final tabId = tab.id;
+    if (tabId != null) {
+      _pendingCaptivePortalTabId = tabId;
+
+      _captivePortalTimer?.cancel();
+      _captivePortalTimer = Timer.periodic(const Duration(seconds: 2), (
+        timer,
+      ) async {
+        if (_pendingCaptivePortalTabId == null) {
+          timer.cancel();
+          return;
+        }
+
+        final hasInternet = await _checkInternetConnection();
+        if (hasInternet) {
+          timer.cancel();
+          try {
+            await chrome.tabs.remove(_pendingCaptivePortalTabId!);
+          } catch (_) {}
+          _pendingCaptivePortalTabId = null;
+
+          unawaited(
+            _broadcastRuntimeMessage({
+              'type': 'preconnect.captivePortalSuccess',
+            }),
+          );
+        }
+      });
+    }
+  } catch (_) {}
+}
+
+Future<bool> _checkInternetConnection() async {
+  try {
+    final response = await _fetch(
+      'http://clients3.google.com/generate_204',
+      RequestInit(method: 'GET', cache: 'no-cache'),
+    ).toDart;
+    return response.status == 204;
+  } catch (_) {}
+  return false;
 }

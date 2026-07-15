@@ -856,6 +856,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     return BracuPageScaffold(
       title: 'Printer',
       subtitle: printerSubtitle,
+      subtitleColor: _printerHost.isNotEmpty && !_discovering
+          ? const Color(0xFF22B573)
+          : null,
       icon: Icons.local_printshop_outlined,
       actions: [
         IconButton(

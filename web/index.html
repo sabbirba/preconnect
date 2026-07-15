@@ -2,31 +2,7 @@
 <html>
   <head>
     <base href="$FLUTTER_BASE_HREF" />
-    <script>
-      (function () {
-        function clean() {
-          if (window.location.hash) {
-            window.history.replaceState(null, null, window.location.pathname + window.location.search);
-          }
-        }
-        clean();
-        window.addEventListener('hashchange', clean);
-        var push = window.history.pushState;
-        var replace = window.history.replaceState;
-        window.history.pushState = function (state, title, url) {
-          if (url && url.indexOf('#') !== -1) {
-            url = url.split('#')[0];
-          }
-          return push.apply(this, [state, title, url]);
-        };
-        window.history.replaceState = function (state, title, url) {
-          if (url && url.indexOf('#') !== -1) {
-            url = url.split('#')[0];
-          }
-          return replace.apply(this, [state, title, url]);
-        };
-      })();
-    </script>
+    <script src="remove_hash.js"></script>
     <meta charset="UTF-8" />
     <meta content="IE=Edge" http-equiv="X-UA-Compatible" />
     <meta
@@ -695,27 +671,7 @@
       </div>
     </div>
 
-    <script>
-      (function () {
-        function removeLoader() {
-          var loader = document.getElementById("loading-container");
-          if (loader && !loader.classList.contains("fade-out")) {
-            loader.classList.add("fade-out");
-            setTimeout(function () {
-              if (loader.parentNode) {
-                loader.parentNode.removeChild(loader);
-              }
-            }, 400);
-          }
-        }
-        window.addEventListener("flutter-first-frame", function () {
-          removeLoader();
-        });
-        setTimeout(function () {
-          removeLoader();
-        }, 15000);
-      })();
-    </script>
+    <script src="remove_loader.js"></script>
 
     <script src="flutter_bootstrap.js" async></script>
   </body>

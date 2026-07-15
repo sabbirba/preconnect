@@ -20,7 +20,6 @@ import 'package:preconnect/pages/degree_progress.dart';
 import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
 import 'package:preconnect/pages/shared_widgets/session_helper.dart';
-import 'package:preconnect/pages/shared_widgets/import_dialog.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/home.dart';
@@ -424,10 +423,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     if (kIsWeb) {
-      return _WebLoginPage(
-        onOpenLogin: _launchWebLogin,
-        onImportPressed: _handleImportSession,
-      );
+      return _WebLoginPage(onOpenLogin: _launchWebLogin);
     }
 
     return PreConnectWebViewPage(
@@ -467,30 +463,12 @@ class _LoginPageState extends State<LoginPage> {
       webOnlyWindowName: '_self',
     );
   }
-
-  Future<void> _handleImportSession() async {
-    final result = await ImportSessionDialog.show(context);
-    if (result == true) {
-      RefreshBus.instance.notify(reason: 'auth');
-      if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const HomePage()),
-          (route) => false,
-        );
-      }
-      unawaited(_warmAuthenticatedData());
-    }
-  }
 }
 
 class _WebLoginPage extends StatelessWidget {
-  const _WebLoginPage({
-    required this.onOpenLogin,
-    required this.onImportPressed,
-  });
+  const _WebLoginPage({required this.onOpenLogin});
 
   final Future<void> Function() onOpenLogin;
-  final VoidCallback onImportPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -537,57 +515,6 @@ class _WebLoginPage extends StatelessWidget {
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
-                    ),
-                  ),
-                  const Gap(20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Divider(color: textSecondary.withAlpha(60)),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        child: Text(
-                          'or sync from mobile app',
-                          style: TextStyle(fontSize: 12, color: textSecondary),
-                        ),
-                      ),
-                      Expanded(
-                        child: Divider(color: textSecondary.withAlpha(60)),
-                      ),
-                    ],
-                  ),
-                  const Gap(20),
-                  OutlinedButton.icon(
-                    onPressed: onImportPressed,
-                    icon: const Icon(Icons.qr_code_scanner_rounded),
-                    label: const Text('Sync Session (QR / Copy Code)'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      textStyle: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const Gap(20),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E6BE3).withAlpha(15),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFF1E6BE3).withAlpha(38),
-                      ),
-                    ),
-                    child: Text(
-                      'To sync: open PreConnect on your phone → Settings → Sync Session → Copy or scan the QR code.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: textSecondary,
-                        height: 1.5,
-                      ),
-                      textAlign: TextAlign.center,
                     ),
                   ),
                   const Gap(40),

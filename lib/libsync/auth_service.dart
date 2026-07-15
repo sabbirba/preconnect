@@ -59,6 +59,16 @@ class LibSyncAuthService extends ChangeNotifier {
   }
 
   Future<void> initialize() async {
+    final cookies = await _apiClient.getStoredCookies();
+    final localRefreshToken = await _apiClient.getGoogleRefreshToken();
+    if (cookies.isEmpty &&
+        (localRefreshToken == null || localRefreshToken.isEmpty)) {
+      state.value = const LibSyncAuthState(
+        status: LibSyncAuthStatus.unauthenticated,
+      );
+      return;
+    }
+
     state.value = const LibSyncAuthState(status: LibSyncAuthStatus.loading);
     try {
       final response = await _apiClient.get(Uri.parse(LibSyncConfig.userMeUrl));
@@ -81,7 +91,6 @@ class LibSyncAuthService extends ChangeNotifier {
         throw Exception('Server returned ${response.statusCode}');
       }
     } catch (e) {
-      final cookies = await _apiClient.getStoredCookies();
       if (cookies.isNotEmpty) {
         final cachedProfile = await _apiClient.getCachedProfile();
         state.value = LibSyncAuthState(

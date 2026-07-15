@@ -282,6 +282,13 @@ jobs:
           cd build/chrome-extension
           zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-chrome-extension-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
 
+      - name: Package Firefox Extension
+        if: matrix.platform == 'chrome_extension'
+        run: |
+          mkdir -p artifacts
+          cd build/firefox-extension
+          zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-firefox-extension-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
+
       - name: Build Web
         if: matrix.platform == 'web'
         shell: bash

@@ -48,6 +48,7 @@ class BracuPageScaffold extends StatefulWidget {
     this.showMenu = false,
     this.showBack = true,
     this.onHeaderTap,
+    this.subtitleColor,
   });
 
   final String title;
@@ -58,6 +59,7 @@ class BracuPageScaffold extends StatefulWidget {
   final bool showMenu;
   final bool showBack;
   final VoidCallback? onHeaderTap;
+  final Color? subtitleColor;
 
   @override
   State<BracuPageScaffold> createState() => _BracuPageScaffoldState();
@@ -146,6 +148,7 @@ class _BracuPageScaffoldState extends State<BracuPageScaffold> {
                                 showMenu: widget.showMenu,
                                 showBack: widget.showBack,
                                 onHeaderTap: widget.onHeaderTap,
+                                subtitleColor: widget.subtitleColor,
                               ),
                             ),
                             Expanded(child: widget.body),
@@ -173,6 +176,7 @@ class _PageHeader extends StatelessWidget {
     required this.showMenu,
     required this.showBack,
     this.onHeaderTap,
+    this.subtitleColor,
   });
 
   final String title;
@@ -182,6 +186,7 @@ class _PageHeader extends StatelessWidget {
   final bool showMenu;
   final bool showBack;
   final VoidCallback? onHeaderTap;
+  final Color? subtitleColor;
 
   @override
   Widget build(BuildContext context) {
@@ -226,7 +231,7 @@ class _PageHeader extends StatelessWidget {
                 subtitle,
                 style: TextStyle(
                   fontSize: 12,
-                  color: BracuPalette.textSecondary(context),
+                  color: subtitleColor ?? BracuPalette.textSecondary(context),
                 ),
               ),
               const Gap(2),
@@ -319,14 +324,10 @@ class BracuLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return const Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 36),
-        child: const SizedBox(
-          width: 28,
-          height: 28,
-          child: CircularProgressIndicator(strokeWidth: 2.6),
-        ),
+        padding: EdgeInsets.symmetric(vertical: 36),
+        child: BracuSpinner(size: 28, strokeWidth: 2.6),
       ),
     );
   }
@@ -665,7 +666,7 @@ class QuickAccessCard extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               decoration: const BoxDecoration(color: Colors.transparent),
               child: isLoading
-                  ? Icon(icon, color: color, size: 22)
+                  ? BracuSpinner(size: 22, color: color, strokeWidth: 2.2)
                   : Icon(icon, color: color, size: 22),
             ),
             const Gap(12),

@@ -315,28 +315,8 @@ class _LibSyncPageState extends State<LibSyncPage>
           authCode,
           redirectUri: redirectUri,
         );
-      } else {
-        if (mounted) {
-          showAppSnackBar(context, 'Sign in cancelled.');
-          Future.delayed(Duration.zero, () {
-            if (mounted) {
-              Navigator.of(context).maybePop();
-            }
-          });
-        }
       }
-    } catch (e) {
-      if (mounted) {
-        showAppSnackBar(
-          context,
-          'Google Sign In failed: ${e.toString().replaceAll('Exception: ', '')}',
-        );
-        Future.delayed(Duration.zero, () {
-          if (mounted) {
-            Navigator.of(context).maybePop();
-          }
-        });
-      }
+    } catch (_) {
     } finally {
       _isGoogleSigningIn = false;
     }

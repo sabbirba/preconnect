@@ -4,3 +4,5 @@ Future<String?> openChromeExtensionOAuthFlow(
 ) async {
   return null;
 }
+
+Future<void> openCaptivePortalFlow(String portalUrl) async {}

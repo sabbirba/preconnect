@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:js_interop';
 
 import 'package:chrome_extension/runtime.dart';
@@ -14,11 +15,25 @@ class WebExtensionShortcutBridge {
   StreamSubscription<OnMessageEvent>? _messageSub;
 
   void _handleMessage(OnMessageEvent event) {
-    final message = event.message;
-    if (message is! Map) return;
-    final type = '${message['type'] ?? ''}';
+    Map<String, dynamic>? resp;
+    final raw = event.message;
+    if (raw is String) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) resp = Map<String, dynamic>.from(decoded);
+      } catch (_) {}
+    } else if (raw is Map) {
+      resp = Map<String, dynamic>.from(raw);
+    } else {
+      try {
+        final dartified = (raw as JSObject).dartify();
+        if (dartified is Map) resp = Map<String, dynamic>.from(dartified);
+      } catch (_) {}
+    }
+    if (resp == null) return;
+    final type = '${resp['type'] ?? ''}';
     if (type != 'preconnect.browserShortcut') return;
-    final action = '${message['shortcut'] ?? ''}'.trim();
+    final action = '${resp['shortcut'] ?? ''}'.trim();
     if (action.isEmpty) return;
     onShortcut(action);
     try {

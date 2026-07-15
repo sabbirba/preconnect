@@ -339,6 +339,9 @@ class NotificationService {
               title: item.title,
               body: '${item.source}: ${item.message}',
               imageUrl: item.imageUrl,
+              data: item.url.isNotEmpty
+                  ? <String, dynamic>{'url': item.url}
+                  : const {},
             ),
           );
         }
@@ -416,6 +419,9 @@ class NotificationService {
                 FCMService.instance.showLocalNotificationDirect(
                   title: item.title,
                   body: item.module,
+                  data: (item.link != null && item.link!.isNotEmpty)
+                      ? <String, dynamic>{'url': item.link}
+                      : const {},
                 ),
               );
             }

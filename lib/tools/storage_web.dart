@@ -63,3 +63,30 @@ Future<void> webExtensionStorageRemoveKeys(Iterable<String> keys) async {
     } catch (_) {}
   }
 }
+
+Future<Map<String, String>> webExtensionStorageGetAll() async {
+  final map = <String, String>{};
+  if (_isChromeStorageAvailable()) {
+    try {
+      final Map<dynamic, dynamic> valuesObj = await chrome.storage.local.get(
+        null,
+      );
+      valuesObj.forEach((k, v) {
+        if (v != null) {
+          map[k.toString()] = v.toString();
+        }
+      });
+    } catch (_) {}
+    return map;
+  }
+  try {
+    for (int i = 0; i < web.window.localStorage.length; i++) {
+      final key = web.window.localStorage.key(i);
+      if (key != null) {
+        final val = web.window.localStorage.getItem(key);
+        if (val != null) map[key] = val;
+      }
+    }
+  } catch (_) {}
+  return map;
+}

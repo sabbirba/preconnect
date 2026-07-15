@@ -622,25 +622,7 @@ class FCMService {
           try {
             final Map<String, dynamic> data =
                 jsonDecode(payload) as Map<String, dynamic>;
-            final action = data['payload'] ?? data['action'];
-            if (action == 'captive_wifi') {
-              AuthService.navigatorKey.currentState?.push(
-                MaterialPageRoute(
-                  builder: (context) => const CaptiveWifiPage(),
-                ),
-              );
-              return;
-            }
-            var url = data['url'] as String?;
-            if ((url == null || url.isEmpty) && data['courseCode'] != null) {
-              url = '${ApiConfig.websiteBase}/student/advising/seat-status';
-            }
-            if (url != null && url.isNotEmpty) {
-              try {
-                final uri = Uri.parse(url);
-                unawaited(launchUrl(uri, mode: LaunchMode.inAppWebView));
-              } catch (_) {}
-            }
+            _handleNotificationTapAction(data);
           } catch (_) {}
         }
       },
@@ -773,16 +755,35 @@ class FCMService {
   }
 
   void _handleMessageTap(RemoteMessage message) {
-    final action = message.data['payload'] ?? message.data['action'];
+    _handleNotificationTapAction(message.data);
+  }
+
+  void _handleNotificationTapAction(Map<String, dynamic> data) {
+    final action = data['payload'] ?? data['action'];
     if (action == 'captive_wifi') {
       AuthService.navigatorKey.currentState?.push(
         MaterialPageRoute(builder: (context) => const CaptiveWifiPage()),
       );
       return;
     }
-    var url = message.data['url'] as String?;
-    if ((url == null || url.isEmpty) && message.data['courseCode'] != null) {
-      url = '${ApiConfig.websiteBase}/student/advising/seat-status';
+    var url = data['url'] as String?;
+    if ((url == null || url.isEmpty) && data['courseCode'] != null) {
+      final courseCode = '${data['courseCode'] ?? ''}'.trim();
+      final sectionName = '${data['sectionName'] ?? ''}'.trim();
+      final facultyName = '${data['facultyName'] ?? ''}'.trim();
+      if (courseCode.isNotEmpty) {
+        var query = courseCode;
+        if (sectionName.isNotEmpty) {
+          query += ' $sectionName';
+          if (facultyName.isNotEmpty) {
+            query += ' $facultyName';
+          }
+        }
+        final formattedQuery = query.replaceAll(' ', '+');
+        url = '${ApiConfig.websiteBase}/seat?course=$formattedQuery';
+      } else {
+        url = '${ApiConfig.websiteBase}/student/advising/seat-status';
+      }
     }
     if (url != null && url.isNotEmpty) {
       try {

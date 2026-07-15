@@ -697,13 +697,9 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                 ),
               )
             else
-              IconButton(
-                tooltip: 'Refresh',
+              BracuRefreshButton(
                 onPressed: () => _loadCategoryItems(_selectedCategory!),
-                icon: const Icon(
-                  Icons.refresh_rounded,
-                  color: BracuPalette.primary,
-                ),
+                isLoading: _isLoadingItems,
               ),
           ],
           body: Padding(
