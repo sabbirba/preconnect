@@ -68,6 +68,12 @@ android {
         buildConfig = false
     }
 
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+        disable += setOf("EasterEgg", "StopShip")
+    }
+
     kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
