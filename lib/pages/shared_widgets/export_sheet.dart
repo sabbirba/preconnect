@@ -28,10 +28,6 @@ class ExportSessionBottomSheet extends StatefulWidget {
 }
 
 class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
-  Timer? _countdownTimer;
-  Timer? _clipboardClearTimer;
-  int _secondsRemaining = 60;
-  bool _expired = false;
   String? _base64Payload;
   bool _isLoading = true;
   bool _copied = false;
@@ -48,8 +44,6 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
 
   @override
   void dispose() {
-    _countdownTimer?.cancel();
-    _clipboardClearTimer?.cancel();
     super.dispose();
   }
 
@@ -101,9 +95,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
   Future<void> _generatePayload() async {
     setState(() {
       _isLoading = true;
-      _expired = false;
       _copied = false;
-      _secondsRemaining = 60;
     });
 
     try {
@@ -141,7 +133,6 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
           _base64Payload = encoded;
           _isLoading = false;
         });
-        _startTimer();
       }
     } catch (_) {
       if (mounted) {
@@ -151,24 +142,8 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
     }
   }
 
-  void _startTimer() {
-    _countdownTimer?.cancel();
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) return;
-      setState(() {
-        if (_secondsRemaining > 1) {
-          _secondsRemaining--;
-        } else {
-          _secondsRemaining = 0;
-          _expired = true;
-          _countdownTimer?.cancel();
-        }
-      });
-    });
-  }
-
   Future<void> _copyToClipboard() async {
-    if (_base64Payload == null || _expired) return;
+    if (_base64Payload == null) return;
 
     await Clipboard.setData(ClipboardData(text: _base64Payload!));
     if (!mounted) return;
@@ -179,13 +154,8 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
 
     showAppSnackBar(
       context,
-      'Session code copied. Clipboard will clear in 60s.',
+      'Session code copied.',
     );
-
-    _clipboardClearTimer?.cancel();
-    _clipboardClearTimer = Timer(const Duration(seconds: 60), () async {
-      await Clipboard.setData(const ClipboardData(text: ''));
-    });
   }
 
   @override
@@ -245,15 +215,6 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_expired)
-            BracuActionButton(
-              onPressed: _generatePayload,
-              label: 'Generate New Code',
-              outlined: false,
-              backgroundColor: BracuPalette.primary,
-              foregroundColor: Colors.white,
-            ),
-          if (_expired) const Gap(20),
           Center(
             child: Stack(
               alignment: Alignment.center,
@@ -265,7 +226,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
                     decoration: const BoxDecoration(color: Colors.white),
                     padding: const EdgeInsets.all(12),
                     child: Opacity(
-                      opacity: _expired ? 0.08 : 1.0,
+                      opacity: 1.0,
                       child: BarcodeWidget(
                         barcode: Barcode.qrCode(),
                         data: _base64Payload!,
@@ -277,29 +238,6 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
                     ),
                   ),
                 ),
-                if (_expired)
-                  Positioned.fill(
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: BracuPalette.danger.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text(
-                          'Expired',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),
@@ -307,46 +245,19 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    _expired
-                        ? 'Code expired.'
-                        : 'Expires in $_secondsRemaining seconds',
-                    style: TextStyle(
-                      color: _expired
-                          ? BracuPalette.danger
-                          : BracuPalette.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+              BracuActionButton(
+                onPressed: _copyToClipboard,
+                label: _copied ? 'Copied' : 'Copy Code',
+                icon: _copied
+                    ? Icons.check_circle_rounded
+                    : Icons.copy_rounded,
+                outlined: false,
+                backgroundColor: _copied
+                    ? BracuPalette.accent
+                    : BracuPalette.primary,
+                foregroundColor: Colors.white,
               ),
-              if (!_expired) ...[
-                const Gap(16),
-                BracuActionButton(
-                  onPressed: _copyToClipboard,
-                  label: _copied ? 'Copied' : 'Copy Code',
-                  icon: _copied
-                      ? Icons.check_circle_rounded
-                      : Icons.copy_rounded,
-                  outlined: false,
-                  backgroundColor: _copied
-                      ? BracuPalette.accent
-                      : BracuPalette.primary,
-                  foregroundColor: Colors.white,
-                ),
-              ],
               const Gap(16),
-              BracuActionBannerCard(
-                icon: Icons.language_rounded,
-                title: 'Web App',
-                subtitle: 'web.preconnect.app',
-                onTap: () =>
-                    openExternalUrl(context, 'https://web.preconnect.app'),
-              ),
-              const Gap(18),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(

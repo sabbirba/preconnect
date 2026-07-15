@@ -16,12 +16,10 @@ import 'package:preconnect/tools/runtime_stub.dart'
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/pages/login.dart';
-import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/refresh_bus.dart';
-import 'package:preconnect/pages/shared_widgets/import_dialog.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/libsync/libsync_page.dart';
 import 'package:preconnect/tools/pkce.dart';
+import 'package:preconnect/pages/ui_kit.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key, this.isLoggedIn = false});
@@ -123,10 +121,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
       await _startWebExtensionLogin();
       return;
     }
-    if (kIsWeb && !widget.isLoggedIn) {
-      await _openWebLoginSheet();
-      return;
-    }
+
     if (widget.isLoggedIn) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const HomePage()),
@@ -168,24 +163,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     ).push(MaterialPageRoute<void>(builder: (_) => page));
   }
 
-  Future<void> _openWebLoginSheet() async {
-    if (!mounted) return;
-    final result = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => const _WebLoginSheet(),
-    );
-    if (result == true) {
-      if (!mounted) return;
-      RefreshBus.instance.notify(reason: 'auth');
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const HomePage()),
-        (route) => false,
-      );
-    }
-  }
+
 
   Future<void> _startWebExtensionLogin() async {
     if (_isStartingWebLogin) return;
@@ -466,37 +444,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 }
 
-class _WebLoginSheet extends StatelessWidget {
-  const _WebLoginSheet();
 
-  @override
-  Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.viewInsetsOf(context).bottom;
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottomPadding),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        child: Material(
-          color: BracuPalette.card(context),
-          child: SafeArea(
-            top: false,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 430),
-                child: const ImportSessionDialog(
-                  showCancelButton: true,
-                  showCloseButton: true,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _HeroCard extends StatelessWidget {
   const _HeroCard({required this.isDark});

@@ -141,10 +141,7 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
         throw const FormatException('Invalid sync code.');
       }
 
-      final age = DateTime.now().millisecondsSinceEpoch - timestamp;
-      if (age < 0 || age > 60000) {
-        throw TimeoutException('Code expired. Generate a new one.');
-      }
+
 
       final storage = TokenStorage.instance;
       await storage.write(
@@ -166,10 +163,7 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
       setState(() {
         _errorMessage = 'Invalid sync code. Copy again.';
       });
-    } on TimeoutException catch (e) {
-      setState(() {
-        _errorMessage = e.message;
-      });
+
     } catch (e) {
       setState(() {
         _errorMessage = 'Import failed.';
