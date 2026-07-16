@@ -52,6 +52,7 @@ post_install do |installer|
       config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
       config.build_settings['SWIFT_SUPPRESS_WARNINGS'] = 'YES'
       config.build_settings['WARNING_CFLAGS'] = '-Wno-objc-property-no-attribute'
+      config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
       config.build_settings['OTHER_LIBRARIAN_FLAGS'] = '$(inherited) -no_warning_for_no_symbols'
       config.build_settings['OTHER_LIBTOOLFLAGS'] = '$(inherited) -no_warning_for_no_symbols'
       

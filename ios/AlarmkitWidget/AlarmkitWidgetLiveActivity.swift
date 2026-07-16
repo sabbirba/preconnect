@@ -172,7 +172,7 @@ struct AlarmControls: View {
                 EmptyView()
             }
             
-            ButtonView(config: presentation.alert.stopButton,
+            ButtonView(config: AlarmButton(text: "Stop", textColor: .white, systemImageName: "bell.slash.fill"),
                        intent: PreConnectStopIntent(alarmID: state.alarmID.uuidString),
                        tint: .red)
         }
