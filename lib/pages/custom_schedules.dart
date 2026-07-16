@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_alarmkit/flutter_alarmkit.dart';
+import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/api/custom_schedules.dart';
@@ -532,32 +532,24 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
 
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       try {
-        final alarmkit = FlutterAlarmkit();
-        await alarmkit.getPlatformVersion();
-        final authorized = await alarmkit.requestAuthorization();
-        if (!authorized) {
+        final event = Event(
+          title: labelCode,
+          description: message,
+          location: 'BRACU Campus',
+          startDate: reminderAt,
+          endDate: reminderAt.add(const Duration(hours: 1)),
+        );
+        final success = await Add2Calendar.addEvent2Cal(event);
+        if (success) {
           if (!context.mounted) return;
-          showAppSnackBar(context, 'Alarm permission denied.');
-          return;
+          showAppSnackBar(context, 'Alarm added to system Calendar.');
+        } else {
+          if (!context.mounted) return;
+          showAppSnackBar(context, 'Unable to add event to system Calendar.');
         }
-        await alarmkit.scheduleOneShotAlarm(
-          timestamp: reminderAt.millisecondsSinceEpoch.toDouble(),
-          label: message,
-          tintColor: '#1E6BE3',
-        );
-        if (!context.mounted) return;
-        showAppSnackBar(context, 'Alarm scheduled on iOS.');
-      } on PlatformException catch (e) {
-        if (!context.mounted) return;
-        showAppSnackBar(
-          context,
-          e.code == 'UNSUPPORTED'
-              ? 'AlarmKit requires iOS 26+.'
-              : 'Unable to schedule alarm on this iOS.',
-        );
       } catch (_) {
         if (!context.mounted) return;
-        showAppSnackBar(context, 'Unable to schedule alarm on this iOS.');
+        showAppSnackBar(context, 'Unable to add event to system Calendar.');
       }
       return;
     }

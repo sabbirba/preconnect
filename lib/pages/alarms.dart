@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:flutter_alarmkit/flutter_alarmkit.dart';
+import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/exam_map.dart';
@@ -390,37 +390,41 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       final weekdays = _mapWeekdays(days, shift: dayShift);
       if (weekdays.isEmpty) return;
       try {
-        final alarmkit = FlutterAlarmkit();
-        await alarmkit.getPlatformVersion();
-        final authorized = await alarmkit.requestAuthorization();
-        if (!authorized) {
-          if (!context.mounted) return;
-          showAppSnackBar(context, 'Alarm permission denied.');
-          return;
+        final weekdaysList = weekdays.toList();
+        final now = DateTime.now();
+        DateTime nextDate = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          hour,
+          minute,
+        );
+        while (true) {
+          if (weekdaysList.contains(nextDate.weekday)) break;
+          nextDate = nextDate.add(const Duration(days: 1));
         }
-        await alarmkit.scheduleRecurrentAlarm(
-          weekdays: weekdays,
-          hour: hour,
-          minute: minute,
-          label: '$courseCode Class Reminder ($minutesBefore min before)',
-          tintColor: '#1E6BE3',
+        final event = Event(
+          title: '$courseCode Class Reminder',
+          description: '$courseCode Class Reminder ($minutesBefore min before)',
+          location: 'BRACU Campus',
+          startDate: nextDate,
+          endDate: nextDate.add(const Duration(hours: 1)),
+          recurrence: Recurrence(frequency: Frequency.weekly),
         );
-        if (!context.mounted) return;
-        showAppSnackBar(context, 'Alarm scheduled on iOS.');
-        await AppStorage.instance.setBool('alarm_done_$courseCode', true);
-        if (mounted) setState(() {});
-        RefreshBus.instance.notify(reason: 'alarms');
-      } on PlatformException catch (e) {
-        if (!context.mounted) return;
-        showAppSnackBar(
-          context,
-          e.code == 'UNSUPPORTED'
-              ? 'AlarmKit requires iOS 26+.'
-              : 'Unable to schedule alarm on this iOS.',
-        );
+        final success = await Add2Calendar.addEvent2Cal(event);
+        if (success) {
+          if (!context.mounted) return;
+          showAppSnackBar(context, 'Alarm added to system Calendar.');
+          await AppStorage.instance.setBool('alarm_done_$courseCode', true);
+          if (mounted) setState(() {});
+          RefreshBus.instance.notify(reason: 'alarms');
+        } else {
+          if (!context.mounted) return;
+          showAppSnackBar(context, 'Unable to add event to system Calendar.');
+        }
       } catch (_) {
         if (!context.mounted) return;
-        showAppSnackBar(context, 'Unable to schedule alarm on this iOS.');
+        showAppSnackBar(context, 'Unable to add event to system Calendar.');
       }
       return;
     }
@@ -461,37 +465,37 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     }
   }
 
-  Set<Weekday> _mapWeekdays(List<String> days, {int shift = 0}) {
-    Weekday? toWeekday(String day) {
+  Set<int> _mapWeekdays(List<String> days, {int shift = 0}) {
+    int? toWeekday(String day) {
       switch (day.toUpperCase()) {
         case 'MONDAY':
-          return Weekday.monday;
+          return DateTime.monday;
         case 'TUESDAY':
-          return Weekday.tuesday;
+          return DateTime.tuesday;
         case 'WEDNESDAY':
-          return Weekday.wednesday;
+          return DateTime.wednesday;
         case 'THURSDAY':
-          return Weekday.thursday;
+          return DateTime.thursday;
         case 'FRIDAY':
-          return Weekday.friday;
+          return DateTime.friday;
         case 'SATURDAY':
-          return Weekday.saturday;
+          return DateTime.saturday;
         case 'SUNDAY':
-          return Weekday.sunday;
+          return DateTime.sunday;
         default:
           return null;
       }
     }
 
-    Weekday shiftWeekday(Weekday day, int shiftBy) {
+    int shiftWeekday(int day, int shiftBy) {
       final order = [
-        Weekday.monday,
-        Weekday.tuesday,
-        Weekday.wednesday,
-        Weekday.thursday,
-        Weekday.friday,
-        Weekday.saturday,
-        Weekday.sunday,
+        DateTime.monday,
+        DateTime.tuesday,
+        DateTime.wednesday,
+        DateTime.thursday,
+        DateTime.friday,
+        DateTime.saturday,
+        DateTime.sunday,
       ];
       final index = order.indexOf(day);
       if (index < 0) return day;
@@ -499,7 +503,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       return order[(next + order.length) % order.length];
     }
 
-    final mapped = days.map(toWeekday).whereType<Weekday>().toSet();
+    final mapped = days.map(toWeekday).whereType<int>().toSet();
     if (shift == 0) return mapped;
     return mapped.map((d) => shiftWeekday(d, shift)).toSet();
   }
@@ -526,36 +530,28 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
 
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       try {
-        final alarmkit = FlutterAlarmkit();
-        await alarmkit.getPlatformVersion();
-        final authorized = await alarmkit.requestAuthorization();
-        if (!authorized) {
-          if (!context.mounted) return;
-          showAppSnackBar(context, 'Alarm permission denied.');
-          return;
-        }
-        await alarmkit.scheduleOneShotAlarm(
-          timestamp: fireAt.millisecondsSinceEpoch.toDouble(),
-          label:
+        final event = Event(
+          title: '${entry.courseCode} ${entry.type} Reminder',
+          description:
               '${entry.courseCode} ${entry.type} Reminder ($minutesBefore min before)',
-          tintColor: '#1E6BE3',
+          location: 'BRACU Campus',
+          startDate: fireAt,
+          endDate: fireAt.add(const Duration(hours: 1)),
         );
-        if (!context.mounted) return;
-        showAppSnackBar(context, 'Exam alarm scheduled on iOS.');
-        await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
-        if (mounted) setState(() {});
-        RefreshBus.instance.notify(reason: 'alarms');
-      } on PlatformException catch (e) {
-        if (!context.mounted) return;
-        showAppSnackBar(
-          context,
-          e.code == 'UNSUPPORTED'
-              ? 'AlarmKit requires iOS 26+.'
-              : 'Unable to schedule exam alarm on this iOS.',
-        );
+        final success = await Add2Calendar.addEvent2Cal(event);
+        if (success) {
+          if (!context.mounted) return;
+          showAppSnackBar(context, 'Alarm added to system Calendar.');
+          await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
+          if (mounted) setState(() {});
+          RefreshBus.instance.notify(reason: 'alarms');
+        } else {
+          if (!context.mounted) return;
+          showAppSnackBar(context, 'Unable to add event to system Calendar.');
+        }
       } catch (_) {
         if (!context.mounted) return;
-        showAppSnackBar(context, 'Unable to schedule exam alarm on this iOS.');
+        showAppSnackBar(context, 'Unable to add event to system Calendar.');
       }
       return;
     }
@@ -606,35 +602,27 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
 
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       try {
-        final alarmkit = FlutterAlarmkit();
-        await alarmkit.getPlatformVersion();
-        final authorized = await alarmkit.requestAuthorization();
-        if (!authorized) {
+        final event = Event(
+          title: item.title,
+          description: '${item.title} Reminder ($minutesBefore min before)',
+          location: 'BRACU Campus',
+          startDate: fireAt,
+          endDate: fireAt.add(const Duration(hours: 1)),
+        );
+        final success = await Add2Calendar.addEvent2Cal(event);
+        if (success) {
           if (!context.mounted) return;
-          showAppSnackBar(context, 'Alarm permission denied.');
-          return;
+          showAppSnackBar(context, 'Alarm added to system Calendar.');
+          await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
+          if (mounted) setState(() {});
+          RefreshBus.instance.notify(reason: 'alarms');
+        } else {
+          if (!context.mounted) return;
+          showAppSnackBar(context, 'Unable to add event to system Calendar.');
         }
-        await alarmkit.scheduleOneShotAlarm(
-          timestamp: fireAt.millisecondsSinceEpoch.toDouble(),
-          label: '${item.title} Reminder ($minutesBefore min before)',
-          tintColor: '#1E6BE3',
-        );
-        if (!context.mounted) return;
-        showAppSnackBar(context, 'Personal alarm scheduled on iOS.');
-        await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
-        if (mounted) setState(() {});
-        RefreshBus.instance.notify(reason: 'alarms');
-      } on PlatformException catch (e) {
-        if (!context.mounted) return;
-        showAppSnackBar(
-          context,
-          e.code == 'UNSUPPORTED'
-              ? 'AlarmKit requires iOS 26+.'
-              : 'Unable to schedule alarm on this iOS.',
-        );
       } catch (_) {
         if (!context.mounted) return;
-        showAppSnackBar(context, 'Unable to schedule alarm on this iOS.');
+        showAppSnackBar(context, 'Unable to add event to system Calendar.');
       }
       return;
     }
@@ -696,35 +684,27 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
 
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       try {
-        final alarmkit = FlutterAlarmkit();
-        await alarmkit.getPlatformVersion();
-        final authorized = await alarmkit.requestAuthorization();
-        if (!authorized) {
+        final event = Event(
+          title: title,
+          description: '$title Reminder ($minutesBefore min before)',
+          location: 'BRACU Campus',
+          startDate: fireAt,
+          endDate: fireAt.add(const Duration(hours: 1)),
+        );
+        final success = await Add2Calendar.addEvent2Cal(event);
+        if (success) {
           if (!context.mounted) return;
-          showAppSnackBar(context, 'Alarm permission denied.');
-          return;
+          showAppSnackBar(context, 'Alarm added to system Calendar.');
+          await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
+          if (mounted) setState(() {});
+          RefreshBus.instance.notify(reason: 'alarms');
+        } else {
+          if (!context.mounted) return;
+          showAppSnackBar(context, 'Unable to add event to system Calendar.');
         }
-        await alarmkit.scheduleOneShotAlarm(
-          timestamp: fireAt.millisecondsSinceEpoch.toDouble(),
-          label: '$title Reminder ($minutesBefore min before)',
-          tintColor: '#1E6BE3',
-        );
-        if (!context.mounted) return;
-        showAppSnackBar(context, 'Advising alarm scheduled on iOS.');
-        await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
-        if (mounted) setState(() {});
-        RefreshBus.instance.notify(reason: 'alarms');
-      } on PlatformException catch (e) {
-        if (!context.mounted) return;
-        showAppSnackBar(
-          context,
-          e.code == 'UNSUPPORTED'
-              ? 'AlarmKit requires iOS 26+.'
-              : 'Unable to schedule alarm on this iOS.',
-        );
       } catch (_) {
         if (!context.mounted) return;
-        showAppSnackBar(context, 'Unable to schedule alarm on this iOS.');
+        showAppSnackBar(context, 'Unable to add event to system Calendar.');
       }
       return;
     }

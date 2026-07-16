@@ -33,12 +33,6 @@ target 'Runner' do
     inherit! :search_paths
   end
 
-  target 'AlarmkitWidgetExtension' do
-    inherit! :search_paths
-    use_frameworks! :linkage => :static
-    pod 'flutter_alarmkit', :path => '.symlinks/plugins/flutter_alarmkit/ios'
-  end
-
 end
 
 post_install do |installer|
@@ -67,13 +61,6 @@ post_install do |installer|
         end
       end
 
-      if target.name == 'flutter_alarmkit'
-        config.build_settings['EXCLUDED_SOURCE_FILE_NAMES'] = [
-          'AlarmLiveActivityBundle.swift',
-          'AlarmLiveActivity.swift',
-          'AppIntents.swift'
-        ].join(' ')
-      end
       config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
         '$(inherited)',
         'PERMISSION_CAMERA=1',
@@ -123,12 +110,6 @@ post_install do |installer|
           config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
           config.build_settings['DEVELOPMENT_TEAM'] = 'DN5U548MGK'
           config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = 'PreConnect'
-          config.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'
-        elsif user_target.name == 'AlarmkitWidgetExtension'
-          # Extension target has its own signing / App Group needs or manual empty config
-          config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
-          config.build_settings['DEVELOPMENT_TEAM'] = 'DN5U548MGK'
-          config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '' # Don't apply main app profile here
           config.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'
         else
           # Any other targets (e.g. Pods) should not sign/profile request
