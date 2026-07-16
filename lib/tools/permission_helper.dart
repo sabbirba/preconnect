@@ -15,6 +15,7 @@ class PermissionRequirement {
   final bool androidOnly;
   final bool iosOnly;
   final int? minAndroidSdk;
+  final bool isOptional;
 
   const PermissionRequirement({
     required this.permission,
@@ -24,6 +25,7 @@ class PermissionRequirement {
     this.androidOnly = false,
     this.iosOnly = false,
     this.minAndroidSdk,
+    this.isOptional = false,
   });
 }
 
@@ -34,6 +36,7 @@ class BracuPermissionHelper {
       title: 'Location Services',
       reason: 'Detect B-LAN WiFi SSID.',
       icon: Icons.location_on_rounded,
+      isOptional: true,
     ),
     PermissionRequirement(
       permission: Permission.nearbyWifiDevices,
@@ -42,6 +45,7 @@ class BracuPermissionHelper {
       icon: Icons.wifi_find_rounded,
       androidOnly: true,
       minAndroidSdk: 33,
+      isOptional: true,
     ),
     PermissionRequirement(
       permission: Permission.camera,
@@ -70,6 +74,7 @@ class BracuPermissionHelper {
       icon: Icons.alarm_rounded,
       androidOnly: true,
       minAndroidSdk: 33,
+      isOptional: true,
     ),
     PermissionRequirement(
       permission: Permission.accessNotificationPolicy,
@@ -77,6 +82,7 @@ class BracuPermissionHelper {
       reason: 'Automate Quiet Mode Schedule.',
       icon: Icons.do_not_disturb_on_rounded,
       androidOnly: true,
+      isOptional: true,
     ),
     PermissionRequirement(
       permission: Permission.notification,
@@ -112,6 +118,9 @@ class BracuPermissionHelper {
         continue;
       }
 
+      if (req.isOptional) {
+        continue;
+      }
       final status = await req.permission.status;
       bool isOk = status.isGranted || status.isLimited;
       if (isOk && req.permission == Permission.locationWhenInUse) {
