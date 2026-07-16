@@ -45,7 +45,6 @@ class BracuPermissionHelper {
       icon: Icons.wifi_find_rounded,
       androidOnly: true,
       minAndroidSdk: 33,
-      isOptional: true,
     ),
     PermissionRequirement(
       permission: Permission.camera,
