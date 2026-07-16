@@ -11,6 +11,7 @@ import 'package:preconnect/pages/friend_schedule.dart';
 import 'package:preconnect/pages/seat_status.dart';
 import 'package:preconnect/pages/shared_widgets/map_shared.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
+import 'package:preconnect/pages/dspace_browser.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 import 'package:preconnect/tools/app_storage.dart';
@@ -20,6 +21,7 @@ import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/libsync/libsync_page.dart';
 import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/permission_helper.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key, this.isLoggedIn = false});
@@ -99,6 +101,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
       _webExtensionLoginFlow = WebExtensionLoginFlow();
       _webLoginSub = _webExtensionLoginFlow!.events.listen(_handleWebLogin);
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await BracuPermissionHelper.checkAndRequestOnStartup(context);
+    });
   }
 
   Future<void> _loadVersion() async {
@@ -380,6 +385,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           ),
                         ),
                         _CompactQuickAccessCard(
+                          icon: Icons.library_books_outlined,
+                          color: const Color(0xFF3CA947),
+                          onTap: () => _openOnboardingQuickPage(
+                            const DSpaceBrowserPage(),
+                          ),
+                        ),
+                        _CompactQuickAccessCard(
                           icon: Icons.developer_mode_outlined,
                           color: const Color(0xFF5B8DEF),
                           onTap: () =>
@@ -409,7 +421,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           onPressed: _isGoogleLoggingIn
                               ? null
                               : _handleGoogleSignIn,
-                          label: 'Sign in with Google',
+                          label: 'Google Sign In',
                           borderRadius: 12,
                           isLoading: _isGoogleLoggingIn,
                           padding: const EdgeInsets.symmetric(
