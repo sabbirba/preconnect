@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
@@ -327,7 +328,11 @@ class _MyAppState extends State<MyApp>
         }
         unawaited(_runDeferredStartupWork());
       });
-      unawaited(FCMService.instance.init());
+      Permission.notification.status.then((status) {
+        if (status.isGranted || status.isLimited) {
+          unawaited(FCMService.instance.init());
+        }
+      });
       _connectivitySub = Connectivity().onConnectivityChanged.listen(
         _onConnectivityChanged,
       );

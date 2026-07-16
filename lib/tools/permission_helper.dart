@@ -150,7 +150,11 @@ class BracuPermissionHelper {
       },
     );
 
-    unawaited(FCMService.instance.init());
+    Permission.notification.status.then((status) {
+      if (status.isGranted || status.isLimited) {
+        unawaited(FCMService.instance.init());
+      }
+    });
   }
 }
 
