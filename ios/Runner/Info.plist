@@ -40,6 +40,10 @@
 	<string>PreConnect needs access to the local network for AlarmKit and campus printing.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>PreConnect needs location access to connect and manage campus Wi-Fi.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>PreConnect needs location access to connect and manage campus Wi-Fi.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>PreConnect needs location access to connect and manage campus Wi-Fi.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>PreConnect needs permission to save QR codes to your gallery.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
