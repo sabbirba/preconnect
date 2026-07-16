@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
-		18B4265238ED5E51D6DBBB88 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 29A90CF41E6E2EC0B0EF0EA5 /* Assets.xcassets */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		6F9A1D9C3E8B4C7A9012D3E4 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F9A1D9C3E8B4C7A9012D3E3 /* SceneDelegate.swift */; };
@@ -19,9 +18,7 @@
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		A56D9655DDFC771EF29E49C3 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 4C024021E5737066A1335574 /* GoogleService-Info.plist */; };
-		AC10BAFAD0AF8850BD933029 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 387F21CB0ADCD64780015C32 /* Foundation.framework */; };
 		C3C3DD61D6B13CE8CF56A412 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 586602942B226FE930C77ECD /* Pods_RunnerTests.framework */; };
-		D6DA0317D51ADADFA6E2C079 /* AppIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1006460E104D2C0E3CDA0AB7 /* AppIntents.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -37,6 +34,7 @@
 			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 80F437744B18B551B2CCB37E;
+			remoteInfo = AlarmkitWidgetExtension;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -64,16 +62,18 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		1006460E104D2C0E3CDA0AB7 /* AppIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppIntents.swift; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
-		1572E01B0558A7FB7EC769EC /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		2243A040ECC62C8B0C77475D /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
-		29A90CF41E6E2EC0B0EF0EA5 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		243E2C42A36C75412BFE839F /* AlarmkitWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AlarmkitWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		2F3E9C2A9E1A4F5B9C1D2E41 /* AlarmkitWidgetExtension.Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = AlarmkitWidgetExtension.Debug.xcconfig; path = Flutter/AlarmkitWidgetExtension.Debug.xcconfig; sourceTree = "<group>"; };
+		2F3E9C2A9E1A4F5B9C1D2E42 /* AlarmkitWidgetExtension.Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = AlarmkitWidgetExtension.Release.xcconfig; path = Flutter/AlarmkitWidgetExtension.Release.xcconfig; sourceTree = "<group>"; };
+		2F3E9C2A9E1A4F5B9C1D2E43 /* AlarmkitWidgetExtension.Profile.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = AlarmkitWidgetExtension.Profile.xcconfig; path = Flutter/AlarmkitWidgetExtension.Profile.xcconfig; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		387F21CB0ADCD64780015C32 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
+		4589883BB7A56D2827E69A0A /* Pods-AlarmkitWidgetExtension.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AlarmkitWidgetExtension.debug.xcconfig"; path = "Target Support Files/Pods-AlarmkitWidgetExtension/Pods-AlarmkitWidgetExtension.debug.xcconfig"; sourceTree = "<group>"; };
 		4C024021E5737066A1335574 /* GoogleService-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "Runner/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		586602942B226FE930C77ECD /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		61A759C20277D4A9B31ADF80 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
@@ -91,20 +91,14 @@
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A27B566BF6A1FC950FFB1079 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		AF7FA738E90E2199DBC3C51A /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
+		B3B448682A830AB7D590D511 /* Pods-AlarmkitWidgetExtension.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AlarmkitWidgetExtension.profile.xcconfig"; path = "Target Support Files/Pods-AlarmkitWidgetExtension/Pods-AlarmkitWidgetExtension.profile.xcconfig"; sourceTree = "<group>"; };
 		B739413AF27F9F385761D01F /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		CA0AA295C0E1AC89DD864227 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		EA742FBE27CD1D5DAA48F5C3 /* Pods-AlarmkitWidgetExtension.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AlarmkitWidgetExtension.release.xcconfig"; path = "Target Support Files/Pods-AlarmkitWidgetExtension/Pods-AlarmkitWidgetExtension.release.xcconfig"; sourceTree = "<group>"; };
 		FD9FC93C6CC6DB5C5D4D1CC0 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		186C36A3802C32AB209BA254 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				AC10BAFAD0AF8850BD933029 /* Foundation.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		5D63C48FDFC6B3C9D72B4FAE /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -140,6 +134,9 @@
 				3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */,
 				9740EEB21CF90195004384FC /* Debug.xcconfig */,
 				7AFA3C8E1D35360C0083082E /* Release.xcconfig */,
+				2F3E9C2A9E1A4F5B9C1D2E41 /* AlarmkitWidgetExtension.Debug.xcconfig */,
+				2F3E9C2A9E1A4F5B9C1D2E42 /* AlarmkitWidgetExtension.Release.xcconfig */,
+				2F3E9C2A9E1A4F5B9C1D2E43 /* AlarmkitWidgetExtension.Profile.xcconfig */,
 				9740EEB31CF90195004384FC /* Generated.xcconfig */,
 			);
 			name = Flutter;
@@ -163,6 +160,7 @@
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
+				243E2C42A36C75412BFE839F /* AlarmkitWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -204,6 +202,9 @@
 		FE5EF782D8684411F98EE8A1 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
+				4589883BB7A56D2827E69A0A /* Pods-AlarmkitWidgetExtension.debug.xcconfig */,
+				EA742FBE27CD1D5DAA48F5C3 /* Pods-AlarmkitWidgetExtension.release.xcconfig */,
+				B3B448682A830AB7D590D511 /* Pods-AlarmkitWidgetExtension.profile.xcconfig */,
 				FD9FC93C6CC6DB5C5D4D1CC0 /* Pods-Runner.debug.xcconfig */,
 				AF7FA738E90E2199DBC3C51A /* Pods-Runner.release.xcconfig */,
 				2243A040ECC62C8B0C77475D /* Pods-Runner.profile.xcconfig */,
@@ -212,14 +213,6 @@
 				61A759C20277D4A9B31ADF80 /* Pods-RunnerTests.profile.xcconfig */,
 			);
 			path = Pods;
-			sourceTree = "<group>";
-		};
-			isa = PBXGroup;
-			children = (
-				1006460E104D2C0E3CDA0AB7 /* AppIntents.swift */,
-				29A90CF41E6E2EC0B0EF0EA5 /* Assets.xcassets */,
-				1572E01B0558A7FB7EC769EC /* Info.plist */,
-			);
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -243,18 +236,6 @@
 			productName = RunnerTests;
 			productReference = 331C8081294A63A400263BE5 /* RunnerTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
-		};
-			isa = PBXNativeTarget;
-			buildPhases = (
-				2993107C7E776FB31FD3E7F2 /* Sources */,
-				186C36A3802C32AB209BA254 /* Frameworks */,
-				4CD9A308B3F7E4E5875A4F94 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			productType = "com.apple.product-type.app-extension";
 		};
 		97C146ED1CF9000F007C117D /* Runner */ = {
 			isa = PBXNativeTarget;
@@ -334,14 +315,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		4CD9A308B3F7E4E5875A4F94 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				18B4265238ED5E51D6DBBB88 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -454,14 +427,6 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		2993107C7E776FB31FD3E7F2 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				D6DA0317D51ADADFA6E2C079 /* AppIntents.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		331C807D294A63A400263BE5 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -744,102 +709,6 @@
 			};
 			name = Profile;
 		};
-		783A6BD9F725E14761D26E5B /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				AD_HOC_CODE_SIGNING_ALLOWED = YES;
-				"AD_HOC_CODE_SIGNING_ALLOWED[sdk=iphoneos*]" = YES;
-				"AD_HOC_CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]" = YES;
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGNING_ALLOWED = NO;
-				"CODE_SIGNING_ALLOWED[sdk=iphoneos*]" = YES;
-				"CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]" = YES;
-				CODE_SIGNING_REQUIRED = NO;
-				"CODE_SIGNING_REQUIRED[sdk=iphoneos*]" = NO;
-				"CODE_SIGNING_REQUIRED[sdk=iphonesimulator*]" = NO;
-				CODE_SIGN_IDENTITY = "Apple Distribution";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "-";
-				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
-				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				DEVELOPMENT_TEAM = DN5U548MGK;
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = "";
-				"DEVELOPMENT_TEAM[sdk=iphonesimulator*]" = "";
-				ENABLE_APP_SHORTCUTS_FLEXIBLE_MATCHING = NO;
-				INFOPLIST_KEY_CFBundleShortVersionString = "$(FLUTTER_BUILD_NAME)";
-				INFOPLIST_KEY_CFBundleVersion = "$(FLUTTER_BUILD_NUMBER)";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
-				PROVISIONING_PROFILE = "";
-				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "";
-				"PROVISIONING_PROFILE[sdk=iphonesimulator*]" = "";
-				PROVISIONING_PROFILE_REQUIRED = NO;
-				"PROVISIONING_PROFILE_REQUIRED[sdk=iphoneos*]" = NO;
-				"PROVISIONING_PROFILE_REQUIRED[sdk=iphonesimulator*]" = NO;
-				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphonesimulator*]" = "";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_VERSION = 5.0;
-				VALIDATE_PRODUCT = YES;
-			};
-			name = Release;
-		};
-		946E20F454F64AEC39E50364 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				AD_HOC_CODE_SIGNING_ALLOWED = YES;
-				"AD_HOC_CODE_SIGNING_ALLOWED[sdk=iphoneos*]" = YES;
-				"AD_HOC_CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]" = YES;
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGNING_ALLOWED = NO;
-				"CODE_SIGNING_ALLOWED[sdk=iphoneos*]" = YES;
-				"CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]" = YES;
-				CODE_SIGNING_REQUIRED = NO;
-				"CODE_SIGNING_REQUIRED[sdk=iphoneos*]" = NO;
-				"CODE_SIGNING_REQUIRED[sdk=iphonesimulator*]" = NO;
-				CODE_SIGN_ENTITLEMENTS = "";
-				CODE_SIGN_IDENTITY = "Apple Distribution";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "-";
-				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
-				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				DEVELOPMENT_TEAM = DN5U548MGK;
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = "";
-				"DEVELOPMENT_TEAM[sdk=iphonesimulator*]" = "";
-				ENABLE_APP_SHORTCUTS_FLEXIBLE_MATCHING = NO;
-				INFOPLIST_KEY_CFBundleShortVersionString = "$(FLUTTER_BUILD_NAME)";
-				INFOPLIST_KEY_CFBundleVersion = "$(FLUTTER_BUILD_NUMBER)";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
-				PROVISIONING_PROFILE = "";
-				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "";
-				"PROVISIONING_PROFILE[sdk=iphonesimulator*]" = "";
-				PROVISIONING_PROFILE_REQUIRED = NO;
-				"PROVISIONING_PROFILE_REQUIRED[sdk=iphoneos*]" = NO;
-				"PROVISIONING_PROFILE_REQUIRED[sdk=iphonesimulator*]" = NO;
-				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphonesimulator*]" = "";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_VERSION = 5.0;
-			};
-			name = Debug;
-		};
 		97C147031CF9000F007C117D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1053,54 +922,6 @@
 			};
 			name = Release;
 		};
-		C9DFBC224C7C19AE5ADA91A4 /* Profile */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				AD_HOC_CODE_SIGNING_ALLOWED = YES;
-				"AD_HOC_CODE_SIGNING_ALLOWED[sdk=iphoneos*]" = YES;
-				"AD_HOC_CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]" = YES;
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGNING_ALLOWED = NO;
-				"CODE_SIGNING_ALLOWED[sdk=iphoneos*]" = YES;
-				"CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]" = YES;
-				CODE_SIGNING_REQUIRED = NO;
-				"CODE_SIGNING_REQUIRED[sdk=iphoneos*]" = NO;
-				"CODE_SIGNING_REQUIRED[sdk=iphonesimulator*]" = NO;
-				CODE_SIGN_IDENTITY = "Apple Distribution";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "-";
-				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
-				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				DEVELOPMENT_TEAM = DN5U548MGK;
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = "";
-				"DEVELOPMENT_TEAM[sdk=iphonesimulator*]" = "";
-				ENABLE_APP_SHORTCUTS_FLEXIBLE_MATCHING = NO;
-				INFOPLIST_KEY_CFBundleShortVersionString = "$(FLUTTER_BUILD_NAME)";
-				INFOPLIST_KEY_CFBundleVersion = "$(FLUTTER_BUILD_NUMBER)";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
-				PROVISIONING_PROFILE = "";
-				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "";
-				"PROVISIONING_PROFILE[sdk=iphonesimulator*]" = "";
-				PROVISIONING_PROFILE_REQUIRED = NO;
-				"PROVISIONING_PROFILE_REQUIRED[sdk=iphoneos*]" = NO;
-				"PROVISIONING_PROFILE_REQUIRED[sdk=iphonesimulator*]" = NO;
-				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphonesimulator*]" = "";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_VERSION = 5.0;
-				VALIDATE_PRODUCT = YES;
-			};
-			name = Profile;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1130,15 +951,6 @@
 				97C147061CF9000F007C117D /* Debug */,
 				97C147071CF9000F007C117D /* Release */,
 				249021D4217E4FDB00AE95B9 /* Profile */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				946E20F454F64AEC39E50364 /* Debug */,
-				783A6BD9F725E14761D26E5B /* Release */,
-				C9DFBC224C7C19AE5ADA91A4 /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
