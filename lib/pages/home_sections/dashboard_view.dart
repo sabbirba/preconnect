@@ -887,6 +887,7 @@ extension _HomeDashboardView on _HomeDashboardState {
       title: 'Printer',
       subtitle: 'Campus',
       color: const Color(0xFF22B573),
+      onTap: null,
     ),
     _DashboardQuickAccess(
       tab: HomeTab.dspace,
@@ -912,7 +913,7 @@ class _DashboardQuickAccess {
     required this.title,
     required this.subtitle,
     required this.color,
-    // ignore: unused_element_parameter
+
     this.onTap,
   });
 

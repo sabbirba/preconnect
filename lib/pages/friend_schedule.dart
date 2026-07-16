@@ -425,14 +425,122 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                       color: BracuPalette.info,
                       onTap: () async {
                         if (!mounted) return;
-                        await showBracuBottomSheet<void>(
-                          context,
-                          title: 'Scan Schedule',
-                          subtitle: 'Scan QR from Friends',
+                        await showBracuCustomBottomSheet<void>(
+                          context: context,
+                          backgroundColor: BracuPalette.card(context),
+                          clipBehavior: Clip.antiAlias,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(28),
+                            ),
+                          ),
                           draggable: false,
-                          isScrollControlled: false,
-                          builder: (sheetContext, textPrimary, textSecondary) {
-                            return const ScanSchedulePage();
+                          isScrollControlled: true,
+                          builder: (sheetContext) {
+                            final textPrimary = BracuPalette.textPrimary(
+                              sheetContext,
+                            );
+                            final textSecondary = BracuPalette.textSecondary(
+                              sheetContext,
+                            );
+                            return SafeArea(
+                              top: false,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      18,
+                                      6,
+                                      18,
+                                      0,
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Center(
+                                          child: Container(
+                                            width: 36,
+                                            height: 3,
+                                            decoration: BoxDecoration(
+                                              color: textSecondary.withValues(
+                                                alpha: 0.28,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(999),
+                                            ),
+                                          ),
+                                        ),
+                                        const Gap(6),
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            Expanded(
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 8,
+                                                    ),
+                                                child: Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      'Scan Schedule',
+                                                      maxLines: 2,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: TextStyle(
+                                                        color: textPrimary,
+                                                        fontSize: 16.5,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                    const Gap(4),
+                                                    Text(
+                                                      'Scan QR from Friends',
+                                                      style: TextStyle(
+                                                        color: textSecondary,
+                                                        fontSize: 12,
+                                                        height: 1.3,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            const Gap(8),
+                                            IconButton(
+                                              onPressed: () => Navigator.of(
+                                                sheetContext,
+                                              ).maybePop(),
+                                              icon: const Icon(
+                                                Icons.close_rounded,
+                                                size: 20,
+                                              ),
+                                              style: IconButton.styleFrom(
+                                                padding: EdgeInsets.zero,
+                                                minimumSize: const Size(36, 36),
+                                                tapTargetSize:
+                                                    MaterialTapTargetSize
+                                                        .shrinkWrap,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const Gap(4),
+                                      ],
+                                    ),
+                                  ),
+                                  const ScanSchedulePage(),
+                                ],
+                              ),
+                            );
                           },
                         );
                         if (mounted) {
@@ -465,14 +573,122 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                           return;
                         }
                         if (!context.mounted) return;
-                        await showBracuBottomSheet<void>(
-                          context,
-                          title: 'Share Schedule',
-                          subtitle: 'Generate QR for Friends',
+                        await showBracuCustomBottomSheet<void>(
+                          context: context,
+                          backgroundColor: BracuPalette.card(context),
+                          clipBehavior: Clip.antiAlias,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(28),
+                            ),
+                          ),
                           draggable: false,
-                          isScrollControlled: false,
-                          builder: (sheetContext, textPrimary, textSecondary) {
-                            return const ShareSchedulePage();
+                          isScrollControlled: true,
+                          builder: (sheetContext) {
+                            final textPrimary = BracuPalette.textPrimary(
+                              sheetContext,
+                            );
+                            final textSecondary = BracuPalette.textSecondary(
+                              sheetContext,
+                            );
+                            return SafeArea(
+                              top: false,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      18,
+                                      6,
+                                      18,
+                                      0,
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Center(
+                                          child: Container(
+                                            width: 36,
+                                            height: 3,
+                                            decoration: BoxDecoration(
+                                              color: textSecondary.withValues(
+                                                alpha: 0.28,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(999),
+                                            ),
+                                          ),
+                                        ),
+                                        const Gap(6),
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            Expanded(
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 8,
+                                                    ),
+                                                child: Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      'Share Schedule',
+                                                      maxLines: 2,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: TextStyle(
+                                                        color: textPrimary,
+                                                        fontSize: 16.5,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                    const Gap(4),
+                                                    Text(
+                                                      'Generate QR for Friends',
+                                                      style: TextStyle(
+                                                        color: textSecondary,
+                                                        fontSize: 12,
+                                                        height: 1.3,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            const Gap(8),
+                                            IconButton(
+                                              onPressed: () => Navigator.of(
+                                                sheetContext,
+                                              ).maybePop(),
+                                              icon: const Icon(
+                                                Icons.close_rounded,
+                                                size: 20,
+                                              ),
+                                              style: IconButton.styleFrom(
+                                                padding: EdgeInsets.zero,
+                                                minimumSize: const Size(36, 36),
+                                                tapTargetSize:
+                                                    MaterialTapTargetSize
+                                                        .shrinkWrap,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const Gap(4),
+                                      ],
+                                    ),
+                                  ),
+                                  const ShareSchedulePage(),
+                                ],
+                              ),
+                            );
                           },
                         );
                       },
