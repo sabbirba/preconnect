@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:preconnect/firebase_options.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -72,6 +75,24 @@ class FCMService {
   Future<String?> _getToken({bool force = false}) async {
     if (!force && _cachedToken != null) {
       return _cachedToken;
+    }
+    if (!kIsWeb) {
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final status = await Permission.notification.status;
+        if (!status.isGranted && !status.isLimited) {
+          return null;
+        }
+      } else if (defaultTargetPlatform == TargetPlatform.android) {
+        try {
+          final androidInfo = await DeviceInfoPlugin().androidInfo;
+          if (androidInfo.version.sdkInt >= 33) {
+            final status = await Permission.notification.status;
+            if (!status.isGranted) {
+              return null;
+            }
+          }
+        } catch (_) {}
+      }
     }
     if (kIsWeb) {
       if (isChromeRuntimeAvailable()) {
@@ -481,6 +502,11 @@ class FCMService {
 
   Future<void> init() async {
     if (!isSupported) return;
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } catch (_) {}
     if (!kIsWeb) {
       await _setupLocalNotifications();
     }
@@ -512,7 +538,7 @@ class FCMService {
     }
 
     try {
-      Set<String> pinnedSeats = await CoursePinStore.load(
+      final Set<String> pinnedSeats = await CoursePinStore.load(
         PreConnectPushConfig.seatStatusPinScope,
       );
       for (String seat in pinnedSeats) {
@@ -549,12 +575,6 @@ class FCMService {
   }
 
   Future<void> _initNative() async {
-    final messaging = FirebaseMessaging.instance;
-
-    try {
-      await messaging.requestPermission(alert: true, badge: true, sound: true);
-    } catch (_) {}
-
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       if (message.data['type'] == 'libsync_refresh') {
         _handleIncomingMessage(message);
@@ -571,7 +591,7 @@ class FCMService {
       }
     });
 
-    messaging.onTokenRefresh.listen((token) async {
+    FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
       final wasUnavailable = !_apnsAvailable;
       _apnsAvailable = true;
       await _sendTokenToBackend(token);
