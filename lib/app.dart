@@ -437,7 +437,7 @@ class _MyAppState extends State<MyApp>
   Future<void> _loadDeferredServices() async {
     if (kIsWeb) {
       unawaited(
-        Future<void>.delayed(const Duration(seconds: 2)).then((_) {
+        Future<void>.value().then((_) {
           LibSyncAuthService.instance.initialize();
         }),
       );

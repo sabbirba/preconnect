@@ -307,105 +307,109 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
 
   @override
   Widget build(BuildContext context) {
-    final listContent = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (isLoading || _base64Data == null)
-            const _ShareScheduleLoadingState()
-          else if (errorMessage != null)
-            BracuEmptyState(message: "Error: $errorMessage")
-          else ...[
-            RepaintBoundary(
-              key: _qrKey,
-              child: Container(
-                decoration: const BoxDecoration(color: Colors.white),
-                padding: const EdgeInsets.all(12),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final size = constraints.maxWidth;
-                    return SizedBox(
-                      width: size,
-                      height: size,
-                      child: BarcodeWidget(
-                        barcode: Barcode.qrCode(),
-                        data: _base64Data!,
-                        color: const Color(0xFF000000),
-                        backgroundColor: const Color(0xFFFFFFFF),
-                        errorBuilder: (context, error) => Center(
-                          child: Text(
-                            'Unable to generate QR',
-                            style: TextStyle(
-                              color: BracuPalette.textSecondary(context),
-                            ),
+    if (isLoading || _base64Data == null) {
+      return const _ShareScheduleLoadingState();
+    }
+
+    if (errorMessage != null) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+        child: BracuEmptyState(message: 'Error: $errorMessage'),
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        RepaintBoundary(
+          key: _qrKey,
+          child: Container(
+            decoration: const BoxDecoration(color: Colors.white),
+            padding: const EdgeInsets.all(16),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final size = constraints.maxWidth - 32;
+                return Center(
+                  child: SizedBox(
+                    width: size,
+                    height: size,
+                    child: BarcodeWidget(
+                      barcode: Barcode.qrCode(),
+                      data: _base64Data!,
+                      color: const Color(0xFF000000),
+                      backgroundColor: const Color(0xFFFFFFFF),
+                      errorBuilder: (context, error) => Center(
+                        child: Text(
+                          'Unable to generate QR',
+                          style: TextStyle(
+                            color: BracuPalette.textSecondary(context),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            const Gap(12),
-            Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: _shareQrCode,
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: BracuPalette.primary.withValues(alpha: 0.18),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: Colors.transparent,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.qr_code_scanner,
-                              size: 16,
-                              color: BracuPalette.primary,
-                            ),
-                          ),
-                          const Gap(10),
-                          const Expanded(
-                            child: Text(
-                              'Share via QR',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: BracuPalette.primary,
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
                     ),
                   ),
-                ),
-              ],
+                );
+              },
             ),
-          ],
-        ],
-      ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+          child: Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: _shareQrCode,
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: BracuPalette.primary.withValues(alpha: 0.18),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          alignment: Alignment.center,
+                          child: const Icon(
+                            Icons.qr_code_scanner,
+                            size: 16,
+                            color: BracuPalette.primary,
+                          ),
+                        ),
+                        const Gap(10),
+                        const Expanded(
+                          child: Text(
+                            'Share via QR',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: BracuPalette.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
-
-    return listContent;
   }
 }
 

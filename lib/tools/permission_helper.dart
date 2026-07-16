@@ -93,7 +93,6 @@ class BracuPermissionHelper {
   ];
 
   static Future<void> checkAndRequestOnStartup(BuildContext context) async {
-    await Future<void>.delayed(const Duration(milliseconds: 1500));
     if (!context.mounted) return;
     int androidSdk = 0;
     if (defaultTargetPlatform == TargetPlatform.android) {
