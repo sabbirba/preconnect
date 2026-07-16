@@ -38,12 +38,12 @@ Future<void> main() async {
         AppLog.write('PlatformError: $error\n$stackTrace');
         return false;
       };
-      await Firebase.initializeApp(
+      final firebaseInit = Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      FirebaseMessaging.onBackgroundMessage(FCMService.backgroundHandler);
 
       await AppStorage.initialize();
+
       PaintingBinding.instance.imageCache.maximumSize = 200;
       PaintingBinding.instance.imageCache.maximumSizeBytes = 100 << 20;
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -51,6 +51,11 @@ Future<void> main() async {
       final initialState = MyApp.bootstrapSync();
 
       runApp(MyApp(bootstrapState: initialState));
+
+      try {
+        await firebaseInit;
+        FirebaseMessaging.onBackgroundMessage(FCMService.backgroundHandler);
+      } catch (_) {}
     },
     (error, stackTrace) {
       AppLog.write('FatalError: $error\n$stackTrace');
