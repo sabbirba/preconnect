@@ -100,12 +100,6 @@ Future<void> webExtensionStorageRemoveKeys(Iterable<String> keys) async {}
 
 Future<Map<String, String>> webExtensionStorageGetAll() async => const {};
 
-Future<String?> pickQrFromSystemImage() async {
-  throw UnsupportedError(
-    'QR import from gallery is not available in the Chrome extension yet.',
-  );
-}
-
 Future<void> openPdfInBrowser({
   required Uint8List bytes,
   required String fileName,
