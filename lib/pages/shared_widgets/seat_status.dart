@@ -478,10 +478,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         }
       } else if (modeFilter == "Theory") {
         schedules = <SeatStatusClassSchedule>[...card.classSchedule];
-
-        if (card.labSectionId != null) {
-          return false;
-        }
       } else {
         schedules = <SeatStatusClassSchedule>[
           ...card.classSchedule,
