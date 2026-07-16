@@ -410,35 +410,17 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         await AppStorage.instance.setBool('alarm_done_$courseCode', true);
         if (mounted) setState(() {});
         RefreshBus.instance.notify(reason: 'alarms');
+      } on PlatformException catch (e) {
+        if (!context.mounted) return;
+        showAppSnackBar(
+          context,
+          e.code == 'UNSUPPORTED'
+              ? 'AlarmKit requires iOS 26+.'
+              : 'Unable to schedule alarm on this iOS.',
+        );
       } catch (_) {
         if (!context.mounted) return;
-        try {
-          for (final wk in weekdays) {
-            int tzDay = 1;
-            if (wk == Weekday.monday) tzDay = 1;
-            if (wk == Weekday.tuesday) tzDay = 2;
-            if (wk == Weekday.wednesday) tzDay = 3;
-            if (wk == Weekday.thursday) tzDay = 4;
-            if (wk == Weekday.friday) tzDay = 5;
-            if (wk == Weekday.saturday) tzDay = 6;
-            if (wk == Weekday.sunday) tzDay = 7;
-            final alarmId = (courseCode.hashCode ^ wk.index ^ hour ^ minute) & 0x7FFFFFFF;
-            await FCMService.instance.scheduleClassAlarm(
-              id: alarmId,
-              title: 'Class Reminder',
-              body: '$courseCode Class Reminder ($minutesBefore min before)',
-              weekday: tzDay,
-              hour: hour,
-              minute: minute,
-            );
-          }
-          showAppSnackBar(context, 'Alarm scheduled via Notifications.');
-          await AppStorage.instance.setBool('alarm_done_$courseCode', true);
-          if (mounted) setState(() {});
-          RefreshBus.instance.notify(reason: 'alarms');
-        } catch (_) {
-          showAppSnackBar(context, 'Unable to schedule alarm.');
-        }
+        showAppSnackBar(context, 'Unable to schedule alarm on this iOS.');
       }
       return;
     }

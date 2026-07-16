@@ -547,20 +547,17 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
         );
         if (!context.mounted) return;
         showAppSnackBar(context, 'Alarm scheduled on iOS.');
+      } on PlatformException catch (e) {
+        if (!context.mounted) return;
+        showAppSnackBar(
+          context,
+          e.code == 'UNSUPPORTED'
+              ? 'AlarmKit requires iOS 26+.'
+              : 'Unable to schedule alarm on this iOS.',
+        );
       } catch (_) {
         if (!context.mounted) return;
-        try {
-          final alarmId = (labelCode.hashCode ^ reminderAt.millisecondsSinceEpoch) & 0x7FFFFFFF;
-          await FCMService.instance.scheduleOneShotAlarm(
-            id: alarmId,
-            title: 'Class Reminder',
-            body: message,
-            scheduledDate: reminderAt,
-          );
-          showAppSnackBar(context, 'Alarm scheduled via Notifications.');
-        } catch (_) {
-          showAppSnackBar(context, 'Unable to schedule alarm.');
-        }
+        showAppSnackBar(context, 'Unable to schedule alarm on this iOS.');
       }
       return;
     }
