@@ -1024,18 +1024,9 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            side: BorderSide(
-                              color: Colors.red.withValues(alpha: 0.4),
-                              width: 1.2,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                          ),
+                        child: BracuActionButton(
+                          label: 'Cancel',
+                          foregroundColor: Colors.red,
                           onPressed: () async {
                             final confirm =
                                 await showBracuConfirmationWithActionDialog(
@@ -1086,31 +1077,15 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                               }
                             }
                           },
-                          child: const Text(
-                            'Cancel',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
                         ),
                       ),
                       const Gap(12),
                       Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: BracuPalette.primary,
-                            side: BorderSide(
-                              color: BracuPalette.primary.withValues(
-                                alpha: 0.4,
-                              ),
-                              width: 1.2,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                          ),
+                        child: BracuActionButton(
+                          label: 'Check In',
+                          outlined: false,
+                          backgroundColor: BracuPalette.primary,
+                          foregroundColor: Colors.white,
                           onPressed: () async {
                             final confirm =
                                 await showBracuConfirmationWithActionDialog(
@@ -1154,13 +1129,6 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                               }
                             }
                           },
-                          child: const Text(
-                            'Check In',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
                         ),
                       ),
                     ],

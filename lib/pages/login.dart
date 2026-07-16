@@ -472,9 +472,6 @@ class _WebLoginPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = Theme.of(
-      context,
-    ).colorScheme.onSurface.withAlpha(128);
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -496,12 +493,6 @@ class _WebLoginPage extends StatelessWidget {
                   const Text(
                     'PreConnect',
                     style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
-                    textAlign: TextAlign.center,
-                  ),
-                  const Gap(6),
-                  Text(
-                    'Sign in with your BRACU student account',
-                    style: TextStyle(fontSize: 13.5, color: textSecondary),
                     textAlign: TextAlign.center,
                   ),
                   const Gap(40),
