@@ -461,16 +461,34 @@ class CaptiveWifiHttp {
 
       final encoded = Uri(queryParameters: payload).query;
 
-      final response = await postOnce(
-        client: client,
-        uri: apiLoginUri,
-        body: encoded,
-        cookies: cookies,
-        referer: loginUri,
-      );
+      await Future<void>.delayed(const Duration(seconds: 3));
 
-      if (response.statusCode >= 400) {
-        lastError = 'POST login failed with HTTP status ${response.statusCode}';
+      CaptiveWifiHttpResult? response;
+      for (var attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) {
+          await Future<void>.delayed(const Duration(seconds: 3));
+        }
+        try {
+          response = await postOnce(
+            client: client,
+            uri: apiLoginUri,
+            body: encoded,
+            cookies: cookies,
+            referer: loginUri,
+          );
+          if (response.statusCode < 400) {
+            final decoded = jsonDecode(response.body);
+            if (decoded is Map && decoded['success'] != false) {
+              break;
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (response == null || response.statusCode >= 400) {
+        lastError = response == null
+            ? 'POST login connection failed.'
+            : 'POST login failed with HTTP status ${response.statusCode}';
 
         return false;
       }
@@ -543,6 +561,8 @@ class CaptiveWifiHttp {
 
         return false;
       }
+
+      await Future<void>.delayed(const Duration(seconds: 3));
 
       final redirectTarget =
           response.location ??

@@ -5,6 +5,11 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-07-17
+- Smoother Onboarding: Notification requests are now optional and won't interrupt your first startup.
+- Reliable Wi-Fi: Improved campus Wi-Fi login reliability with smart retry loops and delays.
+- Under the Hood: Cleaned up background notifications and fully optimized app stability.
+
 ## [1.6.9] — 2026-07-14
 - Instant 0 ms startup loading: Optimized initial frame settling delay to 0 ms.
 - Real-time silent UI updates: Connected Class Schedule, Exam Schedule, Bus, Alarms, and Degree Progress to background cache update listeners, refreshing the UI instantly without showing visual loading indicators or spinners.

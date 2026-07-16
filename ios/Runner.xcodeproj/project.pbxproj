@@ -279,9 +279,6 @@
 						ProvisioningStyle = Manual;
 						TestTargetID = 97C146ED1CF9000F007C117D;
 					};
-					80F437744B18B551B2CCB37E = {
-						ProvisioningStyle = Manual;
-					};
 					97C146ED1CF9000F007C117D = {
 						CreatedOnToolsVersion = 7.3.1;
 						LastSwiftMigration = 1100;
