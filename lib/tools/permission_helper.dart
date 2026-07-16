@@ -89,6 +89,7 @@ class BracuPermissionHelper {
       reason: 'Receive Schedule Alerts.',
       icon: Icons.notifications_active_rounded,
       minAndroidSdk: 33,
+      isOptional: true,
     ),
   ];
 
@@ -102,7 +103,8 @@ class BracuPermissionHelper {
       } catch (_) {}
     }
 
-    final pending = <PermissionRequirement>[];
+    final requiredPending = <PermissionRequirement>[];
+    final allPending = <PermissionRequirement>[];
     for (final req in list) {
       if (req.androidOnly && defaultTargetPlatform != TargetPlatform.android) {
         continue;
@@ -116,9 +118,6 @@ class BracuPermissionHelper {
         continue;
       }
 
-      if (req.isOptional) {
-        continue;
-      }
       final status = await req.permission.status;
       bool isOk = status.isGranted || status.isLimited;
       if (isOk && req.permission == Permission.locationWhenInUse) {
@@ -129,11 +128,14 @@ class BracuPermissionHelper {
       }
 
       if (!isOk) {
-        pending.add(req);
+        allPending.add(req);
+        if (!req.isOptional) {
+          requiredPending.add(req);
+        }
       }
     }
 
-    if (pending.isEmpty) return;
+    if (requiredPending.isEmpty) return;
 
     if (!context.mounted) return;
 
@@ -144,7 +146,7 @@ class BracuPermissionHelper {
           'PreConnect needs the following permissions to function properly. Please grant them to continue.',
       initialChildSize: 0.52,
       builder: (sheetContext, textPrimary, textSecondary) {
-        return _BracuPermissionBottomSheetContent(requirements: pending);
+        return _BracuPermissionBottomSheetContent(requirements: allPending);
       },
     );
 
@@ -246,7 +248,11 @@ class _BracuPermissionBottomSheetContentState
       return;
     }
 
-    await req.permission.request();
+    final res = await req.permission.request();
+    if (req.permission == Permission.notification &&
+        (res.isGranted || res.isLimited)) {
+      unawaited(FCMService.instance.init());
+    }
     await _updateStatuses();
   }
 

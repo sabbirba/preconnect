@@ -821,20 +821,6 @@ class FCMService {
     try {
       final token = await _getToken();
       if (token == null) {
-        if (kDebugMode && !kIsWeb) {
-          _showLocalNotification(
-            RemoteMessage(
-              notification: RemoteNotification(
-                title: "Seat Alerts Enabled",
-                body:
-                    "You'll be notified when a seat becomes available in $courseCode Section $sectionName.",
-              ),
-              data: <String, dynamic>{
-                'url': '${ApiConfig.websiteBase}/student/advising/seat-status',
-              },
-            ),
-          );
-        }
         return;
       }
       final client = ApiClient();
