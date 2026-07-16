@@ -10,8 +10,6 @@
 	<array>
 		<string>applinks:preconnect.app</string>
 	</array>
-	<key>com.apple.developer.networking.wifi-info</key>
-	<true/>
 	<key>aps-environment</key>
 	<string>development</string>
 </dict>
