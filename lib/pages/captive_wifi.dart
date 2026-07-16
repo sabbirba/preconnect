@@ -636,12 +636,12 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                         ],
                       ),
                     ),
+                    const Gap(10),
                     BracuLocationPermissionBanner(
                       onFixed: () {
                         unawaited(_loadStoredCredentials());
                       },
                     ),
-                    const Gap(12),
                     Row(
                       children: [
                         Expanded(

@@ -360,7 +360,6 @@ class _BracuLocationPermissionBannerState
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: BracuPalette.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),

@@ -885,6 +885,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               unawaited(_discoverPrinter());
             },
           ),
+          const Gap(12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
             child: Column(
