@@ -410,11 +410,12 @@ jobs:
         if: matrix.platform == 'macos'
         shell: bash
         run: |
-          flutter build macos --release --tree-shake-icons --dart-define-from-file=.env
+          flutter build macos --release --tree-shake-icons --obfuscate --split-debug-info=build/symbols/macos --extra-gen-snapshot-options=--strip --dart-define-from-file=.env
           APP_PATH=$(find build/macos/Build/Products/Release -maxdepth 3 -type d -name "*.app" | head -n1)
           if [ -d "$APP_PATH" ]; then
             strip -x "$APP_PATH/Contents/Frameworks/App.framework/Versions/Current/App" || true
             strip -x "$APP_PATH/Contents/MacOS/PreConnect" || true
+            xcrun productbuild --component "$APP_PATH" /Applications "build/macos/Build/Products/Release/PreConnect.pkg"
           fi
 
       - name: Package Android APK
@@ -478,7 +479,11 @@ jobs:
             exit 0
           fi
           DMG_NAME="PreConnect-macos-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.dmg"
+          PKG_NAME="PreConnect-macos-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.pkg"
           hdiutil create -volname "PreConnect" -srcfolder "$APP_PATH" -ov -format UDZO "$GITHUB_WORKSPACE/artifacts/$DMG_NAME"
+          if [ -f build/macos/Build/Products/Release/PreConnect.pkg ]; then
+            cp build/macos/Build/Products/Release/PreConnect.pkg "$GITHUB_WORKSPACE/artifacts/$PKG_NAME"
+          fi
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v7

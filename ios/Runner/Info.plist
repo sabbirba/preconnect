@@ -30,7 +30,6 @@
 	<string>PreConnect uses alarms to notify you about classes.</string>
 	<key>NSBonjourServices</key>
 	<array>
-		<string>_dartVmService._tcp</string>
 		<string>_alarmkit._tcp</string>
 	</array>
 	<key>NSCameraUsageDescription</key>

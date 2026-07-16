@@ -108,44 +108,31 @@ post_install do |installer|
     target_attributes = target.user_project.root_object.attributes['TargetAttributes'] || {}
     target.user_project.targets.each do |user_target|
       target_attributes[user_target.uuid] ||= {}
-      target_attributes[user_target.uuid]['ProvisioningStyle'] = 'Manual'
 
+      # Configure specific settings for each target to avoid signing overlap
       user_target.build_configurations.each do |config|
-        config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
-        config.build_settings['SUPPORTED_PLATFORMS'] = 'iphoneos iphonesimulator'
-        
-        config.build_settings['DEVELOPMENT_TEAM'] = ''
-        config.build_settings['DEVELOPMENT_TEAM[sdk=iphoneos*]'] = ''
-        config.build_settings['DEVELOPMENT_TEAM[sdk=iphonesimulator*]'] = ''
-        
-        config.build_settings['CODE_SIGNING_ALLOWED'] = 'YES'
-        config.build_settings['CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]'] = 'YES'
-        config.build_settings['CODE_SIGNING_ALLOWED[sdk=iphoneos*]'] = 'YES'
-        
-        config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
-        config.build_settings['CODE_SIGNING_REQUIRED[sdk=iphonesimulator*]'] = 'NO'
-        config.build_settings['CODE_SIGNING_REQUIRED[sdk=iphoneos*]'] = 'NO'
-        
-        config.build_settings['AD_HOC_CODE_SIGNING_ALLOWED'] = 'YES'
-        config.build_settings['AD_HOC_CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]'] = 'YES'
-        config.build_settings['AD_HOC_CODE_SIGNING_ALLOWED[sdk=iphoneos*]'] = 'YES'
-        
-        config.build_settings['PROVISIONING_PROFILE_REQUIRED'] = 'NO'
-        config.build_settings['PROVISIONING_PROFILE_REQUIRED[sdk=iphonesimulator*]'] = 'NO'
-        config.build_settings['PROVISIONING_PROFILE_REQUIRED[sdk=iphoneos*]'] = 'NO'
-        
-        config.build_settings['CODE_SIGN_IDENTITY'] = '-'
-        config.build_settings['CODE_SIGN_IDENTITY[sdk=iphonesimulator*]'] = '-'
-        config.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = '-'
-        
-        config.build_settings['PROVISIONING_PROFILE'] = ''
-        config.build_settings['PROVISIONING_PROFILE[sdk=iphoneos*]'] = ''
-        config.build_settings['PROVISIONING_PROFILE[sdk=iphonesimulator*]'] = ''
-        config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ''
-        config.build_settings['PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]'] = ''
-        config.build_settings['PROVISIONING_PROFILE_SPECIFIER[sdk=iphonesimulator*]'] = ''
+        if user_target.name == 'Runner'
+          # Main App target manually signs with PreConnect profile
+          config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
+          config.build_settings['DEVELOPMENT_TEAM'] = 'DN5U548MGK'
+          config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = 'PreConnect'
+          config.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'
+        elsif user_target.name == 'AlarmkitWidgetExtension'
+          # Extension target has its own signing / App Group needs or manual empty config
+          config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
+          config.build_settings['DEVELOPMENT_TEAM'] = 'DN5U548MGK'
+          config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '' # Don't apply main app profile here
+          config.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'
+        else
+          # Any other targets (e.g. Pods) should not sign/profile request
+          config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
+          config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
+          config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
+          config.build_settings['PROVISIONING_PROFILE'] = ''
+          config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ''
+        end
 
-        if config.name == 'Debug'
+        if config.name == 'Debug' && user_target.name == 'Runner'
           config.build_settings['CODE_SIGN_ENTITLEMENTS'] = ''
         end
 

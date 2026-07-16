@@ -9,6 +9,7 @@
 .LSOverride
 *.tmp
 *.temp
+test
 
 # Environment and secrets
 .env
