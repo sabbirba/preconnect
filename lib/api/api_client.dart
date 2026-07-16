@@ -454,10 +454,13 @@ class ApiClient {
         } else if (response.statusCode == 200) {
           final etag = response.headers['etag'] ?? response.headers['ETag'];
           if (etag != null && etag.isNotEmpty) {
-            unawaited(AppStorage.instance.setString('etag_$url', etag));
-            unawaited(
-              AppStorage.instance.setString('etag_resp_$url', response.body),
-            );
+            // Keep shared_preferences size safe by caching only bodies under 500 KB
+            if (response.body.length < 500 * 1024) {
+              unawaited(AppStorage.instance.setString('etag_$url', etag));
+              unawaited(
+                AppStorage.instance.setString('etag_resp_$url', response.body),
+              );
+            }
           }
         }
       }
