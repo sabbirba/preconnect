@@ -219,7 +219,6 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
       controller.printInfo = printInfo
       controller.printingItem = fileURL
       controller.showsNumberOfCopies = true
-      controller.showsPageRange = true
 
       controller.present(animated: true) { _, completed, error in
         if let error {
