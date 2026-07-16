@@ -182,7 +182,7 @@ class _SettingsPageState extends State<SettingsPage>
 
   @override
   Widget build(BuildContext context) {
-    Divider divider = Divider(
+    final Divider divider = Divider(
       height: 12,
       thickness: 1,
       color: BracuPalette.textSecondary(context).withValues(

@@ -92,7 +92,7 @@ class CalendarService {
     if (semesterSessionId == null) {
       return (startDate: '', endDate: '', sourceFingerprint: '');
     }
-    var scheduleJson = await scheduleService.getStudentScheduleForSemester(
+    final scheduleJson = await scheduleService.getStudentScheduleForSemester(
       semesterSessionId: semesterSessionId,
     );
     if (scheduleJson == null) {

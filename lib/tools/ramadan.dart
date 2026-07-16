@@ -150,8 +150,8 @@ class RamadanTiming {
     final isRamadanValue = payload['isRamadan'];
     final isRamadan = isRamadanValue is bool ? isRamadanValue : false;
     final ramadanDay = switch (payload['ramadanDay']) {
-      int value => value,
-      num value => value.toInt(),
+      final int value => value,
+      final num value => value.toInt(),
       _ => null,
     };
     final sehriEndsAt = _asTimeString(payload['sehriEndsAt']);

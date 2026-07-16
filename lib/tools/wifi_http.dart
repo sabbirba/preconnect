@@ -267,7 +267,7 @@ class CaptiveWifiHttp {
     }
 
     try {
-      var first = await getWithRedirects(
+      final first = await getWithRedirects(
         client: client,
         uri: targetUrl,
         cookies: cookies,

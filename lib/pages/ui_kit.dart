@@ -924,7 +924,7 @@ class BracuFundingPromoDivider extends StatelessWidget {
     final textPrimary = BracuPalette.textPrimary(context);
 
     const textContent =
-        "Please help us release PreConnect on iOS and keep it free for everyone. We kindly request you to donate any amount you can and share the funding link with your friends to support this campaign.";
+        "Help us release PreConnect on iOS this semester! We have already reached 25% of our funding goal. We kindly request you to donate any amount you can and share the funding link with your friends to support this campaign.";
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

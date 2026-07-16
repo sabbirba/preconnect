@@ -19,8 +19,8 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
   var titleValue = item?.title.trim().isNotEmpty == true
       ? personalSchedulesNormalizeTitle(item!.title.trim())
       : '';
-  var courseCodeValueText = item?.courseCode ?? '';
-  var sectionNameValueText = item?.sectionName ?? '';
+  final courseCodeValueText = item?.courseCode ?? '';
+  final sectionNameValueText = item?.sectionName ?? '';
   var notesValue = item?.notes ?? '';
   var titleFieldVersion = 0;
   var kind = item != null && item.kind.isNotEmpty ? item.kind : 'quiz';

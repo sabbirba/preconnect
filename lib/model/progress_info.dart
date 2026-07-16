@@ -270,9 +270,10 @@ class CurriculumCourse {
 Map<String, String> _buildCoursePrerequisiteMap(dynamic raw) {
   final output = <String, String>{};
   final rows = switch (raw) {
-    Map<String, dynamic> map when map['rows'] is List => map['rows'] as List,
-    Map map when map['rows'] is List => map['rows'] as List,
-    List list => list,
+    final Map<String, dynamic> map when map['rows'] is List =>
+      map['rows'] as List,
+    final Map map when map['rows'] is List => map['rows'] as List,
+    final List list => list,
     _ => const <dynamic>[],
   };
   for (final item in rows.whereType<Map>()) {

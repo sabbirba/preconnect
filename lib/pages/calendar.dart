@@ -372,7 +372,7 @@ class _CalendarCard extends StatelessWidget {
     if (typeKey.contains('CLASS_SCHEDULE') && extractedCode.isNotEmpty) {
       return extractedCode.replaceFirst(RegExp(r'-(\d+)$'), '');
     }
-    var label = raw.replaceAll(RegExp(r'\s*\([^)]*\)\s*'), '').trim();
+    final label = raw.replaceAll(RegExp(r'\s*\([^)]*\)\s*'), '').trim();
     return label.isEmpty ? 'Untitled Event' : label;
   }
 
