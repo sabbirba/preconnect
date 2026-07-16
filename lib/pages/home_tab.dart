@@ -13,8 +13,6 @@ enum HomeTab {
   seatStatus,
   degreeProgress,
   alarms,
-  shareSchedule,
-  scanSchedule,
   friendSchedule,
   campusPrinter,
   devs,

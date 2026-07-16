@@ -17,8 +17,6 @@ import 'package:preconnect/pages/degree_progress.dart';
 import 'package:preconnect/pages/alarms.dart';
 import 'package:preconnect/pages/free_labs.dart';
 import 'package:preconnect/pages/student_profile.dart';
-import 'package:preconnect/pages/share_schedule.dart';
-import 'package:preconnect/pages/scan_schedule.dart';
 import 'package:preconnect/pages/friend_schedule.dart';
 import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/calendar.dart';
@@ -58,6 +56,7 @@ import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/background_permission_helper.dart';
+import 'package:preconnect/tools/permission_helper.dart';
 
 part 'home_sections/dashboard_data.dart';
 part 'home_sections/dashboard_view.dart';
@@ -105,8 +104,6 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
     HomeTab.seatStatus: (_) => const SeatStatusPage(),
     HomeTab.degreeProgress: (_) => const DegreeProgressPage(),
     HomeTab.alarms: (_) => const AlarmPage(),
-    HomeTab.shareSchedule: (_) => const ShareSchedulePage(),
-    HomeTab.scanSchedule: (_) => const ScanSchedulePage(),
     HomeTab.friendSchedule: (_) => FriendSchedulePage(onNavigate: _setTab),
     HomeTab.campusPrinter: (_) => const CampusPrinterPage(),
     HomeTab.devs: (_) => const DevsPage(),
@@ -150,7 +147,8 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
           await InAppReviewPrompt.maybePrompt();
         }),
       );
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await BracuPermissionHelper.checkAndRequestOnStartup(context);
         unawaited(BackgroundPermissionHelper.checkAndShowPrompt());
       });
     }
@@ -211,11 +209,6 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
 
   void _handleBack() {
     if (selectedTab == HomeTab.dashboard) return;
-    if (selectedTab == HomeTab.scanSchedule ||
-        selectedTab == HomeTab.shareSchedule) {
-      _setTab(HomeTab.friendSchedule);
-      return;
-    }
     _setTab(HomeTab.dashboard);
   }
 

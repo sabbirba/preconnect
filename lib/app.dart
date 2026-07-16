@@ -711,10 +711,9 @@ class _MyAppState extends State<MyApp>
         return HomeTab.friendSchedule;
       case PreConnectBrowserActionIds.shortcutShare:
       case 'share':
-        return HomeTab.shareSchedule;
       case PreConnectBrowserActionIds.shortcutScan:
       case 'scan':
-        return HomeTab.scanSchedule;
+        return HomeTab.friendSchedule;
       case PreConnectBrowserActionIds.shortcutSeatStatus:
       case 'seatStatus':
       case 'seat_status':

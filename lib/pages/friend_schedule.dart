@@ -11,6 +11,7 @@ import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/friend_schedule_sections/schedule_list.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_detail.dart';
 import 'package:preconnect/pages/scan_schedule.dart';
+import 'package:preconnect/pages/share_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan.dart';
@@ -423,18 +424,20 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                       subtitle: 'Schedule',
                       color: BracuPalette.info,
                       onTap: () async {
-                        final navigator = Navigator.of(context);
-                        final isLoggedIn = await AuthService().isLoggedIn();
                         if (!mounted) return;
-                        if (isLoggedIn) {
-                          widget.onNavigate(HomeTab.scanSchedule);
-                          return;
-                        }
-                        await navigator.push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const ScanSchedulePage(),
-                          ),
+                        await showBracuBottomSheet<void>(
+                          context,
+                          title: 'Scan Schedule',
+                          subtitle: 'Scan QR from Friends',
+                          draggable: false,
+                          isScrollControlled: false,
+                          builder: (sheetContext, textPrimary, textSecondary) {
+                            return const ScanSchedulePage();
+                          },
                         );
+                        if (mounted) {
+                          await _loadSchedules();
+                        }
                       },
                     ),
                     FriendActionCard(
@@ -452,17 +455,26 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                       subtitle: 'Schedule',
                       color: BracuPalette.accent,
                       onTap: () async {
-                        final navigator = Navigator.of(context);
                         final isLoggedIn = await AuthService().isLoggedIn();
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         if (!isLoggedIn) {
                           showAppSnackBar(
-                            navigator.context,
+                            context,
                             'Please log in to share your schedule.',
                           );
                           return;
                         }
-                        widget.onNavigate(HomeTab.shareSchedule);
+                        if (!context.mounted) return;
+                        await showBracuBottomSheet<void>(
+                          context,
+                          title: 'Share Schedule',
+                          subtitle: 'Generate QR for Friends',
+                          draggable: false,
+                          isScrollControlled: false,
+                          builder: (sheetContext, textPrimary, textSecondary) {
+                            return const ShareSchedulePage();
+                          },
+                        );
                       },
                     ),
                   ],

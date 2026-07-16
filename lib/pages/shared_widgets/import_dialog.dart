@@ -204,7 +204,6 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
     final cardBg = BracuPalette.card(context);
     final hasValidClipboard = _clipboardSyncCode != null;
 
@@ -270,41 +269,7 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
             foregroundColor: BracuPalette.textPrimary(context),
             borderRadius: 24,
           ),
-          const Gap(14),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: BracuPalette.primary.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: BracuPalette.primary.withValues(alpha: 0.16),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'How to get code:',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: BracuPalette.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Gap(8),
-                Text(
-                  '1. Open app on phone\n'
-                  '2. Go to Settings > Sync Session\n'
-                  '3. Authenticate and copy code or QR',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: textSecondary,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
+
           if (_errorMessage != null) ...[
             const Gap(10),
             Container(

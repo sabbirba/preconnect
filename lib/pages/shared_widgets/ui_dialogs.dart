@@ -7,6 +7,8 @@ Future<T?> showBracuBottomSheet<T>(
   String? subtitle,
   List<Widget> actions = const <Widget>[],
   double initialChildSize = 0.80,
+  bool draggable = true,
+  bool isScrollControlled = true,
   required Widget Function(
     BuildContext sheetContext,
     Color textPrimary,
@@ -19,6 +21,8 @@ Future<T?> showBracuBottomSheet<T>(
     backgroundColor: BracuPalette.card(context),
     clipBehavior: Clip.antiAlias,
     initialChildSize: initialChildSize,
+    draggable: draggable,
+    isScrollControlled: isScrollControlled,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
@@ -32,7 +36,9 @@ Future<T?> showBracuBottomSheet<T>(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 6, 18, 10),
           child: Column(
-            mainAxisSize: MainAxisSize.max,
+            mainAxisSize: isScrollControlled
+                ? MainAxisSize.max
+                : MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
@@ -47,60 +53,81 @@ Future<T?> showBracuBottomSheet<T>(
               ),
               const Gap(6),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (liveTitle == null)
-                          Text(
-                            title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: textPrimary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (liveTitle == null)
+                            Text(
+                              title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: textPrimary,
+                                fontSize: 16.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            )
+                          else
+                            ValueListenableBuilder<String>(
+                              valueListenable: liveTitle,
+                              builder: (context, value, _) {
+                                return Text(
+                                  value,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: textPrimary,
+                                    fontSize: 16.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                );
+                              },
                             ),
-                          )
-                        else
-                          ValueListenableBuilder<String>(
-                            valueListenable: liveTitle,
-                            builder: (context, value, _) {
-                              return Text(
-                                value,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: textPrimary,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              );
-                            },
-                          ),
-                      ],
+                          if (subtitle != null) ...[
+                            const Gap(4),
+                            Text(
+                              subtitle,
+                              style: TextStyle(
+                                color: textSecondary,
+                                fontSize: 12,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
-                  ...actions,
+                  const Gap(8),
+                  if (actions.isNotEmpty) ...[...actions, const Gap(6)],
                   IconButton(
-                    onPressed: () => Navigator.of(sheetContext).pop(),
-                    icon: Icon(Icons.close_rounded, color: textSecondary),
-                    tooltip: 'Close',
-                    iconSize: 20,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 36,
-                      height: 36,
+                    onPressed: () => Navigator.of(sheetContext).maybePop(),
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    style: IconButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(36, 36),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    visualDensity: VisualDensity.compact,
                   ),
                 ],
               ),
               const Gap(4),
-              Expanded(
-                child: builder(sheetContext, textPrimary, textSecondary),
-              ),
+              if (isScrollControlled)
+                Expanded(
+                  child: builder(sheetContext, textPrimary, textSecondary),
+                )
+              else
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: builder(sheetContext, textPrimary, textSecondary),
+                  ),
+                ),
             ],
           ),
         ),
@@ -216,7 +243,19 @@ Widget bracuBottomSheetSurface(
       padding: padding,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius),
-        child: Material(color: BracuPalette.card(context), child: child),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                BracuPalette.bgTop(context),
+                BracuPalette.bgBottom(context),
+              ],
+            ),
+          ),
+          child: Material(color: Colors.transparent, child: child),
+        ),
       ),
     ),
   );
@@ -644,14 +683,27 @@ Future<T?> showBracuSelectDropdown<T>(
   final target = renderBox.localToGlobal(Offset.zero, ancestor: overlay);
   final textPrimary = BracuPalette.textPrimary(context);
   final cardColor = BracuPalette.card(context);
-  final menuTop = target.dy + renderBox.size.height + 6;
+
   final maxWidth = overlay.size.width - 24;
   final estimatedWidth = options.fold<double>(
     88,
     (current, option) => math.max(current, 26 + (option.label.length * 10)),
   );
   final menuWidth = estimatedWidth.clamp(88, maxWidth);
-  final menuLeft = math.min(target.dx, overlay.size.width - menuWidth - 12);
+
+  final triggerCenter = target.dx + renderBox.size.width / 2;
+  final menuLeft = (triggerCenter - menuWidth / 2).clamp(
+    12.0,
+    overlay.size.width - menuWidth - 12.0,
+  );
+
+  final estimatedHeight = math.min(280.0, (options.length * 32.0) + 12.0);
+  final spaceBelow =
+      overlay.size.height - (target.dy + renderBox.size.height + 6);
+  final showAbove = spaceBelow < estimatedHeight && target.dy > estimatedHeight;
+  final menuTop = showAbove
+      ? target.dy - estimatedHeight - 6
+      : target.dy + renderBox.size.height + 6;
 
   return showGeneralDialog<T>(
     context: context,
@@ -687,9 +739,9 @@ Future<T?> showBracuSelectDropdown<T>(
                   ],
                 ),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(
+                  constraints: BoxConstraints(
                     maxWidth: 215,
-                    maxHeight: 280,
+                    maxHeight: estimatedHeight,
                   ),
                   child: Material(
                     color: cardColor,
@@ -754,7 +806,7 @@ Future<T?> showBracuSelectDropdown<T>(
         opacity: curved,
         child: ScaleTransition(
           scale: Tween<double>(begin: 0.96, end: 1).animate(curved),
-          alignment: Alignment.topLeft,
+          alignment: showAbove ? Alignment.bottomCenter : Alignment.topCenter,
           child: child,
         ),
       );

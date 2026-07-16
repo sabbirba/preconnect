@@ -94,11 +94,6 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
     await _store.upsertEncodedSchedule(value);
   }
 
-  Future<void> _handleRefresh() async {
-    setState(() => scannedValue = null);
-    await _startScanner();
-  }
-
   Future<void> _restartScanner() async {
     if (_isRescanning) return;
     setState(() => _isRescanning = true);
@@ -116,228 +111,219 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: BracuPageScaffold(
-        title: 'Scan Schedule',
-        subtitle: 'QR Scan',
-        icon: Icons.qr_code_scanner,
-        body: _cameraGranted == null
-            ? BracuRefreshList(
-                onRefresh: _handleRefresh,
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+    final listContent = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_cameraGranted == null) ...[
+            const Gap(16),
+            BracuCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Gap(28),
+                  SizedBox(
+                    width: double.infinity,
+                    child: BracuActionButton(
+                      onPressed: () =>
+                          _ensureCameraPermission(openSettingsOnDeny: true),
+                      label: 'Enable Camera',
+                      isLoading: _isEnablingCamera,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            if (scannedValue == null)
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  BracuCard(
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: _cameraGranted == true
+                            ? MobileScanner(
+                                controller: _controller,
+                                errorBuilder: (context, error) {
+                                  return Container(
+                                    color: Colors.black,
+                                    alignment: Alignment.center,
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.error_outline,
+                                          color: Colors.white,
+                                          size: 34,
+                                        ),
+                                        const Gap(10),
+                                        const Text(
+                                          'Camera unavailable',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        const Gap(12),
+                                        TextButton(
+                                          onPressed: () =>
+                                              _ensureCameraPermission(
+                                                openSettingsOnDeny: true,
+                                              ),
+                                          child: const Text(
+                                            'Retry Camera',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                                onDetect: (capture) async {
+                                  if (scannedValue != null) return;
+                                  if (capture.barcodes.isEmpty) return;
+                                  final barcode = capture.barcodes.first;
+                                  final value = barcode.rawValue;
+                                  if (value == null || value.trim().isEmpty) {
+                                    return;
+                                  }
+                                  if (!mounted) return;
+                                  setState(() => scannedValue = value);
+                                  await _saveScannedValue(value);
+                                  await _controller.stop();
+                                  RefreshBus.instance.notify(
+                                    reason: 'scan_schedule',
+                                  );
+                                },
+                              )
+                            : (_cameraGranted == null
+                                  ? const Center(
+                                      child: _ScanScheduleLoadingState(),
+                                    )
+                                  : Center(
+                                      child: TextButton(
+                                        onPressed: () {
+                                          if (kIsWeb) {
+                                            setState(
+                                              () => _cameraGranted = true,
+                                            );
+                                            _startScanner();
+                                            return;
+                                          }
+                                          _ensureCameraPermission(
+                                            openSettingsOnDeny: true,
+                                          );
+                                        },
+                                        child: Text(
+                                          'Tap to enable camera',
+                                          style: TextStyle(
+                                            color: BracuPalette.primary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    )),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            else
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                   BracuCard(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        SizedBox(
-                          width: double.infinity,
-                          child: BracuActionButton(
-                            onPressed: () => _ensureCameraPermission(
-                              openSettingsOnDeny: true,
+                        const Icon(
+                          Icons.check_circle,
+                          size: 72,
+                          color: BracuPalette.accent,
+                        ),
+                        const Gap(12),
+                        const Text(
+                          'Schedule Added!',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Gap(6),
+                        Text(
+                          'You can scan another QR anytime.',
+                          style: TextStyle(
+                            color: BracuPalette.textSecondary(context),
+                          ),
+                        ),
+                        const Gap(16),
+                        BracuActionButton(
+                          onPressed: _isRescanning ? null : _restartScanner,
+                          icon: Icons.qr_code_scanner,
+                          label: 'Scan Again',
+                          isLoading: _isRescanning,
+                        ),
+                        const Gap(10),
+                        InkWell(
+                          onTap: () {
+                            Navigator.of(context).maybePop();
+                          },
+                          borderRadius: BorderRadius.circular(18),
+                          child: BracuCard(
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: BracuPalette.accent.withValues(
+                                      alpha: 0.12,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.check_rounded,
+                                    color: BracuPalette.accent,
+                                    size: 20,
+                                  ),
+                                ),
+                                const Gap(12),
+                                const Expanded(
+                                  child: Text(
+                                    'Done',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            label: 'Enable Camera',
-                            isLoading: _isEnablingCamera,
                           ),
                         ),
                       ],
                     ),
                   ),
                 ],
-              )
-            : BracuRefreshList(
-                onRefresh: _handleRefresh,
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                children: [
-                  if (scannedValue == null)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        BracuCard(
-                          child: AspectRatio(
-                            aspectRatio: 1,
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: _cameraGranted == true
-                                  ? MobileScanner(
-                                      controller: _controller,
-                                      errorBuilder: (context, error) {
-                                        return Container(
-                                          color: Colors.black,
-                                          alignment: Alignment.center,
-                                          padding: const EdgeInsets.all(16),
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(
-                                                Icons.error_outline,
-                                                color: Colors.white,
-                                                size: 34,
-                                              ),
-                                              const Gap(10),
-                                              const Text(
-                                                'Camera unavailable',
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 16,
-                                                ),
-                                              ),
-                                              const Gap(12),
-                                              TextButton(
-                                                onPressed: () =>
-                                                    _ensureCameraPermission(
-                                                      openSettingsOnDeny: true,
-                                                    ),
-                                                child: const Text(
-                                                  'Retry Camera',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      },
-                                      onDetect: (capture) async {
-                                        if (scannedValue != null) return;
-                                        if (capture.barcodes.isEmpty) return;
-                                        final barcode = capture.barcodes.first;
-                                        final value = barcode.rawValue;
-                                        if (value == null ||
-                                            value.trim().isEmpty) {
-                                          return;
-                                        }
-                                        if (!mounted) return;
-                                        setState(() => scannedValue = value);
-                                        await _saveScannedValue(value);
-                                        await _controller.stop();
-                                        RefreshBus.instance.notify(
-                                          reason: 'scan_schedule',
-                                        );
-                                      },
-                                    )
-                                  : (_cameraGranted == null
-                                        ? const Center(
-                                            child: _ScanScheduleLoadingState(),
-                                          )
-                                        : Center(
-                                            child: TextButton(
-                                              onPressed: () {
-                                                if (kIsWeb) {
-                                                  setState(
-                                                    () => _cameraGranted = true,
-                                                  );
-                                                  _startScanner();
-                                                  return;
-                                                }
-                                                _ensureCameraPermission(
-                                                  openSettingsOnDeny: true,
-                                                );
-                                              },
-                                              child: Text(
-                                                'Tap to enable camera',
-                                                style: TextStyle(
-                                                  color: BracuPalette.primary,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                                textAlign: TextAlign.center,
-                                              ),
-                                            ),
-                                          )),
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  else
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        BracuCard(
-                          child: Column(
-                            children: [
-                              const Icon(
-                                Icons.check_circle,
-                                size: 72,
-                                color: BracuPalette.accent,
-                              ),
-                              const Gap(12),
-                              const Text(
-                                'Schedule Added!',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const Gap(6),
-                              Text(
-                                'You can scan another QR anytime.',
-                                style: TextStyle(
-                                  color: BracuPalette.textSecondary(context),
-                                ),
-                              ),
-                              const Gap(16),
-                              BracuActionButton(
-                                onPressed: _isRescanning
-                                    ? null
-                                    : _restartScanner,
-                                icon: Icons.qr_code_scanner,
-                                label: 'Scan Again',
-                                isLoading: _isRescanning,
-                              ),
-                              const Gap(10),
-                              InkWell(
-                                onTap: () {
-                                  Navigator.of(context).maybePop();
-                                },
-                                borderRadius: BorderRadius.circular(18),
-                                child: BracuCard(
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: BracuPalette.accent.withValues(
-                                            alpha: 0.12,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                        child: const Icon(
-                                          Icons.check_rounded,
-                                          color: BracuPalette.accent,
-                                          size: 20,
-                                        ),
-                                      ),
-                                      const Gap(12),
-                                      const Expanded(
-                                        child: Text(
-                                          'Done',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  const Gap(12),
-                ],
               ),
+          ],
+        ],
       ),
     );
+
+    return listContent;
   }
 }
 
