@@ -68,6 +68,12 @@ class DSpaceItem {
     required this.category,
     required this.abstractText,
     required this.files,
+    required this.lastModified,
+    required this.department,
+    required this.supervisor,
+    required this.subject,
+    required this.keywords,
+    required this.language,
   });
 
   final String uuid;
@@ -78,6 +84,12 @@ class DSpaceItem {
   final String category;
   final String abstractText;
   final List<DSpaceFile> files;
+  final String lastModified;
+  final String department;
+  final String supervisor;
+  final List<String> subject;
+  final List<String> keywords;
+  final String language;
 
   factory DSpaceItem.fromJson(Map<String, dynamic> json) {
     final filesList = json['files'] is List
@@ -86,6 +98,12 @@ class DSpaceItem {
               .map((f) => DSpaceFile.fromJson(f.cast<String, dynamic>()))
               .toList()
         : const <DSpaceFile>[];
+
+    List<String> parseStringList(dynamic raw) {
+      if (raw is List) return raw.map((e) => e.toString()).toList();
+      if (raw is String && raw.isNotEmpty) return [raw];
+      return const [];
+    }
 
     return DSpaceItem(
       uuid: json['uuid']?.toString() ?? '',
@@ -96,9 +114,17 @@ class DSpaceItem {
       category: json['category']?.toString() ?? '',
       abstractText: json['abstract']?.toString() ?? '',
       files: filesList,
+      lastModified: json['lastModified']?.toString() ?? '',
+      department: json['department']?.toString() ?? '',
+      supervisor: json['supervisor']?.toString() ?? '',
+      subject: parseStringList(json['subject']),
+      keywords: parseStringList(json['keywords']),
+      language: json['language']?.toString() ?? '',
     );
   }
 }
+
+enum _DSpaceSort { newestFirst, oldestFirst, lastModified }
 
 class DSpaceBrowserPage extends StatefulWidget {
   const DSpaceBrowserPage({super.key});
@@ -127,6 +153,26 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
   bool _isLoadingItems = false;
   String _itemSearchQuery = '';
   String? _itemsError;
+
+  _DSpaceSort _sortOrder = _DSpaceSort.newestFirst;
+  int? _filterFromYear;
+  int? _filterToYear;
+
+  bool get _hasActiveFilters =>
+      _sortOrder != _DSpaceSort.newestFirst ||
+      _filterFromYear != null ||
+      _filterToYear != null;
+
+  List<int> get _availableYears {
+    final items = _items ?? [];
+    final years = <int>{};
+    for (final item in items) {
+      final y = _parseYear(item.date);
+      if (y != null) years.add(y);
+    }
+    final sorted = years.toList()..sort();
+    return sorted;
+  }
 
   @override
   void initState() {
@@ -208,6 +254,9 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
         _filteredItems = [];
         _itemSearchQuery = '';
         _visibleItemCount = _pageSize;
+        _sortOrder = _DSpaceSort.newestFirst;
+        _filterFromYear = null;
+        _filterToYear = null;
       });
     }
 
@@ -280,18 +329,253 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
     }
   }
 
+  static int? _parseYear(String date) {
+    if (date.isEmpty) return null;
+    final trimmed = date.trim();
+    if (trimmed.contains('/')) {
+      final parts = trimmed.split('/');
+      if (parts.length == 3) return int.tryParse(parts[2]);
+      return null;
+    }
+    if (trimmed.length >= 4) return int.tryParse(trimmed.substring(0, 4));
+    return null;
+  }
+
+  static int _extractMonth(String date) {
+    final t = date.trim();
+    if (t.contains('/')) {
+      return int.tryParse(t.split('/').first) ?? 0;
+    }
+    return t.length >= 7 ? int.tryParse(t.substring(5, 7)) ?? 0 : 0;
+  }
+
+  static int _compareDates(String a, String b) {
+    final aYear = _parseYear(a) ?? 0;
+    final bYear = _parseYear(b) ?? 0;
+    if (aYear != bYear) return aYear.compareTo(bYear);
+    return _extractMonth(a).compareTo(_extractMonth(b));
+  }
+
   void _filterItems() {
     final query = _itemSearchQuery.trim().toLowerCase();
     final all = _items ?? [];
-    if (query.isEmpty) {
-      _filteredItems = all;
-    } else {
-      _filteredItems = all.where((item) {
-        return item.name.toLowerCase().contains(query) ||
+
+    final filtered = all.where((item) {
+      if (query.isNotEmpty) {
+        final matches =
+            item.name.toLowerCase().contains(query) ||
             item.author.toLowerCase().contains(query) ||
-            item.handle.toLowerCase().contains(query);
-      }).toList();
+            item.handle.toLowerCase().contains(query) ||
+            item.department.toLowerCase().contains(query) ||
+            item.supervisor.toLowerCase().contains(query) ||
+            item.language.toLowerCase().contains(query) ||
+            item.subject.any((s) => s.toLowerCase().contains(query)) ||
+            item.keywords.any((k) => k.toLowerCase().contains(query));
+        if (!matches) return false;
+      }
+      final year = _parseYear(item.date);
+      if (_filterFromYear != null &&
+          (year == null || year < _filterFromYear!)) {
+        return false;
+      }
+      if (_filterToYear != null && (year == null || year > _filterToYear!)) {
+        return false;
+      }
+      return true;
+    }).toList();
+
+    switch (_sortOrder) {
+      case _DSpaceSort.newestFirst:
+        filtered.sort((a, b) => _compareDates(b.date, a.date));
+        break;
+      case _DSpaceSort.oldestFirst:
+        filtered.sort((a, b) => _compareDates(a.date, b.date));
+        break;
+      case _DSpaceSort.lastModified:
+        filtered.sort((a, b) => b.lastModified.compareTo(a.lastModified));
+        break;
     }
+
+    _filteredItems = filtered;
+  }
+
+  void _showFilterSheet(BuildContext context) {
+    var localSort = _sortOrder;
+    var localFrom = _filterFromYear;
+    var localTo = _filterToYear;
+    final years = _availableYears;
+
+    showBracuBottomSheet<void>(
+      context,
+      title: 'Filter & Sort',
+      initialChildSize: 0.52,
+      builder: (sheetContext, textPrimary, textSecondary) {
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            Widget sortOption(String label, IconData icon, _DSpaceSort value) {
+              final selected = localSort == value;
+              return GestureDetector(
+                onTap: () => setLocal(() => localSort = value),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? BracuPalette.primary.withValues(alpha: 0.1)
+                        : textSecondary.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: selected
+                          ? BracuPalette.primary.withValues(alpha: 0.4)
+                          : Colors.transparent,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        icon,
+                        size: 18,
+                        color: selected ? BracuPalette.primary : textSecondary,
+                      ),
+                      const Gap(10),
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            color: selected
+                                ? BracuPalette.primary
+                                : textPrimary,
+                            fontSize: 14,
+                            fontWeight: selected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      if (selected)
+                        Icon(
+                          Icons.check_circle_rounded,
+                          size: 18,
+                          color: BracuPalette.primary,
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            List<BracuSelectOption<String>> yearOptions() => [
+              const BracuSelectOption<String>(
+                value: '',
+                label: 'Any Year',
+                icon: Icons.all_inclusive_rounded,
+              ),
+              ...years.reversed.map(
+                (y) => BracuSelectOption<String>(value: '$y', label: '$y'),
+              ),
+            ];
+
+            BracuSelectDropdownChip<String> yearChip(
+              String label,
+              int? value,
+              void Function(int?) onChange,
+            ) {
+              return BracuSelectDropdownChip<String>(
+                label: value != null ? '$value' : label,
+                title: label,
+                selected: value != null,
+                borderRadius: 12,
+                options: yearOptions(),
+                selectedValue: value != null ? '$value' : '',
+                onSelected: (s) => onChange(s.isEmpty ? null : int.tryParse(s)),
+              );
+            }
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  sortOption(
+                    'Last Modified',
+                    Icons.update_rounded,
+                    _DSpaceSort.lastModified,
+                  ),
+                  sortOption(
+                    'Newest First',
+                    Icons.arrow_downward_rounded,
+                    _DSpaceSort.newestFirst,
+                  ),
+                  sortOption(
+                    'Oldest First',
+                    Icons.arrow_upward_rounded,
+                    _DSpaceSort.oldestFirst,
+                  ),
+                  const Gap(8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      yearChip(
+                        'From Year',
+                        localFrom,
+                        (v) => setLocal(() => localFrom = v),
+                      ),
+                      const Gap(12),
+                      yearChip(
+                        'To Year',
+                        localTo,
+                        (v) => setLocal(() => localTo = v),
+                      ),
+                    ],
+                  ),
+                  const Gap(12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: BracuActionButton(
+                          label: 'Clear',
+                          onPressed: () {
+                            setLocal(() {
+                              localSort = _DSpaceSort.lastModified;
+                              localFrom = null;
+                              localTo = null;
+                            });
+                          },
+                        ),
+                      ),
+                      const Gap(12),
+                      Expanded(
+                        child: BracuActionButton(
+                          label: 'Apply',
+                          outlined: false,
+                          backgroundColor: BracuPalette.primary,
+                          foregroundColor: Colors.white,
+                          onPressed: () {
+                            setState(() {
+                              _sortOrder = localSort;
+                              _filterFromYear = localFrom;
+                              _filterToYear = localTo;
+                              _visibleItemCount = _pageSize;
+                              _filterItems();
+                            });
+                            Navigator.of(sheetContext).pop();
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   void _showDocumentDetails(DSpaceItem item) {
@@ -301,11 +585,23 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
       subtitle: item.author.isNotEmpty ? item.author : 'No author listed',
       builder: (sheetContext, textPrimary, textSecondary) {
         final dragController = bracuBottomSheetScrollController(sheetContext);
+
         String displayDate = '';
         if (item.date.trim().isNotEmpty) {
           final trimmed = item.date.trim();
           DateTime? parsed;
-          if (trimmed.length == 4) {
+          if (trimmed.contains('/')) {
+            final parts = trimmed.split('/');
+            if (parts.length == 3) {
+              final m = parts[0].padLeft(2, '0');
+              final d = parts[1].padLeft(2, '0');
+              final y = parts[2];
+              parsed = DateTime.tryParse('$y-$m-$d');
+              if (parsed != null) {
+                displayDate = DateFormat('d MMMM yyyy').format(parsed);
+              }
+            }
+          } else if (trimmed.length == 4) {
             parsed = DateTime.tryParse('$trimmed-01-01');
             if (parsed != null) {
               displayDate = DateFormat('yyyy').format(parsed);
@@ -318,11 +614,19 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
           } else {
             parsed = DateTime.tryParse(trimmed);
             if (parsed != null) {
-              displayDate = DateFormat('EEEE, d MMMM yyyy').format(parsed);
+              displayDate = DateFormat('d MMMM yyyy').format(parsed);
             }
           }
-          if (displayDate.isEmpty) {
-            displayDate = trimmed;
+          if (displayDate.isEmpty) displayDate = trimmed;
+        }
+
+        String displayLastModified = '';
+        if (item.lastModified.isNotEmpty) {
+          final parsed = DateTime.tryParse(item.lastModified);
+          if (parsed != null) {
+            displayLastModified = DateFormat(
+              'd MMM yyyy, h:mm a',
+            ).format(parsed.toLocal());
           }
         }
 
@@ -330,6 +634,35 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
         final metaText = displayDate.isNotEmpty
             ? '$catLabel  •  $displayDate'
             : catLabel;
+
+        Widget metaRow(String label, String value) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$label: ',
+                  style: TextStyle(
+                    color: textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
 
         return ListView(
           controller: dragController,
@@ -342,8 +675,19 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const Gap(18),
+            const Gap(14),
+            if (item.department.isNotEmpty)
+              metaRow('Department', item.department),
+            if (item.supervisor.isNotEmpty) metaRow('Advisor', item.supervisor),
+            if (item.language.isNotEmpty) metaRow('Language', item.language),
+            if (item.subject.isNotEmpty)
+              metaRow('Subject', item.subject.join(', ')),
+            if (item.keywords.isNotEmpty)
+              metaRow('Keywords', item.keywords.join(', ')),
+            if (displayLastModified.isNotEmpty)
+              metaRow('Last Modified', displayLastModified),
             if (item.abstractText.trim().isNotEmpty) ...[
+              const Gap(6),
               Text(
                 'Abstract',
                 style: TextStyle(
@@ -458,6 +802,91 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                 }).toList(),
               ),
             ),
+    );
+  }
+
+  Widget _buildActiveFilterBar(BuildContext context) {
+    if (!_hasActiveFilters) return const SizedBox.shrink();
+
+    final textSecondary = BracuPalette.textSecondary(context);
+
+    final chips = <Widget>[];
+
+    if (_sortOrder != _DSpaceSort.newestFirst) {
+      final labels = {
+        _DSpaceSort.newestFirst: 'Newest First',
+        _DSpaceSort.oldestFirst: 'Oldest First',
+        _DSpaceSort.lastModified: 'Last Modified',
+      };
+      chips.add(
+        _FilterChip(
+          label: labels[_sortOrder]!,
+          onRemove: () {
+            setState(() {
+              _sortOrder = _DSpaceSort.newestFirst;
+              _visibleItemCount = _pageSize;
+              _filterItems();
+            });
+          },
+        ),
+      );
+    }
+
+    if (_filterFromYear != null || _filterToYear != null) {
+      final from = _filterFromYear;
+      final to = _filterToYear;
+      final label = from != null && to != null
+          ? '$from – $to'
+          : from != null
+          ? 'From $from'
+          : 'Up to $to';
+      chips.add(
+        _FilterChip(
+          label: label,
+          onRemove: () {
+            setState(() {
+              _filterFromYear = null;
+              _filterToYear = null;
+              _visibleItemCount = _pageSize;
+              _filterItems();
+            });
+          },
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: chips),
+            ),
+          ),
+          const Gap(8),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _sortOrder = _DSpaceSort.newestFirst;
+                _filterFromYear = null;
+                _filterToYear = null;
+                _visibleItemCount = _pageSize;
+                _filterItems();
+              });
+            },
+            child: Text(
+              'Clear',
+              style: TextStyle(
+                color: textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -583,7 +1012,15 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                 icon: Icons.search_rounded,
                 title: 'Search & Filter',
                 body:
-                    'Use the search bar at the top to filter categories or quickly locate documents matching titles or authors.',
+                    'Use the search bar to filter categories or locate documents by title, author, department, subject, or keywords.',
+              ),
+              const Gap(14),
+              _buildHelpItem(
+                context,
+                icon: Icons.tune_rounded,
+                title: 'Sort & Date Range',
+                body:
+                    'Tap the filter icon to sort by date or last modified, and restrict results to a specific year range.',
               ),
               const Gap(14),
               _buildHelpItem(
@@ -591,7 +1028,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                 icon: Icons.description_rounded,
                 title: 'Document Details',
                 body:
-                    'Tap any document card to view its metadata, read the publication abstract, and access attachments.',
+                    'Tap any document card to view its metadata, abstract, supervisor, department, and attachments.',
               ),
               const Gap(14),
               _buildHelpItem(
@@ -678,7 +1115,11 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
               _filteredItems = [];
             });
           } else {
-            HomeTabRegistry.setActive(HomeTab.dashboard);
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              HomeTabRegistry.setActive(HomeTab.dashboard);
+            }
           }
         },
         child: BracuPageScaffold(
@@ -696,11 +1137,41 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                   color: BracuPalette.primary,
                 ),
               )
-            else
+            else ...[
+              Stack(
+                children: [
+                  IconButton(
+                    tooltip: 'Filter & Sort',
+                    onPressed: _items != null && _items!.isNotEmpty
+                        ? () => _showFilterSheet(context)
+                        : null,
+                    icon: Icon(
+                      Icons.tune_rounded,
+                      color: _hasActiveFilters
+                          ? BracuPalette.primary
+                          : BracuPalette.primary.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  if (_hasActiveFilters)
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Container(
+                        width: 7,
+                        height: 7,
+                        decoration: const BoxDecoration(
+                          color: BracuPalette.primary,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
               BracuRefreshButton(
                 onPressed: () => _loadCategoryItems(_selectedCategory!),
                 isLoading: _isLoadingItems,
               ),
+            ],
           ],
           body: Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
@@ -708,11 +1179,12 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
               children: [
                 BracuSearchField(
                   controller: _searchController,
-                  hintText: _selectedCategory == null
-                      ? 'Search categories...'
-                      : 'Search documents...',
+                  hintText: 'Search...',
                 ),
-                const Gap(16),
+                const Gap(10),
+                if (_selectedCategory != null) _buildActiveFilterBar(context),
+                if (_selectedCategory != null && !_hasActiveFilters)
+                  const Gap(6),
                 if (_selectedCategory == null)
                   _buildCategoriesView(context)
                 else
@@ -721,6 +1193,51 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({required this.label, required this.onRemove});
+
+  final String label;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: BracuPalette.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: BracuPalette.primary.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: BracuPalette.primary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const Gap(5),
+          GestureDetector(
+            onTap: onRemove,
+            child: const Icon(
+              Icons.close_rounded,
+              size: 14,
+              color: BracuPalette.primary,
+            ),
+          ),
+        ],
       ),
     );
   }
