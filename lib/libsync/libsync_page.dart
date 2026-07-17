@@ -394,6 +394,10 @@ class _LibSyncPageState extends State<LibSyncPage>
               subtitle: 'Ayesha Abed Library',
               icon: Icons.local_library_outlined,
               actions: [
+                BracuRefreshButton(
+                  onPressed: () => _loadReservationData(force: true),
+                  isLoading: _loadingData,
+                ),
                 IconButton(
                   icon: const Icon(Icons.logout),
                   onPressed: () async {

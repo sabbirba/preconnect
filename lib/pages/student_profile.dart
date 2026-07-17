@@ -340,6 +340,12 @@ class _StudentProfileState extends State<StudentProfile>
       title: 'Student Profile',
       subtitle: 'Academic & Finance',
       icon: Icons.person_outline,
+      actions: [
+        BracuRefreshButton(
+          onPressed: () => _refreshProfile(notify: true),
+          isLoading: _isRefreshing,
+        ),
+      ],
       body: BracuRefreshList(
         onRefresh: _refreshProfile,
         children: [
