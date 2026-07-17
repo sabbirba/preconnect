@@ -1,5 +1,7 @@
 #include "../../Flutter/Flutter-Release.xcconfig"
 #include "Warnings.xcconfig"
+#include "AppInfo.xcconfig"
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 
 // Enable post-processing symbol stripping natively in Xcode
 DEPLOYMENT_POSTPROCESSING = YES
