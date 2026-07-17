@@ -689,13 +689,6 @@ jobs:
           ref: ${{ needs.prepare-version.outputs.release_sha }}
           fetch-depth: 0
 
-      - name: Read Package Name
-        id: android_meta
-        shell: bash
-        run: |
-          PACKAGE_NAME=$(grep -E 'applicationId\s*=' android/app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
-          echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
-
       - name: Download Android Artifacts
         uses: actions/download-artifact@v8
         with:
