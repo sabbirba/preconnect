@@ -502,11 +502,11 @@ jobs:
               DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
               PROVISIONING_PROFILE_SPECIFIER=PreConnect
 
-            printf '%s\n' \
+             printf '%s\n' \
               '<?xml version="1.0" encoding="UTF-8"?>' \
               '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
               '<plist version="1.0"><dict>' \
-              '  <key>method</key><string>app-store</string>' \
+              '  <key>method</key><string>app-store-connect</string>' \
               '  <key>signingStyle</key><string>manual</string>' \
               "  <key>teamID</key><string>${DEVELOPMENT_TEAM}</string>" \
               '  <key>signingCertificate</key><string>Apple Distribution</string>' \
