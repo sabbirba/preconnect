@@ -3,12 +3,14 @@ default_platform(:macos)
 platform :macos do
   desc "Upload macOS build to App Store Connect"
   lane :upload_to_app_store do |options|
-    pkg_path = options[:pkg]
+    app_store_connect_api_key(
+      key_id: options[:api_key_id],
+      issuer_id: options[:api_issuer_id],
+      key_filepath: options[:api_key_path]
+    )
+
     deliver(
-      pkg: pkg_path,
-      api_key_path: options[:api_key_path],
-      api_key: options[:api_key_id],
-      api_issuer: options[:api_issuer_id],
+      pkg: options[:pkg],
       skip_waiting_for_build_processing: true,
       force: true,
       skip_metadata: true,
