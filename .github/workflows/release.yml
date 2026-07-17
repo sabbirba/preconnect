@@ -386,7 +386,10 @@ jobs:
         if: matrix.platform == 'ios' && steps.ios_signing.outputs.enabled == 'true'
         run: |
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          printf '%s' "${{ secrets.IOS_PROFILE_BASE64 }}" | base64 -d > "$HOME/Library/MobileDevice/Provisioning Profiles/PreConnect.mobileprovision"
+          PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/PreConnect.mobileprovision"
+          printf '%s' "${{ secrets.IOS_PROFILE_BASE64 }}" | base64 -d > "$PROFILE_PATH"
+          UUID=$(grep -a -A1 '<key>UUID</key>' "$PROFILE_PATH" | grep -o -E '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}')
+          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/${UUID}.mobileprovision"
 
       - name: Build iOS IPA
         if: matrix.platform == 'ios'
@@ -440,7 +443,10 @@ jobs:
         if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true'
         run: |
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          printf '%s' "${{ secrets.MACOS_PROFILE_BASE64 }}" | base64 -d > "$HOME/Library/MobileDevice/Provisioning Profiles/PreConnect_for_Mac.provisionprofile"
+          PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/PreConnect.provisionprofile"
+          printf '%s' "${{ secrets.MACOS_PROFILE_BASE64 }}" | base64 -d > "$PROFILE_PATH"
+          UUID=$(grep -a -A1 '<key>UUID</key>' "$PROFILE_PATH" | grep -o -E '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}')
+          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/${UUID}.provisionprofile"
 
       - name: Build macOS
         if: matrix.platform == 'macos'
