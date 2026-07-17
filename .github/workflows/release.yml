@@ -612,9 +612,9 @@ jobs:
             exit 0
           fi
           
-          PKG_PATH=$(find "$RUNNER_TEMP/macos_export" -maxdepth 2 -name "*.pkg" 2>/dev/null | head -n1 || true)
+           PKG_PATH=$(find "$RUNNER_TEMP/macos_export" -maxdepth 2 -name "*.pkg" 2>/dev/null | head -n1 || true)
           if [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ]; then
-            cd macos && bundle exec fastlane notarize_app \
+            bundle exec fastlane macos notarize_app \
               package:"$PKG_PATH" \
               api_key_id:"$APP_STORE_CONNECT_KEY_ID" \
               api_issuer_id:"$APP_STORE_CONNECT_ISSUER_ID" \
@@ -625,7 +625,7 @@ jobs:
           APP_PATH=$(find "$RUNNER_TEMP/macos_export" -maxdepth 3 -type d -name "*.app" 2>/dev/null | head -n1 || true)
           if [ -n "$APP_PATH" ] && [ -d "$APP_PATH" ]; then
             ditto -c -k --keepParent "$APP_PATH" "$RUNNER_TEMP/PreConnect.app.zip"
-            cd macos && bundle exec fastlane notarize_app \
+            bundle exec fastlane macos notarize_app \
               package:"$RUNNER_TEMP/PreConnect.app.zip" \
               api_key_id:"$APP_STORE_CONNECT_KEY_ID" \
               api_issuer_id:"$APP_STORE_CONNECT_ISSUER_ID" \

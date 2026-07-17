@@ -200,7 +200,7 @@ jobs:
         if: matrix.run_apple && steps.resolve_apple.outputs.ios_ready == 'true' && env.APP_STORE_CONNECT_API_KEY != ''
         shell: bash
         run: |
-          cd ios && bundle exec fastlane upload_to_testflight \
+          bundle exec fastlane ios upload_to_testflight \
             ipa:"$GITHUB_WORKSPACE/${{ steps.resolve_apple.outputs.ios_path }}" \
             api_key_id:"${{ secrets.APP_STORE_CONNECT_KEY_ID }}" \
             api_issuer_id:"${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}" \
@@ -210,7 +210,7 @@ jobs:
         if: matrix.run_apple && steps.resolve_apple.outputs.macos_ready == 'true' && env.APP_STORE_CONNECT_API_KEY != ''
         shell: bash
         run: |
-          cd macos && bundle exec fastlane upload_to_app_store \
+          bundle exec fastlane macos upload_to_app_store \
             pkg:"$GITHUB_WORKSPACE/${{ steps.resolve_apple.outputs.macos_path }}" \
             api_key_id:"${{ secrets.APP_STORE_CONNECT_KEY_ID }}" \
             api_issuer_id:"${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}" \
