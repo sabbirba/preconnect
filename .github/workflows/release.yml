@@ -597,7 +597,6 @@ jobs:
           APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
         shell: bash
         run: |
           set -euo pipefail
@@ -605,45 +604,25 @@ jobs:
             echo "App Store Connect API secrets missing; skipping notarization."
             exit 0
           fi
-          KEY_DIR=~/.appstoreconnect/private_keys
-          python3 -c "
-          import base64, os
-          key = os.environ['APP_STORE_CONNECT_API_KEY'].strip()
-          out_path = os.path.expanduser(f'~/.appstoreconnect/private_keys/AuthKey_{os.environ[\"APP_STORE_CONNECT_KEY_ID\"]}.p8')
-          os.makedirs(os.path.dirname(out_path), exist_ok=True)
-          with open(out_path, 'wb') as f:
-              if 'PRIVATE KEY' in key:
-                  f.write(key.encode('utf-8'))
-              else:
-                  f.write(base64.b64decode(key))
-          "
-          if [ -f "$KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8" ]; then
-            if grep -q "PRIVATE KEY" "$KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"; then
-              echo "Key format verified: Valid PEM header found."
-            else
-              echo "WARNING: Key file does not contain a valid PEM header!"
-            fi
-          else
-            echo "ERROR: Key file was not created!"
-          fi
+          
           PKG_PATH=$(find "$RUNNER_TEMP/macos_export" -maxdepth 2 -name "*.pkg" 2>/dev/null | head -n1 || true)
           if [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ]; then
-            xcrun notarytool submit "$PKG_PATH" \
-              --key "$KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8" \
-              --key-id "$APP_STORE_CONNECT_KEY_ID" \
-              --issuer "$APP_STORE_CONNECT_ISSUER_ID" \
-              --wait
-            xcrun stapler staple "$PKG_PATH"
+            cd macos && bundle exec fastlane notarize_app \
+              package:"$PKG_PATH" \
+              api_key_id:"$APP_STORE_CONNECT_KEY_ID" \
+              api_issuer_id:"$APP_STORE_CONNECT_ISSUER_ID" \
+              api_key_content:"$APP_STORE_CONNECT_API_KEY"
             echo "NOTARIZED_PKG=$PKG_PATH" >> "$GITHUB_ENV"
           fi
+
           APP_PATH=$(find "$RUNNER_TEMP/macos_export" -maxdepth 3 -type d -name "*.app" 2>/dev/null | head -n1 || true)
           if [ -n "$APP_PATH" ] && [ -d "$APP_PATH" ]; then
             ditto -c -k --keepParent "$APP_PATH" "$RUNNER_TEMP/PreConnect.app.zip"
-            xcrun notarytool submit "$RUNNER_TEMP/PreConnect.app.zip" \
-              --key "$KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8" \
-              --key-id "$APP_STORE_CONNECT_KEY_ID" \
-              --issuer "$APP_STORE_CONNECT_ISSUER_ID" \
-              --wait
+            cd macos && bundle exec fastlane notarize_app \
+              package:"$RUNNER_TEMP/PreConnect.app.zip" \
+              api_key_id:"$APP_STORE_CONNECT_KEY_ID" \
+              api_issuer_id:"$APP_STORE_CONNECT_ISSUER_ID" \
+              api_key_content:"$APP_STORE_CONNECT_API_KEY"
             xcrun stapler staple "$APP_PATH"
             echo "NOTARIZED_APP=$APP_PATH" >> "$GITHUB_ENV"
           fi
