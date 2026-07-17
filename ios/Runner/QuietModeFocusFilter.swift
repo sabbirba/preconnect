@@ -9,6 +9,13 @@ struct QuietModeFocusFilter: SetFocusFilterIntent {
     @Parameter(title: "Active", default: false)
     var isActive: Bool
 
+    var displayRepresentation: DisplayRepresentation {
+        DisplayRepresentation(
+            title: "Quiet Mode",
+            subtitle: isActive ? "Active" : "Inactive"
+        )
+    }
+
     func perform() async throws -> some IntentResult {
         _ = QuietModeScheduleriOS.shared.syncFromStoredPlan()
         return .result()
