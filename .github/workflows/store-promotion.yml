@@ -20,6 +20,8 @@ jobs:
     name: Promote ${{ matrix.target }}
     runs-on: ${{ matrix.os || 'ubuntu-latest' }}
     timeout-minutes: 30
+    env:
+      APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
     strategy:
       fail-fast: false
       matrix:
@@ -220,7 +222,7 @@ jobs:
           fi
 
       - name: Upload iOS to TestFlight
-        if: ${{ matrix.run_apple && steps.resolve_apple.outputs.ios_ready == 'true' && secrets.APP_STORE_CONNECT_API_KEY != '' }}
+        if: matrix.run_apple && steps.resolve_apple.outputs.ios_ready == 'true' && env.APP_STORE_CONNECT_API_KEY != ''
         uses: apple-actions/upload-testflight-build@v4
         with:
           app-path: ${{ steps.resolve_apple.outputs.ios_path }}
@@ -229,7 +231,7 @@ jobs:
           api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
 
       - name: Upload macOS to App Store Connect
-        if: ${{ matrix.run_apple && steps.resolve_apple.outputs.macos_ready == 'true' && secrets.APP_STORE_CONNECT_API_KEY != '' }}
+        if: matrix.run_apple && steps.resolve_apple.outputs.macos_ready == 'true' && env.APP_STORE_CONNECT_API_KEY != ''
         uses: apple-actions/upload-testflight-build@v4
         with:
           app-path: ${{ steps.resolve_apple.outputs.macos_path }}
