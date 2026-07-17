@@ -606,12 +606,17 @@ jobs:
             exit 0
           fi
           KEY_DIR=~/.appstoreconnect/private_keys
-          mkdir -p "$KEY_DIR"
-          if [[ "$APP_STORE_CONNECT_API_KEY" =~ ^[[:space:]]*-----BEGIN[[:space:]]+PRIVATE[[:space:]]+KEY----- ]]; then
-            printf '%s' "$APP_STORE_CONNECT_API_KEY" > "$KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
-          else
-            printf '%s' "$APP_STORE_CONNECT_API_KEY" | base64 -d > "$KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
-          fi
+          python3 -c "
+          import base64, os
+          key = os.environ['APP_STORE_CONNECT_API_KEY'].strip()
+          out_path = os.path.expanduser(f'~/.appstoreconnect/private_keys/AuthKey_{os.environ[\"APP_STORE_CONNECT_KEY_ID\"]}.p8')
+          os.makedirs(os.path.dirname(out_path), exist_ok=True)
+          with open(out_path, 'wb') as f:
+              if 'PRIVATE KEY' in key:
+                  f.write(key.encode('utf-8'))
+              else:
+                  f.write(base64.b64decode(key))
+          "
           PKG_PATH=$(find "$RUNNER_TEMP/macos_export" -maxdepth 2 -name "*.pkg" 2>/dev/null | head -n1 || true)
           if [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ]; then
             xcrun notarytool submit "$PKG_PATH" \
