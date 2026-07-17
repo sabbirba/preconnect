@@ -458,7 +458,7 @@ jobs:
               -configuration Release \
               -archivePath "$RUNNER_TEMP/PreConnect.xcarchive" \
               CODE_SIGN_STYLE=Manual \
-              CODE_SIGN_IDENTITY="3rd Party Mac Developer Application" \
+              CODE_SIGN_IDENTITY="Apple Distribution" \
               DEVELOPMENT_TEAM="${{ secrets.DEVELOPMENT_TEAM }}" \
               "PROVISIONING_PROFILE_SPECIFIER=PreConnect"
 
