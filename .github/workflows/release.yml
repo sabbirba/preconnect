@@ -445,9 +445,15 @@ jobs:
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/PreConnect.provisionprofile"
           printf '%s' "${{ secrets.MACOS_PROFILE_BASE64 }}" | base64 -d > "$PROFILE_PATH"
-          UUID=$(grep -a -A1 '<key>UUID</key>' "$PROFILE_PATH" | grep -o -E '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}')
-          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/${UUID}.provisionprofile"
-
+          TMPXML=$(mktemp /tmp/profile_XXXXXX.plist)
+          security cms -D -i "$PROFILE_PATH" > "$TMPXML" 2>/dev/null
+          UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" "$TMPXML" 2>/dev/null)
+          rm -f "$TMPXML"
+          if [ -n "$UUID" ]; then
+            cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/${UUID}.provisionprofile"
+          else
+            exit 1
+          fi
       - name: Build macOS
         if: matrix.platform == 'macos'
         shell: bash
