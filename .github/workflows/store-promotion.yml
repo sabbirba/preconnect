@@ -223,19 +223,20 @@ jobs:
 
       - name: Upload iOS to TestFlight
         if: matrix.run_apple && steps.resolve_apple.outputs.ios_ready == 'true' && env.APP_STORE_CONNECT_API_KEY != ''
-        uses: apple-actions/upload-testflight-build@v4
-        with:
-          app-path: ${{ steps.resolve_apple.outputs.ios_path }}
-          issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+        shell: bash
+        run: |
+          cd ios && bundle exec fastlane upload_to_testflight \
+            ipa:"$GITHUB_WORKSPACE/${{ steps.resolve_apple.outputs.ios_path }}" \
+            api_key_id:"${{ secrets.APP_STORE_CONNECT_KEY_ID }}" \
+            api_issuer_id:"${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}" \
+            api_key_content:"${{ secrets.APP_STORE_CONNECT_API_KEY }}"
 
       - name: Upload macOS to App Store Connect
         if: matrix.run_apple && steps.resolve_apple.outputs.macos_ready == 'true' && env.APP_STORE_CONNECT_API_KEY != ''
-        uses: apple-actions/upload-testflight-build@v4
-        with:
-          app-path: ${{ steps.resolve_apple.outputs.macos_path }}
-          issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
-          backend: 'altool'
+        shell: bash
+        run: |
+          cd macos && bundle exec fastlane upload_to_app_store \
+            pkg:"$GITHUB_WORKSPACE/${{ steps.resolve_apple.outputs.macos_path }}" \
+            api_key_id:"${{ secrets.APP_STORE_CONNECT_KEY_ID }}" \
+            api_issuer_id:"${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}" \
+            api_key_content:"${{ secrets.APP_STORE_CONNECT_API_KEY }}"
