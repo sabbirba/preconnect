@@ -13,6 +13,7 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    purgeLargeUserDefaultsEntries()
     if let shortcutItem = launchOptions?[.shortcutItem] as? UIApplicationShortcutItem {
       cacheShortcutAction(shortcutItem.type)
     }
@@ -303,5 +304,32 @@ private extension UIApplication {
       return preconnectTopViewController(base: presented)
     }
     return base
+  }
+}
+
+private func purgeLargeUserDefaultsEntries() {
+  let defaults = UserDefaults.standard
+  let maxBytes = 256 * 1024
+  let whitelist: Set<String> = [
+    "preconnect.quiet_mode_plan_v1",
+    preconnectPendingShortcutActionKey,
+  ]
+  var removed = false
+  for key in defaults.dictionaryRepresentation().keys {
+    if whitelist.contains(key) { continue }
+    if let str = defaults.string(forKey: key) {
+      if str.utf8.count > maxBytes {
+        defaults.removeObject(forKey: key)
+        removed = true
+      }
+    } else if let data = defaults.data(forKey: key) {
+      if data.count > maxBytes {
+        defaults.removeObject(forKey: key)
+        removed = true
+      }
+    }
+  }
+  if removed {
+    defaults.synchronize()
   }
 }
