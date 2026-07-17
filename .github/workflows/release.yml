@@ -266,6 +266,7 @@ jobs:
 
       - name: Package Chrome Extension
         if: matrix.platform == 'chrome_extension'
+        shell: bash
         run: |
           mkdir -p artifacts
           cd build/chrome-extension
@@ -273,6 +274,7 @@ jobs:
 
       - name: Package Firefox Extension
         if: matrix.platform == 'chrome_extension'
+        shell: bash
         run: |
           mkdir -p artifacts
           cd build/firefox-extension
@@ -286,12 +288,11 @@ jobs:
 
       - name: Package Web
         if: matrix.platform == 'web'
+        shell: bash
         run: |
           mkdir -p artifacts
           cd build/web
           zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-web-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
-
-
 
       - name: Pod Install
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
@@ -305,24 +306,26 @@ jobs:
 
       - name: Restore Keystore
         if: matrix.platform == 'android'
+        shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEYSTORE_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEYSTORE_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || \
+             [ -z "$ANDROID_KEYSTORE_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
             echo "Android signing secrets missing; skipping keystore restore."
             exit 0
           fi
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/preconnect-release-key.jks
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/preconnect-release-key.jks
           chmod 600 android/preconnect-release-key.jks
-          cat > android/key.properties <<EOF
-          storeFile=preconnect-release-key.jks
-          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEYSTORE_ALIAS }}
-          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
-          EOF
+          {
+            printf 'storeFile=preconnect-release-key.jks\n'
+            printf 'storePassword=%s\n' "$ANDROID_KEYSTORE_PASSWORD"
+            printf 'keyAlias=%s\n' "$ANDROID_KEYSTORE_ALIAS"
+            printf 'keyPassword=%s\n' "$ANDROID_KEY_PASSWORD"
+          } > android/key.properties
 
       - name: Build Android APK
         if: matrix.platform == 'android' && (matrix.build_type == 'apk' || matrix.build_type == 'both')
@@ -339,17 +342,6 @@ jobs:
             echo "Flutter appbundle failed; retrying with Gradle." >&2
             cd android
             ./gradlew bundleRelease --no-daemon --stacktrace --info
-          fi
-
-      - name: Build iOS
-        if: matrix.platform == 'ios'
-        shell: bash
-        run: |
-          flutter build ios --release --no-codesign --tree-shake-icons --obfuscate --split-debug-info=build/symbols/ios --extra-gen-snapshot-options=--strip --dart-define-from-file=.env
-          APP_PATH=$(find build/ios/iphoneos -maxdepth 1 -type d -name "*.app" | head -n1)
-          if [ -d "$APP_PATH" ]; then
-            strip -x "$APP_PATH/Runner" || true
-            strip -x "$APP_PATH/Frameworks/App.framework/App" || true
           fi
 
       - name: Detect iOS Signing
@@ -378,19 +370,49 @@ jobs:
 
       - name: Install iOS Provisioning Profile
         if: matrix.platform == 'ios' && steps.ios_signing.outputs.enabled == 'true'
+        shell: bash
+        env:
+          IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
         run: |
-          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/PreConnect.mobileprovision"
-          printf '%s' "${{ secrets.IOS_PROFILE_BASE64 }}" | base64 -d > "$PROFILE_PATH"
-          UUID=$(grep -a -A1 '<key>UUID</key>' "$PROFILE_PATH" | grep -o -E '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}')
-          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/${UUID}.mobileprovision"
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILE_DIR"
+          PROFILE_PATH="$PROFILE_DIR/PreConnect.mobileprovision"
+          printf '%s' "$IOS_PROFILE_BASE64" | base64 -d > "$PROFILE_PATH"
+          TMPXML="$(mktemp /tmp/profile_XXXXXX.plist)"
+          security cms -D -i "$PROFILE_PATH" > "$TMPXML" 2>/dev/null
+          UUID="$(/usr/libexec/PlistBuddy -c "Print :UUID" "$TMPXML" 2>/dev/null)"
+          rm -f "$TMPXML"
+          if [ -z "$UUID" ]; then
+            echo "Unable to read iOS provisioning profile UUID." >&2
+            exit 1
+          fi
+          cp "$PROFILE_PATH" "$PROFILE_DIR/${UUID}.mobileprovision"
+
+      - name: Build iOS Unsigned
+        if: matrix.platform == 'ios' && steps.ios_signing.outputs.enabled != 'true'
+        shell: bash
+        run: |
+          flutter build ios --release --no-codesign --tree-shake-icons --obfuscate \
+            --split-debug-info=build/symbols/ios --extra-gen-snapshot-options=--strip \
+            --dart-define-from-file=.env \
+            --build-name "${{ needs.prepare-version.outputs.version_name }}" \
+            --build-number "${{ needs.prepare-version.outputs.version_code }}"
+          APP_PATH="$(find build/ios/iphoneos -maxdepth 1 -type d -name "*.app" | head -n1)"
+          if [ -d "$APP_PATH" ]; then
+            strip -x "$APP_PATH/Runner" || true
+            strip -x "$APP_PATH/Frameworks/App.framework/App" || true
+          fi
 
       - name: Build iOS IPA
-        if: matrix.platform == 'ios'
+        if: matrix.platform == 'ios' && steps.ios_signing.outputs.enabled == 'true'
+        shell: bash
         run: |
-          flutter build ipa --release --tree-shake-icons --obfuscate --split-debug-info=build/symbols/ios --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --export-options-plist=ios/ExportOptions.plist
-
-
+          flutter build ipa --release --tree-shake-icons --obfuscate \
+            --split-debug-info=build/symbols/ios --extra-gen-snapshot-options=--strip \
+            --dart-define-from-file=.env \
+            --export-options-plist=ios/ExportOptions.plist \
+            --build-name "${{ needs.prepare-version.outputs.version_name }}" \
+            --build-number "${{ needs.prepare-version.outputs.version_code }}"
 
       - name: Detect macOS Signing
         id: macos_signing
@@ -401,12 +423,18 @@ jobs:
           IOS_P12_BASE64: ${{ secrets.IOS_P12_BASE64 }}
           IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
           MACOS_PROFILE_BASE64: ${{ secrets.MACOS_PROFILE_BASE64 }}
+          MACOS_INSTALLER_P12_BASE64: ${{ secrets.MACOS_INSTALLER_P12_BASE64 }}
         run: |
           if [ -n "$DEVELOPMENT_TEAM" ] && [ -n "$IOS_P12_BASE64" ] && \
              [ -n "$IOS_P12_PASSWORD" ] && [ -n "$MACOS_PROFILE_BASE64" ]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$MACOS_INSTALLER_P12_BASE64" ]; then
+            echo "installer_enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "installer_enabled=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Setup macOS Keychain
@@ -417,7 +445,7 @@ jobs:
           p12-password: ${{ secrets.IOS_P12_PASSWORD }}
 
       - name: Setup macOS Installer Certificate
-        if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true' && secrets.MACOS_INSTALLER_P12_BASE64 != ''
+        if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true' && steps.macos_signing.outputs.installer_enabled == 'true'
         uses: apple-actions/import-codesign-certs@v2
         with:
           p12-file-base64: ${{ secrets.MACOS_INSTALLER_P12_BASE64 }}
@@ -427,31 +455,37 @@ jobs:
 
       - name: Install macOS Provisioning Profile
         if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true'
+        shell: bash
+        env:
+          MACOS_PROFILE_BASE64: ${{ secrets.MACOS_PROFILE_BASE64 }}
         run: |
-          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/PreConnect.provisionprofile"
-          printf '%s' "${{ secrets.MACOS_PROFILE_BASE64 }}" | base64 -d > "$PROFILE_PATH"
-          TMPXML=$(mktemp /tmp/profile_XXXXXX.plist)
-          security cms -D -i "$PROFILE_PATH" > "$TMPXML" 2>/dev/null
-          UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" "$TMPXML" 2>/dev/null)
-          rm -f "$TMPXML"
-          if [ -n "$UUID" ]; then
-            cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/${UUID}.provisionprofile"
-          else
-            exit 1
-          fi
+          install_profile() {
+            local dest_dir="$1"
+            mkdir -p "$dest_dir"
+            local profile_path="$dest_dir/PreConnect.provisionprofile"
+            printf '%s' "$MACOS_PROFILE_BASE64" | base64 -d > "$profile_path"
+            local tmpxml
+            tmpxml="$(mktemp /tmp/profile_XXXXXX.plist)"
+            security cms -D -i "$profile_path" > "$tmpxml" 2>/dev/null
+            local uuid
+            uuid="$(/usr/libexec/PlistBuddy -c "Print :UUID" "$tmpxml" 2>/dev/null)"
+            rm -f "$tmpxml"
+            if [ -z "$uuid" ]; then
+              echo "Unable to read macOS provisioning profile UUID." >&2
+              return 1
+            fi
+            cp "$profile_path" "$dest_dir/${uuid}.provisionprofile"
+          }
+          install_profile "$HOME/Library/MobileDevice/Provisioning Profiles"
+          install_profile "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
 
-      - name: Debug - list installed macOS profiles
-        if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true'
-        run: |
-          for f in "$HOME/Library/MobileDevice/Provisioning Profiles/"*.provisionprofile; do
-            echo "== $f =="
-            security cms -D -i "$f" | grep -A1 '<key>Name</key>' || true
-          done
       - name: Build macOS
         if: matrix.platform == 'macos'
         shell: bash
+        env:
+          DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
         run: |
+          set -euo pipefail
           flutter build macos --config-only --dart-define-from-file=.env
 
           if [ "${{ steps.macos_signing.outputs.enabled }}" = "true" ]; then
@@ -462,8 +496,8 @@ jobs:
               -archivePath "$RUNNER_TEMP/PreConnect.xcarchive" \
               CODE_SIGN_STYLE=Manual \
               CODE_SIGN_IDENTITY="Apple Distribution" \
-              DEVELOPMENT_TEAM="${{ secrets.DEVELOPMENT_TEAM }}" \
-              "PROVISIONING_PROFILE_SPECIFIER=PreConnect"
+              DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
+              PROVISIONING_PROFILE_SPECIFIER=PreConnect
 
             printf '%s\n' \
               '<?xml version="1.0" encoding="UTF-8"?>' \
@@ -471,7 +505,7 @@ jobs:
               '<plist version="1.0"><dict>' \
               '  <key>method</key><string>app-store</string>' \
               '  <key>signingStyle</key><string>manual</string>' \
-              '  <key>teamID</key><string>${{ secrets.DEVELOPMENT_TEAM }}</string>' \
+              "  <key>teamID</key><string>${DEVELOPMENT_TEAM}</string>" \
               '  <key>provisioningProfiles</key><dict>' \
               '    <key>com.sabbirba.preconnect</key><string>PreConnect</string>' \
               '  </dict>' \
@@ -493,7 +527,7 @@ jobs:
               CODE_SIGN_STYLE=Automatic \
               CODE_SIGN_IDENTITY="-"
 
-            APP_PATH=$(find "$RUNNER_TEMP/PreConnect.xcarchive" -type d -name "*.app" | head -n1)
+            APP_PATH="$(find "$RUNNER_TEMP/PreConnect.xcarchive" -type d -name "*.app" | head -n1)"
             if [ -d "$APP_PATH" ]; then
               strip -x "$APP_PATH/Contents/Frameworks/App.framework/Versions/Current/App" || true
               strip -x "$APP_PATH/Contents/MacOS/PreConnect" || true
@@ -504,6 +538,7 @@ jobs:
 
       - name: Package Android APK
         if: matrix.platform == 'android' && (matrix.build_type == 'apk' || matrix.build_type == 'both')
+        shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts
@@ -522,6 +557,7 @@ jobs:
 
       - name: Package Android AAB
         if: matrix.platform == 'android' && (matrix.build_type == 'aab' || matrix.build_type == 'both')
+        shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts
@@ -530,6 +566,7 @@ jobs:
 
       - name: Package iOS
         if: matrix.platform == 'ios'
+        shell: bash
         run: |
           mkdir -p artifacts
           VERSION="${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}"
