@@ -375,86 +375,42 @@ jobs:
             echo "enabled=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Export iOS IPA
+      - name: Setup iOS Keychain
         if: matrix.platform == 'ios' && steps.ios_signing.outputs.enabled == 'true'
-        env:
-          IOS_P12_BASE64: ${{ secrets.IOS_P12_BASE64 }}
-          IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
-          IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
-          KEYCHAIN_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
-        shell: bash
+        uses: apple-actions/import-codesign-certs@v2
+        with:
+          p12-file-base64: ${{ secrets.IOS_P12_BASE64 }}
+          p12-password: ${{ secrets.IOS_P12_PASSWORD }}
+
+      - name: Install iOS Provisioning Profile
+        if: matrix.platform == 'ios' && steps.ios_signing.outputs.enabled == 'true'
         run: |
-          set -euo pipefail
-          if [ -z "$IOS_P12_BASE64" ] || [ -z "$IOS_P12_PASSWORD" ] || [ -z "$IOS_PROFILE_BASE64" ]; then
-            echo "iOS signing secrets missing; continuing with unsigned artifact."
-            exit 0
-          fi
-          [ -f ios/ExportOptions.plist ] || { echo "Missing required file: ios/ExportOptions.plist"; exit 1; }
-          KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          printf '%s' "$IOS_P12_BASE64" | base64 -d > "$RUNNER_TEMP/cert.p12"
-          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN_PATH" -P "$IOS_P12_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security list-keychains -s "$KEYCHAIN_PATH"
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          printf '%s' "$IOS_PROFILE_BASE64" | base64 -d > "$HOME/Library/MobileDevice/Provisioning Profiles/PreConnect.mobileprovision"
+          printf '%s' "${{ secrets.IOS_PROFILE_BASE64 }}" | base64 -d > "$HOME/Library/MobileDevice/Provisioning Profiles/PreConnect.mobileprovision"
+
+      - name: Build iOS IPA
+        if: matrix.platform == 'ios'
+        run: |
           flutter build ipa --release --tree-shake-icons --obfuscate --split-debug-info=build/symbols/ios --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --export-options-plist=ios/ExportOptions.plist
 
       - name: Upload iOS to TestFlight
         if: matrix.platform == 'ios' && steps.ios_signing.outputs.enabled == 'true'
-        env:
-          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
-          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -z "$APP_STORE_CONNECT_API_KEY_BASE64" ] || [ -z "$APP_STORE_CONNECT_KEY_ID" ] || [ -z "$APP_STORE_CONNECT_ISSUER_ID" ]; then
-            echo "App Store Connect API secrets missing; skipping TestFlight upload."
-            exit 0
-          fi
-          KEY_DIR=~/.appstoreconnect/private_keys
-          mkdir -p "$KEY_DIR"
-          printf '%s' "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 -d > "$KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
-          IPA_PATH=$(find build/ios/ipa -maxdepth 1 -type f -name "*.ipa" | head -n1)
-          if [ -z "$IPA_PATH" ]; then
-            echo "No IPA found; skipping TestFlight upload."
-            exit 0
-          fi
-          bundle exec fastlane ios upload_to_testflight \
-            ipa:"$IPA_PATH" \
-            api_key_path:"$KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8" \
-            api_key_id:"$APP_STORE_CONNECT_KEY_ID" \
-            api_issuer_id:"$APP_STORE_CONNECT_ISSUER_ID"
+        uses: apple-actions/upload-testflight-build@v4
+        with:
+          app-path: build/ios/ipa/PreConnect.ipa
+          issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
 
       - name: Upload macOS to App Store Connect
         if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true'
-        env:
-          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
-          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -z "$APP_STORE_CONNECT_API_KEY_BASE64" ] || [ -z "$APP_STORE_CONNECT_KEY_ID" ] || [ -z "$APP_STORE_CONNECT_ISSUER_ID" ]; then
-            echo "App Store Connect API secrets missing; skipping macOS App Store upload."
-            exit 0
-          fi
-          KEY_DIR=~/.appstoreconnect/private_keys
-          mkdir -p "$KEY_DIR"
-          printf '%s' "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 -d > "$KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
-          PKG_PATH=$(find "$RUNNER_TEMP/macos_export" -maxdepth 2 -name "*.pkg" 2>/dev/null | head -n1 || true)
-          if [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ]; then
-            bundle exec fastlane macos upload_to_app_store \
-              pkg:"$PKG_PATH" \
-              api_key_path:"$KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8" \
-              api_key_id:"$APP_STORE_CONNECT_KEY_ID" \
-              api_issuer_id:"$APP_STORE_CONNECT_ISSUER_ID"
-          else
-            echo "No .pkg found in export; skipping macOS App Store upload."
-          fi
+        uses: apple-actions/upload-testflight-build@v4
+        with:
+          app-path: ${{ env.NOTARIZED_PKG }}
+          issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          backend: 'altool'
 
       - name: Detect macOS Signing
         id: macos_signing
@@ -473,26 +429,18 @@ jobs:
             echo "enabled=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Setup macOS Keychain and Provisioning
+      - name: Setup macOS Keychain
         if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true'
-        env:
-          IOS_P12_BASE64: ${{ secrets.IOS_P12_BASE64 }}
-          IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
-          MACOS_PROFILE_BASE64: ${{ secrets.MACOS_PROFILE_BASE64 }}
-          KEYCHAIN_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
-        shell: bash
+        uses: apple-actions/import-codesign-certs@v2
+        with:
+          p12-file-base64: ${{ secrets.IOS_P12_BASE64 }}
+          p12-password: ${{ secrets.IOS_P12_PASSWORD }}
+
+      - name: Install macOS Provisioning Profile
+        if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true'
         run: |
-          set -euo pipefail
-          KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          printf '%s' "$IOS_P12_BASE64" | base64 -d > "$RUNNER_TEMP/cert.p12"
-          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN_PATH" -P "$IOS_P12_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security list-keychains -s "$KEYCHAIN_PATH"
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          printf '%s' "$MACOS_PROFILE_BASE64" | base64 -d > "$HOME/Library/MobileDevice/Provisioning Profiles/PreConnect_for_Mac.provisionprofile"
+          printf '%s' "${{ secrets.MACOS_PROFILE_BASE64 }}" | base64 -d > "$HOME/Library/MobileDevice/Provisioning Profiles/PreConnect_for_Mac.provisionprofile"
 
       - name: Build macOS
         if: matrix.platform == 'macos'
