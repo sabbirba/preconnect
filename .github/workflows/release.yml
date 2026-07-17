@@ -231,6 +231,13 @@ jobs:
         shell: bash
         run: sudo gem install cocoapods --no-document
 
+      - name: Setup Ruby
+        if: matrix.platform == 'ios' || matrix.platform == 'macos'
+        uses: ruby/setup-ruby@v1.319.0
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
       - name: Android Local Properties
         if: matrix.platform == 'android'
         shell: bash
