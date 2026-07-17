@@ -789,13 +789,7 @@ jobs:
         uses: ruby/setup-ruby@v1.319.0
         with:
           ruby-version: "3.3"
-
-      - name: Install Ruby Gems
-        if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
-        run: |
-          gem install bundler --no-document
-          bundle config set frozen false
-          bundle install
+          bundler-cache: true
 
       - name: Upload to Play Store
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
