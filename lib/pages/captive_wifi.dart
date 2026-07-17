@@ -396,10 +396,13 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
           _isConnecting = false;
           _responseLog = CaptiveWifiHttp.instance.lastResponseLog;
         });
+        final safeLog = _responseLog.length > 200000
+            ? _responseLog.substring(_responseLog.length - 200000)
+            : _responseLog;
         unawaited(
           AppStorage.instance.setString(
             StorageKeys.wifiCaptiveLastResponseLog,
-            _responseLog,
+            safeLog,
           ),
         );
       }
@@ -468,10 +471,13 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
           _isDisconnecting = false;
           _responseLog = CaptiveWifiHttp.instance.lastResponseLog;
         });
+        final safeLog = _responseLog.length > 200000
+            ? _responseLog.substring(_responseLog.length - 200000)
+            : _responseLog;
         unawaited(
           AppStorage.instance.setString(
             StorageKeys.wifiCaptiveLastResponseLog,
-            _responseLog,
+            safeLog,
           ),
         );
       }
@@ -1268,15 +1274,10 @@ class _CaptivePortalWebViewState extends State<CaptivePortalWebView> {
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                     const Spacer(),
-                    IconButton(
-                      icon: _loading
-                          ? const BracuSpinner(
-                              size: 18,
-                              strokeWidth: 2,
-                              color: BracuPalette.primary,
-                            )
-                          : const Icon(Icons.refresh_rounded),
-                      onPressed: _loading ? null : () => _controller.reload(),
+                    BracuRefreshButton(
+                      onPressed: () => _controller.reload(),
+                      isLoading: _loading,
+                      color: BracuPalette.textPrimary(context),
                     ),
                   ],
                 ),

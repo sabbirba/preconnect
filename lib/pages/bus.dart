@@ -156,7 +156,7 @@ class _BusPageState extends State<BusPage> {
                   const Gap(10),
                   BracuActionButton(
                     onPressed: () => _load(forceRefresh: true),
-                    icon: Icons.refresh_rounded,
+                    icon: Icons.sync_rounded,
                     label: 'Retry',
                   ),
                 ],

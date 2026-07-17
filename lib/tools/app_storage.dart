@@ -18,6 +18,13 @@ class AppStorage {
       return;
     }
     _prefs = await SharedPreferences.getInstance();
+    try {
+      final logKey = 'wifi_captive_last_response_log';
+      final log = _prefs?.getString(logKey);
+      if (log != null && log.length > 200000) {
+        await _prefs?.remove(logKey);
+      }
+    } catch (_) {}
   }
 
   static Future<SharedPreferences> _getInstance() async {
