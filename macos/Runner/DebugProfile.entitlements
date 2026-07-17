@@ -12,5 +12,9 @@
 	<true/>
 	<key>com.apple.security.network.server</key>
 	<true/>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:preconnect.app</string>
+	</array>
 </dict>
 </plist>

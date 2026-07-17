@@ -106,22 +106,20 @@ post_install do |installer|
       # Configure specific settings for each target to avoid signing overlap
       user_target.build_configurations.each do |config|
         if user_target.name == 'Runner'
-          # Main App target manually signs with PreConnect profile
           config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
           config.build_settings['DEVELOPMENT_TEAM'] = 'DN5U548MGK'
           config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = 'PreConnect'
-          config.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'
+          if config.name == 'Release' || config.name == 'Profile'
+            config.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'
+          else
+            config.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Development'
+          end
         else
-          # Any other targets (e.g. Pods) should not sign/profile request
           config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
           config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
           config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
           config.build_settings['PROVISIONING_PROFILE'] = ''
           config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ''
-        end
-
-        if config.name == 'Debug' && user_target.name == 'Runner'
-          config.build_settings['CODE_SIGN_ENTITLEMENTS'] = ''
         end
 
         %w[LIBRARY_SEARCH_PATHS FRAMEWORK_SEARCH_PATHS].each do |key|
