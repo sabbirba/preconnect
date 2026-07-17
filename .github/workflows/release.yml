@@ -396,24 +396,7 @@ jobs:
         run: |
           flutter build ipa --release --tree-shake-icons --obfuscate --split-debug-info=build/symbols/ios --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --export-options-plist=ios/ExportOptions.plist
 
-      - name: Upload iOS to TestFlight
-        if: matrix.platform == 'ios' && steps.ios_signing.outputs.enabled == 'true'
-        uses: apple-actions/upload-testflight-build@v4
-        with:
-          app-path: build/ios/ipa/PreConnect.ipa
-          issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
 
-      - name: Upload macOS to App Store Connect
-        if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true'
-        uses: apple-actions/upload-testflight-build@v4
-        with:
-          app-path: ${{ env.NOTARIZED_PKG }}
-          issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
-          backend: 'altool'
 
       - name: Detect macOS Signing
         id: macos_signing
@@ -454,6 +437,14 @@ jobs:
           else
             exit 1
           fi
+
+      - name: Debug - list installed macOS profiles
+        if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true'
+        run: |
+          for f in "$HOME/Library/MobileDevice/Provisioning Profiles/"*.provisionprofile; do
+            echo "== $f =="
+            security cms -D -i "$f" | grep -A1 '<key>Name</key>' || true
+          done
       - name: Build macOS
         if: matrix.platform == 'macos'
         shell: bash
@@ -558,20 +549,20 @@ jobs:
       - name: Notarize macOS
         if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true'
         env:
-          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
         shell: bash
         run: |
           set -euo pipefail
-          if [ -z "$APP_STORE_CONNECT_API_KEY_BASE64" ] || [ -z "$APP_STORE_CONNECT_KEY_ID" ] || [ -z "$APP_STORE_CONNECT_ISSUER_ID" ]; then
+          if [ -z "$APP_STORE_CONNECT_API_KEY" ] || [ -z "$APP_STORE_CONNECT_KEY_ID" ] || [ -z "$APP_STORE_CONNECT_ISSUER_ID" ]; then
             echo "App Store Connect API secrets missing; skipping notarization."
             exit 0
           fi
           KEY_DIR=~/.appstoreconnect/private_keys
           mkdir -p "$KEY_DIR"
-          printf '%s' "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 -d > "$KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
+          printf '%s' "$APP_STORE_CONNECT_API_KEY" > "$KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
           PKG_PATH=$(find "$RUNNER_TEMP/macos_export" -maxdepth 2 -name "*.pkg" 2>/dev/null | head -n1 || true)
           if [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ]; then
             xcrun notarytool submit "$PKG_PATH" \
@@ -796,3 +787,4 @@ jobs:
           FASTLANE_OPT_OUT_USAGE: "1"
         run: |
           bundle exec fastlane android promote_to_beta
+

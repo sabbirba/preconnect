@@ -18,7 +18,7 @@ concurrency:
 jobs:
   promote:
     name: Promote ${{ matrix.target }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os || 'ubuntu-latest' }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -27,9 +27,18 @@ jobs:
           - target: Google Play
             run_play: true
             run_chrome: false
+            run_apple: false
+            os: ubuntu-latest
           - target: Chrome Web Store
             run_play: false
             run_chrome: true
+            run_apple: false
+            os: ubuntu-latest
+          - target: Apple App Store
+            run_play: false
+            run_chrome: false
+            run_apple: true
+            os: macos-latest
 
     steps:
       - name: Checkout
@@ -198,3 +207,53 @@ jobs:
             -H "Authorization: Bearer $ACCESS_TOKEN" \
             -X POST \
             "https://chromewebstore.googleapis.com/v2/${ITEM_NAME}:publish"
+
+      - name: Download Apple Deliverables from Release
+        if: matrix.run_apple
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          mkdir -p deliverables
+          gh release download --dir deliverables --pattern "PreConnect-ios-release-*.ipa" --clobber || true
+          gh release download --dir deliverables --pattern "PreConnect-macos-release-*.pkg" --clobber || true
+          ls -la deliverables/
+
+      - name: Resolve Apple Deliverables
+        if: matrix.run_apple
+        id: resolve_apple
+        shell: bash
+        run: |
+          IPA=$(find deliverables -maxdepth 1 -type f -name "*.ipa" | head -n1 || true)
+          PKG=$(find deliverables -maxdepth 1 -type f -name "*.pkg" | head -n1 || true)
+          if [ -f "$IPA" ]; then
+            echo "ios_ready=true" >> "$GITHUB_OUTPUT"
+            echo "ios_path=$IPA" >> "$GITHUB_OUTPUT"
+          else
+            echo "ios_ready=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -f "$PKG" ]; then
+            echo "macos_ready=true" >> "$GITHUB_OUTPUT"
+            echo "macos_path=$PKG" >> "$GITHUB_OUTPUT"
+          else
+            echo "macos_ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload iOS to TestFlight
+        if: matrix.run_apple && steps.resolve_apple.outputs.ios_ready == 'true' && secrets.APP_STORE_CONNECT_API_KEY != ''
+        uses: apple-actions/upload-testflight-build@v4
+        with:
+          app-path: ${{ steps.resolve_apple.outputs.ios_path }}
+          issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+
+      - name: Upload macOS to App Store Connect
+        if: matrix.run_apple && steps.resolve_apple.outputs.macos_ready == 'true' && secrets.APP_STORE_CONNECT_API_KEY != ''
+        uses: apple-actions/upload-testflight-build@v4
+        with:
+          app-path: ${{ steps.resolve_apple.outputs.macos_path }}
+          issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          backend: 'altool'
