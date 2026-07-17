@@ -792,8 +792,8 @@
 				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MACOSX_DEPLOYMENT_TARGET = 11.5;
 				OTHER_LDFLAGS = "$(inherited)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "";
+				PROVISIONING_PROFILE_SPECIFIER = PreConnect;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = PreConnect;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
