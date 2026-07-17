@@ -29,4 +29,19 @@ platform :android do
       skip_upload_screenshots: true
     )
   end
+
+  desc "Promote beta release to production"
+  lane :promote_beta_to_production do
+    supply(
+      track: "beta",
+      track_promote_to: "production",
+      track_promote_release_status: "completed",
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
 end
