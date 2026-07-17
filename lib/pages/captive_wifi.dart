@@ -64,12 +64,14 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   }
 
   Future<void> _forceRequestPermissions() async {
-    if (!AndroidNetworkAssist.isSupported) return;
+    if (kIsWeb) return;
     var status = await Permission.locationWhenInUse.status;
     if (status.isGranted) {
       await _loadStoredCredentials();
       return;
     }
+
+    if (status.isPermanentlyDenied) return;
 
     status = await Permission.locationWhenInUse.request();
     if (status.isGranted) {
@@ -110,43 +112,53 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       await _autofillSsidFromSystem(force: false);
       unawaited(_checkPostConnectionEvent());
 
-      AndroidNetworkStatus? status;
-      Uri? captiveWifiUrl;
-      for (var i = 0; i < 5; i++) {
-        status = await AndroidNetworkAssist.getNetworkStatus();
-        if (status != null) {
-          if (mounted) {
-            setState(() {
-              _currentStatus = status;
-            });
-          }
-          captiveWifiUrl = CaptiveWifiHttp.resolvePortalUri(status);
-          if (captiveWifiUrl != null) {
+      if (IosNetworkAssist.isSupported) {
+        if (widget.autoOpenCaptiveWifiOnStart ||
+            (_passwordController.text.isNotEmpty && !_isConnecting)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            unawaited(_runOneTapConnect());
+          });
+        }
+      } else {
+        AndroidNetworkStatus? status;
+        Uri? captiveWifiUrl;
+        for (var i = 0; i < 5; i++) {
+          status = await AndroidNetworkAssist.getNetworkStatus();
+          if (status != null) {
             if (mounted) {
               setState(() {
-                _extractedParams = captiveWifiUrl!.queryParameters;
+                _currentStatus = status;
               });
             }
-            break;
+            captiveWifiUrl = CaptiveWifiHttp.resolvePortalUri(status);
+            if (captiveWifiUrl != null) {
+              if (mounted) {
+                setState(() {
+                  _extractedParams = captiveWifiUrl!.queryParameters;
+                });
+              }
+              break;
+            }
           }
+          await Future<void>.delayed(const Duration(milliseconds: 600));
         }
-        await Future<void>.delayed(const Duration(milliseconds: 600));
-      }
 
-      if (status != null) {
-        if (status.transport == 'wifi' && status.connected) {
-          final hasPassword = _passwordController.text.isNotEmpty;
-          final isCaptive = status.captive || !status.validated;
-          if (isCaptive && hasPassword && !_isConnecting) {
-            unawaited(_runOneTapConnect());
+        if (status != null) {
+          if (status.transport == 'wifi' && status.connected) {
+            final hasPassword = _passwordController.text.isNotEmpty;
+            final isCaptive = status.captive || !status.validated;
+            if (isCaptive && hasPassword && !_isConnecting) {
+              unawaited(_runOneTapConnect());
+            }
           }
         }
-      }
-      if (widget.autoOpenCaptiveWifiOnStart) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          unawaited(_runOneTapConnect());
-        });
+        if (widget.autoOpenCaptiveWifiOnStart) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            unawaited(_runOneTapConnect());
+          });
+        }
       }
     } finally {
       if (mounted) {
@@ -166,6 +178,27 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       }
       return;
     }
+
+    if (IosNetworkAssist.isSupported) {
+      for (var i = 0; i < 3; i++) {
+        if (i > 0) {
+          await Future<void>.delayed(const Duration(milliseconds: 800));
+        }
+        final ssid = await IosNetworkAssist.getCurrentSsid();
+        if (!mounted) return;
+        if (ssid != null && ssid.isNotEmpty) {
+          final current = _ssidController.text.trim();
+          if (current != ssid && (force || current.isEmpty)) {
+            setState(() {
+              _ssidController.text = ssid;
+            });
+          }
+          return;
+        }
+      }
+      return;
+    }
+
     if (!AndroidNetworkAssist.isSupported) return;
     for (var i = 0; i < 5; i++) {
       if (i > 0) {
@@ -596,10 +629,19 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                         children: [
                           TextField(
                             controller: _ssidController,
-                            readOnly: true,
-                            decoration: const InputDecoration(
+                            readOnly: AndroidNetworkAssist.isSupported,
+                            decoration: InputDecoration(
                               labelText: 'SSID',
-                              border: OutlineInputBorder(),
+                              border: const OutlineInputBorder(),
+                              suffixIcon: IosNetworkAssist.isSupported
+                                  ? IconButton(
+                                      icon: const Icon(Icons.refresh_rounded),
+                                      tooltip: 'Detect Wi-Fi',
+                                      onPressed: () => unawaited(
+                                        _autofillSsidFromSystem(force: true),
+                                      ),
+                                    )
+                                  : null,
                             ),
                           ),
                           const Gap(10),

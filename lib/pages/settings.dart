@@ -128,9 +128,12 @@ class _SettingsPageState extends State<SettingsPage>
       value,
       promptForPermission: value,
     );
+    final iosScheduled =
+        result.status == 'scheduled' || result.status == 'enabled';
     setState(() {
       _quietModeEnabled = QuietModeController.instance.isEnabled;
-      _quietModeNeedsSetup = result.status == 'permission_required';
+      _quietModeNeedsSetup =
+          result.status == 'permission_required' && !iosScheduled;
       _quietModeSetupPermission = result.permission;
       _quietModeStatusMessage = _quietModeNeedsSetup
           ? (result.message ?? '')
@@ -139,7 +142,7 @@ class _SettingsPageState extends State<SettingsPage>
     RefreshBus.instance.notify(reason: 'quiet_mode_settings_changed');
 
     if (mounted) {
-      if (result.status == 'permission_required') {
+      if (_quietModeNeedsSetup) {
         return;
       }
       if (result.message != null && result.message!.trim().isNotEmpty) {
@@ -147,9 +150,9 @@ class _SettingsPageState extends State<SettingsPage>
         return;
       }
       if (value) {
-        showAppSnackBar(context, 'Quiet Mode synced with your schedules.');
+        showAppSnackBar(context, 'Quiet Mode on.');
       } else {
-        showAppSnackBar(context, 'Quiet Mode disabled.');
+        showAppSnackBar(context, 'Quiet Mode off.');
       }
     }
   }
@@ -170,13 +173,17 @@ class _SettingsPageState extends State<SettingsPage>
   String _quietModeSetupMsg() {
     switch (_quietModeSetupPermission) {
       case 'notification_policy':
-        return 'Needs DND access to automate Quiet Mode.';
+        return 'Needs DND access.';
       case 'exact_alarms':
-        return 'Needs device alarm access to keep schedule timing precise.';
+        return 'Needs alarm access for precise timing.';
+      case 'notification':
+        return 'Allow notifications in Settings for Quiet Mode.';
+      case 'focus_filter':
+        return 'Link Quiet Mode in Shortcuts → Automation → Focus for auto-DND.';
       default:
         return _quietModeStatusMessage.isNotEmpty
             ? _quietModeStatusMessage
-            : 'Quiet Mode needs system access to automate schedules.';
+            : 'Quiet Mode needs system access.';
     }
   }
 

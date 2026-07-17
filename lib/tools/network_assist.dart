@@ -237,3 +237,35 @@ class AndroidNetworkAssist {
     }
   }
 }
+
+class IosNetworkAssist {
+  IosNetworkAssist._();
+
+  static const MethodChannel _channel = MethodChannel(
+    'preconnect/ios_network_assist',
+  );
+
+  static bool get isSupported =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+  static Future<String?> getCurrentSsid() async {
+    if (!isSupported) return null;
+    try {
+      final raw = await _channel.invokeMethod<String>('getCurrentSsid');
+      final ssid = raw?.trim() ?? '';
+      return ssid.isEmpty ? null : ssid;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<bool> openWifiSettings() async {
+    if (!isSupported) return false;
+    try {
+      final res = await _channel.invokeMethod<bool>('openWifiSettings');
+      return res == true;
+    } catch (_) {
+      return false;
+    }
+  }
+}

@@ -54,23 +54,20 @@ class QuietModeController {
       return QuietModeResult(
         status: 'stored',
         applied: false,
-        message: 'Saved for next time',
+        message: 'Saved.',
       );
     }
 
     if (defaultTargetPlatform == TargetPlatform.android ||
-        defaultTargetPlatform == TargetPlatform.iOS) {
+        defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
       return _syncWithPlatform(
         value,
         source: promptForPermission ? 'user' : 'sync',
       );
     }
 
-    return QuietModeResult(
-      status: 'stored',
-      applied: false,
-      message: 'Saved for next time',
-    );
+    return QuietModeResult(status: 'stored', applied: false, message: 'Saved.');
   }
 
   Future<QuietModeResult> requestSetup() async {
@@ -79,7 +76,7 @@ class QuietModeController {
       return QuietModeResult(
         status: 'disabled',
         applied: false,
-        message: 'Turn on Quiet Mode first.',
+        message: 'Quiet Mode off.',
       );
     }
 
@@ -94,16 +91,17 @@ class QuietModeController {
       return QuietModeResult(
         status: 'stored',
         applied: false,
-        message: 'Saved for next time',
+        message: 'Saved.',
       );
     }
 
     if (defaultTargetPlatform != TargetPlatform.android &&
-        defaultTargetPlatform != TargetPlatform.iOS) {
+        defaultTargetPlatform != TargetPlatform.iOS &&
+        defaultTargetPlatform != TargetPlatform.macOS) {
       return QuietModeResult(
         status: 'stored',
         applied: false,
-        message: 'Saved for next time',
+        message: 'Saved.',
       );
     }
 
@@ -142,10 +140,10 @@ class QuietModeController {
     } catch (_) {
       _enabled = enabled;
       await AppStorage.instance.setBool(_prefsKey, enabled);
-      return QuietModeResult(
+      return const QuietModeResult(
         status: 'stored',
         applied: false,
-        message: 'Saved for next time',
+        message: 'Saved.',
       );
     }
   }

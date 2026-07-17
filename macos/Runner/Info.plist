@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>NSFocusFilterUsageDescription</key>
+	<string>PreConnect silences alerts during your scheduled classes when Focus is active.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIconFile</key>
@@ -34,6 +36,14 @@
 	<string>PreConnect needs camera access to scan QR codes.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>PreConnect needs photo access to scan QR codes from your gallery.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>PreConnect needs location access to connect and manage campus Wi-Fi.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>PreConnect needs local network access for campus printing and services.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>PreConnect needs calendar access to add class alerts and reminders.</string>
+	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+	<string>PreConnect needs permission to add class events to your calendar.</string>
 	<key>GIDClientID</key>
 	<string>53508941136-rkgrsch5oa60g4absotjj7lgg7s6e7ji.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>

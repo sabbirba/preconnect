@@ -470,12 +470,50 @@ jobs:
         if: matrix.platform == 'macos'
         shell: bash
         run: |
-          flutter build macos --release --tree-shake-icons --obfuscate --split-debug-info=build/symbols/macos --extra-gen-snapshot-options=--strip --dart-define-from-file=.env
-          APP_PATH=$(find build/macos/Build/Products/Release -maxdepth 3 -type d -name "*.app" | head -n1)
-          if [ -d "$APP_PATH" ]; then
-            strip -x "$APP_PATH/Contents/Frameworks/App.framework/Versions/Current/App" || true
-            strip -x "$APP_PATH/Contents/MacOS/PreConnect" || true
-            xcrun productbuild --component "$APP_PATH" /Applications "build/macos/Build/Products/Release/PreConnect.pkg"
+          flutter build macos --config-only --dart-define-from-file=.env
+
+          if [ "${{ steps.macos_signing.outputs.enabled }}" = "true" ]; then
+            xcodebuild archive \
+              -workspace macos/Runner.xcworkspace \
+              -scheme Runner \
+              -configuration Release \
+              -archivePath "$RUNNER_TEMP/PreConnect.xcarchive" \
+              CODE_SIGN_STYLE=Manual \
+              "CODE_SIGN_IDENTITY[sdk=macosx*]=3rd Party Mac Developer Application" \
+              "DEVELOPMENT_TEAM[sdk=macosx*]=${{ secrets.DEVELOPMENT_TEAM }}" \
+              "PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]=PreConnect for Mac"
+
+            printf '%s\n' \
+              '<?xml version="1.0" encoding="UTF-8"?>' \
+              '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
+              '<plist version="1.0"><dict>' \
+              '  <key>method</key><string>app-store</string>' \
+              '  <key>signingStyle</key><string>manual</string>' \
+              '  <key>uploadBitcode</key><false/>' \
+              '  <key>uploadSymbols</key><true/>' \
+              '</dict></plist>' \
+              > "$RUNNER_TEMP/ExportOptionsMacOS.plist"
+
+            xcodebuild -exportArchive \
+              -archivePath "$RUNNER_TEMP/PreConnect.xcarchive" \
+              -exportPath "$RUNNER_TEMP/macos_export" \
+              -exportOptionsPlist "$RUNNER_TEMP/ExportOptionsMacOS.plist"
+          else
+            xcodebuild archive \
+              -workspace macos/Runner.xcworkspace \
+              -scheme Runner \
+              -configuration Release \
+              -archivePath "$RUNNER_TEMP/PreConnect.xcarchive" \
+              CODE_SIGN_STYLE=Automatic \
+              CODE_SIGN_IDENTITY="-"
+
+            APP_PATH=$(find "$RUNNER_TEMP/PreConnect.xcarchive" -type d -name "*.app" | head -n1)
+            if [ -d "$APP_PATH" ]; then
+              strip -x "$APP_PATH/Contents/Frameworks/App.framework/Versions/Current/App" || true
+              strip -x "$APP_PATH/Contents/MacOS/PreConnect" || true
+              mkdir -p "$RUNNER_TEMP/macos_export"
+              cp -R "$APP_PATH" "$RUNNER_TEMP/macos_export/"
+            fi
           fi
 
       - name: Package Android APK
@@ -533,7 +571,10 @@ jobs:
         if: matrix.platform == 'macos'
         run: |
           mkdir -p artifacts
-          APP_PATH=$(find build/macos/Build/Products/Release -maxdepth 3 -type d -name "*.app" | head -n1)
+          APP_PATH=$(find "$RUNNER_TEMP/macos_export" -maxdepth 3 -type d -name "*.app" 2>/dev/null | head -n1 || true)
+          if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
+            APP_PATH=$(find build/macos/Build/Products/Release -maxdepth 3 -type d -name "*.app" 2>/dev/null | head -n1 || true)
+          fi
           if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
             echo "No macOS .app found"
             exit 0
@@ -541,8 +582,9 @@ jobs:
           DMG_NAME="PreConnect-macos-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.dmg"
           PKG_NAME="PreConnect-macos-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.pkg"
           hdiutil create -volname "PreConnect" -srcfolder "$APP_PATH" -ov -format UDZO "$GITHUB_WORKSPACE/artifacts/$DMG_NAME"
-          if [ -f build/macos/Build/Products/Release/PreConnect.pkg ]; then
-            cp build/macos/Build/Products/Release/PreConnect.pkg "$GITHUB_WORKSPACE/artifacts/$PKG_NAME"
+          PKG_PATH=$(find "$RUNNER_TEMP/macos_export" -maxdepth 2 -name "*.pkg" 2>/dev/null | head -n1 || true)
+          if [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ]; then
+            cp "$PKG_PATH" "$GITHUB_WORKSPACE/artifacts/$PKG_NAME"
           fi
 
       - name: Upload Artifacts

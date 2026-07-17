@@ -58,7 +58,7 @@ object QuietModeAutomation {
                 "status" to "unsupported",
                 "applied" to false,
                 "enabled" to false,
-                "message" to "Do Not Disturb is not supported on this Android version.",
+                "message" to "Requires Android 6 or later.",
             )
         }
         val windows = loadPlan(context)
@@ -69,7 +69,7 @@ object QuietModeAutomation {
                 "status" to "disabled",
                 "applied" to true,
                 "enabled" to false,
-                "message" to "Quiet Mode disabled.",
+                "message" to "Quiet Mode off.",
             )
         }
 
@@ -77,7 +77,7 @@ object QuietModeAutomation {
             "status" to "unavailable",
             "applied" to false,
             "enabled" to false,
-            "message" to "Notification manager is unavailable.",
+            "message" to "Notification manager unavailable.",
         )
 
         if (!notificationManager.isNotificationPolicyAccessGranted) {
@@ -86,7 +86,7 @@ object QuietModeAutomation {
                 "applied" to false,
                 "enabled" to true,
                 "permission" to "notification_policy",
-                "message" to "Needs DND access to keep Quiet Mode synced.",
+                "message" to "Needs DND access.",
             )
         }
 
@@ -97,11 +97,7 @@ object QuietModeAutomation {
             "status" to if (activeNow) "enabled" else "scheduled",
             "applied" to true,
             "enabled" to activeNow,
-            "message" to if (activeNow) {
-                "Quiet Mode synced with your schedules."
-            } else {
-                "Quiet Mode schedule synced."
-            },
+            "message" to if (activeNow) "Quiet Mode on." else "Quiet Mode synced.",
         )
     }
 
@@ -116,7 +112,7 @@ object QuietModeAutomation {
                 "status" to "unsupported",
                 "applied" to false,
                 "enabled" to false,
-                "message" to "Do Not Disturb is not supported on this Android version.",
+                "message" to "Requires Android 6 or later.",
             )
         }
         val notificationManager = notificationManager(context) ?: return mapOf(
@@ -134,11 +130,7 @@ object QuietModeAutomation {
                 "status" to if (enabled) "stored" else "disabled",
                 "applied" to true,
                 "enabled" to false,
-                "message" to if (enabled) {
-                    "No schedule windows found yet."
-                } else {
-                    "Quiet Mode disabled."
-                },
+                "message" to if (enabled) "No classes found." else "Quiet Mode off.",
             )
         }
 
@@ -155,7 +147,7 @@ object QuietModeAutomation {
                 "applied" to false,
                 "enabled" to true,
                 "permission" to "notification_policy",
-                "message" to "Needs DND access to sync Quiet Mode.",
+                "message" to "Needs DND access.",
             )
         }
 
@@ -173,7 +165,7 @@ object QuietModeAutomation {
                     "applied" to activeNow,
                     "enabled" to true,
                     "permission" to "exact_alarms",
-                    "message" to "Needs device alarm access to automate Quiet Mode on schedule.",
+                    "message" to "Needs alarm access for precise scheduling.",
                 )
             }
         }
@@ -183,11 +175,7 @@ object QuietModeAutomation {
             "status" to "scheduled",
             "applied" to true,
             "enabled" to activeNow,
-            "message" to if (activeNow) {
-                "Quiet Mode enabled for your current schedule."
-            } else {
-                "Quiet Mode synced with your schedules."
-            },
+            "message" to if (activeNow) "Quiet Mode on." else "Quiet Mode synced.",
         )
     }
 
