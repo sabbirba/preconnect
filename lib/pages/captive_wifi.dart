@@ -495,17 +495,17 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
     required String studentId,
     required String password,
   }) async {
-    final status = await AndroidNetworkAssist.getNetworkStatus();
-    if (status == null) {
-      CaptiveWifiHttp.instance.lastError = 'disconnected';
-      return false;
-    }
+    final status = AndroidNetworkAssist.isSupported
+        ? await AndroidNetworkAssist.getNetworkStatus()
+        : null;
     final captiveWifiUrl = CaptiveWifiHttp.resolvePortalUri(status);
     if (captiveWifiUrl == null) {
       CaptiveWifiHttp.instance.lastError = 'socketexception';
       return false;
     }
-    await AndroidNetworkAssist.bindToWifiNetwork();
+    if (AndroidNetworkAssist.isSupported) {
+      await AndroidNetworkAssist.bindToWifiNetwork();
+    }
     try {
       return await CaptiveWifiHttp.instance.loginViaCaptiveApi(
         studentId: studentId,
@@ -514,7 +514,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
         ssid: _ssidController.text.trim(),
       );
     } finally {
-      await AndroidNetworkAssist.unbindFromWifiNetwork();
+      if (AndroidNetworkAssist.isSupported) {
+        await AndroidNetworkAssist.unbindFromWifiNetwork();
+      }
     }
   }
 

@@ -38,7 +38,8 @@ class CaptiveWifiHttp {
   static const Duration _connectionTimeout = Duration(seconds: 10);
   final Map<String, Cookie> sessionCookies = {};
 
-  static Uri? resolvePortalUri(AndroidNetworkStatus status) {
+  static Uri? resolvePortalUri(AndroidNetworkStatus? status) {
+    if (status == null) return defaultProbeUri;
     final captiveWifiUrl = (status.captiveWifiUrl ?? '').trim();
     final parsedUrl = Uri.tryParse(captiveWifiUrl);
     if (parsedUrl != null &&
