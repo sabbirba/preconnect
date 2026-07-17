@@ -63,7 +63,7 @@ jobs:
           fi
 
       - name: Setup Ruby
-        if: matrix.run_play && steps.play_auth.outputs.enabled == 'true'
+        if: (matrix.run_play && steps.play_auth.outputs.enabled == 'true') || matrix.run_apple
         uses: ruby/setup-ruby@v1.319.0
         with:
           ruby-version: "3.3"
