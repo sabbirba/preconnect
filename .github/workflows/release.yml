@@ -401,12 +401,13 @@ jobs:
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           printf '%s' "$IOS_P12_BASE64" | base64 -d > "$RUNNER_TEMP/cert.p12"
           security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN_PATH" -P "$IOS_P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychains -s "$KEYCHAIN_PATH"
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           printf '%s' "$IOS_PROFILE_BASE64" | base64 -d > "$HOME/Library/MobileDevice/Provisioning Profiles/PreConnect.mobileprovision"
           flutter build ipa --release --tree-shake-icons --obfuscate --split-debug-info=build/symbols/ios --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --export-options-plist=ios/ExportOptions.plist
 
-      - name: Upload to TestFlight
+      - name: Upload iOS to TestFlight
         if: matrix.platform == 'ios' && steps.ios_signing.outputs.enabled == 'true'
         env:
           APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
@@ -419,15 +420,48 @@ jobs:
             echo "App Store Connect API secrets missing; skipping TestFlight upload."
             exit 0
           fi
-          mkdir -p ~/.appstoreconnect/private_keys
-          printf '%s' "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 -d > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
-          
+          KEY_DIR=~/.appstoreconnect/private_keys
+          mkdir -p "$KEY_DIR"
+          printf '%s' "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 -d > "$KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
           IPA_PATH=$(find build/ios/ipa -maxdepth 1 -type f -name "*.ipa" | head -n1)
+          if [ -z "$IPA_PATH" ]; then
+            echo "No IPA found; skipping TestFlight upload."
+            exit 0
+          fi
           xcrun altool --upload-app \
             --type ios \
             --file "$IPA_PATH" \
             --apiKey "$APP_STORE_CONNECT_KEY_ID" \
-            --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
+            --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
+            --show-progress
+
+      - name: Upload macOS to App Store Connect
+        if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true'
+        env:
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$APP_STORE_CONNECT_API_KEY_BASE64" ] || [ -z "$APP_STORE_CONNECT_KEY_ID" ] || [ -z "$APP_STORE_CONNECT_ISSUER_ID" ]; then
+            echo "App Store Connect API secrets missing; skipping macOS App Store upload."
+            exit 0
+          fi
+          KEY_DIR=~/.appstoreconnect/private_keys
+          mkdir -p "$KEY_DIR"
+          printf '%s' "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 -d > "$KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
+          PKG_PATH=$(find "$RUNNER_TEMP/macos_export" -maxdepth 2 -name "*.pkg" 2>/dev/null | head -n1 || true)
+          if [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ]; then
+            xcrun altool --upload-app \
+              --type macos \
+              --file "$PKG_PATH" \
+              --apiKey "$APP_STORE_CONNECT_KEY_ID" \
+              --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
+              --show-progress
+          else
+            echo "No .pkg found in export; skipping macOS App Store upload."
+          fi
 
       - name: Detect macOS Signing
         id: macos_signing
@@ -462,6 +496,7 @@ jobs:
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           printf '%s' "$IOS_P12_BASE64" | base64 -d > "$RUNNER_TEMP/cert.p12"
           security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN_PATH" -P "$IOS_P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychains -s "$KEYCHAIN_PATH"
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           printf '%s' "$MACOS_PROFILE_BASE64" | base64 -d > "$HOME/Library/MobileDevice/Provisioning Profiles/PreConnect_for_Mac.provisionprofile"
@@ -489,6 +524,10 @@ jobs:
               '<plist version="1.0"><dict>' \
               '  <key>method</key><string>app-store</string>' \
               '  <key>signingStyle</key><string>manual</string>' \
+              '  <key>teamID</key><string>${{ secrets.DEVELOPMENT_TEAM }}</string>' \
+              '  <key>provisioningProfiles</key><dict>' \
+              '    <key>com.sabbirba.preconnect</key><string>PreConnect for Mac</string>' \
+              '  </dict>' \
               '  <key>uploadBitcode</key><false/>' \
               '  <key>uploadSymbols</key><true/>' \
               '</dict></plist>' \
