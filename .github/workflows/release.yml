@@ -617,6 +617,15 @@ jobs:
               else:
                   f.write(base64.b64decode(key))
           "
+          if [ -f "$KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8" ]; then
+            if grep -q "PRIVATE KEY" "$KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"; then
+              echo "Key format verified: Valid PEM header found."
+            else
+              echo "WARNING: Key file does not contain a valid PEM header!"
+            fi
+          else
+            echo "ERROR: Key file was not created!"
+          fi
           PKG_PATH=$(find "$RUNNER_TEMP/macos_export" -maxdepth 2 -name "*.pkg" 2>/dev/null | head -n1 || true)
           if [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ]; then
             xcrun notarytool submit "$PKG_PATH" \
