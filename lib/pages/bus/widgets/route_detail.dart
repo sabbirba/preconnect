@@ -10,27 +10,20 @@ class BusRouteDetailPage extends StatefulWidget {
   State<BusRouteDetailPage> createState() => _BusRouteDetailPageState();
 }
 
-class _BusRouteDetailPageState extends State<BusRouteDetailPage>
-    with SingleTickerProviderStateMixin {
+class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
   late BusTransportRoute _route;
   bool _refreshing = false;
   String? _error;
-  late final AnimationController _refreshController;
 
   @override
   void initState() {
     super.initState();
     _route = widget.route;
-    _refreshController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
     unawaited(_refreshRouteData());
   }
 
   @override
   void dispose() {
-    _refreshController.dispose();
     super.dispose();
   }
 
@@ -50,7 +43,6 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage>
       _refreshing = true;
       _error = null;
     });
-    _refreshController.repeat();
 
     try {
       final package = await _fetchBusDataPackage();
@@ -62,16 +54,12 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage>
         }
         _refreshing = false;
       });
-      _refreshController.stop();
-      _refreshController.reset();
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _refreshing = false;
         _error = 'Unable to load bus data right now.';
       });
-      _refreshController.stop();
-      _refreshController.reset();
     }
   }
 
@@ -97,13 +85,9 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage>
         subtitle: subtitle,
         icon: Icons.directions_bus_filled_rounded,
         actions: [
-          IconButton(
-            tooltip: 'Refresh bus data',
-            onPressed: _refreshing ? null : _refreshRouteData,
-            icon: RotationTransition(
-              turns: _refreshController,
-              child: const Icon(Icons.refresh_rounded),
-            ),
+          BracuRefreshButton(
+            onPressed: _refreshRouteData,
+            isLoading: _refreshing,
           ),
         ],
         body: BracuRefreshList(
@@ -124,9 +108,9 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage>
                     ),
                     const Gap(10),
                     BracuActionButton(
-                      onPressed: _refreshing ? null : _refreshRouteData,
+                      onPressed: _refreshRouteData,
                       isLoading: _refreshing,
-                      icon: Icons.refresh_rounded,
+                      icon: Icons.sync_rounded,
                       label: 'Retry',
                     ),
                   ],

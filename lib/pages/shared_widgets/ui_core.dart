@@ -397,11 +397,13 @@ class BracuSpinner extends StatefulWidget {
     this.size = 20,
     this.color,
     this.strokeWidth = 2.2,
+    this.icon,
   });
 
   final double size;
   final Color? color;
   final double strokeWidth;
+  final IconData? icon;
 
   @override
   State<BracuSpinner> createState() => _BracuSpinnerState();
@@ -428,19 +430,20 @@ class _BracuSpinnerState extends State<BracuSpinner>
 
   @override
   Widget build(BuildContext context) {
-    return RotationTransition(
-      turns: _controller,
-      child: SizedBox(
-        width: widget.size,
-        height: widget.size,
-        child: CircularProgressIndicator(
-          strokeWidth: widget.strokeWidth,
-          valueColor: widget.color != null
-              ? AlwaysStoppedAnimation<Color>(widget.color!)
-              : null,
-        ),
-      ),
-    );
+    final spinnerChild = widget.icon != null
+        ? Icon(widget.icon, size: widget.size, color: widget.color)
+        : SizedBox(
+            width: widget.size,
+            height: widget.size,
+            child: CircularProgressIndicator(
+              strokeWidth: widget.strokeWidth,
+              valueColor: widget.color != null
+                  ? AlwaysStoppedAnimation<Color>(widget.color!)
+                  : null,
+            ),
+          );
+
+    return RotationTransition(turns: _controller, child: spinnerChild);
   }
 }
 
@@ -462,13 +465,17 @@ class BracuRefreshButton extends StatelessWidget {
     if (isLoading) {
       return Padding(
         padding: const EdgeInsets.all(12.0),
-        child: BracuSpinner(size: 20, color: themeColor, strokeWidth: 2.2),
+        child: BracuSpinner(
+          size: 24,
+          color: themeColor,
+          icon: Icons.sync_rounded,
+        ),
       );
     }
     return IconButton(
       tooltip: 'Refresh',
       onPressed: onPressed,
-      icon: Icon(Icons.refresh_rounded, color: themeColor),
+      icon: Icon(Icons.sync_rounded, color: themeColor),
     );
   }
 }

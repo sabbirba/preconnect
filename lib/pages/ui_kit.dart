@@ -1077,41 +1077,38 @@ class _BracuCampaignSupportersState extends State<BracuCampaignSupporters> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const BracuSectionTitle(title: 'Campaign Supporters'),
             Row(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
               children: [
+                const BracuSectionTitle(title: 'Campaign Supporters'),
+                const Gap(6),
                 Text(
-                  '${contributions.length}',
+                  '(${contributions.length})',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: BracuPalette.primary,
                   ),
                 ),
-                const Gap(6),
-                SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: _refreshing
-                      ? Padding(
-                          padding: const EdgeInsets.all(4),
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: BracuPalette.primary,
-                          ),
-                        )
-                      : InkWell(
-                          onTap: _loadStatus,
-                          borderRadius: BorderRadius.circular(14),
-                          child: Center(
-                            child: Icon(
-                              Icons.refresh_rounded,
-                              size: 26,
-                              color: BracuPalette.primary,
-                            ),
-                          ),
-                        ),
+              ],
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  '৳${status.totalRaised}',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: BracuPalette.primary,
+                  ),
+                ),
+                BracuRefreshButton(
+                  onPressed: _loadStatus,
+                  isLoading: _refreshing,
                 ),
               ],
             ),

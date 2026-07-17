@@ -237,9 +237,10 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                   style: TextStyle(
                                                     fontSize: 16,
                                                     fontWeight: FontWeight.w600,
-                                                    color: BracuPalette.textPrimary(
-                                                      context,
-                                                    ),
+                                                    color:
+                                                        BracuPalette.textPrimary(
+                                                          context,
+                                                        ),
                                                   ),
                                                 ),
                                               ),
@@ -248,9 +249,10 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                 style: TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.w600,
-                                                  color: BracuPalette.textPrimary(
-                                                    context,
-                                                  ),
+                                                  color:
+                                                      BracuPalette.textPrimary(
+                                                        context,
+                                                      ),
                                                 ),
                                               ),
                                             ],
@@ -259,7 +261,8 @@ extension _HomeDashboardView on _HomeDashboardState {
                                       ),
                                       const Gap(4),
                                       BracuRefreshButton(
-                                        onPressed: () => _handleRefresh(notify: true),
+                                        onPressed: () =>
+                                            _handleRefresh(notify: true),
                                         isLoading: _isRefreshing,
                                       ),
                                     ],

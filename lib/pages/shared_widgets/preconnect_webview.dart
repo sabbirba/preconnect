@@ -159,18 +159,10 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
                   },
                 ),
                 const Spacer(),
-                IconButton(
-                  icon: _loading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: BracuPalette.primary,
-                          ),
-                        )
-                      : Icon(Icons.refresh_rounded, color: iconColor),
-                  onPressed: _loading ? null : () => _controller.reload(),
+                BracuRefreshButton(
+                  onPressed: () => _controller.reload(),
+                  isLoading: _loading,
+                  color: iconColor,
                 ),
               ],
             ),
