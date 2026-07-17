@@ -1,0 +1,3 @@
+app_identifier("com.sabbirba.preconnect")
+apple_id(ENV["APP_STORE_CONNECT_KEY_ID"])
+team_id("DN5U548MGK")

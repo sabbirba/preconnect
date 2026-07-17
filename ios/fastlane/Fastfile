@@ -1,0 +1,15 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Upload iOS build to TestFlight"
+  lane :upload_to_testflight do |options|
+    ipa_path = options[:ipa]
+    upload_to_testflight(
+      ipa: ipa_path,
+      api_key_path: options[:api_key_path],
+      api_key: options[:api_key_id],
+      api_issuer: options[:api_issuer_id],
+      skip_waiting_for_build_processing: true
+    )
+  end
+end
