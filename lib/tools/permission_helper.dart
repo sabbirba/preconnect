@@ -81,13 +81,21 @@ class BracuPermissionHelper {
       reason: 'Automate Quiet Mode Schedule.',
       icon: Icons.do_not_disturb_on_rounded,
       androidOnly: true,
+      isOptional: true,
     ),
     PermissionRequirement(
       permission: Permission.notification,
       title: 'Notifications',
-      reason: 'Receive Schedule Alerts.',
+      reason: 'Receive Schedule Alerts',
       icon: Icons.notifications_active_rounded,
-      minAndroidSdk: 33,
+      isOptional: true,
+    ),
+    PermissionRequirement(
+      permission: Permission.calendarFullAccess,
+      title: 'Calendar Access',
+      reason: 'Add Class Events and Reminders.',
+      icon: Icons.calendar_month_rounded,
+      iosOnly: true,
       isOptional: true,
     ),
   ];
@@ -100,6 +108,12 @@ class BracuPermissionHelper {
         final androidInfo = await DeviceInfoPlugin().androidInfo;
         androidSdk = androidInfo.version.sdkInt;
       } catch (_) {}
+    }
+
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+
+    if (isIOS) {
+      await _requestIosPermissionsSilently();
     }
 
     final requiredPending = <PermissionRequirement>[];
@@ -154,6 +168,35 @@ class BracuPermissionHelper {
         unawaited(FCMService.instance.init());
       }
     });
+  }
+
+  static Future<void> _requestIosPermissionsSilently() async {
+    final notifStatus = await Permission.notification.status;
+    if (!notifStatus.isGranted &&
+        !notifStatus.isLimited &&
+        !notifStatus.isPermanentlyDenied) {
+      final granted = await Permission.notification.request();
+      if (granted.isGranted || granted.isLimited) {
+        unawaited(FCMService.instance.init());
+      }
+    }
+
+    final locationStatus = await Permission.locationWhenInUse.status;
+    if (!locationStatus.isGranted &&
+        !locationStatus.isLimited &&
+        !locationStatus.isPermanentlyDenied) {
+      await Permission.locationWhenInUse.request();
+    }
+
+    final cameraStatus = await Permission.camera.status;
+    if (!cameraStatus.isGranted && !cameraStatus.isPermanentlyDenied) {
+      await Permission.camera.request();
+    }
+
+    final calendarStatus = await Permission.calendarFullAccess.status;
+    if (!calendarStatus.isGranted && !calendarStatus.isPermanentlyDenied) {
+      await Permission.calendarFullAccess.request();
+    }
   }
 }
 

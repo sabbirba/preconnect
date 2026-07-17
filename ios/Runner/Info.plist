@@ -4,6 +4,8 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSFocusFilterUsageDescription</key>
+	<string>PreConnect silences alerts during your scheduled classes when Focus is active.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -49,6 +51,8 @@
 	<string>PreConnect needs calendar access to add class alerts and reminders.</string>
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
 	<string>PreConnect needs permission to add class events to your calendar.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>PreConnect needs calendar access to add class events and reminders to your calendar.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>PreConnect needs permission to save QR codes to your gallery.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
@@ -79,8 +83,8 @@
 	<key>UIApplicationShortcutItems</key>
 	<array>
 		<dict>
-			<key>UIApplicationShortcutItemIconFile</key>
-			<string>ShortcutProfile</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeContact</string>
 			<key>UIApplicationShortcutItemSubtitle</key>
 			<string>Open Profile</string>
 			<key>UIApplicationShortcutItemTitle</key>
@@ -109,8 +113,8 @@
 			<string>quick.exams</string>
 		</dict>
 		<dict>
-			<key>UIApplicationShortcutItemIconFile</key>
-			<string>ShortcutFriends</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeLove</string>
 			<key>UIApplicationShortcutItemSubtitle</key>
 			<string>Open Friends</string>
 			<key>UIApplicationShortcutItemTitle</key>
@@ -162,6 +166,7 @@
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>https</string>
+		<string>http</string>
 	</array>
 </dict>
 </plist>

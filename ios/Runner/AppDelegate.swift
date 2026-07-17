@@ -16,12 +16,19 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
     if let shortcutItem = launchOptions?[.shortcutItem] as? UIApplicationShortcutItem {
       cacheShortcutAction(shortcutItem.type)
     }
-    if let controller = window?.rootViewController as? FlutterViewController {
+    if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+       let controller = scene.windows.first?.rootViewController as? FlutterViewController {
       registerQuietModeChannel(binaryMessenger: controller.binaryMessenger)
       registerNativePrintChannel(binaryMessenger: controller.binaryMessenger)
       registerBackgroundPermissionChannel(binaryMessenger: controller.binaryMessenger)
+      IosNetworkAssist.register(binaryMessenger: controller.binaryMessenger)
     }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  override func applicationWillEnterForeground(_ application: UIApplication) {
+    super.applicationWillEnterForeground(application)
+    _ = QuietModeScheduleriOS.shared.syncFromStoredPlan()
   }
 
   override func application(
@@ -42,6 +49,9 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
     }
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreConnectBackgroundPermission") {
       registerBackgroundPermissionChannel(binaryMessenger: registrar.messenger())
+    }
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PreConnectIosNetworkAssist") {
+      IosNetworkAssist.register(binaryMessenger: registrar.messenger())
     }
 
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
@@ -77,38 +87,28 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
   private func setQuietMode(call: FlutterMethodCall, result: @escaping FlutterResult) {
     let args = call.arguments as? [String: Any] ?? [:]
     let enabled = args["enabled"] as? Bool ?? false
-    let source = (args["source"] as? String ?? "sync").trimmingCharacters(in: .whitespacesAndNewlines)
-    if !enabled {
-      result([
-        "status": "disabled",
-        "applied": true,
-        "enabled": false,
-        "message": "Quiet Mode disabled.",
-      ])
-      return
-    }
+    let rawWindows = args["windows"] as? [[String: Any]] ?? []
 
-    if source != "user" {
-      result([
-        "status": "scheduled",
-        "applied": false,
-        "enabled": true,
-        "message": "Quiet Mode saved for iPhone.",
-      ])
-      return
+    QuietModeScheduleriOS.shared.handleSetQuietMode(
+      enabled: enabled,
+      windows: rawWindows
+    ) { response in
+      result(response)
     }
-
-    openQuietModeSettings(result: result)
   }
 
   private func openQuietModeSettings(result: @escaping FlutterResult) {
     DispatchQueue.main.async {
       var candidateURLs: [URL] = []
+
+      if #available(iOS 15.0, *) {
+        if let focusURL = URL(string: "App-Prefs:DO_NOT_DISTURB") {
+          candidateURLs.append(focusURL)
+        }
+      }
       if #available(iOS 16.0, *) {
-        if let notificationSettingsURL = URL(
-          string: UIApplication.openNotificationSettingsURLString
-        ) {
-          candidateURLs.append(notificationSettingsURL)
+        if let notifURL = URL(string: UIApplication.openNotificationSettingsURLString) {
+          candidateURLs.append(notifURL)
         }
       }
       if let appSettingsURL = URL(string: UIApplication.openSettingsURLString) {
@@ -116,33 +116,23 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
       }
 
       guard let targetURL = candidateURLs.first(where: { UIApplication.shared.canOpenURL($0) }) else {
-        result(
-          FlutterError(
-            code: "QUIET_MODE_UNAVAILABLE",
-            message: "Unable to open notification settings",
-            details: nil
-          )
-        )
+        result(FlutterError(
+          code: "QUIET_MODE_UNAVAILABLE",
+          message: "Unable to open settings",
+          details: nil
+        ))
         return
       }
 
       UIApplication.shared.open(targetURL, options: [:]) { success in
-        if success {
-          result([
-            "status": "opened_settings",
-            "applied": false,
-            "enabled": true,
-            "message": "iPhone quiet mode uses notification settings and Focus.",
-          ])
-        } else {
-          result(
-            FlutterError(
-              code: "QUIET_MODE_OPEN_FAILED",
-              message: "Unable to open notification settings",
-              details: nil
-            )
-          )
-        }
+        result([
+          "status": "opened_settings",
+          "applied": false,
+          "enabled": true,
+          "message": success
+            ? "Opened Focus/Notification settings. Enable scheduled Focus or allow PreConnect notifications."
+            : "Could not open settings.",
+        ])
       }
     }
   }

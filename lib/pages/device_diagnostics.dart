@@ -182,7 +182,7 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
           netData['Client MAC'] = status.clientMac ?? 'Unknown';
         }
       } else {
-        netData['Transport'] = 'Supported on Android only';
+        netData['Transport'] = 'Android only';
       }
       if (mounted) {
         setState(() {
