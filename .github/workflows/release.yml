@@ -512,9 +512,9 @@ jobs:
               -configuration Release \
               -archivePath "$RUNNER_TEMP/PreConnect.xcarchive" \
               CODE_SIGN_STYLE=Manual \
-              "CODE_SIGN_IDENTITY[sdk=macosx*]=3rd Party Mac Developer Application" \
-              "DEVELOPMENT_TEAM[sdk=macosx*]=${{ secrets.DEVELOPMENT_TEAM }}" \
-              "PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]=PreConnect for Mac"
+              CODE_SIGN_IDENTITY="3rd Party Mac Developer Application" \
+              DEVELOPMENT_TEAM="${{ secrets.DEVELOPMENT_TEAM }}" \
+              "PROVISIONING_PROFILE_SPECIFIER=PreConnect for Mac"
 
             printf '%s\n' \
               '<?xml version="1.0" encoding="UTF-8"?>' \
