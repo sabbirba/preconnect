@@ -823,7 +823,7 @@ jobs:
           bundle config set frozen false
           bundle install
 
-      - name: Upload to Play Store via Fastlane
+      - name: Upload to Play Store
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
         shell: bash
         env:
@@ -833,7 +833,7 @@ jobs:
           bundle exec fastlane android upload_to_play_store \
             aab:"${{ steps.aab.outputs.file }}"
 
-      - name: Promote to Beta via Fastlane
+      - name: Promote to Beta
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
         shell: bash
         env:
