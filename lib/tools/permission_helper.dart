@@ -81,7 +81,6 @@ class BracuPermissionHelper {
       reason: 'Automate Quiet Mode Schedule.',
       icon: Icons.do_not_disturb_on_rounded,
       androidOnly: true,
-      isOptional: true,
     ),
     PermissionRequirement(
       permission: Permission.notification,

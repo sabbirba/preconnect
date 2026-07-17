@@ -422,9 +422,10 @@ jobs:
           mkdir -p ~/.appstoreconnect/private_keys
           printf '%s' "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 -d > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
           
+          IPA_PATH=$(find build/ios/ipa -maxdepth 1 -type f -name "*.ipa" | head -n1)
           xcrun altool --upload-app \
             --type ios \
-            --file build/ios/ipa/*.ipa \
+            --file "$IPA_PATH" \
             --apiKey "$APP_STORE_CONNECT_KEY_ID" \
             --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
 
