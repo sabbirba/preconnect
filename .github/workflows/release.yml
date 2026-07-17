@@ -367,6 +367,7 @@ jobs:
         with:
           p12-file-base64: ${{ secrets.IOS_P12_BASE64 }}
           p12-password: ${{ secrets.IOS_P12_PASSWORD }}
+          keychain-password: "PreConnect"
 
       - name: Install iOS Provisioning Profile
         if: matrix.platform == 'ios' && steps.ios_signing.outputs.enabled == 'true'
@@ -443,6 +444,7 @@ jobs:
         with:
           p12-file-base64: ${{ secrets.IOS_P12_BASE64 }}
           p12-password: ${{ secrets.IOS_P12_PASSWORD }}
+          keychain-password: "PreConnect"
 
       - name: Setup macOS Installer Certificate
         if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true' && steps.macos_signing.outputs.installer_enabled == 'true'
@@ -452,6 +454,7 @@ jobs:
           p12-password: ${{ secrets.MACOS_INSTALLER_P12_PASSWORD }}
           keychain: signing_temp
           create-keychain: false
+          keychain-password: "PreConnect"
 
       - name: Install macOS Provisioning Profile
         if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true'
