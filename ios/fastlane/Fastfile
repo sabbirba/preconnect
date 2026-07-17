@@ -3,15 +3,19 @@ default_platform(:ios)
 platform :ios do
   desc "Upload iOS build to TestFlight"
   lane :upload_to_testflight do |options|
-    app_store_connect_api_key(
+    key_content = options[:api_key_content]
+    is_base64 = !key_content.include?("PRIVATE KEY")
+    api_key = app_store_connect_api_key(
       key_id: options[:api_key_id],
       issuer_id: options[:api_issuer_id],
-      key_filepath: options[:api_key_path]
+      key_content: key_content,
+      is_key_content_base64: is_base64
     )
 
     upload_to_testflight(
       ipa: options[:ipa],
-      skip_waiting_for_build_processing: true
+      skip_waiting_for_build_processing: true,
+      api_key: api_key
     )
   end
 end
