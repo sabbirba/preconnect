@@ -6,7 +6,7 @@ platform :android do
   desc "Submit a new Beta Build to Google Play Track"
   lane :upload_to_play_store do
     aab_path = ENV["AAB_PATH"]
-    version_code = ENV["VERSION_CODE"]
+    version_code = ENV["VERSION_CODE"] ? ENV["VERSION_CODE"].to_i : nil
     supply(
       aab: aab_path,
       version_code: version_code,
