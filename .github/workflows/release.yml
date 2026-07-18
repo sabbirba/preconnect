@@ -386,13 +386,13 @@ jobs:
             printf 'keyPassword=%s\n' "$ANDROID_KEY_PASSWORD"
           } > android/key.properties
 
-      - name: Build Apk
+      - name: Build APK
         if: matrix.platform == 'android' && (matrix.build_type == 'apk' || matrix.build_type == 'both')
         shell: bash
         run: |
           flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
 
-      - name: Build Abb
+      - name: Build ABB
         if: matrix.platform == 'android' && (matrix.build_type == 'aab' || matrix.build_type == 'both')
         shell: bash
         run: |
@@ -648,7 +648,7 @@ jobs:
             fi
           fi
 
-      - name: Package Apk
+      - name: Package APK
         if: matrix.platform == 'android' && (matrix.build_type == 'apk' || matrix.build_type == 'both')
         shell: bash
         run: |
@@ -667,7 +667,7 @@ jobs:
                "artifacts/PreConnect-android-${abi}-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.apk"
           done
 
-      - name: Package Abb
+      - name: Package ABB
         if: matrix.platform == 'android' && (matrix.build_type == 'aab' || matrix.build_type == 'both')
         shell: bash
         run: |
