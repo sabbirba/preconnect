@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gesture.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
@@ -151,7 +153,16 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
 
     final popScopeChild = Stack(
       children: [
-        Positioned.fill(child: WebViewWidget(controller: _controller)),
+        Positioned.fill(
+          child: WebViewWidget(
+            controller: _controller,
+            gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{
+              Factory<OneSequenceGestureRecognizer>(
+                EagerGestureRecognizer.new,
+              ),
+            },
+          ),
+        ),
         Positioned(
           top: 0,
           left: 0,
