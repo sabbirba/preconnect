@@ -31,7 +31,7 @@ Future<SystemPickedImage?> pickSystemImage() async {
           'public.jpeg',
           'com.compuserve.gif',
           'org.webmproject.webp',
-          'public.heic'
+          'public.heic',
         ],
       ),
     ],
