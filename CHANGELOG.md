@@ -3,7 +3,9 @@
 All notable changes to PreConnect are documented here.
 Entries are written for students, not developers — plain language, no commit hashes.
 
-## [Unreleased]
+## [2.0.1] — 2026-07-18
+- Performance Upgrades: Pipeline compilation optimized with parallel build jobs and dependency caching.
+- Apple Silicon Support: Built on modern Apple Silicon virtual machine environments for faster deployment.
 
 ## [2.0.0] — 2026-07-17
 - Smoother Onboarding: Notification requests are now optional and won't interrupt your first startup.
