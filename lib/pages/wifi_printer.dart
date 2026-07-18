@@ -1892,11 +1892,16 @@ class _LprPrintClient {
           0x0A,
         ]),
       );
-      await _writeAndAck(
-        socket,
-        ackReader,
-        Uint8List.fromList([...payload, 0x00]),
+      final dynamicTimeout = Duration(
+        seconds: (15 + (payload.length / (1024 * 1024)) * 3).toInt().clamp(15, 300),
       );
+      socket.add(payload);
+      socket.add(const <int>[0x00]);
+      await socket.flush().timeout(dynamicTimeout);
+      final ack = await ackReader.readByte().timeout(dynamicTimeout);
+      if (ack != 0) {
+        throw const _LprPrintException(_errPrinterRejectedJob);
+      }
       await ackReader.cancel();
       await socket.close();
     } finally {
