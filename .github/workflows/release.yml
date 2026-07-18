@@ -530,6 +530,17 @@ jobs:
               -archivePath "$RUNNER_TEMP/PreConnect.xcarchive" \
               -exportPath "$RUNNER_TEMP/macos_export" \
               -exportOptionsPlist "$RUNNER_TEMP/ExportOptionsMacOS.plist"
+
+            # Recursively sign all nested frameworks, dylibs, and the app bundle with secure timestamps
+            SIGN_IDENTITY="Developer ID Application"
+            if ! security find-certificate -c "$SIGN_IDENTITY" >/dev/null 2>&1; then
+              SIGN_IDENTITY="Apple Distribution"
+            fi
+            echo "Signing nested frameworks with identity: $SIGN_IDENTITY"
+            find "$RUNNER_TEMP/macos_export/PreConnect.app" -depth -name "*.framework" -o -name "*.dylib" -o -name "*.app" | while read -r file; do
+              codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$file" || true
+            done
+            codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$RUNNER_TEMP/macos_export/PreConnect.app"
           else
             xcodebuild archive \
               -workspace macos/Runner.xcworkspace \
