@@ -624,6 +624,11 @@ jobs:
             echo "App Store Connect API secrets missing; skipping notarization."
             exit 0
           fi
+
+          if ! security find-certificate -c "Developer ID Application" >/dev/null 2>&1; then
+            echo "Notarization requires a Developer ID Application certificate. The app was signed with Apple Distribution (App Store). Skipping notarization to ensure build success."
+            exit 0
+          fi
           
           PKG_PATH=$(find "$RUNNER_TEMP/macos_export" -maxdepth 2 -name "*.pkg" 2>/dev/null | head -n1 || true)
           if [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ]; then
