@@ -322,40 +322,46 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        RepaintBoundary(
-          key: _qrKey,
-          child: Container(
-            decoration: const BoxDecoration(color: Colors.white),
-            padding: const EdgeInsets.all(16),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final size = constraints.maxWidth - 32;
-                return Center(
-                  child: SizedBox(
-                    width: size,
-                    height: size,
-                    child: BarcodeWidget(
-                      barcode: Barcode.qrCode(),
-                      data: _base64Data!,
-                      color: const Color(0xFF000000),
-                      backgroundColor: const Color(0xFFFFFFFF),
-                      errorBuilder: (context, error) => Center(
-                        child: Text(
-                          'Unable to generate QR',
-                          style: TextStyle(
-                            color: BracuPalette.textSecondary(context),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: RepaintBoundary(
+              key: _qrKey,
+              child: Container(
+                decoration: const BoxDecoration(color: Colors.white),
+                padding: const EdgeInsets.all(16),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final size = constraints.maxWidth - 32;
+                    return Center(
+                      child: SizedBox(
+                        width: size,
+                        height: size,
+                        child: BarcodeWidget(
+                          barcode: Barcode.qrCode(),
+                          data: _base64Data!,
+                          color: const Color(0xFF000000),
+                          backgroundColor: const Color(0xFFFFFFFF),
+                          errorBuilder: (context, error) => Center(
+                            child: Text(
+                              'Unable to generate QR',
+                              style: TextStyle(
+                                color: BracuPalette.textSecondary(context),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                );
-              },
+                    );
+                  },
+                ),
+              ),
             ),
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+          padding: const EdgeInsets.fromLTRB(18, 4, 18, 20),
           child: Row(
             children: [
               Expanded(
