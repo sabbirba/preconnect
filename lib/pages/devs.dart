@@ -320,9 +320,6 @@ class _DevsPageState extends State<DevsPage> {
   }
 
   Widget _buildFundingSection() {
-    if (Theme.of(context).platform == TargetPlatform.iOS || Theme.of(context).platform == TargetPlatform.macOS) {
-      return const SizedBox.shrink();
-    }
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

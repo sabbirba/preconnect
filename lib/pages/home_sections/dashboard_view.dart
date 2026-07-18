@@ -192,7 +192,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   onLogout: widget.onLogout,
                                   isLoading: isOverviewLoading,
                                   showSupportButton:
-                                      cardVisibility.showFundingSection && Theme.of(context).platform != TargetPlatform.iOS && Theme.of(context).platform != TargetPlatform.macOS,
+                                      cardVisibility.showFundingSection,
                                   countdown:
                                       !cardVisibility.showExamCountdownCard ||
                                           nextCountdown == null
