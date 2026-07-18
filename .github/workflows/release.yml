@@ -184,10 +184,16 @@ jobs:
             timeout: 30
           - os: ubuntu-22.04
             platform: android
-            build_type: both
-            name: Android
-            artifact_name: android-artifacts
-            timeout: 60
+            build_type: apk
+            name: Android APK
+            artifact_name: android_apk-artifacts
+            timeout: 50
+          - os: ubuntu-22.04
+            platform: android
+            build_type: aab
+            name: Android AAB
+            artifact_name: android_aab-artifacts
+            timeout: 50
           - os: macos-latest
             platform: ios
             name: iOS
@@ -748,10 +754,10 @@ jobs:
           ref: ${{ needs.prepare-version.outputs.release_sha }}
           fetch-depth: 0
 
-      - name: Download Android Artifacts
+      - name: Download Android AAB Artifacts
         uses: actions/download-artifact@v8
         with:
-          name: android-artifacts
+          name: android_aab-artifacts
           path: artifacts/android
 
       - name: Resolve AAB
