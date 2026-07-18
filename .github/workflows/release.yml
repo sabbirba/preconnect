@@ -425,7 +425,7 @@ jobs:
           if ! flutter build appbundle --release --target-platform android-arm,android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}; then
              echo "Flutter appbundle failed; retrying with Gradle." >&2
              cd android
-             ./gradlew bundleRelease --no-daemon --stacktrace --info
+             ./gradlew bundleRelease --no-daemon --stacktrace
           fi
 
       - name: Detect iOS Signing
