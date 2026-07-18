@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gesture.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
@@ -87,7 +87,8 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
         },
         onPageFinished: (url) {
           if (mounted) setState(() => _loading = false);
-          _controller.runJavaScript('''
+          _controller
+              .runJavaScript('''
             var meta = document.querySelector('meta[name="viewport"]');
             if (meta) {
               var content = meta.getAttribute('content');
@@ -102,7 +103,8 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
               meta.content = "width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=10.0";
               document.getElementsByTagName('head')[0].appendChild(meta);
             }
-          ''').catchError((_) {});
+          ''')
+              .catchError((_) {});
           if (widget.onPageFinished != null) widget.onPageFinished!(url);
         },
       ),
@@ -157,9 +159,7 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
           child: WebViewWidget(
             controller: _controller,
             gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{
-              Factory<OneSequenceGestureRecognizer>(
-                EagerGestureRecognizer.new,
-              ),
+              Factory<OneSequenceGestureRecognizer>(EagerGestureRecognizer.new),
             },
           ),
         ),
@@ -189,7 +189,7 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
                   },
                 ),
                 const Spacer(),
-                 if (_loading)
+                if (_loading)
                   Padding(
                     padding: const EdgeInsets.all(12.0),
                     child: BracuSpinner(
