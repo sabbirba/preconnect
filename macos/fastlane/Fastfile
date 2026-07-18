@@ -20,6 +20,7 @@ platform :mac do
 
     deliver(
       pkg: options[:pkg],
+      platform: "osx",
       skip_waiting_for_build_processing: true,
       force: true,
       skip_metadata: true,
