@@ -509,7 +509,9 @@ jobs:
                 -archivePath "$RUNNER_TEMP/PreConnect_DevID.xcarchive" \
                 CODE_SIGN_STYLE=Manual \
                 CODE_SIGN_IDENTITY="Developer ID Application" \
-                DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM"
+                DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
+                PROVISIONING_PROFILE_SPECIFIER="" \
+                PROVISIONING_PROFILE=""
 
                printf '%s\n' \
                 '<?xml version="1.0" encoding="UTF-8"?>' \
