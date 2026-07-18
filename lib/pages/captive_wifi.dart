@@ -1221,6 +1221,7 @@ class _CaptivePortalWebViewState extends State<CaptivePortalWebView> {
     unawaited(AndroidNetworkAssist.bindToWifiNetwork());
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..enableZoom(true)
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (String url) {

@@ -59,7 +59,8 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
       _loading = false;
     } else {
       _controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted);
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..enableZoom(true);
 
       if (widget.userAgent != null) {
         _controller.setUserAgent(widget.userAgent);
@@ -159,11 +160,21 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
                   },
                 ),
                 const Spacer(),
-                BracuRefreshButton(
-                  onPressed: () => _controller.reload(),
-                  isLoading: _loading,
-                  color: iconColor,
-                ),
+                 if (_loading)
+                  Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: BracuSpinner(
+                      size: 24,
+                      color: iconColor,
+                      icon: Icons.refresh_rounded,
+                    ),
+                  )
+                else
+                  IconButton(
+                    tooltip: 'Refresh',
+                    onPressed: () => _controller.reload(),
+                    icon: Icon(Icons.refresh_rounded, color: iconColor),
+                  ),
               ],
             ),
           ),

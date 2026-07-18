@@ -61,7 +61,8 @@ class LoginPage extends StatefulWidget {
       pkceVerifier = generatePkceVerifier();
       final codeChallenge = codeChallengeS256(pkceVerifier!);
       final controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted);
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..enableZoom(true);
       try {
         controller.setBackgroundColor(Colors.transparent);
       } catch (_) {}
@@ -100,7 +101,8 @@ class LoginPage extends StatefulWidget {
             },
           );
       final controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted);
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..enableZoom(true);
       try {
         controller.setBackgroundColor(Colors.transparent);
       } catch (_) {}
