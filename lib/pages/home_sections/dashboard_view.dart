@@ -234,10 +234,9 @@ extension _HomeDashboardView on _HomeDashboardState {
                                             style: TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.w600,
-                                              color:
-                                                  BracuPalette.textPrimary(
-                                                    context,
-                                                  ),
+                                              color: BracuPalette.textPrimary(
+                                                context,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -246,10 +245,9 @@ extension _HomeDashboardView on _HomeDashboardState {
                                           style: TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w600,
-                                            color:
-                                                BracuPalette.textPrimary(
-                                                  context,
-                                                ),
+                                            color: BracuPalette.textPrimary(
+                                              context,
+                                            ),
                                           ),
                                         ),
                                       ],

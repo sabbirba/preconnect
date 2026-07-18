@@ -270,7 +270,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         (status) => unawaited(_handleNetworkStatusChanged(status)),
       );
     } else {
-      _networkStatusSubscription = Connectivity().onConnectivityChanged.listen((results) {
+      _networkStatusSubscription = Connectivity().onConnectivityChanged.listen((
+        results,
+      ) {
         unawaited(_discoverPrinter().catchError((e) {}));
       });
     }
@@ -1893,7 +1895,10 @@ class _LprPrintClient {
         ]),
       );
       final dynamicTimeout = Duration(
-        seconds: (30 + (payload.length / (1024 * 1024)) * 10).toInt().clamp(30, 600),
+        seconds: (30 + (payload.length / (1024 * 1024)) * 10).toInt().clamp(
+          30,
+          600,
+        ),
       );
       socket.add(payload);
       socket.add(const <int>[0x00]);

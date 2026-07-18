@@ -205,8 +205,9 @@ class AppStorage {
 
   Future<void> clearExcept(Set<String> keepKeys) async {
     if (kIsWeb) {
-      final keysToRemove =
-          _webCache.keys.where((k) => !keepKeys.contains(k)).toList();
+      final keysToRemove = _webCache.keys
+          .where((k) => !keepKeys.contains(k))
+          .toList();
       for (final key in keysToRemove) {
         _webCache.remove(key);
       }
