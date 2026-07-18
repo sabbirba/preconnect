@@ -9,7 +9,7 @@ class AppLog {
   static Future<File> getFile() async {
     if (_file != null) return _file!;
     final dir = await AppPaths.documentsDirectory();
-    _file = File('${dir.path}/preconnect_debug_logs.txt');
+    _file = File('${dir.path}/debug_logs.txt');
     return _file!;
   }
 

@@ -907,6 +907,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
           : null,
       icon: Icons.local_printshop_outlined,
       actions: [
+        BracuRefreshButton(
+          onPressed: () => _refreshPrinterInfo(),
+          isLoading: _discovering,
+        ),
         IconButton(
           onPressed: () => _showHelpBottomSheet(context),
           style: bracuCompactIconButtonStyle(
@@ -1406,13 +1410,6 @@ class _StudentPrintDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rows = <({String label, String value})>[
-      (label: 'Name', value: name.trim()),
-      (label: 'Program', value: shortCode.trim()),
-      (label: 'Semester', value: semester.trim()),
-      (label: 'Printer', value: printerHost.trim()),
-    ].where((row) => row.value.isNotEmpty).toList();
-
     return Table(
       columnWidths: const <int, TableColumnWidth>{
         0: FixedColumnWidth(84),
@@ -1420,33 +1417,11 @@ class _StudentPrintDetails extends StatelessWidget {
       },
       defaultVerticalAlignment: TableCellVerticalAlignment.middle,
       children: [
-        for (final row in rows)
-          TableRow(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(right: 10, bottom: 4),
-                child: Text(
-                  row.label,
-                  style: TextStyle(
-                    color: BracuPalette.textSecondary(context),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  row.value,
-                  style: TextStyle(
-                    color: BracuPalette.textPrimary(context),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
+        if (name.trim().isNotEmpty) _buildRow(context, 'Name', name.trim()),
+        if (shortCode.trim().isNotEmpty)
+          _buildRow(context, 'Program', shortCode.trim()),
+        if (semester.trim().isNotEmpty)
+          _buildRow(context, 'Semester', semester.trim()),
         TableRow(
           children: [
             Padding(
@@ -1477,6 +1452,39 @@ class _StudentPrintDetails extends StatelessWidget {
               ),
             ),
           ],
+        ),
+        if (wifiName.trim().isNotEmpty)
+          _buildRow(context, 'Network', wifiName.trim()),
+        if (printerHost.trim().isNotEmpty)
+          _buildRow(context, 'Printer', printerHost.trim()),
+      ],
+    );
+  }
+
+  TableRow _buildRow(BuildContext context, String label, String value) {
+    return TableRow(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(right: 10, bottom: 4),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: BracuPalette.textSecondary(context),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Text(
+            value,
+            style: TextStyle(
+              color: BracuPalette.textPrimary(context),
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ),
       ],
     );
@@ -1957,10 +1965,6 @@ class _PrinterPreferencesPanel extends StatelessWidget {
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 420;
         final gap = compact ? 6.0 : 8.0;
-        final buttonPadding = EdgeInsets.symmetric(
-          horizontal: compact ? 6 : 8,
-          vertical: compact ? 8 : 9,
-        );
         final controlHeight = compact ? 36.0 : 40.0;
         final controlFont = compact ? 16.0 : 18.0;
         final toggleFont = compact ? 13.0 : 14.0;
@@ -1974,65 +1978,68 @@ class _PrinterPreferencesPanel extends StatelessWidget {
           children: [
             Expanded(
               flex: 32,
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 42,
-                    child: BracuActionButton(
-                      onPressed: copies <= 0 ? null : () => onCopiesStep(-1),
-                      outlined: false,
-                      borderRadius: 4,
-                      padding: buttonPadding,
-                      label: '−',
-                      fontSize: controlFont,
-                    ),
+              child: Container(
+                height: controlHeight,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: BracuPalette.textSecondary(
+                      context,
+                    ).withValues(alpha: 0.20),
                   ),
-                  Gap(gap),
-                  Expanded(
-                    flex: 52,
-                    child: SizedBox(
-                      height: controlHeight,
-                      child: Center(
-                        child: TextField(
-                          controller: copiesController,
-                          keyboardType: TextInputType.number,
-                          textInputAction: TextInputAction.done,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(3),
-                          ],
-                          textAlign: TextAlign.center,
-                          textAlignVertical: TextAlignVertical.center,
-                          maxLines: 1,
-                          expands: false,
-                          onSubmitted: (_) => FocusScope.of(context).unfocus(),
-                          style: TextStyle(
-                            fontSize: compact ? 16 : 18,
-                            fontWeight: FontWeight.w700,
-                            color: BracuPalette.textPrimary(context),
-                          ),
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(vertical: 8),
-                          ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      flex: 42,
+                      child: BracuActionButton(
+                        onPressed: copies <= 0 ? null : () => onCopiesStep(-1),
+                        outlined: false,
+                        borderRadius: 4,
+                        padding: EdgeInsets.zero,
+                        label: '−',
+                        fontSize: controlFont,
+                      ),
+                    ),
+                    Expanded(
+                      flex: 52,
+                      child: TextField(
+                        controller: copiesController,
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.done,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(3),
+                        ],
+                        textAlign: TextAlign.center,
+                        textAlignVertical: TextAlignVertical.center,
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: compact ? 16 : 18,
+                          fontWeight: FontWeight.w700,
+                          color: BracuPalette.textPrimary(context),
+                        ),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
                         ),
                       ),
                     ),
-                  ),
-                  Gap(gap),
-                  Expanded(
-                    flex: 42,
-                    child: BracuActionButton(
-                      onPressed: copies >= 999 ? null : () => onCopiesStep(1),
-                      outlined: false,
-                      borderRadius: 4,
-                      padding: buttonPadding,
-                      label: '+',
-                      fontSize: controlFont,
+                    Expanded(
+                      flex: 42,
+                      child: BracuActionButton(
+                        onPressed: copies >= 999 ? null : () => onCopiesStep(1),
+                        outlined: false,
+                        borderRadius: 4,
+                        padding: EdgeInsets.zero,
+                        label: '+',
+                        fontSize: controlFont,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             Gap(compact ? 8 : 10),

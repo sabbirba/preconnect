@@ -195,7 +195,9 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
         _completedVisibleCount = _coursesChunkSize;
       });
     }
-    _isRefreshing = true;
+    setState(() {
+      _isRefreshing = true;
+    });
     try {
       final freshInfo = await ProgressService().fetchProgress();
       final freshSummary = await ProgressService().getProgressSummary(
@@ -240,7 +242,11 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
         RefreshBus.instance.notify(reason: 'degree_progress');
       }
     } finally {
-      _isRefreshing = false;
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
     }
   }
 
@@ -250,6 +256,12 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
       title: 'Degree Progress',
       subtitle: 'Curriculum Based',
       icon: Icons.trending_up_rounded,
+      actions: [
+        BracuRefreshButton(
+          onPressed: () => _refresh(),
+          isLoading: _isRefreshing,
+        ),
+      ],
       body: FutureBuilder<ProgressInfo?>(
         future: _future,
         builder: (context, snapshot) {

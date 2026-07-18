@@ -19,6 +19,7 @@ class CalendarPage extends StatefulWidget {
 class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
   late Future<CalendarFeed?> _future;
   CalendarFeed? _lastFeed;
+  bool _isRefreshing = false;
   final ScrollController _scrollController = ScrollController();
   late final HighlightScrollCoordinator _highlightScroll =
       HighlightScrollCoordinator(scrollController: _scrollController);
@@ -46,22 +47,27 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
 
   Future<void> _loadCachedFeed() async {
     final cached = await CalendarService().getCachedCalendar();
-    if (!mounted || cached == null) return;
+    if (!mounted) return;
     setState(() {
       _lastFeed = cached;
     });
   }
 
   Future<void> _refresh({bool notify = true}) async {
+    if (_isRefreshing) return;
+    setState(() {
+      _isRefreshing = true;
+      _highlightScroll.resetScrollState();
+    });
     final next = CalendarService().fetchCalendar(fallback: _lastFeed);
     setState(() {
-      _highlightScroll.resetScrollState();
       _future = next;
     });
     final refreshed = await next;
     if (!mounted) return;
     setState(() {
       _lastFeed = refreshed;
+      _isRefreshing = false;
     });
     if (notify) {
       RefreshBus.instance.notify(reason: 'calendar');
@@ -74,6 +80,12 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
       title: 'Calendar',
       subtitle: 'Events',
       icon: Icons.calendar_today_outlined,
+      actions: [
+        BracuRefreshButton(
+          onPressed: () => _refresh(),
+          isLoading: _isRefreshing,
+        ),
+      ],
       body: FutureBuilder<CalendarFeed?>(
         future: _future,
         builder: (context, snapshot) {

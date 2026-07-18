@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:preconnect/tools/network_assist.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -49,6 +48,115 @@ class CaptiveWifiHttp {
       return parsedUrl;
     }
     return defaultProbeUri;
+  }
+
+  static Future<Uri?> detectCaptivePortal() async {
+    try {
+      final client = HttpClient()
+        ..userAgent = kPreConnectUserAgent
+        ..connectionTimeout = const Duration(seconds: 5);
+      client.badCertificateCallback = (cert, host, port) => true;
+      final request = await client.getUrl(defaultProbeUri);
+      request.followRedirects = false;
+      final response = await request.close();
+      final status = response.statusCode;
+      final location =
+          response.headers.value('location') ??
+          response.headers.value('Location');
+      if (status >= 300 && status < 400 && location != null) {
+        return Uri.tryParse(location);
+      }
+      final body = await response.transform(utf8.decoder).join();
+      if (status == 200) {
+        final metaReg = RegExp(
+          r'''<meta\b([^>]*http-equiv\s*=\s*["']refresh["'][^>]*)>''',
+          caseSensitive: false,
+        );
+        final metaMatch = metaReg.firstMatch(body);
+        if (metaMatch != null) {
+          final attrs = metaMatch.group(1) ?? '';
+          final contentReg = RegExp(
+            r'''content\s*=\s*["']\s*(?:\d+\s*;\s*)?url\s*=\s*([^"']+)["']''',
+            caseSensitive: false,
+          );
+          final contentMatch = contentReg.firstMatch(attrs);
+          if (contentMatch != null) {
+            final targetUrl = contentMatch.group(1)?.trim();
+            if (targetUrl != null && targetUrl.isNotEmpty) {
+              return Uri.tryParse(targetUrl);
+            }
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<bool> checkIfOnCampusNetwork() async {
+    try {
+      final savedUrlStr = await CaptiveLoginStore.instance.readLastPortalUrl();
+      if (savedUrlStr == null || savedUrlStr.isEmpty) {
+        final portalUri = await detectCaptivePortal();
+        return portalUri != null;
+      }
+
+      final savedUri = Uri.tryParse(savedUrlStr);
+      if (savedUri == null) return false;
+
+      final client = HttpClient();
+      client.connectionTimeout = const Duration(seconds: 3);
+      client.badCertificateCallback = (cert, host, port) => true;
+
+      final request = await client.getUrl(
+        Uri.parse('http://${savedUri.host}/'),
+      );
+      final response = await request.close().timeout(
+        const Duration(seconds: 3),
+      );
+      final body = await response.transform(utf8.decoder).join();
+      client.close(force: true);
+
+      final isPortal =
+          body.contains('portalauth') ||
+          body.contains('portalpage') ||
+          body.contains(savedUri.host) ||
+          response.headers.value('location')?.contains('portal') == true;
+
+      return isPortal;
+    } catch (_) {}
+    return false;
+  }
+
+  static Map<String, String> parseFormInputs(String html) {
+    final inputs = <String, String>{};
+    final inputReg = RegExp(
+      r'''<input\b[^>]*>''',
+      caseSensitive: false,
+      multiLine: true,
+      dotAll: true,
+    );
+    final matches = inputReg.allMatches(html);
+    for (final match in matches) {
+      final attrs = match.group(0) ?? '';
+      final nameReg = RegExp(
+        r'''\bname\s*=\s*(?:["']([^"']*)["']|([^\s>]+))''',
+        caseSensitive: false,
+      );
+      final nameMatch = nameReg.firstMatch(attrs);
+      if (nameMatch == null) continue;
+      final name = (nameMatch.group(1) ?? nameMatch.group(2) ?? '').trim();
+      if (name.isEmpty) continue;
+
+      final valueReg = RegExp(
+        r'''\bvalue\s*=\s*(?:["']([^"']*)["']|([^\s>]+))''',
+        caseSensitive: false,
+      );
+      final valueMatch = valueReg.firstMatch(attrs);
+      final value = (valueMatch?.group(1) ?? valueMatch?.group(2) ?? '').trim();
+
+      inputs[name] = value;
+    }
+    return inputs;
   }
 
   Future<HttpClient> newClient() async {
@@ -319,20 +427,30 @@ class CaptiveWifiHttp {
         assert(true);
       }
 
+      String apiBasePath = '/portalauth';
+      final initialPath = loginUri.path;
+      if (initialPath.contains('/')) {
+        apiBasePath = initialPath.substring(0, initialPath.lastIndexOf('/'));
+      }
+
       Uri apiLoginUri;
       final formReg = RegExp(
-        r'''<form\b[^>]*\baction\s*=\s*["']([^"']+)["']''',
+        r'''<form\b[^>]*\baction\s*=\s*(?:["']([^"']+)["']|([^\s>]+))''',
         caseSensitive: false,
       );
       final match = formReg.firstMatch(first.body);
-      final formAction = match?.group(1)?.trim();
-      if (formAction != null && formAction.isNotEmpty) {
+      final formAction = (match?.group(1) ?? match?.group(2) ?? '').trim();
+      if (formAction.isNotEmpty) {
         apiLoginUri = Uri.parse(formAction).isAbsolute
             ? Uri.parse(formAction)
             : loginUri.resolve(formAction);
+        final path = apiLoginUri.path;
+        if (path.contains('/')) {
+          apiBasePath = path.substring(0, path.lastIndexOf('/'));
+        }
       } else {
         apiLoginUri = loginUri.replace(
-          path: '/portalauth/login',
+          path: '$apiBasePath/login',
           queryParameters: {},
         );
       }
@@ -406,6 +524,7 @@ class CaptiveWifiHttp {
       if (apmac.isEmpty && status?.apMac != null) {
         apmac = status!.apMac!;
       }
+
       if (apmac.isNotEmpty) {
         apmac = apmac.replaceAll(':', '').replaceAll('-', '').toLowerCase();
       }
@@ -413,54 +532,99 @@ class CaptiveWifiHttp {
       if (acip.isEmpty || apmac.isEmpty) {
         lastError =
             'Missing gateway parameters (acip/apmac) in portal redirect URL.';
-
         return false;
       }
 
-      final pushPageId = getParam('pushPageId').isNotEmpty
+      final formInputs = parseFormInputs(first.body);
+      final payload = <String, String>{};
+      for (final entry in formInputs.entries) {
+        payload[entry.key] = entry.value;
+      }
+
+      final userNameKey = payload.keys.firstWhere(
+        (k) => k.toLowerCase() == 'username',
+        orElse: () => 'userName',
+      );
+      payload[userNameKey] = studentId;
+
+      final passwordKey = payload.keys.firstWhere(
+        (k) => k.toLowerCase() == 'userpass' || k.toLowerCase() == 'password',
+        orElse: () => 'userPass',
+      );
+      payload[passwordKey] = password;
+
+      final resolvedPushPageId = getParam('pushPageId').isNotEmpty
           ? getParam('pushPageId')
-          : _generateUuid();
+          : (payload['pushPageId'] ?? '');
 
-      final base64Ssid = getParam('ssid').isNotEmpty
+      final resolvedBase64Ssid = getParam('ssid').isNotEmpty
           ? getParam('ssid')
-          : base64.encode(utf8.encode(status?.ssid ?? ssid));
+          : (payload['ssid'] ??
+                (status?.ssid != null
+                    ? base64.encode(utf8.encode(status!.ssid!))
+                    : base64.encode(utf8.encode(ssid))));
 
-      var uaddress = getParam('uaddress');
-      if (uaddress.isEmpty && status?.ipAddress != null) {
-        uaddress = status!.ipAddress!;
+      var resolvedUaddress = getParam('uaddress');
+      if (resolvedUaddress.isEmpty && status?.ipAddress != null) {
+        resolvedUaddress = status!.ipAddress!;
+      }
+      if (resolvedUaddress.isEmpty) {
+        resolvedUaddress = payload['uaddress'] ?? '';
       }
 
-      var umac = getParam('umac');
-      if (umac.isEmpty) {
-        umac = deviceUmac ?? '';
+      var resolvedUmac = getParam('umac');
+      if (resolvedUmac.isEmpty) {
+        resolvedUmac = deviceUmac ?? '';
       }
-      if (umac.isNotEmpty) {
-        umac = umac.replaceAll(':', '').replaceAll('-', '').toLowerCase();
+      if (resolvedUmac.isEmpty) {
+        resolvedUmac = payload['umac'] ?? '';
+      }
+      if (resolvedUmac.isNotEmpty) {
+        resolvedUmac = resolvedUmac
+            .replaceAll(':', '')
+            .replaceAll('-', '')
+            .toLowerCase();
       }
 
-      final payload = <String, String>{
-        'pushPageId': pushPageId,
-        'userPass': password,
-        'esn': getParam('esn'),
-        'apmac': apmac,
-        'armac': getParam('armac'),
-        'authType': getParam('authType', '1'),
-        'ssid': base64Ssid,
-        'uaddress': uaddress,
-        'umac': umac,
-        'accessMac': getParam('accessMac'),
-        'businessType': getParam('businessType'),
-        'acip': acip,
-        'agreed': getParam('agreed', '1'),
-        'registerCode': getParam('registerCode'),
-        'questions': getParam('questions'),
-        'dynamicValidCode': getParam('dynamicValidCode'),
-        'dynamicRSAToken': getParam('dynamicRSAToken'),
-        'validCode': getParam('validCode'),
-        'userName': studentId,
-      };
+      payload['pushPageId'] = resolvedPushPageId;
+      payload['apmac'] = apmac;
+      payload['ssid'] = resolvedBase64Ssid;
+      payload['uaddress'] = resolvedUaddress;
+      payload['umac'] = resolvedUmac;
+      payload['acip'] = acip;
+
+      if (!payload.containsKey('authType')) {
+        payload['authType'] = getParam('authType', '1');
+      }
+      if (!payload.containsKey('agreed')) {
+        payload['agreed'] = getParam('agreed', '1');
+      }
+
+      for (final key in [
+        'esn',
+        'armac',
+        'accessMac',
+        'businessType',
+        'registerCode',
+        'questions',
+        'dynamicValidCode',
+        'dynamicRSAToken',
+        'validCode',
+      ]) {
+        if (!payload.containsKey(key)) {
+          payload[key] = getParam(key);
+        }
+      }
 
       final encoded = Uri(queryParameters: payload).query;
+
+      lastResponseLog =
+          '--- CAPTIVE LOGIN DIAGNOSTICS ---\n'
+          'Target Login URI: $apiLoginUri\n'
+          'Referer URI: $loginUri\n'
+          'Request Body (Encoded): $encoded\n'
+          'Request Body (Decoded): $payload\n'
+          'Initiating POST request...\n';
 
       await Future<void>.delayed(const Duration(seconds: 3));
 
@@ -521,7 +685,7 @@ class CaptiveWifiHttp {
 
       try {
         final apiSyncUri = loginUri.replace(
-          path: '/portalauth/syncPortalResult',
+          path: '$apiBasePath/syncPortalResult',
           queryParameters: {},
         );
 
@@ -642,10 +806,53 @@ class CaptiveWifiHttp {
         cookies: cookies,
       );
       final loginUri = first.uri;
-      final apiLogoutUri = loginUri.replace(
-        path: '/portalauth/logout',
-        queryParameters: {},
+
+      String? parsedLogoutPath;
+      final logoutFormReg = RegExp(
+        r'''<form\b[^>]*\baction\s*=\s*(?:["']([^"']*)["']|([^\s>]+))''',
+        caseSensitive: false,
       );
+      for (final match in logoutFormReg.allMatches(first.body)) {
+        final action = (match.group(1) ?? match.group(2) ?? '').trim();
+        if (action.toLowerCase().contains('logout')) {
+          parsedLogoutPath = action;
+          break;
+        }
+      }
+
+      if (parsedLogoutPath == null) {
+        final logoutLinkReg = RegExp(
+          r'''<a\b[^>]*\bhref\s*=\s*(?:["']([^"']*)["']|([^\s>]+))''',
+          caseSensitive: false,
+        );
+        for (final match in logoutLinkReg.allMatches(first.body)) {
+          final href = (match.group(1) ?? match.group(2) ?? '').trim();
+          if (href.toLowerCase().contains('logout')) {
+            parsedLogoutPath = href;
+            break;
+          }
+        }
+      }
+
+      Uri apiLogoutUri;
+      if (parsedLogoutPath != null && parsedLogoutPath.isNotEmpty) {
+        apiLogoutUri = Uri.parse(parsedLogoutPath).isAbsolute
+            ? Uri.parse(parsedLogoutPath)
+            : loginUri.resolve(parsedLogoutPath);
+      } else {
+        String logoutBasePath = '/portalauth';
+        final initialPath = loginUri.path;
+        if (initialPath.contains('/')) {
+          logoutBasePath = initialPath.substring(
+            0,
+            initialPath.lastIndexOf('/'),
+          );
+        }
+        apiLogoutUri = loginUri.replace(
+          path: '$logoutBasePath/logout',
+          queryParameters: {},
+        );
+      }
 
       if (!cookies.containsKey('countdown')) {
         cookies['countdown'] = Cookie('countdown', '0');
@@ -723,23 +930,6 @@ class CaptiveWifiHttp {
       body: text,
       location: location == null ? null : Uri.parse(location),
     );
-  }
-
-  String _generateUuid() {
-    final random = Random.secure();
-    final hexDigits = '0123456789abcdef';
-    final charCodes = List<int>.generate(36, (i) {
-      if (i == 8 || i == 13 || i == 18 || i == 23) {
-        return 45;
-      }
-      if (i == 14) {
-        return 52;
-      }
-      final r = random.nextInt(16);
-      final value = (i == 19) ? (r & 0x3 | 0x8) : r;
-      return hexDigits.codeUnitAt(value);
-    });
-    return String.fromCharCodes(charCodes);
   }
 
   String _mapPortalErrorCode(String errorCode) {

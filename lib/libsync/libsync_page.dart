@@ -47,18 +47,10 @@ class _LibSyncPageState extends State<LibSyncPage>
   int? _selectedChartIndex;
   bool _isGoogleSigningIn = false;
 
-  static List<dynamic>? _cachedReservationByYear;
-  static List<dynamic>? _cachedRecentReservations;
-  static List<dynamic>? _cachedCheckQuota;
-  static Map<String, dynamic>? _cachedTotalReservationCount;
   static final List<DateTime> _fetchTimestamps = [];
   static DateTime? _lastReservationFetchTime;
 
   static Future<void> clearReservationCache() async {
-    _cachedReservationByYear = null;
-    _cachedRecentReservations = null;
-    _cachedCheckQuota = null;
-    _cachedTotalReservationCount = null;
     _fetchTimestamps.clear();
     _lastReservationFetchTime = null;
 
@@ -186,63 +178,91 @@ class _LibSyncPageState extends State<LibSyncPage>
       _lastReservationFetchTime = now;
       final dateStr =
           "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-      final results = await Future.wait([
-        LibSyncAuthService.instance.fetchReservationByYear(now.year),
-        LibSyncAuthService.instance.fetchRecentReservations(),
-        LibSyncAuthService.instance.fetchCheckQuota(dateStr),
-        LibSyncAuthService.instance.fetchTotalReservationCount(),
-      ]);
-      _cachedReservationByYear = results[0] as List<dynamic>?;
-      _cachedRecentReservations =
-          (results[1] as Map<String, dynamic>?)?['results'] as List<dynamic>?;
-      _cachedCheckQuota = results[2] as List<dynamic>?;
-      _cachedTotalReservationCount = results[3] as Map<String, dynamic>?;
-
       final store = AppPreferencesStore();
-      if (_cachedReservationByYear != null) {
-        unawaited(
-          store.setString(
-            'libsync_cache_reservation_by_year',
-            jsonEncode(_cachedReservationByYear),
-          ),
-        );
-      }
-      if (_cachedRecentReservations != null) {
-        unawaited(
-          store.setString(
-            'libsync_cache_recent_reservations',
-            jsonEncode(_cachedRecentReservations),
-          ),
-        );
-      }
-      if (_cachedCheckQuota != null) {
-        unawaited(
-          store.setString(
-            'libsync_cache_check_quota',
-            jsonEncode(_cachedCheckQuota),
-          ),
-        );
-      }
-      if (_cachedTotalReservationCount != null) {
-        unawaited(
-          store.setString(
-            'libsync_cache_total_reservation_count',
-            jsonEncode(_cachedTotalReservationCount),
-          ),
-        );
-      }
 
-      if (mounted) {
-        setState(() {
-          _reservationByYear = _cachedReservationByYear;
-          _recentReservations = _cachedRecentReservations;
-          _checkQuota = _cachedCheckQuota;
-          _totalReservationCount = _cachedTotalReservationCount;
-          _setDefaultChartIndex();
-        });
-      }
+      final f1 = LibSyncAuthService.instance
+          .fetchReservationByYear(now.year)
+          .then((res) {
+            if (res != null) {
+              unawaited(
+                store.setString(
+                  'libsync_cache_reservation_by_year',
+                  jsonEncode(res),
+                ),
+              );
+              if (mounted) {
+                setState(() {
+                  _reservationByYear = res;
+                  _setDefaultChartIndex();
+                });
+              }
+            }
+          })
+          .catchError((_) {});
+
+      final f2 = LibSyncAuthService.instance
+          .fetchRecentReservations()
+          .then((res) {
+            if (res != null) {
+              final list = res['results'] as List<dynamic>?;
+              unawaited(
+                store.setString(
+                  'libsync_cache_recent_reservations',
+                  jsonEncode(list),
+                ),
+              );
+              if (mounted) {
+                setState(() {
+                  _recentReservations = list;
+                });
+              }
+            }
+          })
+          .catchError((_) {});
+
+      final f3 = LibSyncAuthService.instance
+          .fetchCheckQuota(dateStr)
+          .then((res) {
+            if (res != null) {
+              unawaited(
+                store.setString('libsync_cache_check_quota', jsonEncode(res)),
+              );
+              if (mounted) {
+                setState(() {
+                  _checkQuota = res;
+                });
+              }
+            }
+          })
+          .catchError((_) {});
+
+      final f4 = LibSyncAuthService.instance
+          .fetchTotalReservationCount()
+          .then((res) {
+            if (res != null) {
+              unawaited(
+                store.setString(
+                  'libsync_cache_total_reservation_count',
+                  jsonEncode(res),
+                ),
+              );
+              if (mounted) {
+                setState(() {
+                  _totalReservationCount = res;
+                });
+              }
+            }
+          })
+          .catchError((_) {});
+
+      Future.wait([f1, f2, f3, f4]).whenComplete(() {
+        if (mounted) {
+          setState(() {
+            _loadingData = false;
+          });
+        }
+      });
     } catch (_) {
-    } finally {
       if (mounted) {
         setState(() {
           _loadingData = false;
@@ -398,7 +418,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                   onPressed: () => _loadReservationData(force: true),
                   isLoading: _loadingData,
                   color: IconTheme.of(context).color,
-                  icon: Icons.refresh_rounded,
+                  icon: Icons.sync_rounded,
                 ),
                 IconButton(
                   icon: const Icon(Icons.logout),

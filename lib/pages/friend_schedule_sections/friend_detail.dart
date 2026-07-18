@@ -4,16 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/schedule.dart';
+import 'package:preconnect/api/exam_map.dart';
 import 'package:preconnect/model/friend_schedule.dart';
+import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/friend_schedule_sections/compare_schedules.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
 import 'package:preconnect/pages/shared_widgets/session_helper.dart';
+import 'package:preconnect/pages/shared_widgets/exam_card.dart';
+import 'package:preconnect/pages/shared_widgets/entry_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/time_utils.dart';
+import 'package:preconnect/tools/string_utils.dart';
 
 class FriendDetailPage extends StatefulWidget {
   const FriendDetailPage({
@@ -48,11 +53,46 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
   late final HighlightScrollCoordinator _highlightScroll =
       HighlightScrollCoordinator(scrollController: _scrollController);
   String _currentSemester = '';
+  Map<String, ExamScheduleOverride> _examOverrides = {};
+  bool _loadingExamOverrides = true;
 
   @override
   void initState() {
     super.initState();
     _loadCurrentSemester();
+    _loadExamOverrides();
+  }
+
+  Future<void> _loadExamOverrides() async {
+    try {
+      final semesterSessionId =
+          await resolveCurrentSessionSemesterIdWithRetry();
+      if (semesterSessionId != null) {
+        final overrides = await ExamScheduleService().getOverridesForSections(
+          widget.friend.courses
+              .map(
+                (course) =>
+                    course.toSection(semesterSessionId: semesterSessionId),
+              )
+              .toList(),
+          forcedSemesterSessionId: semesterSessionId,
+        );
+        if (mounted) {
+          setState(() {
+            _examOverrides = overrides;
+            _loadingExamOverrides = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() => _loadingExamOverrides = false);
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _loadingExamOverrides = false);
+      }
+    }
   }
 
   Future<void> _loadCurrentSemester() async {
@@ -63,10 +103,6 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
         _currentSemester = semester;
       });
     }
-  }
-
-  String _getProgramCode(FriendSchedule friend) {
-    return friend.shortCode?.trim() ?? '';
   }
 
   String _getSemesterName(FriendSchedule friend) {
@@ -207,7 +243,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
     return Scaffold(
       body: BracuPageScaffold(
         title: headerTitle,
-        subtitle: 'Shared Schedule',
+        subtitle: 'Schedule',
         icon: Icons.person_rounded,
         actions: [
           IconButton(
@@ -265,12 +301,29 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                             color: textPrimary,
                           ),
                         ),
-                        Text(
-                          '${_getProgramCode(widget.friend)} ${_getSemesterName(widget.friend)}'
-                              .toUpperCase()
-                              .trim(),
-                          style: TextStyle(fontSize: 11, color: textSecondary),
-                        ),
+                        (() {
+                          final semesterName = _getSemesterName(
+                            widget.friend,
+                          ).toUpperCase();
+                          final subtitleText = [
+                            if (widget.friend.id.isNotEmpty) widget.friend.id,
+                            if (semesterName.isNotEmpty) semesterName,
+                          ].join(' · ');
+                          if (subtitleText.isNotEmpty) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                subtitleText,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        })(),
                       ],
                     ),
                   ),
@@ -301,8 +354,10 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                   ),
                 ),
               )
-            else
+            else ...[
               ..._buildScheduleByDay(context),
+              ..._buildExamSchedule(context),
+            ],
           ],
         ),
       ),
@@ -325,6 +380,8 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
             : schedule.day[0].toUpperCase() +
                   schedule.day.substring(1).toLowerCase();
         grouped.putIfAbsent(day, () => []).add({
+          'course': course,
+          'schedule': schedule,
           'day': day,
           'courseCode': course.courseCode,
           'sectionName': course.sectionName,
@@ -336,6 +393,8 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
               '$day|${course.courseCode}|${adjusted.startTime}|${adjusted.endTime}',
         });
         flatEntries.add({
+          'course': course,
+          'schedule': schedule,
           'day': day,
           'startTime': adjusted.startTime,
           'endTime': adjusted.endTime,
@@ -345,16 +404,30 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
       }
     }
 
-    const orderedDays = [
-      'Saturday',
-      'Sunday',
+    final weekdayNames = [
       'Monday',
       'Tuesday',
       'Wednesday',
       'Thursday',
       'Friday',
+      'Saturday',
+      'Sunday',
     ];
-    final sortedDays = orderedDays.where(grouped.containsKey).toList();
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    var saturday = today;
+    while (saturday.weekday != DateTime.saturday) {
+      saturday = saturday.subtract(const Duration(days: 1));
+    }
+
+    final renderedSections = <(String, DateTime)>[];
+    for (var dayOffset = 0; dayOffset < 7; dayOffset++) {
+      final date = saturday.add(Duration(days: dayOffset));
+      final day = weekdayNames[date.weekday - 1];
+      if (!grouped.containsKey(day)) continue;
+      renderedSections.add((day, date));
+    }
 
     final widgets = <Widget>[];
     final highlightedEntryKey = _pickHighlightedEntryKey(flatEntries);
@@ -364,7 +437,10 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
             (entry) => entry['entryKey'] == highlightedEntryKey,
           );
     _highlightScroll.clearHighlightKey();
-    for (final day in sortedDays) {
+    for (final sectionInfo in renderedSections) {
+      final day = sectionInfo.$1;
+      final dayDate = sectionInfo.$2;
+      final dayDateLabel = formatLongDate(dayDate);
       final entries = grouped[day]!;
       entries.sort((a, b) {
         final aStart = _timeToMinutes(a['startTime']?.toString()) ?? 24 * 60;
@@ -381,83 +457,41 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            BracuSectionTitle(title: day),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                BracuSectionTitle(title: day),
+                if (dayDateLabel.isNotEmpty)
+                  Text(
+                    dayDateLabel,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: BracuPalette.textPrimary(context),
+                    ),
+                  ),
+              ],
+            ),
             const Gap(10),
             ...entries.map((entry) {
               final isHighlighted = entry['entryKey'] == highlightedEntryKey;
               _highlightScroll.markHighlighted(isHighlighted);
+              final section.Section course = entry['course'];
+              final section.ClassSchedule schedule = entry['schedule'];
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: BracuCard(
+                child: ScheduleEntryCard(
                   key: isHighlighted ? _highlightScroll.highlightKey : null,
-                  isHighlighted: isHighlighted,
+                  sectionName: course.sectionName,
+                  courseCode: course.courseCode,
+                  schedule: schedule,
+                  isRamadan: widget.isRamadan,
+                  roomNumber: course.roomNumber,
+                  faculties: course.faculties,
+                  consumedSeat: course.consumedSeat,
+                  courseType: course.courseType,
+                  highlighted: isHighlighted,
                   highlightColor: BracuPalette.primary,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      SectionBadge(
-                        label: formatSectionBadge(
-                          entry['sectionName']?.toString(),
-                        ),
-                        color: BracuPalette.primary,
-                      ),
-                      const Gap(12),
-                      Expanded(
-                        flex: 7,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              entry['courseCode'] ?? '',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const Gap(4),
-                            Text(
-                              formatTimeRange(
-                                entry['startTime']?.toString(),
-                                entry['endTime']?.toString(),
-                              ),
-                              style: TextStyle(
-                                color: BracuPalette.textSecondary(context),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Gap(12),
-                      Expanded(
-                        flex: 4,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              entry['roomNumber']?.toString() ?? '--',
-                              textAlign: TextAlign.right,
-                              style: TextStyle(
-                                color: BracuPalette.textPrimary(context),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            if (entry['faculties'] != null &&
-                                entry['faculties'].trim().isNotEmpty) ...[
-                              const Gap(2),
-                              Text(
-                                entry['faculties'],
-                                textAlign: TextAlign.right,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: BracuPalette.textSecondary(context),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               );
             }),
@@ -485,5 +519,164 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
 
   int? _timeToMinutes(String? raw) {
     return BracuTime.toMinutes(raw);
+  }
+
+  List<Widget> _buildExamSchedule(BuildContext context) {
+    if (_loadingExamOverrides) {
+      return const [Gap(20), Center(child: BracuSpinner())];
+    }
+    final midExams = <(Course, ExamSectionResolved)>[];
+    final finalExams = <(Course, ExamSectionResolved)>[];
+    for (final course in widget.friend.courses) {
+      final resolved = ExamScheduleService().resolveSection(
+        section: course.toSection(),
+        overrides: _examOverrides,
+      );
+      if (resolved.midDate != null && resolved.midDate!.trim().isNotEmpty) {
+        midExams.add((course, resolved));
+      }
+      if (resolved.finalDate != null && resolved.finalDate!.trim().isNotEmpty) {
+        finalExams.add((course, resolved));
+      }
+    }
+
+    midExams.sort((a, b) {
+      final aTime = BracuTime.parseDateTime(a.$2.midDate, a.$2.midStartTime);
+      final bTime = BracuTime.parseDateTime(b.$2.midDate, b.$2.midStartTime);
+      return ExamSorting.compareExamEntries(
+        typeA: 'Midterm',
+        typeB: 'Midterm',
+        dateTimeA: aTime,
+        dateTimeB: bTime,
+        courseCodeA: a.$1.courseCode,
+        courseCodeB: b.$1.courseCode,
+        sectionNameA: a.$1.sectionName,
+        sectionNameB: b.$1.sectionName,
+      );
+    });
+    finalExams.sort((a, b) {
+      final aTime = BracuTime.parseDateTime(
+        a.$2.finalDate,
+        a.$2.finalStartTime,
+      );
+      final bTime = BracuTime.parseDateTime(
+        b.$2.finalDate,
+        b.$2.finalStartTime,
+      );
+      return ExamSorting.compareExamEntries(
+        typeA: 'Final',
+        typeB: 'Final',
+        dateTimeA: aTime,
+        dateTimeB: bTime,
+        courseCodeA: a.$1.courseCode,
+        courseCodeB: b.$1.courseCode,
+        sectionNameA: a.$1.sectionName,
+        sectionNameB: b.$1.sectionName,
+      );
+    });
+
+    if (midExams.isEmpty && finalExams.isEmpty) {
+      return const [];
+    }
+    final widgets = <Widget>[];
+    if (midExams.isNotEmpty) {
+      for (final item in midExams) {
+        final course = item.$1;
+        final resolved = item.$2;
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        BracuExamCard.formatExamDate(resolved.midDate),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: BracuPalette.textPrimary(context),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'Midterm',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: BracuPalette.textPrimary(context),
+                      ),
+                    ),
+                  ],
+                ),
+                const Gap(6),
+                BracuExamCard(
+                  courseCode: course.courseCode,
+                  sectionName: course.sectionName,
+                  startTime: resolved.midStartTime,
+                  endTime: resolved.midEndTime,
+                  roomNumber: resolved.midRoomNumber,
+                  faculties: course.faculties,
+                  consumedSeat: course.consumedSeat,
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+    if (finalExams.isNotEmpty) {
+      for (final item in finalExams) {
+        final course = item.$1;
+        final resolved = item.$2;
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        BracuExamCard.formatExamDate(resolved.finalDate),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: BracuPalette.textPrimary(context),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'Final',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: BracuPalette.textPrimary(context),
+                      ),
+                    ),
+                  ],
+                ),
+                const Gap(6),
+                BracuExamCard(
+                  courseCode: course.courseCode,
+                  sectionName: course.sectionName,
+                  startTime: resolved.finalStartTime,
+                  endTime: resolved.finalEndTime,
+                  roomNumber: resolved.finalRoomNumber,
+                  faculties: course.faculties,
+                  consumedSeat: course.consumedSeat,
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+    return widgets;
   }
 }

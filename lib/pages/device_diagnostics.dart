@@ -27,51 +27,20 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    unawaited(_forceRequestPermissions());
+    unawaited(_loadAllWithPermissions());
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      unawaited(_forceRequestPermissions());
+  Future<void> _loadAllWithPermissions() async {
+    if (mounted) {
+      setState(() => _loading = true);
     }
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  Future<void> _forceRequestPermissions() async {
-    if (!AndroidNetworkAssist.isSupported) {
-      await _loadAll();
-      return;
-    }
-    var status = await Permission.locationWhenInUse.status;
-    if (status.isGranted) {
-      final gpsEnabled = await AndroidNetworkAssist.isLocationServiceEnabled();
-      if (!gpsEnabled) {
-        await AndroidNetworkAssist.openLocationSettings();
-        return;
+    if (AndroidNetworkAssist.isSupported) {
+      final status = await Permission.locationWhenInUse.status;
+      if (status.isDenied) {
+        await Permission.locationWhenInUse.request();
       }
-      await _loadAll();
-      return;
     }
-
-    status = await Permission.locationWhenInUse.request();
-    if (status.isGranted) {
-      final gpsEnabled = await AndroidNetworkAssist.isLocationServiceEnabled();
-      if (!gpsEnabled) {
-        await AndroidNetworkAssist.openLocationSettings();
-        return;
-      }
-      await _loadAll();
-      return;
-    }
-
-    await openAppSettings();
+    await _loadAll();
   }
 
   Future<void> _loadAll() async {
@@ -389,10 +358,7 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
       actions: [
         BracuRefreshButton(
           onPressed: () {
-            if (mounted) {
-              setState(() => _loading = true);
-            }
-            unawaited(_forceRequestPermissions());
+            unawaited(_loadAllWithPermissions());
           },
           isLoading: _loading,
         ),

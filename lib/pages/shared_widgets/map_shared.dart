@@ -465,35 +465,6 @@ Future<void> showCampusMapBottomSheet(
                                 ),
                         ),
                       ),
-                      if (showCallAction)
-                        SizedBox(
-                          width: constraints.maxWidth,
-                          child: BracuActionButton(
-                            iconWidget: const Icon(
-                              Icons.phone_rounded,
-                              size: 16,
-                            ),
-                            label: mapData.primaryPhoneRaw.isEmpty
-                                ? 'Call'
-                                : mapData.primaryPhoneRaw,
-                            onPressed: mapData.primaryPhone.isEmpty
-                                ? null
-                                : () async {
-                                    final normalized =
-                                        normalizeCampusPhoneValue(
-                                          mapData.primaryPhoneRaw.isEmpty
-                                              ? mapData.primaryPhone
-                                              : mapData.primaryPhoneRaw,
-                                        );
-                                    if (normalized.isEmpty) return;
-                                    copyToClipboard(sheetContext, normalized);
-                                    await openPhoneDialer(
-                                      sheetContext,
-                                      normalized,
-                                    );
-                                  },
-                          ),
-                        ),
                     ],
                   );
                 },
