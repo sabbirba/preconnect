@@ -948,7 +948,7 @@ jobs:
           AAB_PATH: ${{ steps.aab.outputs.file }}
           VERSION_CODE: ${{ needs.prepare-version.outputs.version_code }}
         run: |
-          cd android && bundle exec fastlane upload_to_play_store
+          cd android && bundle exec fastlane play_store_upload
 
       - name: Promote to Beta
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
