@@ -850,9 +850,10 @@ jobs:
             echo "No .aab file found in downloaded artifacts."
             exit 0
           fi
+          ABS_AAB_FILE="$(pwd)/$AAB_FILE"
           echo "found=true" >> "$GITHUB_OUTPUT"
-          echo "file=$AAB_FILE" >> "$GITHUB_OUTPUT"
-          echo "Using AAB: $AAB_FILE"
+          echo "file=$ABS_AAB_FILE" >> "$GITHUB_OUTPUT"
+          echo "Using AAB: $ABS_AAB_FILE"
 
       - name: Check Play Credentials
         id: play_auth
