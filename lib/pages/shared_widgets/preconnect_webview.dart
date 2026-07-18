@@ -95,12 +95,17 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
               if (content) {
                 content = content.replace(/user-scalable=no/g, 'user-scalable=yes');
                 content = content.replace(/maximum-scale=[0-9.]+/g, 'maximum-scale=10.0');
+                if (content.indexOf('minimum-scale') !== -1) {
+                  content = content.replace(/minimum-scale=[0-9.]+/g, 'minimum-scale=0.1');
+                } else {
+                  content += ', minimum-scale=0.1';
+                }
                 meta.setAttribute('content', content);
               }
             } else {
               meta = document.createElement('meta');
               meta.name = "viewport";
-              meta.content = "width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=10.0";
+              meta.content = "width=device-width, initial-scale=1.0, user-scalable=yes, minimum-scale=0.1, maximum-scale=10.0";
               document.getElementsByTagName('head')[0].appendChild(meta);
             }
           ''')
