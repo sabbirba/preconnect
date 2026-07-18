@@ -18,6 +18,24 @@ platform :ios do
       is_key_content_base64: is_base64
     )
 
+    version_name = ENV["IOS_VERSION_NAME"]
+    version_code = ENV["IOS_VERSION_CODE"]
+    if version_name && version_code
+      begin
+        latest_build = latest_testflight_build_number(
+          version: version_name,
+          app_identifier: "com.sabbirba.preconnect",
+          api_key: api_key
+        )
+        if latest_build && latest_build.to_i >= version_code.to_i
+          UI.message("Build #{version_code} for version #{version_name} already exists on TestFlight (latest is #{latest_build}). Skipping upload.")
+          next
+        end
+      rescue => e
+        UI.message("Could not fetch latest TestFlight build: #{e.message}. Proceeding with upload.")
+      end
+    end
+
     upload_to_testflight(
       ipa: options[:ipa],
       skip_waiting_for_build_processing: true,
