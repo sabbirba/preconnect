@@ -616,10 +616,7 @@ jobs:
           PKG_PATH=$(find "$RUNNER_TEMP/macos_export" -maxdepth 2 -name "*.pkg" 2>/dev/null | head -n1 || true)
           if [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ]; then
             cd macos && bundle exec fastlane notarize_app \
-              package:"$PKG_PATH" \
-              api_key_id:"$APP_STORE_CONNECT_KEY_ID" \
-              api_issuer_id:"$APP_STORE_CONNECT_ISSUER_ID" \
-              api_key_content:"$APP_STORE_CONNECT_API_KEY"
+              package:"$PKG_PATH"
             echo "NOTARIZED_PKG=$PKG_PATH" >> "$GITHUB_ENV"
           fi
 
@@ -627,10 +624,7 @@ jobs:
           if [ -n "$APP_PATH" ] && [ -d "$APP_PATH" ]; then
             ditto -c -k --keepParent "$APP_PATH" "$RUNNER_TEMP/PreConnect.app.zip"
             cd macos && bundle exec fastlane notarize_app \
-              package:"$RUNNER_TEMP/PreConnect.app.zip" \
-              api_key_id:"$APP_STORE_CONNECT_KEY_ID" \
-              api_issuer_id:"$APP_STORE_CONNECT_ISSUER_ID" \
-              api_key_content:"$APP_STORE_CONNECT_API_KEY"
+              package:"$RUNNER_TEMP/PreConnect.app.zip"
             xcrun stapler staple "$APP_PATH"
             echo "NOTARIZED_APP=$APP_PATH" >> "$GITHUB_ENV"
           fi
