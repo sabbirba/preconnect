@@ -4,7 +4,7 @@ default_platform(:ios)
 
 platform :ios do
   desc "Upload iOS build to TestFlight"
-  lane :upload_to_testflight do |options|
+  lane :upload_build_to_testflight do |options|
     key_content = options[:api_key_content] || ENV["APP_STORE_CONNECT_API_KEY"]
     key_content = key_content.gsub("\\n", "\n") if key_content
     key_id = options[:api_key_id] || ENV["APP_STORE_CONNECT_KEY_ID"]
