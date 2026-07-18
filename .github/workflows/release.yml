@@ -600,6 +600,7 @@ jobs:
 
       - name: Notarize macOS
         if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true'
+        continue-on-error: true
         env:
           APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
