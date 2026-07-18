@@ -215,6 +215,7 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
         if (content) {
           content = content.replace(/user-scalable=no/g, 'user-scalable=yes');
           content = content.replace(/maximum-scale=[0-9.]+/g, 'maximum-scale=10.0');
+          content = content.replace(/width=[a-zA-Z0-9._-]+/g, 'width=1024');
           if (content.indexOf('minimum-scale') !== -1) {
             content = content.replace(/minimum-scale=[0-9.]+/g, 'minimum-scale=0.1');
           } else {
@@ -225,7 +226,7 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
       } else {
         meta = document.createElement('meta');
         meta.name = "viewport";
-        meta.content = "width=device-width, initial-scale=1.0, user-scalable=yes, minimum-scale=0.1, maximum-scale=10.0";
+        meta.content = "width=1024, initial-scale=1.0, user-scalable=yes, minimum-scale=0.1, maximum-scale=10.0";
         document.getElementsByTagName('head')[0].appendChild(meta);
       }
     ''')
