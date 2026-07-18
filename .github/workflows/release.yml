@@ -370,12 +370,11 @@ jobs:
 
       - name: Setup iOS Keychain
         if: matrix.platform == 'ios' && steps.ios_signing.outputs.enabled == 'true'
-        env:
-          BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
-        run: |
-          cd ios && bundle exec fastlane setup_keychain \
-            p12_content:"${{ secrets.IOS_P12_BASE64 }}" \
-            p12_password:"${{ secrets.IOS_P12_PASSWORD }}"
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.IOS_P12_BASE64 }}
+          p12-password: ${{ secrets.IOS_P12_PASSWORD }}
+          keychain-password: "PreConnect"
 
       - name: Install iOS Provisioning Profile
         if: matrix.platform == 'ios' && steps.ios_signing.outputs.enabled == 'true'
@@ -448,13 +447,21 @@ jobs:
 
       - name: Setup macOS Keychain
         if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true'
-        env:
-          BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
-        run: |
-          cd macos && bundle exec fastlane setup_keychain \
-            p12_content:"${{ secrets.IOS_P12_BASE64 }}" \
-            p12_password:"${{ secrets.IOS_P12_PASSWORD }}" \
-            installer_p12_content:"${{ secrets.MACOS_INSTALLER_P12_BASE64 }}"
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.IOS_P12_BASE64 }}
+          p12-password: ${{ secrets.IOS_P12_PASSWORD }}
+          keychain-password: "PreConnect"
+
+      - name: Setup macOS Installer Certificate
+        if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true' && steps.macos_signing.outputs.installer_enabled == 'true'
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.MACOS_INSTALLER_P12_BASE64 }}
+          p12-password: ${{ secrets.MACOS_INSTALLER_P12_PASSWORD }}
+          keychain: signing_temp
+          create-keychain: false
+          keychain-password: "PreConnect"
 
       - name: Install macOS Provisioning Profile
         if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true'
