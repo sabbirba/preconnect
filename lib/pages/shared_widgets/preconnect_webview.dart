@@ -210,24 +210,49 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
     _controller
         .runJavaScript('''
       var meta = document.querySelector('meta[name="viewport"]');
-      if (meta) {
-        var content = meta.getAttribute('content');
-        if (content) {
-          content = content.replace(/user-scalable=no/g, 'user-scalable=yes');
-          content = content.replace(/maximum-scale=[0-9.]+/g, 'maximum-scale=10.0');
-          content = content.replace(/width=[a-zA-Z0-9._-]+/g, 'width=1024');
-          if (content.indexOf('minimum-scale') !== -1) {
-            content = content.replace(/minimum-scale=[0-9.]+/g, 'minimum-scale=0.1');
-          } else {
-            content += ', minimum-scale=0.1';
-          }
-          meta.setAttribute('content', content);
-        }
-      } else {
+      if (!meta) {
         meta = document.createElement('meta');
         meta.name = "viewport";
-        meta.content = "width=1024, initial-scale=1.0, user-scalable=yes, minimum-scale=0.1, maximum-scale=10.0";
         document.getElementsByTagName('head')[0].appendChild(meta);
+      }
+      meta.content = "width=device-width, initial-scale=1.0, user-scalable=no";
+
+      if (!window.zoomHandlerInitialized) {
+        window.zoomHandlerInitialized = true;
+        var initialDistance = 0;
+        var currentScale = 1.0;
+        var baseScale = 1.0;
+        
+        document.body.style.transformOrigin = 'top center';
+        
+        document.addEventListener('touchstart', function(e) {
+          if (e.touches.length === 2) {
+            initialDistance = Math.hypot(
+              e.touches[0].clientX - e.touches[1].clientX,
+              e.touches[0].clientY - e.touches[1].clientY
+            );
+            baseScale = currentScale;
+          }
+        }, { passive: true });
+        
+        document.addEventListener('touchmove', function(e) {
+          if (e.touches.length === 2 && initialDistance > 0) {
+            var dist = Math.hypot(
+              e.touches[0].clientX - e.touches[1].clientX,
+              e.touches[0].clientY - e.touches[1].clientY
+            );
+            var factor = dist / initialDistance;
+            currentScale = Math.min(Math.max(baseScale * factor, 0.1), 5.0);
+            document.body.style.transform = 'scale(' + currentScale + ')';
+            e.preventDefault();
+          }
+        }, { passive: false });
+        
+        document.addEventListener('touchend', function(e) {
+          if (e.touches.length < 2) {
+            initialDistance = 0;
+          }
+        }, { passive: true });
       }
     ''')
         .catchError((_) {});
