@@ -544,12 +544,6 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     },
                                   ),
                                 ],
-                                if (cardVisibility.showFundingSection && Theme.of(context).platform != TargetPlatform.iOS && Theme.of(context).platform != TargetPlatform.macOS) ...[
-                                  const Gap(12),
-                                  const BracuFundingPromoDivider(
-                                    showSupporters: false,
-                                  ),
-                                ],
                                 const Gap(12),
                                 if (data == null)
                                   const Padding(
