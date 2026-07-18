@@ -947,7 +947,8 @@ jobs:
           BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
         run: |
           cd android && bundle exec fastlane upload_to_play_store \
-            aab:"${{ steps.aab.outputs.file }}"
+            aab:"${{ steps.aab.outputs.file }}" \
+            version_code:"${{ needs.prepare-version.outputs.version_code }}"
 
       - name: Promote to Beta
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'

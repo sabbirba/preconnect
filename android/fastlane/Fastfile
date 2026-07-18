@@ -6,8 +6,10 @@ platform :android do
   desc "Submit a new Beta Build to Google Play Track"
   lane :upload_to_play_store do |options|
     aab_path = options[:aab]
+    version_code = options[:version_code]
     supply(
       aab: aab_path,
+      version_code: version_code,
       track: "internal",
       release_status: "completed",
       skip_upload_metadata: true,
