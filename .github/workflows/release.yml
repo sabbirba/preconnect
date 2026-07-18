@@ -220,12 +220,12 @@ jobs:
             name: Android AAB
             artifact_name: android_aab-artifacts
             timeout: 50
-          - os: macos-14
+          - os: macos-15
             platform: ios
             name: iOS
             artifact_name: ios-artifacts
             timeout: 90
-          - os: macos-14
+          - os: macos-15
             platform: macos
             name: macOS
             artifact_name: macos-artifacts
