@@ -11,6 +11,7 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   FASTLANE_VERBOSE: "true"
+  FASTLANE_OPT_OUT_USAGE: "1"
 
 concurrency:
   group: store-promotion-${{ github.ref }}
