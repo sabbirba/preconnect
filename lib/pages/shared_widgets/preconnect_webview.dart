@@ -142,11 +142,6 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
     }
   }
 
-  Future<void> _handlePullToRefresh() async {
-    if (!mounted) return;
-    await _controller.reload();
-  }
-
   @override
   Widget build(BuildContext context) {
     final iconColor = Theme.of(context).brightness == Brightness.dark
@@ -217,17 +212,7 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
           }
         }
       },
-      child: widget.enablePullToRefresh
-          ? LayoutBuilder(
-              builder: (context, constraints) => BracuRefreshList(
-                onRefresh: _handlePullToRefresh,
-                padding: EdgeInsets.zero,
-                children: [
-                  SizedBox(height: constraints.maxHeight, child: popScopeChild),
-                ],
-              ),
-            )
-          : popScopeChild,
+      child: popScopeChild,
     );
 
     return Scaffold(
