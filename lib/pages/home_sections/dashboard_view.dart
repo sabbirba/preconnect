@@ -192,7 +192,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   onLogout: widget.onLogout,
                                   isLoading: isOverviewLoading,
                                   showSupportButton:
-                                      cardVisibility.showFundingSection,
+                                      cardVisibility.showFundingSection && Theme.of(context).platform != TargetPlatform.iOS && Theme.of(context).platform != TargetPlatform.macOS,
                                   countdown:
                                       !cardVisibility.showExamCountdownCard ||
                                           nextCountdown == null
@@ -544,7 +544,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     },
                                   ),
                                 ],
-                                if (cardVisibility.showFundingSection) ...[
+                                if (cardVisibility.showFundingSection && Theme.of(context).platform != TargetPlatform.iOS && Theme.of(context).platform != TargetPlatform.macOS) ...[
                                   const Gap(12),
                                   const BracuFundingPromoDivider(
                                     showSupporters: false,
