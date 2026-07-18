@@ -128,14 +128,24 @@ jobs:
           path: build/chrome-extension.zip
           if-no-files-found: error
 
-      - name: Auth Google (Chrome Web Store)
+      - name: Setup GCloud CLI
+        if: matrix.run_chrome
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Auth Chrome Service Account
         if: matrix.run_chrome
         id: auth
-        uses: google-github-actions/auth@v3
-        with:
-          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-          token_format: "access_token"
-          access_token_scopes: "https://www.googleapis.com/auth/chromewebstore"
+        shell: bash
+        env:
+          SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          KEY_FILE="$RUNNER_TEMP/chrome-web-store-service-account.json"
+          printf '%s' "$SERVICE_ACCOUNT_JSON" > "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
+          gcloud auth activate-service-account --key-file="$KEY_FILE"
+          ACCESS_TOKEN="$(gcloud auth print-access-token --scopes=https://www.googleapis.com/auth/chromewebstore)"
+          echo "::add-mask::$ACCESS_TOKEN"
+          echo "access_token=$ACCESS_TOKEN" >> "$GITHUB_OUTPUT"
 
       - name: Publish Chrome
         if: matrix.run_chrome
