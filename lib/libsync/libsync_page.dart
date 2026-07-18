@@ -397,6 +397,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                 BracuRefreshButton(
                   onPressed: () => _loadReservationData(force: true),
                   isLoading: _loadingData,
+                  color: IconTheme.of(context).color,
                 ),
                 IconButton(
                   icon: const Icon(Icons.logout),
