@@ -566,9 +566,18 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     try {
       final List<XFile> picked = await openFiles(
         acceptedTypeGroups: const <XTypeGroup>[
-          XTypeGroup(label: 'PDF', extensions: <String>['pdf']),
-          XTypeGroup(label: 'JPEG', extensions: <String>['jpg', 'jpeg']),
-          XTypeGroup(label: 'PNG', extensions: <String>['png']),
+          XTypeGroup(
+            label: 'PDF',
+            extensions: <String>['pdf'],
+            mimeTypes: <String>['application/pdf'],
+            uniformTypeIdentifiers: <String>['com.adobe.pdf'],
+          ),
+          XTypeGroup(
+            label: 'Images',
+            extensions: <String>['jpg', 'jpeg', 'png'],
+            mimeTypes: <String>['image/jpeg', 'image/png'],
+            uniformTypeIdentifiers: <String>['public.jpeg', 'public.png'],
+          ),
         ],
       );
       if (!mounted || picked.isEmpty) return;
