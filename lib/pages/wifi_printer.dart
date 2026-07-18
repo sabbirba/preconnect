@@ -416,17 +416,38 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _discovering = true;
     });
     try {
-      final wifiStatus = await AndroidNetworkAssist.getNetworkStatus();
-      if (wifiStatus == null ||
-          wifiStatus.transport.trim().toLowerCase() != 'wifi' ||
-          !wifiStatus.connected) {
+      bool isConnected = false;
+      String wifiName = 'Wi-Fi Network';
+
+      if (AndroidNetworkAssist.isSupported) {
+        final wifiStatus = await AndroidNetworkAssist.getNetworkStatus();
+        if (wifiStatus != null &&
+            wifiStatus.transport.trim().toLowerCase() == 'wifi' &&
+            wifiStatus.connected) {
+          isConnected = true;
+          wifiName = (wifiStatus.ssid ?? 'Wi-Fi Network').trim();
+        }
+      } else {
+        final subnets = await _currentNetworkFingerprint();
+        if (subnets.isNotEmpty) {
+          isConnected = true;
+        }
+      }
+
+      if (!isConnected) {
         if (!mounted) return;
         setState(() {
           _printerHost = '';
         });
         return;
       }
-      _setWifiNameFromStatus(wifiStatus);
+
+      if (mounted) {
+        setState(() {
+          _wifiName = wifiName;
+        });
+      }
+
       final networkKey = await _currentNetworkFingerprint();
       _lastNetworkFingerprint = networkKey;
       final printers = await _WifiPrinterDiscovery.findLprPrinters(
@@ -460,9 +481,18 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   }
 
   Future<void> _refreshWifiName() async {
-    final status = await AndroidNetworkAssist.getNetworkStatus();
-    if (!mounted || status == null) return;
-    _setWifiNameFromStatus(status);
+    if (AndroidNetworkAssist.isSupported) {
+      final status = await AndroidNetworkAssist.getNetworkStatus();
+      if (!mounted || status == null) return;
+      _setWifiNameFromStatus(status);
+    } else {
+      final subnets = await _currentNetworkFingerprint();
+      if (mounted && subnets.isNotEmpty && _wifiName.isEmpty) {
+        setState(() {
+          _wifiName = 'Wi-Fi Network';
+        });
+      }
+    }
   }
 
   void _setWifiNameFromStatus(AndroidNetworkStatus status) {
