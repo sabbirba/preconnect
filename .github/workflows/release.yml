@@ -266,7 +266,7 @@ jobs:
           echo "GITHUB_TOKEN=${{ secrets.GH_TOKEN }}" > .env
           echo "DEVELOPMENT_TEAM=${{ secrets.DEVELOPMENT_TEAM }}" >> .env
 
-      - name: Build Chrome Extension
+      - name: Build Browser Extension
         if: matrix.platform == 'chrome_extension'
         shell: bash
         run: ./tool/build_extension.sh
@@ -604,6 +604,7 @@ jobs:
           APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
         shell: bash
         run: |
           set -euo pipefail
@@ -612,9 +613,9 @@ jobs:
             exit 0
           fi
           
-           PKG_PATH=$(find "$RUNNER_TEMP/macos_export" -maxdepth 2 -name "*.pkg" 2>/dev/null | head -n1 || true)
+          PKG_PATH=$(find "$RUNNER_TEMP/macos_export" -maxdepth 2 -name "*.pkg" 2>/dev/null | head -n1 || true)
           if [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ]; then
-            bundle exec fastlane macos notarize_app \
+            cd macos && bundle exec fastlane notarize_app \
               package:"$PKG_PATH" \
               api_key_id:"$APP_STORE_CONNECT_KEY_ID" \
               api_issuer_id:"$APP_STORE_CONNECT_ISSUER_ID" \
@@ -625,7 +626,7 @@ jobs:
           APP_PATH=$(find "$RUNNER_TEMP/macos_export" -maxdepth 3 -type d -name "*.app" 2>/dev/null | head -n1 || true)
           if [ -n "$APP_PATH" ] && [ -d "$APP_PATH" ]; then
             ditto -c -k --keepParent "$APP_PATH" "$RUNNER_TEMP/PreConnect.app.zip"
-            bundle exec fastlane macos notarize_app \
+            cd macos && bundle exec fastlane notarize_app \
               package:"$RUNNER_TEMP/PreConnect.app.zip" \
               api_key_id:"$APP_STORE_CONNECT_KEY_ID" \
               api_issuer_id:"$APP_STORE_CONNECT_ISSUER_ID" \
