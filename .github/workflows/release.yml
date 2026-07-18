@@ -353,6 +353,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pods-${{ matrix.platform }}-
 
+      - name: Cache Xcode DerivedData
+        if: matrix.platform == 'ios' || matrix.platform == 'macos'
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-xcode-deriveddata-${{ matrix.platform }}-${{ hashFiles('ios/Podfile.lock', 'macos/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-xcode-deriveddata-${{ matrix.platform }}-
+
       - name: Pod Install
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
         shell: bash
