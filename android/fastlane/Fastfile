@@ -4,9 +4,9 @@ default_platform(:android)
 
 platform :android do
   desc "Submit a new Beta Build to Google Play Track"
-  lane :upload_to_play_store do |options|
-    aab_path = options[:aab]
-    version_code = options[:version_code]
+  lane :upload_to_play_store do
+    aab_path = ENV["AAB_PATH"]
+    version_code = ENV["VERSION_CODE"]
     supply(
       aab: aab_path,
       version_code: version_code,
