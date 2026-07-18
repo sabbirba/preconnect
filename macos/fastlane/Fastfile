@@ -39,4 +39,45 @@ platform :macos do
       api_key: api_key
     )
   end
+
+  desc "Create a temporary keychain and import certificates"
+  lane :setup_keychain do |options|
+    keychain_name = "fastlane_tmp_keychain"
+    keychain_password = "PreConnect"
+
+    create_keychain(
+      name: keychain_name,
+      password: keychain_password,
+      default_keychain: true,
+      unlock: true,
+      timeout: 3600,
+      lock_when_sleeps: false
+    )
+
+    import_cert = lambda do |content, name_suffix|
+      next if content.nil? || content.empty?
+      
+      is_base64 = !content.include?("PRIVATE KEY") && content.match?(/^[a-zA-Z0-9+\/=\s]+$/)
+      p12_path = File.expand_path("~/temp_certificate_#{name_suffix}.p12")
+      
+      if is_base64
+        require "base64"
+        File.write(p12_path, Base64.decode64(content))
+      else
+        File.write(p12_path, content)
+      end
+
+      import_certificate(
+        keychain_name: keychain_name,
+        keychain_password: keychain_password,
+        certificate_path: p12_path,
+        certificate_password: options[:p12_password]
+      )
+
+      File.delete(p12_path) if File.exist?(p12_path)
+    end
+
+    import_cert.call(options[:p12_content], "app")
+    import_cert.call(options[:installer_p12_content], "installer")
+  end
 end
