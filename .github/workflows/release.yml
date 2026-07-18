@@ -386,21 +386,21 @@ jobs:
             printf 'keyPassword=%s\n' "$ANDROID_KEY_PASSWORD"
           } > android/key.properties
 
-      - name: Build Android APK
+      - name: Build Apk
         if: matrix.platform == 'android' && (matrix.build_type == 'apk' || matrix.build_type == 'both')
         shell: bash
         run: |
           flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
 
-      - name: Build Android AAB
+      - name: Build Abb
         if: matrix.platform == 'android' && (matrix.build_type == 'aab' || matrix.build_type == 'both')
         shell: bash
         run: |
           set -euo pipefail
           if ! flutter build appbundle --release --target-platform android-arm,android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}; then
-            echo "Flutter appbundle failed; retrying with Gradle." >&2
-            cd android
-            ./gradlew bundleRelease --no-daemon --stacktrace --info
+             echo "Flutter appbundle failed; retrying with Gradle." >&2
+             cd android
+             ./gradlew bundleRelease --no-daemon --stacktrace --info
           fi
 
       - name: Detect iOS Signing
@@ -648,7 +648,7 @@ jobs:
             fi
           fi
 
-      - name: Package Android APK
+      - name: Package Apk
         if: matrix.platform == 'android' && (matrix.build_type == 'apk' || matrix.build_type == 'both')
         shell: bash
         run: |
@@ -658,16 +658,16 @@ jobs:
           apk_paths=(build/app/outputs/flutter-apk/app-*-release.apk)
           shopt -u nullglob
           if [ "${#apk_paths[@]}" -eq 0 ]; then
-            echo "No ABI split APKs found." >&2
-            exit 1
+             echo "No ABI split APKs found." >&2
+             exit 1
           fi
           for apk_path in "${apk_paths[@]}"; do
-            abi="$(basename "$apk_path" | sed -E 's/^app-(.*)-release\.apk$/\1/')"
-            cp "$apk_path" \
-              "artifacts/PreConnect-android-${abi}-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.apk"
+             abi="$(basename "$apk_path" | sed -E 's/^app-(.*)-release\.apk$/\1/')"
+             cp "$apk_path" \
+               "artifacts/PreConnect-android-${abi}-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.apk"
           done
 
-      - name: Package Android AAB
+      - name: Package Abb
         if: matrix.platform == 'android' && (matrix.build_type == 'aab' || matrix.build_type == 'both')
         shell: bash
         run: |
