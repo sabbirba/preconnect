@@ -46,7 +46,8 @@ platform :mac do
     notarize(
       package: options[:package],
       bundle_id: "com.sabbirba.preconnect",
-      api_key: api_key
+      api_key: api_key,
+      print_log: true
     )
   end
 end
