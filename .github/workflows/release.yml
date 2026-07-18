@@ -501,7 +501,11 @@ jobs:
 
           if [ "${{ steps.macos_signing.outputs.enabled }}" = "true" ]; then
             if security find-certificate -c "Developer ID Application" >/dev/null 2>&1; then
-              echo "Building for Developer ID Distribution..."
+              STRIPPED_ENTITLEMENTS="$RUNNER_TEMP/Release_DeveloperID.entitlements"
+              cp macos/Runner/Release.entitlements "$STRIPPED_ENTITLEMENTS"
+              /usr/libexec/PlistBuddy -c "Delete :com.apple.developer.associated-domains" "$STRIPPED_ENTITLEMENTS" || true
+              /usr/libexec/PlistBuddy -c "Delete :aps-environment" "$STRIPPED_ENTITLEMENTS" || true
+
               xcodebuild archive \
                 -workspace macos/Runner.xcworkspace \
                 -scheme Runner \
@@ -511,7 +515,8 @@ jobs:
                 CODE_SIGN_IDENTITY="Developer ID Application" \
                 DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
                 PROVISIONING_PROFILE_SPECIFIER="" \
-                PROVISIONING_PROFILE=""
+                PROVISIONING_PROFILE="" \
+                CODE_SIGN_ENTITLEMENTS="$STRIPPED_ENTITLEMENTS"
 
                printf '%s\n' \
                 '<?xml version="1.0" encoding="UTF-8"?>' \
