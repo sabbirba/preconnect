@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dart_pdf_reader/dart_pdf_reader.dart' deferred as pdf_reader;
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
@@ -252,7 +253,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   bool _discovering = false;
   bool _loadingPreset = false;
   bool _syncingCopiesController = false;
-  StreamSubscription<AndroidNetworkStatus>? _networkStatusSubscription;
+  StreamSubscription? _networkStatusSubscription;
   String _lastNetworkFingerprint = '';
   final TextEditingController _copiesController = TextEditingController(
     text: '1',
@@ -268,6 +269,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen(
         (status) => unawaited(_handleNetworkStatusChanged(status)),
       );
+    } else {
+      _networkStatusSubscription = Connectivity().onConnectivityChanged.listen((results) {
+        unawaited(_discoverPrinter().catchError((e) {}));
+      });
     }
     _bootstrap();
   }
