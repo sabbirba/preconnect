@@ -654,6 +654,8 @@ jobs:
                 -exportPath "$RUNNER_TEMP/macos_store_export" \
                 -exportOptionsPlist "$RUNNER_TEMP/ExportOptionsMacOS_Store.plist"
               echo "STORE_BUILD=true" >> "$GITHUB_ENV"
+            else
+              echo "WARNING: 'Apple Distribution' certificate not found in keychain. Skipping App Store build." >&2
             fi
           else
             xcodebuild archive \
