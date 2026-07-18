@@ -212,6 +212,13 @@ jobs:
           if [ -f "$IPA" ]; then
             echo "ios_ready=true" >> "$GITHUB_OUTPUT"
             echo "ios_path=$IPA" >> "$GITHUB_OUTPUT"
+            FILENAME=$(basename "$IPA")
+            VERSION_STR=${FILENAME#PreConnect-ios-release-}
+            VERSION_STR=${VERSION_STR%.ipa}
+            VERSION_NAME=${VERSION_STR%+*}
+            VERSION_CODE=${VERSION_STR#*+}
+            echo "ios_version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+            echo "ios_version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           else
             echo "ios_ready=false" >> "$GITHUB_OUTPUT"
           fi
@@ -226,6 +233,8 @@ jobs:
         if: matrix.run_apple && steps.resolve_apple.outputs.ios_ready == 'true' && env.APP_STORE_CONNECT_API_KEY != ''
         env:
           BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
+          IOS_VERSION_NAME: ${{ steps.resolve_apple.outputs.ios_version_name }}
+          IOS_VERSION_CODE: ${{ steps.resolve_apple.outputs.ios_version_code }}
         shell: bash
         run: |
           cd ios && bundle exec fastlane upload_build_to_testflight \
