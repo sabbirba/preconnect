@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
 import 'package:archive/archive.dart';
-import 'package:barcode_widget/barcode_widget.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/pages/shared_widgets/qr_card.dart';
 
 class ExportSessionBottomSheet extends StatefulWidget {
   const ExportSessionBottomSheet({super.key});
@@ -212,32 +212,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Center(
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: 280,
-                  height: 280,
-                  child: Container(
-                    decoration: const BoxDecoration(color: Colors.white),
-                    padding: const EdgeInsets.all(12),
-                    child: Opacity(
-                      opacity: 1.0,
-                      child: BarcodeWidget(
-                        barcode: Barcode.qrCode(),
-                        data: _base64Payload!,
-                        color: Colors.black,
-                        backgroundColor: Colors.white,
-                        errorBuilder: (context, error) =>
-                            const Center(child: Text('QR generation failed')),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          BracuQrCard(data: _base64Payload!),
           const Gap(20),
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -579,46 +579,55 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
   }
 
   void _showDocumentDetails(DSpaceItem item) {
+    String displayDate = '';
+    if (item.date.trim().isNotEmpty) {
+      final trimmed = item.date.trim();
+      DateTime? parsed;
+      if (trimmed.contains('/')) {
+        final parts = trimmed.split('/');
+        if (parts.length == 3) {
+          final m = parts[0].padLeft(2, '0');
+          final d = parts[1].padLeft(2, '0');
+          final y = parts[2];
+          parsed = DateTime.tryParse('$y-$m-$d');
+          if (parsed != null) {
+            displayDate = DateFormat('d MMMM yyyy').format(parsed);
+          }
+        }
+      } else if (trimmed.length == 4) {
+        parsed = DateTime.tryParse('$trimmed-01-01');
+        if (parsed != null) {
+          displayDate = DateFormat('yyyy').format(parsed);
+        }
+      } else if (trimmed.length == 7) {
+        parsed = DateTime.tryParse('$trimmed-01');
+        if (parsed != null) {
+          displayDate = DateFormat('MMMM yyyy').format(parsed);
+        }
+      } else {
+        parsed = DateTime.tryParse(trimmed);
+        if (parsed != null) {
+          displayDate = DateFormat('d MMMM yyyy').format(parsed);
+        }
+      }
+      if (displayDate.isEmpty) displayDate = trimmed;
+    }
+
+    final author = item.author.isNotEmpty
+        ? item.author.trim()
+        : 'No author listed';
+    final catLabel = _selectedCategory?.category ?? 'Document';
+    final metaText = displayDate.isNotEmpty
+        ? '$catLabel  •  $displayDate'
+        : catLabel;
+    final combinedSubtitle = '$author  •  $metaText';
+
     showBracuBottomSheet<void>(
       context,
       title: item.name,
-      subtitle: item.author.isNotEmpty ? item.author : 'No author listed',
+      subtitle: combinedSubtitle,
       builder: (sheetContext, textPrimary, textSecondary) {
         final dragController = bracuBottomSheetScrollController(sheetContext);
-
-        String displayDate = '';
-        if (item.date.trim().isNotEmpty) {
-          final trimmed = item.date.trim();
-          DateTime? parsed;
-          if (trimmed.contains('/')) {
-            final parts = trimmed.split('/');
-            if (parts.length == 3) {
-              final m = parts[0].padLeft(2, '0');
-              final d = parts[1].padLeft(2, '0');
-              final y = parts[2];
-              parsed = DateTime.tryParse('$y-$m-$d');
-              if (parsed != null) {
-                displayDate = DateFormat('d MMMM yyyy').format(parsed);
-              }
-            }
-          } else if (trimmed.length == 4) {
-            parsed = DateTime.tryParse('$trimmed-01-01');
-            if (parsed != null) {
-              displayDate = DateFormat('yyyy').format(parsed);
-            }
-          } else if (trimmed.length == 7) {
-            parsed = DateTime.tryParse('$trimmed-01');
-            if (parsed != null) {
-              displayDate = DateFormat('MMMM yyyy').format(parsed);
-            }
-          } else {
-            parsed = DateTime.tryParse(trimmed);
-            if (parsed != null) {
-              displayDate = DateFormat('d MMMM yyyy').format(parsed);
-            }
-          }
-          if (displayDate.isEmpty) displayDate = trimmed;
-        }
 
         String displayLastModified = '';
         if (item.lastModified.isNotEmpty) {
@@ -629,11 +638,6 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
             ).format(parsed.toLocal());
           }
         }
-
-        final catLabel = _selectedCategory?.category ?? 'Document';
-        final metaText = displayDate.isNotEmpty
-            ? '$catLabel  •  $displayDate'
-            : catLabel;
 
         Widget metaRow(String label, String value) {
           return Padding(
@@ -667,15 +671,6 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
         return ListView(
           controller: dragController,
           children: [
-            Text(
-              metaText,
-              style: TextStyle(
-                color: textSecondary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const Gap(14),
             if (item.department.isNotEmpty)
               metaRow('Department', item.department),
             if (item.supervisor.isNotEmpty) metaRow('Advisor', item.supervisor),

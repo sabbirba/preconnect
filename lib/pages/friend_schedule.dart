@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
+import 'package:share_plus/share_plus.dart';
+import 'package:preconnect/tools/app_paths.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/auth.dart';
@@ -199,6 +202,39 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
     }
   }
 
+  Future<void> _exportAllFriendSchedules() async {
+    try {
+      final snapshot = await _store.loadSnapshot();
+      if (snapshot.encodedSchedules.isEmpty) {
+        if (!mounted) return;
+        showAppSnackBar(context, 'No friend schedules to export');
+        return;
+      }
+      final exportJson = {
+        "type": "friend_schedules_export",
+        "version": 1,
+        "schedules": snapshot.encodedSchedules,
+      };
+      final jsonStr = jsonEncode(exportJson);
+      final utf8Bytes = utf8.encode(jsonStr);
+      final gzipBytes = GZipEncoder().encode(utf8Bytes);
+      final base64Str = base64.encode(gzipBytes);
+      final tempDir = await AppPaths.temporaryDirectory();
+      final file = File('${tempDir.path}/friends_export.txt');
+      await file.writeAsString(base64Str, flush: true);
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: 'PreConnect Friends Schedule Export Code',
+          subject: 'Friends Export Code',
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      showAppSnackBar(context, 'Failed to export friends');
+    }
+  }
+
   Future<bool> _deleteFriendSchedule(FriendScheduleItem item) async {
     final displayName = item.friend.name.trim().isEmpty
         ? 'this friend'
@@ -207,7 +243,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       context,
       icon: Icons.delete_outline_rounded,
       title: 'Remove Friend Schedule?',
-      message: 'This will remove $displayName\'s shared schedule.',
+      message: 'This will remove $displayName\'s schedule.',
       confirmLabel: 'Remove',
       confirmColor: BracuPalette.danger,
       onConfirm: () async {
@@ -399,8 +435,15 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
     final scheduleWord = totalFriends == 1 ? 'Schedule' : 'Schedules';
     return BracuPageScaffold(
       title: 'Friend Schedule',
-      subtitle: 'Shared Schedules',
+      subtitle: 'Schedules',
       icon: Icons.people_outline,
+      actions: [
+        IconButton(
+          onPressed: _exportAllFriendSchedules,
+          icon: const Icon(Icons.ios_share_rounded),
+          tooltip: 'Export Friend Codes',
+        ),
+      ],
       body: BracuRefreshList(
         onRefresh: _handleRefresh,
         children: [

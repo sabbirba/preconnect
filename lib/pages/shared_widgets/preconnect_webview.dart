@@ -59,11 +59,6 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
     if (widget.preloadedController != null) {
       _controller = widget.preloadedController!;
       _loading = false;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _injectViewportOverride();
-        }
-      });
     } else {
       _controller = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -78,25 +73,26 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
       } catch (_) {}
     }
 
-    _controller.setNavigationDelegate(
-      NavigationDelegate(
-        onNavigationRequest: (request) {
-          if (widget.onNavigationRequest != null) {
-            return widget.onNavigationRequest!(request);
-          }
-          return NavigationDecision.navigate;
-        },
-        onPageStarted: (url) {
-          if (mounted) setState(() => _loading = true);
-          if (widget.onPageStarted != null) widget.onPageStarted!(url);
-        },
-        onPageFinished: (url) {
-          if (mounted) setState(() => _loading = false);
-          _injectViewportOverride();
-          if (widget.onPageFinished != null) widget.onPageFinished!(url);
-        },
-      ),
-    );
+    if (widget.preloadedController == null) {
+      _controller.setNavigationDelegate(
+        NavigationDelegate(
+          onNavigationRequest: (request) {
+            if (widget.onNavigationRequest != null) {
+              return widget.onNavigationRequest!(request);
+            }
+            return NavigationDecision.navigate;
+          },
+          onPageStarted: (url) {
+            if (mounted) setState(() => _loading = true);
+            if (widget.onPageStarted != null) widget.onPageStarted!(url);
+          },
+          onPageFinished: (url) {
+            if (mounted) setState(() => _loading = false);
+            if (widget.onPageFinished != null) widget.onPageFinished!(url);
+          },
+        ),
+      );
+    }
 
     if (widget.preloadedController == null) {
       if (widget.delayLoadUntilTransition) {
@@ -208,57 +204,5 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
       resizeToAvoidBottomInset: false,
       body: SafeArea(child: innerContent),
     );
-  }
-
-  void _injectViewportOverride() {
-    _controller
-        .runJavaScript('''
-      var meta = document.querySelector('meta[name="viewport"]');
-      if (!meta) {
-        meta = document.createElement('meta');
-        meta.name = "viewport";
-        document.getElementsByTagName('head')[0].appendChild(meta);
-      }
-      meta.content = "width=device-width, initial-scale=1.0, user-scalable=no";
-
-      if (!window.zoomHandlerInitialized) {
-        window.zoomHandlerInitialized = true;
-        var initialDistance = 0;
-        var currentScale = 1.0;
-        var baseScale = 1.0;
-        
-        document.body.style.transformOrigin = 'top center';
-        
-        document.addEventListener('touchstart', function(e) {
-          if (e.touches.length === 2) {
-            initialDistance = Math.hypot(
-              e.touches[0].clientX - e.touches[1].clientX,
-              e.touches[0].clientY - e.touches[1].clientY
-            );
-            baseScale = currentScale;
-          }
-        }, { passive: true });
-        
-        document.addEventListener('touchmove', function(e) {
-          if (e.touches.length === 2 && initialDistance > 0) {
-            var dist = Math.hypot(
-              e.touches[0].clientX - e.touches[1].clientX,
-              e.touches[0].clientY - e.touches[1].clientY
-            );
-            var factor = dist / initialDistance;
-            currentScale = Math.min(Math.max(baseScale * factor, 0.1), 5.0);
-            document.body.style.transform = 'scale(' + currentScale + ')';
-            e.preventDefault();
-          }
-        }, { passive: false });
-        
-        document.addEventListener('touchend', function(e) {
-          if (e.touches.length < 2) {
-            initialDistance = 0;
-          }
-        }, { passive: true });
-      }
-    ''')
-        .catchError((_) {});
   }
 }

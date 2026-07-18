@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
-import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter/rendering.dart';
@@ -12,6 +12,7 @@ import 'package:preconnect/api/schedule.dart';
 import 'package:archive/archive.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/shared_widgets/session_helper.dart';
+import 'package:preconnect/pages/shared_widgets/qr_card.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/storage_keys.dart';
@@ -33,6 +34,17 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
   String? errorMessage;
   final GlobalKey _qrKey = GlobalKey();
   bool _isRefreshing = false;
+  bool _copied = false;
+
+  Future<void> _copyToClipboard() async {
+    if (_base64Data == null) return;
+    await Clipboard.setData(ClipboardData(text: _base64Data!));
+    if (!mounted) return;
+    setState(() {
+      _copied = true;
+    });
+    showAppSnackBar(context, 'Schedule code copied.');
+  }
 
   void _safeSetState(VoidCallback fn) {
     if (!mounted) return;
@@ -188,27 +200,13 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
         semesterSessionId: semesterSessionId,
       );
 
-      final courses = sections.map((section) {
-        final schedules = section.sectionSchedule.classSchedules.map((c) {
-          return {"day": c.day, "startTime": c.startTime, "endTime": c.endTime};
-        }).toList();
-
-        return {
-          "courseCode": section.courseCode,
-          "sectionName": section.sectionName,
-          "roomNumber": section.roomNumber,
-          "roomName": section.roomName,
-          "faculties": section.faculties,
-          "schedule": schedules,
-        };
-      }).toList();
+      final courses = sections.map((section) => section.toJson()).toList();
 
       final finalJson = {
         "name": fullName,
         "id": studentId,
         "photoFilePath": photoFilePath,
         "courses": courses,
-        "shortCode": shortCode,
         "semester": currentSemester,
       };
 
@@ -324,92 +322,32 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: RepaintBoundary(
-              key: _qrKey,
-              child: Container(
-                decoration: const BoxDecoration(color: Colors.white),
-                padding: const EdgeInsets.all(16),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final size = constraints.maxWidth - 32;
-                    return Center(
-                      child: SizedBox(
-                        width: size,
-                        height: size,
-                        child: BarcodeWidget(
-                          barcode: Barcode.qrCode(),
-                          data: _base64Data!,
-                          color: const Color(0xFF000000),
-                          backgroundColor: const Color(0xFFFFFFFF),
-                          errorBuilder: (context, error) => Center(
-                            child: Text(
-                              'Unable to generate QR',
-                              style: TextStyle(
-                                color: BracuPalette.textSecondary(context),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
+          child: RepaintBoundary(
+            key: _qrKey,
+            child: BracuQrCard(data: _base64Data!),
           ),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(18, 4, 18, 20),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: InkWell(
-                  onTap: _shareQrCode,
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: BracuPalette.primary.withValues(alpha: 0.18),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.qr_code_scanner,
-                            size: 16,
-                            color: BracuPalette.primary,
-                          ),
-                        ),
-                        const Gap(10),
-                        const Expanded(
-                          child: Text(
-                            'Share via QR',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: BracuPalette.primary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              BracuActionButton(
+                onPressed: _copyToClipboard,
+                label: _copied ? 'Copied' : 'Copy Code',
+                icon: _copied ? Icons.check_circle_rounded : Icons.copy_rounded,
+                outlined: false,
+                backgroundColor: _copied
+                    ? BracuPalette.accent
+                    : BracuPalette.primary,
+                foregroundColor: Colors.white,
+              ),
+              const Gap(12),
+              BracuActionButton(
+                onPressed: _shareQrCode,
+                label: 'Share via QR',
+                icon: Icons.qr_code_scanner,
+                outlined: true,
               ),
             ],
           ),

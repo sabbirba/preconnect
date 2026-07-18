@@ -21,7 +21,6 @@ import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/libsync/libsync_page.dart';
 import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/permission_helper.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key, this.isLoggedIn = false});
@@ -101,9 +100,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
       _webExtensionLoginFlow = WebExtensionLoginFlow();
       _webLoginSub = _webExtensionLoginFlow!.events.listen(_handleWebLogin);
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await BracuPermissionHelper.checkAndRequestOnStartup(context);
-    });
   }
 
   Future<void> _loadVersion() async {

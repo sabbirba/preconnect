@@ -1,14 +1,12 @@
-import 'dart:convert';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/tools/time_utils.dart';
+import 'package:preconnect/model/section_info.dart';
 
 class FriendSchedule {
   final String name;
   final String id;
   final String? photoFilePath;
   final String? photoUrl;
-  final List<Course> courses;
-  final String? shortCode;
+  final List<Section> courses;
   final String? semester;
 
   const FriendSchedule({
@@ -17,7 +15,6 @@ class FriendSchedule {
     required this.photoFilePath,
     required this.photoUrl,
     required this.courses,
-    this.shortCode,
     this.semester,
   });
 
@@ -31,8 +28,8 @@ class FriendSchedule {
   factory FriendSchedule.fromJson(Map<String, dynamic> json) {
     final list = json['courses'] as List?;
     final coursesList = list != null
-        ? list.map((e) => Course.fromJson(e as Map<String, dynamic>)).toList()
-        : <Course>[];
+        ? list.map((e) => Section.fromJson(e as Map<String, dynamic>)).toList()
+        : <Section>[];
     final photoFilePath = json['photoFilePath'] as String?;
     final photoUrl =
         json['photoUrl'] as String? ?? ApiConfig.photoUrl(photoFilePath);
@@ -43,7 +40,6 @@ class FriendSchedule {
       photoFilePath: photoFilePath,
       photoUrl: photoUrl,
       courses: coursesList,
-      shortCode: json['shortCode'] as String?,
       semester: json['semester'] as String?,
     );
   }
@@ -55,138 +51,27 @@ class FriendSchedule {
       'photoFilePath': photoFilePath,
       'photoUrl': photoUrl,
       'courses': courses.map((e) => e.toJson()).toList(),
-      'shortCode': shortCode,
       'semester': semester,
     };
   }
 }
 
-class Course {
-  final String courseCode;
-  final String? sectionName;
-  final String? roomNumber;
-  final String? faculties;
-  final List<CourseSchedule> schedule;
+typedef Course = Section;
 
-  const Course({
-    required this.courseCode,
-    required this.schedule,
-    required this.sectionName,
-    required this.roomNumber,
-    required this.faculties,
-  });
+extension SectionFriendExtension on Section {
+  List<ClassSchedule> get schedule => sectionSchedule.classSchedules;
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Course &&
-          courseCode == other.courseCode &&
-          sectionName == other.sectionName;
+  String? get midExamDate => sectionSchedule.midExamDate;
+  String? get midExamStartTime => sectionSchedule.midExamStartTime;
+  String? get midExamEndTime => sectionSchedule.midExamEndTime;
+  String? get midExamDetail => sectionSchedule.midExamDetail;
 
-  @override
-  int get hashCode => Object.hash(courseCode, sectionName);
+  String? get finalExamDate => sectionSchedule.finalExamDate;
+  String? get finalExamStartTime => sectionSchedule.finalExamStartTime;
+  String? get finalExamEndTime => sectionSchedule.finalExamEndTime;
+  String? get finalExamDetail => sectionSchedule.finalExamDetail;
 
-  factory Course.fromJson(Map<String, dynamic> json) {
-    final roomNumber =
-        json['roomNumber']?.toString() ?? json['roomName']?.toString();
-
-    List<CourseSchedule> schedules = [];
-
-    String convertTime(String time24) {
-      return BracuTime.format(time24);
-    }
-
-    String convertDay(String day) {
-      if (day.isEmpty) return '';
-      return day[0].toUpperCase() + day.substring(1).toLowerCase();
-    }
-
-    if (json['sectionSchedule'] != null) {
-      var sectionSchedule = json['sectionSchedule'];
-
-      if (sectionSchedule is String) {
-        try {
-          sectionSchedule = jsonDecode(sectionSchedule);
-        } catch (_) {
-          sectionSchedule = null;
-        }
-      }
-
-      if (sectionSchedule is Map) {
-        final classSchedules =
-            sectionSchedule['classSchedules'] as List<dynamic>? ?? [];
-        schedules = classSchedules.map((e) {
-          final schedule = e as Map<String, dynamic>;
-          return CourseSchedule(
-            day: convertDay(schedule['day']?.toString() ?? ''),
-            startTime: convertTime(schedule['startTime']?.toString() ?? ''),
-            endTime: convertTime(schedule['endTime']?.toString() ?? ''),
-          );
-        }).toList();
-      }
-    } else if (json['schedule'] != null) {
-      schedules = (json['schedule'] as List<dynamic>? ?? [])
-          .map((e) => CourseSchedule.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-
-    return Course(
-      courseCode: json['courseCode'] ?? '',
-      sectionName: json['sectionName']?.toString(),
-      roomNumber: roomNumber?.isEmpty == true ? null : roomNumber,
-      faculties: _facultyLabel(json['faculties']),
-      schedule: schedules,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'courseCode': courseCode,
-      'sectionName': sectionName,
-      'roomNumber': roomNumber,
-      'faculties': faculties,
-      'schedule': schedule.map((e) => e.toJson()).toList(),
-    };
-  }
-}
-
-class CourseSchedule {
-  final String day;
-  final String startTime;
-  final String endTime;
-
-  const CourseSchedule({
-    required this.day,
-    required this.startTime,
-    required this.endTime,
-  });
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CourseSchedule &&
-          day == other.day &&
-          startTime == other.startTime &&
-          endTime == other.endTime;
-
-  @override
-  int get hashCode => Object.hash(day, startTime, endTime);
-
-  factory CourseSchedule.fromJson(Map<String, dynamic> json) {
-    return CourseSchedule(
-      day: json['day'] as String? ?? '',
-      startTime: json['startTime'] as String? ?? '',
-      endTime: json['endTime'] as String? ?? '',
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'day': day,
-      'startTime': startTime,
-      'endTime': endTime,
-    };
-  }
+  Section toSection({int semesterSessionId = 0}) => this;
 }
 
 class FriendMetadata {
@@ -238,18 +123,4 @@ class FriendMetadata {
       isFavorite: isFavorite ?? this.isFavorite,
     );
   }
-}
-
-String? _facultyLabel(dynamic value) {
-  if (value == null) return null;
-  if (value is Map) {
-    final map = value.cast<String, dynamic>();
-    final staffName = '${map['staffName'] ?? ''}'.trim();
-    if (staffName.isNotEmpty) return staffName;
-    final shortName = '${map['shortName'] ?? ''}'.trim();
-    if (shortName.isNotEmpty) return shortName;
-    return null;
-  }
-  final label = value.toString().trim();
-  return label.isEmpty ? null : label;
 }

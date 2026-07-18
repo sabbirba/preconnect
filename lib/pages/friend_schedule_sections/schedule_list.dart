@@ -88,16 +88,6 @@ String? _pickNextClassSummary(
 }) {
   if (friend.courses.isEmpty) return null;
 
-  final dayMap = {
-    'SATURDAY': DateTime.saturday,
-    'SUNDAY': DateTime.sunday,
-    'MONDAY': DateTime.monday,
-    'TUESDAY': DateTime.tuesday,
-    'WEDNESDAY': DateTime.wednesday,
-    'THURSDAY': DateTime.thursday,
-    'FRIDAY': DateTime.friday,
-  };
-
   final now = DateTime.now();
   final nowMinutes = now.hour * 60 + now.minute;
   DateTime? best;
@@ -110,8 +100,7 @@ String? _pickNextClassSummary(
         s.endTime,
         isRamadan: isRamadan,
       );
-      final normalizedDay = normalizeWeekday(s.day);
-      final targetWeekday = dayMap[normalizedDay];
+      final targetWeekday = BracuTime.weekdayFromName(s.day);
       if (targetWeekday == null) continue;
 
       int daysAhead = (targetWeekday - now.weekday + 7) % 7;
@@ -135,12 +124,9 @@ String? _pickNextClassSummary(
 
       if (best == null || candidate.isBefore(best)) {
         best = candidate;
-        final shortDay = formatWeekdayTitle(s.day);
-        final displayDay = shortDay.length > 3
-            ? shortDay.substring(0, 3)
-            : shortDay;
+        final displayDay = formatWeekdayTitle(s.day);
         final displayTime = formatTime(adjusted.startTime);
-        bestLabel = 'Next: ${course.courseCode} $displayDay $displayTime';
+        bestLabel = '${course.courseCode} $displayDay $displayTime';
       }
     }
   }

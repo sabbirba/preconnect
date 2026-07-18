@@ -39,6 +39,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   bool _obscurePassword = true;
   bool _scanning = false;
   StreamSubscription<AndroidNetworkStatus>? _networkStatusSubscription;
+  Timer? _iosProbeTimer;
+  Uri? _detectedPortalUri;
+  bool _isOnCampusNetwork = false;
   final TextEditingController _studentIdController = TextEditingController();
   Map<String, String>? _extractedParams;
   String _responseLog = '';
@@ -47,15 +50,46 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   @override
   void initState() {
     super.initState();
+    if (identical(openCaptivePortalFlow, null)) {
+      assert(true);
+    }
     WidgetsBinding.instance.addObserver(this);
     _studentIdController.addListener(_handleStudentIdChanged);
+    _passwordController.addListener(_handlePasswordChanged);
     if (AndroidNetworkAssist.isSupported) {
       _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen(
         _handleNetworkStatusChanged,
       );
+    } else {
+      _startIosProbeTimer();
     }
     _loadStoredCredentials();
     unawaited(_forceRequestPermissions());
+  }
+
+  void _handlePasswordChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _startIosProbeTimer() {
+    _iosProbeTimer?.cancel();
+    _iosProbeTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      if (!mounted || _isConnecting || _isDisconnecting) return;
+      final onCampus = await CaptiveWifiHttp.checkIfOnCampusNetwork();
+      final portalUri = await CaptiveWifiHttp.detectCaptivePortal();
+      if (mounted) {
+        setState(() {
+          _isOnCampusNetwork = onCampus;
+          _detectedPortalUri = portalUri;
+        });
+        if (portalUri != null) {
+          final hasPassword = _passwordController.text.isNotEmpty;
+          if (hasPassword && !_isConnecting) {
+            unawaited(_runOneTapConnect());
+          }
+        }
+      }
+    });
   }
 
   void _handleStudentIdChanged() {
@@ -113,8 +147,17 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       unawaited(_checkPostConnectionEvent());
 
       if (IosNetworkAssist.isSupported) {
-        if (widget.autoOpenCaptiveWifiOnStart ||
-            (_passwordController.text.isNotEmpty && !_isConnecting)) {
+        final onCampus = await CaptiveWifiHttp.checkIfOnCampusNetwork();
+        final portalUri = await CaptiveWifiHttp.detectCaptivePortal();
+        if (mounted) {
+          setState(() {
+            _isOnCampusNetwork = onCampus;
+            _detectedPortalUri = portalUri;
+          });
+        }
+        if (portalUri != null &&
+            (widget.autoOpenCaptiveWifiOnStart ||
+                (_passwordController.text.isNotEmpty && !_isConnecting))) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
             unawaited(_runOneTapConnect());
@@ -382,6 +425,10 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       if (!mounted) return;
       if (loggedIn) {
         _showLocalSnackBar('Login success. Internet validated.');
+        setState(() {
+          _isOnCampusNetwork = true;
+          _detectedPortalUri = null;
+        });
         unawaited(AndroidNetworkAssist.reportCaptivePortalDismissed());
       } else {
         final err = CaptiveWifiHttp.instance.lastError;
@@ -456,6 +503,10 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       if (!mounted) return;
       if (loggedOut) {
         _showLocalSnackBar('Disconnected from portal successfully.');
+        setState(() {
+          _isOnCampusNetwork = false;
+        });
+        unawaited(_loadStoredCredentials());
       } else {
         final err = CaptiveWifiHttp.instance.lastError;
 
@@ -588,11 +639,18 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
             _currentStatus!.ssid?.trim().toLowerCase() ==
                 _ssidController.text.trim().toLowerCase());
 
-    final bool isSessionActive =
-        _currentStatus != null &&
-        _currentStatus!.connected &&
-        !_currentStatus!.captive &&
-        _currentStatus!.validated;
+    final bool isBehindPortal = AndroidNetworkAssist.isSupported
+        ? (isCorrectSsid &&
+              _currentStatus != null &&
+              (_currentStatus!.captive || !_currentStatus!.validated))
+        : (_isOnCampusNetwork && _detectedPortalUri != null);
+
+    final bool isSessionActive = AndroidNetworkAssist.isSupported
+        ? (isCorrectSsid &&
+              _currentStatus != null &&
+              !_currentStatus!.captive &&
+              _currentStatus!.validated)
+        : (_isOnCampusNetwork && _detectedPortalUri == null);
 
     return PopScope(
       canPop: true,
@@ -703,66 +761,71 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                             label: 'Save',
                           ),
                         ),
-                        const Gap(10),
-                        Expanded(
-                          child: BracuActionButton(
-                            onPressed:
-                                _isConnecting ||
-                                    _isDisconnecting ||
-                                    !isCorrectSsid
-                                ? null
-                                : (isSessionActive
-                                      ? () => unawaited(_runDisconnect())
-                                      : () => unawaited(
-                                          _runOneTapConnect(isManual: true),
-                                        )),
-                            icon: isSessionActive
-                                ? Icons.wifi_off_rounded
-                                : Icons.wifi_rounded,
-                            label: isSessionActive ? 'Disconnect' : 'Connect',
-                            isLoading: isSessionActive
-                                ? _isDisconnecting
-                                : _isConnecting,
+                        if (isBehindPortal || isSessionActive) ...[
+                          const Gap(10),
+                          Expanded(
+                            child: BracuActionButton(
+                              onPressed: _isConnecting || _isDisconnecting
+                                  ? null
+                                  : (isSessionActive
+                                        ? () => unawaited(_runDisconnect())
+                                        : () => unawaited(
+                                            _runOneTapConnect(isManual: true),
+                                          )),
+                              icon: isSessionActive
+                                  ? Icons.wifi_off_rounded
+                                  : Icons.wifi_rounded,
+                              label: isSessionActive ? 'Disconnect' : 'Connect',
+                              isLoading: isSessionActive
+                                  ? _isDisconnecting
+                                  : _isConnecting,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
-                    const Gap(12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: BracuActionButton(
-                        onPressed: () async {
-                          final status =
-                              await AndroidNetworkAssist.getNetworkStatus();
-                          Uri? url;
-                          if (status != null) {
-                            url = CaptiveWifiHttp.resolvePortalUri(status);
-                          }
-                          if (url == null ||
-                              url == CaptiveWifiHttp.defaultProbeUri) {
-                            final saved = await CaptiveLoginStore.instance
-                                .readLastPortalUrl();
-                            if (saved != null && saved.isNotEmpty) {
-                              url = Uri.tryParse(saved);
+                    if (isBehindPortal) ...[
+                      const Gap(12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: BracuActionButton(
+                          onPressed: () async {
+                            final status =
+                                await AndroidNetworkAssist.getNetworkStatus();
+                            Uri? url;
+                            if (status != null) {
+                              url = CaptiveWifiHttp.resolvePortalUri(status);
                             }
-                          }
-                          url ??= CaptiveWifiHttp.defaultProbeUri;
-                          if (!context.mounted) return;
-                          if (kIsWeb) {
-                            unawaited(openCaptivePortalFlow(url.toString()));
-                            return;
-                          }
-                          await Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (context) =>
-                                  CaptivePortalWebView(portalUrl: url!),
-                            ),
-                          );
-                        },
-                        icon: Icons.language_rounded,
-                        label: 'Open Portal In App',
+                            if (url == null ||
+                                url == CaptiveWifiHttp.defaultProbeUri) {
+                              url = _detectedPortalUri;
+                            }
+                            if (url == null ||
+                                url == CaptiveWifiHttp.defaultProbeUri) {
+                              final saved = await CaptiveLoginStore.instance
+                                  .readLastPortalUrl();
+                              if (saved != null && saved.isNotEmpty) {
+                                url = Uri.tryParse(saved);
+                              }
+                            }
+                            url ??= CaptiveWifiHttp.defaultProbeUri;
+                            if (!context.mounted) return;
+                            if (kIsWeb) {
+                              unawaited(openCaptivePortalFlow(url.toString()));
+                              return;
+                            }
+                            await Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (context) =>
+                                    CaptivePortalWebView(portalUrl: url!),
+                              ),
+                            );
+                          },
+                          icon: Icons.language_rounded,
+                          label: 'Open Portal In App',
+                        ),
                       ),
-                    ),
+                    ],
                     const Gap(4),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
@@ -1076,7 +1139,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _networkStatusSubscription?.cancel().catchError((_) {});
+    _iosProbeTimer?.cancel();
     _studentIdController.removeListener(_handleStudentIdChanged);
+    _passwordController.removeListener(_handlePasswordChanged);
     _studentIdController.dispose();
     _ssidController.dispose();
     _passwordController.dispose();

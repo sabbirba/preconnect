@@ -1089,28 +1089,18 @@ class _BracuCampaignSupportersState extends State<BracuCampaignSupporters> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: BracuPalette.primary,
+                    color: BracuPalette.textPrimary(context),
                   ),
                 ),
               ],
             ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  '৳${status.totalRaised}',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: BracuPalette.primary,
-                  ),
-                ),
-                BracuRefreshButton(
-                  onPressed: _loadStatus,
-                  isLoading: _refreshing,
-                ),
-              ],
+            Text(
+              '৳${status.totalRaised}',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: BracuPalette.textPrimary(context),
+              ),
             ),
           ],
         ),

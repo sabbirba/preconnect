@@ -35,100 +35,102 @@ Future<T?> showBracuBottomSheet<T>(
         top: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 6, 18, 10),
-          child: Column(
-            mainAxisSize: isScrollControlled
-                ? MainAxisSize.max
-                : MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 3,
-                  decoration: BoxDecoration(
-                    color: textSecondary.withValues(alpha: 0.28),
-                    borderRadius: BorderRadius.circular(999),
+          child: ClipRect(
+            child: Column(
+              mainAxisSize: isScrollControlled
+                  ? MainAxisSize.max
+                  : MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: textSecondary.withValues(alpha: 0.28),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
                   ),
                 ),
-              ),
-              const Gap(6),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (liveTitle == null)
-                            Text(
-                              title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: textPrimary,
-                                fontSize: 16.5,
-                                fontWeight: FontWeight.w700,
+                const Gap(6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (liveTitle == null)
+                              Text(
+                                title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: textPrimary,
+                                  fontSize: 16.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              )
+                            else
+                              ValueListenableBuilder<String>(
+                                valueListenable: liveTitle,
+                                builder: (context, value, _) {
+                                  return Text(
+                                    value,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: textPrimary,
+                                      fontSize: 16.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  );
+                                },
                               ),
-                            )
-                          else
-                            ValueListenableBuilder<String>(
-                              valueListenable: liveTitle,
-                              builder: (context, value, _) {
-                                return Text(
-                                  value,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: textPrimary,
-                                    fontSize: 16.5,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                );
-                              },
-                            ),
-                          if (subtitle != null) ...[
-                            const Gap(4),
-                            Text(
-                              subtitle,
-                              style: TextStyle(
-                                color: textSecondary,
-                                fontSize: 12,
-                                height: 1.3,
+                            if (subtitle != null) ...[
+                              const Gap(4),
+                              Text(
+                                subtitle,
+                                style: TextStyle(
+                                  color: textSecondary,
+                                  fontSize: 12,
+                                  height: 1.3,
+                                ),
                               ),
-                            ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                  const Gap(8),
-                  if (actions.isNotEmpty) ...[...actions, const Gap(6)],
-                  IconButton(
-                    onPressed: () => Navigator.of(sheetContext).maybePop(),
-                    icon: const Icon(Icons.close_rounded, size: 20),
-                    style: IconButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(36, 36),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    const Gap(8),
+                    if (actions.isNotEmpty) ...[...actions, const Gap(6)],
+                    IconButton(
+                      onPressed: () => Navigator.of(sheetContext).maybePop(),
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      style: IconButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(36, 36),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ],
+                ),
+                const Gap(4),
+                if (isScrollControlled)
+                  Expanded(
+                    child: builder(sheetContext, textPrimary, textSecondary),
+                  )
+                else
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: builder(sheetContext, textPrimary, textSecondary),
                     ),
                   ),
-                ],
-              ),
-              const Gap(4),
-              if (isScrollControlled)
-                Expanded(
-                  child: builder(sheetContext, textPrimary, textSecondary),
-                )
-              else
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: builder(sheetContext, textPrimary, textSecondary),
-                  ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       );

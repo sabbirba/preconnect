@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:intl/intl.dart';
 import 'package:preconnect/api/exam_map.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
 import 'package:preconnect/pages/shared_widgets/session_helper.dart';
+import 'package:preconnect/pages/shared_widgets/exam_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/string_utils.dart';
 import 'package:preconnect/tools/exam_visibility.dart';
@@ -246,26 +246,6 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
     }
   }
 
-  String _formatExamDateLabel(String? input) {
-    if (input == null || input.trim().isEmpty) return 'Not published yet';
-    final raw = input.trim();
-    final dt = BracuTime.parseDate(raw) ?? DateTime.tryParse(raw);
-    if (dt == null) return raw;
-    return DateFormat('EEEE, d MMMM, yyyy').format(dt);
-  }
-
-  String _formatExamTimeLabel(String? start, String? end) {
-    final value = formatTimeRange(start, end).trim();
-    if (value.isEmpty) return 'Not published yet';
-    return value;
-  }
-
-  String _formatExamRoomLabel(String? room) {
-    final value = (room ?? '').trim();
-    if (value.isEmpty) return 'TBA';
-    return value;
-  }
-
   @override
   Widget build(BuildContext context) {
     return BracuPageScaffold(
@@ -498,7 +478,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                         children: [
                           Expanded(
                             child: Text(
-                              _formatExamDateLabel(midDate(section)),
+                              BracuExamCard.formatExamDate(midDate(section)),
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -518,101 +498,18 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                         ],
                       ),
                       const Gap(8),
-                      BracuCard(
-                        key: isHighlighted
+                      BracuExamCard(
+                        highlightKey: isHighlighted
                             ? _highlightScroll.highlightKey
                             : null,
                         isHighlighted: isHighlighted,
-                        highlightColor: BracuPalette.primary,
-                        child: Row(
-                          children: [
-                            SectionBadge(
-                              label: formatSectionBadge(section.sectionName),
-                              color: BracuPalette.primary,
-                            ),
-                            const Gap(12),
-                            Expanded(
-                              flex: 7,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    section.courseCode,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const Gap(6),
-                                  Text(
-                                    _formatExamTimeLabel(
-                                      midStart(section),
-                                      midEnd(section),
-                                    ),
-                                    style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Gap(12),
-                            Expanded(
-                              flex: 4,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    _formatExamRoomLabel(midRoom(section)),
-                                    textAlign: TextAlign.right,
-                                    style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  if (section.faculties.trim().isNotEmpty ||
-                                      section.consumedSeat > 0) ...[
-                                    const Gap(2),
-                                    Text.rich(
-                                      TextSpan(
-                                        children: [
-                                          if (section.faculties
-                                              .trim()
-                                              .isNotEmpty)
-                                            TextSpan(
-                                              text: section.faculties.trim(),
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w700,
-                                                color: BracuPalette.textPrimary(
-                                                  context,
-                                                ),
-                                              ),
-                                            ),
-                                          if (section.consumedSeat > 0)
-                                            TextSpan(
-                                              text:
-                                                  '${section.faculties.trim().isEmpty ? '' : ' '}(${section.consumedSeat})',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color:
-                                                    BracuPalette.textSecondary(
-                                                      context,
-                                                    ),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                      textAlign: TextAlign.right,
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                        courseCode: section.courseCode,
+                        sectionName: section.sectionName,
+                        startTime: midStart(section),
+                        endTime: midEnd(section),
+                        roomNumber: midRoom(section),
+                        faculties: section.faculties,
+                        consumedSeat: section.consumedSeat,
                       ),
                     ],
                   ),
@@ -638,7 +535,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                         children: [
                           Expanded(
                             child: Text(
-                              _formatExamDateLabel(finalDate(section)),
+                              BracuExamCard.formatExamDate(finalDate(section)),
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -658,101 +555,18 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                         ],
                       ),
                       const Gap(8),
-                      BracuCard(
-                        key: isHighlighted
+                      BracuExamCard(
+                        highlightKey: isHighlighted
                             ? _highlightScroll.highlightKey
                             : null,
                         isHighlighted: isHighlighted,
-                        highlightColor: BracuPalette.primary,
-                        child: Row(
-                          children: [
-                            SectionBadge(
-                              label: formatSectionBadge(section.sectionName),
-                              color: BracuPalette.accent,
-                            ),
-                            const Gap(12),
-                            Expanded(
-                              flex: 7,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    section.courseCode,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const Gap(6),
-                                  Text(
-                                    _formatExamTimeLabel(
-                                      finalStart(section),
-                                      finalEnd(section),
-                                    ),
-                                    style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Gap(12),
-                            Expanded(
-                              flex: 4,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    _formatExamRoomLabel(finalRoom(section)),
-                                    textAlign: TextAlign.right,
-                                    style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  if (section.faculties.trim().isNotEmpty ||
-                                      section.consumedSeat > 0) ...[
-                                    const Gap(2),
-                                    Text.rich(
-                                      TextSpan(
-                                        children: [
-                                          if (section.faculties
-                                              .trim()
-                                              .isNotEmpty)
-                                            TextSpan(
-                                              text: section.faculties.trim(),
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w700,
-                                                color: BracuPalette.textPrimary(
-                                                  context,
-                                                ),
-                                              ),
-                                            ),
-                                          if (section.consumedSeat > 0)
-                                            TextSpan(
-                                              text:
-                                                  '${section.faculties.trim().isEmpty ? '' : ' '}(${section.consumedSeat})',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color:
-                                                    BracuPalette.textSecondary(
-                                                      context,
-                                                    ),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                      textAlign: TextAlign.right,
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                        courseCode: section.courseCode,
+                        sectionName: section.sectionName,
+                        startTime: finalStart(section),
+                        endTime: finalEnd(section),
+                        roomNumber: finalRoom(section),
+                        faculties: section.faculties,
+                        consumedSeat: section.consumedSeat,
                       ),
                     ],
                   ),

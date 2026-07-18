@@ -487,6 +487,33 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
     return ordered;
   }
 
+  String _getWeekdayDateLabel(String day) {
+    final weekdayNames = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    if (!weekdayNames.contains(day)) return '';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    var saturday = today;
+    while (saturday.weekday != DateTime.saturday) {
+      saturday = saturday.subtract(const Duration(days: 1));
+    }
+    for (var dayOffset = 0; dayOffset < 7; dayOffset++) {
+      final date = saturday.add(Duration(days: dayOffset));
+      final dayName = weekdayNames[date.weekday - 1];
+      if (dayName == day) {
+        return formatLongDate(date);
+      }
+    }
+    return '';
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = 'Compare Schedules';
@@ -539,9 +566,24 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
         )
       else
         ...grouped.entries.expand((entry) sync* {
+          final dateLabel = _getWeekdayDateLabel(entry.key);
           yield Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: BracuSectionTitle(title: entry.key),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                BracuSectionTitle(title: entry.key),
+                if (dateLabel.isNotEmpty)
+                  Text(
+                    dateLabel,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: BracuPalette.textPrimary(context),
+                    ),
+                  ),
+              ],
+            ),
           );
           for (final item in entry.value) {
             final pinned = _pinnedEntries.contains(item.key);
@@ -717,14 +759,45 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    item.title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: BracuPalette.textPrimary(context),
-                    ),
-                  ),
+                  (() {
+                    final isCommon = item.type == _CompareType.common;
+                    final isLab =
+                        isCommon &&
+                        item.title.trim().toUpperCase().endsWith('L');
+                    final suffix = isLab ? 'Lab' : 'Theory';
+                    if (isCommon) {
+                      return Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: item.title,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: BracuPalette.textPrimary(context),
+                              ),
+                            ),
+                            TextSpan(
+                              text: ' $suffix',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: BracuPalette.textSecondary(context),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return Text(
+                      item.title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: BracuPalette.textPrimary(context),
+                      ),
+                    );
+                  })(),
                   const Gap(2),
                   Text(
                     item.subtitle,
