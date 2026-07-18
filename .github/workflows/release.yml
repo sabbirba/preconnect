@@ -174,7 +174,7 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: chrome_extension
-            name: Chrome Extension
+            name: Extension
             artifact_name: chrome_extension-artifacts
             timeout: 30
           - os: ubuntu-latest
