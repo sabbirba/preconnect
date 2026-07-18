@@ -453,11 +453,13 @@ class BracuRefreshButton extends StatelessWidget {
     required this.onPressed,
     required this.isLoading,
     this.color,
+    this.icon = Icons.sync_rounded,
   });
 
   final VoidCallback onPressed;
   final bool isLoading;
   final Color? color;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -465,17 +467,13 @@ class BracuRefreshButton extends StatelessWidget {
     if (isLoading) {
       return Padding(
         padding: const EdgeInsets.all(12.0),
-        child: BracuSpinner(
-          size: 24,
-          color: themeColor,
-          icon: Icons.sync_rounded,
-        ),
+        child: BracuSpinner(size: 24, color: themeColor, icon: icon),
       );
     }
     return IconButton(
       tooltip: 'Refresh',
       onPressed: onPressed,
-      icon: Icon(Icons.sync_rounded, color: themeColor),
+      icon: Icon(icon, color: themeColor),
     );
   }
 }

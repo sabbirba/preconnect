@@ -189,21 +189,12 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
                   },
                 ),
                 const Spacer(),
-                if (_loading)
-                  Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: BracuSpinner(
-                      size: 24,
-                      color: iconColor,
-                      icon: Icons.refresh_rounded,
-                    ),
-                  )
-                else
-                  IconButton(
-                    tooltip: 'Refresh',
-                    onPressed: () => _controller.reload(),
-                    icon: Icon(Icons.refresh_rounded, color: iconColor),
-                  ),
+                BracuRefreshButton(
+                  onPressed: () => _controller.reload(),
+                  isLoading: _loading,
+                  color: iconColor,
+                  icon: Icons.refresh_rounded,
+                ),
               ],
             ),
           ),
