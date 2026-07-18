@@ -4,6 +4,7 @@ platform :mac do
   desc "Upload macOS build to App Store Connect"
   lane :upload_mac_to_app_store do |options|
     key_content = options[:api_key_content] || ENV["APP_STORE_CONNECT_API_KEY"]
+    key_content = key_content.gsub("\\n", "\n") if key_content
     key_id = options[:api_key_id] || ENV["APP_STORE_CONNECT_KEY_ID"]
     issuer_id = options[:api_issuer_id] || ENV["APP_STORE_CONNECT_ISSUER_ID"]
     
@@ -28,6 +29,7 @@ platform :mac do
   desc "Notarize macOS app"
   lane :notarize_app do |options|
     key_content = options[:api_key_content] || ENV["APP_STORE_CONNECT_API_KEY"]
+    key_content = key_content.gsub("\\n", "\n") if key_content
     key_id = options[:api_key_id] || ENV["APP_STORE_CONNECT_KEY_ID"]
     issuer_id = options[:api_issuer_id] || ENV["APP_STORE_CONNECT_ISSUER_ID"]
 
