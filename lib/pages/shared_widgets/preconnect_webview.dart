@@ -69,26 +69,44 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
       try {
         _controller.setBackgroundColor(Colors.transparent);
       } catch (_) {}
+    }
 
-      _controller.setNavigationDelegate(
-        NavigationDelegate(
-          onNavigationRequest: (request) {
-            if (widget.onNavigationRequest != null) {
-              return widget.onNavigationRequest!(request);
+    _controller.setNavigationDelegate(
+      NavigationDelegate(
+        onNavigationRequest: (request) {
+          if (widget.onNavigationRequest != null) {
+            return widget.onNavigationRequest!(request);
+          }
+          return NavigationDecision.navigate;
+        },
+        onPageStarted: (url) {
+          if (mounted) setState(() => _loading = true);
+          if (widget.onPageStarted != null) widget.onPageStarted!(url);
+        },
+        onPageFinished: (url) {
+          if (mounted) setState(() => _loading = false);
+          _controller.runJavaScript('''
+            var meta = document.querySelector('meta[name="viewport"]');
+            if (meta) {
+              var content = meta.getAttribute('content');
+              if (content) {
+                content = content.replace(/user-scalable=no/g, 'user-scalable=yes');
+                content = content.replace(/maximum-scale=[0-9.]+/g, 'maximum-scale=10.0');
+                meta.setAttribute('content', content);
+              }
+            } else {
+              meta = document.createElement('meta');
+              meta.name = "viewport";
+              meta.content = "width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=10.0";
+              document.getElementsByTagName('head')[0].appendChild(meta);
             }
-            return NavigationDecision.navigate;
-          },
-          onPageStarted: (url) {
-            if (mounted) setState(() => _loading = true);
-            if (widget.onPageStarted != null) widget.onPageStarted!(url);
-          },
-          onPageFinished: (url) {
-            if (mounted) setState(() => _loading = false);
-            if (widget.onPageFinished != null) widget.onPageFinished!(url);
-          },
-        ),
-      );
+          ''').catchError((_) {});
+          if (widget.onPageFinished != null) widget.onPageFinished!(url);
+        },
+      ),
+    );
 
+    if (widget.preloadedController == null) {
       if (widget.delayLoadUntilTransition) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
