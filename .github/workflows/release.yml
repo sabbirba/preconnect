@@ -14,6 +14,7 @@ concurrency:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  FASTLANE_VERBOSE: "true"
 
 jobs:
   detect-pending:
