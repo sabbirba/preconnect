@@ -26,11 +26,12 @@ final class IosNetworkAssist {
         if #available(iOS 14.0, *) {
             NEHotspotNetwork.fetchCurrent { network in
                 DispatchQueue.main.async {
-                    guard let ssid = network?.ssid, !ssid.isEmpty else {
-                        result(nil)
-                        return
+                    if let ssid = network?.ssid, !ssid.isEmpty {
+                        result(ssid)
+                    } else {
+                        let legacy = legacySsid()
+                        result(legacy?.isEmpty == false ? legacy : nil)
                     }
-                    result(ssid)
                 }
             }
         } else {
