@@ -73,11 +73,12 @@ jobs:
           ruby-version: "3.3"
           bundler-cache: true
 
-      - name: Promote Beta
+      - name: Promote Play Store Track
         if: matrix.run_play && steps.play_auth.outputs.enabled == 'true'
         shell: bash
         env:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          SUPPLY_JSON_KEY_DATA: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           FASTLANE_OPT_OUT_USAGE: "1"
           BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
         run: |
