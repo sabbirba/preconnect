@@ -1893,7 +1893,7 @@ class _LprPrintClient {
         ]),
       );
       final dynamicTimeout = Duration(
-        seconds: (15 + (payload.length / (1024 * 1024)) * 3).toInt().clamp(15, 300),
+        seconds: (30 + (payload.length / (1024 * 1024)) * 10).toInt().clamp(30, 600),
       );
       socket.add(payload);
       socket.add(const <int>[0x00]);
