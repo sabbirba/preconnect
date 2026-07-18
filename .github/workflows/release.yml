@@ -175,6 +175,14 @@ jobs:
         with:
           channel: "stable"
           cache: true
+      - name: Cache Pub Packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-cache-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-cache-
+
       - name: Flutter Pub Get
         run: flutter pub get
       - name: Flutter Analyze
@@ -296,6 +304,14 @@ jobs:
               exit 1
             fi
           } > android/local.properties
+
+      - name: Cache Pub Packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-cache-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-cache-
 
       - name: Flutter Pub Get
         shell: bash
