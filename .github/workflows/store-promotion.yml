@@ -204,10 +204,7 @@ jobs:
         shell: bash
         run: |
           cd ios && bundle exec fastlane upload_to_testflight \
-            ipa:"$GITHUB_WORKSPACE/${{ steps.resolve_apple.outputs.ios_path }}" \
-            api_key_id:"${{ secrets.APP_STORE_CONNECT_KEY_ID }}" \
-            api_issuer_id:"${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}" \
-            api_key_content:"${{ secrets.APP_STORE_CONNECT_API_KEY }}"
+            ipa:"$GITHUB_WORKSPACE/${{ steps.resolve_apple.outputs.ios_path }}"
 
       - name: Upload macOS to App Store Connect
         if: matrix.run_apple && steps.resolve_apple.outputs.macos_ready == 'true' && env.APP_STORE_CONNECT_API_KEY != ''
@@ -215,8 +212,5 @@ jobs:
           BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
         shell: bash
         run: |
-          cd macos && bundle exec fastlane upload_to_app_store \
-            pkg:"$GITHUB_WORKSPACE/${{ steps.resolve_apple.outputs.macos_path }}" \
-            api_key_id:"${{ secrets.APP_STORE_CONNECT_KEY_ID }}" \
-            api_issuer_id:"${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}" \
-            api_key_content:"${{ secrets.APP_STORE_CONNECT_API_KEY }}"
+          cd macos && bundle exec fastlane upload_mac_to_app_store \
+            pkg:"$GITHUB_WORKSPACE/${{ steps.resolve_apple.outputs.macos_path }}"
