@@ -879,7 +879,7 @@ jobs:
         id: play_notes
         shell: bash
         run: |
-          NOTES_DIR="fastlane/metadata/android"
+          NOTES_DIR="android/fastlane/metadata/android"
           CHANGELOG_DIR="$NOTES_DIR/en-US/changelogs"
           rm -rf "$NOTES_DIR"
           mkdir -p "$CHANGELOG_DIR"
