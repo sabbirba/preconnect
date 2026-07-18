@@ -47,7 +47,8 @@ platform :mac do
       package: options[:package],
       bundle_id: "com.sabbirba.preconnect",
       api_key: api_key,
-      print_log: true
+      print_log: true,
+      skip_stapling: true
     )
   end
 end
