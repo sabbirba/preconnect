@@ -505,6 +505,7 @@ jobs:
               cp macos/Runner/Release.entitlements "$STRIPPED_ENTITLEMENTS"
               /usr/libexec/PlistBuddy -c "Delete :com.apple.developer.associated-domains" "$STRIPPED_ENTITLEMENTS" || true
               /usr/libexec/PlistBuddy -c "Delete :aps-environment" "$STRIPPED_ENTITLEMENTS" || true
+              /usr/libexec/PlistBuddy -c "Delete :keychain-access-groups" "$STRIPPED_ENTITLEMENTS" || true
 
               xcodebuild archive \
                 -workspace macos/Runner.xcworkspace \
