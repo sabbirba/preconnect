@@ -25,6 +25,14 @@ Future<SystemPickedImage?> pickSystemImage() async {
       XTypeGroup(
         label: 'Images',
         extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic'],
+        mimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
+        uniformTypeIdentifiers: [
+          'public.png',
+          'public.jpeg',
+          'com.compuserve.gif',
+          'org.webmproject.webp',
+          'public.heic'
+        ],
       ),
     ],
   );
