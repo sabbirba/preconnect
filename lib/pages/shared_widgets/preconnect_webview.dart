@@ -59,6 +59,7 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
     if (widget.preloadedController != null) {
       _controller = widget.preloadedController!;
       _loading = false;
+      _injectViewportOverride();
     } else {
       _controller = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -87,29 +88,7 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
         },
         onPageFinished: (url) {
           if (mounted) setState(() => _loading = false);
-          _controller
-              .runJavaScript('''
-            var meta = document.querySelector('meta[name="viewport"]');
-            if (meta) {
-              var content = meta.getAttribute('content');
-              if (content) {
-                content = content.replace(/user-scalable=no/g, 'user-scalable=yes');
-                content = content.replace(/maximum-scale=[0-9.]+/g, 'maximum-scale=10.0');
-                if (content.indexOf('minimum-scale') !== -1) {
-                  content = content.replace(/minimum-scale=[0-9.]+/g, 'minimum-scale=0.1');
-                } else {
-                  content += ', minimum-scale=0.1';
-                }
-                meta.setAttribute('content', content);
-              }
-            } else {
-              meta = document.createElement('meta');
-              meta.name = "viewport";
-              meta.content = "width=device-width, initial-scale=1.0, user-scalable=yes, minimum-scale=0.1, maximum-scale=10.0";
-              document.getElementsByTagName('head')[0].appendChild(meta);
-            }
-          ''')
-              .catchError((_) {});
+          _injectViewportOverride();
           if (widget.onPageFinished != null) widget.onPageFinished!(url);
         },
       ),
@@ -225,5 +204,31 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
       resizeToAvoidBottomInset: false,
       body: SafeArea(child: innerContent),
     );
+  }
+
+  void _injectViewportOverride() {
+    _controller
+        .runJavaScript('''
+      var meta = document.querySelector('meta[name="viewport"]');
+      if (meta) {
+        var content = meta.getAttribute('content');
+        if (content) {
+          content = content.replace(/user-scalable=no/g, 'user-scalable=yes');
+          content = content.replace(/maximum-scale=[0-9.]+/g, 'maximum-scale=10.0');
+          if (content.indexOf('minimum-scale') !== -1) {
+            content = content.replace(/minimum-scale=[0-9.]+/g, 'minimum-scale=0.1');
+          } else {
+            content += ', minimum-scale=0.1';
+          }
+          meta.setAttribute('content', content);
+        }
+      } else {
+        meta = document.createElement('meta');
+        meta.name = "viewport";
+        meta.content = "width=device-width, initial-scale=1.0, user-scalable=yes, minimum-scale=0.1, maximum-scale=10.0";
+        document.getElementsByTagName('head')[0].appendChild(meta);
+      }
+    ''')
+        .catchError((_) {});
   }
 }
