@@ -219,53 +219,41 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   ),
                                 ] else if (cardVisibility
                                     .showTodaySchedule) ...[
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: InkWell(
-                                          onTap: () => widget.onNavigate(
-                                            (todayExams.isNotEmpty ||
-                                                    isExamWeekActive)
-                                                ? HomeTab.examSchedule
-                                                : HomeTab.studentSchedule,
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  'Today is $today',
-                                                  style: TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w600,
-                                                    color:
-                                                        BracuPalette.textPrimary(
-                                                          context,
-                                                        ),
+                                  InkWell(
+                                    onTap: () => widget.onNavigate(
+                                      (todayExams.isNotEmpty ||
+                                              isExamWeekActive)
+                                          ? HomeTab.examSchedule
+                                          : HomeTab.studentSchedule,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            'Today is $today',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color:
+                                                  BracuPalette.textPrimary(
+                                                    context,
                                                   ),
-                                                ),
-                                              ),
-                                              Text(
-                                                todayDate,
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w600,
-                                                  color:
-                                                      BracuPalette.textPrimary(
-                                                        context,
-                                                      ),
-                                                ),
-                                              ),
-                                            ],
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      const Gap(4),
-                                      BracuRefreshButton(
-                                        onPressed: () =>
-                                            _handleRefresh(notify: true),
-                                        isLoading: _isRefreshing,
-                                      ),
-                                    ],
+                                        Text(
+                                          todayDate,
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color:
+                                                BracuPalette.textPrimary(
+                                                  context,
+                                                ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                   const Gap(12),
                                   if (todayExams.isNotEmpty)
