@@ -59,7 +59,11 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
     if (widget.preloadedController != null) {
       _controller = widget.preloadedController!;
       _loading = false;
-      _injectViewportOverride();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _injectViewportOverride();
+        }
+      });
     } else {
       _controller = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
