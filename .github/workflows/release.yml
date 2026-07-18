@@ -154,10 +154,35 @@ jobs:
             --notes-file release-notes.md \
             --target "${{ needs.prepare-version.outputs.release_sha }}"
 
+  static-checks:
+    name: Static Analysis
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
+    needs: [detect-pending, prepare-version]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare-version.outputs.release_sha }}
+          fetch-depth: 1
+      - name: Setup Java
+        uses: actions/setup-java@v5.6.0
+        with:
+          distribution: "temurin"
+          java-version: "17"
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2.23.0
+        with:
+          channel: "stable"
+      - name: Flutter Pub Get
+        run: flutter pub get
+      - name: Flutter Analyze
+        run: flutter analyze
+
   build:
     name: Build ${{ matrix.name }}
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
-    needs: [detect-pending, prepare-version, create-release]
+    needs: [detect-pending, prepare-version, create-release, static-checks]
     runs-on: ${{ matrix.os }}
     timeout-minutes: ${{ matrix.timeout || 90 }}
     permissions:
@@ -233,6 +258,12 @@ jobs:
         uses: maxim-lobanov/setup-xcode@v1.7.0
         with:
           xcode-version: "latest"
+
+      - name: Configure Xcode Parallel Builds
+        if: matrix.platform == 'ios' || matrix.platform == 'macos'
+        run: |
+          defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileJobs 4
+          defaults write com.apple.dt.Xcode-CLT IDEBuildOperationMaxNumberOfConcurrentCompileJobs 4
 
       - name: Setup CocoaPods
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
