@@ -218,7 +218,7 @@ jobs:
           BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
         shell: bash
         run: |
-          cd ios && bundle exec fastlane upload_to_testflight \
+          cd ios && bundle exec fastlane upload_build_to_testflight \
             ipa:"$GITHUB_WORKSPACE/${{ steps.resolve_apple.outputs.ios_path }}"
 
       - name: Upload macOS to App Store Connect
