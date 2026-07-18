@@ -500,32 +500,56 @@ jobs:
           flutter build macos --config-only --dart-define-from-file=.env
 
           if [ "${{ steps.macos_signing.outputs.enabled }}" = "true" ]; then
+            SIGN_IDENTITY="Developer ID Application"
+            EXPORT_METHOD="developer-id"
+            PROFILE_ARG=""
+            if ! security find-certificate -c "$SIGN_IDENTITY" >/dev/null 2>&1; then
+              SIGN_IDENTITY="Apple Distribution"
+              EXPORT_METHOD="app-store-connect"
+              PROFILE_ARG="PROVISIONING_PROFILE_SPECIFIER=PreConnect"
+            fi
+            echo "Building and signing with identity: $SIGN_IDENTITY (Method: $EXPORT_METHOD)"
+
             xcodebuild archive \
               -workspace macos/Runner.xcworkspace \
               -scheme Runner \
               -configuration Release \
               -archivePath "$RUNNER_TEMP/PreConnect.xcarchive" \
               CODE_SIGN_STYLE=Manual \
-              CODE_SIGN_IDENTITY="Apple Distribution" \
+              CODE_SIGN_IDENTITY="$SIGN_IDENTITY" \
               DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
-              PROVISIONING_PROFILE_SPECIFIER=PreConnect
+              $PROFILE_ARG
 
-             printf '%s\n' \
-              '<?xml version="1.0" encoding="UTF-8"?>' \
-              '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
-              '<plist version="1.0"><dict>' \
-              '  <key>method</key><string>app-store-connect</string>' \
-              '  <key>signingStyle</key><string>manual</string>' \
-              "  <key>teamID</key><string>${DEVELOPMENT_TEAM}</string>" \
-              '  <key>signingCertificate</key><string>Apple Distribution</string>' \
-              '  <key>installerSigningCertificate</key><string>3rd Party Mac Developer Installer</string>' \
-              '  <key>provisioningProfiles</key><dict>' \
-              '    <key>com.sabbirba.preconnect</key><string>PreConnect</string>' \
-              '  </dict>' \
-              '  <key>uploadBitcode</key><false/>' \
-              '  <key>uploadSymbols</key><true/>' \
-              '</dict></plist>' \
-              > "$RUNNER_TEMP/ExportOptionsMacOS.plist"
+            if [ "$EXPORT_METHOD" = "developer-id" ]; then
+               printf '%s\n' \
+                '<?xml version="1.0" encoding="UTF-8"?>' \
+                '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
+                '<plist version="1.0"><dict>' \
+                '  <key>method</key><string>developer-id</string>' \
+                '  <key>signingStyle</key><string>manual</string>' \
+                "  <key>teamID</key><string>${DEVELOPMENT_TEAM}</string>" \
+                '  <key>signingCertificate</key><string>Developer ID Application</string>' \
+                '  <key>uploadSymbols</key><true/>' \
+                '</dict></plist>' \
+                > "$RUNNER_TEMP/ExportOptionsMacOS.plist"
+            else
+               printf '%s\n' \
+                '<?xml version="1.0" encoding="UTF-8"?>' \
+                '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
+                '<plist version="1.0"><dict>' \
+                '  <key>method</key><string>app-store-connect</string>' \
+                '  <key>signingStyle</key><string>manual</string>' \
+                "  <key>teamID</key><string>${DEVELOPMENT_TEAM}</string>" \
+                '  <key>signingCertificate</key><string>Apple Distribution</string>' \
+                '  <key>installerSigningCertificate</key><string>3rd Party Mac Developer Installer</string>' \
+                '  <key>provisioningProfiles</key><dict>' \
+                '    <key>com.sabbirba.preconnect</key><string>PreConnect</string>' \
+                '  </dict>' \
+                '  <key>uploadBitcode</key><false/>' \
+                '  <key>uploadSymbols</key><true/>' \
+                '</dict></plist>' \
+                > "$RUNNER_TEMP/ExportOptionsMacOS.plist"
+            fi
 
             xcodebuild -exportArchive \
               -archivePath "$RUNNER_TEMP/PreConnect.xcarchive" \
