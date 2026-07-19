@@ -407,7 +407,24 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                     height: 1,
                     color: BracuPalette.textSecondary(context),
                   ),
-                  border: const OutlineInputBorder(),
+                  labelStyle: TextStyle(
+                    color: BracuPalette.textSecondary(context),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: BracuPalette.textSecondary(
+                        context,
+                      ).withValues(alpha: 0.2),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: BracuPalette.primary,
+                      width: 1.5,
+                    ),
+                  ),
                   isDense: false,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -584,13 +601,34 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                 minLines: 2,
                 maxLines: 2,
                 maxLength: 500,
-                decoration: const InputDecoration(
+                style: TextStyle(
+                  color: BracuPalette.textPrimary(context),
+                  fontSize: 14,
+                ),
+                decoration: InputDecoration(
                   labelText: 'Write your notes...',
-                  border: OutlineInputBorder(),
+                  labelStyle: TextStyle(
+                    color: BracuPalette.textSecondary(context),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: BracuPalette.textSecondary(
+                        context,
+                      ).withValues(alpha: 0.2),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: BracuPalette.primary,
+                      width: 1.5,
+                    ),
+                  ),
                   isDense: true,
-                  contentPadding: EdgeInsets.symmetric(
+                  contentPadding: const EdgeInsets.symmetric(
                     horizontal: 12,
-                    vertical: 10,
+                    vertical: 12,
                   ),
                   counterText: '',
                 ),
