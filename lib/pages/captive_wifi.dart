@@ -668,9 +668,12 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
               _currentStatus != null &&
               !_currentStatus!.captive &&
               _currentStatus!.validated &&
-              _savedLoginSsid.toLowerCase() == _ssidController.text.trim().toLowerCase())
-        : (_isOnCampusNetwork && _detectedPortalUri == null &&
-              _savedLoginSsid.toLowerCase() == _ssidController.text.trim().toLowerCase());
+              _savedLoginSsid.toLowerCase() ==
+                  _ssidController.text.trim().toLowerCase())
+        : (_isOnCampusNetwork &&
+              _detectedPortalUri == null &&
+              _savedLoginSsid.toLowerCase() ==
+                  _ssidController.text.trim().toLowerCase());
 
     return PopScope(
       canPop: true,
