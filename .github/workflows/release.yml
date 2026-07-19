@@ -663,6 +663,30 @@ jobs:
                  echo "Warning: macOS App Store Connect archive failed. Skipping App Store Connect distribution."
               fi
             fi
+
+            if [ "${STORE_BUILD:-}" != "true" ] && [ "${DEVID_BUILD:-}" != "true" ]; then
+              echo "No signed builds created. Falling back to unsigned build..."
+              xcodebuild archive \
+                -workspace macos/Runner.xcworkspace \
+                -scheme Runner \
+                -configuration Release \
+                -archivePath "$RUNNER_TEMP/PreConnect.xcarchive" \
+                CODE_SIGN_STYLE=Automatic \
+                CODE_SIGN_IDENTITY="-" \
+                DEVELOPMENT_TEAM="" \
+                PROVISIONING_PROFILE_SPECIFIER="" \
+                "PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]"="" \
+                PROVISIONING_PROFILE="" \
+                "PROVISIONING_PROFILE[sdk=macosx*]"=""
+
+              APP_PATH="$(find "$RUNNER_TEMP/PreConnect.xcarchive" -type d -name "*.app" | head -n1)"
+              if [ -d "$APP_PATH" ]; then
+                strip -x "$APP_PATH/Contents/Frameworks/App.framework/Versions/Current/App" || true
+                strip -x "$APP_PATH/Contents/MacOS/PreConnect" || true
+                mkdir -p "$RUNNER_TEMP/macos_export"
+                cp -R "$APP_PATH" "$RUNNER_TEMP/macos_export/"
+              fi
+            fi
           else
             xcodebuild archive \
               -workspace macos/Runner.xcworkspace \
