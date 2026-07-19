@@ -275,18 +275,13 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                                   ),
                                 ),
                                 const Gap(12),
-                                TextButton(
+                                BracuActionButton(
                                   onPressed: () => _ensureCameraPermission(
                                     openSettingsOnDeny: true,
                                   ),
-                                  child: const Text(
-                                    'Retry Camera',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                    ),
-                                  ),
+                                  label: 'Retry Camera',
+                                  outlined: true,
+                                  foregroundColor: Colors.white,
                                 ),
                               ],
                             ),
@@ -306,7 +301,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                         },
                       )
                     : Center(
-                        child: TextButton(
+                        child: BracuActionButton(
                           onPressed: () {
                             if (kIsWeb) {
                               setState(() => _cameraGranted = true);
@@ -315,14 +310,8 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                             }
                             _ensureCameraPermission(openSettingsOnDeny: true);
                           },
-                          child: Text(
-                            'Tap to enable camera',
-                            style: TextStyle(
-                              color: BracuPalette.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
+                          label: 'Tap to enable camera',
+                          outlined: true,
                         ),
                       ),
               ),

@@ -441,24 +441,10 @@ class _WishlistPageState extends State<WishlistPage> {
                   ),
                 ),
                 const Gap(28),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: BracuPalette.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
+                BracuActionButton(
                   onPressed: _loadInitialData,
-                  child: const Text(
-                    'Retry',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
+                  label: 'Retry',
+                  outlined: false,
                 ),
               ],
             ),
@@ -521,16 +507,15 @@ class _WishlistPageState extends State<WishlistPage> {
                         ),
                       ),
                     ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: BracuPalette.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
+                    BracuActionButton(
                       onPressed: _executeBatchAdd,
-                      child: const Text('Add Batch'),
+                      label: 'Add Batch',
+                      outlined: false,
+                      borderRadius: 10,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                     ),
                   ],
                 ),

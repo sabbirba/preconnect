@@ -400,9 +400,10 @@ class _LibSyncPageState extends State<LibSyncPage>
                         ),
                       ),
                       const Gap(24),
-                      ElevatedButton(
+                      BracuActionButton(
                         onPressed: () => LibSyncAuthService.instance.logout(),
-                        child: const Text('Sign In Again'),
+                        label: 'Sign In Again',
+                        outlined: false,
                       ),
                     ],
                   ),
