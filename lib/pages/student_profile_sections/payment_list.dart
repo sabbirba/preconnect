@@ -72,7 +72,7 @@ class PaymentList extends StatelessWidget {
                                   color: iconColor,
                                 ),
                               ),
-                              const Gap(10),
+                              const Gap(12),
                               Flexible(
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -112,7 +112,7 @@ class PaymentList extends StatelessWidget {
                             ],
                           ),
                         ),
-                        const Gap(10),
+                        const Gap(12),
                         GestureDetector(
                           onTap: () => copyToClipboard(context, amount),
                           child: Text(

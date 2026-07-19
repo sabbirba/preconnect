@@ -213,7 +213,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           BracuQrCard(data: _base64Payload!),
-          const Gap(20),
+          const Gap(16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -247,7 +247,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
                   ),
                 ),
               ),
-              const Gap(20),
+              const Gap(16),
               Row(
                 children: [
                   Expanded(

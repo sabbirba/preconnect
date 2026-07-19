@@ -442,7 +442,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                         size: 18,
                         color: selected ? BracuPalette.primary : textSecondary,
                       ),
-                      const Gap(10),
+                      const Gap(12),
                       Expanded(
                         child: Text(
                           label,
@@ -516,7 +516,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                     Icons.arrow_upward_rounded,
                     _DSpaceSort.oldestFirst,
                   ),
-                  const Gap(8),
+                  const Gap(12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -682,7 +682,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
             if (displayLastModified.isNotEmpty)
               metaRow('Last Modified', displayLastModified),
             if (item.abstractText.trim().isNotEmpty) ...[
-              const Gap(6),
+              const Gap(12),
               Text(
                 'Abstract',
                 style: TextStyle(
@@ -691,7 +691,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const Gap(6),
+              const Gap(12),
               Text(
                 item.abstractText.trim(),
                 style: TextStyle(
@@ -712,13 +712,13 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const Gap(10),
+              const Gap(12),
               ...item.files.map((file) {
                 final ext = file.name.contains('.')
                     ? file.name.split('.').last.toUpperCase()
                     : 'DOCUMENT';
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.only(bottom: 12),
                   child: BracuActionBannerCard(
                     title: file.name,
                     subtitle: '${file.sizeLabel} • $ext',
@@ -860,7 +860,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
               child: Row(children: chips),
             ),
           ),
-          const Gap(8),
+          const Gap(12),
           GestureDetector(
             onTap: () {
               setState(() {
@@ -986,7 +986,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'BRACU IR is the official academic repository of BRAC University.',
+                'BRACU IR is the official Institutional Repository of BRAC University to preserve and provide access to scholarly works.',
                 style: TextStyle(
                   color: textPrimary,
                   fontSize: 14,
@@ -1001,7 +1001,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                 body:
                     'Browse academic documents divided into specific collections such as Thesis, Journal, and Conference Papers.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildHelpItem(
                 context,
                 icon: Icons.search_rounded,
@@ -1009,7 +1009,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                 body:
                     'Use the search bar to filter categories or locate documents by title, author, department, subject, or keywords.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildHelpItem(
                 context,
                 icon: Icons.tune_rounded,
@@ -1017,7 +1017,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                 body:
                     'Tap the filter icon to sort by date or last modified, and restrict results to a specific year range.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildHelpItem(
                 context,
                 icon: Icons.description_rounded,
@@ -1025,7 +1025,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                 body:
                     'Tap any document card to view its metadata, abstract, supervisor, department, and attachments.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildHelpItem(
                 context,
                 icon: Icons.download_rounded,
@@ -1176,10 +1176,10 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                   controller: _searchController,
                   hintText: 'Search...',
                 ),
-                const Gap(10),
+                const Gap(12),
                 if (_selectedCategory != null) _buildActiveFilterBar(context),
                 if (_selectedCategory != null && !_hasActiveFilters)
-                  const Gap(6),
+                  const Gap(12),
                 if (_selectedCategory == null)
                   _buildCategoriesView(context)
                 else

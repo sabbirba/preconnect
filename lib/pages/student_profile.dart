@@ -353,31 +353,31 @@ class _StudentProfileState extends State<StudentProfile>
             const BracuLoading()
           else
             CardSection(profile: _profile, photoUrl: _photoUrl),
-          const Gap(18),
+          const Gap(16),
           if (!isLoading)
             AcademicSummaryCard(
               profile: _profile ?? const {},
               advising: _advising,
               progressSummary: _progressSummary,
             ),
-          const Gap(18),
+          const Gap(16),
           if (!isLoading) ...[
             const BracuSectionTitle(title: 'Documents'),
-            const Gap(10),
+            const Gap(12),
             const GradeSheetCard(),
-            const Gap(18),
+            const Gap(16),
             const BracuSectionTitle(title: 'Personal Info'),
-            const Gap(10),
+            const Gap(12),
             PersonalInfoCard(profile: _profile ?? const {}),
-            const Gap(18),
+            const Gap(16),
             const BracuSectionTitle(title: 'Attendance'),
-            const Gap(10),
+            const Gap(12),
             _attendances.isEmpty
                 ? const BracuEmptyState(message: 'No attendance records found')
                 : AttendanceSummary(attendances: _attendances),
-            const Gap(18),
+            const Gap(16),
             const BracuSectionTitle(title: 'Payments'),
-            const Gap(10),
+            const Gap(12),
             _payments.isEmpty
                 ? const BracuEmptyState(message: 'No payments found')
                 : PaymentGraph(payments: _payments),

@@ -704,7 +704,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
       child: Row(
         children: [
           FriendAvatar(name: label, photoUrl: photoUrl),
-          const Gap(10),
+          const Gap(12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

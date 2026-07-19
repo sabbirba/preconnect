@@ -300,7 +300,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
           _TokenField(label: 'Refresh Token', value: _refreshToken),
           const Gap(12),
           _TokenField(label: 'ID Token', value: _idToken),
-          const Gap(20),
+          const Gap(16),
           DropdownButtonFormField<String>(
             initialValue: _method,
             style: TextStyle(
@@ -319,7 +319,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
               });
             },
           ),
-          const Gap(10),
+          const Gap(12),
           TextField(
             controller: _urlController,
             style: TextStyle(
@@ -341,7 +341,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
               isLoading: _isLoading,
             ),
           ),
-          const Gap(20),
+          const Gap(16),
           if (_responseText.isNotEmpty)
             SelectableText(
               _responseText,

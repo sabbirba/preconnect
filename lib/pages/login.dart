@@ -72,7 +72,6 @@ class LoginPage extends StatefulWidget {
       controller.loadRequest(
         Uri.parse(ApiConfig.authUrlWithPkce(codeChallenge)),
       );
-      await PreConnectWebViewPage.configureCookies(controller);
       _preloadedWebViewController = controller;
     } catch (_) {
       _preloadedWebViewController = null;
@@ -110,7 +109,6 @@ class LoginPage extends StatefulWidget {
         controller.setUserAgent(kPreConnectUserAgent);
       }
       controller.loadRequest(googleSsoUri);
-      await PreConnectWebViewPage.configureCookies(controller);
       _preloadedGoogleWebViewController = controller;
     } catch (_) {
       _preloadedGoogleWebViewController = null;
@@ -262,7 +260,6 @@ class _LoginPageState extends State<LoginPage> {
     final url =
         widget.customAuthUrl ?? ApiConfig.authUrlWithPkce(codeChallenge);
     controller.loadRequest(Uri.parse(url));
-    unawaited(PreConnectWebViewPage.configureCookies(controller));
     return controller;
   }
 

@@ -255,7 +255,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
-                          const Gap(10),
+                          const Gap(12),
                           _HeroCard(isDark: isDark),
                           const Gap(28),
                           Text(
@@ -293,7 +293,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               ),
                             ),
                           ],
-                          const Gap(20),
+                          const Gap(16),
                           _InfoCard(
                             icon: Icons.info_outline_rounded,
                             title: 'About the App',
@@ -301,7 +301,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                 'Track classes, exams, and reminders in one place with your BRACU SSO account.',
                             color: BracuPalette.primary,
                           ),
-                          const Gap(10),
+                          const Gap(12),
                           _InfoCard(
                             icon: Icons.privacy_tip_outlined,
                             title: 'Privacy First',
@@ -309,8 +309,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                 'PreConnect is not an official BRAC University app. It is an initiative run by BRAC University students. Your data stays on your device with sign-in tokens kept locally.',
                             color: BracuPalette.accent,
                           ),
-                          const Gap(10),
-                          const Gap(10),
+                          const Gap(12),
+                          const Gap(12),
                           _InfoCard(
                             icon: Icons.groups_rounded,
                             title: 'Student Maintained',
@@ -328,7 +328,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               'https://github.com/sabbirba/preconnect',
                             ),
                           ),
-                          const Gap(10),
+                          const Gap(12),
                           BracuActionBannerCard(
                             icon: Icons.public_rounded,
                             iconColor: BracuPalette.accent,
@@ -479,7 +479,7 @@ class _HeroCard extends StatelessWidget {
             ),
           ),
         ),
-        const Gap(14),
+        const Gap(12),
         Text(
           'Prepare. Connect. Succeed.',
           style: TextStyle(
@@ -538,7 +538,7 @@ class _InfoCard extends StatelessWidget {
             ),
             child: Icon(icon, size: 18, color: color),
           ),
-          const Gap(10),
+          const Gap(12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

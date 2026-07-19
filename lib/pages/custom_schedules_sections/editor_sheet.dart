@@ -613,7 +613,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                 ),
               ),
               if (item != null) ...[
-                const Gap(10),
+                const Gap(12),
                 SizedBox(
                   width: double.infinity,
                   child: BracuActionButton(

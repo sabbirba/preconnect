@@ -343,7 +343,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                 ],
               ),
             ),
-            const Gap(20),
+            const Gap(16),
             if (widget.friend.courses.isEmpty)
               BracuCard(
                 child: Padding(
@@ -472,7 +472,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                   ),
               ],
             ),
-            const Gap(10),
+            const Gap(12),
             ...entries.map((entry) {
               final isHighlighted = entry['entryKey'] == highlightedEntryKey;
               _highlightScroll.markHighlighted(isHighlighted);
@@ -523,7 +523,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
 
   List<Widget> _buildExamSchedule(BuildContext context) {
     if (_loadingExamOverrides) {
-      return const [Gap(20), Center(child: BracuSpinner())];
+      return const [Gap(16), Center(child: BracuSpinner())];
     }
     final midExams = <(Course, ExamSectionResolved)>[];
     final finalExams = <(Course, ExamSectionResolved)>[];

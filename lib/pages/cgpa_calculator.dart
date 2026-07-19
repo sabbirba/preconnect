@@ -130,9 +130,9 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
           _buildSummaryCard(context, expectedResult),
           if (autoRetakeCurrentCourses.isNotEmpty ||
               manualRetakeCourses.isNotEmpty) ...[
-            const Gap(14),
+            const Gap(12),
             const BracuSectionTitle(title: 'Retake Courses'),
-            const Gap(10),
+            const Gap(12),
             ...autoRetakeCurrentCourses.map((draft) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
@@ -141,26 +141,26 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
             }),
             ...manualRetakeCourses.map((draft) {
               return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: 12),
                 child: _buildRetakeCourseCard(context, draft),
               );
             }),
           ],
-          const Gap(14),
+          const Gap(16),
           const BracuSectionTitle(title: 'Current Courses'),
-          const Gap(10),
+          const Gap(12),
           ..._currentCourses.map((draft) {
             return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: 12),
               child: _buildCurrentCourseCard(context, draft),
             );
           }),
-          const Gap(18),
+          const Gap(16),
           const BracuSectionTitle(title: 'Completed Courses'),
-          const Gap(10),
+          const Gap(12),
           ..._completedCourses.map((draft) {
             return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: 12),
               child: _buildCompletedCourseCard(context, draft),
             );
           }),
@@ -230,7 +230,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
                 final item = stats[index];
                 return Padding(
                   padding: EdgeInsets.only(
-                    right: index == stats.length - 1 ? 0 : 10,
+                    right: index == stats.length - 1 ? 0 : 12,
                   ),
                   child: SizedBox(
                     width: 96,
@@ -246,7 +246,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
               Expanded(
                 child: SimpleProgressBar(value: deltaValue, color: deltaColor),
               ),
-              const Gap(8),
+              const Gap(12),
               Text(
                 '${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(3)}',
                 style: TextStyle(
@@ -459,7 +459,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
           size: 40,
           fontSize: 13,
         ),
-        const Gap(10),
+        const Gap(12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -483,7 +483,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
             ],
           ),
         ),
-        const Gap(10),
+        const Gap(12),
         SizedBox(
           width: 96,
           child: Column(
@@ -671,7 +671,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
                   );
                 }).toList(),
               ),
-              const Gap(14),
+              const Gap(12),
               _buildGradeGuideLegend(sheetContext, textPrimary, textSecondary),
             ],
           ),

@@ -207,7 +207,7 @@ class _CardFront extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              const Gap(10),
+                              const Gap(12),
                               SizedBox(
                                 width: 90,
                                 height: 106,
