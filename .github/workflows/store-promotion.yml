@@ -268,7 +268,7 @@ jobs:
 
       - name: Publish Firefox Extension
         if: matrix.run_firefox
-        uses: browser-actions/release-firefox-addon@v3
+        uses: browser-actions/release-firefox-addon@v0
         with:
           addon-id: 'preconnect@sabbirba.com'
           addon-path: 'build/firefox-extension.zip'
