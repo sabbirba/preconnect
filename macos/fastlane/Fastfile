@@ -18,6 +18,25 @@ platform :mac do
       is_key_content_base64: is_base64
     )
 
+    version_name = ENV["MACOS_VERSION_NAME"]
+    version_code = ENV["MACOS_VERSION_CODE"]
+    if version_name && version_code
+      begin
+        latest_build = latest_testflight_build_number(
+          version: version_name,
+          platform: "osx",
+          app_identifier: "com.sabbirba.preconnect",
+          api_key: api_key
+        )
+        if latest_build && latest_build.to_i >= version_code.to_i
+          UI.message("Build #{version_code} for version #{version_name} already exists on App Store Connect (latest is #{latest_build}). Skipping upload.")
+          next
+        end
+      rescue => e
+        UI.message("Could not fetch latest macOS build: #{e.message}. Proceeding with upload.")
+      end
+    end
+
     deliver(
       pkg: options[:pkg],
       platform: "osx",

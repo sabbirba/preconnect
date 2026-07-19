@@ -261,6 +261,8 @@ jobs:
         if: matrix.run_apple && steps.resolve_apple.outputs.macos_ready == 'true' && env.APP_STORE_CONNECT_API_KEY != ''
         env:
           BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
+          MACOS_VERSION_NAME: ${{ steps.resolve_apple.outputs.ios_version_name }}
+          MACOS_VERSION_CODE: ${{ steps.resolve_apple.outputs.ios_version_code }}
         shell: bash
         run: |
           cd macos && bundle exec fastlane upload_mac_to_app_store \
