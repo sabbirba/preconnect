@@ -22,10 +22,16 @@ class ImportSessionDialog extends StatefulWidget {
   final bool showCloseButton;
 
   static Future<bool?> show(BuildContext context) async {
-    return await showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (_) => const Dialog(child: ImportSessionDialog()),
+    return await showBracuBottomSheet<bool>(
+      context,
+      title: 'Import Session',
+      initialChildSize: 0.50,
+      builder: (sheetContext, textPrimary, textSecondary) {
+        return const ImportSessionDialog(
+          showCancelButton: false,
+          showCloseButton: false,
+        );
+      },
     );
   }
 
@@ -228,20 +234,13 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final cardBg = BracuPalette.card(context);
     final hasValidClipboard = _clipboardSyncCode != null;
 
-    return Container(
-      width: 380,
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (widget.showCloseButton) ...[
           Row(
             children: [
               Expanded(
@@ -254,78 +253,77 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
                   ),
                 ),
               ),
-              if (widget.showCloseButton)
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close_rounded),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close_rounded),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
             ],
           ),
           const Gap(16),
-          BracuActionButton(
-            onPressed: _isProcessing ? null : _importFromClipboard,
-            label: _isProcessing ? 'Importing...' : 'Import from Clipboard',
-            outlined: false,
-            backgroundColor: BracuPalette.primary,
-            foregroundColor: Colors.white,
-            borderRadius: 24,
-          ),
-          if (hasValidClipboard) ...[
-            const Gap(8),
-            const Center(
-              child: Text(
-                'Sync code detected in clipboard',
-                style: TextStyle(
-                  color: BracuPalette.accent,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-          const Gap(10),
-          BracuActionButton(
-            onPressed: _isProcessing ? null : _pickAndScanQrImage,
-            label: 'Select QR Image',
-            outlined: true,
-            foregroundColor: BracuPalette.textPrimary(context),
-            borderRadius: 24,
-          ),
-
-          if (_errorMessage != null) ...[
-            const Gap(10),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: BracuPalette.danger.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: BracuPalette.danger.withValues(alpha: 0.2),
-                ),
-              ),
-              child: Text(
-                _errorMessage!,
-                style: TextStyle(
-                  color: BracuPalette.danger,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-          if (widget.showCancelButton) ...[
-            const Gap(12),
-            BracuActionButton(
-              onPressed: () => Navigator.pop(context),
-              label: 'Cancel',
-              outlined: true,
-              borderRadius: 24,
-            ),
-          ],
         ],
-      ),
+        BracuActionButton(
+          onPressed: _isProcessing ? null : _importFromClipboard,
+          label: _isProcessing ? 'Importing...' : 'Import from Clipboard',
+          outlined: false,
+          backgroundColor: BracuPalette.primary,
+          foregroundColor: Colors.white,
+          borderRadius: 24,
+        ),
+        if (hasValidClipboard) ...[
+          const Gap(8),
+          const Center(
+            child: Text(
+              'Sync code detected in clipboard',
+              style: TextStyle(
+                color: BracuPalette.accent,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+        const Gap(10),
+        BracuActionButton(
+          onPressed: _isProcessing ? null : _pickAndScanQrImage,
+          label: 'Select QR Image',
+          outlined: true,
+          foregroundColor: BracuPalette.textPrimary(context),
+          borderRadius: 24,
+        ),
+
+        if (_errorMessage != null) ...[
+          const Gap(10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: BracuPalette.danger.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: BracuPalette.danger.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Text(
+              _errorMessage!,
+              style: TextStyle(
+                color: BracuPalette.danger,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+        if (widget.showCancelButton) ...[
+          const Gap(12),
+          BracuActionButton(
+            onPressed: () => Navigator.pop(context),
+            label: 'Cancel',
+            outlined: true,
+            borderRadius: 24,
+          ),
+        ],
+      ],
     );
   }
 }

@@ -13,12 +13,13 @@ class ExportSessionBottomSheet extends StatefulWidget {
   const ExportSessionBottomSheet({super.key});
 
   static Future<void> show(BuildContext context) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => const ExportSessionBottomSheet(),
+    await showBracuBottomSheet<void>(
+      context,
+      title: 'Sync Session',
+      initialChildSize: 0.65,
+      builder: (sheetContext, textPrimary, textSecondary) {
+        return const ExportSessionBottomSheet();
+      },
     );
   }
 
@@ -157,7 +158,6 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
     final bottomPadding = MediaQuery.viewInsetsOf(context).bottom;
 
     Widget bodyContent;
@@ -165,7 +165,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
     if (_checkingAuth) {
       bodyContent = const SizedBox(
         height: 200,
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: BracuLoading()),
       );
     } else if (!_biometricsAvailable) {
       bodyContent = Padding(
@@ -205,7 +205,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
     } else if (_isLoading) {
       bodyContent = const SizedBox(
         height: 200,
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: BracuLoading()),
       );
     } else {
       bodyContent = Column(
@@ -267,57 +267,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomPadding),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
-        decoration: BoxDecoration(
-          color: BracuPalette.card(context),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.14),
-              blurRadius: 30,
-              offset: const Offset(0, -14),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          top: false,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Align(
-                  alignment: Alignment.center,
-                  child: Container(
-                    width: 36,
-                    height: 3,
-                    decoration: BoxDecoration(
-                      color: textSecondary.withValues(alpha: 0.28),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                const Gap(16),
-                Text(
-                  'Sync Session',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: BracuPalette.textPrimary(context),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-
-                const Gap(18),
-                bodyContent,
-              ],
-            ),
-          ),
-        ),
-      ),
+      child: bodyContent,
     );
   }
 }
