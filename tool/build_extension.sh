@@ -143,10 +143,10 @@ manifest_path = '${FIREFOX_DIR}/manifest.json'
 with open(manifest_path, 'r') as f:
     d = json.load(f)
 d['version'] = '${CHROME_VERSION}'
-d['version_name'] = '${CHROME_VERSION_NAME}'
+d.pop('version_name', None)
 d.pop('side_panel', None)
 if 'permissions' in d:
-    d['permissions'] = [p for p in d['permissions'] if p not in ('sidePanel', 'gcm')]
+    d['permissions'] = [p for p in d['permissions'] if p not in ('sidePanel', 'gcm', 'commands')]
 if 'background' in d and 'service_worker' in d['background']:
     d['background']['scripts'] = [d['background'].pop('service_worker')]
 with open(manifest_path, 'w') as f:

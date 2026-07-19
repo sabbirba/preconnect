@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'dart:js_interop';
 
 import 'package:chrome_extension/runtime.dart';
+import 'package:chrome_extension/tabs.dart' as ext_tabs;
+import 'package:preconnect/tools/extension_config.dart';
+import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/tools/runtime_web.dart';
 
 class WebExtensionLoginFlow {
@@ -57,19 +60,75 @@ class WebExtensionLoginFlow {
   }
 
   Future<void> start({String? idp}) async {
-    final message = <String, dynamic>{'type': 'preconnect.startLogin'};
-    if (idp != null) {
-      message['idp'] = idp;
+    if (Uri.base.scheme == 'moz-extension') {
+      await _startFirefox(idp: idp);
+      return;
     }
-    await chrome.runtime.sendMessage(null, jsonEncode(message).toJS, null);
+    try {
+      final message = <String, dynamic>{'type': 'preconnect.startLogin'};
+      if (idp != null) message['idp'] = idp;
+      await chrome.runtime.sendMessage(null, jsonEncode(message).toJS, null);
+    } catch (_) {}
+  }
+
+  Future<void> _startFirefox({String? idp}) async {
+    try {
+      final verifier = generatePkceVerifier();
+      final challenge = codeChallengeS256(verifier);
+      var authUrl = WebExtensionApiConfig.authUrlWithPkce(challenge);
+      if (idp != null && idp.isNotEmpty) {
+        try {
+          final parsed = Uri.parse(authUrl);
+          authUrl = parsed
+              .replace(
+                queryParameters: {
+                  ...parsed.queryParameters,
+                  'kc_idp_hint': idp,
+                },
+              )
+              .toString();
+        } catch (_) {}
+      }
+
+      final tab = await ext_tabs.chrome.tabs.create(
+        ext_tabs.CreateProperties(url: authUrl, active: true),
+      );
+
+      if (tab.id == null) {
+        _events.add(
+          const WebExtensionLoginState.failed(
+            'Firefox: unable to open login tab.',
+          ),
+        );
+        return;
+      }
+
+      try {
+        await chrome.runtime.sendMessage(
+          null,
+          jsonEncode({
+            'type': 'preconnect.loginTabCreated',
+            'tabId': tab.id,
+            'verifier': verifier,
+          }).toJS,
+          null,
+        );
+      } catch (_) {}
+    } catch (e) {
+      _events.add(
+        WebExtensionLoginState.failed('Firefox login error: $e'),
+      );
+    }
   }
 
   Future<void> logout() async {
-    await chrome.runtime.sendMessage(
-      null,
-      jsonEncode(<String, dynamic>{'type': 'preconnect.startLogout'}).toJS,
-      null,
-    );
+    try {
+      await chrome.runtime.sendMessage(
+        null,
+        jsonEncode(<String, dynamic>{'type': 'preconnect.startLogout'}).toJS,
+        null,
+      );
+    } catch (_) {}
   }
 
   Future<void> dispose() async {
