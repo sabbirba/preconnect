@@ -592,7 +592,9 @@ jobs:
                 CODE_SIGN_IDENTITY="Developer ID Application" \
                 DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
                 PROVISIONING_PROFILE_SPECIFIER="" \
+                "PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]"="" \
                 PROVISIONING_PROFILE="" \
+                "PROVISIONING_PROFILE[sdk=macosx*]"="" \
                 CODE_SIGN_ENTITLEMENTS="$STRIPPED_ENTITLEMENTS"
 
                printf '%s\n' \
@@ -665,7 +667,9 @@ jobs:
               CODE_SIGN_IDENTITY="-" \
               DEVELOPMENT_TEAM="" \
               PROVISIONING_PROFILE_SPECIFIER="" \
-              PROVISIONING_PROFILE=""
+              "PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]"="" \
+              PROVISIONING_PROFILE="" \
+              "PROVISIONING_PROFILE[sdk=macosx*]"=""
 
             APP_PATH="$(find "$RUNNER_TEMP/PreConnect.xcarchive" -type d -name "*.app" | head -n1)"
             if [ -d "$APP_PATH" ]; then
