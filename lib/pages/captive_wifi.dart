@@ -948,7 +948,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                         ),
                       ),
                     ],
-                    const Gap(4),
+                    const Gap(20),
                     Row(
                       children: [
                         Expanded(
