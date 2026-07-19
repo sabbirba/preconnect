@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'dart:js_interop';
 
 import 'package:chrome_extension/runtime.dart';
-import 'package:chrome_extension/tabs.dart' as ext_tabs;
 import 'package:preconnect/tools/extension_config.dart';
 import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/tools/runtime_web.dart';
+
+@JS('chrome.tabs.create')
+external JSPromise<JSObject> _chromeTabsCreate(JSObject createProperties);
 
 class WebExtensionLoginFlow {
   WebExtensionLoginFlow() {
@@ -90,11 +92,16 @@ class WebExtensionLoginFlow {
         } catch (_) {}
       }
 
-      final tab = await ext_tabs.chrome.tabs.create(
-        ext_tabs.CreateProperties(url: authUrl, active: true),
-      );
+      final createProps = {'url': authUrl, 'active': true}.jsify() as JSObject;
+      final jsTab = await _chromeTabsCreate(createProps).toDart;
+      final dartTab = jsTab.dartify() as Map;
+      final tabId = dartTab['id'];
+      int? resolvedTabId;
+      if (tabId is num) {
+        resolvedTabId = tabId.toInt();
+      }
 
-      if (tab.id == null) {
+      if (resolvedTabId == null) {
         _events.add(
           const WebExtensionLoginState.failed(
             'Firefox: unable to open login tab.',
@@ -110,7 +117,7 @@ class WebExtensionLoginFlow {
           null,
           jsonEncode({
             'type': 'preconnect.loginTabCreated',
-            'tabId': tab.id,
+            'tabId': resolvedTabId,
             'verifier': verifier,
           }).toJS,
           null,

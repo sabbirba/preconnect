@@ -49,15 +49,15 @@ class WebExtensionLoginFlow {
 class WebExtensionLoginState {
   const WebExtensionLoginState.started()
     : type = WebExtensionLoginStateKind.started,
-      message = null;
+      error = '';
   const WebExtensionLoginState.complete()
     : type = WebExtensionLoginStateKind.complete,
-      message = null;
-  const WebExtensionLoginState.failed(this.message)
+      error = '';
+  const WebExtensionLoginState.failed(this.error)
     : type = WebExtensionLoginStateKind.failed;
 
   final WebExtensionLoginStateKind type;
-  final String? message;
+  final String error;
 
   bool get isStarted => type == WebExtensionLoginStateKind.started;
   bool get isComplete => type == WebExtensionLoginStateKind.complete;
