@@ -834,7 +834,7 @@ jobs:
            if [ "${{ env.STORE_BUILD }}" = "true" ]; then
              STORE_PKG=$(find "$RUNNER_TEMP/macos_store_export" -maxdepth 2 -name "*.pkg" 2>/dev/null | head -n1 || true)
              if [ -n "$STORE_PKG" ] && [ -f "$STORE_PKG" ]; then
-               cp "$STORE_PKG" "$GITHUB_WORKSPACE/artifacts/PreConnect-macos-release-${VERSION}-store.pkg"
+               cp "$STORE_PKG" "$GITHUB_WORKSPACE/artifacts/PreConnect-macos-release-${VERSION}.pkg"
              fi
            fi
 
