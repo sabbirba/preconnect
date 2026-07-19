@@ -303,6 +303,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                   'scope': LibSyncConfig.googleScopes,
                   'access_type': 'offline',
                   'prompt': 'consent',
+                  'state': 'app',
                 },
               );
           authCode = await openChromeExtensionOAuthFlow(
@@ -331,10 +332,20 @@ class _LibSyncPageState extends State<LibSyncPage>
       }
 
       if (authCode != null) {
-        await LibSyncAuthService.instance.authenticateWithCode(
-          authCode,
-          redirectUri: redirectUri,
-        );
+        if (authCode.startsWith('{')) {
+          final map = jsonDecode(authCode) as Map<String, dynamic>;
+          final access = map['access_token'] as String;
+          final refresh = map['refresh_token'] as String?;
+          await LibSyncAuthService.instance.authenticateWithTokens(
+            googleAccessToken: access,
+            googleRefreshToken: refresh,
+          );
+        } else {
+          await LibSyncAuthService.instance.authenticateWithCode(
+            authCode,
+            redirectUri: redirectUri,
+          );
+        }
       }
     } catch (_) {
     } finally {

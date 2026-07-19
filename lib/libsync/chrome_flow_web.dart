@@ -30,6 +30,8 @@ Future<String?> openChromeExtensionOAuthFlow(
     subscription?.cancel();
     if (resp.containsKey('error')) {
       completer.complete(null);
+    } else if (resp.containsKey('tokens')) {
+      completer.complete('${resp['tokens'] ?? ''}');
     } else {
       completer.complete('${resp['code'] ?? ''}');
     }
