@@ -212,14 +212,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
         _isStartingWebLogin = false;
         _isGoogleLoggingIn = false;
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Web login failed: ${state.error}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 
