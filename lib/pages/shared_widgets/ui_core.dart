@@ -465,16 +465,12 @@ class BracuRefreshButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeColor = color ?? BracuPalette.primary;
-    if (isLoading) {
-      return Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: BracuSpinner(size: 24, color: themeColor, icon: icon),
-      );
-    }
     return IconButton(
       tooltip: 'Refresh',
-      onPressed: onPressed,
-      icon: Icon(icon, color: themeColor),
+      onPressed: isLoading ? null : onPressed,
+      icon: isLoading
+          ? BracuSpinner(size: 24, color: themeColor, icon: icon)
+          : Icon(icon, color: themeColor),
     );
   }
 }

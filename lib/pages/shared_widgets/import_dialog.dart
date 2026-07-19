@@ -7,6 +7,9 @@ import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:preconnect/tools/clipboard_stub.dart'
+    if (dart.library.js_interop) 'package:preconnect/tools/clipboard_web.dart';
 
 class ImportSessionDialog extends StatefulWidget {
   const ImportSessionDialog({
@@ -43,13 +46,24 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
 
   Future<void> _checkClipboardForSyncCode() async {
     try {
-      final data = await Clipboard.getData(Clipboard.kTextPlain);
-      final text = data?.text;
-      if (text != null && text.trim().isNotEmpty) {
-        if (_isValidSyncCodeFormat(text.trim())) {
+      String? text;
+      if (kIsWeb) {
+        try {
+          text = await readClipboardText();
+        } catch (_) {}
+      }
+      if (text == null || text.trim().isEmpty) {
+        try {
+          final data = await Clipboard.getData(Clipboard.kTextPlain);
+          text = data?.text;
+        } catch (_) {}
+      }
+      final cleanText = text?.trim();
+      if (cleanText != null && cleanText.isNotEmpty) {
+        if (_isValidSyncCodeFormat(cleanText)) {
           if (mounted) {
             setState(() {
-              _clipboardSyncCode = text.trim();
+              _clipboardSyncCode = cleanText;
             });
           }
         }
@@ -83,8 +97,18 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
       _errorMessage = null;
     });
     try {
-      final data = await Clipboard.getData(Clipboard.kTextPlain);
-      final text = data?.text;
+      String? text;
+      if (kIsWeb) {
+        try {
+          text = await readClipboardText();
+        } catch (_) {}
+      }
+      if (text == null || text.trim().isEmpty) {
+        try {
+          final data = await Clipboard.getData(Clipboard.kTextPlain);
+          text = data?.text;
+        } catch (_) {}
+      }
       if (text == null || text.trim().isEmpty) {
         setState(() {
           _errorMessage = 'Clipboard is empty.';

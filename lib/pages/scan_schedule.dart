@@ -11,6 +11,8 @@ import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:mobile_scanner/mobile_scanner.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/scanner_stub.dart';
+import 'package:preconnect/tools/clipboard_stub.dart'
+    if (dart.library.js_interop) 'package:preconnect/tools/clipboard_web.dart';
 
 class ScanSchedulePage extends StatefulWidget {
   const ScanSchedulePage({super.key});
@@ -116,13 +118,27 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
   }
 
   Future<void> _pasteCode() async {
-    final ClipboardData? data = await Clipboard.getData(Clipboard.kTextPlain);
-    if (data == null || data.text == null || data.text!.trim().isEmpty) {
+    String? text;
+    if (kIsWeb) {
+      try {
+        text = await readClipboardText();
+      } catch (_) {}
+    }
+    if (text == null || text.trim().isEmpty) {
+      try {
+        final ClipboardData? data = await Clipboard.getData(
+          Clipboard.kTextPlain,
+        );
+        text = data?.text;
+      } catch (_) {}
+    }
+
+    if (text == null || text.trim().isEmpty) {
       if (!mounted) return;
       showAppSnackBar(context, 'Clipboard is empty');
       return;
     }
-    final value = data.text!.trim();
+    final value = text.trim();
     if (!mounted) return;
     setState(() => scannedValue = value);
     await _saveScannedValue(value);

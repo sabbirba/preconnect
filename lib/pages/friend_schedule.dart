@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:share_plus/share_plus.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
@@ -219,6 +220,18 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       final utf8Bytes = utf8.encode(jsonStr);
       final gzipBytes = GZipEncoder().encode(utf8Bytes);
       final base64Str = base64.encode(gzipBytes);
+
+      if (kIsWeb) {
+        await shareTextOrFile(
+          text: base64Str,
+          subject: 'Friends Export Code',
+          fileName: 'friends_export.txt',
+        );
+        if (!mounted) return;
+        showAppSnackBar(context, 'Export complete');
+        return;
+      }
+
       final tempDir = await AppPaths.temporaryDirectory();
       final file = File('${tempDir.path}/friends_export.txt');
       await file.writeAsString(base64Str, flush: true);
