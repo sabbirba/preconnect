@@ -251,53 +251,11 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage>
   Future<void> _selectDate(BuildContext context) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final dates = List.generate(
-      10,
-      (index) => today.add(Duration(days: index)),
-    );
-
-    final DateTime? picked = await showBracuBottomSheet<DateTime>(
+    final picked = await showBracuDatePicker(
       context,
-      title: 'Select Booking Date',
-      initialChildSize: 0.60,
-      builder: (sheetContext, textPrimary, textSecondary) {
-        return ListView.builder(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.only(bottom: 24),
-          itemCount: dates.length,
-          itemBuilder: (context, index) {
-            final date = dates[index];
-            final isSelected =
-                date.year == _selectedDate.year &&
-                date.month == _selectedDate.month &&
-                date.day == _selectedDate.day;
-            final isToday =
-                date.year == today.year &&
-                date.month == today.month &&
-                date.day == today.day;
-            final isTomorrow = date.difference(today).inDays == 1;
-
-            String label = DateFormat('EEEE, d MMM yyyy').format(date);
-            if (isToday) {
-              label = 'Today - ${DateFormat('d MMM yyyy').format(date)}';
-            } else if (isTomorrow) {
-              label = 'Tomorrow - ${DateFormat('d MMM yyyy').format(date)}';
-            }
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5),
-              child: BracuActionButton(
-                onPressed: () => Navigator.pop(sheetContext, date),
-                outlined: !isSelected,
-                label: label,
-                borderRadius: 12,
-                fontSize: 14,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-            );
-          },
-        );
-      },
+      initialDate: _selectedDate,
+      firstDate: today,
+      lastDate: today.add(const Duration(days: 9)),
     );
     if (picked != null && picked != _selectedDate) {
       setState(() {
