@@ -397,7 +397,8 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                   titleValue = value;
                   setState(() {});
                 },
-                decoration: InputDecoration(
+                decoration: bracuInputDecoration(
+                  context,
                   labelText: 'Title',
                   prefixText:
                       '${fixedCourseCode().isEmpty ? 'Select course' : fixedCourseCode()} ',
@@ -406,24 +407,6 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                     fontWeight: FontWeight.w700,
                     height: 1,
                     color: BracuPalette.textSecondary(context),
-                  ),
-                  labelStyle: TextStyle(
-                    color: BracuPalette.textSecondary(context),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: BracuPalette.textSecondary(
-                        context,
-                      ).withValues(alpha: 0.2),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: BracuPalette.primary,
-                      width: 1.5,
-                    ),
                   ),
                   isDense: false,
                   contentPadding: const EdgeInsets.symmetric(
@@ -605,27 +588,9 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                   color: BracuPalette.textPrimary(context),
                   fontSize: 14,
                 ),
-                decoration: InputDecoration(
+                decoration: bracuInputDecoration(
+                  context,
                   labelText: 'Write your notes...',
-                  labelStyle: TextStyle(
-                    color: BracuPalette.textSecondary(context),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: BracuPalette.textSecondary(
-                        context,
-                      ).withValues(alpha: 0.2),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: BracuPalette.primary,
-                      width: 1.5,
-                    ),
-                  ),
-                  isDense: true,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 12,
