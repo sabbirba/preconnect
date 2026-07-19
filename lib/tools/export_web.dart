@@ -38,3 +38,50 @@ Future<void> openImageInBrowser({
     web.URL.revokeObjectURL(objectUrl);
   }
 }
+
+Future<void> shareTextOrFile({
+  required String text,
+  required String subject,
+  required String fileName,
+}) async {
+  final navigator = web.window.navigator;
+  final file = web.File(
+    [text.toJS].toJS,
+    fileName,
+    web.FilePropertyBag(type: 'text/plain'),
+  );
+  final shareData = web.ShareData(
+    files: [file].toJS,
+    title: subject,
+    text: text,
+  );
+
+  if (navigator.canShare(shareData)) {
+    try {
+      await navigator.share(shareData).toDart;
+      return;
+    } catch (_) {}
+  }
+
+  // Fallback 1: Clipboard
+  try {
+    await navigator.clipboard.writeText(text).toDart;
+  } catch (_) {}
+
+  // Fallback 2: Direct browser download
+  final blob = web.Blob(
+    [text.toJS].toJS,
+    web.BlobPropertyBag(type: 'text/plain'),
+  );
+  final objectUrl = web.URL.createObjectURL(blob);
+  try {
+    final anchor = web.document.createElement('a') as web.HTMLAnchorElement
+      ..href = objectUrl
+      ..download = fileName;
+    web.document.body?.appendChild(anchor);
+    anchor.click();
+    web.document.body?.removeChild(anchor);
+  } finally {
+    web.URL.revokeObjectURL(objectUrl);
+  }
+}

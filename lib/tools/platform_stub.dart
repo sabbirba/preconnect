@@ -109,3 +109,9 @@ Future<void> openImageInBrowser({
   required Uint8List bytes,
   required String fileName,
 }) async {}
+
+Future<void> shareTextOrFile({
+  required String text,
+  required String subject,
+  required String fileName,
+}) async {}

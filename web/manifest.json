@@ -36,7 +36,8 @@
     "storage",
     "tabs",
     "webNavigation",
-    "gcm"
+    "gcm",
+    "clipboardRead"
   ],
   "side_panel": {
     "default_path": "index.html"
