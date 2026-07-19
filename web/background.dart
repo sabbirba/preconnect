@@ -95,7 +95,8 @@ const String _ssoCookieUrl =
 external JSPromise<Response> _fetch(String input, [RequestInit? init]);
 
 Future<Tab> _safeTabsCreate({required String url, bool active = true}) async {
-  final createProps = {'url': url, 'active': active}.jsify() as $js.CreateProperties;
+  final createProps =
+      {'url': url, 'active': active}.jsify() as $js.CreateProperties;
   final jsTab = await $js.chrome.tabs.create(createProps).toDart;
   if (jsTab == null) {
     throw Exception('Failed to create tab');
@@ -911,12 +912,18 @@ void _registerWebNavigationListeners() {
   try {
     final chromeObj = globalContext.getProperty<JSObject?>('chrome'.toJS);
     if (chromeObj == null) return;
-    final webNavigationObj = chromeObj.getProperty<JSObject?>('webNavigation'.toJS);
+    final webNavigationObj = chromeObj.getProperty<JSObject?>(
+      'webNavigation'.toJS,
+    );
     if (webNavigationObj == null) return;
 
-    final onCommitted = webNavigationObj.getProperty<JSObject?>('onCommitted'.toJS);
+    final onCommitted = webNavigationObj.getProperty<JSObject?>(
+      'onCommitted'.toJS,
+    );
     if (onCommitted != null) {
-      final addListener = onCommitted.getProperty<JSFunction?>('addListener'.toJS);
+      final addListener = onCommitted.getProperty<JSFunction?>(
+        'addListener'.toJS,
+      );
       if (addListener != null) {
         addListener.callAsFunction(
           onCommitted,
@@ -935,11 +942,13 @@ void _registerWebNavigationListeners() {
       }
     }
 
-    final onHistoryStateUpdated =
-        webNavigationObj.getProperty<JSObject?>('onHistoryStateUpdated'.toJS);
+    final onHistoryStateUpdated = webNavigationObj.getProperty<JSObject?>(
+      'onHistoryStateUpdated'.toJS,
+    );
     if (onHistoryStateUpdated != null) {
-      final addListener =
-          onHistoryStateUpdated.getProperty<JSFunction?>('addListener'.toJS);
+      final addListener = onHistoryStateUpdated.getProperty<JSFunction?>(
+        'addListener'.toJS,
+      );
       if (addListener != null) {
         addListener.callAsFunction(
           onHistoryStateUpdated,
@@ -1708,9 +1717,7 @@ Future<void> _handleLibsyncRequest(Map message) async {
       final list = await chrome.cookies.getAll(
         ck.GetAllDetails(url: 'https://libsync.bracu.ac.bd/'),
       );
-      currentCookies = {
-        for (final c in list) c.name: c.value,
-      };
+      currentCookies = {for (final c in list) c.name: c.value};
     }
 
     await chrome.runtime.sendMessage(
@@ -1721,7 +1728,7 @@ Future<void> _handleLibsyncRequest(Map message) async {
         'statusCode': response.status,
         'headers': respHeaders,
         'body': base64Encode(utf8.encode(responseBody)),
-        if (currentCookies != null) 'cookies': currentCookies,
+        ...?currentCookies == null ? null : {'cookies': currentCookies},
       }).toJS,
       null,
     );

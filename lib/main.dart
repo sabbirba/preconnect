@@ -39,7 +39,7 @@ Future<void> main() async {
         AppLog.write('PlatformError: $error\n$stackTrace');
         return false;
       };
-      
+
       Future<FirebaseApp>? firebaseInit;
       if (!isChromeRuntimeAvailable()) {
         firebaseInit = Firebase.initializeApp(

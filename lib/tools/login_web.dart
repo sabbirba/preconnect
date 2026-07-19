@@ -91,7 +91,8 @@ class WebExtensionLoginFlow {
         } catch (_) {}
       }
 
-      final createProps = {'url': authUrl, 'active': true}.jsify() as $js.CreateProperties;
+      final createProps =
+          {'url': authUrl, 'active': true}.jsify() as $js.CreateProperties;
       final jsTab = await $js.chrome.tabs.create(createProps).toDart;
       final dartTab = jsTab.dartify() as Map;
       final tabId = dartTab['id'];
@@ -123,9 +124,7 @@ class WebExtensionLoginFlow {
         );
       } catch (_) {}
     } catch (e) {
-      _events.add(
-        WebExtensionLoginState.failed('Firefox login error: $e'),
-      );
+      _events.add(WebExtensionLoginState.failed('Firefox login error: $e'));
     }
   }
 
