@@ -115,6 +115,21 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
           'UTS Version': iosInfo.utsname.version,
           'Physical Device': iosInfo.isPhysicalDevice ? 'Yes' : 'No',
         });
+      } else if (Platform.isMacOS) {
+        final macosInfo = await deviceInfo.macOsInfo;
+        data.addAll(<String, String>{
+          'Platform': 'macOS',
+          'Computer Name': macosInfo.computerName,
+          'Host Name': macosInfo.hostName,
+          'Arch': macosInfo.arch,
+          'Model': macosInfo.model,
+          'OS Release': macosInfo.osRelease,
+          'Kernel Version': macosInfo.kernelVersion,
+          'Active CPUs': macosInfo.activeCPUs.toString(),
+          'Memory Size (Bytes)': macosInfo.memorySize.toString(),
+          'CPU Frequency': macosInfo.cpuFrequency.toString(),
+          'System GUID': macosInfo.systemGUID ?? 'Unknown',
+        });
       }
       if (mounted) {
         setState(() {
