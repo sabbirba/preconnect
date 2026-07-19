@@ -10,7 +10,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
-import 'package:in_app_update/in_app_update.dart';
+import 'package:in_app_update_flutter/in_app_update_flutter.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/app_storage.dart';
@@ -426,7 +428,8 @@ class _MyAppState extends State<MyApp>
   bool get _supportsInAppUpdates =>
       kReleaseMode &&
       !kIsWeb &&
-      defaultTargetPlatform == TargetPlatform.android;
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
 
   Future<void> _runDeferredStartupWork() async {
     await Future<void>.delayed(Duration.zero);
@@ -469,28 +472,62 @@ class _MyAppState extends State<MyApp>
   Future<bool> _maybeCheckForUpdates() async {
     if (!_supportsInAppUpdates) return false;
     try {
-      final info = await InAppUpdate.checkForUpdate();
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final packageInfo = await PackageInfo.fromPlatform();
+        final localVersion = packageInfo.version;
+        final bundleId = packageInfo.packageName;
+
+        final response = await http.get(
+          Uri.parse('https://itunes.apple.com/lookup?bundleId=$bundleId'),
+        );
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data != null &&
+              data['resultCount'] != null &&
+              data['resultCount'] > 0) {
+            final results = data['results'] as List<dynamic>;
+            if (results.isNotEmpty) {
+              final storeVersion = results[0]['version'] as String;
+              final appStoreId = results[0]['trackId'].toString();
+
+              if (storeVersion.compareTo(localVersion) > 0) {
+                await InAppUpdateFlutter().showUpdateForIos(
+                  appStoreId: appStoreId,
+                );
+                return true;
+              }
+            }
+          }
+        }
+        return false;
+      }
+
+      final plugin = InAppUpdateFlutter();
+      final info = await plugin.checkUpdateAndroid();
       final availability = info.updateAvailability;
       final installStatus = info.installStatus;
 
-      if (installStatus == InstallStatus.downloaded ||
+      if (installStatus == InstallStatusAndroid.downloaded ||
           availability ==
-              UpdateAvailability.developerTriggeredUpdateInProgress) {
-        await InAppUpdate.completeFlexibleUpdate();
+              UpdateAvailabilityAndroid.developerTriggeredUpdateInProgress) {
+        await plugin.completeUpdateAndroid();
         return true;
       }
 
-      if (availability == UpdateAvailability.updateAvailable) {
-        if (info.flexibleUpdateAllowed) {
-          final result = await InAppUpdate.startFlexibleUpdate();
-          if (result == AppUpdateResult.success) {
-            return true;
-          }
+      if (availability == UpdateAvailabilityAndroid.updateAvailable) {
+        if (info.isFlexibleUpdateAllowed) {
+          await plugin.startFlexibleUpdateAndroid();
+          plugin.installStateStreamAndroid.listen((state) {
+            if (state.status == InstallStatusAndroid.downloaded) {
+              unawaited(plugin.completeUpdateAndroid());
+            }
+          });
+          return true;
         }
 
-        if (info.immediateUpdateAllowed) {
-          final result = await InAppUpdate.performImmediateUpdate();
-          return result == AppUpdateResult.success;
+        if (info.isImmediateUpdateAllowed) {
+          final result = await plugin.startImmediateUpdateAndroid();
+          return result == UpdateResultAndroid.success;
         }
       }
       return false;
