@@ -24,6 +24,7 @@ platform :mac do
       force: true,
       skip_metadata: true,
       skip_screenshots: true,
+      run_precheck_before_submit: false,
       api_key: api_key
     )
   end
