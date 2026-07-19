@@ -76,18 +76,20 @@ class ExtensionHttpClient extends http.BaseClient {
         }
       });
 
-      await chrome.runtime.sendMessage(
-        null,
-        jsonEncode(<String, dynamic>{
-          'type': 'preconnect.libsyncRequest',
-          'requestId': requestId,
-          'method': request.method,
-          'url': request.url.toString(),
-          'headers': jsonEncode(request.headers),
-          'body': base64Encode(bodyBytes),
-        }).toJS,
-        null,
-      );
+      try {
+        await chrome.runtime.sendMessage(
+          null,
+          jsonEncode(<String, dynamic>{
+            'type': 'preconnect.libsyncRequest',
+            'requestId': requestId,
+            'method': request.method,
+            'url': request.url.toString(),
+            'headers': jsonEncode(request.headers),
+            'body': base64Encode(bodyBytes),
+          }).toJS,
+          null,
+        );
+      } catch (_) {}
 
       return completer.future;
     }

@@ -37,27 +37,31 @@ Future<String?> openChromeExtensionOAuthFlow(
     }
   });
 
-  await chrome.runtime.sendMessage(
-    null,
-    jsonEncode({
-      'type': 'preconnect.startLibsyncOauth',
-      'requestId': requestId,
-      'oauthUrl': oauthUrl,
-      'redirectUri': redirectUri,
-    }).toJS,
-    null,
-  );
+  try {
+    await chrome.runtime.sendMessage(
+      null,
+      jsonEncode({
+        'type': 'preconnect.startLibsyncOauth',
+        'requestId': requestId,
+        'oauthUrl': oauthUrl,
+        'redirectUri': redirectUri,
+      }).toJS,
+      null,
+    );
+  } catch (_) {}
 
   return completer.future;
 }
 
 Future<void> openCaptivePortalFlow(String portalUrl) async {
-  await chrome.runtime.sendMessage(
-    null,
-    jsonEncode({
-      'type': 'preconnect.startCaptivePortalFlow',
-      'portalUrl': portalUrl,
-    }).toJS,
-    null,
-  );
+  try {
+    await chrome.runtime.sendMessage(
+      null,
+      jsonEncode({
+        'type': 'preconnect.startCaptivePortalFlow',
+        'portalUrl': portalUrl,
+      }).toJS,
+      null,
+    );
+  } catch (_) {}
 }
