@@ -501,6 +501,7 @@ class FCMService {
   }
 
   Future<void> init() async {
+    if (isChromeRuntimeAvailable()) return;
     if (!isSupported) return;
     try {
       await Firebase.initializeApp(
