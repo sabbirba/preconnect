@@ -790,11 +790,13 @@ Future<void> _startLogin({String? idp}) async {
         startedAtMillis: DateTime.now().millisecondsSinceEpoch,
       ),
     );
-    await chrome.runtime.sendMessage(
-      null,
-      jsonEncode({'type': _loginStartedType, 'tabId': tab.id}).toJS,
-      null,
-    );
+    try {
+      await chrome.runtime.sendMessage(
+        null,
+        jsonEncode({'type': _loginStartedType, 'tabId': tab.id}).toJS,
+        null,
+      );
+    } catch (_) {}
   } catch (e) {
     await _broadcastFailure('Unable to start login: $e');
   }
@@ -1137,15 +1139,17 @@ Future<void> _processNavigation(int tabId, String url) async {
     if (!chrome.sidePanel.isAvailable && !_isFirefox()) {
       unawaited(_openOrFocusAppTab());
     }
-    await chrome.runtime.sendMessage(
-      null,
-      jsonEncode({
-        'type': _loginCompleteType,
-        'accessToken': tokens.accessToken,
-        'refreshToken': tokens.refreshToken,
-      }).toJS,
-      null,
-    );
+    try {
+      await chrome.runtime.sendMessage(
+        null,
+        jsonEncode({
+          'type': _loginCompleteType,
+          'accessToken': tokens.accessToken,
+          'refreshToken': tokens.refreshToken,
+        }).toJS,
+        null,
+      );
+    } catch (_) {}
   } catch (e) {
     await _failAndClear('Unable to complete login: $e');
   }
@@ -1787,28 +1791,32 @@ Future<void> _handleLibsyncRequest(Map message) async {
       currentCookies = {for (final c in list) c.name: c.value};
     }
 
-    await chrome.runtime.sendMessage(
-      null,
-      jsonEncode({
-        'type': 'preconnect.libsyncResponse',
-        'requestId': requestId,
-        'statusCode': response.status,
-        'headers': respHeaders,
-        'body': base64Encode(utf8.encode(responseBody)),
-        ...?currentCookies == null ? null : {'cookies': currentCookies},
-      }).toJS,
-      null,
-    );
+    try {
+      await chrome.runtime.sendMessage(
+        null,
+        jsonEncode({
+          'type': 'preconnect.libsyncResponse',
+          'requestId': requestId,
+          'statusCode': response.status,
+          'headers': respHeaders,
+          'body': base64Encode(utf8.encode(responseBody)),
+          ...?currentCookies == null ? null : {'cookies': currentCookies},
+        }).toJS,
+        null,
+      );
+    } catch (_) {}
   } catch (e) {
-    await chrome.runtime.sendMessage(
-      null,
-      jsonEncode({
-        'type': 'preconnect.libsyncResponse',
-        'requestId': requestId,
-        'error': e.toString(),
-      }).toJS,
-      null,
-    );
+    try {
+      await chrome.runtime.sendMessage(
+        null,
+        jsonEncode({
+          'type': 'preconnect.libsyncResponse',
+          'requestId': requestId,
+          'error': e.toString(),
+        }).toJS,
+        null,
+      );
+    } catch (_) {}
   }
 }
 
