@@ -662,7 +662,10 @@ jobs:
               -configuration Release \
               -archivePath "$RUNNER_TEMP/PreConnect.xcarchive" \
               CODE_SIGN_STYLE=Automatic \
-              CODE_SIGN_IDENTITY="-"
+              CODE_SIGN_IDENTITY="-" \
+              DEVELOPMENT_TEAM="" \
+              PROVISIONING_PROFILE_SPECIFIER="" \
+              PROVISIONING_PROFILE=""
 
             APP_PATH="$(find "$RUNNER_TEMP/PreConnect.xcarchive" -type d -name "*.app" | head -n1)"
             if [ -d "$APP_PATH" ]; then
