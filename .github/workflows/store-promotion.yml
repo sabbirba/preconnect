@@ -96,7 +96,7 @@ jobs:
 
       - name: Cache Pub Packages
         if: matrix.run_chrome || matrix.run_firefox
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.pub-cache
           key: ${{ runner.os }}-pub-cache-${{ hashFiles('pubspec.lock') }}
