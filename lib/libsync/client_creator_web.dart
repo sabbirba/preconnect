@@ -7,6 +7,8 @@ import 'package:chrome_extension/runtime.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 
+import 'package:preconnect/libsync/libsync_api_client.dart';
+
 class ExtensionHttpClient extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
@@ -59,6 +61,15 @@ class ExtensionHttpClient extends http.BaseClient {
           final respBodyBytes = bodyBase64.isEmpty
               ? <int>[]
               : base64Decode(bodyBase64);
+
+          final cookiesMap = resp['cookies'];
+          if (cookiesMap is Map) {
+            final cookiesToSave = cookiesMap.map(
+              (k, v) => MapEntry(k.toString(), v.toString()),
+            );
+            unawaited(LibSyncApiClient().saveCookies(cookiesToSave));
+          }
+
           completer.complete(
             http.StreamedResponse(
               Stream.value(respBodyBytes),
