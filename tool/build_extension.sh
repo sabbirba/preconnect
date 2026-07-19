@@ -147,6 +147,8 @@ d['version_name'] = '${CHROME_VERSION_NAME}'
 d.pop('side_panel', None)
 if 'permissions' in d:
     d['permissions'] = [p for p in d['permissions'] if p not in ('sidePanel', 'gcm')]
+if 'background' in d and 'service_worker' in d['background']:
+    d['background']['scripts'] = [d['background'].pop('service_worker')]
 with open(manifest_path, 'w') as f:
     json.dump(d, f, indent=2)
 "
