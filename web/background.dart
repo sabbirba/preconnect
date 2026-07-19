@@ -507,6 +507,7 @@ Future<void> _handleContextMenu(cm.OnClickData info, Tab? tab) async {
 
 Future<void> _openSidePanel({Tab? tab}) async {
   if (!chrome.sidePanel.isAvailable) {
+    if (_isFirefox()) return;
     await _openOrFocusAppTab();
     return;
   }
@@ -586,7 +587,7 @@ Future<void> _autoClickLogoutIfNeeded(int? tabId, {String? url}) async {
       scripting.ScriptInjection(
         target: scripting.InjectionTarget(tabId: tabId),
         files: const ['auto_click_logout.js'],
-        injectImmediately: true,
+        injectImmediately: _isFirefox() ? null : true,
       ),
     );
   } catch (_) {}
@@ -797,6 +798,8 @@ Future<void> _handleLoginTabCreated(Map<String, dynamic> msg) async {
   int? tabId;
   if (rawTabId is int) {
     tabId = rawTabId;
+  } else if (rawTabId is double) {
+    tabId = rawTabId.toInt();
   } else if (rawTabId != null) {
     tabId = int.tryParse('$rawTabId');
   }

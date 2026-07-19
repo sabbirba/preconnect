@@ -103,6 +103,8 @@ class WebExtensionLoginFlow {
         return;
       }
 
+      _events.add(const WebExtensionLoginState.started());
+
       try {
         await chrome.runtime.sendMessage(
           null,
