@@ -717,9 +717,42 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                           TextField(
                             controller: _ssidController,
                             readOnly: AndroidNetworkAssist.isSupported,
+                            style: TextStyle(
+                              color: BracuPalette.textPrimary(context),
+                              fontFamily: 'Outfit',
+                            ),
                             decoration: InputDecoration(
                               labelText: 'SSID',
-                              border: const OutlineInputBorder(),
+                              labelStyle: TextStyle(
+                                color: BracuPalette.textSecondary(context),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide(
+                                  color: BracuPalette.textSecondary(
+                                    context,
+                                  ).withValues(alpha: 0.20),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide(
+                                  color: BracuPalette.textSecondary(
+                                    context,
+                                  ).withValues(alpha: 0.20),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(
+                                  color: BracuPalette.primary,
+                                  width: 1.5,
+                                ),
+                              ),
                               suffixIcon: IosNetworkAssist.isSupported
                                   ? IconButton(
                                       icon: const Icon(Icons.refresh_rounded),
@@ -734,9 +767,42 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                           const Gap(10),
                           TextField(
                             controller: _studentIdController,
-                            decoration: const InputDecoration(
+                            style: TextStyle(
+                              color: BracuPalette.textPrimary(context),
+                              fontFamily: 'Outfit',
+                            ),
+                            decoration: InputDecoration(
                               labelText: 'Student ID',
-                              border: OutlineInputBorder(),
+                              labelStyle: TextStyle(
+                                color: BracuPalette.textSecondary(context),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide(
+                                  color: BracuPalette.textSecondary(
+                                    context,
+                                  ).withValues(alpha: 0.20),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide(
+                                  color: BracuPalette.textSecondary(
+                                    context,
+                                  ).withValues(alpha: 0.20),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(
+                                  color: BracuPalette.primary,
+                                  width: 1.5,
+                                ),
+                              ),
                             ),
                           ),
                           const Gap(10),
@@ -746,15 +812,48 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                             autofillHints: const <String>[
                               AutofillHints.password,
                             ],
+                            style: TextStyle(
+                              color: BracuPalette.textPrimary(context),
+                              fontFamily: 'Outfit',
+                            ),
                             decoration: InputDecoration(
                               labelText: 'Password',
-                              border: const OutlineInputBorder(),
+                              labelStyle: TextStyle(
+                                color: BracuPalette.textSecondary(context),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide(
+                                  color: BracuPalette.textSecondary(
+                                    context,
+                                  ).withValues(alpha: 0.20),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide(
+                                  color: BracuPalette.textSecondary(
+                                    context,
+                                  ).withValues(alpha: 0.20),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(
+                                  color: BracuPalette.primary,
+                                  width: 1.5,
+                                ),
+                              ),
                               suffixIcon: IconButton(
                                 icon: Icon(
                                   _obscurePassword
                                       ? Icons.visibility_off_outlined
                                       : Icons.visibility_outlined,
-                                  color: Theme.of(context).hintColor,
+                                  color: BracuPalette.textSecondary(context),
                                 ),
                                 onPressed: () {
                                   setState(() {
@@ -850,12 +949,47 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                       ),
                     ],
                     const Gap(4),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Auto Extend Session'),
-                      value: _autoExtendEnabled,
-                      onChanged: _setAutoExtendEnabled,
-                      activeThumbColor: BracuPalette.primary,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Auto Extend Session',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: BracuPalette.textPrimary(context),
+                                ),
+                              ),
+                              const Gap(2),
+                              Text(
+                                'Automatically keep captive session active',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: BracuPalette.textSecondary(context),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Gap(12),
+                        Switch(
+                          value: _autoExtendEnabled,
+                          onChanged: _setAutoExtendEnabled,
+                          activeThumbColor: BracuPalette.primary,
+                          activeTrackColor: BracuPalette.primary.withValues(
+                            alpha: 0.2,
+                          ),
+                          inactiveThumbColor: BracuPalette.textSecondary(
+                            context,
+                          ),
+                          inactiveTrackColor: BracuPalette.textSecondary(
+                            context,
+                          ).withValues(alpha: 0.1),
+                        ),
+                      ],
                     ),
                     if (_extractedParams != null &&
                         _extractedParams!.isNotEmpty) ...[

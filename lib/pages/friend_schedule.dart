@@ -326,12 +326,28 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                 hintStyle: TextStyle(
                   color: textSecondary.withValues(alpha: 0.50),
                 ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(
+                    color: textSecondary.withValues(alpha: 0.20),
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(
+                    color: textSecondary.withValues(alpha: 0.20),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(
+                    color: BracuPalette.primary,
+                    width: 1.5,
+                  ),
                 ),
               ),
             ),
