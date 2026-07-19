@@ -469,6 +469,72 @@ class _MyAppState extends State<MyApp>
     _handleShortcutAction(pendingAction);
   }
 
+  void _showUpdateInstalledSnackbar(InAppUpdateFlutter plugin) {
+    final context = AuthService.navigatorKey.currentContext;
+    if (context == null) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFF1E1E1E),
+        duration: const Duration(days: 365),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Color(0xFF2C2C2C), width: 1.0),
+        ),
+        margin: const EdgeInsets.all(16),
+        content: Row(
+          children: [
+            const Icon(
+              Icons.system_update_alt_rounded,
+              color: BracuPalette.primary,
+              size: 20,
+            ),
+            const Gap(12),
+            const Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Update Ready!',
+                    style: TextStyle(
+                      fontFamily: 'Outfit',
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Gap(2),
+                  Text(
+                    'Restart to apply the new update.',
+                    style: TextStyle(
+                      fontFamily: 'Outfit',
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Gap(8),
+            BracuActionButton(
+              onPressed: () async {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                await plugin.completeUpdateAndroid();
+              },
+              label: 'Restart',
+              borderRadius: 8,
+              fontSize: 12,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<bool> _maybeCheckForUpdates() async {
     if (!_supportsInAppUpdates) return false;
     try {
@@ -507,19 +573,33 @@ class _MyAppState extends State<MyApp>
       final availability = info.updateAvailability;
       final installStatus = info.installStatus;
 
-      if (installStatus == InstallStatusAndroid.downloaded ||
-          availability ==
-              UpdateAvailabilityAndroid.developerTriggeredUpdateInProgress) {
+      if (installStatus == InstallStatusAndroid.downloaded) {
+        _showUpdateInstalledSnackbar(plugin);
+        return true;
+      }
+
+      if (availability ==
+          UpdateAvailabilityAndroid.developerTriggeredUpdateInProgress) {
         await plugin.completeUpdateAndroid();
         return true;
       }
 
       if (availability == UpdateAvailabilityAndroid.updateAvailable) {
+        if (info.updatePriority >= 4 && info.isImmediateUpdateAllowed) {
+          final result = await plugin.startImmediateUpdateAndroid();
+          return result == UpdateResultAndroid.success;
+        }
+
+        final staleness = info.clientVersionStalenessDays ?? 0;
+        if (info.updatePriority < 4 && staleness < 2) {
+          return false;
+        }
+
         if (info.isFlexibleUpdateAllowed) {
           await plugin.startFlexibleUpdateAndroid();
           plugin.installStateStreamAndroid.listen((state) {
             if (state.status == InstallStatusAndroid.downloaded) {
-              unawaited(plugin.completeUpdateAndroid());
+              _showUpdateInstalledSnackbar(plugin);
             }
           });
           return true;
