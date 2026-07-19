@@ -27,7 +27,6 @@ const String _pendingLoginKey = 'preconnect.pendingLogin';
 const String _pendingLogoutKey = 'preconnect.pendingLogout';
 
 int? _pendingLibsyncOauthTabId;
-String? _pendingLibsyncOauthRedirectUri;
 String? _pendingLibsyncOauthRequestId;
 
 int? _pendingCaptivePortalTabId;
@@ -1027,8 +1026,6 @@ Future<void> _processNavigation(int tabId, String url) async {
       final storedTabId = values['libsync.pendingTabId'];
       if (storedTabId != null) {
         _pendingLibsyncOauthTabId = (storedTabId as num).toInt();
-        _pendingLibsyncOauthRedirectUri =
-            values['libsync.pendingRedirectUri'] as String?;
         _pendingLibsyncOauthRequestId =
             values['libsync.pendingRequestId'] as String?;
       }
@@ -1037,34 +1034,47 @@ Future<void> _processNavigation(int tabId, String url) async {
 
   if (_pendingLibsyncOauthTabId != null && tabId == _pendingLibsyncOauthTabId) {
     bool isRedirectMatch = false;
-    if (_pendingLibsyncOauthRedirectUri != null) {
-      final parsedRedirect = Uri.tryParse(_pendingLibsyncOauthRedirectUri!);
-      final parsedUrl = Uri.tryParse(url);
-      if (parsedRedirect != null && parsedUrl != null) {
-        isRedirectMatch =
-            parsedUrl.scheme == parsedRedirect.scheme &&
-            parsedUrl.host == parsedRedirect.host &&
-            parsedUrl.path == parsedRedirect.path;
+    final parsedUrl = Uri.tryParse(url);
+    if (parsedUrl != null) {
+      if (parsedUrl.host == 'preconnect.app' &&
+          (parsedUrl.path == '/auth/callback' ||
+              parsedUrl.path == '/api/auth/callback')) {
+        isRedirectMatch = true;
       }
     }
-    if (isRedirectMatch) {
-      final uri = Uri.tryParse(url);
-      if (uri != null) {
-        final code = uri.queryParameters['code'];
-        try {
-          await chrome.tabs.remove(_pendingLibsyncOauthTabId!);
-        } catch (_) {}
-        final reqId = _pendingLibsyncOauthRequestId;
-        _pendingLibsyncOauthTabId = null;
-        _pendingLibsyncOauthRedirectUri = null;
-        _pendingLibsyncOauthRequestId = null;
-        try {
-          await chrome.storage.session.remove([
-            'libsync.pendingTabId',
-            'libsync.pendingRedirectUri',
-            'libsync.pendingRequestId',
-          ]);
-        } catch (_) {}
+    if (isRedirectMatch && parsedUrl != null) {
+      final code = parsedUrl.queryParameters['code'];
+      final googleAccessToken =
+          parsedUrl.queryParameters['google_access_token'];
+      final googleRefreshToken =
+          parsedUrl.queryParameters['google_refresh_token'];
+
+      try {
+        await chrome.tabs.remove(_pendingLibsyncOauthTabId!);
+      } catch (_) {}
+      final reqId = _pendingLibsyncOauthRequestId;
+      _pendingLibsyncOauthTabId = null;
+      _pendingLibsyncOauthRequestId = null;
+      try {
+        await chrome.storage.session.remove([
+          'libsync.pendingTabId',
+          'libsync.pendingRedirectUri',
+          'libsync.pendingRequestId',
+        ]);
+      } catch (_) {}
+
+      if (googleAccessToken != null && googleAccessToken.isNotEmpty) {
+        unawaited(
+          _broadcastRuntimeMessage({
+            'type': 'preconnect.libsyncOauthResponse',
+            'requestId': reqId,
+            'tokens': jsonEncode({
+              'access_token': googleAccessToken,
+              'refresh_token': googleRefreshToken,
+            }),
+          }),
+        );
+      } else {
         unawaited(
           _broadcastRuntimeMessage({
             'type': 'preconnect.libsyncOauthResponse',
@@ -1218,7 +1228,6 @@ Future<void> _handleTabRemoved(OnRemovedEvent event) async {
   if (event.tabId == _pendingLibsyncOauthTabId) {
     final reqId = _pendingLibsyncOauthRequestId;
     _pendingLibsyncOauthTabId = null;
-    _pendingLibsyncOauthRedirectUri = null;
     _pendingLibsyncOauthRequestId = null;
     unawaited(
       _broadcastRuntimeMessage({
@@ -1808,7 +1817,6 @@ Future<void> _startLibsyncOauth(Map message) async {
     final tabId = tab.id;
     if (tabId != null) {
       _pendingLibsyncOauthTabId = tabId;
-      _pendingLibsyncOauthRedirectUri = redirectUri;
       _pendingLibsyncOauthRequestId = requestId;
       await chrome.storage.session.set({
         'libsync.pendingTabId': tabId,
