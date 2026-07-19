@@ -368,7 +368,7 @@ class _ShareScheduleLoadingState extends StatelessWidget {
         child: SizedBox(
           width: 28,
           height: 28,
-          child: CircularProgressIndicator(strokeWidth: 2.6),
+          child: BracuSpinner(size: 28, strokeWidth: 2.6),
         ),
       ),
     );

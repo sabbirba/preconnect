@@ -42,7 +42,7 @@ class _GradeSheetCardState extends State<GradeSheetCard> {
           ? const SizedBox(
               width: 18,
               height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
+              child: BracuSpinner(size: 18, strokeWidth: 2),
             )
           : null,
     );
