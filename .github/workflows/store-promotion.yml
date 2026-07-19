@@ -192,7 +192,7 @@ jobs:
             curl -fsSL \
               -H "Authorization: Bearer $ACCESS_TOKEN" \
               -X POST \
-              "https://chromewebstore.googleapis.com/v2/${ITEM_NAME}:cancelSubmission"
+              "https://chromewebstore.googleapis.com/v2/${ITEM_NAME}:cancelSubmission" || true
           else
             echo "No pending review found; continuing with upload."
           fi
