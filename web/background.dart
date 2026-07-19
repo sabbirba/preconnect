@@ -181,6 +181,7 @@ Future<void> main() async {
   chrome.runtime.onMessage.listen(_handleRuntimeMessage);
 
   _registerWebNavigationListeners();
+  _registerTabUpdatedListener();
 
   chrome.tabs.onRemoved.listen((event) {
     unawaited(_guarded(() => _handleTabRemoved(event)));
@@ -975,6 +976,43 @@ void _registerWebNavigationListeners() {
         );
       }
     }
+  } catch (_) {}
+}
+
+void _registerTabUpdatedListener() {
+  try {
+    final chromeVal = globalContext.getProperty('chrome'.toJS);
+    if (chromeVal.isUndefinedOrNull) return;
+    final chromeObj = chromeVal as JSObject;
+
+    final tabsVal = chromeObj.getProperty('tabs'.toJS);
+    if (tabsVal.isUndefinedOrNull) return;
+    final tabsObj = tabsVal as JSObject;
+
+    final onUpdatedVal = tabsObj.getProperty('onUpdated'.toJS);
+    if (onUpdatedVal.isUndefinedOrNull) return;
+    final onUpdatedObj = onUpdatedVal as JSObject;
+
+    final addListenerVal = onUpdatedObj.getProperty('addListener'.toJS);
+    if (addListenerVal.isUndefinedOrNull) return;
+    final addListener = addListenerVal as JSFunction;
+
+    addListener.callAsFunction(
+      onUpdatedObj,
+      ((JSAny? tabId, JSAny? changeInfo, JSAny? tab) {
+        if (changeInfo.isUndefinedOrNull) return;
+        final changeInfoObj = changeInfo as JSObject;
+        final urlVal = changeInfoObj.getProperty('url'.toJS)?.dartify();
+        if (urlVal is String && tabId != null) {
+          final tabIdNum = tabId.dartify();
+          if (tabIdNum is num) {
+            unawaited(
+              _guarded(() => _processNavigation(tabIdNum.toInt(), urlVal)),
+            );
+          }
+        }
+      }).toJS,
+    );
   } catch (_) {}
 }
 
