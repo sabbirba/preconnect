@@ -965,7 +965,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                               ),
                               const Gap(2),
                               Text(
-                                'Automatically keep captive session active',
+                                'Automatically keep session active.',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: BracuPalette.textSecondary(context),
