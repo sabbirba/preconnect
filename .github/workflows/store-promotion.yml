@@ -270,10 +270,10 @@ jobs:
 
       - name: Publish Firefox Extension
         if: matrix.run_firefox
-        continue-on-error: true
-        uses: browser-actions/release-firefox-addon@latest
-        with:
-          addon-id: 'preconnect@sabbirba.com'
-          addon-path: 'build/firefox-extension.zip'
-          auth-api-issuer: ${{ secrets.AMO_JWT_ISSUER }}
-          auth-api-secret: ${{ secrets.AMO_JWT_SECRET }}
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        shell: bash
+        run: |
+          pip install PyJWT requests
+          python3 tool/publish_firefox.py "preconnect@sabbirba.com" "build/firefox-extension.zip" "$AMO_JWT_ISSUER" "$AMO_JWT_SECRET"
