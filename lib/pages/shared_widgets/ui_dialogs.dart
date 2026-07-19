@@ -822,196 +822,53 @@ Future<DateTime?> showBracuDatePicker(
   required DateTime firstDate,
   required DateTime lastDate,
 }) async {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final dates = List.generate(10, (index) => today.add(Duration(days: index)));
+
   return await showBracuBottomSheet<DateTime>(
     context,
     title: 'Select Date',
-    initialChildSize: 0.65,
+    initialChildSize: 0.60,
     builder: (sheetContext, textPrimary, textSecondary) {
-      return _BracuDatePickerSheet(
-        initialDate: initialDate,
-        firstDate: firstDate,
-        lastDate: lastDate,
-        textPrimary: textPrimary,
-        textSecondary: textSecondary,
+      return ListView.builder(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 24),
+        itemCount: dates.length,
+        itemBuilder: (context, index) {
+          final date = dates[index];
+          final isSelected =
+              date.year == initialDate.year &&
+              date.month == initialDate.month &&
+              date.day == initialDate.day;
+          final isToday =
+              date.year == today.year &&
+              date.month == today.month &&
+              date.day == today.day;
+          final isTomorrow = date.difference(today).inDays == 1;
+
+          String label = DateFormat('EEEE, d MMM yyyy').format(date);
+          if (isToday) {
+            label = 'Today - ${DateFormat('d MMM yyyy').format(date)}';
+          } else if (isTomorrow) {
+            label = 'Tomorrow - ${DateFormat('d MMM yyyy').format(date)}';
+          }
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: BracuActionButton(
+              onPressed: () => Navigator.pop(sheetContext, date),
+              outlined: !isSelected,
+              label: label,
+              borderRadius: 12,
+              fontSize: 14,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          );
+        },
       );
     },
   );
-}
-
-class _BracuDatePickerSheet extends StatefulWidget {
-  const _BracuDatePickerSheet({
-    required this.initialDate,
-    required this.firstDate,
-    required this.lastDate,
-    required this.textPrimary,
-    required this.textSecondary,
-  });
-
-  final DateTime initialDate;
-  final DateTime firstDate;
-  final DateTime lastDate;
-  final Color textPrimary;
-  final Color textSecondary;
-
-  @override
-  State<_BracuDatePickerSheet> createState() => _BracuDatePickerSheetState();
-}
-
-class _BracuDatePickerSheetState extends State<_BracuDatePickerSheet> {
-  late DateTime _currentMonth;
-  late DateTime _selectedDate;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedDate = widget.initialDate;
-    _currentMonth = DateTime(_selectedDate.year, _selectedDate.month);
-  }
-
-  void _nextMonth() {
-    setState(() {
-      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
-    });
-  }
-
-  void _prevMonth() {
-    setState(() {
-      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final year = _currentMonth.year;
-    final month = _currentMonth.month;
-    final firstDayOfMonth = DateTime(year, month, 1);
-    final lastDayOfMonth = DateTime(year, month + 1, 0);
-    final firstWeekday = firstDayOfMonth.weekday % 7;
-    final daysInMonth = lastDayOfMonth.day;
-    final totalCells = firstWeekday + daysInMonth;
-    final rowsCount = (totalCells / 7).ceil();
-    final monthLabel = DateFormat('MMMM yyyy').format(_currentMonth);
-    final weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            IconButton(
-              icon: Icon(Icons.chevron_left, color: widget.textPrimary),
-              onPressed: _prevMonth,
-            ),
-            Text(
-              monthLabel,
-              style: TextStyle(
-                color: widget.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Outfit',
-              ),
-            ),
-            IconButton(
-              icon: Icon(Icons.chevron_right, color: widget.textPrimary),
-              onPressed: _nextMonth,
-            ),
-          ],
-        ),
-        const Gap(12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: weekdays.map((day) {
-            return SizedBox(
-              width: 32,
-              child: Center(
-                child: Text(
-                  day,
-                  style: TextStyle(
-                    color: widget.textSecondary.withValues(alpha: 0.50),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Outfit',
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-        const Gap(8),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: rowsCount,
-          itemBuilder: (context, rowIndex) {
-            return Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: List.generate(7, (colIndex) {
-                final cellIndex = rowIndex * 7 + colIndex;
-                final dayNumber = cellIndex - firstWeekday + 1;
-
-                if (dayNumber < 1 || dayNumber > daysInMonth) {
-                  return const SizedBox(width: 32, height: 32);
-                }
-
-                final date = DateTime(year, month, dayNumber);
-                final isSelected =
-                    date.year == _selectedDate.year &&
-                    date.month == _selectedDate.month &&
-                    date.day == _selectedDate.day;
-
-                final isOutOfRange =
-                    date.isBefore(widget.firstDate) ||
-                    date.isAfter(widget.lastDate);
-
-                return GestureDetector(
-                  onTap: isOutOfRange
-                      ? null
-                      : () {
-                          setState(() {
-                            _selectedDate = date;
-                          });
-                          Navigator.pop(context, date);
-                        },
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? BracuPalette.primary
-                          : Colors.transparent,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '$dayNumber',
-                        style: TextStyle(
-                          color: isSelected
-                              ? Colors.white
-                              : (isOutOfRange
-                                    ? widget.textSecondary.withValues(
-                                        alpha: 0.25,
-                                      )
-                                    : widget.textPrimary),
-                          fontSize: 13,
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          fontFamily: 'Outfit',
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            );
-          },
-        ),
-        const Gap(24),
-      ],
-    );
-  }
 }
 
 Future<TimeOfDay?> showBracuTimePicker(
