@@ -790,13 +790,7 @@ Future<void> _startLogin({String? idp}) async {
         startedAtMillis: DateTime.now().millisecondsSinceEpoch,
       ),
     );
-    try {
-      await chrome.runtime.sendMessage(
-        null,
-        jsonEncode({'type': _loginStartedType, 'tabId': tab.id}).toJS,
-        null,
-      );
-    } catch (_) {}
+    _safeSendMessage({'type': _loginStartedType, 'tabId': tab.id});
   } catch (e) {
     await _broadcastFailure('Unable to start login: $e');
   }
@@ -824,13 +818,7 @@ Future<void> _handleLoginTabCreated(Map<String, dynamic> msg) async {
       startedAtMillis: DateTime.now().millisecondsSinceEpoch,
     ),
   );
-  try {
-    await chrome.runtime.sendMessage(
-      null,
-      jsonEncode({'type': _loginStartedType, 'tabId': tabId}).toJS,
-      null,
-    );
-  } catch (_) {}
+  _safeSendMessage({'type': _loginStartedType, 'tabId': tabId});
 }
 
 Future<void> _startLogout() async {
@@ -1141,17 +1129,11 @@ Future<void> _processNavigation(int tabId, String url) async {
     if (!chrome.sidePanel.isAvailable && !_isFirefox()) {
       unawaited(_openOrFocusAppTab());
     }
-    try {
-      await chrome.runtime.sendMessage(
-        null,
-        jsonEncode({
-          'type': _loginCompleteType,
-          'accessToken': tokens.accessToken,
-          'refreshToken': tokens.refreshToken,
-        }).toJS,
-        null,
-      );
-    } catch (_) {}
+    _safeSendMessage({
+      'type': _loginCompleteType,
+      'accessToken': tokens.accessToken,
+      'refreshToken': tokens.refreshToken,
+    });
   } catch (e) {
     await _failAndClear('Unable to complete login: $e');
   }
@@ -1279,9 +1261,7 @@ Future<void> _broadcastFailure(String error) async {
 }
 
 Future<void> _broadcastRuntimeMessage(Map<String, Object?> message) async {
-  try {
-    await chrome.runtime.sendMessage(null, jsonEncode(message).toJS, null);
-  } catch (_) {}
+  _safeSendMessage(message);
 }
 
 Future<void> _savePendingLogin(_PendingLogin pending) async {
@@ -1793,32 +1773,20 @@ Future<void> _handleLibsyncRequest(Map message) async {
       currentCookies = {for (final c in list) c.name: c.value};
     }
 
-    try {
-      await chrome.runtime.sendMessage(
-        null,
-        jsonEncode({
-          'type': 'preconnect.libsyncResponse',
-          'requestId': requestId,
-          'statusCode': response.status,
-          'headers': respHeaders,
-          'body': base64Encode(utf8.encode(responseBody)),
-          ...?currentCookies == null ? null : {'cookies': currentCookies},
-        }).toJS,
-        null,
-      );
-    } catch (_) {}
+    _safeSendMessage({
+      'type': 'preconnect.libsyncResponse',
+      'requestId': requestId,
+      'statusCode': response.status,
+      'headers': respHeaders,
+      'body': base64Encode(utf8.encode(responseBody)),
+      ...?currentCookies == null ? null : {'cookies': currentCookies},
+    });
   } catch (e) {
-    try {
-      await chrome.runtime.sendMessage(
-        null,
-        jsonEncode({
-          'type': 'preconnect.libsyncResponse',
-          'requestId': requestId,
-          'error': e.toString(),
-        }).toJS,
-        null,
-      );
-    } catch (_) {}
+    _safeSendMessage({
+      'type': 'preconnect.libsyncResponse',
+      'requestId': requestId,
+      'error': e.toString(),
+    });
   }
 }
 
@@ -1888,4 +1856,22 @@ Future<bool> _checkInternetConnection() async {
     return response.status == 204;
   } catch (_) {}
   return false;
+}
+
+void _safeSendMessage(Map<String, dynamic> message) {
+  try {
+    final chromeVal = globalContext.getProperty('chrome'.toJS);
+    if (chromeVal.isUndefinedOrNull) return;
+    final chromeObj = chromeVal as JSObject;
+
+    final runtimeVal = chromeObj.getProperty('runtime'.toJS);
+    if (runtimeVal.isUndefinedOrNull) return;
+    final runtimeObj = runtimeVal as JSObject;
+
+    final sendMessageVal = runtimeObj.getProperty('sendMessage'.toJS);
+    if (sendMessageVal.isUndefinedOrNull) return;
+    final sendMessageFunc = sendMessageVal as JSFunction;
+
+    sendMessageFunc.callAsFunction(runtimeObj, null, jsonEncode(message).toJS);
+  } catch (_) {}
 }
