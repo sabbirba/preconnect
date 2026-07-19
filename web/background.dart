@@ -340,9 +340,8 @@ Future<void> _openOrFocusAppTab() async {
 
 void _safeContextMenuCreate(cm.CreateProperties properties) {
   try {
-    final chromeVal = globalContext.getProperty('chrome'.toJS);
-    if (chromeVal.isUndefinedOrNull) return;
-    final chromeObj = chromeVal as JSObject;
+    final chromeObj = _getExtensionApi();
+    if (chromeObj == null) return;
 
     final contextMenusVal = chromeObj.getProperty('contextMenus'.toJS);
     if (contextMenusVal.isUndefinedOrNull) return;
@@ -904,9 +903,8 @@ Future<void> _completeMercureLogout(int? appTabId) async {
 
 void _registerWebNavigationListeners() {
   try {
-    final chromeVal = globalContext.getProperty('chrome'.toJS);
-    if (chromeVal.isUndefinedOrNull) return;
-    final chromeObj = chromeVal as JSObject;
+    final chromeObj = _getExtensionApi();
+    if (chromeObj == null) return;
 
     final webNavigationVal = chromeObj.getProperty('webNavigation'.toJS);
     if (webNavigationVal.isUndefinedOrNull) return;
@@ -966,9 +964,8 @@ void _registerWebNavigationListeners() {
 
 void _registerTabUpdatedListener() {
   try {
-    final chromeVal = globalContext.getProperty('chrome'.toJS);
-    if (chromeVal.isUndefinedOrNull) return;
-    final chromeObj = chromeVal as JSObject;
+    final chromeObj = _getExtensionApi();
+    if (chromeObj == null) return;
 
     final tabsVal = chromeObj.getProperty('tabs'.toJS);
     if (tabsVal.isUndefinedOrNull) return;
@@ -1046,10 +1043,8 @@ Future<void> _processNavigation(int tabId, String url) async {
       final googleRefreshToken =
           parsedUrl.queryParameters['google_refresh_token'];
 
-      try {
-        await chrome.tabs.remove(_pendingLibsyncOauthTabId!);
-      } catch (_) {}
       final reqId = _pendingLibsyncOauthRequestId;
+      final tabToRemove = _pendingLibsyncOauthTabId;
       _pendingLibsyncOauthTabId = null;
       _pendingLibsyncOauthRequestId = null;
       try {
@@ -1059,6 +1054,12 @@ Future<void> _processNavigation(int tabId, String url) async {
           'libsync.pendingRequestId',
         ]);
       } catch (_) {}
+
+      if (tabToRemove != null) {
+        try {
+          await chrome.tabs.remove(tabToRemove);
+        } catch (_) {}
+      }
 
       if (googleAccessToken != null && googleAccessToken.isNotEmpty) {
         unawaited(
@@ -1860,9 +1861,8 @@ Future<bool> _checkInternetConnection() async {
 
 void _safeSendMessage(Map<String, dynamic> message) {
   try {
-    final chromeVal = globalContext.getProperty('chrome'.toJS);
-    if (chromeVal.isUndefinedOrNull) return;
-    final chromeObj = chromeVal as JSObject;
+    final chromeObj = _getExtensionApi();
+    if (chromeObj == null) return;
 
     final runtimeVal = chromeObj.getProperty('runtime'.toJS);
     if (runtimeVal.isUndefinedOrNull) return;
@@ -1872,6 +1872,14 @@ void _safeSendMessage(Map<String, dynamic> message) {
     if (sendMessageVal.isUndefinedOrNull) return;
     final sendMessageFunc = sendMessageVal as JSFunction;
 
-    sendMessageFunc.callAsFunction(runtimeObj, null, jsonEncode(message).toJS);
+    sendMessageFunc.callAsFunction(runtimeObj, jsonEncode(message).toJS);
   } catch (_) {}
+}
+
+JSObject? _getExtensionApi() {
+  var extensionObj = globalContext.getProperty('chrome'.toJS);
+  if (extensionObj.isUndefinedOrNull) {
+    extensionObj = globalContext.getProperty('browser'.toJS);
+  }
+  return extensionObj.isUndefinedOrNull ? null : (extensionObj as JSObject);
 }
