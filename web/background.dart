@@ -28,6 +28,7 @@ const String _pendingLogoutKey = 'preconnect.pendingLogout';
 
 int? _pendingLibsyncOauthTabId;
 String? _pendingLibsyncOauthRequestId;
+int? _currentlyProcessingLoginTabId;
 
 int? _pendingCaptivePortalTabId;
 Timer? _captivePortalTimer;
@@ -1088,6 +1089,8 @@ Future<void> _processNavigation(int tabId, String url) async {
     return;
   }
 
+  if (_currentlyProcessingLoginTabId == tabId) return;
+
   await _autoClickLogoutIfNeeded(tabId, url: url);
 
   final pending = await _loadPendingLogin();
@@ -1098,45 +1101,51 @@ Future<void> _processNavigation(int tabId, String url) async {
   if (uri.host != 'connect.bracu.ac.bd') return;
   if (!uri.path.contains('/student/profile/overview')) return;
 
-  final code = uri.queryParameters['code']?.trim() ?? '';
-  if (code.isEmpty) {
-    await _failAndClear(
-      'Login callback did not include an authorization code.',
-    );
-    return;
-  }
-
-  await _clearPendingLogin();
+  _currentlyProcessingLoginTabId = tabId;
 
   try {
-    await chrome.tabs.remove(tabId);
-  } catch (_) {}
-
-  try {
-    final tokens = await _exchangeCodeForTokens(
-      code: code,
-      verifier: pending.verifier,
-    );
-    await chrome.storage.local.set({
-      PreConnectStorageKeys.accessToken: tokens.accessToken,
-      PreConnectStorageKeys.refreshToken: tokens.refreshToken,
-      if (tokens.idToken.isNotEmpty)
-        PreConnectStorageKeys.idToken: tokens.idToken,
-      PreConnectStorageKeys.cachedHasAuthSession: 'true',
-    });
-    await _syncBracuCookieSnapshot();
-    await _refreshBadgeAndNotifyIfNeeded();
-    unawaited(_registerGcmAndSyncToken());
-    if (!chrome.sidePanel.isAvailable && !_isFirefox()) {
-      unawaited(_openOrFocusAppTab());
+    final code = uri.queryParameters['code']?.trim() ?? '';
+    if (code.isEmpty) {
+      await _failAndClear(
+        'Login callback did not include an authorization code.',
+      );
+      return;
     }
-    _safeSendMessage({
-      'type': _loginCompleteType,
-      'accessToken': tokens.accessToken,
-      'refreshToken': tokens.refreshToken,
-    });
-  } catch (e) {
-    await _failAndClear('Unable to complete login: $e');
+
+    await _clearPendingLogin();
+
+    try {
+      await chrome.tabs.remove(tabId);
+    } catch (_) {}
+
+    try {
+      final tokens = await _exchangeCodeForTokens(
+        code: code,
+        verifier: pending.verifier,
+      );
+      await chrome.storage.local.set({
+        PreConnectStorageKeys.accessToken: tokens.accessToken,
+        PreConnectStorageKeys.refreshToken: tokens.refreshToken,
+        if (tokens.idToken.isNotEmpty)
+          PreConnectStorageKeys.idToken: tokens.idToken,
+        PreConnectStorageKeys.cachedHasAuthSession: 'true',
+      });
+      await _syncBracuCookieSnapshot();
+      await _refreshBadgeAndNotifyIfNeeded();
+      unawaited(_registerGcmAndSyncToken());
+      if (!chrome.sidePanel.isAvailable && !_isFirefox()) {
+        unawaited(_openOrFocusAppTab());
+      }
+      _safeSendMessage({
+        'type': _loginCompleteType,
+        'accessToken': tokens.accessToken,
+        'refreshToken': tokens.refreshToken,
+      });
+    } catch (e) {
+      await _failAndClear('Unable to complete login: $e');
+    }
+  } finally {
+    _currentlyProcessingLoginTabId = null;
   }
 }
 
