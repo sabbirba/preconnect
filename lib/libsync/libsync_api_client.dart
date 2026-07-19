@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'libsync_config.dart';
@@ -257,6 +258,7 @@ class LibSyncApiClient extends http.BaseClient {
   Future<void> _safeWrite(String key, String value) async {
     final store = AppPreferencesStore();
     await store.setString(key, value);
+    if (kIsWeb) return;
     try {
       await _secureStorage.write(key: key, value: value);
     } catch (_) {}
@@ -268,6 +270,7 @@ class LibSyncApiClient extends http.BaseClient {
     if (localVal != null && localVal.isNotEmpty) {
       return localVal;
     }
+    if (kIsWeb) return null;
     try {
       return await _secureStorage.read(key: key);
     } catch (_) {
@@ -276,9 +279,11 @@ class LibSyncApiClient extends http.BaseClient {
   }
 
   Future<void> _safeDelete(String key) async {
-    try {
-      await _secureStorage.delete(key: key);
-    } catch (_) {}
+    if (!kIsWeb) {
+      try {
+        await _secureStorage.delete(key: key);
+      } catch (_) {}
+    }
     final store = AppPreferencesStore();
     await store.remove(key);
   }
