@@ -272,28 +272,6 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
     return true;
   }
 
-  BoxDecoration _buildDialogDecoration(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return BoxDecoration(
-      borderRadius: BorderRadius.circular(20),
-      color: BracuPalette.card(context),
-      border: Border.all(
-        color: BracuPalette.textSecondary(
-          context,
-        ).withValues(alpha: isDark ? 0.35 : 0.18),
-      ),
-      boxShadow: isDark
-          ? const []
-          : [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
-              ),
-            ],
-    );
-  }
-
   Future<void> _saveMetadata() async {
     await _store.saveAllMetadata(_metadata);
   }
@@ -328,89 +306,61 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       text: item.metadata?.nickname ?? '',
     );
 
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Container(
-            decoration: _buildDialogDecoration(context),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.edit_outlined,
-                        color: BracuPalette.primary,
-                      ),
-                      const Gap(8),
-                      Expanded(
-                        child: Text(
-                          'Edit Nickname',
-                          style: TextStyle(
-                            color: BracuPalette.textPrimary(context),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, ''),
-                        child: const Text('Reset'),
-                      ),
-                    ],
-                  ),
-                  const Gap(14),
-                  TextField(
-                    controller: controller,
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      hintText: item.friend.name.isEmpty
-                          ? 'Enter nickname'
-                          : item.friend.name,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                    ),
-                  ),
-                  const Gap(16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: BracuActionButton(
-                          onPressed: () => Navigator.pop(context),
-                          label: 'Cancel',
-                        ),
-                      ),
-                      const Gap(12),
-                      Expanded(
-                        child: BracuActionButton(
-                          onPressed: () =>
-                              Navigator.pop(context, controller.text.trim()),
-                          label: 'Save',
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+    final result = await showBracuBottomSheet<String>(
+      context,
+      title: 'Edit Nickname',
+      initialChildSize: 0.40,
+      builder: (sheetContext, textPrimary, textSecondary) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: controller,
+              autofocus: true,
+              style: TextStyle(color: textPrimary, fontFamily: 'Outfit'),
+              decoration: InputDecoration(
+                hintText: item.friend.name.isEmpty
+                    ? 'Enter nickname'
+                    : item.friend.name,
+                hintStyle: TextStyle(
+                  color: textSecondary.withValues(alpha: 0.50),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
               ),
             ),
-          ),
+            const Gap(16),
+            Row(
+              children: [
+                Expanded(
+                  child: BracuActionButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    label: 'Cancel',
+                    outlined: true,
+                  ),
+                ),
+                const Gap(12),
+                Expanded(
+                  child: BracuActionButton(
+                    onPressed: () =>
+                        Navigator.pop(sheetContext, controller.text.trim()),
+                    label: 'Save',
+                    outlined: false,
+                  ),
+                ),
+              ],
+            ),
+            const Gap(16),
+          ],
         );
       },
     );
-
     if (result == null) return null;
 
     final friendId = item.friend.id;

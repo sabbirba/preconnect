@@ -370,12 +370,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage>
 
       if (_capacity == 1) {
         if (!mounted) return;
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) =>
-              const Center(child: CircularProgressIndicator()),
-        );
+        showBracuLoadingDialog(context);
         try {
           await LibSyncAuthService.instance.confirmReservation(
             studentIds: [selfStudentId],

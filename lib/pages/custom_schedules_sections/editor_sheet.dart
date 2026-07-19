@@ -174,8 +174,8 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
       return StatefulBuilder(
         builder: (context, setState) {
           Future<bool> pickDueDate() async {
-            final picked = await showDatePicker(
-              context: context,
+            final picked = await showBracuDatePicker(
+              context,
               initialDate: startTime,
               firstDate: DateTime.now().subtract(const Duration(days: 1)),
               lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
@@ -203,8 +203,8 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
           }
 
           Future<bool> pickStartTime() async {
-            final picked = await showTimePicker(
-              context: context,
+            final picked = await showBracuTimePicker(
+              context,
               initialTime: TimeOfDay.fromDateTime(startTime),
             );
             if (picked == null || !context.mounted) return false;
@@ -225,8 +225,8 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
 
           Future<bool> pickEndTime() async {
             final initial = endTime ?? startTime.add(const Duration(hours: 1));
-            final picked = await showTimePicker(
-              context: context,
+            final picked = await showBracuTimePicker(
+              context,
               initialTime: TimeOfDay.fromDateTime(initial),
             );
             if (picked == null || !context.mounted) return false;
