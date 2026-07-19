@@ -158,7 +158,7 @@ jobs:
           echo "::add-mask::$ACCESS_TOKEN"
           echo "access_token=$ACCESS_TOKEN" >> "$GITHUB_OUTPUT"
 
-      - name: Publish Chrome
+      - name: Publish Chrome Extension
         if: matrix.run_chrome
         env:
           ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
