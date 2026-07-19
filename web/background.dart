@@ -1043,9 +1043,11 @@ Future<void> _processNavigation(int tabId, String url) async {
     bool isRedirectMatch = false;
     final parsedUrl = Uri.tryParse(url);
     if (parsedUrl != null) {
+      final path = parsedUrl.path.endsWith('/')
+          ? parsedUrl.path.substring(0, parsedUrl.path.length - 1)
+          : parsedUrl.path;
       if (parsedUrl.host.contains('preconnect.app') &&
-          (parsedUrl.path == '/auth/callback' ||
-              parsedUrl.path == '/api/auth/callback')) {
+          (path == '/auth/callback' || path == '/api/auth/callback')) {
         isRedirectMatch = true;
       }
     }
