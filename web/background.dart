@@ -239,20 +239,16 @@ Future<void> _guarded(Future<void> Function() task) async {
 void _handleRuntimeMessage(dynamic event) {
   final rawMessage = event.message;
   Map<String, dynamic>? message;
-  if (rawMessage is String) {
+  final dartified = (rawMessage as JSAny?)?.dartify();
+  if (dartified is String) {
     try {
-      final decoded = jsonDecode(rawMessage);
+      final decoded = jsonDecode(dartified);
       if (decoded is Map) {
         message = Map<String, dynamic>.from(decoded);
       }
     } catch (_) {}
-  } else if (rawMessage is Map) {
-    message = Map<String, dynamic>.from(rawMessage);
-  } else if (rawMessage != null && rawMessage.isA<JSObject>()) {
-    try {
-      final dartified = (rawMessage as JSObject).dartify();
-      if (dartified is Map) message = Map<String, dynamic>.from(dartified);
-    } catch (_) {}
+  } else if (dartified is Map) {
+    message = Map<String, dynamic>.from(dartified);
   }
   if (message == null) return;
   final msg = message;
