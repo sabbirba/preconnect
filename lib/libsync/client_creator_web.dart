@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:chrome_extension/runtime.dart';
@@ -76,26 +77,38 @@ class ExtensionHttpClient extends http.BaseClient {
         }
       });
 
-      try {
-        await chrome.runtime.sendMessage(
-          null,
-          jsonEncode(<String, dynamic>{
-            'type': 'preconnect.libsyncRequest',
-            'requestId': requestId,
-            'method': request.method,
-            'url': request.url.toString(),
-            'headers': jsonEncode(request.headers),
-            'body': base64Encode(bodyBytes),
-          }).toJS,
-          null,
-        );
-      } catch (_) {}
+      _safeSendMessage(<String, dynamic>{
+        'type': 'preconnect.libsyncRequest',
+        'requestId': requestId,
+        'method': request.method,
+        'url': request.url.toString(),
+        'headers': jsonEncode(request.headers),
+        'body': base64Encode(bodyBytes),
+      });
 
       return completer.future;
     }
 
     return http.Client().send(request);
   }
+}
+
+void _safeSendMessage(Map<String, dynamic> message) {
+  try {
+    final chromeVal = globalContext.getProperty('chrome'.toJS);
+    if (chromeVal.isUndefinedOrNull) return;
+    final chromeObj = chromeVal as JSObject;
+
+    final runtimeVal = chromeObj.getProperty('runtime'.toJS);
+    if (runtimeVal.isUndefinedOrNull) return;
+    final runtimeObj = runtimeVal as JSObject;
+
+    final sendMessageVal = runtimeObj.getProperty('sendMessage'.toJS);
+    if (sendMessageVal.isUndefinedOrNull) return;
+    final sendMessageFunc = sendMessageVal as JSFunction;
+
+    sendMessageFunc.callAsFunction(runtimeObj, null, jsonEncode(message).toJS);
+  } catch (_) {}
 }
 
 http.Client createLibSyncClient() => ExtensionHttpClient();

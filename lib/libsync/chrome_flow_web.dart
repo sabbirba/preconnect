@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 import 'dart:math';
 import 'package:chrome_extension/runtime.dart';
 
@@ -37,31 +38,37 @@ Future<String?> openChromeExtensionOAuthFlow(
     }
   });
 
-  try {
-    await chrome.runtime.sendMessage(
-      null,
-      jsonEncode({
-        'type': 'preconnect.startLibsyncOauth',
-        'requestId': requestId,
-        'oauthUrl': oauthUrl,
-        'redirectUri': redirectUri,
-      }).toJS,
-      null,
-    );
-  } catch (_) {}
+  _safeSendMessage({
+    'type': 'preconnect.startLibsyncOauth',
+    'requestId': requestId,
+    'oauthUrl': oauthUrl,
+    'redirectUri': redirectUri,
+  });
 
   return completer.future;
 }
 
 Future<void> openCaptivePortalFlow(String portalUrl) async {
+  _safeSendMessage({
+    'type': 'preconnect.startCaptivePortalFlow',
+    'portalUrl': portalUrl,
+  });
+}
+
+void _safeSendMessage(Map<String, dynamic> message) {
   try {
-    await chrome.runtime.sendMessage(
-      null,
-      jsonEncode({
-        'type': 'preconnect.startCaptivePortalFlow',
-        'portalUrl': portalUrl,
-      }).toJS,
-      null,
-    );
+    final chromeVal = globalContext.getProperty('chrome'.toJS);
+    if (chromeVal.isUndefinedOrNull) return;
+    final chromeObj = chromeVal as JSObject;
+
+    final runtimeVal = chromeObj.getProperty('runtime'.toJS);
+    if (runtimeVal.isUndefinedOrNull) return;
+    final runtimeObj = runtimeVal as JSObject;
+
+    final sendMessageVal = runtimeObj.getProperty('sendMessage'.toJS);
+    if (sendMessageVal.isUndefinedOrNull) return;
+    final sendMessageFunc = sendMessageVal as JSFunction;
+
+    sendMessageFunc.callAsFunction(runtimeObj, null, jsonEncode(message).toJS);
   } catch (_) {}
 }
