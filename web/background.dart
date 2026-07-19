@@ -1603,12 +1603,45 @@ Future<void> _handleLibsyncRequest(Map message) async {
   final String bodyBase64 = '${message['body'] ?? ''}';
 
   try {
+    if (chrome.cookies.isAvailable) {
+      final cookieHeader = headers['Cookie'] ?? headers['cookie'];
+      if (cookieHeader != null) {
+        final cookieStr = cookieHeader.toString();
+        final parts = cookieStr.split(';');
+        for (final part in parts) {
+          final eqIndex = part.indexOf('=');
+          if (eqIndex != -1) {
+            final name = part.substring(0, eqIndex).trim();
+            final value = part.substring(eqIndex + 1).trim();
+            if (name.isNotEmpty) {
+              await chrome.cookies.set(
+                ck.SetDetails(
+                  url: 'https://libsync.bracu.ac.bd/',
+                  name: name,
+                  value: value,
+                  path: '/',
+                  secure: true,
+                  sameSite: ck.SameSiteStatus.noRestriction,
+                ),
+              );
+            }
+          }
+        }
+      }
+    }
+
     final reqHeaders = Headers();
     headers.forEach((k, v) {
-      reqHeaders.append(k.toString(), v.toString());
+      if (k.toString().toLowerCase() != 'cookie') {
+        reqHeaders.append(k.toString(), v.toString());
+      }
     });
 
-    final init = RequestInit(method: method, headers: reqHeaders);
+    final init = RequestInit(
+      method: method,
+      headers: reqHeaders,
+      credentials: 'include',
+    );
     if (bodyBase64.isNotEmpty) {
       final bodyStr = utf8.decode(base64Decode(bodyBase64));
       init.setProperty('body'.toJS, bodyStr.toJS);
@@ -1630,6 +1663,16 @@ Future<void> _handleLibsyncRequest(Map message) async {
       }
     } catch (_) {}
 
+    Map<String, String>? currentCookies;
+    if (chrome.cookies.isAvailable) {
+      final list = await chrome.cookies.getAll(
+        ck.GetAllDetails(url: 'https://libsync.bracu.ac.bd/'),
+      );
+      currentCookies = {
+        for (final c in list) c.name: c.value,
+      };
+    }
+
     await chrome.runtime.sendMessage(
       null,
       jsonEncode({
@@ -1638,6 +1681,7 @@ Future<void> _handleLibsyncRequest(Map message) async {
         'statusCode': response.status,
         'headers': respHeaders,
         'body': base64Encode(utf8.encode(responseBody)),
+        if (currentCookies != null) 'cookies': currentCookies,
       }).toJS,
       null,
     );
