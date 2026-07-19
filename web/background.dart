@@ -910,31 +910,30 @@ Future<void> _completeMercureLogout(int? appTabId) async {
 
 void _registerWebNavigationListeners() {
   try {
-    final chromeObj = globalContext.getProperty<JSObject?>('chrome'.toJS);
-    if (chromeObj == null) return;
-    final webNavigationObj = chromeObj.getProperty<JSObject?>(
-      'webNavigation'.toJS,
-    );
-    if (webNavigationObj == null) return;
+    final chromeVal = globalContext.getProperty('chrome'.toJS);
+    if (chromeVal.isUndefinedOrNull) return;
+    final chromeObj = chromeVal as JSObject;
 
-    final onCommitted = webNavigationObj.getProperty<JSObject?>(
-      'onCommitted'.toJS,
-    );
-    if (onCommitted != null) {
-      final addListener = onCommitted.getProperty<JSFunction?>(
-        'addListener'.toJS,
-      );
-      if (addListener != null) {
+    final webNavigationVal = chromeObj.getProperty('webNavigation'.toJS);
+    if (webNavigationVal.isUndefinedOrNull) return;
+    final webNavigationObj = webNavigationVal as JSObject;
+
+    final onCommittedVal = webNavigationObj.getProperty('onCommitted'.toJS);
+    if (!onCommittedVal.isUndefinedOrNull) {
+      final onCommittedObj = onCommittedVal as JSObject;
+      final addListenerVal = onCommittedObj.getProperty('addListener'.toJS);
+      if (!addListenerVal.isUndefinedOrNull) {
+        final addListener = addListenerVal as JSFunction;
         addListener.callAsFunction(
-          onCommitted,
-          ((JSObject details) {
-            final tabIdVal = details.getProperty<JSNumber?>('tabId'.toJS);
-            final urlVal = details.getProperty<JSString?>('url'.toJS);
-            if (tabIdVal != null && urlVal != null) {
+          onCommittedObj,
+          ((JSAny? details) {
+            if (details.isUndefinedOrNull) return;
+            final detailsObj = details as JSObject;
+            final tabIdVal = detailsObj.getProperty('tabId'.toJS)?.dartify();
+            final urlVal = detailsObj.getProperty('url'.toJS)?.dartify();
+            if (tabIdVal is num && urlVal is String) {
               unawaited(
-                _guarded(
-                  () => _processNavigation(tabIdVal.toDartInt, urlVal.toDart),
-                ),
+                _guarded(() => _processNavigation(tabIdVal.toInt(), urlVal)),
               );
             }
           }).toJS,
@@ -942,24 +941,26 @@ void _registerWebNavigationListeners() {
       }
     }
 
-    final onHistoryStateUpdated = webNavigationObj.getProperty<JSObject?>(
+    final onHistoryStateUpdatedVal = webNavigationObj.getProperty(
       'onHistoryStateUpdated'.toJS,
     );
-    if (onHistoryStateUpdated != null) {
-      final addListener = onHistoryStateUpdated.getProperty<JSFunction?>(
+    if (!onHistoryStateUpdatedVal.isUndefinedOrNull) {
+      final onHistoryStateUpdatedObj = onHistoryStateUpdatedVal as JSObject;
+      final addListenerVal = onHistoryStateUpdatedObj.getProperty(
         'addListener'.toJS,
       );
-      if (addListener != null) {
+      if (!addListenerVal.isUndefinedOrNull) {
+        final addListener = addListenerVal as JSFunction;
         addListener.callAsFunction(
-          onHistoryStateUpdated,
-          ((JSObject details) {
-            final tabIdVal = details.getProperty<JSNumber?>('tabId'.toJS);
-            final urlVal = details.getProperty<JSString?>('url'.toJS);
-            if (tabIdVal != null && urlVal != null) {
+          onHistoryStateUpdatedObj,
+          ((JSAny? details) {
+            if (details.isUndefinedOrNull) return;
+            final detailsObj = details as JSObject;
+            final tabIdVal = detailsObj.getProperty('tabId'.toJS)?.dartify();
+            final urlVal = detailsObj.getProperty('url'.toJS)?.dartify();
+            if (tabIdVal is num && urlVal is String) {
               unawaited(
-                _guarded(
-                  () => _processNavigation(tabIdVal.toDartInt, urlVal.toDart),
-                ),
+                _guarded(() => _processNavigation(tabIdVal.toInt(), urlVal)),
               );
             }
           }).toJS,
@@ -1705,8 +1706,14 @@ Future<void> _handleLibsyncRequest(Map message) async {
       if (headersObj.hasProperty('forEach'.toJS).toDart) {
         headersObj.callMethod(
           'forEach'.toJS,
-          ((JSString value, JSString key, JSObject parent) {
-            respHeaders[key.toDart] = value.toDart;
+          ((JSAny? value, JSAny? key) {
+            if (value != null && key != null) {
+              final k = key.dartify();
+              final v = value.dartify();
+              if (k is String && v is String) {
+                respHeaders[k] = v;
+              }
+            }
           }).toJS,
         );
       }
