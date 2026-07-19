@@ -94,6 +94,14 @@ const String _ssoCookieUrl =
 @JS('fetch')
 external JSPromise<Response> _fetch(String input, [RequestInit? init]);
 
+bool _isFirefox() {
+  try {
+    return chrome.runtime.getURL('').startsWith('moz-extension');
+  } catch (_) {
+    return false;
+  }
+}
+
 Headers _headersFromMap(Map<String, String> values) {
   final headers = Headers();
   for (final entry in values.entries) {
@@ -140,6 +148,7 @@ Future<void> main() async {
 
   chrome.action.onClicked.listen((tab) {
     if (chrome.sidePanel.isAvailable) return;
+    if (_isFirefox()) return;
     unawaited(_guarded(_openOrFocusAppTab));
   });
 
@@ -665,9 +674,8 @@ Future<int> _fetchUnreadCount() async {
 }
 
 Future<void> _restoreAppTabAfterStartup() async {
-  if (chrome.sidePanel.isAvailable) {
-    return;
-  }
+  if (chrome.sidePanel.isAvailable) return;
+  if (_isFirefox()) return;
   final hasSession = await _hasStoredAuthSession();
   if (!hasSession) return;
   await _openOrFocusAppTab();
@@ -976,7 +984,7 @@ Future<void> _processNavigation(int tabId, String url) async {
     await _refreshBadgeAndNotifyIfNeeded();
     await _clearPendingLogin();
     unawaited(_registerGcmAndSyncToken());
-    if (!chrome.sidePanel.isAvailable) {
+    if (!chrome.sidePanel.isAvailable && !_isFirefox()) {
       unawaited(_openOrFocusAppTab());
     }
     await chrome.runtime.sendMessage(

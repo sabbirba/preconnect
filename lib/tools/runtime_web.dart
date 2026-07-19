@@ -1,9 +1,18 @@
 import 'package:chrome_extension/runtime.dart';
 import 'package:web/web.dart' as web;
 
+bool isExtensionPage() {
+  try {
+    final scheme = Uri.base.scheme;
+    return scheme == 'chrome-extension' || scheme == 'moz-extension';
+  } catch (_) {
+    return false;
+  }
+}
+
 bool isChromeRuntimeAvailable() {
   try {
-    return chrome.runtime.isAvailable && Uri.base.scheme == 'chrome-extension';
+    return chrome.runtime.isAvailable && isExtensionPage();
   } catch (_) {
     return false;
   }
