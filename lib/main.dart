@@ -11,6 +11,9 @@ import 'package:preconnect/tools/app_log.dart';
 import 'app.dart';
 import 'tools/app_storage.dart';
 
+import 'package:preconnect/tools/runtime_stub.dart'
+    if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
+
 Future<void> main() async {
   final oldDebugPrint = debugPrint;
   debugPrint = (String? message, {int? wrapWidth}) {
@@ -36,9 +39,13 @@ Future<void> main() async {
         AppLog.write('PlatformError: $error\n$stackTrace');
         return false;
       };
-      final firebaseInit = Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      
+      Future<FirebaseApp>? firebaseInit;
+      if (!isChromeRuntimeAvailable()) {
+        firebaseInit = Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      }
 
       await AppStorage.initialize();
 
@@ -51,8 +58,10 @@ Future<void> main() async {
       runApp(MyApp(bootstrapState: initialState));
 
       try {
-        await firebaseInit;
-        FirebaseMessaging.onBackgroundMessage(FCMService.backgroundHandler);
+        if (firebaseInit != null) {
+          await firebaseInit;
+          FirebaseMessaging.onBackgroundMessage(FCMService.backgroundHandler);
+        }
       } catch (_) {}
     },
     (error, stackTrace) {
