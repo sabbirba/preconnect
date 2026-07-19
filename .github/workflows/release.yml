@@ -593,9 +593,7 @@ jobs:
                 CODE_SIGN_IDENTITY="Developer ID Application" \
                 DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
                 PROVISIONING_PROFILE_SPECIFIER="" \
-                "PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]=" \
                 PROVISIONING_PROFILE="" \
-                "PROVISIONING_PROFILE[sdk=macosx*]=" \
                 CODE_SIGN_ENTITLEMENTS="$STRIPPED_ENTITLEMENTS"
 
                printf '%s\n' \
@@ -634,9 +632,7 @@ jobs:
                 CODE_SIGN_IDENTITY="Apple Distribution" \
                 DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
                 PROVISIONING_PROFILE_SPECIFIER="" \
-                "PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]=" \
-                PROVISIONING_PROFILE="${{ env.MACOS_PROFILE_UUID }}" \
-                "PROVISIONING_PROFILE[sdk=macosx*]=${{ env.MACOS_PROFILE_UUID }}"; then
+                PROVISIONING_PROFILE="${{ env.MACOS_PROFILE_UUID }}"; then
 
                  printf '%s\n' \
                   '<?xml version="1.0" encoding="UTF-8"?>' \
@@ -676,9 +672,7 @@ jobs:
                 CODE_SIGN_IDENTITY="-" \
                 DEVELOPMENT_TEAM="" \
                 PROVISIONING_PROFILE_SPECIFIER="" \
-                "PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]=" \
-                PROVISIONING_PROFILE="" \
-                "PROVISIONING_PROFILE[sdk=macosx*]="
+                PROVISIONING_PROFILE=""
 
               APP_PATH="$(find "$RUNNER_TEMP/PreConnect.xcarchive" -type d -name "*.app" | head -n1)"
               if [ -d "$APP_PATH" ]; then
@@ -698,9 +692,7 @@ jobs:
               CODE_SIGN_IDENTITY="-" \
               DEVELOPMENT_TEAM="" \
               PROVISIONING_PROFILE_SPECIFIER="" \
-              "PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]=" \
-              PROVISIONING_PROFILE="" \
-              "PROVISIONING_PROFILE[sdk=macosx*]="
+              PROVISIONING_PROFILE=""
 
             APP_PATH="$(find "$RUNNER_TEMP/PreConnect.xcarchive" -type d -name "*.app" | head -n1)"
             if [ -d "$APP_PATH" ]; then
