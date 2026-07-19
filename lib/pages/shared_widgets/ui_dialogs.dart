@@ -1055,22 +1055,25 @@ class _BracuTimePickerSheetState extends State<_BracuTimePickerSheet> {
           ],
         ),
         const Gap(16),
-        BracuActionButton(
-          label: 'Confirm',
-          onPressed: () {
-            int finalHour = _selectedHour;
-            if (_selectedPeriod == 'PM' && finalHour < 12) {
-              finalHour += 12;
-            } else if (_selectedPeriod == 'AM' && finalHour == 12) {
-              finalHour = 0;
-            }
-            Navigator.pop(
-              context,
-              TimeOfDay(hour: finalHour, minute: _selectedMinute),
-            );
-          },
-          outlined: false,
-          borderRadius: 12,
+        SizedBox(
+          width: double.infinity,
+          child: BracuActionButton(
+            label: 'Confirm',
+            onPressed: () {
+              int finalHour = _selectedHour;
+              if (_selectedPeriod == 'PM' && finalHour < 12) {
+                finalHour += 12;
+              } else if (_selectedPeriod == 'AM' && finalHour == 12) {
+                finalHour = 0;
+              }
+              Navigator.pop(
+                context,
+                TimeOfDay(hour: finalHour, minute: _selectedMinute),
+              );
+            },
+            outlined: false,
+            borderRadius: 12,
+          ),
         ),
         const Gap(16),
       ],
