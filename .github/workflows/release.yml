@@ -624,7 +624,7 @@ jobs:
 
             if security find-certificate -c "Apple Distribution" >/dev/null 2>&1; then
               echo "Building for App Store Connect Distribution..."
-              xcodebuild archive \
+              if xcodebuild archive \
                 -workspace macos/Runner.xcworkspace \
                 -scheme Runner \
                 -configuration Release \
@@ -632,30 +632,33 @@ jobs:
                 CODE_SIGN_STYLE=Manual \
                 CODE_SIGN_IDENTITY="Apple Distribution" \
                 DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
-                PROVISIONING_PROFILE_SPECIFIER=PreConnect
+                PROVISIONING_PROFILE_SPECIFIER=PreConnect; then
 
-               printf '%s\n' \
-                '<?xml version="1.0" encoding="UTF-8"?>' \
-                '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
-                '<plist version="1.0"><dict>' \
-                '  <key>method</key><string>app-store-connect</string>' \
-                '  <key>signingStyle</key><string>manual</string>' \
-                "  <key>teamID</key><string>${DEVELOPMENT_TEAM}</string>" \
-                '  <key>signingCertificate</key><string>Apple Distribution</string>' \
-                '  <key>installerSigningCertificate</key><string>3rd Party Mac Developer Installer</string>' \
-                '  <key>provisioningProfiles</key><dict>' \
-                '    <key>com.sabbirba.preconnect</key><string>PreConnect</string>' \
-                '  </dict>' \
-                '  <key>uploadBitcode</key><false/>' \
-                '  <key>uploadSymbols</key><true/>' \
-                '</dict></plist>' \
-                > "$RUNNER_TEMP/ExportOptionsMacOS_Store.plist"
+                 printf '%s\n' \
+                  '<?xml version="1.0" encoding="UTF-8"?>' \
+                  '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
+                  '<plist version="1.0"><dict>' \
+                  '  <key>method</key><string>app-store-connect</string>' \
+                  '  <key>signingStyle</key><string>manual</string>' \
+                  "  <key>teamID</key><string>${DEVELOPMENT_TEAM}</string>" \
+                  '  <key>signingCertificate</key><string>Apple Distribution</string>' \
+                  '  <key>installerSigningCertificate</key><string>3rd Party Mac Developer Installer</string>' \
+                  '  <key>provisioningProfiles</key><dict>' \
+                  '    <key>com.sabbirba.preconnect</key><string>PreConnect</string>' \
+                  '  </dict>' \
+                  '  <key>uploadBitcode</key><false/>' \
+                  '  <key>uploadSymbols</key><true/>' \
+                  '</dict></plist>' \
+                  > "$RUNNER_TEMP/ExportOptionsMacOS_Store.plist"
 
-              xcodebuild -exportArchive \
-                -archivePath "$RUNNER_TEMP/PreConnect_Store.xcarchive" \
-                -exportPath "$RUNNER_TEMP/macos_store_export" \
-                -exportOptionsPlist "$RUNNER_TEMP/ExportOptionsMacOS_Store.plist"
-              echo "STORE_BUILD=true" >> "$GITHUB_ENV"
+                 xcodebuild -exportArchive \
+                   -archivePath "$RUNNER_TEMP/PreConnect_Store.xcarchive" \
+                   -exportPath "$RUNNER_TEMP/macos_store_export" \
+                   -exportOptionsPlist "$RUNNER_TEMP/ExportOptionsMacOS_Store.plist"
+                 echo "STORE_BUILD=true" >> "$GITHUB_ENV"
+              else
+                 echo "Warning: macOS App Store Connect archive failed. Skipping App Store Connect distribution."
+              fi
             fi
           else
             xcodebuild archive \
