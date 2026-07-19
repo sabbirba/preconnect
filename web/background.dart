@@ -342,6 +342,24 @@ Future<void> _openOrFocusAppTab() async {
   await _safeTabsCreate(url: appUrl, active: true);
 }
 
+void _safeContextMenuCreate(cm.CreateProperties properties) {
+  try {
+    final chromeVal = globalContext.getProperty('chrome'.toJS);
+    if (chromeVal.isUndefinedOrNull) return;
+    final chromeObj = chromeVal as JSObject;
+
+    final contextMenusVal = chromeObj.getProperty('contextMenus'.toJS);
+    if (contextMenusVal.isUndefinedOrNull) return;
+    final contextMenusObj = contextMenusVal as JSObject;
+
+    final createMethodVal = contextMenusObj.getProperty('create'.toJS);
+    if (!createMethodVal.isUndefinedOrNull) {
+      final createMethod = createMethodVal as JSFunction;
+      createMethod.callAsFunction(contextMenusObj, properties.toJS);
+    }
+  } catch (_) {}
+}
+
 Future<void> _configureBrowserSurfaces() async {
   if (chrome.sidePanel.isAvailable) {
     await chrome.sidePanel.setOptions(
@@ -354,94 +372,84 @@ Future<void> _configureBrowserSurfaces() async {
 
   if (!chrome.contextMenus.isAvailable) return;
   await chrome.contextMenus.removeAll();
-  chrome.contextMenus.create(
+  _safeContextMenuCreate(
     cm.CreateProperties(
       id: _menuRootId,
       title: 'PreConnect',
       contexts: [cm.ContextType.action],
     ),
-    null,
   );
-  chrome.contextMenus.create(
+  _safeContextMenuCreate(
     cm.CreateProperties(
       id: _menuSidePanelId,
       parentId: _menuRootId,
       title: 'Open side panel',
       contexts: [cm.ContextType.action],
     ),
-    null,
   );
-  chrome.contextMenus.create(
+  _safeContextMenuCreate(
     cm.CreateProperties(
       id: _menuDashboardId,
       parentId: _menuRootId,
       title: 'Custom Schedule',
       contexts: [cm.ContextType.action],
     ),
-    null,
   );
-  chrome.contextMenus.create(
+  _safeContextMenuCreate(
     cm.CreateProperties(
       id: _menuProfileId,
       parentId: _menuRootId,
       title: 'Profile',
       contexts: [cm.ContextType.action],
     ),
-    null,
   );
-  chrome.contextMenus.create(
+  _safeContextMenuCreate(
     cm.CreateProperties(
       id: _menuClassesId,
       parentId: _menuRootId,
       title: 'Class Schedule',
       contexts: [cm.ContextType.action],
     ),
-    null,
   );
-  chrome.contextMenus.create(
+  _safeContextMenuCreate(
     cm.CreateProperties(
       id: _menuExamsId,
       parentId: _menuRootId,
       title: 'Exam Schedule',
       contexts: [cm.ContextType.action],
     ),
-    null,
   );
-  chrome.contextMenus.create(
+  _safeContextMenuCreate(
     cm.CreateProperties(
       id: _menuFriendsId,
       parentId: _menuRootId,
       title: 'Friend Schedule',
       contexts: [cm.ContextType.action],
     ),
-    null,
   );
-  chrome.contextMenus.create(
+  _safeContextMenuCreate(
     cm.CreateProperties(
       id: _menuShareId,
       parentId: _menuRootId,
       title: 'Share Schedule',
       contexts: [cm.ContextType.action],
     ),
-    null,
   );
-  chrome.contextMenus.create(
+  _safeContextMenuCreate(
     cm.CreateProperties(
       id: _menuScanId,
       parentId: _menuRootId,
       title: 'Scan Schedule',
       contexts: [cm.ContextType.action],
     ),
-    null,
   );
-  chrome.contextMenus.create(
+  _safeContextMenuCreate(
     cm.CreateProperties(
       id: _menuSeatStatusId,
       parentId: _menuRootId,
       title: 'Seat Status',
       contexts: [cm.ContextType.action],
     ),
-    null,
   );
 }
 
