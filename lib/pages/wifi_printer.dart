@@ -1511,20 +1511,68 @@ class _PrinterIdentityPanel extends StatelessWidget {
       children: [
         TextFormField(
           initialValue: guestName,
-          decoration: const InputDecoration(
+          style: TextStyle(
+            color: BracuPalette.textPrimary(context),
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          decoration: InputDecoration(
             labelText: 'Name',
-            border: OutlineInputBorder(),
+            labelStyle: TextStyle(color: BracuPalette.textSecondary(context)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: BracuPalette.textSecondary(
+                  context,
+                ).withValues(alpha: 0.2),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: BracuPalette.primary,
+                width: 1.5,
+              ),
+            ),
             isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
           ),
           onChanged: onGuestNameChanged,
         ),
         const Gap(10),
         TextFormField(
           initialValue: guestId?.toString() ?? '',
-          decoration: const InputDecoration(
+          style: TextStyle(
+            color: BracuPalette.textPrimary(context),
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          decoration: InputDecoration(
             labelText: 'Student ID / PIN',
-            border: OutlineInputBorder(),
+            labelStyle: TextStyle(color: BracuPalette.textSecondary(context)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: BracuPalette.textSecondary(
+                  context,
+                ).withValues(alpha: 0.2),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: BracuPalette.primary,
+                width: 1.5,
+              ),
+            ),
             isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
           ),
           keyboardType: TextInputType.number,
           inputFormatters: <TextInputFormatter>[
