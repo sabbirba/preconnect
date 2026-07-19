@@ -843,37 +843,20 @@ class _MyAppState extends State<MyApp>
                     ),
                   ),
                   const Gap(14),
-                  OutlinedButton.icon(
+                  BracuActionButton(
                     onPressed: _isUnlocking
                         ? null
                         : () {
                             unawaited(_unlockApp());
                           },
-                    icon: const Icon(Icons.fingerprint),
-                    label: const Text('Unlock'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: BracuPalette.textPrimary(context),
-                      backgroundColor: Colors.transparent,
-                      splashFactory: NoSplash.splashFactory,
-                      overlayColor: Colors.transparent,
-                      enableFeedback: false,
-                      side: BorderSide(
-                        color: BracuPalette.textSecondary(
-                          context,
-                        ).withValues(alpha: 0.18),
-                      ),
-                      minimumSize: const Size(0, 44),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      textStyle: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                    icon: Icons.fingerprint,
+                    label: 'Unlock',
+                    outlined: true,
+                    borderRadius: 12,
+                    fontSize: 14,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
                     ),
                   ),
                 ],
