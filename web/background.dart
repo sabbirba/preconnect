@@ -999,15 +999,24 @@ void _registerTabUpdatedListener() {
     addListener.callAsFunction(
       onUpdatedObj,
       ((JSAny? tabId, JSAny? changeInfo, JSAny? tab) {
-        if (changeInfo.isUndefinedOrNull) return;
-        final changeInfoObj = changeInfo as JSObject;
-        final urlVal = changeInfoObj.getProperty('url'.toJS)?.dartify();
-        if (urlVal is String && tabId != null) {
+        if (tabId != null) {
           final tabIdNum = tabId.dartify();
           if (tabIdNum is num) {
-            unawaited(
-              _guarded(() => _processNavigation(tabIdNum.toInt(), urlVal)),
-            );
+            String? urlVal;
+            if (!tab.isUndefinedOrNull) {
+              final tabObj = tab as JSObject;
+              urlVal = tabObj.getProperty('url'.toJS)?.dartify() as String?;
+            }
+            if (urlVal == null && !changeInfo.isUndefinedOrNull) {
+              final changeInfoObj = changeInfo as JSObject;
+              urlVal =
+                  changeInfoObj.getProperty('url'.toJS)?.dartify() as String?;
+            }
+            if (urlVal is String && urlVal.isNotEmpty) {
+              unawaited(
+                _guarded(() => _processNavigation(tabIdNum.toInt(), urlVal!)),
+              );
+            }
           }
         }
       }).toJS,
@@ -1018,7 +1027,7 @@ void _registerTabUpdatedListener() {
 Future<void> _processNavigation(int tabId, String url) async {
   if (_pendingLibsyncOauthTabId == null) {
     try {
-      final values = await chrome.storage.session.get([
+      final values = await chrome.storage.local.get([
         'libsync.pendingTabId',
         'libsync.pendingRedirectUri',
         'libsync.pendingRequestId',
@@ -1036,7 +1045,7 @@ Future<void> _processNavigation(int tabId, String url) async {
     bool isRedirectMatch = false;
     final parsedUrl = Uri.tryParse(url);
     if (parsedUrl != null) {
-      if (parsedUrl.host == 'preconnect.app' &&
+      if (parsedUrl.host.contains('preconnect.app') &&
           (parsedUrl.path == '/auth/callback' ||
               parsedUrl.path == '/api/auth/callback')) {
         isRedirectMatch = true;
@@ -1056,7 +1065,7 @@ Future<void> _processNavigation(int tabId, String url) async {
       _pendingLibsyncOauthTabId = null;
       _pendingLibsyncOauthRequestId = null;
       try {
-        await chrome.storage.session.remove([
+        await chrome.storage.local.remove([
           'libsync.pendingTabId',
           'libsync.pendingRedirectUri',
           'libsync.pendingRequestId',
@@ -1818,7 +1827,7 @@ Future<void> _startLibsyncOauth(Map message) async {
     if (tabId != null) {
       _pendingLibsyncOauthTabId = tabId;
       _pendingLibsyncOauthRequestId = requestId;
-      await chrome.storage.session.set({
+      await chrome.storage.local.set({
         'libsync.pendingTabId': tabId,
         'libsync.pendingRedirectUri': redirectUri,
         'libsync.pendingRequestId': requestId,
