@@ -95,13 +95,10 @@ const String _ssoCookieUrl =
 @JS('fetch')
 external JSPromise<Response> _fetch(String input, [RequestInit? init]);
 
-@JS('chrome.tabs.create')
-external JSPromise<$js.Tab> _chromeTabsCreate(JSObject createProperties);
-
 Future<Tab> _safeTabsCreate({required String url, bool active = true}) async {
-  final createProps = {'url': url, 'active': active}.jsify() as JSObject;
-  final jsTab = await _chromeTabsCreate(createProps).toDart;
-  return Tab.fromJS(jsTab);
+  final createProps = {'url': url, 'active': active}.jsify() as $js.CreateProperties;
+  final jsTab = await $js.chrome.tabs.create(createProps).toDart;
+  return Tab.fromJS(jsTab as $js.Tab);
 }
 
 bool _isFirefox() {

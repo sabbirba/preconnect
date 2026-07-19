@@ -3,12 +3,11 @@ import 'dart:convert';
 import 'dart:js_interop';
 
 import 'package:chrome_extension/runtime.dart';
+// ignore: implementation_imports
+import 'package:chrome_extension/src/js/tabs.dart' as $js;
 import 'package:preconnect/tools/extension_config.dart';
 import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/tools/runtime_web.dart';
-
-@JS('chrome.tabs.create')
-external JSPromise<JSObject> _chromeTabsCreate(JSObject createProperties);
 
 class WebExtensionLoginFlow {
   WebExtensionLoginFlow() {
@@ -92,8 +91,8 @@ class WebExtensionLoginFlow {
         } catch (_) {}
       }
 
-      final createProps = {'url': authUrl, 'active': true}.jsify() as JSObject;
-      final jsTab = await _chromeTabsCreate(createProps).toDart;
+      final createProps = {'url': authUrl, 'active': true}.jsify() as $js.CreateProperties;
+      final jsTab = await $js.chrome.tabs.create(createProps).toDart;
       final dartTab = jsTab.dartify() as Map;
       final tabId = dartTab['id'];
       int? resolvedTabId;
