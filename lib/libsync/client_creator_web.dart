@@ -28,19 +28,14 @@ class ExtensionHttpClient extends http.BaseClient {
       StreamSubscription? subscription;
       subscription = chrome.runtime.onMessage.listen((event) {
         Map<String, dynamic>? resp;
-        final raw = event.message;
-        if (raw is String) {
+        final dartified = (event.message as JSAny?)?.dartify();
+        if (dartified is String) {
           try {
-            final decoded = jsonDecode(raw);
+            final decoded = jsonDecode(dartified);
             if (decoded is Map) resp = Map<String, dynamic>.from(decoded);
           } catch (_) {}
-        } else if (raw is Map) {
-          resp = Map<String, dynamic>.from(raw);
-        } else {
-          try {
-            final dartified = (raw as JSObject).dartify();
-            if (dartified is Map) resp = Map<String, dynamic>.from(dartified);
-          } catch (_) {}
+        } else if (dartified is Map) {
+          resp = Map<String, dynamic>.from(dartified);
         }
         if (resp == null) return;
         if (resp['type'] != 'preconnect.libsyncResponse') return;
