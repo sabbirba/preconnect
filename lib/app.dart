@@ -557,8 +557,27 @@ class _MyAppState extends State<MyApp>
               final appStoreId = results[0]['trackId'].toString();
 
               if (storeVersion.compareTo(localVersion) > 0) {
+                final prefs = AppStorage.instance;
+                final lastPromptMs = await prefs.getInt(
+                  StorageKeys.lastUpdatePromptUtc,
+                );
+                if (lastPromptMs != null) {
+                  final lastPrompt = DateTime.fromMillisecondsSinceEpoch(
+                    lastPromptMs,
+                    isUtc: true,
+                  );
+                  if (DateTime.now().toUtc().difference(lastPrompt).inDays <
+                      3) {
+                    return false;
+                  }
+                }
+
                 await InAppUpdateFlutter().showUpdateForIos(
                   appStoreId: appStoreId,
+                );
+                await prefs.setInt(
+                  StorageKeys.lastUpdatePromptUtc,
+                  DateTime.now().toUtc().millisecondsSinceEpoch,
                 );
                 return true;
               }
@@ -591,12 +610,32 @@ class _MyAppState extends State<MyApp>
         }
 
         final staleness = info.clientVersionStalenessDays ?? 0;
-        if (info.updatePriority < 4 && staleness < 2) {
-          return false;
+        if (info.updatePriority < 4) {
+          if (staleness < 7) {
+            return false;
+          }
+
+          final prefs = AppStorage.instance;
+          final lastPromptMs = await prefs.getInt(
+            StorageKeys.lastUpdatePromptUtc,
+          );
+          if (lastPromptMs != null) {
+            final lastPrompt = DateTime.fromMillisecondsSinceEpoch(
+              lastPromptMs,
+              isUtc: true,
+            );
+            if (DateTime.now().toUtc().difference(lastPrompt).inDays < 3) {
+              return false;
+            }
+          }
         }
 
         if (info.isFlexibleUpdateAllowed) {
           await plugin.startFlexibleUpdateAndroid();
+          await AppStorage.instance.setInt(
+            StorageKeys.lastUpdatePromptUtc,
+            DateTime.now().toUtc().millisecondsSinceEpoch,
+          );
           plugin.installStateStreamAndroid.listen((state) {
             if (state.status == InstallStatusAndroid.downloaded) {
               _showUpdateInstalledSnackbar(plugin);
@@ -607,7 +646,14 @@ class _MyAppState extends State<MyApp>
 
         if (info.isImmediateUpdateAllowed) {
           final result = await plugin.startImmediateUpdateAndroid();
-          return result == UpdateResultAndroid.success;
+          if (result == UpdateResultAndroid.success) {
+            await AppStorage.instance.setInt(
+              StorageKeys.lastUpdatePromptUtc,
+              DateTime.now().toUtc().millisecondsSinceEpoch,
+            );
+            return true;
+          }
+          return false;
         }
       }
       return false;
