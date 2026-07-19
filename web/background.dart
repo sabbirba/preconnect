@@ -1005,6 +1005,8 @@ Future<void> _processNavigation(int tabId, String url) async {
     return;
   }
 
+  await _clearPendingLogin();
+
   try {
     await chrome.tabs.remove(tabId);
   } catch (_) {}
@@ -1023,7 +1025,6 @@ Future<void> _processNavigation(int tabId, String url) async {
     });
     await _syncBracuCookieSnapshot();
     await _refreshBadgeAndNotifyIfNeeded();
-    await _clearPendingLogin();
     unawaited(_registerGcmAndSyncToken());
     if (!chrome.sidePanel.isAvailable && !_isFirefox()) {
       unawaited(_openOrFocusAppTab());
