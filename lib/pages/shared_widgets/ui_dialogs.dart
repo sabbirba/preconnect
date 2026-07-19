@@ -1072,6 +1072,8 @@ class _BracuTimePickerSheetState extends State<_BracuTimePickerSheet> {
               );
             },
             outlined: false,
+            backgroundColor: BracuPalette.primary,
+            foregroundColor: Colors.white,
             borderRadius: 12,
           ),
         ),
