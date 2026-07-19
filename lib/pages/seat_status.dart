@@ -486,7 +486,7 @@ class _SeatStatusCard extends StatelessWidget {
                               size: 40,
                               radius: 20,
                             ),
-                            const Gap(10),
+                            const Gap(12),
                           ],
                           Expanded(
                             child: Column(
@@ -539,7 +539,7 @@ class _SeatStatusCard extends StatelessWidget {
             ],
           ),
           if (classLines.isNotEmpty) ...[
-            const Gap(14),
+            const Gap(12),
             _SeatScheduleBlock(title: 'Class', lines: classLines),
           ],
           if (labLines.isNotEmpty) ...[

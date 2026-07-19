@@ -64,7 +64,7 @@ class AttendanceSummary extends StatelessWidget {
                   value: (percentage / 100).clamp(0.0, 1.0),
                   color: BracuPalette.primary,
                 ),
-                if (!isLast) const Gap(10),
+                if (!isLast) const Gap(12),
                 if (!isLast)
                   Divider(
                     height: 1,

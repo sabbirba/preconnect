@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -312,7 +313,7 @@ class _BracuPermissionBottomSheetContentState
       controller: scrollController,
       padding: const EdgeInsets.only(bottom: 24, top: 8),
       itemCount: widget.requirements.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 10),
+      separatorBuilder: (context, index) => const Gap(12),
       itemBuilder: (context, index) {
         final req = widget.requirements[index];
         final status = _statuses[req.permission] ?? PermissionStatus.denied;
@@ -342,7 +343,7 @@ class _BracuPermissionBottomSheetContentState
                 color: isCompleted ? BracuPalette.primary : textSecondary,
                 size: 32,
               ),
-              const SizedBox(width: 14),
+              const Gap(12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,7 +356,7 @@ class _BracuPermissionBottomSheetContentState
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const Gap(3),
                     Text(
                       req.reason,
                       style: TextStyle(color: textSecondary, fontSize: 11.5),
@@ -363,7 +364,7 @@ class _BracuPermissionBottomSheetContentState
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const Gap(8),
               isCompleted
                   ? const Icon(
                       Icons.check_circle_rounded,

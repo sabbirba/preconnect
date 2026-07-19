@@ -280,11 +280,11 @@ class _DevsPageState extends State<DevsPage> {
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
                 const _IntroCard(),
-                const Gap(14),
+                const Gap(12),
                 _buildPeopleSection(),
-                const Gap(14),
+                const Gap(12),
                 _buildSponsoredSection(),
-                const Gap(14),
+                const Gap(12),
                 _buildFundingSection(),
               ],
             ),
@@ -299,7 +299,7 @@ class _DevsPageState extends State<DevsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const BracuSectionTitle(title: 'People Behind It'),
-        const Gap(10),
+        const Gap(12),
         if (_contributors.isEmpty && _contributorsLoading)
           const BracuLoading()
         else
@@ -313,7 +313,7 @@ class _DevsPageState extends State<DevsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         BracuSectionTitle(title: 'Sponsored'),
-        Gap(10),
+        Gap(12),
         _SponsoredStrip(),
       ],
     );
@@ -323,7 +323,7 @@ class _DevsPageState extends State<DevsPage> {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Gap(10),
+        Gap(12),
         BracuFundingPromoDivider(showSupporters: true),
         Gap(12),
         BracuFundingSupportContent(),
@@ -494,7 +494,7 @@ class _SponsoredTile extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         iconWidget ?? const SizedBox.shrink(),
-        const Gap(10),
+        const Gap(12),
         Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -627,7 +627,7 @@ class _DevGridTile extends StatelessWidget {
                 url: contributor.avatarUrl,
                 size: avatarSize,
               ),
-              const Gap(10),
+              const Gap(12),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.center,

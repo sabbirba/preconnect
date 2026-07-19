@@ -409,7 +409,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage>
                 body:
                     'Choose your reservation date and capacity counter at the top of the availability screen.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '2',
@@ -417,7 +417,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage>
                 body:
                     'Use the Campus button in the settings row to toggle between Main Campus and Savar Campus availability slots.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '3',
@@ -425,7 +425,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage>
                 body:
                     'Browse through the list of spaces and tap on an available time slot to start the reservation workflow.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '4',
@@ -433,7 +433,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage>
                 body:
                     'Tapping a time slot holds it temporarily. A dialog will open where you must enter the student IDs for all members.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '5',
@@ -441,7 +441,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage>
                 body:
                     'Tap the Verify button next to each external student ID. Once all member IDs are verified successfully, tap Confirm Booking.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '6',
@@ -449,7 +449,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage>
                 body:
                     'When you arrive at the library, tap the Check In button on your active reservation card. Ensure you are connected to the campus network.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '7',
@@ -1070,7 +1070,7 @@ class _MemberIdsDialogState extends State<_MemberIdsDialog> {
           ),
         ),
         if (_generalError != null) ...[
-          const Gap(10),
+          const Gap(12),
           Text(
             _generalError!,
             style: const TextStyle(
@@ -1080,7 +1080,7 @@ class _MemberIdsDialogState extends State<_MemberIdsDialog> {
             ),
           ),
         ],
-        const Gap(18),
+        const Gap(16),
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
@@ -1093,7 +1093,7 @@ class _MemberIdsDialogState extends State<_MemberIdsDialog> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               label: 'Cancel',
             ),
-            const Gap(10),
+            const Gap(12),
             BracuActionButton(
               onPressed: (allVerified && !_isSubmitting)
                   ? () async {

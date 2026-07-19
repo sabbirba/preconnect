@@ -983,7 +983,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                               ),
                             ],
                           ),
-                          const Gap(14),
+                          const Gap(12),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
@@ -1164,7 +1164,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             ),
                           ],
                         ),
-                        const Gap(10),
+                        const Gap(12),
                         SizedBox(
                           width: double.infinity,
                           child: Wrap(
@@ -1203,7 +1203,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             ),
                           ),
                         ],
-                        const Gap(14),
+                        const Gap(12),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
@@ -1450,7 +1450,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                 ),
                               ],
                             ),
-                            const Gap(10),
+                            const Gap(12),
                             SizedBox(
                               width: double.infinity,
                               child: Wrap(
@@ -1503,7 +1503,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                 ],
                               ),
                             ),
-                            const Gap(14),
+                            const Gap(12),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
@@ -1681,7 +1681,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                           }).toList(),
                         ),
                       ),
-                      const Gap(14),
+                      const Gap(12),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,

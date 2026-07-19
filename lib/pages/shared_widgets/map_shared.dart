@@ -378,7 +378,7 @@ Future<void> showCampusMapBottomSheet(
                         aspectRatio: 16 / 10,
                         imageFit: BoxFit.fitWidth,
                       ),
-                      const Gap(10),
+                      const Gap(12),
                     ],
                     Text(
                       mapData.campusName.isEmpty

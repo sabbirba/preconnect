@@ -106,7 +106,7 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const Gap(10),
+                    const Gap(12),
                     BracuActionButton(
                       onPressed: _refreshRouteData,
                       isLoading: _refreshing,
@@ -224,7 +224,7 @@ class _RouteLiveMapCard extends StatelessWidget {
             ),
           ),
           if (hasLocation) ...[
-            const Gap(10),
+            const Gap(12),
             _RouteActionButton(
               label: 'Open in Google Maps',
               onPressed: () {
@@ -671,7 +671,7 @@ class _RouteStopTimelineTile extends StatelessWidget {
             width: 32,
             child: Column(
               children: [
-                const Gap(14),
+                const Gap(12),
                 Container(
                   width: 14,
                   height: 14,

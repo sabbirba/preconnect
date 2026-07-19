@@ -378,7 +378,7 @@ class _BracuLocationPermissionBannerState
               ),
             ),
           ),
-          const Gap(10),
+          const Gap(12),
           BracuActionButton(
             onPressed: _fix,
             outlined: false,

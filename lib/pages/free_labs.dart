@@ -367,7 +367,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                       ),
                     ],
                   ),
-                  const Gap(10),
+                  const Gap(12),
                   ...timeSlots.map((slot) {
                     final slotToken =
                         '${slot.roomNumber}_${slot.startTime}_${slot.endTime}';
@@ -845,7 +845,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const Gap(14),
+            const Gap(12),
             BracuActionButton(
               onPressed: _showNextDayLabs,
               icon: Icons.arrow_forward_rounded,
@@ -893,7 +893,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                 ),
               ],
             ),
-            const Gap(10),
+            const Gap(12),
             if (visibleRoomSlots.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
@@ -965,7 +965,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                   ),
                 ],
               ),
-              const Gap(10),
+              const Gap(12),
               ...slot.occupiedClasses.map(
                 (item) => Padding(
                   padding: const EdgeInsets.only(bottom: 10),

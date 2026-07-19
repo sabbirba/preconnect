@@ -969,7 +969,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               ],
             ),
           ),
-          const Gap(4),
+          const Gap(12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
             child: Column(
@@ -1021,10 +1021,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                       onClear: !_busy ? () => _clearFileAt(i) : null,
                       borderRadius: 8,
                     ),
-                    if (i < _selectedFiles.length - 1) const Gap(6),
+                    if (i < _selectedFiles.length - 1) const Gap(12),
                   ],
                 ],
-                const Gap(6),
+                const Gap(12),
                 _PrinterPreferencesPanel(
                   copiesController: _copiesController,
                   copies: _copies,
@@ -1038,7 +1038,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                     setState(() => _collateMode = mode);
                   },
                 ),
-                const Gap(6),
+                const Gap(12),
                 _PrinterLayoutPreferencesPanel(
                   pagesPerSheet: _pagesPerSheet,
                   fittingMode: _fittingMode,
@@ -1100,7 +1100,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                         label: 'Choose',
                       ),
                     ),
-                    const Gap(10),
+                    const Gap(12),
                     Expanded(
                       child: BracuActionButton(
                         onPressed: canPrint ? _sendToPrinter : null,
@@ -1112,7 +1112,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   ],
                 ),
                 if (_history.isNotEmpty) ...[
-                  const Gap(10),
+                  const Gap(12),
                   SizedBox(
                     width: double.infinity,
                     child: BracuActionButton(
@@ -1152,7 +1152,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 body:
                     'Make sure your device is connected to the Student-WiFi or university network.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '2',
@@ -1160,7 +1160,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 body:
                     'Ensure your student ID is entered correctly in the printer identity section above.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '3',
@@ -1168,7 +1168,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 body:
                     'Pick the files you want to print. You can select multiple PDF, JPEG, or PNG files.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '4',
@@ -1176,7 +1176,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 body:
                     'Tap the Print button. Files will be sent sequentially with a 1-second delay.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '5',
@@ -1184,7 +1184,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 body:
                     'Tap your physical ID card on any campus card-reader printer to release and print the files.',
               ),
-              const Gap(20),
+              const Gap(16),
               Text(
                 'Layout & Print Options',
                 style: TextStyle(
@@ -1193,7 +1193,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const Gap(14),
+              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '•',
@@ -1201,7 +1201,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 body:
                     'Specify the exact number of page copies to print by tapping the minus/plus buttons or typing directly.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '•',
@@ -1209,7 +1209,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 body:
                     'Toggle between single-sided or double-sided (both sides) printing to save paper.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '•',
@@ -1217,7 +1217,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 body:
                     'Sort pages in multi-page documents sequentially (1-2-3, 1-2-3) instead of grouping identical pages.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '•',
@@ -1225,7 +1225,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 body:
                     'Choose "1-in-1" (default) for standard layout. Use "2-in-1" or "4-in-1" to fit multiple pages on a single sheet of paper to save page quota.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '•',
@@ -1233,7 +1233,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 body:
                     'Select "Fit Paper" (default) for normal margins, "Fit Printable" to shrink to margins, or "Edge-to-Edge" to print borderless full pages.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '•',
@@ -1241,7 +1241,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 body:
                     'Configure staple location (Left Corner / Right Corner) or punch hole counts (2 Holes / 3 Holes) for automatic document binding.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '•',
@@ -1249,7 +1249,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 body:
                     'Toggle "Offset" to shift printed sets sideways for easy separation. Toggle "Slip Sheet" to insert blank separator sheets between print jobs.',
               ),
-              const Gap(14),
+              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '•',
@@ -1519,7 +1519,7 @@ class _PrinterIdentityPanel extends StatelessWidget {
           decoration: bracuInputDecoration(context, labelText: 'Name'),
           onChanged: onGuestNameChanged,
         ),
-        const Gap(10),
+        const Gap(12),
         TextFormField(
           initialValue: guestId?.toString() ?? '',
           style: TextStyle(
@@ -1876,6 +1876,9 @@ class _LprPrintClient {
   }) async {
     Socket? socket;
     _LprAckReader? ackReader;
+    if (AndroidNetworkAssist.isSupported) {
+      await AndroidNetworkAssist.bindToWifiNetwork();
+    }
     try {
       socket = await Socket.connect(printerHost, port, timeout: _timeout);
       ackReader = _LprAckReader(socket);
@@ -1925,6 +1928,9 @@ class _LprPrintClient {
     } finally {
       await ackReader?.cancel();
       socket?.destroy();
+      if (AndroidNetworkAssist.isSupported) {
+        await AndroidNetworkAssist.unbindFromWifiNetwork();
+      }
     }
   }
 
@@ -2425,65 +2431,76 @@ class _WifiPrinterDiscovery {
     int maxSubnets = 2,
     List<String> preferredHosts = const <String>[],
   }) async {
-    final subnets = await _localIpv4Subnets();
-    final found = <_WifiPrinterCandidate>[];
-    final seen = <String>{};
-    final active = <Future<void>>{};
-
-    for (final address in preferredHosts) {
-      final host = address.trim();
-      if (host.isEmpty || !seen.add(host)) continue;
-      final open = await _probe(host, port, timeout);
-      if (open) {
-        found.add(_WifiPrinterCandidate(address: host, interfaceName: 'saved'));
-        if (found.length >= limit) return found;
-      }
+    if (AndroidNetworkAssist.isSupported) {
+      await AndroidNetworkAssist.bindToWifiNetwork();
     }
+    try {
+      final subnets = await _localIpv4Subnets();
+      final found = <_WifiPrinterCandidate>[];
+      final seen = <String>{};
+      final active = <Future<void>>{};
 
-    for (final address in _campusPrinterHosts) {
-      if (!seen.add(address)) continue;
-      final open = await _probe(address, port, timeout);
-      if (open) {
-        found.add(
-          _WifiPrinterCandidate(address: address, interfaceName: 'campus'),
-        );
-        if (found.length >= limit) return found;
+      for (final address in preferredHosts) {
+        final host = address.trim();
+        if (host.isEmpty || !seen.add(host)) continue;
+        final open = await _probe(host, port, timeout);
+        if (open) {
+          found.add(
+            _WifiPrinterCandidate(address: host, interfaceName: 'saved'),
+          );
+          if (found.length >= limit) return found;
+        }
       }
-    }
 
-    var subnetCount = 0;
-    for (final subnet in subnets) {
-      subnetCount++;
-      if (subnetCount > maxSubnets) break;
-      for (var host = 1; host <= 254; host++) {
-        if (host == subnet.hostOctet) continue;
-        final address = '${subnet.prefix}.$host';
+      for (final address in _campusPrinterHosts) {
         if (!seen.add(address)) continue;
-        late Future<void> probe;
-        probe = _probe(address, port, timeout)
-            .then((open) {
-              if (open && found.length < limit) {
-                found.add(
-                  _WifiPrinterCandidate(
-                    address: address,
-                    interfaceName: subnet.interfaceName,
-                  ),
-                );
-              }
-            })
-            .whenComplete(() => active.remove(probe));
+        final open = await _probe(address, port, timeout);
+        if (open) {
+          found.add(
+            _WifiPrinterCandidate(address: address, interfaceName: 'campus'),
+          );
+          if (found.length >= limit) return found;
+        }
+      }
 
-        active.add(probe);
-        if (active.length >= concurrency) {
-          await Future.any(active);
+      var subnetCount = 0;
+      for (final subnet in subnets) {
+        subnetCount++;
+        if (subnetCount > maxSubnets) break;
+        for (var host = 1; host <= 254; host++) {
+          if (host == subnet.hostOctet) continue;
+          final address = '${subnet.prefix}.$host';
+          if (!seen.add(address)) continue;
+          late Future<void> probe;
+          probe = _probe(address, port, timeout)
+              .then((open) {
+                if (open && found.length < limit) {
+                  found.add(
+                    _WifiPrinterCandidate(
+                      address: address,
+                      interfaceName: subnet.interfaceName,
+                    ),
+                  );
+                }
+              })
+              .whenComplete(() => active.remove(probe));
+
+          active.add(probe);
+          if (active.length >= concurrency) {
+            await Future.any(active);
+          }
+          if (found.length >= limit) break;
         }
         if (found.length >= limit) break;
       }
-      if (found.length >= limit) break;
-    }
 
-    await Future.wait(active);
-    return found;
+      await Future.wait(active);
+      return found;
+    } finally {
+      if (AndroidNetworkAssist.isSupported) {
+        await AndroidNetworkAssist.unbindFromWifiNetwork();
+      }
+    }
   }
 
   static Future<bool> _probe(String address, int port, Duration timeout) async {

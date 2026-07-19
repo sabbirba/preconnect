@@ -51,6 +51,9 @@ class CaptiveWifiHttp {
   }
 
   static Future<Uri?> detectCaptivePortal() async {
+    if (AndroidNetworkAssist.isSupported) {
+      await AndroidNetworkAssist.bindToWifiNetwork();
+    }
     try {
       final client = HttpClient()
         ..userAgent = kPreConnectUserAgent
@@ -88,11 +91,19 @@ class CaptiveWifiHttp {
           }
         }
       }
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      if (AndroidNetworkAssist.isSupported) {
+        await AndroidNetworkAssist.unbindFromWifiNetwork();
+      }
+    }
     return null;
   }
 
   static Future<bool> checkIfOnCampusNetwork() async {
+    if (AndroidNetworkAssist.isSupported) {
+      await AndroidNetworkAssist.bindToWifiNetwork();
+    }
     try {
       final savedUrlStr = await CaptiveLoginStore.instance.readLastPortalUrl();
       if (savedUrlStr == null || savedUrlStr.isEmpty) {
@@ -123,7 +134,12 @@ class CaptiveWifiHttp {
           response.headers.value('location')?.contains('portal') == true;
 
       return isPortal;
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      if (AndroidNetworkAssist.isSupported) {
+        await AndroidNetworkAssist.unbindFromWifiNetwork();
+      }
+    }
     return false;
   }
 

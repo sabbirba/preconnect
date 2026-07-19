@@ -627,7 +627,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const Gap(14),
+                      const Gap(12),
                       BracuActionButton(
                         onPressed: _openEditor,
                         icon: Icons.add_rounded,
@@ -652,7 +652,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
                     groupIndex < dayGroups.length;
                     groupIndex++
                   ) ...[
-                    if (groupIndex > 0) const Gap(10),
+                    if (groupIndex > 0) const Gap(12),
                     _DayDateHeader(date: dayGroups[groupIndex].date),
                     const Gap(8),
                     ...dayGroups[groupIndex].items.map(
@@ -839,7 +839,7 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
               ],
             ),
             if (item.notes.trim().isNotEmpty) ...[
-              const Gap(10),
+              const Gap(12),
               Divider(
                 height: 1,
                 thickness: 1,

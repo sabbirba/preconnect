@@ -35,7 +35,7 @@ class PaymentGraph extends StatelessWidget {
             'Paid vs Due',
             style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary),
           ),
-          const Gap(10),
+          const Gap(12),
           _BarRow(
             label: 'Paid',
             value: paidRatio,

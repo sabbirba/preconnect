@@ -399,7 +399,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                 if (ramadan.sehriEndsAt !=
                                                         null &&
                                                     ramadan.iftarAt != null)
-                                                  const Gap(10),
+                                                  const Gap(12),
                                                 if (ramadan.iftarAt != null)
                                                   Expanded(
                                                     child: _RamadanHeroTime(
@@ -1118,7 +1118,7 @@ class _QuickAccessLoadingSkeleton extends StatelessWidget {
             Expanded(child: ShimmerContainer(width: 128, height: 20)),
             Gap(16),
             ShimmerContainer(width: 68, height: 18),
-            Gap(14),
+            Gap(12),
             ShimmerContainer(width: 74, height: 18),
           ],
         ),

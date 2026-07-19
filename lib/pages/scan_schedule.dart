@@ -265,7 +265,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
                                   color: Colors.white,
                                   size: 34,
                                 ),
-                                const Gap(10),
+                                const Gap(12),
                                 const Text(
                                   'Camera unavailable',
                                   textAlign: TextAlign.center,

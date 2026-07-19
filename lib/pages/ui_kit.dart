@@ -975,7 +975,7 @@ class BracuFundingPromoDivider extends StatelessWidget {
             ),
           ],
         ),
-        const Gap(10),
+        const Gap(12),
         InkWell(
           onTap: () => openExternalUrl(
             context,
@@ -1072,7 +1072,7 @@ class _BracuCampaignSupportersState extends State<BracuCampaignSupporters> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Gap(20),
+        const Gap(16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,

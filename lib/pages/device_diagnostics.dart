@@ -236,7 +236,7 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
               ),
             ),
           ),
-          const Gap(10),
+          const Gap(12),
           Expanded(
             flex: 6,
             child: GestureDetector(

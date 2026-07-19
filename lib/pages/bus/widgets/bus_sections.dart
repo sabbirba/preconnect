@@ -18,7 +18,7 @@ class _OutboundTripsCard extends StatelessWidget {
               title: '1st Outbound',
               entries: outbound.firstOutbound,
             ),
-            const Gap(10),
+            const Gap(12),
           ],
           if (outbound.secondOutbound.isNotEmpty) ...[
             _TripGroupPanel(

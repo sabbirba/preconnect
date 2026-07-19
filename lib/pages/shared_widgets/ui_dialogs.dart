@@ -332,7 +332,7 @@ Future<bool> showBracuConfirmationDialog(
                   ),
                 ],
               ),
-              const Gap(10),
+              const Gap(12),
               Text(
                 message,
                 style: TextStyle(
@@ -496,7 +496,7 @@ class _BracuConfirmationActionDialogState
                   ),
                 ],
               ),
-              const Gap(10),
+              const Gap(12),
               Text(
                 widget.message,
                 style: TextStyle(
@@ -559,7 +559,7 @@ Future<T?> showBracuSelectSheet<T>(
       return ListView.separated(
         shrinkWrap: true,
         itemCount: options.length,
-        separatorBuilder: (_, _) => const Gap(10),
+        separatorBuilder: (_, _) => const Gap(12),
         itemBuilder: (context, index) {
           final option = options[index];
           final selected = option.value == selectedValue;

@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
 class PreConnectWebViewPage extends StatefulWidget {
@@ -34,16 +33,6 @@ class PreConnectWebViewPage extends StatefulWidget {
   final bool enablePullToRefresh;
   final WebViewController? preloadedController;
   final bool delayLoadUntilTransition;
-
-  static Future<void> configureCookies(WebViewController controller) async {
-    final platform = controller.platform;
-    if (platform is AndroidWebViewController) {
-      final cookieManager = AndroidWebViewCookieManager(
-        PlatformWebViewCookieManagerCreationParams(),
-      );
-      await cookieManager.setAcceptThirdPartyCookies(platform, true);
-    }
-  }
 
   @override
   State<PreConnectWebViewPage> createState() => _PreConnectWebViewPageState();
@@ -121,8 +110,6 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
       } else {
         _controller.loadRequest(Uri.parse(widget.initialUrl));
       }
-
-      unawaited(PreConnectWebViewPage.configureCookies(_controller));
     }
   }
 

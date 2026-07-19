@@ -162,7 +162,7 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
                         ),
                       ],
                     ),
-                    const Gap(10),
+                    const Gap(12),
                     ...entry.value.asMap().entries.map((itemEntry) {
                       final isTargetCard =
                           isTargetSection && itemEntry.key == 0;

@@ -492,7 +492,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
                         ),
                     ],
                   ),
-                  const Gap(10),
+                  const Gap(12),
                   ...(() {
                     final scheduleWidgets = <Widget>[];
                     for (final entry in schedules) {

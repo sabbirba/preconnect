@@ -132,7 +132,7 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
             query: query,
             keySuffix: 'all-courses',
           ),
-          const Gap(10),
+          const Gap(12),
           Center(
             child: Wrap(
               alignment: WrapAlignment.center,
@@ -169,7 +169,7 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
               }).toList(),
             ),
           ),
-          const Gap(8),
+          const Gap(12),
           Center(
             child: Wrap(
               alignment: WrapAlignment.center,
@@ -237,14 +237,14 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
               ],
             ),
           ),
-          const Gap(8),
+          const Gap(12),
           if (filtered.isEmpty)
             const BracuCard(child: BracuEmptyState(message: 'No course found.'))
           else
             ...filtered.map((course) {
               final isPinned = _pinnedCodes.contains(course.code.toUpperCase());
               return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: 12),
                 child: BracuCard(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,7 +316,7 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
                           ],
                         ),
                       ),
-                      const Gap(10),
+                      const Gap(12),
                       SizedBox(
                         width: 96,
                         child: Column(

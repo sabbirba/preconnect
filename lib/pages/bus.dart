@@ -153,7 +153,7 @@ class _BusPageState extends State<BusPage> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const Gap(10),
+                  const Gap(12),
                   BracuActionButton(
                     onPressed: () => _load(forceRefresh: true),
                     icon: Icons.sync_rounded,
@@ -186,20 +186,20 @@ class _BusPageState extends State<BusPage> {
                     );
                   },
                 ),
-                if (!isLast) const Gap(10),
+                if (!isLast) const Gap(12),
               ];
             }),
           if (outbound != null) ...[
-            const Gap(2),
+            const Gap(12),
             _OutboundTripsCard(outbound: outbound),
           ],
-          if (fares.isNotEmpty) ...[const Gap(2), _FareCard(fares: fares)],
+          if (fares.isNotEmpty) ...[const Gap(12), _FareCard(fares: fares)],
           if (contacts.isNotEmpty) ...[
-            const Gap(2),
+            const Gap(12),
             _ContactsCard(contacts: contacts),
           ],
           if (instructions.isNotEmpty) ...[
-            const Gap(2),
+            const Gap(12),
             _GeneralInstructionsCard(instructions: instructions),
           ],
         ],
@@ -264,7 +264,7 @@ class _SectionHeader extends StatelessWidget {
           alignment: Alignment.center,
           child: Icon(icon, size: 16, color: BracuPalette.primary),
         ),
-        const Gap(8),
+        const Gap(12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

@@ -421,7 +421,7 @@ class _WishlistPageState extends State<WishlistPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(errorIcon, size: 72, color: iconColor),
-                const Gap(20),
+                const Gap(16),
                 Text(
                   errorTitle,
                   style: TextStyle(
@@ -430,7 +430,7 @@ class _WishlistPageState extends State<WishlistPage> {
                     color: textPrimary,
                   ),
                 ),
-                const Gap(10),
+                const Gap(12),
                 Text(
                   displayMessage,
                   textAlign: TextAlign.center,

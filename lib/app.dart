@@ -869,7 +869,7 @@ class _MyAppState extends State<MyApp>
                       decoration: TextDecoration.none,
                     ),
                   ),
-                  const Gap(6),
+                  const Gap(12),
                   Text(
                     'Use your system lock to continue',
                     textAlign: TextAlign.center,
@@ -879,7 +879,7 @@ class _MyAppState extends State<MyApp>
                       decoration: TextDecoration.none,
                     ),
                   ),
-                  const Gap(14),
+                  const Gap(12),
                   BracuActionButton(
                     onPressed: _isUnlocking
                         ? null

@@ -481,9 +481,9 @@ class _LibSyncPageState extends State<LibSyncPage>
                 },
                 children: [
                   LibraryCard(profile: profile),
-                  const Gap(18),
+                  const Gap(16),
                   const BracuSectionTitle(title: 'Overview'),
-                  const Gap(10),
+                  const Gap(12),
                   () {
                     final reservationByYear = _reservationByYear;
                     final totalReservationCount = _totalReservationCount;
@@ -505,7 +505,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                               reservationByYear.any(
                                 (monthData) => _hasReservations(monthData),
                               )) ...[
-                            const Gap(14),
+                            const Gap(12),
                             Divider(
                               height: 1,
                               thickness: 1,
@@ -513,7 +513,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                                 context,
                               ).withValues(alpha: 0.12),
                             ),
-                            const Gap(14),
+                            const Gap(12),
                             LayoutBuilder(
                               builder: (context, constraints) {
                                 final chartData = _getDynamicChartData();
@@ -563,7 +563,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                       ),
                     );
                   }(),
-                  const Gap(18),
+                  const Gap(16),
                   BracuActionBannerCard(
                     icon: Icons.calendar_month_outlined,
                     title: 'Space Book',
@@ -601,16 +601,16 @@ class _LibSyncPageState extends State<LibSyncPage>
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Gap(18),
+                        const Gap(16),
                         if (hasQuota) ...[
                           const BracuSectionTitle(title: 'Daily Quota'),
-                          const Gap(10),
+                          const Gap(12),
                           _QuotaCard(quota: checkQuota),
-                          const Gap(18),
+                          const Gap(16),
                         ],
                         if (recentReservations != null) ...[
                           const BracuSectionTitle(title: 'Recent Reservations'),
-                          const Gap(10),
+                          const Gap(12),
                           _RecentReservationsList(
                             reservations: recentReservations,
                             onRefresh: () => _loadReservationData(force: true),
@@ -976,7 +976,7 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                             size: 18,
                             color: statusColor,
                           ),
-                          const Gap(10),
+                          const Gap(12),
                           Flexible(
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -1008,7 +1008,7 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                         ],
                       ),
                     ),
-                    const Gap(10),
+                    const Gap(12),
                     Text(
                       room,
                       style: TextStyle(
@@ -1287,7 +1287,7 @@ class _InfoLine extends StatelessWidget {
               textAlign: TextAlign.left,
             ),
           ),
-          const Gap(10),
+          const Gap(12),
           Expanded(
             flex: 6,
             child: Text(

@@ -134,7 +134,7 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
                           size: 40,
                           fontSize: 13,
                         ),
-                        const Gap(10),
+                        const Gap(12),
                       ],
                       Expanded(
                         child: Column(
@@ -212,7 +212,7 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
                           ],
                         ),
                       ),
-                      const Gap(10),
+                      const Gap(12),
                       SizedBox(
                         width: 96,
                         child: Column(

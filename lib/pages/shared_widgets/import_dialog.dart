@@ -284,7 +284,7 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
             ),
           ),
         ],
-        const Gap(10),
+        const Gap(12),
         BracuActionButton(
           onPressed: _isProcessing ? null : _pickAndScanQrImage,
           label: 'Select QR Image',
@@ -294,7 +294,7 @@ class _ImportSessionDialogState extends State<ImportSessionDialog> {
         ),
 
         if (_errorMessage != null) ...[
-          const Gap(10),
+          const Gap(12),
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(

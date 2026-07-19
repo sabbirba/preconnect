@@ -45,10 +45,10 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
             ),
           ),
           if (imageUrls.isNotEmpty) ...[
-            const Gap(14),
+            const Gap(12),
             BracuImageCarousel(imageUrls: imageUrls, borderRadius: 14),
           ],
-          const Gap(18),
+          const Gap(16),
           Text(
             parts.body.isEmpty
                 ? 'No additional details were provided.'
@@ -199,7 +199,7 @@ class _ConnectNotificationDetailPanelState
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const Gap(18),
+              const Gap(16),
               Text(
                 parts.body.isEmpty
                     ? 'No additional details were provided.'

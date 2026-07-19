@@ -371,7 +371,7 @@ class _SettingsPageState extends State<SettingsPage>
                             ),
                           ),
                         ),
-                        const Gap(10),
+                        const Gap(12),
                         BracuActionButton(
                           onPressed: _fixQuietModeSetup,
                           label: 'Fix',
