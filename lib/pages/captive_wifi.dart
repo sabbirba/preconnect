@@ -46,6 +46,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   Map<String, String>? _extractedParams;
   String _responseLog = '';
   AndroidNetworkStatus? _currentStatus;
+  String _savedLoginSsid = '';
 
   @override
   void initState() {
@@ -134,9 +135,11 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
             StorageKeys.wifiCaptiveLastResponseLog,
           ) ??
           '';
+      final savedSsid = await CaptiveLoginStore.instance.readSsid();
       if (!mounted) return;
       _studentIdController.text = studentId;
       setState(() {
+        _savedLoginSsid = savedSsid;
         _autoExtendEnabled = autoExtendEnabled;
         _responseLog = responseLog;
         if (creds != null) {
@@ -173,6 +176,10 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
               setState(() {
                 _currentStatus = status;
               });
+            }
+            final isCaptive = status.captive || !status.validated;
+            if (!isCaptive) {
+              break;
             }
             captiveWifiUrl = CaptiveWifiHttp.resolvePortalUri(status);
             if (captiveWifiUrl != null) {
@@ -267,7 +274,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
         if (!ok) return;
         hasPermission = true;
       }
-      if (!hasPermission) continue;
+      if (!hasPermission) {
+        break;
+      }
       final isGpsEnabled =
           await AndroidNetworkAssist.isLocationServiceEnabled();
       if (!isGpsEnabled) {
@@ -425,10 +434,15 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       if (!mounted) return;
       if (loggedIn) {
         _showLocalSnackBar('Login success. Internet validated.');
-        setState(() {
-          _isOnCampusNetwork = true;
-          _detectedPortalUri = null;
-        });
+        final currentSsid = _ssidController.text.trim();
+        await CaptiveLoginStore.instance.saveSsid(currentSsid);
+        if (mounted) {
+          setState(() {
+            _savedLoginSsid = currentSsid;
+            _isOnCampusNetwork = true;
+            _detectedPortalUri = null;
+          });
+        }
         unawaited(AndroidNetworkAssist.reportCaptivePortalDismissed());
       } else {
         final err = CaptiveWifiHttp.instance.lastError;
@@ -503,9 +517,13 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       if (!mounted) return;
       if (loggedOut) {
         _showLocalSnackBar('Disconnected from portal successfully.');
-        setState(() {
-          _isOnCampusNetwork = false;
-        });
+        await CaptiveLoginStore.instance.saveSsid('');
+        if (mounted) {
+          setState(() {
+            _savedLoginSsid = '';
+            _isOnCampusNetwork = false;
+          });
+        }
         unawaited(_loadStoredCredentials());
       } else {
         final err = CaptiveWifiHttp.instance.lastError;
@@ -649,8 +667,10 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
         ? (isCorrectSsid &&
               _currentStatus != null &&
               !_currentStatus!.captive &&
-              _currentStatus!.validated)
-        : (_isOnCampusNetwork && _detectedPortalUri == null);
+              _currentStatus!.validated &&
+              _savedLoginSsid.toLowerCase() == _ssidController.text.trim().toLowerCase())
+        : (_isOnCampusNetwork && _detectedPortalUri == null &&
+              _savedLoginSsid.toLowerCase() == _ssidController.text.trim().toLowerCase());
 
     return PopScope(
       canPop: true,

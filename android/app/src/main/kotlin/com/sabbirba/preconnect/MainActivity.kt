@@ -559,19 +559,26 @@ class MainActivity : FlutterFragmentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && hasSsidPermission()) {
             val network = getWifiNetwork() ?: connectivityManager.activeNetwork
             if (network != null) {
+                var timeoutRunnable: Runnable? = null
                 val oneShotCallback = object : ConnectivityManager.NetworkCallback(
                     ConnectivityManager.NetworkCallback.FLAG_INCLUDE_LOCATION_INFO
                 ) {
                     private var done = false
+
+                    fun finishWith(payload: Map<String, Any>) {
+                        if (done) return
+                        done = true
+                        timeoutRunnable?.let { mainHandler.removeCallbacks(it) }
+                        try {
+                            connectivityManager.unregisterNetworkCallback(this)
+                        } catch (_: Exception) {}
+                        mainHandler.post { result.success(payload) }
+                    }
+
                     override fun onCapabilitiesChanged(
                         net: Network,
                         networkCapabilities: NetworkCapabilities,
                     ) {
-                        if (done) return
-                        done = true
-                        try {
-                            connectivityManager.unregisterNetworkCallback(this)
-                        } catch (_: Exception) {}
                         val payload = currentNetworkStatus(
                             networkOverride = net,
                             capabilitiesOverride = networkCapabilities,
@@ -581,20 +588,24 @@ class MainActivity : FlutterFragmentActivity() {
                             val ssid = normalizeSsid(wifiInfo?.ssid?.trim().orEmpty())
                             if (ssid != null) payload["ssid"] = ssid
                         }
-                        mainHandler.post { result.success(payload) }
+                        finishWith(payload)
                     }
+
                     override fun onUnavailable() {
-                        if (done) return
-                        done = true
-                        try { connectivityManager.unregisterNetworkCallback(this) } catch (_: Exception) {}
-                        mainHandler.post { result.success(currentNetworkStatus()) }
+                        finishWith(currentNetworkStatus())
                     }
                 }
+
+                timeoutRunnable = Runnable {
+                    oneShotCallback.finishWith(currentNetworkStatus())
+                }
+
                 try {
                     val request = NetworkRequest.Builder()
                         .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
                         .build()
                     connectivityManager.registerNetworkCallback(request, oneShotCallback)
+                    mainHandler.postDelayed(timeoutRunnable, 150)
                     return
                 } catch (_: Exception) {}
             }
