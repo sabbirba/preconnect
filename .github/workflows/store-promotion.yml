@@ -33,16 +33,25 @@ jobs:
           - target: Google Play
             run_play: true
             run_chrome: false
+            run_firefox: false
             run_apple: false
             os: ubuntu-latest
           - target: Chrome Web Store
             run_play: false
             run_chrome: true
+            run_firefox: false
+            run_apple: false
+            os: ubuntu-latest
+          - target: Firefox Add-ons Store
+            run_play: false
+            run_chrome: false
+            run_firefox: true
             run_apple: false
             os: ubuntu-latest
           - target: Apple App Store
             run_play: false
             run_chrome: false
+            run_firefox: false
             run_apple: true
             os: macos-15
 
@@ -85,14 +94,14 @@ jobs:
           cd android && bundle exec fastlane promote_beta_to_production
 
       - name: Setup Flutter
-        if: matrix.run_chrome
+        if: matrix.run_chrome || matrix.run_firefox
         uses: subosito/flutter-action@v2.23.0
         with:
           channel: "stable"
           cache: true
 
       - name: Cache Pub Packages
-        if: matrix.run_chrome
+        if: matrix.run_chrome || matrix.run_firefox
         uses: actions/cache@v5
         with:
           path: ~/.pub-cache
@@ -101,12 +110,12 @@ jobs:
             ${{ runner.os }}-pub-cache-
 
       - name: Flutter Pub Get
-        if: matrix.run_chrome
+        if: matrix.run_chrome || matrix.run_firefox
         shell: bash
         run: flutter pub get
 
-      - name: Chrome Env
-        if: matrix.run_chrome
+      - name: Extension Env
+        if: matrix.run_chrome || matrix.run_firefox
         shell: bash
         run: |
           echo "GITHUB_TOKEN=${{ secrets.GH_TOKEN }}" > .env
@@ -115,8 +124,8 @@ jobs:
           echo "GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}" >> .env
           echo "GOOGLE_SCOPES=${{ secrets.GOOGLE_SCOPES }}" >> .env
 
-      - name: Chrome Extension
-        if: matrix.run_chrome
+      - name: Build Extensions
+        if: matrix.run_chrome || matrix.run_firefox
         shell: bash
         run: ./tool/build_extension.sh
 
@@ -126,6 +135,14 @@ jobs:
         with:
           name: store-promotion-chrome-extension
           path: build/chrome-extension.zip
+          if-no-files-found: error
+
+      - name: Firefox Artifact
+        if: matrix.run_firefox
+        uses: actions/upload-artifact@v7
+        with:
+          name: store-promotion-firefox-extension
+          path: build/firefox-extension.zip
           if-no-files-found: error
 
       - name: Setup GCloud CLI
@@ -248,3 +265,12 @@ jobs:
         run: |
           cd macos && bundle exec fastlane upload_mac_to_app_store \
             pkg:"$GITHUB_WORKSPACE/${{ steps.resolve_apple.outputs.macos_path }}"
+
+      - name: Publish Firefox Extension
+        if: matrix.run_firefox
+        uses: browser-actions/release-firefox-addon@v3
+        with:
+          addon-id: 'preconnect@sabbirba.com'
+          addon-path: 'build/firefox-extension.zip'
+          auth-api-issuer: ${{ secrets.AMO_JWT_ISSUER }}
+          auth-api-secret: ${{ secrets.AMO_JWT_SECRET }}
