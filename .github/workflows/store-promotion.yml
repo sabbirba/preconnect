@@ -199,7 +199,7 @@ jobs:
         run: |
           mkdir -p deliverables
           gh release download --dir deliverables --pattern "PreConnect-ios-release-*.ipa" --clobber || true
-          gh release download --dir deliverables --pattern "PreConnect-macos-release-*-store.pkg" --clobber || true
+          gh release download --dir deliverables --pattern "PreConnect-macos-release-*.pkg" --clobber || true
           ls -la deliverables/
 
       - name: Resolve Apple Deliverables
@@ -208,7 +208,7 @@ jobs:
         shell: bash
         run: |
           IPA=$(find deliverables -maxdepth 1 -type f -name "*.ipa" | head -n1 || true)
-          PKG=$(find deliverables -maxdepth 1 -type f -name "*-store.pkg" | head -n1 || true)
+          PKG=$(find deliverables -maxdepth 1 -type f -name "*.pkg" | head -n1 || true)
           if [ -f "$IPA" ]; then
             echo "ios_ready=true" >> "$GITHUB_OUTPUT"
             echo "ios_path=$IPA" >> "$GITHUB_OUTPUT"
