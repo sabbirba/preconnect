@@ -258,6 +258,9 @@ void _handleRuntimeMessage(dynamic event) {
       final idp = msg['idp'] as String?;
       action = () => _startLogin(idp: idp);
       break;
+    case 'preconnect.loginTabCreated':
+      action = () => _handleLoginTabCreated(msg);
+      break;
     case _startLogoutType:
       action = _startLogout;
       break;
@@ -787,6 +790,35 @@ Future<void> _startLogin({String? idp}) async {
   } catch (e) {
     await _broadcastFailure('Unable to start login: $e');
   }
+}
+
+Future<void> _handleLoginTabCreated(Map<String, dynamic> msg) async {
+  final rawTabId = msg['tabId'];
+  int? tabId;
+  if (rawTabId is int) {
+    tabId = rawTabId;
+  } else if (rawTabId != null) {
+    tabId = int.tryParse('$rawTabId');
+  }
+  final verifier = '${msg['verifier'] ?? ''}';
+  if (tabId == null || verifier.isEmpty) {
+    await _broadcastFailure('Firefox login: missing tabId or verifier.');
+    return;
+  }
+  await _savePendingLogin(
+    _PendingLogin(
+      tabId: tabId,
+      verifier: verifier,
+      startedAtMillis: DateTime.now().millisecondsSinceEpoch,
+    ),
+  );
+  try {
+    await chrome.runtime.sendMessage(
+      null,
+      jsonEncode({'type': _loginStartedType, 'tabId': tabId}).toJS,
+      null,
+    );
+  } catch (_) {}
 }
 
 Future<void> _startLogout() async {
