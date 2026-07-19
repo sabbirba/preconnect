@@ -959,7 +959,6 @@ class _MemberIdsDialogState extends State<_MemberIdsDialog> {
   @override
   Widget build(BuildContext context) {
     final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
     final allVerified = _verified.every((v) => v);
 
     return Column(
@@ -1003,35 +1002,14 @@ class _MemberIdsDialogState extends State<_MemberIdsDialog> {
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                               ),
-                              decoration: InputDecoration(
+                              decoration: bracuInputDecoration(
+                                context,
                                 hintText: 'Student ID',
-                                hintStyle: TextStyle(
-                                  color: textSecondary.withValues(alpha: 0.5),
-                                  fontSize: 14,
-                                ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 12,
                                   vertical: 10,
                                 ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: textSecondary.withValues(alpha: 0.2),
-                                  ),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: textSecondary.withValues(alpha: 0.2),
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(
-                                    color: BracuPalette.primary,
-                                    width: 1.5,
-                                  ),
-                                ),
+                                borderRadius: 8,
                               ),
                               onChanged: (_) {
                                 if (isVerified) {

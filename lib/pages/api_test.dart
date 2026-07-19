@@ -303,10 +303,12 @@ class _ApiTestPageState extends State<ApiTestPage> {
           const Gap(20),
           DropdownButtonFormField<String>(
             initialValue: _method,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              isDense: true,
+            style: TextStyle(
+              color: BracuPalette.textPrimary(context),
+              fontSize: 14,
             ),
+            dropdownColor: const Color(0xFF1E1E1E),
+            decoration: bracuInputDecoration(context),
             items: _methods
                 .map((m) => DropdownMenuItem<String>(value: m, child: Text(m)))
                 .toList(),
@@ -320,10 +322,13 @@ class _ApiTestPageState extends State<ApiTestPage> {
           const Gap(10),
           TextField(
             controller: _urlController,
-            decoration: InputDecoration(
+            style: TextStyle(
+              color: BracuPalette.textPrimary(context),
+              fontSize: 14,
+            ),
+            decoration: bracuInputDecoration(
+              context,
               hintText: '${ApiConfig.connectApiBase}/adp/v1/staffs/7487',
-              border: const OutlineInputBorder(),
-              isDense: true,
             ),
           ),
           const Gap(12),
