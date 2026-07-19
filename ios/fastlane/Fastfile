@@ -36,10 +36,18 @@ platform :ios do
       end
     end
 
-    upload_to_testflight(
-      ipa: options[:ipa],
-      skip_waiting_for_build_processing: true,
-      api_key: api_key
-    )
+    begin
+      upload_to_testflight(
+        ipa: options[:ipa],
+        skip_waiting_for_build_processing: true,
+        api_key: api_key
+      )
+    rescue => e
+      if e.message.include?("already been used") || e.message.include?("must be higher than the previously uploaded version")
+        UI.message("Build already exists on TestFlight (duplicate). Skipping upload error.")
+      else
+        raise e
+      end
+    end
   end
 end

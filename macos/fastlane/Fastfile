@@ -37,15 +37,23 @@ platform :mac do
       end
     end
 
-    deliver(
-      pkg: options[:pkg],
-      platform: "osx",
-      force: true,
-      skip_metadata: true,
-      skip_screenshots: true,
-      run_precheck_before_submit: false,
-      api_key: api_key
-    )
+    begin
+      deliver(
+        pkg: options[:pkg],
+        platform: "osx",
+        force: true,
+        skip_metadata: true,
+        skip_screenshots: true,
+        run_precheck_before_submit: false,
+        api_key: api_key
+      )
+    rescue => e
+      if e.message.include?("already been used") || e.message.include?("must be higher than the previously uploaded version")
+        UI.message("Build already exists on App Store Connect (duplicate). Skipping upload error.")
+      else
+        raise e
+      end
+    end
   end
 
   desc "Notarize macOS app"
