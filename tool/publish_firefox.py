@@ -75,7 +75,11 @@ def main():
         print("Successfully published Firefox Add-on version!")
         print(version_resp.json())
     else:
-        print(f"Failed to create version ({version_resp.status_code}): {version_resp.text}")
+        resp_text = version_resp.text
+        if "already exists" in resp_text or version_resp.status_code == 409:
+            print("Version already exists on Firefox Add-ons. Skipping gracefully.")
+            sys.exit(0)
+        print(f"Failed to create version ({version_resp.status_code}): {resp_text}")
         sys.exit(1)
 
 if __name__ == "__main__":
