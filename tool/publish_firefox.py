@@ -29,7 +29,8 @@ def main():
     upload_url = "https://addons.mozilla.org/api/v5/addons/upload/"
     with open(xpi_path, "rb") as f:
         files = {"upload": f}
-        response = requests.post(upload_url, headers=get_headers(), files=files)
+        data = {"channel": "listed"}
+        response = requests.post(upload_url, headers=get_headers(), files=files, data=data)
 
     if response.status_code not in (201, 202):
         print(f"Upload failed ({response.status_code}): {response.text}")
