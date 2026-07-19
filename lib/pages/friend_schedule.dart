@@ -319,36 +319,12 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
               controller: controller,
               autofocus: true,
               style: TextStyle(color: textPrimary, fontFamily: 'Outfit'),
-              decoration: InputDecoration(
+              decoration: bracuInputDecoration(
+                context,
                 hintText: item.friend.name.isEmpty
                     ? 'Enter nickname'
                     : item.friend.name,
-                hintStyle: TextStyle(
-                  color: textSecondary.withValues(alpha: 0.50),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(
-                    color: textSecondary.withValues(alpha: 0.20),
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(
-                    color: textSecondary.withValues(alpha: 0.20),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(
-                    color: BracuPalette.primary,
-                    width: 1.5,
-                  ),
-                ),
+                borderRadius: 14,
               ),
             ),
             const Gap(16),

@@ -1516,30 +1516,7 @@ class _PrinterIdentityPanel extends StatelessWidget {
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
-          decoration: InputDecoration(
-            labelText: 'Name',
-            labelStyle: TextStyle(color: BracuPalette.textSecondary(context)),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: BracuPalette.textSecondary(
-                  context,
-                ).withValues(alpha: 0.2),
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: BracuPalette.primary,
-                width: 1.5,
-              ),
-            ),
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 12,
-            ),
-          ),
+          decoration: bracuInputDecoration(context, labelText: 'Name'),
           onChanged: onGuestNameChanged,
         ),
         const Gap(10),
@@ -1550,29 +1527,9 @@ class _PrinterIdentityPanel extends StatelessWidget {
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
-          decoration: InputDecoration(
+          decoration: bracuInputDecoration(
+            context,
             labelText: 'Student ID / PIN',
-            labelStyle: TextStyle(color: BracuPalette.textSecondary(context)),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: BracuPalette.textSecondary(
-                  context,
-                ).withValues(alpha: 0.2),
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: BracuPalette.primary,
-                width: 1.5,
-              ),
-            ),
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 12,
-            ),
           ),
           keyboardType: TextInputType.number,
           inputFormatters: <TextInputFormatter>[

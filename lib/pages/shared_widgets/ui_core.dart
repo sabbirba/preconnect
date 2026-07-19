@@ -474,3 +474,59 @@ class BracuRefreshButton extends StatelessWidget {
     );
   }
 }
+
+InputDecoration bracuInputDecoration(
+  BuildContext context, {
+  String? labelText,
+  String? hintText,
+  String? prefixText,
+  TextStyle? prefixStyle,
+  Widget? prefixIcon,
+  Widget? suffixIcon,
+  BoxConstraints? suffixIconConstraints,
+  bool isDense = true,
+  EdgeInsetsGeometry? contentPadding,
+  String? counterText,
+  double borderRadius = 12,
+}) {
+  return InputDecoration(
+    labelText: labelText,
+    labelStyle: TextStyle(color: BracuPalette.textSecondary(context)),
+    hintText: hintText,
+    hintStyle: TextStyle(
+      color: BracuPalette.textSecondary(context).withValues(alpha: 0.5),
+      fontSize: 14,
+    ),
+    prefixText: prefixText,
+    prefixStyle: prefixStyle,
+    prefixIcon: prefixIcon,
+    suffixIcon: suffixIcon,
+    suffixIconConstraints: suffixIconConstraints,
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(borderRadius),
+      borderSide: BorderSide(
+        color: BracuPalette.textSecondary(context).withValues(alpha: 0.2),
+      ),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(borderRadius),
+      borderSide: const BorderSide(color: BracuPalette.primary, width: 1.5),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(borderRadius),
+      borderSide: BorderSide(
+        color: Colors.red.withValues(alpha: 0.5),
+        width: 1,
+      ),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(borderRadius),
+      borderSide: const BorderSide(color: Colors.red, width: 1.5),
+    ),
+    isDense: isDense,
+    contentPadding:
+        contentPadding ??
+        const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    counterText: counterText,
+  );
+}

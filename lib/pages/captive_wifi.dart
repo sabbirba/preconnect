@@ -721,38 +721,10 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                               color: BracuPalette.textPrimary(context),
                               fontFamily: 'Outfit',
                             ),
-                            decoration: InputDecoration(
+                            decoration: bracuInputDecoration(
+                              context,
                               labelText: 'SSID',
-                              labelStyle: TextStyle(
-                                color: BracuPalette.textSecondary(context),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 12,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: BorderSide(
-                                  color: BracuPalette.textSecondary(
-                                    context,
-                                  ).withValues(alpha: 0.20),
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: BorderSide(
-                                  color: BracuPalette.textSecondary(
-                                    context,
-                                  ).withValues(alpha: 0.20),
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: const BorderSide(
-                                  color: BracuPalette.primary,
-                                  width: 1.5,
-                                ),
-                              ),
+                              borderRadius: 14,
                               suffixIcon: IosNetworkAssist.isSupported
                                   ? IconButton(
                                       icon: const Icon(Icons.refresh_rounded),
@@ -771,38 +743,10 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                               color: BracuPalette.textPrimary(context),
                               fontFamily: 'Outfit',
                             ),
-                            decoration: InputDecoration(
+                            decoration: bracuInputDecoration(
+                              context,
                               labelText: 'Student ID',
-                              labelStyle: TextStyle(
-                                color: BracuPalette.textSecondary(context),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 12,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: BorderSide(
-                                  color: BracuPalette.textSecondary(
-                                    context,
-                                  ).withValues(alpha: 0.20),
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: BorderSide(
-                                  color: BracuPalette.textSecondary(
-                                    context,
-                                  ).withValues(alpha: 0.20),
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: const BorderSide(
-                                  color: BracuPalette.primary,
-                                  width: 1.5,
-                                ),
-                              ),
+                              borderRadius: 14,
                             ),
                           ),
                           const Gap(10),
@@ -816,38 +760,10 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                               color: BracuPalette.textPrimary(context),
                               fontFamily: 'Outfit',
                             ),
-                            decoration: InputDecoration(
+                            decoration: bracuInputDecoration(
+                              context,
                               labelText: 'Password',
-                              labelStyle: TextStyle(
-                                color: BracuPalette.textSecondary(context),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 12,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: BorderSide(
-                                  color: BracuPalette.textSecondary(
-                                    context,
-                                  ).withValues(alpha: 0.20),
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: BorderSide(
-                                  color: BracuPalette.textSecondary(
-                                    context,
-                                  ).withValues(alpha: 0.20),
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: const BorderSide(
-                                  color: BracuPalette.primary,
-                                  width: 1.5,
-                                ),
-                              ),
+                              borderRadius: 14,
                               suffixIcon: IconButton(
                                 icon: Icon(
                                   _obscurePassword
