@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:device_info_plus/device_info_plus.dart';
@@ -67,14 +68,26 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
         'Package Name': packageInfo.packageName,
         'App Version': packageInfo.version,
         'Build Number': packageInfo.buildNumber,
-        'System Locale': Platform.localeName,
+        'System Locale': kIsWeb ? 'Web Browser Locale' : Platform.localeName,
         'Time Zone': '$timeZone (Offset $timeZoneOffset)',
-        'Dart runtime': Platform.version,
+        'Dart runtime': kIsWeb ? 'Web Engine' : Platform.version,
         'Documents Path': docsDir.path,
         'Temporary Path': tempDir.path,
       };
 
-      if (Platform.isAndroid) {
+      if (kIsWeb) {
+        final webInfo = await deviceInfo.webBrowserInfo;
+        data.addAll(<String, String>{
+          'Platform': 'Web Browser',
+          'Browser': webInfo.browserName.name,
+          'User Agent': webInfo.userAgent ?? 'Unknown',
+          'Language': webInfo.language ?? 'Unknown',
+          'Platform OS': webInfo.platform ?? 'Unknown',
+          'Hardware Concurrency':
+              webInfo.hardwareConcurrency?.toString() ?? 'Unknown',
+          'Device Memory (GB)': webInfo.deviceMemory?.toString() ?? 'Unknown',
+        });
+      } else if (Platform.isAndroid) {
         final androidInfo = await deviceInfo.androidInfo;
         data.addAll(<String, String>{
           'Platform': 'Android',
@@ -179,13 +192,29 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
   Future<void> _shareLogs() async {
     try {
       final file = await AppLog.getFile();
-      if (await file.exists()) {
+      final StringBuffer summary = StringBuffer();
+      summary.writeln('=== PreConnect System Diagnostics ===');
+      summary.writeln(
+        'Generated on: ${DateTime.now().toUtc().toIso8601String()}',
+      );
+      summary.writeln();
+      summary.writeln('--- Device Info ---');
+      _deviceInfo.forEach((key, val) {
+        summary.writeln('$key: $val');
+      });
+      summary.writeln();
+      summary.writeln('--- Network Info ---');
+      _networkInfo.forEach((key, val) {
+        summary.writeln('$key: $val');
+      });
+      summary.writeln();
+
+      if (!kIsWeb && await file.exists()) {
         await SharePlus.instance.share(
-          ShareParams(
-            files: [XFile(file.path)],
-            text: 'PreConnect System Diagnostics',
-          ),
+          ShareParams(files: [XFile(file.path)], text: summary.toString()),
         );
+      } else {
+        await SharePlus.instance.share(ShareParams(text: summary.toString()));
       }
     } catch (_) {}
   }
