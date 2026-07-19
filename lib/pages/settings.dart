@@ -372,9 +372,15 @@ class _SettingsPageState extends State<SettingsPage>
                           ),
                         ),
                         const Gap(10),
-                        TextButton(
+                        BracuActionButton(
                           onPressed: _fixQuietModeSetup,
-                          child: const Text('Fix'),
+                          label: 'Fix',
+                          outlined: false,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          borderRadius: 8,
                         ),
                       ],
                     ),
