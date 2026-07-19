@@ -824,7 +824,7 @@ Future<DateTime?> showBracuDatePicker(
 }) async {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
-  final dates = List.generate(10, (index) => today.add(Duration(days: index)));
+  final dates = List.generate(30, (index) => today.add(Duration(days: index)));
 
   return await showBracuBottomSheet<DateTime>(
     context,
