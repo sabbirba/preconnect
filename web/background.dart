@@ -12,6 +12,7 @@ import 'package:chrome_extension/alarms.dart' as alarms;
 import 'package:chrome_extension/notifications.dart' as notifications;
 import 'package:chrome_extension/scripting.dart' as scripting;
 import 'package:chrome_extension/tabs.dart';
+import 'package:chrome_extension/src/js/tabs.dart' as $js;
 import 'package:chrome_extension/side_panel.dart';
 import 'package:chrome_extension/web_navigation.dart';
 import 'package:chrome_extension/gcm.dart';
@@ -93,6 +94,15 @@ const String _ssoCookieUrl =
 
 @JS('fetch')
 external JSPromise<Response> _fetch(String input, [RequestInit? init]);
+
+@JS('chrome.tabs.create')
+external JSPromise<$js.Tab> _chromeTabsCreate(JSObject createProperties);
+
+Future<Tab> _safeTabsCreate({required String url, bool active = true}) async {
+  final createProps = {'url': url, 'active': active}.jsify() as JSObject;
+  final jsTab = await _chromeTabsCreate(createProps).toDart;
+  return Tab.fromJS(jsTab);
+}
 
 bool _isFirefox() {
   try {
@@ -334,7 +344,7 @@ Future<void> _openOrFocusAppTab() async {
     return;
   }
 
-  await chrome.tabs.create(CreateProperties(url: appUrl, active: true));
+  await _safeTabsCreate(url: appUrl, active: true);
 }
 
 Future<void> _configureBrowserSurfaces() async {
@@ -769,9 +779,7 @@ Future<void> _startLogin({String? idp}) async {
   }
 
   try {
-    final tab = await chrome.tabs.create(
-      CreateProperties(url: authUrl, active: true),
-    );
+    final tab = await _safeTabsCreate(url: authUrl, active: true);
     if (tab.id == null) {
       await _broadcastFailure('Unable to open the login tab.');
       return;
@@ -839,9 +847,7 @@ Future<void> _startLogout() async {
   final idToken = '${values[PreConnectStorageKeys.idToken] ?? ''}'.trim();
   final logoutUrl = BracuLogout.ssoLogoutUri(idToken: idToken);
 
-  final tab = await chrome.tabs.create(
-    CreateProperties(url: logoutUrl.toString(), active: true),
-  );
+  final tab = await _safeTabsCreate(url: logoutUrl.toString(), active: true);
   final logoutTabId = tab.id;
   if (appTabId == null || logoutTabId == null) {
     await _completeMercureLogout(appTabId);
@@ -1573,9 +1579,7 @@ Future<bool> _openNotificationUrl(String url) async {
     return false;
   }
   try {
-    await chrome.tabs.create(
-      CreateProperties(url: uri.toString(), active: true),
-    );
+    await _safeTabsCreate(url: uri.toString(), active: true);
     return true;
   } catch (_) {
     return false;
@@ -1658,9 +1662,7 @@ Future<void> _startLibsyncOauth(Map message) async {
   final String requestId = '${message['requestId'] ?? ''}';
 
   try {
-    final tab = await chrome.tabs.create(
-      CreateProperties(url: oauthUrl, active: true),
-    );
+    final tab = await _safeTabsCreate(url: oauthUrl, active: true);
     final tabId = tab.id;
     if (tabId != null) {
       _pendingLibsyncOauthTabId = tabId;
@@ -1679,9 +1681,7 @@ Future<void> _startCaptivePortalFlow(Map message) async {
   final String portalUrl = '${message['portalUrl']}';
 
   try {
-    final tab = await chrome.tabs.create(
-      CreateProperties(url: portalUrl, active: true),
-    );
+    final tab = await _safeTabsCreate(url: portalUrl, active: true);
     final tabId = tab.id;
     if (tabId != null) {
       _pendingCaptivePortalTabId = tabId;
