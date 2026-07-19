@@ -815,3 +815,431 @@ Future<T?> showBracuSelectDropdown<T>(
     },
   );
 }
+
+Future<DateTime?> showBracuDatePicker(
+  BuildContext context, {
+  required DateTime initialDate,
+  required DateTime firstDate,
+  required DateTime lastDate,
+}) async {
+  return await showBracuBottomSheet<DateTime>(
+    context,
+    title: 'Select Date',
+    initialChildSize: 0.65,
+    builder: (sheetContext, textPrimary, textSecondary) {
+      return _BracuDatePickerSheet(
+        initialDate: initialDate,
+        firstDate: firstDate,
+        lastDate: lastDate,
+        textPrimary: textPrimary,
+        textSecondary: textSecondary,
+      );
+    },
+  );
+}
+
+class _BracuDatePickerSheet extends StatefulWidget {
+  const _BracuDatePickerSheet({
+    required this.initialDate,
+    required this.firstDate,
+    required this.lastDate,
+    required this.textPrimary,
+    required this.textSecondary,
+  });
+
+  final DateTime initialDate;
+  final DateTime firstDate;
+  final DateTime lastDate;
+  final Color textPrimary;
+  final Color textSecondary;
+
+  @override
+  State<_BracuDatePickerSheet> createState() => _BracuDatePickerSheetState();
+}
+
+class _BracuDatePickerSheetState extends State<_BracuDatePickerSheet> {
+  late DateTime _currentMonth;
+  late DateTime _selectedDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = widget.initialDate;
+    _currentMonth = DateTime(_selectedDate.year, _selectedDate.month);
+  }
+
+  void _nextMonth() {
+    setState(() {
+      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
+    });
+  }
+
+  void _prevMonth() {
+    setState(() {
+      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final year = _currentMonth.year;
+    final month = _currentMonth.month;
+    final firstDayOfMonth = DateTime(year, month, 1);
+    final lastDayOfMonth = DateTime(year, month + 1, 0);
+    final firstWeekday = firstDayOfMonth.weekday % 7;
+    final daysInMonth = lastDayOfMonth.day;
+    final totalCells = firstWeekday + daysInMonth;
+    final rowsCount = (totalCells / 7).ceil();
+    final monthLabel = DateFormat('MMMM yyyy').format(_currentMonth);
+    final weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            IconButton(
+              icon: Icon(Icons.chevron_left, color: widget.textPrimary),
+              onPressed: _prevMonth,
+            ),
+            Text(
+              monthLabel,
+              style: TextStyle(
+                color: widget.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Outfit',
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.chevron_right, color: widget.textPrimary),
+              onPressed: _nextMonth,
+            ),
+          ],
+        ),
+        const Gap(12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: weekdays.map((day) {
+            return SizedBox(
+              width: 32,
+              child: Center(
+                child: Text(
+                  day,
+                  style: TextStyle(
+                    color: widget.textSecondary.withValues(alpha: 0.50),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Outfit',
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const Gap(8),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: rowsCount,
+          itemBuilder: (context, rowIndex) {
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: List.generate(7, (colIndex) {
+                final cellIndex = rowIndex * 7 + colIndex;
+                final dayNumber = cellIndex - firstWeekday + 1;
+
+                if (dayNumber < 1 || dayNumber > daysInMonth) {
+                  return const SizedBox(width: 32, height: 32);
+                }
+
+                final date = DateTime(year, month, dayNumber);
+                final isSelected =
+                    date.year == _selectedDate.year &&
+                    date.month == _selectedDate.month &&
+                    date.day == _selectedDate.day;
+
+                final isOutOfRange =
+                    date.isBefore(widget.firstDate) ||
+                    date.isAfter(widget.lastDate);
+
+                return GestureDetector(
+                  onTap: isOutOfRange
+                      ? null
+                      : () {
+                          setState(() {
+                            _selectedDate = date;
+                          });
+                          Navigator.pop(context, date);
+                        },
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? BracuPalette.primary
+                          : Colors.transparent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$dayNumber',
+                        style: TextStyle(
+                          color: isSelected
+                              ? Colors.white
+                              : (isOutOfRange
+                                    ? widget.textSecondary.withValues(
+                                        alpha: 0.25,
+                                      )
+                                    : widget.textPrimary),
+                          fontSize: 13,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          fontFamily: 'Outfit',
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            );
+          },
+        ),
+        const Gap(24),
+      ],
+    );
+  }
+}
+
+Future<TimeOfDay?> showBracuTimePicker(
+  BuildContext context, {
+  required TimeOfDay initialTime,
+}) async {
+  return await showBracuBottomSheet<TimeOfDay>(
+    context,
+    title: 'Select Time',
+    initialChildSize: 0.55,
+    builder: (sheetContext, textPrimary, textSecondary) {
+      return _BracuTimePickerSheet(
+        initialTime: initialTime,
+        textPrimary: textPrimary,
+        textSecondary: textSecondary,
+      );
+    },
+  );
+}
+
+class _BracuTimePickerSheet extends StatefulWidget {
+  const _BracuTimePickerSheet({
+    required this.initialTime,
+    required this.textPrimary,
+    required this.textSecondary,
+  });
+
+  final TimeOfDay initialTime;
+  final Color textPrimary;
+  final Color textSecondary;
+
+  @override
+  State<_BracuTimePickerSheet> createState() => _BracuTimePickerSheetState();
+}
+
+class _BracuTimePickerSheetState extends State<_BracuTimePickerSheet> {
+  late int _selectedHour;
+  late int _selectedMinute;
+  late String _selectedPeriod;
+
+  @override
+  void initState() {
+    super.initState();
+    final hour = widget.initialTime.hour;
+    _selectedHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    _selectedMinute = widget.initialTime.minute;
+    _selectedPeriod = hour >= 12 ? 'PM' : 'AM';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 180,
+                child: ListView.builder(
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: 12,
+                  itemBuilder: (context, index) {
+                    final hour = index + 1;
+                    final isSelected = hour == _selectedHour;
+                    return InkWell(
+                      onTap: () => setState(() => _selectedHour = hour),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? BracuPalette.primary.withValues(alpha: 0.15)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          hour.toString().padLeft(2, '0'),
+                          style: TextStyle(
+                            color: isSelected
+                                ? BracuPalette.primary
+                                : widget.textPrimary,
+                            fontSize: 18,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            fontFamily: 'Outfit',
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            Text(
+              ':',
+              style: TextStyle(
+                color: widget.textPrimary,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Expanded(
+              child: SizedBox(
+                height: 180,
+                child: ListView.builder(
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: 60,
+                  itemBuilder: (context, index) {
+                    final minute = index;
+                    final isSelected = minute == _selectedMinute;
+                    return InkWell(
+                      onTap: () => setState(() => _selectedMinute = minute),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? BracuPalette.primary.withValues(alpha: 0.15)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          minute.toString().padLeft(2, '0'),
+                          style: TextStyle(
+                            color: isSelected
+                                ? BracuPalette.primary
+                                : widget.textPrimary,
+                            fontSize: 18,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            fontFamily: 'Outfit',
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            Expanded(
+              child: SizedBox(
+                height: 180,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: ['AM', 'PM'].map((period) {
+                    final isSelected = period == _selectedPeriod;
+                    return InkWell(
+                      onTap: () => setState(() => _selectedPeriod = period),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 16,
+                        ),
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? BracuPalette.primary
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          period,
+                          style: TextStyle(
+                            color: isSelected
+                                ? Colors.white
+                                : widget.textPrimary,
+                            fontSize: 16,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            fontFamily: 'Outfit',
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const Gap(16),
+        BracuActionButton(
+          label: 'Confirm',
+          onPressed: () {
+            int finalHour = _selectedHour;
+            if (_selectedPeriod == 'PM' && finalHour < 12) {
+              finalHour += 12;
+            } else if (_selectedPeriod == 'AM' && finalHour == 12) {
+              finalHour = 0;
+            }
+            Navigator.pop(
+              context,
+              TimeOfDay(hour: finalHour, minute: _selectedMinute),
+            );
+          },
+          outlined: false,
+          borderRadius: 12,
+        ),
+        const Gap(16),
+      ],
+    );
+  }
+}
+
+void showBracuLoadingDialog(BuildContext context) {
+  showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    barrierColor: Colors.black.withValues(alpha: 0.35),
+    builder: (context) => const Center(
+      child: Card(
+        color: Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [BracuLoading()],
+          ),
+        ),
+      ),
+    ),
+  );
+}

@@ -1078,13 +1078,7 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                                 );
                             if (confirm == true) {
                               if (!context.mounted) return;
-                              showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (context) => const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                              );
+                              showBracuLoadingDialog(context);
                               try {
                                 if (uniqueToken.isNotEmpty) {
                                   await LibSyncAuthService.instance
@@ -1137,13 +1131,7 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                                 );
                             if (confirm != true) return;
                             if (!context.mounted) return;
-                            showDialog(
-                              context: context,
-                              barrierDismissible: false,
-                              builder: (context) => const Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                            );
+                            showBracuLoadingDialog(context);
                             try {
                               final intCode = int.tryParse(code);
                               if (intCode != null) {
