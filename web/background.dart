@@ -14,7 +14,6 @@ import 'package:chrome_extension/scripting.dart' as scripting;
 import 'package:chrome_extension/tabs.dart';
 import 'package:chrome_extension/src/js/tabs.dart' as $js;
 import 'package:chrome_extension/side_panel.dart';
-import 'package:chrome_extension/web_navigation.dart';
 import 'package:chrome_extension/gcm.dart';
 import 'package:web/web.dart' show Headers, RequestInit, Response;
 import 'package:preconnect/api/api_config.dart';
@@ -98,6 +97,9 @@ external JSPromise<Response> _fetch(String input, [RequestInit? init]);
 Future<Tab> _safeTabsCreate({required String url, bool active = true}) async {
   final createProps = {'url': url, 'active': active}.jsify() as $js.CreateProperties;
   final jsTab = await $js.chrome.tabs.create(createProps).toDart;
+  if (jsTab == null) {
+    throw Exception('Failed to create tab');
+  }
   return Tab.fromJS(jsTab as $js.Tab);
 }
 
@@ -177,12 +179,7 @@ Future<void> main() async {
 
   chrome.runtime.onMessage.listen(_handleRuntimeMessage);
 
-  chrome.webNavigation.onCommitted.listen((details) {
-    unawaited(_guarded(() => _handleNavigation(details)));
-  });
-  chrome.webNavigation.onHistoryStateUpdated.listen((details) {
-    unawaited(_guarded(() => _handleHistoryNavigation(details)));
-  });
+  _registerWebNavigationListeners();
 
   chrome.tabs.onRemoved.listen((event) {
     unawaited(_guarded(() => _handleTabRemoved(event)));
@@ -910,14 +907,57 @@ Future<void> _completeMercureLogout(int? appTabId) async {
   unawaited(_broadcastRuntimeMessage({'type': _logoutCompleteType}));
 }
 
-Future<void> _handleNavigation(OnCommittedDetails details) async {
-  await _processNavigation(details.tabId, details.url);
-}
+void _registerWebNavigationListeners() {
+  try {
+    final chromeObj = globalContext.getProperty<JSObject?>('chrome'.toJS);
+    if (chromeObj == null) return;
+    final webNavigationObj = chromeObj.getProperty<JSObject?>('webNavigation'.toJS);
+    if (webNavigationObj == null) return;
 
-Future<void> _handleHistoryNavigation(
-  OnHistoryStateUpdatedDetails details,
-) async {
-  await _processNavigation(details.tabId, details.url);
+    final onCommitted = webNavigationObj.getProperty<JSObject?>('onCommitted'.toJS);
+    if (onCommitted != null) {
+      final addListener = onCommitted.getProperty<JSFunction?>('addListener'.toJS);
+      if (addListener != null) {
+        addListener.callAsFunction(
+          onCommitted,
+          ((JSObject details) {
+            final tabIdVal = details.getProperty<JSNumber?>('tabId'.toJS);
+            final urlVal = details.getProperty<JSString?>('url'.toJS);
+            if (tabIdVal != null && urlVal != null) {
+              unawaited(
+                _guarded(
+                  () => _processNavigation(tabIdVal.toDartInt, urlVal.toDart),
+                ),
+              );
+            }
+          }).toJS,
+        );
+      }
+    }
+
+    final onHistoryStateUpdated =
+        webNavigationObj.getProperty<JSObject?>('onHistoryStateUpdated'.toJS);
+    if (onHistoryStateUpdated != null) {
+      final addListener =
+          onHistoryStateUpdated.getProperty<JSFunction?>('addListener'.toJS);
+      if (addListener != null) {
+        addListener.callAsFunction(
+          onHistoryStateUpdated,
+          ((JSObject details) {
+            final tabIdVal = details.getProperty<JSNumber?>('tabId'.toJS);
+            final urlVal = details.getProperty<JSString?>('url'.toJS);
+            if (tabIdVal != null && urlVal != null) {
+              unawaited(
+                _guarded(
+                  () => _processNavigation(tabIdVal.toDartInt, urlVal.toDart),
+                ),
+              );
+            }
+          }).toJS,
+        );
+      }
+    }
+  } catch (_) {}
 }
 
 Future<void> _processNavigation(int tabId, String url) async {
