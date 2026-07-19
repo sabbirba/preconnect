@@ -36,15 +36,9 @@ jobs:
             run_firefox: false
             run_apple: false
             os: ubuntu-latest
-          - target: Chrome Web Store
+          - target: Browser Extensions
             run_play: false
             run_chrome: true
-            run_firefox: false
-            run_apple: false
-            os: ubuntu-latest
-          - target: Firefox Add-ons Store
-            run_play: false
-            run_chrome: false
             run_firefox: true
             run_apple: false
             os: ubuntu-latest
@@ -275,5 +269,4 @@ jobs:
           AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
         shell: bash
         run: |
-          pip install PyJWT requests
-          python3 tool/publish_firefox.py "preconnect@sabbirba.com" "build/firefox-extension.zip" "$AMO_JWT_ISSUER" "$AMO_JWT_SECRET"
+          node tool/publish_firefox.js "preconnect@sabbirba.com" "build/firefox-extension.zip" "$AMO_JWT_ISSUER" "$AMO_JWT_SECRET"
