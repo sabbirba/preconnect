@@ -1982,11 +1982,6 @@ class _PrinterPreferencesPanel extends StatelessWidget {
                 height: controlHeight,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(
-                    color: BracuPalette.textSecondary(
-                      context,
-                    ).withValues(alpha: 0.20),
-                  ),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
