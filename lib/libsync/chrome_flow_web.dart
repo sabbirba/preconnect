@@ -57,11 +57,14 @@ Future<void> openCaptivePortalFlow(String portalUrl) async {
 
 void _safeSendMessage(Map<String, dynamic> message) {
   try {
-    final chromeVal = globalContext.getProperty('chrome'.toJS);
-    if (chromeVal.isUndefinedOrNull) return;
-    final chromeObj = chromeVal as JSObject;
+    var extensionObj = globalContext.getProperty('chrome'.toJS);
+    if (extensionObj.isUndefinedOrNull) {
+      extensionObj = globalContext.getProperty('browser'.toJS);
+    }
+    if (extensionObj.isUndefinedOrNull) return;
+    final extJSObj = extensionObj as JSObject;
 
-    final runtimeVal = chromeObj.getProperty('runtime'.toJS);
+    final runtimeVal = extJSObj.getProperty('runtime'.toJS);
     if (runtimeVal.isUndefinedOrNull) return;
     final runtimeObj = runtimeVal as JSObject;
 
@@ -69,6 +72,6 @@ void _safeSendMessage(Map<String, dynamic> message) {
     if (sendMessageVal.isUndefinedOrNull) return;
     final sendMessageFunc = sendMessageVal as JSFunction;
 
-    sendMessageFunc.callAsFunction(runtimeObj, null, jsonEncode(message).toJS);
+    sendMessageFunc.callAsFunction(runtimeObj, jsonEncode(message).toJS);
   } catch (_) {}
 }
