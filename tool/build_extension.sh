@@ -34,6 +34,7 @@ if (( CHROME_VERSION_SUFFIX > 65535 )); then
 fi
 CHROME_VERSION="${APP_MAJOR}.${APP_MINOR}.${APP_PATCH}.${CHROME_VERSION_SUFFIX}"
 CHROME_VERSION_NAME="${CHROME_VERSION}"
+FIREFOX_VERSION="${APP_VERSION}.${APP_BUILD_NUMBER}"
 ENV_FILE="${ROOT_DIR}/.env"
 TEMP_ENV_FILE=""
 FLUTTER_WEB_BASE_HREF="/"
@@ -142,7 +143,7 @@ import json
 manifest_path = '${FIREFOX_DIR}/manifest.json'
 with open(manifest_path, 'r') as f:
     d = json.load(f)
-d['version'] = '${CHROME_VERSION}'
+d['version'] = '${FIREFOX_VERSION}'
 d.pop('version_name', None)
 d.pop('side_panel', None)
 if 'permissions' in d:
