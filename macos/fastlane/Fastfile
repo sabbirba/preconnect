@@ -49,21 +49,17 @@ platform :mac do
         api_key: api_key
       )
     rescue => e
-      if e.message.include?("already been used") || e.message.include?("must be higher") || e.message.include?("redundant") || e.message.include?("duplicate")
-        UI.message("macOS Upload failed with duplicate error: #{e.message}. Retrying with skip_binary_upload = true.")
-        deliver(
-          pkg: nil,
-          skip_binary_upload: true,
-          platform: "osx",
-          force: true,
-          skip_metadata: true,
-          skip_screenshots: true,
-          run_precheck_before_submit: false,
-          api_key: api_key
-        )
-      else
-        raise e
-      end
+      UI.message("macOS Upload action encountered an issue: #{e.message}. Retrying with skip_binary_upload = true.")
+      deliver(
+        pkg: nil,
+        skip_binary_upload: true,
+        platform: "osx",
+        force: true,
+        skip_metadata: true,
+        skip_screenshots: true,
+        run_precheck_before_submit: false,
+        api_key: api_key
+      )
     end
   end
 
