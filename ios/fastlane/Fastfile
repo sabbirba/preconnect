@@ -84,21 +84,45 @@ platform :ios do
       end
     end
 
-    upload_to_app_store(
-      ipa: skip_upload ? nil : options[:ipa],
-      skip_binary_upload: skip_upload,
-      skip_metadata: true,
-      skip_screenshots: true,
-      force: true,
-      reject_if_possible: true,
-      submit_for_review: true,
-      automatic_release: true,
-      phased_release: false,
-      run_precheck_before_submit: false,
-      submission_information: {
-        export_compliance_uses_encryption: false
-      },
-      api_key: api_key
-    )
+    begin
+      upload_to_app_store(
+        ipa: skip_upload ? nil : options[:ipa],
+        skip_binary_upload: skip_upload,
+        skip_metadata: true,
+        skip_screenshots: true,
+        force: true,
+        reject_if_possible: true,
+        submit_for_review: true,
+        automatic_release: true,
+        phased_release: false,
+        run_precheck_before_submit: false,
+        submission_information: {
+          export_compliance_uses_encryption: false
+        },
+        api_key: api_key
+      )
+    rescue => e
+      if e.message.include?("already been used") || e.message.include?("must be higher") || e.message.include?("redundant") || e.message.include?("duplicate")
+        UI.message("Upload failed with duplicate error: #{e.message}. Retrying with skip_binary_upload = true.")
+        upload_to_app_store(
+          ipa: nil,
+          skip_binary_upload: true,
+          skip_metadata: true,
+          skip_screenshots: true,
+          force: true,
+          reject_if_possible: true,
+          submit_for_review: true,
+          automatic_release: true,
+          phased_release: false,
+          run_precheck_before_submit: false,
+          submission_information: {
+            export_compliance_uses_encryption: false
+          },
+          api_key: api_key
+        )
+      else
+        raise e
+      end
+    end
   end
 end
