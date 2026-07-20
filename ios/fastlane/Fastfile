@@ -66,16 +66,31 @@ platform :ios do
       is_key_content_base64: is_base64
     )
 
-    upload_to_app_store(
-      ipa: options[:ipa],
-      skip_metadata: true,
-      skip_screenshots: true,
-      force: true,
-      submit_for_review: true,
-      automatic_release: true,
-      phased_release: false,
-      run_precheck_before_submit: false,
-      api_key: api_key
-    )
+    begin
+      upload_to_app_store(
+        ipa: options[:ipa],
+        skip_metadata: true,
+        skip_screenshots: true,
+        force: true,
+        submit_for_review: true,
+        automatic_release: true,
+        phased_release: false,
+        run_precheck_before_submit: false,
+        api_key: api_key
+      )
+    rescue => e
+      msg = e.message.to_s.downcase
+      if msg.include?("already been used") ||
+         msg.include?("must be higher") ||
+         msg.include?("redundant") ||
+         msg.include?("already exists") ||
+         msg.include?("already in review") ||
+         msg.include?("cannot submit") ||
+         msg.include?("invalid")
+        UI.message("App Store release encounter: #{e.message}. Skipping error.")
+      else
+        raise e
+      end
+    end
   end
 end
