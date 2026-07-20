@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "00 18 * * 3"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'GitHub Release Tag to download deliverables from (e.g. v2.0.2+202608015)'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -209,8 +214,12 @@ jobs:
         shell: bash
         run: |
           mkdir -p deliverables
-          gh release download --dir deliverables --pattern "PreConnect-ios-release-*.ipa" --clobber || true
-          gh release download --dir deliverables --pattern "PreConnect-macos-release-*.pkg" --clobber || true
+          TAG_ARG=""
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG_ARG="-t ${{ github.event.inputs.tag }}"
+          fi
+          gh release download $TAG_ARG --dir deliverables --pattern "PreConnect-ios-release-*.ipa" --clobber || true
+          gh release download $TAG_ARG --dir deliverables --pattern "PreConnect-macos-release-*.pkg" --clobber || true
           ls -la deliverables/
 
       - name: Resolve Apple Deliverables
@@ -236,6 +245,13 @@ jobs:
           if [ -f "$PKG" ]; then
             echo "macos_ready=true" >> "$GITHUB_OUTPUT"
             echo "macos_path=$PKG" >> "$GITHUB_OUTPUT"
+            FILENAME=$(basename "$PKG")
+            VERSION_STR=${FILENAME#PreConnect-macos-release-}
+            VERSION_STR=${VERSION_STR%.pkg}
+            VERSION_NAME=${VERSION_STR%+*}
+            VERSION_CODE=${VERSION_STR#*+}
+            echo "macos_version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+            echo "macos_version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           else
             echo "macos_ready=false" >> "$GITHUB_OUTPUT"
           fi
@@ -255,8 +271,8 @@ jobs:
         if: matrix.run_apple && steps.resolve_apple.outputs.macos_ready == 'true' && env.APP_STORE_CONNECT_API_KEY != ''
         env:
           BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
-          MACOS_VERSION_NAME: ${{ steps.resolve_apple.outputs.ios_version_name }}
-          MACOS_VERSION_CODE: ${{ steps.resolve_apple.outputs.ios_version_code }}
+          MACOS_VERSION_NAME: ${{ steps.resolve_apple.outputs.macos_version_name }}
+          MACOS_VERSION_CODE: ${{ steps.resolve_apple.outputs.macos_version_code }}
         shell: bash
         run: |
           cd macos && bundle exec fastlane upload_mac_to_app_store \
