@@ -76,6 +76,9 @@ platform :ios do
       automatic_release: true,
       phased_release: false,
       run_precheck_before_submit: false,
+      submission_information: {
+        export_compliance_uses_encryption: false
+      },
       api_key: api_key
     )
   end
