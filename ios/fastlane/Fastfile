@@ -68,6 +68,7 @@ platform :ios do
 
     version_name = ENV["IOS_VERSION_NAME"]
     version_code = ENV["IOS_VERSION_CODE"]
+    skip_upload = false
     if version_name && version_code
       begin
         latest_build = latest_testflight_build_number(
@@ -76,41 +77,29 @@ platform :ios do
           api_key: api_key
         )
         if latest_build && latest_build.to_i >= version_code.to_i
-          UI.message("Build #{version_code} for version #{version_name} already exists on App Store Connect (latest is #{latest_build}). Skipping release_to_app_store.")
-          next
+          UI.message("Build #{version_code} for version #{version_name} already exists on App Store Connect. Skipping binary upload.")
+          skip_upload = true
         end
       rescue => e
         UI.message("Could not fetch latest TestFlight build: #{e.message}. Proceeding with upload.")
       end
     end
 
-    begin
-      upload_to_app_store(
-        ipa: options[:ipa],
-        skip_metadata: true,
-        skip_screenshots: true,
-        force: true,
-        reject_if_possible: true,
-        submit_for_review: true,
-        automatic_release: true,
-        phased_release: false,
-        run_precheck_before_submit: false,
-        submission_information: {
-          export_compliance_uses_encryption: false
-        },
-        api_key: api_key
-      )
-    rescue => e
-      msg = e.message.to_s.downcase
-      if msg.include?("already been used") ||
-         msg.include?("must be higher") ||
-         msg.include?("redundant") ||
-         msg.include?("already exists") ||
-         msg.include?("duplicate")
-        UI.message("App Store release step encountered existing version/build: #{e.message}. Skipping upload error.")
-      else
-        raise e
-      end
-    end
+    upload_to_app_store(
+      ipa: skip_upload ? nil : options[:ipa],
+      skip_binary_upload: skip_upload,
+      skip_metadata: true,
+      skip_screenshots: true,
+      force: true,
+      reject_if_possible: true,
+      submit_for_review: true,
+      automatic_release: true,
+      phased_release: false,
+      run_precheck_before_submit: false,
+      submission_information: {
+        export_compliance_uses_encryption: false
+      },
+      api_key: api_key
+    )
   end
 end
