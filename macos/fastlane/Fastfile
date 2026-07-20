@@ -20,6 +20,7 @@ platform :mac do
 
     version_name = ENV["MACOS_VERSION_NAME"]
     version_code = ENV["MACOS_VERSION_CODE"]
+    skip_upload = false
     if version_name && version_code
       begin
         latest_build = latest_testflight_build_number(
@@ -28,8 +29,8 @@ platform :mac do
           api_key: api_key
         )
         if latest_build && latest_build.to_i >= version_code.to_i
-          UI.message("Build #{version_code} for version #{version_name} already exists on App Store Connect (latest is #{latest_build}). Skipping upload.")
-          next
+          UI.message("macOS Build #{version_code} for version #{version_name} already exists on App Store Connect. Skipping binary upload.")
+          skip_upload = true
         end
       rescue => e
         UI.message("Could not fetch latest macOS build: #{e.message}. Proceeding with upload.")
@@ -38,7 +39,8 @@ platform :mac do
 
     begin
       deliver(
-        pkg: options[:pkg],
+        pkg: skip_upload ? nil : options[:pkg],
+        skip_binary_upload: skip_upload,
         platform: "osx",
         force: true,
         skip_metadata: true,
@@ -47,8 +49,18 @@ platform :mac do
         api_key: api_key
       )
     rescue => e
-      if e.message.include?("already been used") || e.message.include?("must be higher than the previously uploaded version")
-        UI.message("Build already exists on App Store Connect (duplicate). Skipping upload error.")
+      if e.message.include?("already been used") || e.message.include?("must be higher") || e.message.include?("redundant") || e.message.include?("duplicate")
+        UI.message("macOS Upload failed with duplicate error: #{e.message}. Retrying with skip_binary_upload = true.")
+        deliver(
+          pkg: nil,
+          skip_binary_upload: true,
+          platform: "osx",
+          force: true,
+          skip_metadata: true,
+          skip_screenshots: true,
+          run_precheck_before_submit: false,
+          api_key: api_key
+        )
       else
         raise e
       end
