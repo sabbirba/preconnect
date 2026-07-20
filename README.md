@@ -412,12 +412,3 @@ preconnect/
         └── 📄 settings.dart         # App language, cache, theme, and notification configs
 ```
 
-## Changelog
-
-### [2.0.2] — 2026-07-20
-- Wi-Fi: Fixed Android 10+ captive portal & printer routing.
-- UI: Unified spacing gaps, pickers, & bottom sheets.
-- Web: Fixed extension JS interop, CSP, & OAuth flows.
-- Updates: Enhanced update routing & device diagnostics.
-- CI/CD: Automated store promotions across platforms.
-
