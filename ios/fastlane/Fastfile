@@ -71,11 +71,7 @@ platform :ios do
     skip_upload = false
     if version_name && version_code
       begin
-        latest_build = latest_testflight_build_number(
-          version: version_name,
-          app_identifier: "com.sabbirba.preconnect",
-          api_key: api_key
-        )
+        latest_build = latest_testflight_build_number(version: version_name)
         if latest_build && latest_build.to_i >= version_code.to_i
           UI.message("Build #{version_code} for version #{version_name} already exists on App Store Connect. Skipping binary upload.")
           skip_upload = true
@@ -98,8 +94,7 @@ platform :ios do
       run_precheck_before_submit: false,
       submission_information: {
         export_compliance_uses_encryption: false
-      },
-      api_key: api_key
+      }
     )
   end
 end
