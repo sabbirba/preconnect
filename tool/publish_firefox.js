@@ -112,7 +112,7 @@ async function main() {
     console.log("Successfully published Firefox Add-on version!");
     console.log(JSON.stringify(versionData));
   } else if (versionResp.status === 409 || JSON.stringify(versionData).includes("already exists")) {
-    console.log("Version already exists on Firefox Add-ons. Skipping gracefully.");
+    console.log(`Version already exists on Firefox Add-ons (Status: ${versionResp.status}, Response: ${JSON.stringify(versionData)}). Skipping gracefully.`);
     process.exit(0);
   } else {
     console.error(`Failed to create version (${versionResp.status}):`, JSON.stringify(versionData));

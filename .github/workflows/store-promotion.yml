@@ -223,8 +223,8 @@ jobs:
         id: resolve_apple
         shell: bash
         run: |
-          IPA=$(find deliverables -maxdepth 1 -type f -name "*.ipa" | head -n1 || true)
-          PKG=$(find deliverables -maxdepth 1 -type f -name "*.pkg" | head -n1 || true)
+          IPA=$(find deliverables -type f -name "*.ipa" | head -n1 || true)
+          PKG=$(find deliverables -type f -name "*.pkg" | head -n1 || true)
           if [ -f "$IPA" ]; then
             echo "ios_ready=true" >> "$GITHUB_OUTPUT"
             echo "ios_path=$IPA" >> "$GITHUB_OUTPUT"
