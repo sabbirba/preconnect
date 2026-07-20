@@ -24,9 +24,7 @@ platform :mac do
       begin
         latest_build = latest_testflight_build_number(
           version: version_name,
-          platform: "osx",
-          app_identifier: "com.sabbirba.preconnect",
-          api_key: api_key
+          platform: "osx"
         )
         if latest_build && latest_build.to_i >= version_code.to_i
           UI.message("Build #{version_code} for version #{version_name} already exists on App Store Connect (latest is #{latest_build}). Skipping upload.")
@@ -44,8 +42,7 @@ platform :mac do
         force: true,
         skip_metadata: true,
         skip_screenshots: true,
-        run_precheck_before_submit: false,
-        api_key: api_key
+        run_precheck_before_submit: false
       )
     rescue => e
       if e.message.include?("already been used") || e.message.include?("must be higher than the previously uploaded version")
