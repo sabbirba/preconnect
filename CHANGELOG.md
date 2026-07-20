@@ -5,6 +5,13 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
+## [2.0.2] — 2026-07-20
+- Wi-Fi: Fixed Android 10+ captive portal & printer routing.
+- UI: Unified spacing gaps, pickers, & bottom sheets.
+- Web: Fixed extension JS interop, CSP, & OAuth flows.
+- Updates: Enhanced update routing & device diagnostics.
+- CI/CD: Automated store promotions across platforms.
+
 ## [2.0.1] — 2026-07-18
 - Performance Upgrades: Pipeline compilation optimized with parallel build jobs and dependency caching.
 - Apple Silicon Support: Built on modern Apple Silicon virtual machine environments for faster deployment.
