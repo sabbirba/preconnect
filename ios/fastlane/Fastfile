@@ -66,6 +66,24 @@ platform :ios do
       is_key_content_base64: is_base64
     )
 
+    version_name = ENV["IOS_VERSION_NAME"]
+    version_code = ENV["IOS_VERSION_CODE"]
+    if version_name && version_code
+      begin
+        latest_build = latest_testflight_build_number(
+          version: version_name,
+          app_identifier: "com.sabbirba.preconnect",
+          api_key: api_key
+        )
+        if latest_build && latest_build.to_i >= version_code.to_i
+          UI.message("Build #{version_code} for version #{version_name} already exists on App Store Connect (latest is #{latest_build}). Skipping release_to_app_store.")
+          next
+        end
+      rescue => e
+        UI.message("Could not fetch latest TestFlight build: #{e.message}. Proceeding with upload.")
+      end
+    end
+
     begin
       upload_to_app_store(
         ipa: options[:ipa],
@@ -86,6 +104,9 @@ platform :ios do
          msg.include?("already exists") ||
          msg.include?("already in review") ||
          msg.include?("cannot submit") ||
+         msg.include?("relationship") ||
+         msg.include?("could not be added") ||
+         msg.include?("acceptable") ||
          msg.include?("invalid")
         UI.message("App Store release encounter: #{e.message}. Skipping error.")
       else
