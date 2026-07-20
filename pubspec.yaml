@@ -16,7 +16,7 @@ dependencies:
   shared_preferences: ^2.5.5
   webview_flutter: ^4.14.1
   intl: ^0.20.3
-  mobile_scanner: ^7.3.0
+  mobile_scanner: ^7.4.0
   image_picker: ^1.2.3
   archive: ^4.0.9
   dart_pdf_reader: ^2.2.0
