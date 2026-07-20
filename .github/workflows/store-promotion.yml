@@ -214,12 +214,13 @@ jobs:
         shell: bash
         run: |
           mkdir -p deliverables
-          TAG_ARG=""
-          if [ -n "${{ github.event.inputs.tag }}" ]; then
-            TAG_ARG="-t ${{ github.event.inputs.tag }}"
+          RUN_ID=$(gh run list --workflow release.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId' || true)
+          if [ -n "$RUN_ID" ]; then
+            gh run download "$RUN_ID" --dir deliverables || true
+          else
+            gh release download --dir deliverables --pattern "PreConnect-ios-release-*.ipa" --clobber || true
+            gh release download --dir deliverables --pattern "PreConnect-macos-release-*.pkg" --clobber || true
           fi
-          gh release download $TAG_ARG --dir deliverables --pattern "PreConnect-ios-release-*.ipa" --clobber || true
-          gh release download $TAG_ARG --dir deliverables --pattern "PreConnect-macos-release-*.pkg" --clobber || true
           ls -la deliverables/
 
       - name: Resolve Apple Deliverables
