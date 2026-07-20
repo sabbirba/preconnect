@@ -4,11 +4,6 @@ on:
   schedule:
     - cron: "00 18 * * 3"
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'GitHub Release Tag to download deliverables from (e.g. v2.0.2+202608015)'
-        required: false
-        type: string
 
 permissions:
   contents: read
