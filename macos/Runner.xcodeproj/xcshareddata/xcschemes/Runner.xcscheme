@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "1510"
+   LastUpgradeVersion = "2660"
    version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -10,7 +10,7 @@
             ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
             <ActionContent
                title = "Run Prepare Flutter Framework Script"
-               scriptText = "&quot;$FLUTTER_ROOT&quot;/packages/flutter_tools/bin/macos_assemble.sh prepare&#10;">
+               scriptText = "if [ -z &quot;$FLUTTER_ROOT&quot; ]; then&#10;  if [ -f &quot;Flutter/ephemeral/Flutter-Generated.xcconfig&quot; ]; then&#10;    export $(grep FLUTTER_ROOT &quot;Flutter/ephemeral/Flutter-Generated.xcconfig&quot; | xargs)&#10;  fi&#10;fi&#10;if [ -z &quot;$FLUTTER_ROOT&quot; ]; then&#10;  if [ -f &quot;../Flutter/ephemeral/Flutter-Generated.xcconfig&quot; ]; then&#10;    export $(grep FLUTTER_ROOT &quot;../Flutter/ephemeral/Flutter-Generated.xcconfig&quot; | xargs)&#10;  fi&#10;fi&#10;&quot;$FLUTTER_ROOT&quot;/packages/flutter_tools/bin/macos_assemble.sh prepare&#10;">
                <EnvironmentBuildable>
                   <BuildableReference
                      BuildableIdentifier = "primary"
