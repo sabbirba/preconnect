@@ -3,3 +3,4 @@
 #include "Env.xcconfig"
 
 WARNING_CFLAGS = $(inherited) -Wno-objc-ownership
+GCC_WARN_INHIBIT_ALL_WARNINGS = YES
