@@ -73,7 +73,9 @@ class AppStorage {
       if (_cacheDir == null) await _initCacheDir();
       final file = _fileForKey(key);
       if (file == null) return;
-      await file.writeAsString(value, flush: true);
+      final bytes = utf8.encode(value);
+      final compressed = gzip.encode(bytes);
+      await file.writeAsBytes(compressed, flush: true);
     } catch (_) {}
   }
 
@@ -81,7 +83,12 @@ class AppStorage {
     try {
       final file = _fileForKey(key);
       if (file == null || !file.existsSync()) return null;
-      return await file.readAsString();
+      final bytes = await file.readAsBytes();
+      if (bytes.length >= 2 && bytes[0] == 0x1f && bytes[1] == 0x8b) {
+        final decompressed = gzip.decode(bytes);
+        return utf8.decode(decompressed);
+      }
+      return utf8.decode(bytes);
     } catch (_) {
       return null;
     }
@@ -91,7 +98,12 @@ class AppStorage {
     try {
       final file = _fileForKey(key);
       if (file == null || !file.existsSync()) return null;
-      return file.readAsStringSync();
+      final bytes = file.readAsBytesSync();
+      if (bytes.length >= 2 && bytes[0] == 0x1f && bytes[1] == 0x8b) {
+        final decompressed = gzip.decode(bytes);
+        return utf8.decode(decompressed);
+      }
+      return utf8.decode(bytes);
     } catch (_) {
       return null;
     }
