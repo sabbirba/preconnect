@@ -898,7 +898,7 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
         child: Center(
           child: Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
-            child: BracuEmptyState(message: 'No recent reservations found'),
+            child: BracuEmptyState(message: 'No recent reservation found'),
           ),
         ),
       );

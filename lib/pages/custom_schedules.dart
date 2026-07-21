@@ -609,7 +609,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
-                        'No custom schedules yet.',
+                        'No custom schedule yet.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: BracuPalette.textPrimary(context),

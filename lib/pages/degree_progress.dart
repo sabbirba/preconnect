@@ -815,7 +815,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
               if (topCourses.isEmpty)
                 BracuCard(
                   child: Text(
-                    'No completed courses found.',
+                    'No completed course found.',
                     style: TextStyle(
                       color: BracuPalette.textSecondary(context),
                     ),
