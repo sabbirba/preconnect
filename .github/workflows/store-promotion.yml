@@ -148,7 +148,7 @@ jobs:
 
       - name: Setup GCloud CLI
         if: matrix.run_chrome
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
 
       - name: Publish Chrome Extension
         if: matrix.run_chrome
