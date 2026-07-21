@@ -251,7 +251,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _jobOffset = 'Off';
   String _slipSheet = 'Off';
   String _booklet = 'Off';
-  String _printerHost = '172.16.0.111';
+  String _printerHost = '';
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
   int _copies = 1;
   bool _busy = false;
@@ -449,9 +449,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         port: _printerPort,
       );
       if (!mounted) return;
+      final onCampus = await _isCampusNetwork();
       final printerAddress = printers.isNotEmpty
           ? printers.first.address
-          : '172.16.0.111';
+          : (onCampus ? '172.16.0.111' : '');
       setState(() {
         _printerHost = printerAddress;
       });
@@ -464,6 +465,26 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         });
       }
     }
+  }
+
+  Future<bool> _isCampusNetwork() async {
+    final wifiNameLower = _wifiName.toLowerCase();
+    if (wifiNameLower.contains('student') ||
+        wifiNameLower.contains('bracu') ||
+        wifiNameLower.contains('campus') ||
+        wifiNameLower.contains('faculty') ||
+        wifiNameLower.contains('staff')) {
+      return true;
+    }
+    final prefixes = await _currentLocalIpv4Prefixes();
+    for (final prefix in prefixes) {
+      if (prefix.startsWith('172.16.') ||
+          prefix.startsWith('172.17.') ||
+          prefix.startsWith('10.')) {
+        return true;
+      }
+    }
+    return false;
   }
 
   Future<String> _currentNetworkFingerprint() async {
