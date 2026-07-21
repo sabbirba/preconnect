@@ -251,7 +251,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _jobOffset = 'Off';
   String _slipSheet = 'Off';
   String _booklet = 'Off';
-  String _printerHost = '';
+  String _printerHost = '172.16.0.111';
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
   int _copies = 1;
   bool _busy = false;
@@ -449,15 +449,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         port: _printerPort,
       );
       if (!mounted) return;
-      if (printers.isEmpty) {
-        setState(() {
-          _printerHost = '';
-        });
-        return;
-      }
-      final printer = printers.first;
+      final printerAddress = printers.isNotEmpty
+          ? printers.first.address
+          : '172.16.0.111';
       setState(() {
-        _printerHost = printer.address;
+        _printerHost = printerAddress;
       });
     } catch (e) {
       await AppLog.write('Printer discovery failed: $e');
@@ -1872,9 +1868,6 @@ class _LprPrintClient {
   }) async {
     Socket? socket;
     _LprAckReader? ackReader;
-    if (AndroidNetworkAssist.isSupported) {
-      await AndroidNetworkAssist.bindToWifiNetwork();
-    }
     try {
       socket = await Socket.connect(printerHost, port, timeout: _timeout);
       ackReader = _LprAckReader(socket);
@@ -1924,9 +1917,6 @@ class _LprPrintClient {
     } finally {
       await ackReader?.cancel();
       socket?.destroy();
-      if (AndroidNetworkAssist.isSupported) {
-        await AndroidNetworkAssist.unbindFromWifiNetwork();
-      }
     }
   }
 
@@ -2439,76 +2429,67 @@ class _WifiPrinterDiscovery {
     int maxSubnets = 2,
     List<String> preferredHosts = const <String>[],
   }) async {
-    if (AndroidNetworkAssist.isSupported) {
-      await AndroidNetworkAssist.bindToWifiNetwork();
+    final subnets = await _localIpv4Subnets();
+    final found = <_WifiPrinterCandidate>[];
+    final seen = <String>{};
+    final active = <Future<void>>{};
+
+    for (final address in preferredHosts) {
+      final host = address.trim();
+      if (host.isEmpty || !seen.add(host)) continue;
+      final open = await _probe(host, port, timeout);
+      if (open) {
+        found.add(
+          _WifiPrinterCandidate(address: host, interfaceName: 'saved'),
+        );
+        if (found.length >= limit) return found;
+      }
     }
-    try {
-      final subnets = await _localIpv4Subnets();
-      final found = <_WifiPrinterCandidate>[];
-      final seen = <String>{};
-      final active = <Future<void>>{};
 
-      for (final address in preferredHosts) {
-        final host = address.trim();
-        if (host.isEmpty || !seen.add(host)) continue;
-        final open = await _probe(host, port, timeout);
-        if (open) {
-          found.add(
-            _WifiPrinterCandidate(address: host, interfaceName: 'saved'),
-          );
-          if (found.length >= limit) return found;
-        }
+    for (final address in _campusPrinterHosts) {
+      if (!seen.add(address)) continue;
+      final open = await _probe(address, port, const Duration(milliseconds: 2500));
+      if (open) {
+        found.add(
+          _WifiPrinterCandidate(address: address, interfaceName: 'campus'),
+        );
+        if (found.length >= limit) return found;
       }
+    }
 
-      for (final address in _campusPrinterHosts) {
+    var subnetCount = 0;
+    for (final subnet in subnets) {
+      subnetCount++;
+      if (subnetCount > maxSubnets) break;
+      for (var host = 1; host <= 254; host++) {
+        if (host == subnet.hostOctet) continue;
+        final address = '${subnet.prefix}.$host';
         if (!seen.add(address)) continue;
-        final open = await _probe(address, port, const Duration(milliseconds: 2500));
-        if (open) {
-          found.add(
-            _WifiPrinterCandidate(address: address, interfaceName: 'campus'),
-          );
-          if (found.length >= limit) return found;
-        }
-      }
+        late Future<void> probe;
+        probe = _probe(address, port, timeout)
+            .then((open) {
+              if (open && found.length < limit) {
+                found.add(
+                  _WifiPrinterCandidate(
+                    address: address,
+                    interfaceName: subnet.interfaceName,
+                  ),
+                );
+              }
+            })
+            .whenComplete(() => active.remove(probe));
 
-      var subnetCount = 0;
-      for (final subnet in subnets) {
-        subnetCount++;
-        if (subnetCount > maxSubnets) break;
-        for (var host = 1; host <= 254; host++) {
-          if (host == subnet.hostOctet) continue;
-          final address = '${subnet.prefix}.$host';
-          if (!seen.add(address)) continue;
-          late Future<void> probe;
-          probe = _probe(address, port, timeout)
-              .then((open) {
-                if (open && found.length < limit) {
-                  found.add(
-                    _WifiPrinterCandidate(
-                      address: address,
-                      interfaceName: subnet.interfaceName,
-                    ),
-                  );
-                }
-              })
-              .whenComplete(() => active.remove(probe));
-
-          active.add(probe);
-          if (active.length >= concurrency) {
-            await Future.any(active);
-          }
-          if (found.length >= limit) break;
+        active.add(probe);
+        if (active.length >= concurrency) {
+          await Future.any(active);
         }
         if (found.length >= limit) break;
       }
-
-      await Future.wait(active);
-      return found;
-    } finally {
-      if (AndroidNetworkAssist.isSupported) {
-        await AndroidNetworkAssist.unbindFromWifiNetwork();
-      }
+      if (found.length >= limit) break;
     }
+
+    await Future.wait(active);
+    return found;
   }
 
   static Future<bool> _probe(String address, int port, Duration timeout) async {
