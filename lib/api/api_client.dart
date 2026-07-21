@@ -454,7 +454,7 @@ class ApiClient {
         } else if (response.statusCode == 200) {
           final etag = response.headers['etag'] ?? response.headers['ETag'];
           if (etag != null && etag.isNotEmpty) {
-            if (response.body.length < 500 * 1024) {
+            if (response.body.length < 10 * 1024 * 1024) {
               unawaited(AppStorage.instance.setString('etag_$url', etag));
               unawaited(
                 AppStorage.instance.setString('etag_resp_$url', response.body),
