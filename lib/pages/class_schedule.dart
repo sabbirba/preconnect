@@ -499,7 +499,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  'No Classes Today',
+                                  'No Class Today',
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,

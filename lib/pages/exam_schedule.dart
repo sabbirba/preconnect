@@ -519,7 +519,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  'No Exams Today',
+                                  'No Exam Today',
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
