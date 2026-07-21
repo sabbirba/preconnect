@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:intl/intl.dart';
 import 'package:preconnect/api/exam_map.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/section_info.dart';
@@ -415,23 +416,25 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           }
 
           final shouldHighlightCurrentSemester = !showPast;
+          final today = DateTime(now.year, now.month, now.day);
           DateTime? nextExamTime;
           String? nextExamKey;
           if (shouldHighlightCurrentSemester) {
             for (final s in sections) {
               final midTime = BracuTime.parseDateTime(midDate(s), midStart(s));
               if (midTime != null &&
+                  midTime.year == today.year &&
+                  midTime.month == today.month &&
+                  midTime.day == today.day &&
                   ExamVisibility.isUpcomingOrOngoingSchedule(
                     date: midDate(s),
                     start: midStart(s),
                     end: midEnd(s),
                     now: now,
                   )) {
-                if (midTime.isAfter(now)) {
-                  if (nextExamTime == null || midTime.isBefore(nextExamTime)) {
-                    nextExamTime = midTime;
-                    nextExamKey = '${s.sectionId}-mid';
-                  }
+                if (nextExamTime == null || midTime.isBefore(nextExamTime)) {
+                  nextExamTime = midTime;
+                  nextExamKey = '${s.sectionId}-mid';
                 }
               }
               final finalTime = BracuTime.parseDateTime(
@@ -439,18 +442,19 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                 finalStart(s),
               );
               if (finalTime != null &&
+                  finalTime.year == today.year &&
+                  finalTime.month == today.month &&
+                  finalTime.day == today.day &&
                   ExamVisibility.isUpcomingOrOngoingSchedule(
                     date: finalDate(s),
                     start: finalStart(s),
                     end: finalEnd(s),
                     now: now,
                   )) {
-                if (finalTime.isAfter(now)) {
-                  if (nextExamTime == null ||
-                      finalTime.isBefore(nextExamTime)) {
-                    nextExamTime = finalTime;
-                    nextExamKey = '${s.sectionId}-final';
-                  }
+                if (nextExamTime == null ||
+                    finalTime.isBefore(nextExamTime)) {
+                  nextExamTime = finalTime;
+                  nextExamKey = '${s.sectionId}-final';
                 }
               }
             }
@@ -459,6 +463,86 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           final highlightedKey = nextExamKey;
 
           final children = <Widget>[];
+          final hasExamToday = sections.any((s) {
+            final mDate = BracuTime.parseDate(midDate(s));
+            final fDate = BracuTime.parseDate(finalDate(s));
+            final hasMidToday = mDate != null &&
+                mDate.year == today.year &&
+                mDate.month == today.month &&
+                mDate.day == today.day;
+            final hasFinalToday = fDate != null &&
+                fDate.year == today.year &&
+                fDate.month == today.month &&
+                fDate.day == today.day;
+            return hasMidToday || hasFinalToday;
+          });
+
+          if (!showPast && !hasExamToday) {
+            final todayWeekday = DateFormat('EEEE').format(now).toUpperCase();
+            final todayDateLabel = formatLongDate(now);
+            children.add(
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: BracuSectionTitle(
+                            title: 'Today is ${formatWeekdayTitle(todayWeekday)}',
+                          ),
+                        ),
+                        Text(
+                          todayDateLabel,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: BracuPalette.textPrimary(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Gap(12),
+                    BracuCard(
+                      child: Row(
+                        children: [
+                          const SectionBadge(
+                            label: '--',
+                            color: BracuPalette.primary,
+                          ),
+                          const Gap(12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'No Exams Today',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const Gap(4),
+                                Text(
+                                  'Enjoy your day off.',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: BracuPalette.textSecondary(context),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
           _highlightScroll.clearHighlightKey();
 
           if (midExams.isNotEmpty) {
