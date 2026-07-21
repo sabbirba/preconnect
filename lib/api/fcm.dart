@@ -18,6 +18,7 @@ import 'package:http/http.dart' as http;
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -792,8 +793,13 @@ class FCMService {
     }
     if (url != null && url.isNotEmpty) {
       try {
-        final uri = Uri.parse(url);
-        unawaited(launchUrl(uri, mode: LaunchMode.inAppBrowserView));
+        final context = AuthService.navigatorKey.currentContext;
+        if (context != null && context.mounted) {
+          unawaited(openExternalUrl(context, url));
+        } else {
+          final uri = Uri.parse(url);
+          unawaited(launchUrl(uri, mode: LaunchMode.inAppBrowserView));
+        }
       } catch (_) {}
     }
   }
