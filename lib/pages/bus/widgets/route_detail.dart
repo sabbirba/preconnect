@@ -173,7 +173,7 @@ Future<void> _openRouteInGoogleMaps(
   final uri = Uri.parse(
     'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude',
   );
-  final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  final opened = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
   if (opened || !context.mounted) return;
   showAppSnackBar(context, 'Unable to open Google Maps.');
 }

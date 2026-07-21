@@ -461,7 +461,7 @@ class _LoginPageState extends State<LoginPage> {
     final uri = Uri.parse(ApiConfig.authUrlWithPkce(challenge));
     await launchUrl(
       uri,
-      mode: LaunchMode.externalApplication,
+      mode: LaunchMode.inAppBrowserView,
       webOnlyWindowName: '_self',
     );
   }

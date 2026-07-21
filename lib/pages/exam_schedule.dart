@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/exam_map.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
@@ -593,7 +592,6 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                               unawaited(openExternalUrl(
                                 context,
                                 pdfUrl,
-                                mobilePreferredMode: LaunchMode.externalApplication,
                               ));
                             }
                           },
@@ -666,7 +664,6 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                               unawaited(openExternalUrl(
                                 context,
                                 pdfUrl,
-                                mobilePreferredMode: LaunchMode.externalApplication,
                               ));
                             }
                           },
