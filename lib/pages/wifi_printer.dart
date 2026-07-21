@@ -449,15 +449,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         port: _printerPort,
       );
       if (!mounted) return;
-      if (printers.isEmpty) {
-        setState(() {
-          _printerHost = '';
-        });
-        return;
-      }
-      final printer = printers.first;
+      final printerAddress = printers.isNotEmpty
+          ? printers.first.address
+          : '172.16.0.111';
       setState(() {
-        _printerHost = printer.address;
+        _printerHost = printerAddress;
       });
     } catch (e) {
       await AppLog.write('Printer discovery failed: $e');
@@ -2462,7 +2458,7 @@ class _WifiPrinterDiscovery {
 
       for (final address in _campusPrinterHosts) {
         if (!seen.add(address)) continue;
-        final open = await _probe(address, port, timeout);
+        final open = await _probe(address, port, const Duration(milliseconds: 1200));
         if (open) {
           found.add(
             _WifiPrinterCandidate(address: address, interfaceName: 'campus'),
