@@ -251,7 +251,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _jobOffset = 'Off';
   String _slipSheet = 'Off';
   String _booklet = 'Off';
-  String _printerHost = '';
+  String _printerHost = '172.16.0.111';
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
   int _copies = 1;
   bool _busy = false;
@@ -2458,7 +2458,7 @@ class _WifiPrinterDiscovery {
 
       for (final address in _campusPrinterHosts) {
         if (!seen.add(address)) continue;
-        final open = await _probe(address, port, const Duration(milliseconds: 1200));
+        final open = await _probe(address, port, const Duration(milliseconds: 2500));
         if (open) {
           found.add(
             _WifiPrinterCandidate(address: address, interfaceName: 'campus'),
