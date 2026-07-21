@@ -57,14 +57,26 @@ class ExamMapService {
     );
 
     final indexList = indexJson is List ? indexJson : const <dynamic>[];
-    final midRow = _pickExamRow(indexList, examType: 'Mid', semesterLabel: semesterLabel);
-    final finalRow = _pickExamRow(indexList, examType: 'Final', semesterLabel: semesterLabel);
+    final midRow = _pickExamRow(
+      indexList,
+      examType: 'Mid',
+      semesterLabel: semesterLabel,
+    );
+    final finalRow = _pickExamRow(
+      indexList,
+      examType: 'Final',
+      semesterLabel: semesterLabel,
+    );
 
     final midUrl = midRow != null ? _clean(midRow['url']) : null;
     final finalUrl = finalRow != null ? _clean(finalRow['url']) : null;
 
-    final List<dynamic>? midPdfUrls = midRow != null ? midRow['pdf_urls'] as List<dynamic>? : null;
-    final List<dynamic>? finalPdfUrls = finalRow != null ? finalRow['pdf_urls'] as List<dynamic>? : null;
+    final List<dynamic>? midPdfUrls = midRow != null
+        ? midRow['pdf_urls'] as List<dynamic>?
+        : null;
+    final List<dynamic>? finalPdfUrls = finalRow != null
+        ? finalRow['pdf_urls'] as List<dynamic>?
+        : null;
 
     final merged = <String, ExamScheduleOverride>{};
 
@@ -85,7 +97,12 @@ class ExamMapService {
         ttl: _examJsonCacheTtl,
         forceRefresh: forceRefresh,
       );
-      _mergeExamRows(merged, finalJson, examTypeHint: 'Final', pdfUrls: finalPdfUrls);
+      _mergeExamRows(
+        merged,
+        finalJson,
+        examTypeHint: 'Final',
+        pdfUrls: finalPdfUrls,
+      );
     }
 
     return merged;
