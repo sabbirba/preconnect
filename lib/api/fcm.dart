@@ -793,7 +793,7 @@ class FCMService {
     if (url != null && url.isNotEmpty) {
       try {
         final uri = Uri.parse(url);
-        unawaited(launchUrl(uri, mode: LaunchMode.inAppWebView));
+        unawaited(launchUrl(uri, mode: LaunchMode.externalApplication));
       } catch (_) {}
     }
   }
