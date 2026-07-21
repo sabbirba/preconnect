@@ -456,6 +456,76 @@ class _ClassScheduleState extends State<ClassSchedulePage>
           }
 
           final children = <Widget>[];
+          final now = DateTime.now();
+          final todayWeekday = _weekdayNames[now.weekday - 1];
+          final hasClassesToday = visibleGrouped.containsKey(todayWeekday);
+
+          if (!_showDoneSections && !hasClassesToday) {
+            final todayDateLabel = formatLongDate(now);
+            children.add(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: BracuSectionTitle(
+                          title: 'Today is ${formatWeekdayTitle(todayWeekday)}',
+                        ),
+                      ),
+                      Text(
+                        todayDateLabel,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: BracuPalette.textPrimary(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Gap(12),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: BracuCard(
+                      child: Row(
+                        children: [
+                          const SectionBadge(
+                            label: '--',
+                            color: BracuPalette.primary,
+                          ),
+                          const Gap(12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'No Classes Today',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const Gap(4),
+                                Text(
+                                  'Enjoy your day off.',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: BracuPalette.textSecondary(context),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const Gap(6),
+                ],
+              ),
+            );
+          }
+
           String? highlightToken;
           int? highlightIndex;
           var cardIndex = 0;
