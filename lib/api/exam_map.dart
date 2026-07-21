@@ -57,37 +57,35 @@ class ExamMapService {
     );
 
     final indexList = indexJson is List ? indexJson : const <dynamic>[];
-    final midUrl = _pickExamJsonUrl(
-      indexList,
-      examType: 'Mid',
-      semesterLabel: semesterLabel,
-    );
-    final finalUrl = _pickExamJsonUrl(
-      indexList,
-      examType: 'Final',
-      semesterLabel: semesterLabel,
-    );
+    final midRow = _pickExamRow(indexList, examType: 'Mid', semesterLabel: semesterLabel);
+    final finalRow = _pickExamRow(indexList, examType: 'Final', semesterLabel: semesterLabel);
+
+    final midUrl = midRow != null ? _clean(midRow['url']) : null;
+    final finalUrl = finalRow != null ? _clean(finalRow['url']) : null;
+
+    final List<dynamic>? midPdfUrls = midRow != null ? midRow['pdf_urls'] as List<dynamic>? : null;
+    final List<dynamic>? finalPdfUrls = finalRow != null ? finalRow['pdf_urls'] as List<dynamic>? : null;
 
     final merged = <String, ExamScheduleOverride>{};
 
-    if (midUrl != null) {
+    if (midUrl != null && midUrl.isNotEmpty) {
       final midJson = await _fetchJsonWithCache(
         url: midUrl,
         cacheKey: 'exammap_mid_${semesterSessionId}_v1',
         ttl: _examJsonCacheTtl,
         forceRefresh: forceRefresh,
       );
-      _mergeExamRows(merged, midJson, examTypeHint: 'Mid');
+      _mergeExamRows(merged, midJson, examTypeHint: 'Mid', pdfUrls: midPdfUrls);
     }
 
-    if (finalUrl != null) {
+    if (finalUrl != null && finalUrl.isNotEmpty) {
       final finalJson = await _fetchJsonWithCache(
         url: finalUrl,
         cacheKey: 'exammap_final_${semesterSessionId}_v1',
         ttl: _examJsonCacheTtl,
         forceRefresh: forceRefresh,
       );
-      _mergeExamRows(merged, finalJson, examTypeHint: 'Final');
+      _mergeExamRows(merged, finalJson, examTypeHint: 'Final', pdfUrls: finalPdfUrls);
     }
 
     return merged;
@@ -136,6 +134,7 @@ class ExamMapService {
     Map<String, ExamScheduleOverride> out,
     dynamic payload, {
     required String examTypeHint,
+    List<dynamic>? pdfUrls,
   }) {
     final root = payload is Map<String, dynamic>
         ? payload
@@ -205,6 +204,7 @@ class ExamMapService {
       ]);
 
       final existing = out[key] ?? const ExamScheduleOverride();
+      final pdfUrl = _findPdfUrl(pdfUrls, course);
 
       if (examType == 'MID') {
         out[key] = existing.copyWith(
@@ -212,6 +212,7 @@ class ExamMapService {
           midStartTime: start.isEmpty ? existing.midStartTime : start,
           midEndTime: end.isEmpty ? existing.midEndTime : end,
           midRoomNumber: room.isEmpty ? existing.midRoomNumber : room,
+          midPdfUrl: pdfUrl,
         );
       } else {
         out[key] = existing.copyWith(
@@ -219,6 +220,7 @@ class ExamMapService {
           finalStartTime: start.isEmpty ? existing.finalStartTime : start,
           finalEndTime: end.isEmpty ? existing.finalEndTime : end,
           finalRoomNumber: room.isEmpty ? existing.finalRoomNumber : room,
+          finalPdfUrl: pdfUrl,
         );
       }
     }
@@ -237,18 +239,16 @@ class ExamMapService {
     return '$term $year';
   }
 
-  String? _pickExamJsonUrl(
+  Map? _pickExamRow(
     List<dynamic> indexRows, {
     required String examType,
     required String semesterLabel,
   }) {
     final wanted = '$examType $semesterLabel'.toLowerCase();
-
     for (final item in indexRows.whereType<Map>()) {
       final row = item.cast<String, dynamic>();
       final name = _clean(row['exam_name']).toLowerCase();
-      final url = _clean(row['url']);
-      if (name == wanted && url.isNotEmpty) return url;
+      if (name == wanted) return row;
     }
 
     for (final item in indexRows.whereType<Map>()) {
@@ -258,11 +258,28 @@ class ExamMapService {
       if (url.isEmpty) continue;
       if (name.contains(examType.toLowerCase()) &&
           name.contains(semesterLabel.toLowerCase())) {
-        return url;
+        return row;
       }
     }
 
     return null;
+  }
+
+  static String? _findPdfUrl(List<dynamic>? pdfUrls, String courseCode) {
+    if (pdfUrls == null || pdfUrls.isEmpty) return null;
+    final code = courseCode.trim().toUpperCase();
+    for (final item in pdfUrls) {
+      final url = _clean(item);
+      if (url.isEmpty) continue;
+      final decodedUrl = Uri.decodeComponent(url).toUpperCase();
+      final filename = decodedUrl.split('/').last;
+      if (filename.startsWith('$code.') ||
+          filename.startsWith('${code}_') ||
+          filename.startsWith('$code-')) {
+        return url;
+      }
+    }
+    return _clean(pdfUrls.first);
   }
 
   static String _clean(dynamic value) => value?.toString().trim() ?? '';
@@ -290,41 +307,49 @@ class ExamScheduleOverride {
     this.midStartTime,
     this.midEndTime,
     this.midRoomNumber,
+    this.midPdfUrl,
     this.finalDate,
     this.finalStartTime,
     this.finalEndTime,
     this.finalRoomNumber,
+    this.finalPdfUrl,
   });
 
   final String? midDate;
   final String? midStartTime;
   final String? midEndTime;
   final String? midRoomNumber;
+  final String? midPdfUrl;
 
   final String? finalDate;
   final String? finalStartTime;
   final String? finalEndTime;
   final String? finalRoomNumber;
+  final String? finalPdfUrl;
 
   ExamScheduleOverride copyWith({
     String? midDate,
     String? midStartTime,
     String? midEndTime,
     String? midRoomNumber,
+    String? midPdfUrl,
     String? finalDate,
     String? finalStartTime,
     String? finalEndTime,
     String? finalRoomNumber,
+    String? finalPdfUrl,
   }) {
     return ExamScheduleOverride(
       midDate: midDate ?? this.midDate,
       midStartTime: midStartTime ?? this.midStartTime,
       midEndTime: midEndTime ?? this.midEndTime,
       midRoomNumber: midRoomNumber ?? this.midRoomNumber,
+      midPdfUrl: midPdfUrl ?? this.midPdfUrl,
       finalDate: finalDate ?? this.finalDate,
       finalStartTime: finalStartTime ?? this.finalStartTime,
       finalEndTime: finalEndTime ?? this.finalEndTime,
       finalRoomNumber: finalRoomNumber ?? this.finalRoomNumber,
+      finalPdfUrl: finalPdfUrl ?? this.finalPdfUrl,
     );
   }
 
@@ -334,10 +359,12 @@ class ExamScheduleOverride {
       midStartTime: json['midStartTime'] as String?,
       midEndTime: json['midEndTime'] as String?,
       midRoomNumber: json['midRoomNumber'] as String?,
+      midPdfUrl: json['midPdfUrl'] as String?,
       finalDate: json['finalDate'] as String?,
       finalStartTime: json['finalStartTime'] as String?,
       finalEndTime: json['finalEndTime'] as String?,
       finalRoomNumber: json['finalRoomNumber'] as String?,
+      finalPdfUrl: json['finalPdfUrl'] as String?,
     );
   }
 
@@ -347,10 +374,12 @@ class ExamScheduleOverride {
       'midStartTime': midStartTime,
       'midEndTime': midEndTime,
       'midRoomNumber': midRoomNumber,
+      'midPdfUrl': midPdfUrl,
       'finalDate': finalDate,
       'finalStartTime': finalStartTime,
       'finalEndTime': finalEndTime,
       'finalRoomNumber': finalRoomNumber,
+      'finalPdfUrl': finalPdfUrl,
     };
   }
 }
@@ -361,20 +390,24 @@ class ExamSectionResolved {
     required this.midStartTime,
     required this.midEndTime,
     required this.midRoomNumber,
+    required this.midPdfUrl,
     required this.finalDate,
     required this.finalStartTime,
     required this.finalEndTime,
     required this.finalRoomNumber,
+    required this.finalPdfUrl,
   });
 
   final String? midDate;
   final String? midStartTime;
   final String? midEndTime;
   final String? midRoomNumber;
+  final String? midPdfUrl;
   final String? finalDate;
   final String? finalStartTime;
   final String? finalEndTime;
   final String? finalRoomNumber;
+  final String? finalPdfUrl;
 }
 
 class ExamScheduleService {
@@ -434,6 +467,7 @@ class ExamScheduleService {
       midEndTime:
           override?.midEndTime ?? section.sectionSchedule.midExamEndTime,
       midRoomNumber: midRoom,
+      midPdfUrl: override?.midPdfUrl,
       finalDate: override?.finalDate ?? section.sectionSchedule.finalExamDate,
       finalStartTime:
           override?.finalStartTime ??
@@ -441,6 +475,7 @@ class ExamScheduleService {
       finalEndTime:
           override?.finalEndTime ?? section.sectionSchedule.finalExamEndTime,
       finalRoomNumber: finalRoom,
+      finalPdfUrl: override?.finalPdfUrl,
     );
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/exam_map.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
@@ -582,18 +583,34 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                         ],
                       ),
                       const Gap(8),
-                      BracuExamCard(
-                        highlightKey: isHighlighted
-                            ? _highlightScroll.highlightKey
-                            : null,
-                        isHighlighted: isHighlighted,
-                        courseCode: section.courseCode,
-                        sectionName: section.sectionName,
-                        startTime: midStart(section),
-                        endTime: midEnd(section),
-                        roomNumber: midRoom(section),
-                        faculties: section.faculties,
-                        consumedSeat: section.consumedSeat,
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(18),
+                          onTap: () {
+                            final pdfUrl = resolved(section).midPdfUrl;
+                            if (pdfUrl != null && pdfUrl.isNotEmpty) {
+                              unawaited(openExternalUrl(
+                                context,
+                                pdfUrl,
+                                mobilePreferredMode: LaunchMode.externalApplication,
+                              ));
+                            }
+                          },
+                          child: BracuExamCard(
+                            highlightKey: isHighlighted
+                                ? _highlightScroll.highlightKey
+                                : null,
+                            isHighlighted: isHighlighted,
+                            courseCode: section.courseCode,
+                            sectionName: section.sectionName,
+                            startTime: midStart(section),
+                            endTime: midEnd(section),
+                            roomNumber: midRoom(section),
+                            faculties: section.faculties,
+                            consumedSeat: section.consumedSeat,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -639,18 +656,34 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                         ],
                       ),
                       const Gap(8),
-                      BracuExamCard(
-                        highlightKey: isHighlighted
-                            ? _highlightScroll.highlightKey
-                            : null,
-                        isHighlighted: isHighlighted,
-                        courseCode: section.courseCode,
-                        sectionName: section.sectionName,
-                        startTime: finalStart(section),
-                        endTime: finalEnd(section),
-                        roomNumber: finalRoom(section),
-                        faculties: section.faculties,
-                        consumedSeat: section.consumedSeat,
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(18),
+                          onTap: () {
+                            final pdfUrl = resolved(section).finalPdfUrl;
+                            if (pdfUrl != null && pdfUrl.isNotEmpty) {
+                              unawaited(openExternalUrl(
+                                context,
+                                pdfUrl,
+                                mobilePreferredMode: LaunchMode.externalApplication,
+                              ));
+                            }
+                          },
+                          child: BracuExamCard(
+                            highlightKey: isHighlighted
+                                ? _highlightScroll.highlightKey
+                                : null,
+                            isHighlighted: isHighlighted,
+                            courseCode: section.courseCode,
+                            sectionName: section.sectionName,
+                            startTime: finalStart(section),
+                            endTime: finalEnd(section),
+                            roomNumber: finalRoom(section),
+                            faculties: section.faculties,
+                            consumedSeat: section.consumedSeat,
+                          ),
+                        ),
                       ),
                     ],
                   ),
