@@ -200,49 +200,6 @@ class _WishlistCourse {
   final _WishlistBasis basis;
 }
 
-class _Metric extends StatelessWidget {
-  const _Metric({required this.title, required this.value});
-
-  final String title;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: BracuPalette.textSecondary(context).withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: BracuPalette.textSecondary(context),
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const Gap(4),
-          Text(
-            value,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: BracuPalette.textPrimary(context),
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _OptionWrap extends StatelessWidget {
   const _OptionWrap({required this.title, required this.items});
 

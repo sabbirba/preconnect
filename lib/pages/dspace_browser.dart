@@ -634,7 +634,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
           final parsed = DateTime.tryParse(item.lastModified);
           if (parsed != null) {
             displayLastModified = DateFormat(
-              'd MMM yyyy, h:mm a',
+              'd MMMM yyyy, h:mm a',
             ).format(parsed.toLocal());
           }
         }
@@ -814,7 +814,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
         _DSpaceSort.lastModified: 'Last Modified',
       };
       chips.add(
-        _FilterChip(
+        _RemovableFilterChip(
           label: labels[_sortOrder]!,
           onRemove: () {
             setState(() {
@@ -836,7 +836,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
           ? 'From $from'
           : 'Up to $to';
       chips.add(
-        _FilterChip(
+        _RemovableFilterChip(
           label: label,
           onRemove: () {
             setState(() {
@@ -1193,8 +1193,8 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
   }
 }
 
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({required this.label, required this.onRemove});
+class _RemovableFilterChip extends StatelessWidget {
+  const _RemovableFilterChip({required this.label, required this.onRemove});
 
   final String label;
   final VoidCallback onRemove;

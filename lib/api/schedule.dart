@@ -8,6 +8,7 @@ import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/snapshot_store.dart';
 import 'package:preconnect/model/section_info.dart' as section;
+import 'package:preconnect/tools/cache_durations.dart';
 
 class ScheduleService {
   static final ScheduleService _instance = ScheduleService._internal();
@@ -93,7 +94,7 @@ class ScheduleService {
     try {
       final response = await ApiClient().authenticatedGet(
         url,
-        cacheDuration: const Duration(seconds: 2),
+        cacheDuration: CacheDurations.short,
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

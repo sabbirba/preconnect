@@ -4,6 +4,7 @@ import 'package:gap/gap.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/api/funding.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/polling_timer.dart';
 
 class StudentOverviewCard extends StatelessWidget {
   const StudentOverviewCard({
@@ -186,7 +187,7 @@ class _SupportButton extends StatefulWidget {
 
 class _SupportButtonState extends State<_SupportButton> {
   bool _isLoading = false;
-  Timer? _rotationTimer;
+  PollingTimer? _rotationTimer;
   int _rotationIndex = 0;
   FundingStatus? _status;
 
@@ -195,7 +196,7 @@ class _SupportButtonState extends State<_SupportButton> {
     super.initState();
     _status = FundingService.cached;
     _fetchLatest();
-    _rotationTimer = Timer.periodic(const Duration(seconds: 7), (_) {
+    _rotationTimer = PollingTimer(const Duration(seconds: 7), (_) {
       if (mounted) {
         if (HomeTabRegistry.activeTab.value != HomeTab.dashboard) return;
         setState(() {

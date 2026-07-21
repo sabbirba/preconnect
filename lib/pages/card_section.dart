@@ -2,11 +2,9 @@ import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter_flip_card/flutter_flip_card.dart';
+import 'package:preconnect/pages/shared_widgets/bracu_logo.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/cached_image.dart';
-
-const String _bracuLogoUrl =
-    'https://www.bracu.ac.bd/sites/default/files/resources/media/bracu_logo_12-0-2022.png';
 
 class CardSection extends StatelessWidget {
   const CardSection({super.key, required this.profile, required this.photoUrl});
@@ -94,7 +92,7 @@ class _CardFront extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
               child: Row(
                 children: [
-                  const _BracuLogo(width: 34, height: 34),
+                  const BracuLogo(width: 34, height: 34),
                   const Gap(8),
                   const Expanded(
                     child: Align(
@@ -159,7 +157,7 @@ class _CardFront extends StatelessWidget {
                         children: [
                           const Opacity(
                             opacity: 0.06,
-                            child: _BracuLogo(width: 136, height: 136),
+                            child: BracuLogo(width: 136, height: 136),
                           ),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -189,18 +187,18 @@ class _CardFront extends StatelessWidget {
                                       ),
                                     ),
                                     const Gap(8),
-                                    _InfoRow(
+                                    _CardInfoRow(
                                       label: 'Student ID',
                                       value: displayStudentId,
                                       enableCopy: false,
                                     ),
                                     const Gap(5),
-                                    _InfoRow(
+                                    _CardInfoRow(
                                       label: 'Blood Group',
                                       value: displayBloodGroup,
                                     ),
                                     const Gap(5),
-                                    _InfoRow(
+                                    _CardInfoRow(
                                       label: 'Validity',
                                       value: validation,
                                     ),
@@ -272,7 +270,7 @@ class _CardBack extends StatelessWidget {
         children: [
           const Opacity(
             opacity: 0.1,
-            child: _BracuLogo(width: 150, height: 130),
+            child: BracuLogo(width: 150, height: 130),
           ),
           Container(
             padding: const EdgeInsets.fromLTRB(48, 24, 2, 12),
@@ -365,8 +363,8 @@ class _CardBack extends StatelessWidget {
   }
 }
 
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
+class _CardInfoRow extends StatelessWidget {
+  const _CardInfoRow({
     required this.label,
     required this.value,
     this.enableCopy = false,
@@ -397,25 +395,6 @@ class _InfoRow extends StatelessWidget {
               : Text(value, style: textStyle),
         ),
       ],
-    );
-  }
-}
-
-class _BracuLogo extends StatelessWidget {
-  const _BracuLogo({required this.width, required this.height});
-
-  final double width;
-  final double height;
-
-  @override
-  Widget build(BuildContext context) {
-    return CachedImage(
-      url: _bracuLogoUrl,
-      width: width,
-      height: height,
-      fit: BoxFit.contain,
-      error: const SizedBox.shrink(),
-      placeholder: const SizedBox.shrink(),
     );
   }
 }

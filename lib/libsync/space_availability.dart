@@ -7,10 +7,6 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'auth_service.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/refresh_bus.dart';
-import 'package:preconnect/api/fcm.dart';
-import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/api_client.dart';
 
 class SpaceAvailabilityPage extends StatefulWidget {
   const SpaceAvailabilityPage({super.key});
@@ -19,40 +15,7 @@ class SpaceAvailabilityPage extends StatefulWidget {
   State<SpaceAvailabilityPage> createState() => _SpaceAvailabilityPageState();
 }
 
-class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage>
-    with RefreshBusState<SpaceAvailabilityPage> {
-  String? _subscribedTopic;
-
-  void _updateFcmSubscription() {
-    final dateStr =
-        "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
-    final newTopic = 'libsync_refresh_$dateStr';
-    if (_subscribedTopic == newTopic) return;
-    if (_subscribedTopic != null) {
-      unawaited(FCMService.instance.unsubscribeFromTopic(_subscribedTopic!));
-    }
-    _subscribedTopic = newTopic;
-    unawaited(FCMService.instance.subscribeToTopic(newTopic));
-  }
-
-  void _handleRefreshBusNotify() {
-    if (isRefreshingFrom('libsync_refresh')) {
-      unawaited(_fetchAvailability());
-    }
-  }
-
-  Future<void> _notifyLibSyncEvent() async {
-    try {
-      final dateStr =
-          "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
-      final body = jsonEncode({'date': dateStr, 'library': _selectedLibrary});
-      await ApiClient().publicPost(
-        '${ApiConfig.realtimeApiBase}/push/libsync/event',
-        body: body,
-      );
-    } catch (_) {}
-  }
-
+class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
   DateTime _selectedDate = DateTime.now();
   List<dynamic>? _availabilityData;
   bool _isLoading = false;
@@ -91,18 +54,12 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage>
     super.initState();
     _capacityController = TextEditingController(text: '1');
     _capacityFocusNode = FocusNode()..addListener(_handleCapacityFocusChange);
-    bindRefreshBus(_handleRefreshBusNotify);
     _loadCachedAvailability();
     _fetchAvailability();
-    _updateFcmSubscription();
   }
 
   @override
   void dispose() {
-    unbindRefreshBus(_handleRefreshBusNotify);
-    if (_subscribedTopic != null) {
-      unawaited(FCMService.instance.unsubscribeFromTopic(_subscribedTopic!));
-    }
     _capacityController.dispose();
     _capacityFocusNode.dispose();
     super.dispose();
@@ -261,7 +218,6 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage>
       setState(() {
         _selectedDate = picked;
       });
-      _updateFcmSubscription();
       await _fetchAvailability();
     }
   }
@@ -340,8 +296,6 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage>
               'libsync_space_avail_${_selectedLibrary}_${_capacity}_$dateStr';
           await AppStorage.instance.remove(key);
 
-          unawaited(_notifyLibSyncEvent());
-
           if (mounted) {
             Navigator.of(context).pop();
             Navigator.of(context).pop(true);
@@ -375,7 +329,6 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage>
           final key =
               'libsync_space_avail_${_selectedLibrary}_${_capacity}_$dateStr';
           await AppStorage.instance.remove(key);
-          unawaited(_notifyLibSyncEvent());
           if (!mounted) return;
           Navigator.of(context).pop(true);
         }
@@ -529,7 +482,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage>
     final textSecondary = BracuPalette.textSecondary(context);
     final textPrimary = BracuPalette.textPrimary(context);
 
-    final dateDisplay = DateFormat('dd MMM yyyy').format(_selectedDate);
+    final dateDisplay = DateFormat('dd MMMM yyyy').format(_selectedDate);
     final errorMessage = _errorMessage;
     final availabilityData = _availabilityData;
 

@@ -384,6 +384,7 @@
 		};
 		33CC111E2044C6BF0003C045 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -400,7 +401,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh && touch Flutter/ephemeral/tripwire";
+			shellScript = "\"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh 2> /tmp/flutter_assemble_err_$$.log; status=$?; if [ -f /tmp/flutter_assemble_err_$$.log ]; then grep -v \"has different framework names for different architectures\" /tmp/flutter_assemble_err_$$.log >&2; rm -f /tmp/flutter_assemble_err_$$.log; fi; [ $status -eq 0 ] && touch Flutter/ephemeral/tripwire || exit $status";
 		};
 		DDF23F6788BAE0AEAA9436AA /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -516,11 +517,21 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MARKETING_VERSION = 1.0;
+				OTHER_CFLAGS = (
+					"$(inherited)",
+					"-Wno-objc-ownership",
+				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -Xcc -w";
 				PRODUCT_BUNDLE_IDENTIFIER = com.sabbirba.student.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PreConnect.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PreConnect";
+				WARNING_CFLAGS = (
+					"$(inherited)",
+					"-Wno-attributes",
+				);
 			};
 			name = Debug;
 		};
@@ -531,11 +542,21 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MARKETING_VERSION = 1.0;
+				OTHER_CFLAGS = (
+					"$(inherited)",
+					"-Wno-objc-ownership",
+				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -Xcc -w";
 				PRODUCT_BUNDLE_IDENTIFIER = com.sabbirba.student.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PreConnect.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PreConnect";
+				WARNING_CFLAGS = (
+					"$(inherited)",
+					"-Wno-attributes",
+				);
 			};
 			name = Release;
 		};
@@ -546,11 +567,21 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MARKETING_VERSION = 1.0;
+				OTHER_CFLAGS = (
+					"$(inherited)",
+					"-Wno-objc-ownership",
+				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -Xcc -w";
 				PRODUCT_BUNDLE_IDENTIFIER = com.sabbirba.student.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PreConnect.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PreConnect";
+				WARNING_CFLAGS = (
+					"$(inherited)",
+					"-Wno-attributes",
+				);
 			};
 			name = Profile;
 		};
@@ -598,6 +629,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 			};
@@ -623,9 +655,18 @@
 				);
 				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MACOSX_DEPLOYMENT_TARGET = 11.5;
+				OTHER_CFLAGS = (
+					"$(inherited)",
+					"-Wno-objc-ownership",
+				);
 				OTHER_LDFLAGS = "$(inherited)";
+				OTHER_SWIFT_FLAGS = "$(inherited) -Xcc -w";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_VERSION = 5.0;
+				WARNING_CFLAGS = (
+					"$(inherited)",
+					"-Wno-attributes",
+				);
 			};
 			name = Profile;
 		};
@@ -633,7 +674,17 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Manual;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
+				OTHER_CFLAGS = (
+					"$(inherited)",
+					"-Wno-objc-ownership",
+				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -Xcc -w";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				WARNING_CFLAGS = (
+					"$(inherited)",
+					"-Wno-attributes",
+				);
 			};
 			name = Profile;
 		};
@@ -688,6 +739,7 @@
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -737,6 +789,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 			};
@@ -762,10 +815,19 @@
 				);
 				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MACOSX_DEPLOYMENT_TARGET = 11.5;
+				OTHER_CFLAGS = (
+					"$(inherited)",
+					"-Wno-objc-ownership",
+				);
 				OTHER_LDFLAGS = "$(inherited)";
+				OTHER_SWIFT_FLAGS = "$(inherited) -Xcc -w";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
+				WARNING_CFLAGS = (
+					"$(inherited)",
+					"-Wno-attributes",
+				);
 			};
 			name = Debug;
 		};
@@ -791,10 +853,19 @@
 				);
 				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MACOSX_DEPLOYMENT_TARGET = 11.5;
+				OTHER_CFLAGS = (
+					"$(inherited)",
+					"-Wno-objc-ownership",
+				);
 				OTHER_LDFLAGS = "$(inherited)";
+				OTHER_SWIFT_FLAGS = "$(inherited) -Xcc -w";
 				PROVISIONING_PROFILE_SPECIFIER = PreConnect;
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = PreConnect;
 				SWIFT_VERSION = 5.0;
+				WARNING_CFLAGS = (
+					"$(inherited)",
+					"-Wno-attributes",
+				);
 			};
 			name = Release;
 		};
@@ -802,7 +873,17 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Manual;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
+				OTHER_CFLAGS = (
+					"$(inherited)",
+					"-Wno-objc-ownership",
+				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -Xcc -w";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				WARNING_CFLAGS = (
+					"$(inherited)",
+					"-Wno-attributes",
+				);
 			};
 			name = Debug;
 		};
@@ -810,7 +891,17 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
+				OTHER_CFLAGS = (
+					"$(inherited)",
+					"-Wno-objc-ownership",
+				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -Xcc -w";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				WARNING_CFLAGS = (
+					"$(inherited)",
+					"-Wno-attributes",
+				);
 			};
 			name = Release;
 		};

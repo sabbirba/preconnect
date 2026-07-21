@@ -847,11 +847,11 @@ Future<DateTime?> showBracuDatePicker(
               date.day == today.day;
           final isTomorrow = date.difference(today).inDays == 1;
 
-          String label = DateFormat('EEEE, d MMM yyyy').format(date);
+          String label = DateFormat('EEEE, d MMMM yyyy').format(date);
           if (isToday) {
-            label = 'Today - ${DateFormat('d MMM yyyy').format(date)}';
+            label = 'Today - ${DateFormat('d MMMM yyyy').format(date)}';
           } else if (isTomorrow) {
-            label = 'Tomorrow - ${DateFormat('d MMM yyyy').format(date)}';
+            label = 'Tomorrow - ${DateFormat('d MMMM yyyy').format(date)}';
           }
 
           return Padding(

@@ -18,8 +18,8 @@ import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
-class ClassSchedule extends StatefulWidget {
-  const ClassSchedule({super.key});
+class ClassSchedulePage extends StatefulWidget {
+  const ClassSchedulePage({super.key});
 
   static final ValueNotifier<int> jumpSignal = ValueNotifier<int>(0);
 
@@ -32,10 +32,11 @@ class ClassSchedule extends StatefulWidget {
   }
 
   @override
-  State<ClassSchedule> createState() => _ClassScheduleState();
+  State<ClassSchedulePage> createState() => _ClassScheduleState();
 }
 
-class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
+class _ClassScheduleState extends State<ClassSchedulePage>
+    with RefreshBusState {
   static const int _initialVisibleWeekCount = 1;
   static const List<String> _weekdayNames = <String>[
     'MONDAY',
@@ -69,7 +70,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
         ? preloadData()
         : Future<_ScheduleData>.value(cache.value!);
     unawaited(_warmAndBind());
-    ClassSchedule.jumpSignal.addListener(_onJumpRequested);
+    ClassSchedulePage.jumpSignal.addListener(_onJumpRequested);
     cache.addListener(_onCacheUpdated);
     bindRefreshBus(_onRefreshSignal);
   }
@@ -152,7 +153,7 @@ class _ClassScheduleState extends State<ClassSchedule> with RefreshBusState {
 
   @override
   void dispose() {
-    ClassSchedule.jumpSignal.removeListener(_onJumpRequested);
+    ClassSchedulePage.jumpSignal.removeListener(_onJumpRequested);
     cache.removeListener(_onCacheUpdated);
     _scrollController.dispose();
     unbindRefreshBus(_onRefreshSignal);

@@ -6,6 +6,7 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/url_utils.dart';
+import 'package:preconnect/tools/cache_durations.dart';
 
 DateTime? _dateTimeFromJson(String? value) =>
     value != null ? DateTime.tryParse(value.trim()) : null;
@@ -67,7 +68,7 @@ class ScraperDataService {
 
   final ApiClient _client = ApiClient();
   final RepositoryCache _repo = RepositoryCache.instance;
-  static const Duration _requestCacheTtl = Duration(seconds: 30);
+  static const Duration _requestCacheTtl = CacheDurations.notificationBadge;
 
   Future<List<Map<String, dynamic>>> fetchList({
     required String path,
@@ -400,7 +401,7 @@ class NotificationService {
     try {
       final response = await _client.authenticatedGet(
         url,
-        cacheDuration: const Duration(seconds: 10),
+        cacheDuration: CacheDurations.notification,
       );
       if (response.statusCode == 200) {
         final oldFeed = await _readCachedFeed();
@@ -444,7 +445,7 @@ class NotificationService {
   Future<ConnectNotificationDetail> fetchNotificationDetail(int id) async {
     final response = await _client.authenticatedGet(
       '${ApiConfig.connectApiBase}${ApiConfig.notificationViewPath(id)}',
-      cacheDuration: const Duration(seconds: 10),
+      cacheDuration: CacheDurations.notification,
     );
     final decoded = jsonDecode(response.body);
     if (decoded is! Map<String, dynamic>) {

@@ -2,11 +2,9 @@ import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter_flip_card/flutter_flip_card.dart';
+import 'package:preconnect/pages/shared_widgets/bracu_logo.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/cached_image.dart';
-
-const String _bracuLogoUrl =
-    'https://www.bracu.ac.bd/sites/default/files/resources/media/bracu_logo_12-0-2022.png';
 
 class LibraryCard extends StatelessWidget {
   const LibraryCard({super.key, required this.profile});
@@ -19,25 +17,6 @@ class LibraryCard extends StatelessWidget {
       axis: FlipAxis.vertical,
       frontWidget: _LibraryCardFront(profile: profile),
       backWidget: _LibraryCardBack(profile: profile),
-    );
-  }
-}
-
-class _BracuLogo extends StatelessWidget {
-  const _BracuLogo({required this.width, required this.height});
-
-  final double width;
-  final double height;
-
-  @override
-  Widget build(BuildContext context) {
-    return CachedImage(
-      url: _bracuLogoUrl,
-      width: width,
-      height: height,
-      fit: BoxFit.contain,
-      error: const SizedBox.shrink(),
-      placeholder: const SizedBox.shrink(),
     );
   }
 }
@@ -76,7 +55,7 @@ class _LibraryCardFront extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
               child: Row(
                 children: [
-                  const _BracuLogo(width: 34, height: 34),
+                  const BracuLogo(width: 34, height: 34),
                   const Gap(8),
                   const Expanded(
                     child: Align(
@@ -130,7 +109,7 @@ class _LibraryCardFront extends StatelessWidget {
                         children: [
                           const Opacity(
                             opacity: 0.03,
-                            child: _BracuLogo(width: 136, height: 136),
+                            child: BracuLogo(width: 136, height: 136),
                           ),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -244,7 +223,7 @@ class _LibraryCardBack extends StatelessWidget {
           children: [
             const Opacity(
               opacity: 0.08,
-              child: _BracuLogo(width: 150, height: 130),
+              child: BracuLogo(width: 150, height: 130),
             ),
             Container(
               padding: const EdgeInsets.fromLTRB(48, 12, 12, 12),

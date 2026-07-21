@@ -267,7 +267,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   }
 
   Widget _buildAvailabilityFilterAction() {
-    return _FilterChip(
+    return _SeatFilterChip(
       icon: Icons.event_available_outlined,
       label: 'Available',
       selected: _availableOnly,

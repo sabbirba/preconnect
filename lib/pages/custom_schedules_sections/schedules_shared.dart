@@ -539,7 +539,7 @@ String personalSchedulesFormatKind(String kind) {
 }
 
 String personalSchedulesFormatDueDate(DateTime dueAt) {
-  return DateFormat('dd MMM, hh:mm a').format(dueAt);
+  return DateFormat('dd MMMM, hh:mm a').format(dueAt);
 }
 
 String personalSchedulesCardTitle(String rawTitle) {

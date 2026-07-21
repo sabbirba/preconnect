@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:preconnect/api/api_client.dart';
+import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/app_storage.dart';
 
 class ContributionItem {
@@ -75,7 +76,7 @@ class FundingStatus {
 }
 
 class FundingService {
-  static const String _url = 'https://preconnect.app/api/funding-status';
+  static const String _url = '${ApiConfig.websiteBase}/api/funding-status';
   static const String _cacheKey = 'funding_status_json';
   static const String _etagKey = 'funding_status_etag';
 

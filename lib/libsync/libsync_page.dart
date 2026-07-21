@@ -9,8 +9,6 @@ import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/tools/time_utils.dart' show BracuTime;
 import 'package:preconnect/pages/onboarding.dart';
@@ -126,23 +124,26 @@ class _LibSyncPageState extends State<LibSyncPage>
     final chartData = _getDynamicChartData();
     if (chartData.isEmpty) return;
     final now = DateTime.now();
-    final shortMonths = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
+    final fullMonths = [
+      'January',
+      'February',
+      'March',
+      'April',
       'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
-    final currentMonthStr = shortMonths[now.month - 1].toLowerCase();
+    final currentMonthStr = fullMonths[now.month - 1].toLowerCase();
     final idx = chartData.indexWhere(
-      (item) => item.name.toLowerCase().startsWith(currentMonthStr),
+      (item) {
+        final name = item.name.toLowerCase();
+        return name.startsWith(currentMonthStr) || currentMonthStr.startsWith(name);
+      },
     );
     if (idx != -1) {
       _selectedChartIndex = idx;
@@ -891,20 +892,6 @@ class _RecentReservationsList extends StatefulWidget {
 class _RecentReservationsListState extends State<_RecentReservationsList> {
   bool _expanded = false;
 
-  Future<void> _notifyLibSyncCancelEvent(String? dateStr) async {
-    if (dateStr == null || dateStr.isEmpty) return;
-    try {
-      final body = jsonEncode({
-        'date': dateStr.split('T')[0],
-        'library': 'Ayesha Abed Library (Main Campus)',
-      });
-      await ApiClient().publicPost(
-        '${ApiConfig.realtimeApiBase}/push/libsync/event',
-        body: body,
-      );
-    } catch (_) {}
-  }
-
   @override
   Widget build(BuildContext context) {
     if (widget.reservations.isEmpty) {
@@ -1084,11 +1071,6 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                                 if (uniqueToken.isNotEmpty) {
                                   await LibSyncAuthService.instance
                                       .cancelReservation(uniqueToken);
-                                  unawaited(
-                                    _notifyLibSyncCancelEvent(
-                                      res['reserve_start_date']?.toString(),
-                                    ),
-                                  );
                                   if (context.mounted) {
                                     Navigator.of(context).pop();
                                     showAppSnackBar(
