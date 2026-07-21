@@ -26,10 +26,7 @@ class HttpUtils {
         .join('; ');
   }
 
-  static String sanitizeLprToken(
-    String value, {
-    int maxLength = 31,
-  }) {
+  static String sanitizeLprToken(String value, {int maxLength = 31}) {
     final buffer = StringBuffer();
     var previousUnderscore = false;
     for (final rune in value.trim().runes) {

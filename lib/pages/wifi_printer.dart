@@ -2443,16 +2443,18 @@ class _WifiPrinterDiscovery {
       if (host.isEmpty || !seen.add(host)) continue;
       final open = await _probe(host, port, timeout);
       if (open) {
-        found.add(
-          _WifiPrinterCandidate(address: host, interfaceName: 'saved'),
-        );
+        found.add(_WifiPrinterCandidate(address: host, interfaceName: 'saved'));
         if (found.length >= limit) return found;
       }
     }
 
     for (final address in _campusPrinterHosts) {
       if (!seen.add(address)) continue;
-      final open = await _probe(address, port, const Duration(milliseconds: 2500));
+      final open = await _probe(
+        address,
+        port,
+        const Duration(milliseconds: 2500),
+      );
       if (open) {
         found.add(
           _WifiPrinterCandidate(address: address, interfaceName: 'campus'),

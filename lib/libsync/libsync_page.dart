@@ -139,12 +139,11 @@ class _LibSyncPageState extends State<LibSyncPage>
       'December',
     ];
     final currentMonthStr = fullMonths[now.month - 1].toLowerCase();
-    final idx = chartData.indexWhere(
-      (item) {
-        final name = item.name.toLowerCase();
-        return name.startsWith(currentMonthStr) || currentMonthStr.startsWith(name);
-      },
-    );
+    final idx = chartData.indexWhere((item) {
+      final name = item.name.toLowerCase();
+      return name.startsWith(currentMonthStr) ||
+          currentMonthStr.startsWith(name);
+    });
     if (idx != -1) {
       _selectedChartIndex = idx;
     } else {

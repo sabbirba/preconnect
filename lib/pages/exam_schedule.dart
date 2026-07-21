@@ -451,8 +451,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                     end: finalEnd(s),
                     now: now,
                   )) {
-                if (nextExamTime == null ||
-                    finalTime.isBefore(nextExamTime)) {
+                if (nextExamTime == null || finalTime.isBefore(nextExamTime)) {
                   nextExamTime = finalTime;
                   nextExamKey = '${s.sectionId}-final';
                 }
@@ -466,11 +465,13 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           final hasExamToday = sections.any((s) {
             final mDate = BracuTime.parseDate(midDate(s));
             final fDate = BracuTime.parseDate(finalDate(s));
-            final hasMidToday = mDate != null &&
+            final hasMidToday =
+                mDate != null &&
                 mDate.year == today.year &&
                 mDate.month == today.month &&
                 mDate.day == today.day;
-            final hasFinalToday = fDate != null &&
+            final hasFinalToday =
+                fDate != null &&
                 fDate.year == today.year &&
                 fDate.month == today.month &&
                 fDate.day == today.day;
@@ -490,7 +491,8 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                       children: [
                         Expanded(
                           child: BracuSectionTitle(
-                            title: 'Today is ${formatWeekdayTitle(todayWeekday)}',
+                            title:
+                                'Today is ${formatWeekdayTitle(todayWeekday)}',
                           ),
                         ),
                         Text(
@@ -589,10 +591,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                           onTap: () {
                             final pdfUrl = resolved(section).midPdfUrl;
                             if (pdfUrl != null && pdfUrl.isNotEmpty) {
-                              unawaited(openExternalUrl(
-                                context,
-                                pdfUrl,
-                              ));
+                              unawaited(openExternalUrl(context, pdfUrl));
                             }
                           },
                           child: BracuExamCard(
@@ -661,10 +660,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                           onTap: () {
                             final pdfUrl = resolved(section).finalPdfUrl;
                             if (pdfUrl != null && pdfUrl.isNotEmpty) {
-                              unawaited(openExternalUrl(
-                                context,
-                                pdfUrl,
-                              ));
+                              unawaited(openExternalUrl(context, pdfUrl));
                             }
                           },
                           child: BracuExamCard(
