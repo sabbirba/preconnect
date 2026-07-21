@@ -465,7 +465,7 @@ class _CalendarCard extends StatelessWidget {
       final start = DateTime.tryParse(item.startDate);
       final end = DateTime.tryParse(item.endDate);
       if (start != null && end != null) {
-        return '${DateFormat('d MMM').format(start)} - ${DateFormat('d MMM').format(end)}';
+        return '${DateFormat('d MMMM').format(start)} - ${DateFormat('d MMMM').format(end)}';
       }
     }
     return item.typeKey.replaceAll('_', ' ').trim();

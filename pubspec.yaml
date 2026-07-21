@@ -33,6 +33,7 @@ dependencies:
   in_app_review: ^2.0.12
   local_auth: ^3.0.2
   chrome_extension: ^0.4.0
+  cupertino_icons: ^1.0.9
   web: ^1.1.1
   http: ^1.6.0
   flutter_secure_storage: ^10.3.1

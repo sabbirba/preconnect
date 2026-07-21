@@ -63,12 +63,10 @@ Future<void> shareTextOrFile({
     } catch (_) {}
   }
 
-  // Fallback 1: Clipboard
   try {
     await navigator.clipboard.writeText(text).toDart;
   } catch (_) {}
 
-  // Fallback 2: Direct browser download
   final blob = web.Blob(
     [text.toJS].toJS,
     web.BlobPropertyBag(type: 'text/plain'),

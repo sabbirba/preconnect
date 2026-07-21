@@ -57,18 +57,6 @@ class FCMService {
   }
 
   static void _handleIncomingMessage(RemoteMessage message) {
-    if (message.data['type'] == 'libsync_refresh') {
-      final date = message.data['date'];
-      final library = message.data['library'];
-      if (date != null && library != null) {
-        for (int cap = 1; cap <= 9; cap++) {
-          final key = 'libsync_space_avail_${library}_${cap}_$date';
-          AppStorage.instance.remove(key);
-        }
-      }
-      RefreshBus.instance.notify(reason: 'libsync_refresh');
-      return;
-    }
     RefreshBus.instance.notify(reason: 'push_notification');
   }
 
@@ -577,10 +565,6 @@ class FCMService {
 
   Future<void> _initNative() async {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      if (message.data['type'] == 'libsync_refresh') {
-        _handleIncomingMessage(message);
-        return;
-      }
       _showLocalNotification(message);
       RefreshBus.instance.notify(reason: 'push_notification');
     });

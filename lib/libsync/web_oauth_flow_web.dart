@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:web/web.dart' as web;
+import 'package:preconnect/tools/polling_timer.dart';
 import 'dart:js_interop';
 
 extension type OAuthMessageData._(JSObject _) implements JSObject {
@@ -45,7 +46,7 @@ Future<String?> openWebOAuthFlow(String oauthUrl, String redirectUri) async {
   final eventListener = dartListener.toJS;
   web.window.addEventListener('message', eventListener);
 
-  final timer = Timer.periodic(const Duration(milliseconds: 500), (t) {
+  final timer = PollingTimer(const Duration(milliseconds: 500), (t) {
     if (popup.closed) {
       t.cancel();
       if (!completer.isCompleted) {

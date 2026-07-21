@@ -434,7 +434,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                 width: double.infinity,
                 child: BracuActionButton(
                   onPressed: pickDueDate,
-                  label: DateFormat('d MMM yyyy').format(startTime),
+                  label: DateFormat('d MMMM yyyy').format(startTime),
                   borderRadius: 14,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
@@ -504,7 +504,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                             ),
                             const Gap(2),
                             Text(
-                              DateFormat('dd MMM yyyy, hh:mm a').format(
+                              DateFormat('dd MMMM yyyy, hh:mm a').format(
                                 startTime.subtract(
                                   Duration(minutes: reminderMinutesBefore),
                                 ),

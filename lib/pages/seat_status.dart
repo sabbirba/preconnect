@@ -792,8 +792,8 @@ String _titleCaseText(String value) {
       .join(' ');
 }
 
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
+class _SeatFilterChip extends StatelessWidget {
+  const _SeatFilterChip({
     required this.icon,
     required this.label,
     this.selected = false,

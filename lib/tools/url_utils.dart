@@ -1,3 +1,5 @@
+import 'package:preconnect/api/api_config.dart';
+
 String? normalizeMediaUrl(String raw) {
   final value = raw.trim();
   if (value.isEmpty) return null;
@@ -37,7 +39,7 @@ String? normalizeImageUrl(String raw, {String? baseUrl}) {
 
   final base = (baseUrl != null && baseUrl.trim().isNotEmpty)
       ? baseUrl.trim()
-      : 'https://connect.bracu.ac.bd';
+      : ApiConfig.connectOrigin;
   final baseUri = Uri.tryParse(base);
   if (baseUri != null) {
     try {

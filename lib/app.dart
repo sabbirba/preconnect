@@ -225,7 +225,7 @@ class MyApp extends StatefulWidget {
         );
       }(),
       StudentProfile.preload(forceRefresh: forceRefresh),
-      ClassSchedule.preload(forceRefresh: forceRefresh),
+      ClassSchedulePage.preload(forceRefresh: forceRefresh),
       ExamSchedule.preload(forceRefresh: forceRefresh),
     ];
     if (includeCampusPrinter) {

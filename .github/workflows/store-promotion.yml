@@ -36,9 +36,15 @@ jobs:
             run_firefox: false
             run_apple: false
             os: ubuntu-latest
-          - target: Browser Extensions
+          - target: Chrome Extension
             run_play: false
             run_chrome: true
+            run_firefox: false
+            run_apple: false
+            os: ubuntu-latest
+          - target: Firefox Add-on
+            run_play: false
+            run_chrome: false
             run_firefox: true
             run_apple: false
             os: ubuntu-latest
@@ -88,14 +94,14 @@ jobs:
           cd android && bundle exec fastlane promote_beta_to_production
 
       - name: Setup Flutter
-        if: matrix.run_chrome || matrix.run_firefox
+        if: matrix.run_chrome
         uses: subosito/flutter-action@v2.23.0
         with:
           channel: "stable"
           cache: true
 
       - name: Cache Pub Packages
-        if: matrix.run_chrome || matrix.run_firefox
+        if: matrix.run_chrome
         uses: actions/cache@v6
         with:
           path: ~/.pub-cache
@@ -104,12 +110,12 @@ jobs:
             ${{ runner.os }}-pub-cache-
 
       - name: Flutter Pub Get
-        if: matrix.run_chrome || matrix.run_firefox
+        if: matrix.run_chrome
         shell: bash
         run: flutter pub get
 
       - name: Extension Env
-        if: matrix.run_chrome || matrix.run_firefox
+        if: matrix.run_chrome
         shell: bash
         run: |
           echo "GITHUB_TOKEN=${{ secrets.GH_TOKEN }}" > .env
@@ -119,7 +125,7 @@ jobs:
           echo "GOOGLE_SCOPES=${{ secrets.GOOGLE_SCOPES }}" >> .env
 
       - name: Build Extensions
-        if: matrix.run_chrome || matrix.run_firefox
+        if: matrix.run_chrome
         shell: bash
         run: ./tool/build_extension.sh
 
@@ -129,14 +135,6 @@ jobs:
         with:
           name: store-promotion-chrome-extension
           path: build/chrome-extension.zip
-          if-no-files-found: error
-
-      - name: Firefox Artifact
-        if: matrix.run_firefox
-        uses: actions/upload-artifact@v7
-        with:
-          name: store-promotion-firefox-extension
-          path: build/firefox-extension.zip
           if-no-files-found: error
 
       - name: Setup GCloud CLI
@@ -274,11 +272,43 @@ jobs:
           cd macos && bundle exec fastlane upload_mac_to_app_store \
             pkg:"$GITHUB_WORKSPACE/${{ steps.resolve_apple.outputs.macos_path }}"
 
-      - name: Publish Firefox Extension
+      - name: Download Firefox Extension from Release
         if: matrix.run_firefox
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          mkdir -p deliverables
+          RUN_ID=$(gh run list --workflow release.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId' || true)
+          if [ -n "$RUN_ID" ]; then
+            gh run download "$RUN_ID" --dir deliverables || true
+          fi
+          if ! find deliverables -type f -name "PreConnect-firefox-extension-release-*.zip" | grep -q .; then
+            gh release download --dir deliverables --pattern "PreConnect-firefox-extension-release-*.zip" --clobber || true
+          fi
+          ls -la deliverables/
+
+      - name: Resolve Firefox Extension
+        if: matrix.run_firefox
+        id: resolve_firefox
+        shell: bash
+        run: |
+          XPI=$(find deliverables -type f -name "PreConnect-firefox-extension-release-*.zip" | head -n1 || true)
+          if [ -f "$XPI" ]; then
+            echo "firefox_ready=true" >> "$GITHUB_OUTPUT"
+            echo "firefox_path=$XPI" >> "$GITHUB_OUTPUT"
+          else
+            echo "firefox_ready=false" >> "$GITHUB_OUTPUT"
+            echo "No Firefox extension found in the latest release."
+          fi
+
+      - name: Publish Firefox Extension
+        if: matrix.run_firefox && steps.resolve_firefox.outputs.firefox_ready == 'true'
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
           AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
         shell: bash
         run: |
-          node tool/publish_firefox.js "preconnect@sabbirba.com" "build/firefox-extension.zip" "$AMO_JWT_ISSUER" "$AMO_JWT_SECRET"
+          node tool/publish_firefox.js "preconnect@sabbirba.com" \
+            "$GITHUB_WORKSPACE/${{ steps.resolve_firefox.outputs.firefox_path }}" \
+            "$AMO_JWT_ISSUER" "$AMO_JWT_SECRET"

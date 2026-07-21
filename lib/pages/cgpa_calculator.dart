@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/model/progress_info.dart';
 import 'package:preconnect/model/section_info.dart' as section;
+import 'package:preconnect/pages/shared_widgets/metric_tile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/string_utils.dart';
 
@@ -234,7 +235,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
                   ),
                   child: SizedBox(
                     width: 96,
-                    child: _Metric(title: item.title, value: item.value),
+                    child: MetricTile(title: item.title, value: item.value),
                   ),
                 );
               }),

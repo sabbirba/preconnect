@@ -17,6 +17,7 @@ import 'package:preconnect/tools/network_assist.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/storage_keys.dart';
+import 'package:preconnect/tools/app_log.dart';
 
 class CampusPrinterPage extends StatefulWidget {
   const CampusPrinterPage({super.key});
@@ -60,7 +61,9 @@ class CampusPrinterPage extends StatefulWidget {
         cachedBlankPageBytes = base64Decode(cachedBase64);
         return;
       }
-    } catch (_) {}
+    } catch (e) {
+      await AppLog.write('Failed to read cached blank-page PDF: $e');
+    }
 
     try {
       final uri = Uri.parse(blankPageUrl);
@@ -75,7 +78,9 @@ class CampusPrinterPage extends StatefulWidget {
           base64Encode(bytes),
         );
       }
-    } catch (_) {}
+    } catch (e) {
+      await AppLog.write('Failed to fetch/cache blank-page PDF: $e');
+    }
   }
 
   static Future<_CampusPrinterBootstrap> _preloadBootstrap() async {
@@ -471,7 +476,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       setState(() {
         _printerHost = printer.address;
       });
-    } catch (_) {
+    } catch (e) {
+      await AppLog.write('Printer discovery failed: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -609,7 +615,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         _selectedFiles = List<_SelectedFile>.from(_selectedFiles)
           ..addAll(nextFiles);
       });
-    } catch (_) {}
+    } catch (e) {
+      await AppLog.write('Failed to add selected files: $e');
+    }
   }
 
   Future<void> _loadBlankPage() async {

@@ -18,6 +18,7 @@ import 'package:preconnect/pages/class_schedule.dart';
 import 'package:preconnect/pages/custom_schedules.dart';
 import 'package:preconnect/pages/degree_progress.dart';
 import 'package:preconnect/pages/devs.dart';
+import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
 import 'package:preconnect/pages/shared_widgets/session_helper.dart';
 import 'package:preconnect/pages/student_profile.dart';
@@ -312,7 +313,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final verifier = LoginPage.pkceVerifier;
       if (verifier == null || verifier.isEmpty) {
-        debugPrint('LoginPage pkceVerifier is null or empty!');
+        await AppLog.write('LoginPage pkceVerifier is null or empty!');
         return false;
       }
 
@@ -336,8 +337,10 @@ class _LoginPageState extends State<LoginPage> {
           .timeout(_loginRequestTimeout);
 
       if (response.statusCode != 200) {
-        debugPrint('Token exchange failed with status: ${response.statusCode}');
-        debugPrint('Response body: ${response.body}');
+        await AppLog.write(
+          'Token exchange failed with status: ${response.statusCode}',
+        );
+        await AppLog.write('Response body: ${response.body}');
         return false;
       }
 
@@ -384,7 +387,7 @@ class _LoginPageState extends State<LoginPage> {
       unawaited(_warmAuthenticatedData());
       return true;
     } catch (e) {
-      debugPrint('Token exchange threw exception: $e');
+      await AppLog.write('Token exchange threw exception: $e');
       return false;
     }
   }
@@ -412,7 +415,7 @@ class _LoginPageState extends State<LoginPage> {
         StudentProfile.preload(),
         DevsPage.preload(),
         AlarmPage.preload(),
-        ClassSchedule.preload(),
+        ClassSchedulePage.preload(),
         ExamSchedule.preload(),
         CustomSchedulesPage.preload(),
       ].map((task) => task.catchError((_) {})),

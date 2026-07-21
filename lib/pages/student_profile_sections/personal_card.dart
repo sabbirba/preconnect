@@ -93,7 +93,7 @@ class PersonalInfoCard extends StatelessWidget {
       child: Column(
         children: [
           for (var i = 0; i < rows.length; i++) ...[
-            _InfoRow(
+            _ProfileInfoRow(
               label: rows[i].label,
               value: rows[i].value,
               enableCopy: _copyableLabels.contains(rows[i].label),
@@ -134,8 +134,8 @@ const _copyableLabels = <String>{
   'Earned Credit',
 };
 
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
+class _ProfileInfoRow extends StatelessWidget {
+  const _ProfileInfoRow({
     required this.label,
     required this.value,
     this.enableCopy = false,

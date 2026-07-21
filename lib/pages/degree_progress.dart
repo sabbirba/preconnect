@@ -10,6 +10,7 @@ import 'package:preconnect/pages/all_courses.dart';
 import 'package:preconnect/pages/cgpa_calculator.dart';
 import 'package:preconnect/pages/requirement_courses.dart';
 import 'package:preconnect/pages/shared_widgets/grade_card.dart';
+import 'package:preconnect/pages/shared_widgets/metric_tile.dart';
 import 'package:preconnect/pages/shared_widgets/session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/api/repository_cache.dart';
@@ -403,9 +404,14 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                             ),
                             child: SizedBox(
                               width: 96,
-                              child: _Metric(
+                              child: MetricTile(
                                 title: item.title,
                                 value: item.value,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 8,
+                                ),
+                                borderRadius: 14,
                               ),
                             ),
                           );

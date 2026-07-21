@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:js_interop';
 
 import 'package:chrome_extension/runtime.dart';
-// ignore: implementation_imports
 import 'package:chrome_extension/src/js/tabs.dart' as $js;
 import 'package:preconnect/tools/extension_config.dart';
 import 'package:preconnect/tools/pkce.dart';

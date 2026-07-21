@@ -5,6 +5,7 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/storage_keys.dart';
+import 'package:preconnect/tools/cache_durations.dart';
 
 class ProfileService {
   static final ProfileService _instance = ProfileService._();
@@ -168,7 +169,7 @@ class ProfileService {
     try {
       final response = await ApiClient().authenticatedGet(
         url,
-        cacheDuration: const Duration(seconds: 15),
+        cacheDuration: CacheDurations.profileOverview,
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -282,7 +283,7 @@ class ProfileService {
             '${ApiConfig.connectApiBase}${ApiConfig.miscellaneousInfoPath}';
         final miscResponse = await _client.authenticatedGet(
           miscUrl,
-          cacheDuration: const Duration(seconds: 15),
+          cacheDuration: CacheDurations.profileOverview,
         );
         final miscData = jsonDecode(miscResponse.body);
         if (miscData is Map<String, dynamic>) {
@@ -412,7 +413,7 @@ class ProfileService {
             '${ApiConfig.connectApiBase}${ApiConfig.studentPath}';
         final studentResponse = await _client.authenticatedGet(
           studentUrl,
-          cacheDuration: const Duration(seconds: 15),
+          cacheDuration: CacheDurations.profileOverview,
         );
         final studentData = jsonDecode(studentResponse.body);
         if (studentData is Map<String, dynamic>) {
@@ -605,7 +606,7 @@ class AdvisingService {
 
   Future<Map<String, String?>?> fetchAdvisingInfo({
     bool fromGet = false,
-    Duration cacheDuration = const Duration(seconds: 2),
+    Duration cacheDuration = CacheDurations.short,
   }) async {
     final asyncPrefs = AppStorage.instance;
     final repo = RepositoryCache.instance;
@@ -702,7 +703,7 @@ class AttendanceService {
 
   Future<String?> fetchAttendanceInfo({
     bool fromGet = false,
-    Duration cacheDuration = const Duration(seconds: 2),
+    Duration cacheDuration = CacheDurations.short,
   }) async {
     final asyncPrefs = AppStorage.instance;
     final id = await resolvePortfolioId(
@@ -749,7 +750,7 @@ class PaymentService {
 
   Future<String?> fetchPaymentInfo({
     bool fromGet = false,
-    Duration cacheDuration = const Duration(seconds: 2),
+    Duration cacheDuration = CacheDurations.short,
   }) async {
     final asyncPrefs = AppStorage.instance;
     final id = await resolvePortfolioId(

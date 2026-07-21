@@ -3,9 +3,9 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
     - build/**
-    - lib/pages/api_test.dart
   errors:
     invalid_use_of_protected_member: warning
+    implementation_imports: ignore
 
 linter:
   rules:

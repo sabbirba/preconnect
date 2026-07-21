@@ -11,6 +11,7 @@ import 'package:preconnect/tools/wifi_http.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/storage_keys.dart';
+import 'package:preconnect/tools/polling_timer.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:preconnect/libsync/chrome_flow_stub.dart'
@@ -39,7 +40,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   bool _obscurePassword = true;
   bool _scanning = false;
   StreamSubscription<AndroidNetworkStatus>? _networkStatusSubscription;
-  Timer? _iosProbeTimer;
+  PollingTimer? _iosProbeTimer;
   Uri? _detectedPortalUri;
   bool _isOnCampusNetwork = false;
   final TextEditingController _studentIdController = TextEditingController();
@@ -74,7 +75,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
 
   void _startIosProbeTimer() {
     _iosProbeTimer?.cancel();
-    _iosProbeTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+    _iosProbeTimer = PollingTimer(const Duration(seconds: 10), (_) async {
       if (!mounted || _isConnecting || _isDisconnecting) return;
       final onCampus = await CaptiveWifiHttp.checkIfOnCampusNetwork();
       final portalUri = await CaptiveWifiHttp.detectCaptivePortal();

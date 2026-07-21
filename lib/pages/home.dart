@@ -51,8 +51,8 @@ import 'package:preconnect/tools/string_utils.dart';
 import 'package:preconnect/tools/exam_visibility.dart';
 import 'package:preconnect/tools/holiday.dart';
 import 'package:preconnect/tools/ramadan.dart';
-import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/api/fcm.dart';
+import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/background_permission_helper.dart';
@@ -85,7 +85,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with RefreshBusState {
+class _HomePageState extends State<HomePage> {
   HomeTab selectedTab = HomeTab.dashboard;
   StreamSubscription<HomeTab>? _shortcutTabSubscription;
   late final Map<HomeTab, WidgetBuilder> pages = {
@@ -99,7 +99,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
     HomeTab.freeLabs: (_) => const FreeLabsPage(),
     HomeTab.calendar: (_) => const CalendarPage(),
     HomeTab.profile: (_) => const StudentProfile(),
-    HomeTab.studentSchedule: (_) => const ClassSchedule(),
+    HomeTab.studentSchedule: (_) => const ClassSchedulePage(),
     HomeTab.examSchedule: (_) => const ExamSchedule(),
     HomeTab.seatStatus: (_) => const SeatStatusPage(),
     HomeTab.degreeProgress: (_) => const DegreeProgressPage(),
@@ -157,7 +157,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
   Future<void> _preloadPrimaryHomeTabs() async {
     await Future.wait(<Future<void>>[
       StudentProfile.preload().catchError((_) {}),
-      ClassSchedule.preload().catchError((_) {}),
+      ClassSchedulePage.preload().catchError((_) {}),
       ExamSchedule.preload().catchError((_) {}),
     ]);
   }
@@ -193,7 +193,7 @@ class _HomePageState extends State<HomePage> with RefreshBusState {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || selectedTab != tab) return;
         if (shouldJumpClass) {
-          ClassSchedule.requestJump();
+          ClassSchedulePage.requestJump();
         } else if (shouldJumpExam) {
           ExamSchedule.requestJump();
         }
