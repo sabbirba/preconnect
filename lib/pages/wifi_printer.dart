@@ -428,30 +428,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _discovering = true;
     });
     try {
-      bool isConnected = false;
       String wifiName = 'Wi-Fi Network';
 
       if (AndroidNetworkAssist.isSupported) {
         final wifiStatus = await AndroidNetworkAssist.getNetworkStatus();
-        if (wifiStatus != null &&
-            wifiStatus.transport.trim().toLowerCase() == 'wifi' &&
-            wifiStatus.connected) {
-          isConnected = true;
+        if (wifiStatus != null && wifiStatus.connected) {
           wifiName = (wifiStatus.ssid ?? 'Wi-Fi Network').trim();
         }
-      } else {
-        final subnets = await _currentNetworkFingerprint();
-        if (subnets.isNotEmpty) {
-          isConnected = true;
-        }
-      }
-
-      if (!isConnected) {
-        if (!mounted) return;
-        setState(() {
-          _printerHost = '';
-        });
-        return;
       }
 
       if (mounted) {
@@ -1777,17 +1760,13 @@ class _LprPrintClient {
 
     final printerQueue = queue;
     final owner = user;
-    final client = HttpUtils.sanitizeLprToken(
-      clientName.trim().isEmpty ? user : clientName,
-      fallback: user,
-    );
+    const client = 'PreConnect-App';
     final safeFileName = fileName.trim();
     final printableJobName = _basePrintName(safeFileName);
     final isPostScript = _looksLikePostScript(safeFileName, bytes);
     final dataCommand = isPostScript ? 'o' : 'l';
     final copies = preferences.copies.clamp(0, 999);
     final duplexMode = preferences.duplexMode.trim().toUpperCase();
-    final collateMode = preferences.collateMode.trim().toUpperCase();
 
     try {
       final sendBytes = isPostScript
@@ -1815,22 +1794,31 @@ class _LprPrintClient {
         dataCommand: dataCommand,
         dataFileName: dataFileName,
         safeFileName: safeFileName,
+        copies: copies,
       );
       final control = _ascii(controlText);
-      final pjlPrefix = HttpUtils.pjlPrefix(
-        jobName: printableJobName,
-        copies: copies,
-        duplexMode: duplexMode,
-        collateMode: collateMode,
-        isPostScript: isPostScript,
-        pagesPerSheet: preferences.pagesPerSheet,
-        fittingMode: preferences.fittingMode,
-        staple: preferences.staple,
-        punch: preferences.punch,
-        jobOffset: preferences.jobOffset,
-        slipSheet: preferences.slipSheet,
-        booklet: preferences.booklet,
-      );
+
+      final collateMode = preferences.collateMode.trim().toUpperCase();
+      final Uint8List payload;
+      if (preferences.hasAdvancedFinishingOptions) {
+        final pjlPrefix = HttpUtils.pjlPrefix(
+          jobName: printableJobName,
+          copies: copies,
+          duplexMode: duplexMode,
+          collateMode: collateMode,
+          isPostScript: isPostScript,
+          pagesPerSheet: preferences.pagesPerSheet,
+          fittingMode: preferences.fittingMode,
+          staple: preferences.staple,
+          punch: preferences.punch,
+          jobOffset: preferences.jobOffset,
+          slipSheet: preferences.slipSheet,
+          booklet: preferences.booklet,
+        );
+        payload = _buildPjlPayload(bytes: sendBytes, prefix: pjlPrefix);
+      } else {
+        payload = sendBytes;
+      }
 
       await _sendLprJob(
         printerHost: printerHost,
@@ -1838,7 +1826,7 @@ class _LprPrintClient {
         controlFileName: controlFileName,
         dataFileName: dataFileName,
         control: control,
-        payload: _buildPjlPayload(bytes: sendBytes, prefix: pjlPrefix),
+        payload: payload,
       );
     } on _LprPrintException {
       rethrow;
@@ -1858,11 +1846,6 @@ class _LprPrintClient {
     return 'Sending $copies $duplexLabel copies...';
   }
 
-  String _jobSuffix() {
-    final number = DateTime.now().microsecondsSinceEpoch % 1000;
-    return number.toString().padLeft(3, '0');
-  }
-
   Uint8List _buildPjlPayload({
     required Uint8List bytes,
     required String prefix,
@@ -1872,6 +1855,11 @@ class _LprPrintClient {
     builder.add(bytes);
     builder.add(_ascii('\r\n\x1B%-12345X@PJL EOJ\r\n\x1B%-12345X'));
     return builder.takeBytes();
+  }
+
+  String _jobSuffix() {
+    final number = DateTime.now().microsecondsSinceEpoch % 1000;
+    return number.toString().padLeft(3, '0');
   }
 
   Future<void> _sendLprJob({
@@ -2391,6 +2379,18 @@ class _PrintTicket {
   final String booklet;
 
   String get postScriptPreamble => '%!PS-Adobe-3.0';
+
+  bool get hasAdvancedFinishingOptions {
+    return staple != 'Off' ||
+        punch != 'Off' ||
+        booklet == 'On' ||
+        pagesPerSheet != '1-in-1' ||
+        fittingMode != 'Fit on Paper' ||
+        jobOffset == 'On' ||
+        slipSheet == 'On' ||
+        duplexMode != 'OFF' ||
+        collateMode == 'ON';
+  }
 }
 
 class _LprAckReader {

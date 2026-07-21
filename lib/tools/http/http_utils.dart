@@ -28,31 +28,23 @@ class HttpUtils {
 
   static String sanitizeLprToken(
     String value, {
-    required String fallback,
     int maxLength = 31,
   }) {
-    String normalize(String input) {
-      final buffer = StringBuffer();
-      var previousUnderscore = false;
-      for (final rune in input.trim().runes) {
-        final ch = String.fromCharCode(rune);
-        final valid = RegExp(r'[A-Za-z0-9._-]').hasMatch(ch);
-        final next = valid ? ch : '_';
-        if (next == '_') {
-          if (previousUnderscore) continue;
-          previousUnderscore = true;
-        } else {
-          previousUnderscore = false;
-        }
-        buffer.write(next);
+    final buffer = StringBuffer();
+    var previousUnderscore = false;
+    for (final rune in value.trim().runes) {
+      final ch = String.fromCharCode(rune);
+      final valid = RegExp(r'[A-Za-z0-9._-]').hasMatch(ch);
+      final next = valid ? ch : '_';
+      if (next == '_') {
+        if (previousUnderscore) continue;
+        previousUnderscore = true;
+      } else {
+        previousUnderscore = false;
       }
-      return buffer.toString().replaceAll(RegExp(r'^_+|_+$'), '');
+      buffer.write(next);
     }
-
-    final normalized = normalize(value);
-    final fallbackNormalized = normalize(fallback);
-    final token = normalized.isNotEmpty ? normalized : fallbackNormalized;
-    if (token.isEmpty) return 'preconnect';
+    final token = buffer.toString().replaceAll(RegExp(r'^_+|_+$'), '');
     final limit = maxLength < 31 ? maxLength : 31;
     return token.length > limit ? token.substring(0, limit) : token;
   }
@@ -72,13 +64,18 @@ class HttpUtils {
     required String dataCommand,
     required String dataFileName,
     required String safeFileName,
+    int copies = 1,
   }) {
+    final effectiveCopies = copies < 1 ? 1 : copies;
+    final dataCommands = List<String>.generate(
+      effectiveCopies,
+      (_) => '$dataCommand$dataFileName',
+    );
     return [
       'H$client',
       'P$owner',
       'J$printableJobName',
-      'C$printableJobName',
-      '$dataCommand$dataFileName',
+      ...dataCommands,
       'U$dataFileName',
       'N$safeFileName',
       '',
