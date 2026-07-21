@@ -251,7 +251,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _jobOffset = 'Off';
   String _slipSheet = 'Off';
   String _booklet = 'Off';
-  String _printerHost = '172.16.0.111';
+  String _printerHost = '';
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
   int _copies = 1;
   bool _busy = false;
@@ -449,11 +449,15 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         port: _printerPort,
       );
       if (!mounted) return;
-      final printerAddress = printers.isNotEmpty
-          ? printers.first.address
-          : '172.16.0.111';
+      if (printers.isEmpty) {
+        setState(() {
+          _printerHost = '';
+        });
+        return;
+      }
+      final printer = printers.first;
       setState(() {
-        _printerHost = printerAddress;
+        _printerHost = printer.address;
       });
     } catch (e) {
       await AppLog.write('Printer discovery failed: $e');
