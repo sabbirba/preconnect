@@ -449,12 +449,15 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         port: _printerPort,
       );
       if (!mounted) return;
-      final onCampus = await _isCampusNetwork();
-      final printerAddress = printers.isNotEmpty
-          ? printers.first.address
-          : (onCampus ? '172.16.0.111' : '');
+      if (printers.isEmpty) {
+        setState(() {
+          _printerHost = '';
+        });
+        return;
+      }
+      final printer = printers.first;
       setState(() {
-        _printerHost = printerAddress;
+        _printerHost = printer.address;
       });
     } catch (e) {
       await AppLog.write('Printer discovery failed: $e');
@@ -465,26 +468,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         });
       }
     }
-  }
-
-  Future<bool> _isCampusNetwork() async {
-    final wifiNameLower = _wifiName.toLowerCase();
-    if (wifiNameLower.contains('student') ||
-        wifiNameLower.contains('bracu') ||
-        wifiNameLower.contains('campus') ||
-        wifiNameLower.contains('faculty') ||
-        wifiNameLower.contains('staff')) {
-      return true;
-    }
-    final prefixes = await _currentLocalIpv4Prefixes();
-    for (final prefix in prefixes) {
-      if (prefix.startsWith('172.16.') ||
-          prefix.startsWith('172.17.') ||
-          prefix.startsWith('10.')) {
-        return true;
-      }
-    }
-    return false;
   }
 
   Future<String> _currentNetworkFingerprint() async {
