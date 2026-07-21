@@ -3,6 +3,7 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/model/section_info.dart' show SectionFaculty;
 import 'package:preconnect/pages/seat_status.dart';
+import 'package:flutter/foundation.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 
@@ -44,8 +45,20 @@ class SeatStatusService {
   Future<Map<int, SeatStatusDetailsResponse>> preloadData({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && cachedDetails != null) {
+    if (!forceRefresh && _cachedDetails != null) {
       return _cachedDetails!;
+    }
+    if (!forceRefresh) {
+      final cachedJson = await AppStorage.instance.getString(
+        PreConnectStorageKeys.seatStatusCacheJson,
+      );
+      if (cachedJson != null && cachedJson.trim().isNotEmpty) {
+        try {
+          final parsed = await compute(_parseJsonStringInIsolate, cachedJson);
+          _cachedDetails = parsed;
+          return parsed;
+        } catch (_) {}
+      }
     }
     if (!forceRefresh) {
       final inFlight = _preloadFuture;
@@ -88,8 +101,7 @@ class SeatStatusService {
     );
 
     try {
-      final raw = jsonDecode(response.body);
-      final parsed = _parseConnectJson(raw);
+      final parsed = await compute(_parseJsonStringInIsolate, response.body);
 
       await AppStorage.instance.setString(
         PreConnectStorageKeys.seatStatusCacheJson,
@@ -400,4 +412,18 @@ String? _toNullableString(dynamic value) {
   final parsed = _toString(value);
   if (parsed.isEmpty || parsed.toUpperCase() == 'NULL') return null;
   return parsed;
+}
+
+Map<int, SeatStatusDetailsResponse> _parseJsonStringInIsolate(String jsonStr) {
+  final decoded = jsonDecode(jsonStr);
+  if (decoded is! List) return const <int, SeatStatusDetailsResponse>{};
+  final result = <int, SeatStatusDetailsResponse>{};
+  for (final item in decoded.whereType<Map>()) {
+    final map = item.cast<String, dynamic>();
+    try {
+      final parsed = SeatStatusDetailsResponse.fromJson(map);
+      result[parsed.sectionId] = parsed;
+    } catch (_) {}
+  }
+  return result;
 }
