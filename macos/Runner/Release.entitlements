@@ -18,7 +18,6 @@
 	</array>
 	<key>aps-environment</key>
 	<string>production</string>
-	<key>com.apple.security.personal-information.location</key>
-	<true/>
+
 </dict>
 </plist>

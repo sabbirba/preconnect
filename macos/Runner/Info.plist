@@ -40,8 +40,7 @@
 	<string>PreConnect needs camera access to scan QR codes.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>PreConnect needs photo access to scan QR codes from your gallery.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>PreConnect needs location access to connect and manage campus Wi-Fi.</string>
+
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>PreConnect needs local network access for campus printing and services.</string>
 	<key>NSCalendarsUsageDescription</key>
