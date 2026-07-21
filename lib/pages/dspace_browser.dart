@@ -771,7 +771,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
 
     return Expanded(
       child: _filteredCategories.isEmpty
-          ? const BracuEmptyState(message: 'No categories found.')
+          ? const BracuEmptyState(message: 'No category found.')
           : BracuRefreshScroll(
               onRefresh: _loadCategories,
               padding: const EdgeInsets.only(bottom: 24),
@@ -922,7 +922,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
 
     if (_filteredItems.isEmpty) {
       return const Expanded(
-        child: BracuEmptyState(message: 'No documents found.'),
+        child: BracuEmptyState(message: 'No document found.'),
       );
     }
 

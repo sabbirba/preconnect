@@ -214,9 +214,9 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   String _dynamicEmptyMessage() {
     final weekday = formatWeekdayTitle(_activeDayName);
     return switch (_selectedFilter) {
-      _RoomFilter.labs => 'No free labs found for $weekday.',
-      _RoomFilter.classes => 'No free classes found for $weekday.',
-      _RoomFilter.theater => 'No free theaters found for $weekday.',
+      _RoomFilter.labs => 'No free lab found for $weekday.',
+      _RoomFilter.classes => 'No free class found for $weekday.',
+      _RoomFilter.theater => 'No free theater found for $weekday.',
     };
   }
 
@@ -898,7 +898,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(
-                  'No free slots left for today.',
+                  'No free slot left for today.',
                   style: TextStyle(
                     color: textSecondary,
                     fontSize: 13,

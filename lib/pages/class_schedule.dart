@@ -450,8 +450,8 @@ class _ClassScheduleState extends State<ClassSchedulePage>
             return buildRefreshEmptyState(
               onRefresh: _handleRefresh,
               message: _showDoneSections
-                  ? 'No done classes available'
-                  : 'No active classes available',
+                  ? 'No done class available'
+                  : 'No active class available',
             );
           }
 

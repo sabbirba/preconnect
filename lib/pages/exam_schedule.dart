@@ -408,9 +408,9 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
             return buildRefreshEmptyState(
               onRefresh: _handleRefresh,
               message: showPast
-                  ? 'No done exams available'
+                  ? 'No done exam available'
                   : (hasAnyExamData
-                        ? 'No exams found'
+                        ? 'No exam found'
                         : 'No exam data available'),
             );
           }

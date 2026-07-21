@@ -864,7 +864,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
             }
             return buildRefreshEmptyState(
               onRefresh: _handleRefresh,
-              message: _showDoneAlarms ? 'No done alarms' : 'No pending alarms',
+              message: _showDoneAlarms ? 'No done alarm' : 'No pending alarm',
             );
           }
 

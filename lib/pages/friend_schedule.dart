@@ -208,7 +208,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       final snapshot = await _store.loadSnapshot();
       if (snapshot.encodedSchedules.isEmpty) {
         if (!mounted) return;
-        showAppSnackBar(context, 'No friend schedules to export');
+        showAppSnackBar(context, 'No friend schedule to export');
         return;
       }
       final exportJson = {
@@ -735,7 +735,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
             const Gap(12),
           ],
           if (_filteredSchedules.isEmpty && decodedSchedules.isEmpty)
-            const BracuEmptyState(message: "No schedules found")
+            const BracuEmptyState(message: "No schedule found")
           else if (_filteredSchedules.isEmpty && _searchQuery.isNotEmpty)
             BracuCard(
               child: Center(

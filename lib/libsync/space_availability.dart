@@ -584,7 +584,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
             )
           else if (availabilityData.isEmpty)
             const BracuEmptyState(
-              message: 'No available spaces or slots found for this date.',
+              message: 'No available space or slot found for this date.',
             )
           else
             ListView.builder(
@@ -667,7 +667,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
                         const Gap(8),
                         if (slots.isEmpty)
                           Text(
-                            'No active slots available',
+                            'No active slot available',
                             style: TextStyle(
                               fontSize: 12,
                               color: textSecondary,
