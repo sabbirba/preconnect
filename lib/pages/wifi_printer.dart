@@ -18,6 +18,7 @@ import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/app_log.dart';
+import 'package:preconnect/tools/snmp_client.dart';
 
 class CampusPrinterPage extends StatefulWidget {
   const CampusPrinterPage({super.key});
@@ -252,6 +253,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _slipSheet = 'Off';
   String _booklet = 'Off';
   String _printerHost = '';
+  SnmpPrinterStatus? _printerHealth;
+  int _healthCheckToken = 0;
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
   int _copies = 1;
   bool _busy = false;
@@ -452,6 +455,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       if (printers.isEmpty) {
         setState(() {
           _printerHost = '';
+          _printerHealth = null;
         });
         return;
       }
@@ -459,6 +463,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       setState(() {
         _printerHost = printer.address;
       });
+      unawaited(_refreshPrinterHealth(printer.address));
     } catch (e) {
       await AppLog.write('Printer discovery failed: $e');
     } finally {
@@ -468,6 +473,24 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         });
       }
     }
+  }
+
+  Future<void> _refreshPrinterHealth(String host) async {
+    final token = ++_healthCheckToken;
+    final status = await SnmpClient.queryPrinterStatus(host);
+    if (!mounted || token != _healthCheckToken || _printerHost != host) return;
+    setState(() {
+      _printerHealth = status;
+    });
+  }
+
+  String? _printerHealthSummary() {
+    final health = _printerHealth;
+    if (health == null) return null;
+    if (health.hasErrors) {
+      return '${health.printerStatusLabel} • ${health.errorFlags.join(', ')}';
+    }
+    return health.printerStatusLabel;
   }
 
   Future<String> _currentNetworkFingerprint() async {
@@ -941,6 +964,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                     studentIdController: _studentIdController,
                     wifiName: _wifiName,
                     printerHost: _printerHost,
+                    printerHealth: _printerHealthSummary(),
                   ),
                 ],
                 if (_studentName.trim().isEmpty && _studentId.trim().isEmpty)
@@ -1390,6 +1414,7 @@ class _StudentPrintDetails extends StatelessWidget {
     required this.studentIdController,
     required this.wifiName,
     required this.printerHost,
+    this.printerHealth,
   });
 
   final String name;
@@ -1398,6 +1423,7 @@ class _StudentPrintDetails extends StatelessWidget {
   final TextEditingController studentIdController;
   final String wifiName;
   final String printerHost;
+  final String? printerHealth;
 
   @override
   Widget build(BuildContext context) {
@@ -1447,7 +1473,13 @@ class _StudentPrintDetails extends StatelessWidget {
         if (wifiName.trim().isNotEmpty)
           _buildRow(context, 'Network', wifiName.trim()),
         if (printerHost.trim().isNotEmpty)
-          _buildRow(context, 'Printer', printerHost.trim()),
+          _buildRow(
+            context,
+            'Printer',
+            (printerHealth ?? '').trim().isNotEmpty
+                ? '${printerHost.trim()} • ${printerHealth!.trim()}'
+                : printerHost.trim(),
+          ),
       ],
     );
   }
