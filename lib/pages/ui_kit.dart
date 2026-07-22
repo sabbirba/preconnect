@@ -293,7 +293,7 @@ void showAppSnackBar(
     SnackBar(
       content: Text(trimmed, style: const TextStyle(color: Colors.white)),
       backgroundColor: isDark ? const Color(0xFF1E6BE3) : BracuPalette.primary,
-      duration: const Duration(seconds: 2),
+      duration: duration,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
