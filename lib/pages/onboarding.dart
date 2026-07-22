@@ -417,7 +417,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           onPressed: _isGoogleLoggingIn
                               ? null
                               : _handleGoogleSignIn,
-                          label: 'Google Sign In',
+                          label: 'BRACU Google SSO',
                           borderRadius: 12,
                           isLoading: _isGoogleLoggingIn,
                           padding: const EdgeInsets.symmetric(
