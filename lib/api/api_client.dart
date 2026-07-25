@@ -391,7 +391,8 @@ class ApiClient {
     String body = '',
     Duration cacheDuration = Duration.zero,
   }) async {
-    if (!await hasConnection()) {
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult.contains(ConnectivityResult.none)) {
       throw const SocketException('No internet connection');
     }
 
