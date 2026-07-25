@@ -55,6 +55,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       HighlightScrollCoordinator(scrollController: _scrollController);
   final Map<String, int> _minutesBefore = {};
   bool _showDoneAlarms = false;
+  List<Section>? _courseOptionsForSections;
+  List<CustomSchedulesCourseOption>? _courseOptionsCache;
 
   @override
   void initState() {
@@ -651,6 +653,38 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     }
   }
 
+  List<CustomSchedulesCourseOption> _courseOptionsFor(List<Section> sections) {
+    final cached = _courseOptionsCache;
+    if (cached != null && identical(_courseOptionsForSections, sections)) {
+      return cached;
+    }
+    final courseOptions = <CustomSchedulesCourseOption>[];
+    final seenOptions = <String>{};
+    for (final sectionItem in sections) {
+      final code = sectionItem.courseCode.trim().toUpperCase();
+      if (code.isEmpty) continue;
+      final option = (
+        courseCode: code,
+        sectionName: sectionItem.sectionName.trim(),
+        classSchedules: sectionItem.sectionSchedule.classSchedules
+            .map(
+              (schedule) => (
+                day: schedule.day,
+                startTime: schedule.startTime,
+                endTime: schedule.endTime,
+              ),
+            )
+            .toList(),
+      );
+      if (seenOptions.add('${option.courseCode}|${option.sectionName}')) {
+        courseOptions.add(option);
+      }
+    }
+    _courseOptionsForSections = sections;
+    _courseOptionsCache = courseOptions;
+    return courseOptions;
+  }
+
   bool _isAdvisingActive(Map<String, String?>? advisingInfo) {
     if (advisingInfo == null) return false;
     final startDate = DateTime.tryParse(
@@ -781,31 +815,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           final exams = data?.examEntries ?? const <_ExamAlarmEntry>[];
           final custom = data?.customSchedules ?? const <CustomSchedule>[];
           final isRamadan = data?.isRamadan ?? false;
-          final courseOptions = <CustomSchedulesCourseOption>[];
-          final seenOptions = <String>{};
-          for (final sectionItem in sections) {
-            final code = sectionItem.courseCode.trim().toUpperCase();
-            if (code.isNotEmpty) {
-              final option = (
-                courseCode: code,
-                sectionName: sectionItem.sectionName.trim(),
-                classSchedules: sectionItem.sectionSchedule.classSchedules
-                    .map(
-                      (schedule) => (
-                        day: schedule.day,
-                        startTime: schedule.startTime,
-                        endTime: schedule.endTime,
-                      ),
-                    )
-                    .toList(),
-              );
-              if (seenOptions.add(
-                '${option.courseCode}|${option.sectionName}',
-              )) {
-                courseOptions.add(option);
-              }
-            }
-          }
+          final courseOptions = _courseOptionsFor(sections);
           final advisingInfo = data?.advisingInfo;
           final advisingActive = _isAdvisingActive(advisingInfo);
 
