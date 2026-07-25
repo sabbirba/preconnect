@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -390,6 +391,10 @@ class ApiClient {
     String body = '',
     Duration cacheDuration = Duration.zero,
   }) async {
+    if (!await hasConnection()) {
+      throw const SocketException('No internet connection');
+    }
+
     final normalizedMethod = method.trim().toUpperCase();
     if (normalizedMethod != 'GET') {
       return _sendRawRequest(
@@ -583,18 +588,6 @@ class CacheEmptyException extends PreConnectException {
 class MissingDependencyException extends PreConnectException {
   const MissingDependencyException(String field)
     : super('Missing required field: $field');
-}
-
-Map<String, String> ifNoneMatchHeader(String? etag) {
-  return const <String, String>{};
-}
-
-String? extractEtagFromHeaders(Map<String, String> headers) {
-  return null;
-}
-
-String? extractEtagFromResponse(http.Response response) {
-  return null;
 }
 
 final _portfolioIdResolutionFailures = <DateTime>[];
