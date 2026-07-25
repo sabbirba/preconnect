@@ -27,6 +27,7 @@ class _WishlistPageState extends State<WishlistPage> {
   List<dynamic> _wishlistCourses = [];
   List<dynamic> _offeredCourses = [];
   List<dynamic> _filteredOfferedCourses = [];
+  Map<int, bool> _seatAvailabilityByCourseId = const <int, bool>{};
   final TextEditingController _searchController = TextEditingController();
   final List<dynamic> _batchQueue = [];
   String _searchQuery = '';
@@ -113,6 +114,8 @@ class _WishlistPageState extends State<WishlistPage> {
       await _refreshWishlistData();
       try {
         await SeatStatusService().preloadData();
+        _rebuildSeatAvailability();
+        if (mounted) setState(() {});
       } catch (_) {}
     } catch (e) {
       if (!mounted) return;
@@ -179,16 +182,19 @@ class _WishlistPageState extends State<WishlistPage> {
           } else if (data is Map && data['courses'] is List) {
             _offeredCourses = data['courses'];
           }
+          _rebuildSeatAvailability();
           _filterCourses(_searchController.text);
         } else {
           _isPhaseCompleted = true;
           _offeredCourses = [];
           _filteredOfferedCourses = [];
+          _seatAvailabilityByCourseId = const <int, bool>{};
         }
       } catch (e) {
         _isPhaseCompleted = true;
         _offeredCourses = [];
         _filteredOfferedCourses = [];
+        _seatAvailabilityByCourseId = const <int, bool>{};
       }
 
       if (!mounted) return;
@@ -265,21 +271,28 @@ class _WishlistPageState extends State<WishlistPage> {
     }
   }
 
-  bool _hasSeatsForCourse(int courseId) {
+  void _rebuildSeatAvailability() {
     final cached = SeatStatusService().cachedDetails;
     if (cached == null || cached.isEmpty) {
-      return true;
+      _seatAvailabilityByCourseId = const <int, bool>{};
+      return;
     }
-    bool foundSection = false;
+    final foundSection = <int, bool>{};
+    final hasSeats = <int, bool>{};
     for (final detail in cached.values) {
-      if (detail.courseId == courseId) {
-        foundSection = true;
-        if (detail.capacity > detail.consumedSeat) {
-          return true;
-        }
+      foundSection[detail.courseId] = true;
+      if (detail.capacity > detail.consumedSeat) {
+        hasSeats[detail.courseId] = true;
       }
     }
-    return !foundSection;
+    _seatAvailabilityByCourseId = {
+      for (final courseId in foundSection.keys)
+        courseId: hasSeats[courseId] ?? false,
+    };
+  }
+
+  bool _hasSeatsForCourse(int courseId) {
+    return _seatAvailabilityByCourseId[courseId] ?? true;
   }
 
   Future<void> _confirmDropCourse(dynamic course) async {
