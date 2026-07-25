@@ -78,10 +78,6 @@ class GradeSheetService {
     }
   }
 
-  Future<GradeSheetFile?> getGradeSheet() async {
-    return fetchGradeSheet();
-  }
-
   Future<File> _writeTempPdfFile(Uint8List bytes) async {
     final file = await _gradeSheetTempFile();
     await file.parent.create(recursive: true);
