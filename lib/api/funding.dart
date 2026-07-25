@@ -1,7 +1,7 @@
-import 'dart:async';
 import 'dart:convert';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/app_storage.dart';
 
 class ContributionItem {
@@ -95,7 +95,7 @@ class FundingService {
 
   static Future<FundingStatus?> fetchStatus() async {
     try {
-      final cachedEtag = AppStorage.instance.getStringSync(_etagKey);
+      final cachedEtag = await RepositoryCache.instance.readString(_etagKey);
       final headers = <String, String>{};
       if (cachedEtag != null && cachedEtag.trim().isNotEmpty) {
         headers['If-None-Match'] = cachedEtag;
@@ -119,11 +119,11 @@ class FundingService {
           if (decoded is Map<String, dynamic>) {
             final status = FundingStatus.fromJson(decoded);
             _cached = status;
-            await AppStorage.instance.setString(_cacheKey, body);
+            await RepositoryCache.instance.writeString(_cacheKey, body);
 
             final etag = response.headers['etag'] ?? response.headers['ETag'];
             if (etag != null && etag.trim().isNotEmpty) {
-              await AppStorage.instance.setString(_etagKey, etag);
+              await RepositoryCache.instance.writeString(_etagKey, etag);
             }
             return status;
           }

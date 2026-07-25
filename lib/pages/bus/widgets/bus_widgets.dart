@@ -214,7 +214,3 @@ class BusFleetMarker {
     'longitude': longitude,
   };
 }
-
-String normalizeRouteCode(String value) {
-  return value.trim().toUpperCase();
-}

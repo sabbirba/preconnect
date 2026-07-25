@@ -233,36 +233,6 @@ ScrollController? bracuBottomSheetScrollController(BuildContext context) {
   return scoped ?? PrimaryScrollController.maybeOf(context);
 }
 
-Widget bracuBottomSheetSurface(
-  BuildContext context, {
-  required Widget child,
-  EdgeInsetsGeometry padding = const EdgeInsets.fromLTRB(12, 4, 12, 12),
-  double radius = 26,
-}) {
-  return SafeArea(
-    top: false,
-    child: Padding(
-      padding: padding,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                BracuPalette.bgTop(context),
-                BracuPalette.bgBottom(context),
-              ],
-            ),
-          ),
-          child: Material(color: Colors.transparent, child: child),
-        ),
-      ),
-    ),
-  );
-}
-
 class _BracuBottomSheetControllerScope extends InheritedWidget {
   const _BracuBottomSheetControllerScope({
     required this.controller,
@@ -281,102 +251,6 @@ class _BracuBottomSheetControllerScope extends InheritedWidget {
   bool updateShouldNotify(_BracuBottomSheetControllerScope oldWidget) {
     return oldWidget.controller != controller;
   }
-}
-
-Future<bool> showBracuConfirmationDialog(
-  BuildContext context, {
-  required IconData icon,
-  required String title,
-  required String message,
-  String cancelLabel = 'Cancel',
-  required String confirmLabel,
-  Color confirmColor = BracuPalette.primary,
-}) async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    barrierColor: Colors.black.withValues(alpha: 0.25),
-    builder: (dialogContext) => Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: BracuPalette.card(dialogContext),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.18),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, color: confirmColor),
-                  const Gap(8),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        color: BracuPalette.textPrimary(dialogContext),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const Gap(12),
-              Text(
-                message,
-                style: TextStyle(
-                  color: BracuPalette.textSecondary(dialogContext),
-                  fontSize: 13,
-                ),
-              ),
-              const Gap(16),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(dialogContext).pop(false),
-                      style: bracuOutlinedButtonStyle(
-                        dialogContext,
-                        foregroundColor: confirmColor,
-                        borderColor: confirmColor.withValues(alpha: 0.6),
-                        borderRadius: 12,
-                      ),
-                      child: Text(cancelLabel),
-                    ),
-                  ),
-                  const Gap(12),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(dialogContext).pop(true),
-                      style: bracuOutlinedButtonStyle(
-                        dialogContext,
-                        foregroundColor: confirmColor,
-                        borderColor: confirmColor.withValues(alpha: 0.6),
-                        borderRadius: 12,
-                      ),
-                      child: Text(confirmLabel),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-  return confirmed == true;
 }
 
 Future<bool> showBracuConfirmationWithActionDialog(
