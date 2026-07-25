@@ -168,6 +168,8 @@ class _LibraryCardFront extends StatelessWidget {
                                       ? const SizedBox.expand()
                                       : CachedImage(
                                           url: photoUrl,
+                                          width: 90,
+                                          height: 106,
                                           fit: BoxFit.cover,
                                           alignment: Alignment.center,
                                           placeholder: const ColoredBox(
