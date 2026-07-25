@@ -32,6 +32,8 @@ class _NotificationsPageState extends State<NotificationsPage>
   late Future<NotificationsViewData> _future;
   NotificationsViewData? _lastData;
   int _visibleItemCount = _pageSize;
+  NotificationsViewData? _combinedItemsForData;
+  List<NotificationListItem>? _combinedItemsCache;
 
   static NotificationsViewData? _loadCachedDataSync() {
     try {
@@ -353,15 +355,7 @@ class _NotificationsPageState extends State<NotificationsPage>
               topSpacing: 180,
             );
           }
-          final connectItems =
-              data?.connect?.items ?? const <RecentConnectNotification>[];
-          final scrapedItems = data?.scraped ?? const <ScraperContentItem>[];
-          final seenScraperIds = data?.seenScraperIds ?? const <String>{};
-          final items = _buildCombinedItems(
-            connectItems,
-            scrapedItems,
-            seenScraperIds,
-          );
+          final items = _combinedItemsFor(data);
           if (items.isEmpty) {
             return buildRefreshEmptyState(
               onRefresh: _refresh,
@@ -422,6 +416,25 @@ class _NotificationsPageState extends State<NotificationsPage>
         },
       ),
     );
+  }
+
+  List<NotificationListItem> _combinedItemsFor(NotificationsViewData? data) {
+    final cached = _combinedItemsCache;
+    if (cached != null && identical(_combinedItemsForData, data)) {
+      return cached;
+    }
+    final connectItems =
+        data?.connect?.items ?? const <RecentConnectNotification>[];
+    final scrapedItems = data?.scraped ?? const <ScraperContentItem>[];
+    final seenScraperIds = data?.seenScraperIds ?? const <String>{};
+    final items = _buildCombinedItems(
+      connectItems,
+      scrapedItems,
+      seenScraperIds,
+    );
+    _combinedItemsForData = data;
+    _combinedItemsCache = items;
+    return items;
   }
 
   List<NotificationListItem> _buildCombinedItems(
