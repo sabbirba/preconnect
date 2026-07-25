@@ -247,7 +247,10 @@ class _HomePageState extends State<HomePage> {
             children: _tabOrder.map((tab) {
               if (tab == selectedTab || _builtTabs.contains(tab)) {
                 _builtTabs.add(tab);
-                return pages[tab]!(context);
+                return TickerMode(
+                  enabled: tab == selectedTab,
+                  child: pages[tab]!(context),
+                );
               }
               return const SizedBox.shrink();
             }).toList(),
