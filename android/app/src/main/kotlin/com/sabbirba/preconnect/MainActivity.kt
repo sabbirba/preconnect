@@ -716,25 +716,50 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun reportCaptivePortalDismissed() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            captivePortal?.reportCaptivePortalDismissed()
+        val portal = captivePortal
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && portal != null) {
+            portal.reportCaptivePortalDismissed()
             captivePortal = null
+        } else {
+            reportNetworkConnectivityFallback(hasInternet = true)
         }
     }
 
     private fun ignoreNetwork() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            captivePortal?.ignoreNetwork()
+        val portal = captivePortal
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && portal != null) {
+            portal.ignoreNetwork()
             captivePortal = null
+        } else {
+            reportNetworkConnectivityFallback(hasInternet = false)
         }
+    }
+
+    private fun reportNetworkConnectivityFallback(hasInternet: Boolean) {
+        try {
+            val network = getWifiNetwork() ?: return
+            connectivityManager.reportNetworkConnectivity(network, hasInternet)
+        } catch (_: Exception) {}
     }
 
     private fun getWifiNetwork(): Network? {
         return try {
-            intentNetwork ?: connectivityManager.allNetworks.firstOrNull { net ->
-                val caps = connectivityManager.getNetworkCapabilities(net)
-                caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+            intentNetwork?.let { return it }
+
+            val activeNetwork = connectivityManager.activeNetwork
+            val activeCaps = activeNetwork?.let { connectivityManager.getNetworkCapabilities(it) }
+            if (activeCaps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true) {
+                return activeNetwork
             }
+
+            val candidates = connectivityManager.allNetworks.filter { net ->
+                connectivityManager.getNetworkCapabilities(net)
+                    ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+            }
+            candidates.firstOrNull { net ->
+                connectivityManager.getNetworkCapabilities(net)
+                    ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL) == true
+            } ?: candidates.firstOrNull()
         } catch (_: Exception) {
             null
         }
@@ -857,8 +882,15 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun hasSsidPermission(): Boolean {
-        return checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
+        val hasLocation = checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
+        val hasNearby = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            checkSelfPermission("android.permission.NEARBY_WIFI_DEVICES") ==
+                PackageManager.PERMISSION_GRANTED
+        } else {
+            false
+        }
+        return hasLocation || hasNearby
     }
 
     private fun currentWifiSsid(): String? {

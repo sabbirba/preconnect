@@ -403,6 +403,7 @@ class CaptiveWifiHttp {
       }
 
       var loginUri = first.uri;
+      var loginPageBody = first.body;
       if (loginUri.path.contains('/portalpage/')) {
         unawaited(
           CaptiveLoginStore.instance.saveLastPortalUrl(loginUri.toString()),
@@ -429,6 +430,7 @@ class CaptiveWifiHttp {
               cookies: cookies,
             );
             loginUri = second.uri;
+            loginPageBody = second.body;
 
             if (loginUri.path.contains('/portalpage/')) {
               unawaited(
@@ -454,7 +456,7 @@ class CaptiveWifiHttp {
         r'''<form\b[^>]*\baction\s*=\s*(?:["']([^"']+)["']|([^\s>]+))''',
         caseSensitive: false,
       );
-      final match = formReg.firstMatch(first.body);
+      final match = formReg.firstMatch(loginPageBody);
       final formAction = (match?.group(1) ?? match?.group(2) ?? '').trim();
       if (formAction.isNotEmpty) {
         apiLoginUri = Uri.parse(formAction).isAbsolute
@@ -551,7 +553,7 @@ class CaptiveWifiHttp {
         return false;
       }
 
-      final formInputs = parseFormInputs(first.body);
+      final formInputs = parseFormInputs(loginPageBody);
       final payload = <String, String>{};
       for (final entry in formInputs.entries) {
         payload[entry.key] = entry.value;
@@ -642,12 +644,10 @@ class CaptiveWifiHttp {
           'Request Body (Decoded): $payload\n'
           'Initiating POST request...\n';
 
-      await Future<void>.delayed(const Duration(seconds: 3));
-
       CaptiveWifiHttpResult? response;
       for (var attempt = 0; attempt < 3; attempt++) {
         if (attempt > 0) {
-          await Future<void>.delayed(const Duration(seconds: 3));
+          await Future<void>.delayed(Duration(seconds: attempt));
         }
         try {
           response = await postOnce(
@@ -742,8 +742,6 @@ class CaptiveWifiHttp {
 
         return false;
       }
-
-      await Future<void>.delayed(const Duration(seconds: 3));
 
       final redirectTarget =
           response.location ??

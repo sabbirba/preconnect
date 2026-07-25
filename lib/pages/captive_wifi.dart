@@ -14,8 +14,8 @@ import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/polling_timer.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:preconnect/libsync/chrome_flow_stub.dart'
-    if (dart.library.js_interop) 'package:preconnect/libsync/chrome_flow_web.dart';
+import 'package:preconnect/libsync/flow_stub.dart'
+    if (dart.library.js_interop) 'package:preconnect/libsync/flow_web.dart';
 
 class CaptiveWifiPage extends StatefulWidget {
   const CaptiveWifiPage({super.key, this.autoOpenCaptiveWifiOnStart = false});
@@ -629,7 +629,12 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       return false;
     }
     if (AndroidNetworkAssist.isSupported) {
-      await AndroidNetworkAssist.bindToWifiNetwork();
+      final bound = await AndroidNetworkAssist.bindToWifiNetwork();
+      if (!bound) {
+        CaptiveWifiHttp.instance.lastError =
+            'Could not bind to the WiFi network. If you also have mobile '
+            'data on, the login request may go out over data instead.';
+      }
     }
     try {
       return await CaptiveWifiHttp.instance.loginViaCaptiveApi(
@@ -1369,6 +1374,7 @@ class CaptivePortalWebView extends StatefulWidget {
 class _CaptivePortalWebViewState extends State<CaptivePortalWebView> {
   late final WebViewController _controller;
   bool _loading = true;
+  bool _successHandled = false;
 
   @override
   void initState() {
@@ -1395,10 +1401,32 @@ class _CaptivePortalWebViewState extends State<CaptivePortalWebView> {
             if (url.contains('/portalpage/')) {
               unawaited(CaptiveLoginStore.instance.saveLastPortalUrl(url));
             }
+            unawaited(_checkForLoginSuccess());
+          },
+          onSslAuthError: (SslAuthError error) {
+            unawaited(error.proceed());
           },
         ),
       )
       ..loadRequest(widget.portalUrl);
+  }
+
+  Future<void> _checkForLoginSuccess() async {
+    if (_successHandled || !mounted) return;
+    for (var attempt = 0; attempt < 4; attempt++) {
+      await Future<void>.delayed(Duration(milliseconds: 1500 + attempt * 1000));
+      if (_successHandled || !mounted) return;
+      final stillCaptive = await CaptiveWifiHttp.detectCaptivePortal() != null;
+      if (_successHandled || !mounted) return;
+      if (!stillCaptive) {
+        _successHandled = true;
+        unawaited(AndroidNetworkAssist.reportCaptivePortalDismissed());
+        if (!mounted) return;
+        showAppSnackBar(context, 'Connected to the internet.');
+        Navigator.of(context).pop(true);
+        return;
+      }
+    }
   }
 
   @override
