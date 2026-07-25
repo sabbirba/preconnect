@@ -8,22 +8,27 @@ import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/url_utils.dart';
 
+final _pressExtRegex = RegExp(
+  r'\s*\(\s*press\s*\d+\s*\)\s*$',
+  caseSensitive: false,
+);
+final _pressSuffixRegex = RegExp(
+  r'\s*[,;-]?\s*press\s*\d+\s*$',
+  caseSensitive: false,
+);
+final _extensionSuffixRegex = RegExp(
+  r'\s*(ext|extension)\.?\s*\d+.*$',
+  caseSensitive: false,
+);
+final _nonPhoneCharRegex = RegExp(r'[^\d+]');
+
 String normalizeCampusPhoneValue(String raw) {
   var value = raw.trim();
   if (value.isEmpty) return '';
-  value = value.replaceAll(
-    RegExp(r'\s*\(\s*press\s*\d+\s*\)\s*$', caseSensitive: false),
-    '',
-  );
-  value = value.replaceAll(
-    RegExp(r'\s*[,;-]?\s*press\s*\d+\s*$', caseSensitive: false),
-    '',
-  );
-  value = value.replaceAll(
-    RegExp(r'\s*(ext|extension)\.?\s*\d+.*$', caseSensitive: false),
-    '',
-  );
-  value = value.replaceAll(RegExp(r'[^\d+]'), '');
+  value = value.replaceAll(_pressExtRegex, '');
+  value = value.replaceAll(_pressSuffixRegex, '');
+  value = value.replaceAll(_extensionSuffixRegex, '');
+  value = value.replaceAll(_nonPhoneCharRegex, '');
   return value;
 }
 
