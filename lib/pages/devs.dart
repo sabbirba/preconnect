@@ -235,6 +235,35 @@ class _DevsPageState extends State<DevsPage> {
     return _orderContributors(_dedupeContributors(visible), roster);
   }
 
+  static const String _enrichmentCacheKey = 'devs_enrichment_v1';
+  static Map<String, _ContributorProfile>? _enrichmentCache;
+
+  static Future<Map<String, _ContributorProfile>> _loadEnrichmentCache() async {
+    final cache = _enrichmentCache;
+    if (cache != null) return cache;
+    final raw = await AppPreferencesStore().getJsonMap(_enrichmentCacheKey);
+    final loaded = <String, _ContributorProfile>{};
+    if (raw != null) {
+      for (final entry in raw.entries) {
+        final value = entry.value;
+        if (value is Map) {
+          loaded[entry.key] = _ContributorProfile.fromJson(value.cast());
+        }
+      }
+    }
+    _enrichmentCache = loaded;
+    return loaded;
+  }
+
+  static Future<void> _saveEnrichmentCache(
+    Map<String, _ContributorProfile> cache,
+  ) async {
+    await AppPreferencesStore().setJson(
+      _enrichmentCacheKey,
+      cache.map((key, value) => MapEntry(key, value.toJson())),
+    );
+  }
+
   static Future<_ContributorProfile> _enrichContributorIfNeeded(
     _ContributorProfile contributor,
   ) async {
@@ -244,6 +273,16 @@ class _DevsPageState extends State<DevsPage> {
     final handle = contributor.handle.trim();
     if (handle.isEmpty || handle.toLowerCase().endsWith('[bot]')) {
       return contributor;
+    }
+
+    final cache = await _loadEnrichmentCache();
+    final cached = cache[contributor.key];
+    if (cached != null) {
+      return contributor.copyWith(
+        name: cached.name,
+        avatarUrl: cached.avatarUrl,
+        url: cached.url,
+      );
     }
 
     try {
@@ -258,13 +297,16 @@ class _DevsPageState extends State<DevsPage> {
       final resolvedName = '${profile['name'] ?? ''}'.trim();
       final resolvedAvatar = '${profile['avatar_url'] ?? ''}'.trim();
       final resolvedUrl = '${profile['html_url'] ?? ''}'.trim();
-      return contributor.copyWith(
+      final enriched = contributor.copyWith(
         name: resolvedName.isEmpty ? contributor.handle : resolvedName,
         avatarUrl: resolvedAvatar.isEmpty
             ? contributor.avatarUrl
             : resolvedAvatar,
         url: resolvedUrl.isEmpty ? contributor.url : resolvedUrl,
       );
+      cache[contributor.key] = enriched;
+      unawaited(_saveEnrichmentCache(cache));
+      return enriched;
     } catch (_) {
       return contributor;
     }
