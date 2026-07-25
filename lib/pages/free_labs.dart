@@ -373,9 +373,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                         '${slot.roomNumber}_${slot.startTime}_${slot.endTime}';
                     final isHighlighted = slotToken == highlightToken;
                     _highlightScroll.markHighlighted(isHighlighted);
-                    final roomSlots = filteredSlots
-                        .where((item) => item.roomNumber == slot.roomNumber)
-                        .toList();
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: _CompactRoomRow(
@@ -385,7 +382,14 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                         slot: slot,
                         isHighlighted: isHighlighted,
                         isRamadan: _isRamadan,
-                        onTap: () => _showRoomDetails(slot, roomSlots),
+                        onTap: () => _showRoomDetails(
+                          slot,
+                          filteredSlots
+                              .where(
+                                (item) => item.roomNumber == slot.roomNumber,
+                              )
+                              .toList(),
+                        ),
                       ),
                     );
                   }),
