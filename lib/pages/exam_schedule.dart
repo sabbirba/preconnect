@@ -47,6 +47,9 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
       HighlightScrollCoordinator(scrollController: _scrollController);
   int? _currentSessionSemesterId;
   bool _showDoneExams = false;
+  _ExamScheduleData? _resolvedForData;
+  bool? _resolvedForShowDone;
+  _ResolvedExamLists? _resolvedListsCache;
 
   @override
   void initState() {
@@ -294,15 +297,10 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           }
 
           final sections = examData.sections;
-          final overrides = examData.overrides;
-          final examService = ExamScheduleService();
-          final resolvedBySectionId = <int, ExamSectionResolved>{
-            for (final section in sections)
-              section.sectionId: examService.resolveSection(
-                section: section,
-                overrides: overrides,
-              ),
-          };
+          final resolvedLists = _resolvedExamListsFor(examData, _showDoneExams);
+          final resolvedBySectionId = resolvedLists.resolvedBySectionId;
+          final midExams = resolvedLists.midExams;
+          final finalExams = resolvedLists.finalExams;
           ExamSectionResolved resolved(Section section) =>
               resolvedBySectionId[section.sectionId]!;
           String? midDate(Section section) => resolved(section).midDate;
@@ -315,87 +313,8 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           String? finalEnd(Section section) => resolved(section).finalEndTime;
           String? finalRoom(Section section) =>
               resolved(section).finalRoomNumber;
-
-          final now = DateTime.now();
-          bool isUpcoming(Section section, {required bool isMid}) {
-            return ExamVisibility.isUpcomingOrOngoingSchedule(
-              date: isMid ? midDate(section) : finalDate(section),
-              start: isMid ? midStart(section) : finalStart(section),
-              end: isMid ? midEnd(section) : finalEnd(section),
-              now: now,
-            );
-          }
-
-          bool hasExamValue(Section section, {required bool isMid}) {
-            return isMid
-                ? (midDate(section) != null || midStart(section) != null)
-                : (finalDate(section) != null || finalStart(section) != null);
-          }
-
-          final upcomingMidExams = sections
-              .where(
-                (s) =>
-                    hasExamValue(s, isMid: true) && isUpcoming(s, isMid: true),
-              )
-              .toList();
-          final upcomingFinalExams = sections
-              .where(
-                (s) =>
-                    hasExamValue(s, isMid: false) &&
-                    isUpcoming(s, isMid: false),
-              )
-              .toList();
-
-          final pastMidExams = sections
-              .where(
-                (s) =>
-                    hasExamValue(s, isMid: true) && !isUpcoming(s, isMid: true),
-              )
-              .toList();
-          final pastFinalExams = sections
-              .where(
-                (s) =>
-                    hasExamValue(s, isMid: false) &&
-                    !isUpcoming(s, isMid: false),
-              )
-              .toList();
-
           final showPast = _showDoneExams;
-
-          final midExams = showPast ? pastMidExams : upcomingMidExams;
-          final finalExams = showPast ? pastFinalExams : upcomingFinalExams;
-
-          midExams.sort((a, b) {
-            final aTime = BracuTime.parseDateTime(midDate(a), midStart(a));
-            final bTime = BracuTime.parseDateTime(midDate(b), midStart(b));
-            final cmp = ExamSorting.compareExamEntries(
-              typeA: 'Midterm',
-              typeB: 'Midterm',
-              dateTimeA: aTime,
-              dateTimeB: bTime,
-              courseCodeA: a.courseCode,
-              courseCodeB: b.courseCode,
-              sectionNameA: a.sectionName,
-              sectionNameB: b.sectionName,
-            );
-            return showPast ? -cmp : cmp;
-          });
-
-          finalExams.sort((a, b) {
-            final aTime = BracuTime.parseDateTime(finalDate(a), finalStart(a));
-            final bTime = BracuTime.parseDateTime(finalDate(b), finalStart(b));
-            final cmp = ExamSorting.compareExamEntries(
-              typeA: 'Final',
-              typeB: 'Final',
-              dateTimeA: aTime,
-              dateTimeB: bTime,
-              courseCodeA: a.courseCode,
-              courseCodeB: b.courseCode,
-              sectionNameA: a.sectionName,
-              sectionNameB: b.sectionName,
-            );
-            return showPast ? -cmp : cmp;
-          });
+          final now = DateTime.now();
 
           if (midExams.isEmpty && finalExams.isEmpty) {
             final hasAnyExamData = sections.any(
@@ -706,6 +625,132 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
       ),
     );
   }
+
+  _ResolvedExamLists _resolvedExamListsFor(
+    _ExamScheduleData examData,
+    bool showPast,
+  ) {
+    final cached = _resolvedListsCache;
+    if (cached != null &&
+        identical(_resolvedForData, examData) &&
+        _resolvedForShowDone == showPast) {
+      return cached;
+    }
+
+    final sections = examData.sections;
+    final overrides = examData.overrides;
+    final examService = ExamScheduleService();
+    final resolvedBySectionId = <int, ExamSectionResolved>{
+      for (final section in sections)
+        section.sectionId: examService.resolveSection(
+          section: section,
+          overrides: overrides,
+        ),
+    };
+    ExamSectionResolved resolved(Section section) =>
+        resolvedBySectionId[section.sectionId]!;
+    String? midDate(Section section) => resolved(section).midDate;
+    String? midStart(Section section) => resolved(section).midStartTime;
+    String? midEnd(Section section) => resolved(section).midEndTime;
+    String? finalDate(Section section) => resolved(section).finalDate;
+    String? finalStart(Section section) => resolved(section).finalStartTime;
+    String? finalEnd(Section section) => resolved(section).finalEndTime;
+
+    final now = DateTime.now();
+    bool isUpcoming(Section section, {required bool isMid}) {
+      return ExamVisibility.isUpcomingOrOngoingSchedule(
+        date: isMid ? midDate(section) : finalDate(section),
+        start: isMid ? midStart(section) : finalStart(section),
+        end: isMid ? midEnd(section) : finalEnd(section),
+        now: now,
+      );
+    }
+
+    bool hasExamValue(Section section, {required bool isMid}) {
+      return isMid
+          ? (midDate(section) != null || midStart(section) != null)
+          : (finalDate(section) != null || finalStart(section) != null);
+    }
+
+    final upcomingMidExams = sections
+        .where(
+          (s) => hasExamValue(s, isMid: true) && isUpcoming(s, isMid: true),
+        )
+        .toList();
+    final upcomingFinalExams = sections
+        .where(
+          (s) => hasExamValue(s, isMid: false) && isUpcoming(s, isMid: false),
+        )
+        .toList();
+
+    final pastMidExams = sections
+        .where(
+          (s) => hasExamValue(s, isMid: true) && !isUpcoming(s, isMid: true),
+        )
+        .toList();
+    final pastFinalExams = sections
+        .where(
+          (s) => hasExamValue(s, isMid: false) && !isUpcoming(s, isMid: false),
+        )
+        .toList();
+
+    final midExams = showPast ? pastMidExams : upcomingMidExams;
+    final finalExams = showPast ? pastFinalExams : upcomingFinalExams;
+
+    midExams.sort((a, b) {
+      final aTime = BracuTime.parseDateTime(midDate(a), midStart(a));
+      final bTime = BracuTime.parseDateTime(midDate(b), midStart(b));
+      final cmp = ExamSorting.compareExamEntries(
+        typeA: 'Midterm',
+        typeB: 'Midterm',
+        dateTimeA: aTime,
+        dateTimeB: bTime,
+        courseCodeA: a.courseCode,
+        courseCodeB: b.courseCode,
+        sectionNameA: a.sectionName,
+        sectionNameB: b.sectionName,
+      );
+      return showPast ? -cmp : cmp;
+    });
+
+    finalExams.sort((a, b) {
+      final aTime = BracuTime.parseDateTime(finalDate(a), finalStart(a));
+      final bTime = BracuTime.parseDateTime(finalDate(b), finalStart(b));
+      final cmp = ExamSorting.compareExamEntries(
+        typeA: 'Final',
+        typeB: 'Final',
+        dateTimeA: aTime,
+        dateTimeB: bTime,
+        courseCodeA: a.courseCode,
+        courseCodeB: b.courseCode,
+        sectionNameA: a.sectionName,
+        sectionNameB: b.sectionName,
+      );
+      return showPast ? -cmp : cmp;
+    });
+
+    final result = _ResolvedExamLists(
+      resolvedBySectionId: resolvedBySectionId,
+      midExams: midExams,
+      finalExams: finalExams,
+    );
+    _resolvedForData = examData;
+    _resolvedForShowDone = showPast;
+    _resolvedListsCache = result;
+    return result;
+  }
+}
+
+class _ResolvedExamLists {
+  const _ResolvedExamLists({
+    required this.resolvedBySectionId,
+    required this.midExams,
+    required this.finalExams,
+  });
+
+  final Map<int, ExamSectionResolved> resolvedBySectionId;
+  final List<Section> midExams;
+  final List<Section> finalExams;
 }
 
 class _ExamScheduleData {
