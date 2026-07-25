@@ -56,6 +56,8 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
       const <CustomSchedulesCourseOption>[];
   Future<List<CustomSchedulesCourseOption>>? _courseOptionsLoadInFlight;
   bool _isBusy = false;
+  List<CustomSchedule>? _dayGroupsForItems;
+  List<_MyDayGroup>? _dayGroupsCache;
 
   @override
   void initState() {
@@ -597,7 +599,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
 
           final items =
               _latestItems ?? snapshot.data ?? const <CustomSchedule>[];
-          final dayGroups = _groupItemsByDay(items);
+          final dayGroups = _dayGroupsFor(items);
 
           if (items.isEmpty) {
             return BracuRefreshList(
@@ -677,6 +679,17 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
         },
       ),
     );
+  }
+
+  List<_MyDayGroup> _dayGroupsFor(List<CustomSchedule> items) {
+    final cached = _dayGroupsCache;
+    if (cached != null && identical(_dayGroupsForItems, items)) {
+      return cached;
+    }
+    final groups = _groupItemsByDay(items);
+    _dayGroupsForItems = items;
+    _dayGroupsCache = groups;
+    return groups;
   }
 
   List<_MyDayGroup> _groupItemsByDay(List<CustomSchedule> items) {
