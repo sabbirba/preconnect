@@ -612,6 +612,50 @@ class AppLockService {
   }
 }
 
+Future<bool> looksLikeImageFile(File file) async {
+  try {
+    final raf = await file.open();
+    final header = await raf.read(12);
+    await raf.close();
+    if (header.length >= 3 &&
+        header[0] == 0xFF &&
+        header[1] == 0xD8 &&
+        header[2] == 0xFF) {
+      return true;
+    }
+    if (header.length >= 4 &&
+        header[0] == 0x89 &&
+        header[1] == 0x50 &&
+        header[2] == 0x4E &&
+        header[3] == 0x47) {
+      return true;
+    }
+    if (header.length >= 3 &&
+        header[0] == 0x47 &&
+        header[1] == 0x49 &&
+        header[2] == 0x46) {
+      return true;
+    }
+    if (header.length >= 2 && header[0] == 0x42 && header[1] == 0x4D) {
+      return true;
+    }
+    if (header.length >= 12 &&
+        header[0] == 0x52 &&
+        header[1] == 0x49 &&
+        header[2] == 0x46 &&
+        header[3] == 0x46 &&
+        header[8] == 0x57 &&
+        header[9] == 0x45 &&
+        header[10] == 0x42 &&
+        header[11] == 0x50) {
+      return true;
+    }
+    return false;
+  } catch (_) {
+    return false;
+  }
+}
+
 class ProfileImageCache {
   ProfileImageCache._();
   static final instance = ProfileImageCache._();
@@ -655,7 +699,17 @@ class ProfileImageCache {
         photoUrl,
         authHeaders: headers,
       );
-      return fileInfo.file;
+      if (await looksLikeImageFile(fileInfo.file)) {
+        return fileInfo.file;
+      }
+      await _cacheManager.removeFile(photoUrl);
+    } catch (_) {}
+
+    try {
+      final cached = await _cacheManager.getFileFromCache(photoUrl);
+      if (cached != null && await looksLikeImageFile(cached.file)) {
+        return cached.file;
+      }
     } catch (_) {}
 
     return null;
