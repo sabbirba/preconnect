@@ -218,8 +218,6 @@ class _SelectedFile {
 }
 
 class _CampusPrinterPageState extends State<CampusPrinterPage> {
-  static const int _printerPort = 515;
-  static const String _printerQueue = 'secure';
   static const String _historyKey = 'campus_printer_history';
   static const int _maxHistoryEntries = 50;
   static const String _copiesKey = 'campus_printer_copies';
@@ -449,7 +447,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       final networkKey = await _currentNetworkFingerprint();
       _lastNetworkFingerprint = networkKey;
       final printers = await _WifiPrinterDiscovery.findLprPrinters(
-        port: _printerPort,
+        port: _CampusPrinterConfig.current.port,
+        campusHosts: _CampusPrinterConfig.current.hosts,
       );
       if (!mounted) return;
       if (printers.isEmpty) {
@@ -762,8 +761,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     try {
       final client = _LprPrintClient(
         host: host,
-        port: _printerPort,
-        queue: _printerQueue,
+        port: _CampusPrinterConfig.current.port,
+        queue: _CampusPrinterConfig.current.queue,
       );
       final preferences = _PrintTicket(
         copies: copies,
@@ -1366,6 +1365,24 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       ],
     );
   }
+}
+
+class _CampusPrinterConfig {
+  const _CampusPrinterConfig({
+    required this.hosts,
+    required this.port,
+    required this.queue,
+  });
+
+  final List<String> hosts;
+  final int port;
+  final String queue;
+
+  static const _CampusPrinterConfig current = _CampusPrinterConfig(
+    hosts: <String>['172.16.0.111'],
+    port: 515,
+    queue: 'secure',
+  );
 }
 
 class _CampusPrinterBootstrap {
@@ -2455,8 +2472,6 @@ class _WifiPrinterCandidate {
 class _WifiPrinterDiscovery {
   _WifiPrinterDiscovery._();
 
-  static const List<String> _campusPrinterHosts = <String>['172.16.0.111'];
-
   static Future<List<_WifiPrinterCandidate>> findLprPrinters({
     int port = 515,
     Duration timeout = const Duration(milliseconds: 260),
@@ -2464,6 +2479,7 @@ class _WifiPrinterDiscovery {
     int limit = 3,
     int maxSubnets = 2,
     List<String> preferredHosts = const <String>[],
+    List<String> campusHosts = const <String>['172.16.0.111'],
   }) async {
     final subnets = await _localIpv4Subnets();
     final found = <_WifiPrinterCandidate>[];
@@ -2480,7 +2496,7 @@ class _WifiPrinterDiscovery {
       }
     }
 
-    for (final address in _campusPrinterHosts) {
+    for (final address in campusHosts) {
       if (!seen.add(address)) continue;
       final open = await _probe(
         address,
