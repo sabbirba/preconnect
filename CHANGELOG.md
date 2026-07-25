@@ -5,12 +5,11 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
-## [2.0.2] — 2026-07-20
-- Wi-Fi: Fixed Android 10+ captive portal & printer routing.
-- UI: Unified spacing gaps, pickers, & bottom sheets.
-- Web: Fixed extension JS interop, CSP, & OAuth flows.
-- Updates: Enhanced update routing & device diagnostics.
-- CI/CD: Automated store promotions across platforms.
+## [2.0.2] — 2026-07-26
+- Wi-Fi: Captive portal login is more reliable now — fixed cases where the app couldn't detect a successful sign-in, improved network selection so login requests go out over the right Wi-Fi connection, and the in-app browser now handles campus portal certificates properly.
+- Offline: Profile pictures and the BRACU logo now keep showing your last-loaded image when you're offline instead of going blank, and images no longer get corrupted by a captive portal page pretending to be a photo.
+- Performance: Reduced unnecessary background network calls on the Home screen, sped up image loading in scrolling lists, and cut down on repeated calculations that could cause stutter on the dashboard.
+- Devs & Support: The "People Behind It" list now updates without needing an app update.
 
 ## [2.0.1] — 2026-07-18
 - Performance Upgrades: Pipeline compilation optimized with parallel build jobs and dependency caching.
