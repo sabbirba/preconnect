@@ -36,6 +36,8 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       'home_dashboard_snapshot_v1';
   static _HomeData? _cachedData;
   static Future<_HomeData>? _preloadFuture;
+  static DateTime? _lastBackgroundRefreshAt;
+  static const Duration _minBackgroundRefreshInterval = Duration(minutes: 3);
   void _toggleQuickAccess() {
     setState(() {
       _quickAccessExpanded = !_quickAccessExpanded;
@@ -137,11 +139,22 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     } catch (_) {}
   }
 
-  Future<void> _backgroundRefresh() async {
+  Future<void> _backgroundRefresh({bool ignoreMinInterval = false}) async {
     if (_refreshInFlight || _isRefreshing) return;
+    final lastRefresh = _lastBackgroundRefreshAt;
+    if (!ignoreMinInterval &&
+        lastRefresh != null &&
+        DateTime.now().difference(lastRefresh) <
+            _minBackgroundRefreshInterval) {
+      return;
+    }
     _refreshInFlight = true;
+    _lastBackgroundRefreshAt = DateTime.now();
     try {
       final fresh = await _loadData(forceRefresh: true);
+      if (!fresh.hasRequiredProfileFields && _latestData != null) {
+        return;
+      }
       if (!mounted) return;
       setState(() {
         _latestData = fresh;
@@ -582,6 +595,56 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     }
   }
 
+  _HomeData? _derivedForData;
+  String? _derivedForToday;
+  _DerivedDashboardData? _derivedCache;
+
+  _DerivedDashboardData _deriveDashboardValues(_HomeData? data) {
+    final today = _todayName();
+    final cached = _derivedCache;
+    if (cached != null &&
+        identical(_derivedForData, data) &&
+        _derivedForToday == today) {
+      return cached;
+    }
+
+    final todayDate = DateFormat('d MMMM, yyyy').format(DateTime.now());
+    final todayEntries =
+        (data?.entries ?? const <_ScheduleEntry>[])
+            .where((e) => normalizeWeekday(e.day) == normalizeWeekday(today))
+            .toList()
+          ..sort(
+            (a, b) => _timeToMinutes(a.startTime) - _timeToMinutes(b.startTime),
+          );
+    final examWeekStatus = _todayExamWeekStatus(
+      data?.sections ?? const <section.Section>[],
+      data?.examOverrides ?? const <String, ExamScheduleOverride>{},
+    );
+    final nextCountdown = _nextDeadlineCountdown(
+      data?.sections ?? const <section.Section>[],
+      data?.examOverrides ?? const <String, ExamScheduleOverride>{},
+      data?.personalSchedules ?? const <CustomSchedule>[],
+      data?.advisingInfo,
+    );
+    final todayExams = _todayExamEntries(
+      data?.sections ?? const <section.Section>[],
+      data?.examOverrides ?? const <String, ExamScheduleOverride>{},
+    );
+
+    final result = _DerivedDashboardData(
+      today: today,
+      todayDate: todayDate,
+      todayEntries: todayEntries,
+      examWeekStatus: examWeekStatus,
+      nextCountdown: nextCountdown,
+      todayExams: todayExams,
+    );
+    _derivedForData = data;
+    _derivedForToday = today;
+    _derivedCache = result;
+    return result;
+  }
+
   String _todayName() {
     switch (DateTime.now().weekday) {
       case DateTime.monday:
@@ -978,6 +1041,24 @@ Future<_HomeData> _preloadHomeDashboardData({bool forceRefresh = false}) async {
       _HomeDashboardState._preloadFuture = null;
     }
   }
+}
+
+class _DerivedDashboardData {
+  const _DerivedDashboardData({
+    required this.today,
+    required this.todayDate,
+    required this.todayEntries,
+    required this.examWeekStatus,
+    required this.nextCountdown,
+    required this.todayExams,
+  });
+
+  final String today;
+  final String todayDate;
+  final List<_ScheduleEntry> todayEntries;
+  final _ExamWeekStatus examWeekStatus;
+  final _CountdownCardData? nextCountdown;
+  final List<_TodayExamEntry> todayExams;
 }
 
 class _ExamWeekStatus {
