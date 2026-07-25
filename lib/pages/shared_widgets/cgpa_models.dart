@@ -426,8 +426,3 @@ double? _gradePointFor(String grade) {
       return null;
   }
 }
-
-String _formatCredit(double value) {
-  if (value % 1 == 0) return value.toStringAsFixed(0);
-  return value.toStringAsFixed(1);
-}

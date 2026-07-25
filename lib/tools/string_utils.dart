@@ -1,3 +1,8 @@
+String formatCredit(double value) {
+  if (value % 1 == 0) return value.toStringAsFixed(0);
+  return value.toStringAsFixed(1);
+}
+
 int compareNaturalText(String a, String b) {
   return _compareNatural(a.trim().toLowerCase(), b.trim().toLowerCase());
 }

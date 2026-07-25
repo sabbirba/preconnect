@@ -340,10 +340,10 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
             (sum, section) => sum + section.courseCredit,
           );
           final summaryStats = [
-            (title: 'Total', value: _formatCredit(summaryTotal)),
-            (title: 'Done', value: _formatCredit(summaryCompleted)),
-            (title: 'Attempt', value: _formatCredit(attemptedCredit)),
-            (title: 'Left', value: _formatCredit(remainingCredit)),
+            (title: 'Total', value: formatCredit(summaryTotal)),
+            (title: 'Done', value: formatCredit(summaryCompleted)),
+            (title: 'Attempt', value: formatCredit(attemptedCredit)),
+            (title: 'Left', value: formatCredit(remainingCredit)),
           ];
           final topCourses = [...info.completedCourses]
             ..sort((a, b) => compareNaturalText(a.code, b.code));
@@ -528,7 +528,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                       ),
                                       const Gap(2),
                                       Text(
-                                        'Required ${_formatCredit(requiredCredit)} Credits • Remaining ${_formatCredit(remainingForHeader)} Credits',
+                                        'Required ${formatCredit(requiredCredit)} Credits • Remaining ${formatCredit(remainingForHeader)} Credits',
                                         style: TextStyle(
                                           color: BracuPalette.textSecondary(
                                             context,
@@ -545,7 +545,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
-                                      '${_formatCredit(earnedCredit)} credits',
+                                      '${formatCredit(earnedCredit)} credits',
                                       style: TextStyle(
                                         color: BracuPalette.textPrimary(
                                           context,
@@ -669,7 +669,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  '${_formatCredit(item.credit)} credits',
+                                  '${formatCredit(item.credit)} credits',
                                   style: TextStyle(
                                     color: BracuPalette.textPrimary(context),
                                     fontSize: 14,
@@ -872,7 +872,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  '${_formatCredit(course.credit)} credits',
+                                  '${formatCredit(course.credit)} credits',
                                   style: TextStyle(
                                     color: BracuPalette.textPrimary(context),
                                     fontSize: 14,
