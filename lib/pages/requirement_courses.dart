@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:gap/gap.dart';
 import 'package:preconnect/model/progress_info.dart';
+import 'package:preconnect/pages/shared_widgets/course_tile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/string_utils.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -103,176 +103,50 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
       title: widget.headerTitle,
       subtitle: 'Requirement Courses',
       icon: Icons.menu_book_outlined,
-      body: ListView(
+      body: ListView.builder(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-        children: [
-          if (courses.isEmpty)
-            const BracuCard(
+        itemCount: courses.isEmpty ? 1 : courses.length,
+        itemBuilder: (context, index) {
+          if (courses.isEmpty) {
+            return const BracuCard(
               child: BracuEmptyState(
                 message: 'No courses found for this section.',
               ),
-            )
-          else
-            ...courses.map((course) {
-              final courseCode = course.code.trim().toUpperCase();
-              final completed = completedMap[courseCode];
-              final takingNow = currentSemesterCodes.contains(courseCode);
-              final done = completed != null;
-              final grade = completed?.grade.trim() ?? '';
-              final infoLabel = course.isMandatory ? 'Required' : 'Optional';
-              final gradeLabel = grade.isEmpty ? null : grade;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: BracuCard(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      if (gradeLabel != null) ...[
-                        SectionBadge(
-                          label: gradeLabel,
-                          color: BracuPalette.primary,
-                          size: 40,
-                          fontSize: 13,
-                        ),
-                        const Gap(12),
-                      ],
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Flexible(
-                                  child: Text.rich(
-                                    TextSpan(
-                                      children: [
-                                        TextSpan(text: course.code),
-                                        WidgetSpan(
-                                          alignment:
-                                              PlaceholderAlignment.middle,
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(
-                                              left: 4,
-                                            ),
-                                            child: Tooltip(
-                                              message:
-                                                  _pinnedCodes.contains(
-                                                    course.code.toUpperCase(),
-                                                  )
-                                                  ? 'Unpin'
-                                                  : 'Pin to top',
-                                              child: InkWell(
-                                                borderRadius:
-                                                    BorderRadius.circular(999),
-                                                onTap: () =>
-                                                    _togglePin(course.code),
-                                                child: Icon(
-                                                  _pinnedCodes.contains(
-                                                        course.code
-                                                            .toUpperCase(),
-                                                      )
-                                                      ? Icons.star_rounded
-                                                      : Icons
-                                                            .star_outline_rounded,
-                                                  size: 16,
-                                                  color:
-                                                      _pinnedCodes.contains(
-                                                        course.code
-                                                            .toUpperCase(),
-                                                      )
-                                                      ? BracuPalette.favorite
-                                                      : BracuPalette.textSecondary(
-                                                          context,
-                                                        ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Gap(3),
-                            Text(
-                              course.title.isEmpty ? '--' : course.title,
-                              style: TextStyle(
-                                color: BracuPalette.textSecondary(context),
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Gap(12),
-                      SizedBox(
-                        width: 96,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              '${_formatCredit(course.credit)} credits',
-                              style: TextStyle(
-                                color: BracuPalette.textPrimary(context),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const Gap(1),
-                            Text(
-                              infoLabel,
-                              style: TextStyle(
-                                color: course.isMandatory
-                                    ? BracuPalette.warning
-                                    : BracuPalette.accent,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            if (done && gradeLabel == null) ...[
-                              const Gap(2),
-                              Text(
-                                'Completed',
-                                style: TextStyle(
-                                  color: BracuPalette.accent,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ] else if (takingNow) ...[
-                              const Gap(2),
-                              Text(
-                                'This semester',
-                                style: TextStyle(
-                                  color: BracuPalette.primary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-        ],
+            );
+          }
+          final course = courses[index];
+          final courseCode = course.code.trim().toUpperCase();
+          final completed = completedMap[courseCode];
+          final takingNow = currentSemesterCodes.contains(courseCode);
+          final done = completed != null;
+          final grade = completed?.grade.trim() ?? '';
+          final gradeLabel = grade.isEmpty ? null : grade;
+          final String? statusLabel;
+          final Color? statusColor;
+          if (done && gradeLabel == null) {
+            statusLabel = 'Completed';
+            statusColor = BracuPalette.accent;
+          } else if (takingNow) {
+            statusLabel = 'This semester';
+            statusColor = BracuPalette.primary;
+          } else {
+            statusLabel = null;
+            statusColor = null;
+          }
+          return CourseTile(
+            code: course.code,
+            title: course.title,
+            credit: course.credit,
+            isMandatory: course.isMandatory,
+            isPinned: _pinnedCodes.contains(courseCode),
+            onTogglePin: () => _togglePin(course.code),
+            gradeLabel: gradeLabel,
+            statusLabel: statusLabel,
+            statusColor: statusColor,
+            bottomPadding: 10,
+          );
+        },
       ),
     );
-  }
-
-  String _formatCredit(double value) {
-    if (value % 1 == 0) return value.toStringAsFixed(0);
-    return value.toStringAsFixed(1);
   }
 }

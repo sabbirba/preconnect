@@ -61,13 +61,6 @@ extension _DegreeProgressPageStateHelpers on _DegreeProgressPageState {
         a.remainingCourses == b.remainingCourses;
   }
 
-  String _formatCredit(double value) {
-    if (value % 1 == 0) {
-      return value.toStringAsFixed(0);
-    }
-    return value.toStringAsFixed(1);
-  }
-
   String _resolveProgramTitle(ProgressInfo info) {
     final curriculumName = info.programName.trim();
     if (_fullProgramName.isNotEmpty) return _fullProgramName;

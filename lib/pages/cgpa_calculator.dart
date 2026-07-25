@@ -78,7 +78,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
         _CompletedCourseDraft.auto(
           code: course.code,
           title: course.title,
-          credit: _formatCredit(course.credit),
+          credit: formatCredit(course.credit),
           grade: _normalizeImportedGrade(course.grade),
           semester: course.semesterSession,
           isRequired:
@@ -209,7 +209,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
         value: '${_currentCourses.length + selectedRetakes.length}',
       ),
       (title: 'Retakes', value: '${selectedRetakes.length}'),
-      (title: 'Credits', value: _formatCredit(expectedResult.selectedCredits)),
+      (title: 'Credits', value: formatCredit(expectedResult.selectedCredits)),
     ];
     return BracuCard(
       child: Column(
