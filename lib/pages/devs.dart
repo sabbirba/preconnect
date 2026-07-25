@@ -1,9 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:http/http.dart' as http;
-import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/pages/api_test.dart';
@@ -11,16 +11,23 @@ import 'package:preconnect/pages/settings.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/tools/cached_image.dart';
+import 'package:preconnect/tools/cdn_cache.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
 const String _githubToken = String.fromEnvironment('GITHUB_TOKEN');
+const String _contributorsRosterUrl =
+    'https://cdn.jsdelivr.net/gh/sabbirba/preconnect@main/contributors.json';
+const String _sponsorsRosterUrl =
+    'https://cdn.jsdelivr.net/gh/sabbirba/preconnect@main/sponsors.json';
+const String _sponsorsCacheKey = 'devs_sponsors_roster_v1';
 
 class DevsPage extends StatefulWidget {
   const DevsPage({super.key});
 
   static Future<void> preload() async {
     await _DevsPageState.preloadData();
+    unawaited(_loadSponsorsRoster());
   }
 
   @override
@@ -31,6 +38,8 @@ class _DevsPageState extends State<DevsPage> {
   late Future<String> _subtitleFuture;
   List<_ContributorProfile> _contributors = const <_ContributorProfile>[];
   bool _contributorsLoading = false;
+  List<_SponsorEntry> _sponsors = const <_SponsorEntry>[];
+  bool _sponsorsLoading = false;
   int _secretTapCount = 0;
   static List<_ContributorProfile>? _cachedContributors;
   static Future<List<_ContributorProfile>>? _preloadFuture;
@@ -41,7 +50,28 @@ class _DevsPageState extends State<DevsPage> {
     if (_cachedContributors != null) {
       _contributors = _cachedContributors!;
     }
+    final peekedSponsors = CdnJsonCache.peek<List<_SponsorEntry>>(
+      _sponsorsCacheKey,
+    );
+    if (peekedSponsors != null) {
+      _sponsors = peekedSponsors;
+    }
     _loadContributors();
+    _loadSponsors();
+  }
+
+  Future<void> _loadSponsors({bool forceRefresh = false}) async {
+    if (_sponsorsLoading) return;
+    _sponsorsLoading = true;
+    try {
+      final sponsors = await _loadSponsorsRoster(forceRefresh: forceRefresh);
+      if (!mounted) return;
+      setState(() {
+        _sponsors = sponsors;
+      });
+    } finally {
+      _sponsorsLoading = false;
+    }
   }
 
   static Future<List<_ContributorProfile>> preloadData({
@@ -89,7 +119,10 @@ class _DevsPageState extends State<DevsPage> {
   }
 
   Future<void> _refreshContributors() async {
-    await _loadContributors(forceRefresh: true);
+    await Future.wait([
+      _loadContributors(forceRefresh: true),
+      _loadSponsors(forceRefresh: true),
+    ]);
   }
 
   static Future<List<_ContributorProfile>> _loadContributorsStatic({
@@ -99,7 +132,7 @@ class _DevsPageState extends State<DevsPage> {
       if (!forceRefresh) {
         final cached = await _readCachedContributorsStatic();
         if (cached.isNotEmpty) {
-          return _buildContributors(cached);
+          return _buildContributors(cached, forceRosterRefresh: forceRefresh);
         }
       }
 
@@ -108,11 +141,17 @@ class _DevsPageState extends State<DevsPage> {
       );
       final response = await _githubGet(uri);
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        return _buildContributors(const <_ContributorProfile>[]);
+        return _buildContributors(
+          const <_ContributorProfile>[],
+          forceRosterRefresh: forceRefresh,
+        );
       }
       final decoded = jsonDecode(response.body);
       if (decoded is! List) {
-        return _buildContributors(const <_ContributorProfile>[]);
+        return _buildContributors(
+          const <_ContributorProfile>[],
+          forceRosterRefresh: forceRefresh,
+        );
       }
       final contributors = await Future.wait(
         decoded.whereType<Map>().map((raw) async {
@@ -122,7 +161,10 @@ class _DevsPageState extends State<DevsPage> {
           return _enrichContributorIfNeeded(contributor);
         }),
       );
-      final merged = await _buildContributors(contributors);
+      final merged = await _buildContributors(
+        contributors,
+        forceRosterRefresh: forceRefresh,
+      );
       final visibleContributors = merged
           .where((item) => !_isBotContributor(item))
           .toList();
@@ -135,7 +177,10 @@ class _DevsPageState extends State<DevsPage> {
       }
       return merged;
     } catch (_) {
-      return _buildContributors(const <_ContributorProfile>[]);
+      return _buildContributors(
+        const <_ContributorProfile>[],
+        forceRosterRefresh: forceRefresh,
+      );
     }
   }
 
@@ -155,17 +200,39 @@ class _DevsPageState extends State<DevsPage> {
         .toList();
   }
 
+  static const String _rosterCacheKey = 'devs_contributors_roster_v1';
+
+  static List<_ContributorProfile>? _decodeRoster(dynamic decoded) {
+    if (decoded is! List) return null;
+    final roster = decoded
+        .whereType<Map>()
+        .map((raw) => _ContributorProfile.fromRemoteJson(raw.cast()))
+        .where((item) => item.handle.isNotEmpty)
+        .toList();
+    return roster.isEmpty ? null : roster;
+  }
+
+  static Future<List<_ContributorProfile>> _loadRoster({
+    bool forceRefresh = false,
+  }) async {
+    final roster = await CdnJsonCache.load<List<_ContributorProfile>>(
+      url: _contributorsRosterUrl,
+      cacheKey: _rosterCacheKey,
+      decode: _decodeRoster,
+      forceRefresh: forceRefresh,
+    );
+    return roster ?? const <_ContributorProfile>[];
+  }
+
   static Future<List<_ContributorProfile>> _buildContributors(
-    List<_ContributorProfile> items,
-  ) async {
-    final merged = <_ContributorProfile>[
-      ..._pinnedGitHubContributors,
-      ..._manualContributors,
-      ...items,
-    ];
+    List<_ContributorProfile> items, {
+    bool forceRosterRefresh = false,
+  }) async {
+    final roster = await _loadRoster(forceRefresh: forceRosterRefresh);
+    final merged = <_ContributorProfile>[...roster, ...items];
     final enriched = await Future.wait(merged.map(_enrichContributorIfNeeded));
     final visible = enriched.where((item) => !_isBotContributor(item)).toList();
-    return _orderContributors(_dedupeContributors(visible));
+    return _orderContributors(_dedupeContributors(visible), roster);
   }
 
   static Future<_ContributorProfile> _enrichContributorIfNeeded(
@@ -309,12 +376,13 @@ class _DevsPageState extends State<DevsPage> {
   }
 
   Widget _buildSponsoredSection() {
-    return const Column(
+    if (_sponsors.isEmpty) return const SizedBox.shrink();
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        BracuSectionTitle(title: 'Sponsored'),
-        Gap(12),
-        _SponsoredStrip(),
+        const BracuSectionTitle(title: 'Sponsored'),
+        const Gap(12),
+        _SponsoredStrip(sponsors: _sponsors),
       ],
     );
   }
@@ -333,29 +401,6 @@ class _DevsPageState extends State<DevsPage> {
 }
 
 const _contributorsCacheKey = 'devs_contributors_v3';
-
-const _pinnedGitHubContributors = <_ContributorProfile>[
-  _ContributorProfile.github(
-    handle: 'NaiveInvestigator',
-    role: 'Lead Developer',
-  ),
-  _ContributorProfile.github(handle: 'sabbirba', role: 'Developer & UI/UX'),
-];
-
-final _manualContributors = <_ContributorProfile>[
-  _ContributorProfile(
-    name: 'Mueen Ahmmed',
-    handle: 'mueen-ahmmed',
-    role: 'Faculty Reviews',
-    avatarUrl: ApiConfig.websiteMueenAvatarUrl,
-    linkLabel: 'LinkedIn',
-    url: 'https://www.linkedin.com/in/mueen-ahmmed-b337b8231/',
-  ),
-  _ContributorProfile.github(handle: 'Zamiul-rashid', role: 'Friends Schedule'),
-  _ContributorProfile.github(handle: 'shakilofficial0', role: 'Live Bus Data'),
-  _ContributorProfile.github(handle: 'rez1-dev', role: 'Testing & Feedback'),
-  _ContributorProfile.github(handle: 'hitblast', role: 'Developer & Community'),
-];
 
 class _IntroCard extends StatelessWidget {
   const _IntroCard();
@@ -411,9 +456,7 @@ class _ContributorsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final all = _orderContributors(
-      _dedupeContributors([...contributors, ..._manualContributors]),
-    );
+    final all = contributors;
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth.isFinite
@@ -444,7 +487,9 @@ class _ContributorsGrid extends StatelessWidget {
 }
 
 class _SponsoredStrip extends StatelessWidget {
-  const _SponsoredStrip();
+  const _SponsoredStrip({required this.sponsors});
+
+  final List<_SponsorEntry> sponsors;
 
   @override
   Widget build(BuildContext context) {
@@ -454,19 +499,34 @@ class _SponsoredStrip extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.zero,
-        children: const [
-          _SponsoredTile(
-            width: 220,
-            title: 'Become a Sponsor',
-            subtitle: 'Tap to chat on WhatsApp',
-            iconWidget: Icon(
-              Icons.chat_rounded,
-              size: 22,
-              color: Color(0xFF25D366),
+        children: [
+          for (final sponsor in sponsors)
+            _SponsoredTile(
+              width: 220,
+              title: sponsor.title,
+              subtitle: sponsor.subtitle,
+              iconWidget: sponsor.iconUrl.isEmpty
+                  ? const Icon(
+                      Icons.favorite_rounded,
+                      size: 22,
+                      color: BracuPalette.primary,
+                    )
+                  : ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: CachedImage(
+                        url: sponsor.iconUrl,
+                        width: 22,
+                        height: 22,
+                        fit: BoxFit.cover,
+                        error: const Icon(
+                          Icons.favorite_rounded,
+                          size: 22,
+                          color: BracuPalette.primary,
+                        ),
+                      ),
+                    ),
+              url: sponsor.url,
             ),
-            url:
-                'https://api.whatsapp.com/send?phone=8801865493144&text=Hi%20PreConnect%2C%20I%20want%20to%20become%20a%20sponsor%20for%20the%20app.',
-          ),
         ],
       ),
     );
@@ -557,47 +617,20 @@ List<_ContributorProfile> _dedupeContributors(List<_ContributorProfile> items) {
   return output;
 }
 
-List<_ContributorProfile> _orderContributors(List<_ContributorProfile> items) {
-  final naive = _findByHandle(items, 'naiveinvestigator', 'naivelnvestigator');
-  final sabbir = _findByHandle(items, 'sabbirba');
-  final zamiul = _findByHandle(items, 'zamiul-rashid');
-  final mueen = _findByHandle(items, 'mueen-ahmmed');
-  final shakil = _findByHandle(items, 'shakilofficial0');
-  final rez1 = _findByHandle(items, 'rez1-dev');
-  final reserved = <_ContributorProfile>{
-    ?naive,
-    ?sabbir,
-    ?zamiul,
-    ?mueen,
-    ?shakil,
-    ?rez1,
-  };
-  final others = items.where((item) => !reserved.contains(item)).toList();
-  final ordered = <_ContributorProfile>[
-    ?naive,
-    ?sabbir,
-    ?zamiul,
-    ?mueen,
-    ?shakil,
-    ?rez1,
-  ];
-
-  ordered.addAll(others);
-  return ordered;
-}
-
-_ContributorProfile? _findByHandle(
+List<_ContributorProfile> _orderContributors(
   List<_ContributorProfile> items,
-  String primary, [
-  String? alternate,
-]) {
-  for (final item in items) {
-    if (item.matchesHandle(primary) ||
-        (alternate != null && item.matchesHandle(alternate))) {
-      return item;
-    }
-  }
-  return null;
+  List<_ContributorProfile> roster,
+) {
+  final rosterOrder = <String, int>{
+    for (var i = 0; i < roster.length; i++) roster[i].key: i,
+  };
+  final indexed = items.asMap().entries.toList();
+  indexed.sort((a, b) {
+    final aRank = rosterOrder[a.value.key] ?? (rosterOrder.length + a.key);
+    final bRank = rosterOrder[b.value.key] ?? (rosterOrder.length + b.key);
+    return aRank.compareTo(bRank);
+  });
+  return indexed.map((entry) => entry.value).toList();
 }
 
 class _DevGridTile extends StatelessWidget {
@@ -689,6 +722,8 @@ class _ContributorAvatar extends StatelessWidget {
       child: ClipOval(
         child: CachedImage(
           url: url,
+          width: size,
+          height: size,
           fit: BoxFit.cover,
           placeholder: fallback,
           error: fallback,
@@ -696,6 +731,58 @@ class _ContributorAvatar extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SponsorEntry {
+  const _SponsorEntry({
+    required this.title,
+    required this.subtitle,
+    required this.iconUrl,
+    required this.url,
+  });
+
+  final String title;
+  final String subtitle;
+  final String iconUrl;
+  final String url;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'title': title,
+    'subtitle': subtitle,
+    'iconUrl': iconUrl,
+    'url': url,
+  };
+
+  factory _SponsorEntry.fromJson(Map<String, dynamic> json) {
+    return _SponsorEntry(
+      title: '${json['title'] ?? ''}'.trim(),
+      subtitle: '${json['subtitle'] ?? ''}'.trim(),
+      iconUrl: '${json['iconUrl'] ?? ''}'.trim(),
+      url: '${json['url'] ?? ''}'.trim(),
+    );
+  }
+}
+
+List<_SponsorEntry>? _decodeSponsorsRoster(dynamic decoded) {
+  if (decoded is! List) return null;
+  final sponsors = decoded
+      .whereType<Map>()
+      .map((raw) => _SponsorEntry.fromJson(raw.cast()))
+      .where((item) => item.title.isNotEmpty && item.url.isNotEmpty)
+      .toList();
+  return sponsors.isEmpty ? null : sponsors;
+}
+
+Future<List<_SponsorEntry>> _loadSponsorsRoster({
+  bool forceRefresh = false,
+}) async {
+  final sponsors = await CdnJsonCache.load<List<_SponsorEntry>>(
+    url: _sponsorsRosterUrl,
+    cacheKey: _sponsorsCacheKey,
+    decode: _decodeSponsorsRoster,
+    forceRefresh: forceRefresh,
+  );
+  return sponsors ?? const <_SponsorEntry>[];
 }
 
 class _ContributorProfile {
@@ -767,12 +854,30 @@ class _ContributorProfile {
     );
   }
 
+  factory _ContributorProfile.fromRemoteJson(Map<String, dynamic> json) {
+    final handle = '${json['handle'] ?? ''}'.trim();
+    final linkLabel = '${json['linkLabel'] ?? ''}'.trim();
+    final name = '${json['name'] ?? ''}'.trim();
+    final avatarUrl = '${json['avatarUrl'] ?? ''}'.trim();
+    final url = '${json['url'] ?? ''}'.trim();
+    return _ContributorProfile(
+      handle: handle,
+      name: name.isEmpty ? handle : name,
+      role: '${json['role'] ?? ''}'.trim(),
+      avatarUrl: avatarUrl.isEmpty
+          ? 'https://github.com/$handle.png'
+          : avatarUrl,
+      linkLabel: linkLabel.isEmpty ? 'GitHub' : linkLabel,
+      url: url.isEmpty ? 'https://github.com/$handle' : url,
+    );
+  }
+
   factory _ContributorProfile.fromGitHubContributor(Map<String, dynamic> json) {
     final login = '${json['login'] ?? ''}'.trim();
     return _ContributorProfile.github(
       handle: login,
       name: login,
-      role: _githubRole(login),
+      role: 'Contributor',
       avatarUrl: '${json['avatar_url'] ?? ''}'.trim(),
       url: '${json['html_url'] ?? ''}'.trim(),
     );
@@ -785,16 +890,6 @@ class _ContributorProfile {
     );
     return normalizedUrl.isEmpty ? key : normalizedUrl;
   }
-
-  bool matchesHandle(String value) => key == value.trim().toLowerCase();
-}
-
-String _githubRole(String login) {
-  return switch (login.trim().toLowerCase()) {
-    'naivelnvestigator' => 'Lead Developer',
-    'sabbirba' => 'Developer & UI/UX',
-    _ => 'Contributor',
-  };
 }
 
 Map<String, String> _githubHeaders() {

@@ -8,21 +8,15 @@ import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/notification.dart';
-import 'package:preconnect/api/progress.dart';
-import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/api/grade_sheet.dart';
 import 'package:preconnect/api/funding.dart';
-import 'package:preconnect/model/progress_info.dart';
-import 'package:preconnect/model/section_info.dart' as section;
-import 'package:preconnect/pages/cgpa_calculator.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/cached_image.dart';
+import 'package:preconnect/tools/cdn_cache.dart';
 import 'package:preconnect/tools/token_storage.dart';
-import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/web_shared.dart';
-import 'package:preconnect/pages/shared_widgets/session_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
@@ -407,77 +401,6 @@ Future<bool> _openPdfNativelyOrFallback(String filePath) async {
   return opened;
 }
 
-List<section.Section> buildCurrentSectionsForCalculator(
-  ProgressInfo info,
-  String? scheduleJson,
-) {
-  final sections = section.parseSectionsFromScheduleJson(scheduleJson);
-  final courseTitleByCode = <String, String>{};
-  for (final course in info.curriculumCourses) {
-    final code = course.code.trim().toUpperCase();
-    final title = course.title.trim();
-    if (code.isEmpty || title.isEmpty) continue;
-    courseTitleByCode[code] = title;
-  }
-  for (final course in info.completedCourses) {
-    final code = course.code.trim().toUpperCase();
-    final title = course.title.trim();
-    if (code.isEmpty || title.isEmpty) continue;
-    courseTitleByCode.putIfAbsent(code, () => title);
-  }
-  return sections.where((current) {
-    final resolvedTitle =
-        (courseTitleByCode[current.courseCode.trim().toUpperCase()] ??
-                (current.name ?? ''))
-            .trim();
-    final hasNoRealName =
-        resolvedTitle.isEmpty ||
-        resolvedTitle.toUpperCase() == current.courseCode.trim().toUpperCase();
-    return !(current.courseCredit <= 0 && hasNoRealName);
-  }).toList();
-}
-
-Future<void> openCgpaCalculatorPage(BuildContext context) async {
-  try {
-    final info = await ProgressService().getProgress();
-    final semesterSessionId = await resolveCurrentSessionSemesterIdWithRetry();
-    if (semesterSessionId == null) {
-      if (!context.mounted) return;
-      showAppSnackBar(context, 'No current semester schedule available.');
-      return;
-    }
-    final scheduleJson = await ScheduleService().getStudentScheduleForSemester(
-      semesterSessionId: semesterSessionId,
-    );
-    if (!context.mounted) return;
-
-    if (info == null) {
-      showAppSnackBar(
-        context,
-        'No progress data available for CGPA calculator',
-      );
-      return;
-    }
-
-    final currentCgpa =
-        (await AppStorage.instance.getString(StorageKeys.cgpa) ?? '').trim();
-    if (!context.mounted) return;
-    final sections = buildCurrentSectionsForCalculator(info, scheduleJson);
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CgpaCalculatorPage(
-          info: info,
-          currentSections: sections,
-          currentCgpa: currentCgpa,
-        ),
-      ),
-    );
-  } catch (_) {
-    if (!context.mounted) return;
-    showAppSnackBar(context, 'Could not open CGPA calculator');
-  }
-}
-
 class BracuActionBannerCard extends StatelessWidget {
   const BracuActionBannerCard({
     super.key,
@@ -726,40 +649,6 @@ String formatSemesterFromSessionId(String raw) {
   return formatSemesterFromSessionIdInt(value);
 }
 
-String formatTimeHour(String? input) {
-  final t = formatTime(input);
-  if (t.isEmpty) return '--';
-  return t.split(':').first;
-}
-
-double compactPopupMenuWidth(
-  BuildContext context,
-  List<String> labels, {
-  double minWidth = 0,
-  double maxWidth = 320,
-  TextStyle style = const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
-  double horizontalPadding = 16,
-  double screenMargin = 20,
-}) {
-  var maxTextWidth = 0.0;
-  for (final label in labels) {
-    final painter = TextPainter(
-      text: TextSpan(text: label, style: style),
-      textDirection: Directionality.of(context),
-      maxLines: 1,
-    )..layout();
-    if (painter.width > maxTextWidth) {
-      maxTextWidth = painter.width;
-    }
-  }
-  final screenMax = MediaQuery.sizeOf(context).width - screenMargin;
-  final effectiveMax = math.min(maxWidth, screenMax);
-  return (maxTextWidth + (horizontalPadding * 2) + 4).clamp(
-    minWidth,
-    effectiveMax,
-  );
-}
-
 PopupMenuItem<T> compactPopupMenuItem<T>({
   required T value,
   required String label,
@@ -914,17 +803,83 @@ class BracuCommunityLink extends StatelessWidget {
   }
 }
 
-class BracuFundingPromoDivider extends StatelessWidget {
+class _FundingPromoContent {
+  const _FundingPromoContent({
+    required this.title,
+    required this.body,
+    required this.url,
+  });
+
+  final String title;
+  final String body;
+  final String url;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'title': title,
+    'body': body,
+    'url': url,
+  };
+
+  static _FundingPromoContent? fromDecoded(dynamic decoded) {
+    if (decoded is! Map) return null;
+    final json = decoded.cast<String, dynamic>();
+    final title = '${json['title'] ?? ''}'.trim();
+    final body = '${json['body'] ?? ''}'.trim();
+    final url = '${json['url'] ?? ''}'.trim();
+    if (title.isEmpty || body.isEmpty || url.isEmpty) return null;
+    return _FundingPromoContent(title: title, body: body, url: url);
+  }
+}
+
+const String _fundingPromoUrl =
+    'https://cdn.jsdelivr.net/gh/sabbirba/preconnect@main/funding_promo.json';
+const String _fundingPromoCacheKey = 'funding_promo_content_v1';
+
+Future<_FundingPromoContent?> _loadFundingPromoContent({
+  bool forceRefresh = false,
+}) {
+  return CdnJsonCache.load<_FundingPromoContent>(
+    url: _fundingPromoUrl,
+    cacheKey: _fundingPromoCacheKey,
+    decode: _FundingPromoContent.fromDecoded,
+    forceRefresh: forceRefresh,
+  );
+}
+
+class BracuFundingPromoDivider extends StatefulWidget {
   const BracuFundingPromoDivider({super.key, this.showSupporters = false});
   final bool showSupporters;
 
   @override
+  State<BracuFundingPromoDivider> createState() =>
+      _BracuFundingPromoDividerState();
+}
+
+class _BracuFundingPromoDividerState extends State<BracuFundingPromoDivider> {
+  _FundingPromoContent? _content = CdnJsonCache.peek<_FundingPromoContent>(
+    _fundingPromoCacheKey,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    final content = await _loadFundingPromoContent();
+    if (!mounted) return;
+    setState(() {
+      _content = content;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final content = _content;
+    if (content == null) return const SizedBox.shrink();
     final textSecondary = BracuPalette.textSecondary(context);
     final textPrimary = BracuPalette.textPrimary(context);
-
-    const textContent =
-        "Finally, we've published PreConnect on iOS & kept our promise. 25% funding was supported by students, and we self-funded the remaining 75%. Please consider supporting us to help cover our self-funding and publishing.";
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -935,7 +890,7 @@ class BracuFundingPromoDivider extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                "iOS Release Campaign",
+                content.title,
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -948,8 +903,8 @@ class BracuFundingPromoDivider extends StatelessWidget {
               onTap: () async {
                 await SharePlus.instance.share(
                   ShareParams(
-                    uri: Uri.parse('https://preconnect.app/funding'),
-                    subject: 'PreConnect iOS Release Campaign',
+                    uri: Uri.parse(content.url),
+                    subject: 'PreConnect ${content.title}',
                   ),
                 );
               },
@@ -979,12 +934,12 @@ class BracuFundingPromoDivider extends StatelessWidget {
         InkWell(
           onTap: () => openExternalUrl(
             context,
-            'https://preconnect.app/funding',
+            content.url,
             failureMessage: 'Unable to open funding link.',
           ),
           borderRadius: BorderRadius.circular(8),
           child: Text(
-            textContent,
+            content.body,
             style: TextStyle(
               color: textSecondary,
               fontSize: 13.0,
@@ -993,7 +948,7 @@ class BracuFundingPromoDivider extends StatelessWidget {
             ),
           ),
         ),
-        if (showSupporters) const BracuCampaignSupporters(maxCount: 5),
+        if (widget.showSupporters) const BracuCampaignSupporters(maxCount: 5),
       ],
     );
   }
@@ -1131,7 +1086,12 @@ class _BracuSupporterTile extends StatelessWidget {
     Widget avatar;
     if (item.picture != null && item.picture!.startsWith('http')) {
       avatar = ClipOval(
-        child: CachedImage(url: item.picture!, fit: BoxFit.cover),
+        child: CachedImage(
+          url: item.picture!,
+          width: 38,
+          height: 38,
+          fit: BoxFit.cover,
+        ),
       );
     } else {
       avatar = CircleAvatar(
