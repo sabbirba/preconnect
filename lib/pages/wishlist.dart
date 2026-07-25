@@ -408,6 +408,17 @@ class _WishlistPageState extends State<WishlistPage> {
         errorIcon = Icons.hourglass_empty_rounded;
         errorTitle = 'Wishlist Closed';
         iconColor = BracuPalette.warning;
+      } else if (displayMessage.contains('SocketException') ||
+          displayMessage.contains('Failed host lookup') ||
+          displayMessage.contains('Connection failed') ||
+          displayMessage.contains('Connection refused') ||
+          displayMessage.contains('Connection timed out')) {
+        errorIcon = Icons.wifi_off_rounded;
+        errorTitle = 'You\'re Offline';
+        displayMessage =
+            'Wishlist requires an active connection to BRACU Connect. '
+            'Check your internet and try again.';
+        iconColor = BracuPalette.warning;
       }
 
       return BracuPageScaffold(
