@@ -1,0 +1,40 @@
+[
+  {
+    "handle": "NaiveInvestigator",
+    "role": "Lead Developer",
+    "linkLabel": "GitHub"
+  },
+  {
+    "handle": "sabbirba",
+    "role": "Developer & UI/UX",
+    "linkLabel": "GitHub"
+  },
+  {
+    "handle": "Zamiul-rashid",
+    "role": "Friends Schedule",
+    "linkLabel": "GitHub"
+  },
+  {
+    "handle": "shakilofficial0",
+    "role": "Live Bus Data",
+    "linkLabel": "GitHub"
+  },
+  {
+    "handle": "rez1-dev",
+    "role": "Testing & Feedback",
+    "linkLabel": "GitHub"
+  },
+  {
+    "handle": "hitblast",
+    "role": "Developer & Community",
+    "linkLabel": "GitHub"
+  },
+  {
+    "handle": "mueen-ahmmed",
+    "name": "Mueen Ahmmed",
+    "role": "Faculty Reviews",
+    "avatarUrl": "https://preconnect.app/Mueen-Ahmmed.jpeg",
+    "linkLabel": "LinkedIn",
+    "url": "https://www.linkedin.com/in/mueen-ahmmed-b337b8231/"
+  }
+]
