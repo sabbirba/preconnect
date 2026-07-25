@@ -115,41 +115,14 @@ extension _HomeDashboardView on _HomeDashboardState {
                           final holidayStatus =
                               data?.holiday ?? HolidayStatus.empty;
                           final isTodayHoliday = holidayStatus.isTodayHoliday;
-                          final today = _todayName();
-                          final todayDate = DateFormat(
-                            'd MMMM, yyyy',
-                          ).format(DateTime.now());
-                          final todayEntries =
-                              (data?.entries ?? [])
-                                  .where(
-                                    (e) =>
-                                        normalizeWeekday(e.day) ==
-                                        normalizeWeekday(today),
-                                  )
-                                  .toList()
-                                ..sort(
-                                  (a, b) =>
-                                      _timeToMinutes(a.startTime) -
-                                      _timeToMinutes(b.startTime),
-                                );
-                          final examWeekStatus = _todayExamWeekStatus(
-                            data?.sections ?? const <section.Section>[],
-                            data?.examOverrides ??
-                                const <String, ExamScheduleOverride>{},
-                          );
+                          final derived = _deriveDashboardValues(data);
+                          final today = derived.today;
+                          final todayDate = derived.todayDate;
+                          final todayEntries = derived.todayEntries;
+                          final examWeekStatus = derived.examWeekStatus;
                           final isExamWeekActive = examWeekStatus.isActive;
-                          final nextCountdown = _nextDeadlineCountdown(
-                            data?.sections ?? const <section.Section>[],
-                            data?.examOverrides ??
-                                const <String, ExamScheduleOverride>{},
-                            data?.personalSchedules ?? const <CustomSchedule>[],
-                            data?.advisingInfo,
-                          );
-                          final todayExams = _todayExamEntries(
-                            data?.sections ?? const <section.Section>[],
-                            data?.examOverrides ??
-                                const <String, ExamScheduleOverride>{},
-                          );
+                          final nextCountdown = derived.nextCountdown;
+                          final todayExams = derived.todayExams;
                           final visibleEntries = isTodayHoliday
                               ? <_ScheduleEntry>[]
                               : (todayExams.isNotEmpty || isExamWeekActive
