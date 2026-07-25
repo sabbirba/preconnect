@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/api_config.dart';
@@ -153,6 +154,35 @@ class _StudentProfileState extends State<StudentProfile>
     }
   }
 
+  static List<PaymentInfo> _parsePaymentsIsolate(String? raw) {
+    final paymentsJson = _decodeListStatic(raw);
+    return paymentsJson
+        .map<PaymentInfo?>((item) {
+          try {
+            return PaymentInfo.fromJson(item as Map<String, dynamic>);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<PaymentInfo>()
+        .toList()
+      ..sort(_comparePayments);
+  }
+
+  static List<AttendanceInfo> _parseAttendanceIsolate(String? raw) {
+    final attendanceJson = _decodeListStatic(raw);
+    return attendanceJson
+        .map<AttendanceInfo?>((item) {
+          try {
+            return AttendanceInfo.fromJson(item as Map<String, dynamic>);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<AttendanceInfo>()
+        .toList();
+  }
+
   static int _payslipSortValue(PaymentInfo p) {
     return int.tryParse(p.payslipNumber) ?? 0;
   }
@@ -198,47 +228,24 @@ class _StudentProfileState extends State<StudentProfile>
     }();
     final paymentsFuture = () async {
       try {
-        final List<dynamic> paymentsJson = _decodeListStatic(
-          forceRefresh
-              ? await PaymentService().fetchPaymentInfo(
-                  cacheDuration: Duration.zero,
-                )
-              : await PaymentService().getPaymentInfo(),
-        );
-        return paymentsJson
-            .map<PaymentInfo?>((item) {
-              try {
-                return PaymentInfo.fromJson(item as Map<String, dynamic>);
-              } catch (e) {
-                return null;
-              }
-            })
-            .whereType<PaymentInfo>()
-            .toList()
-          ..sort(_comparePayments);
+        final raw = forceRefresh
+            ? await PaymentService().fetchPaymentInfo(
+                cacheDuration: Duration.zero,
+              )
+            : await PaymentService().getPaymentInfo();
+        return await compute(_parsePaymentsIsolate, raw);
       } catch (_) {
         return const <PaymentInfo>[];
       }
     }();
     final attendanceFuture = () async {
       try {
-        final List<dynamic> attendanceJson = _decodeListStatic(
-          forceRefresh
-              ? await AttendanceService().fetchAttendanceInfo(
-                  cacheDuration: Duration.zero,
-                )
-              : await AttendanceService().getAttendanceInfo(),
-        );
-        return attendanceJson
-            .map<AttendanceInfo?>((e) {
-              try {
-                return AttendanceInfo.fromJson(e as Map<String, dynamic>);
-              } catch (e) {
-                return null;
-              }
-            })
-            .whereType<AttendanceInfo>()
-            .toList();
+        final raw = forceRefresh
+            ? await AttendanceService().fetchAttendanceInfo(
+                cacheDuration: Duration.zero,
+              )
+            : await AttendanceService().getAttendanceInfo();
+        return await compute(_parseAttendanceIsolate, raw);
       } catch (_) {
         return const <AttendanceInfo>[];
       }
