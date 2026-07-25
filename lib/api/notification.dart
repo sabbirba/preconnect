@@ -367,7 +367,7 @@ class NotificationService {
     final seen = await getSeenScraperNotificationIds();
     if (seen.contains(cleaned)) return;
     seen.add(cleaned);
-    await _writeSeenScraperNotificationIds(seen);
+    await _writeSeenScraperNotificationIds(await _prunedSeenIds(seen));
   }
 
   Future<void> markAllScraperNotificationsSeen(Iterable<String> ids) async {
@@ -378,7 +378,15 @@ class NotificationService {
     if (normalized.isEmpty) return;
     final seen = await getSeenScraperNotificationIds();
     seen.addAll(normalized);
-    await _writeSeenScraperNotificationIds(seen);
+    await _writeSeenScraperNotificationIds(await _prunedSeenIds(seen));
+  }
+
+  Future<Set<String>> _prunedSeenIds(Set<String> seen) async {
+    final liveIds = (await getScraperContentFeed())
+        .map((item) => item.id)
+        .toSet();
+    final pruned = seen.where(liveIds.contains).toSet();
+    return pruned.isEmpty ? seen : pruned;
   }
 
   Future<int> getTotalUnreadCount({bool forceRefresh = false}) async {
