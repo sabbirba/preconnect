@@ -16,7 +16,7 @@ import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/ramadan.dart';
-import 'package:preconnect/pages/shared_widgets/faculty_schedule_sheet.dart';
+import 'package:preconnect/pages/shared_widgets/faculty_sheet.dart';
 part 'shared_widgets/seat_status.dart';
 
 String seatStatusFacultySummaryLabel(section.SectionFaculty? faculty) {

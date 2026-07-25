@@ -6,7 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'libsync_config.dart';
 import 'client_creator.dart';
-import 'google_auth_helper.dart';
+import 'google_auth.dart';
 import 'package:preconnect/api/preferences_store.dart';
 
 class LibSyncApiClient extends http.BaseClient {

@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'libsync_config.dart';
-import 'google_auth_helper.dart';
-import 'libsync_api_client.dart';
+import 'google_auth.dart';
+import 'libsync_client.dart';
 import 'package:preconnect/libsync/libsync_page.dart';
 
 enum LibSyncAuthStatus { authenticated, unauthenticated, loading, error }
