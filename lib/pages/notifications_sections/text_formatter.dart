@@ -1,57 +1,86 @@
+final _nonAlphaNumRegex = RegExp(r'[^a-z0-9]+');
+final _multiSpaceRegex = RegExp(r'\s+');
+final _leadingBulletRegex = RegExp(r'^[\-\*•]\s*');
+final _trailingPunctRegex = RegExp(r'[\s\)\]\}\>,;.!?]+$');
+final _urlRegex = RegExp(
+  "(https?://|www\\.)[^\\s<>\"'\\)]+",
+  caseSensitive: false,
+);
+final _brTagRegex = RegExp(r'<\s*br\s*/?\s*>', caseSensitive: false);
+final _closingPTagRegex = RegExp(r'</\s*p\s*>', caseSensitive: false);
+final _openingPTagRegex = RegExp(r'<\s*p[^>]*>', caseSensitive: false);
+final _closingBlockTagRegex = RegExp(
+  r'</\s*(div|blockquote|li)\s*>',
+  caseSensitive: false,
+);
+final _openingBlockTagRegex = RegExp(
+  r'<\s*(div|blockquote|ul|ol|li)[^>]*>',
+  caseSensitive: false,
+);
+final _inlineTagRegex = RegExp(
+  r'</?\s*(b|strong|i|em|u)\s*>',
+  caseSensitive: false,
+);
+final _anyTagRegex = RegExp(r'<[^>]+>');
+final _letterDigitRegex = RegExp(r'([A-Za-z])(\d)');
+final _digitLetterRegex = RegExp(r'(\d)([A-Z])');
+final _trailingSpaceBeforeNewlineRegex = RegExp(r'[ \t]+\n');
+final _repeatedSpaceRegex = RegExp(r'[ \t]{2,}');
+final _chevronOnlyLineRegex = RegExp(r'^[<>‹›❮❯]+$');
+final _publishDateLabelRegex = RegExp(
+  r'^publish\s+date\s*:?\s*$',
+  caseSensitive: false,
+);
+final _dateLikeRegex = RegExp(
+  r'^[A-Za-z]{3,9}\s+\d{1,2}(st|nd|rd|th)?\,?\s+\d{4}.*$',
+  caseSensitive: false,
+);
+final _embeddedLinksLabelRegex = RegExp(
+  r'^embedded\s+page\s+links\s*:?\s*$',
+  caseSensitive: false,
+);
+final _listLinePrefixRegex = RegExp(r'^([-*•]|\d+[.)])\s+');
+final _sentenceEndRegex = RegExp(r'[.!?:]$');
+final _extraBlankLinesRegex = RegExp(r'\n{3,}');
+
 String _normalizeCompareText(String value) {
   return value
       .toLowerCase()
-      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
-      .replaceAll(RegExp(r'\s+'), ' ')
+      .replaceAll(_nonAlphaNumRegex, ' ')
+      .replaceAll(_multiSpaceRegex, ' ')
       .trim();
 }
 
 String _sanitizeUrlCandidate(String value) {
   return value
       .trim()
-      .replaceAll(RegExp(r'^[\-\*\u2022]\s*'), '')
-      .replaceAll(RegExp(r'[\s\)\]\}\>,;.!?]+$'), '')
-      .replaceAll(RegExp(r'\s+'), '');
+      .replaceAll(_leadingBulletRegex, '')
+      .replaceAll(_trailingPunctRegex, '')
+      .replaceAll(_multiSpaceRegex, '');
 }
 
 String _normalizeUrlCandidate(String value) {
   return _sanitizeUrlCandidate(value);
 }
 
-String normalizeNotificationSourceUrl(String value) {
-  return _normalizeUrlCandidate(value);
-}
-
 String cleanNotificationBodyText(String raw, {String? title}) {
   if (raw.trim().isEmpty) return '';
 
   final protectedUrls = <String>[];
-  final protectedRaw = raw.replaceAllMapped(
-    RegExp("(https?://|www\\.)[^\\s<>\"'\\)]+", caseSensitive: false),
-    (match) {
-      final token = '__PC_URL_${protectedUrls.length}__';
-      protectedUrls.add(_normalizeUrlCandidate(match.group(0)!));
-      return token;
-    },
-  );
+  final protectedRaw = raw.replaceAllMapped(_urlRegex, (match) {
+    final token = '__PC_URL_${protectedUrls.length}__';
+    protectedUrls.add(_normalizeUrlCandidate(match.group(0)!));
+    return token;
+  });
 
   var text = protectedRaw
-      .replaceAll(RegExp(r'<\s*br\s*/?\s*>', caseSensitive: false), '\n')
-      .replaceAll(RegExp(r'</\s*p\s*>', caseSensitive: false), '\n\n')
-      .replaceAll(RegExp(r'<\s*p[^>]*>', caseSensitive: false), '')
-      .replaceAll(
-        RegExp(r'</\s*(div|blockquote|li)\s*>', caseSensitive: false),
-        '\n',
-      )
-      .replaceAll(
-        RegExp(r'<\s*(div|blockquote|ul|ol|li)[^>]*>', caseSensitive: false),
-        '',
-      )
-      .replaceAll(
-        RegExp(r'</?\s*(b|strong|i|em|u)\s*>', caseSensitive: false),
-        '',
-      )
-      .replaceAll(RegExp(r'<[^>]+>'), '');
+      .replaceAll(_brTagRegex, '\n')
+      .replaceAll(_closingPTagRegex, '\n\n')
+      .replaceAll(_openingPTagRegex, '')
+      .replaceAll(_closingBlockTagRegex, '\n')
+      .replaceAll(_openingBlockTagRegex, '')
+      .replaceAll(_inlineTagRegex, '')
+      .replaceAll(_anyTagRegex, '');
 
   const htmlEntities = <String, String>{
     '&nbsp;': ' ',
@@ -72,15 +101,15 @@ String cleanNotificationBodyText(String raw, {String? title}) {
 
   text = text
       .replaceAllMapped(
-        RegExp(r'([A-Za-z])(\d)'),
+        _letterDigitRegex,
         (match) => '${match.group(1)} ${match.group(2)}',
       )
       .replaceAllMapped(
-        RegExp(r'(\d)([A-Z])'),
+        _digitLetterRegex,
         (match) => '${match.group(1)} ${match.group(2)}',
       )
-      .replaceAll(RegExp(r'[ \t]+\n'), '\n')
-      .replaceAll(RegExp(r'[ \t]{2,}'), ' ')
+      .replaceAll(_trailingSpaceBeforeNewlineRegex, '\n')
+      .replaceAll(_repeatedSpaceRegex, ' ')
       .trim();
 
   final normalizedTitle = _normalizeCompareText(title ?? '');
@@ -97,7 +126,7 @@ String cleanNotificationBodyText(String raw, {String? title}) {
   }
 
   bool isListLine(String value) {
-    return RegExp(r'^([-*•]|\d+[.)])\s+').hasMatch(value);
+    return _listLinePrefixRegex.hasMatch(value);
   }
 
   for (final rawLine in lines) {
@@ -109,30 +138,21 @@ String cleanNotificationBodyText(String raw, {String? title}) {
       continue;
     }
 
-    if (RegExp(r'^[<>‹›❮❯]+$').hasMatch(line)) continue;
+    if (_chevronOnlyLineRegex.hasMatch(line)) continue;
     if (_normalizeCompareText(line) == normalizedTitle &&
         normalizedTitle.isNotEmpty) {
       continue;
     }
-    if (RegExp(
-      r'^publish\s+date\s*:?\s*$',
-      caseSensitive: false,
-    ).hasMatch(line)) {
+    if (_publishDateLabelRegex.hasMatch(line)) {
       skipNextIfDateLike = true;
       continue;
     }
     if (skipNextIfDateLike) {
-      final isDateLike = RegExp(
-        r'^[A-Za-z]{3,9}\s+\d{1,2}(st|nd|rd|th)?\,?\s+\d{4}.*$',
-        caseSensitive: false,
-      ).hasMatch(line);
+      final isDateLike = _dateLikeRegex.hasMatch(line);
       skipNextIfDateLike = false;
       if (isDateLike) continue;
     }
-    if (RegExp(
-      r'^embedded\s+page\s+links\s*:?\s*$',
-      caseSensitive: false,
-    ).hasMatch(line)) {
+    if (_embeddedLinksLabelRegex.hasMatch(line)) {
       inEmbeddedLinksBlock = true;
       continue;
     }
@@ -168,7 +188,7 @@ String cleanNotificationBodyText(String raw, {String? title}) {
     if (line.endsWith(':') || isListLine(line)) {
       flushParagraph();
       final normalizedList = isListLine(line)
-          ? line.replaceFirst(RegExp(r'^([-*•]|\d+[.)])\s+'), '- ')
+          ? line.replaceFirst(_listLinePrefixRegex, '- ')
           : line;
       if (blocks.isNotEmpty && blocks.last.startsWith('- ')) {
         blocks[blocks.length - 1] = '${blocks.last}\n$normalizedList';
@@ -184,7 +204,7 @@ String cleanNotificationBodyText(String raw, {String? title}) {
     }
 
     final current = paragraph.toString().trimRight();
-    if (RegExp(r'[.!?:]$').hasMatch(current)) {
+    if (_sentenceEndRegex.hasMatch(current)) {
       flushParagraph();
       paragraph.write(line);
     } else {
@@ -201,7 +221,7 @@ String cleanNotificationBodyText(String raw, {String? title}) {
     blocks.add(linkLines.join('\n'));
   }
 
-  return blocks.join('\n\n').replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
+  return blocks.join('\n\n').replaceAll(_extraBlankLinesRegex, '\n\n').trim();
 }
 
 class NotificationBodyParts {
@@ -249,7 +269,7 @@ NotificationBodyParts splitNotificationBodyParts(String cleaned) {
 
   final body = bodyLines
       .join('\n')
-      .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+      .replaceAll(_extraBlankLinesRegex, '\n\n')
       .trim();
   return NotificationBodyParts(body: body, links: links);
 }
