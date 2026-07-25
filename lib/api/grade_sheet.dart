@@ -6,7 +6,6 @@ import 'dart:typed_data';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile.dart';
-import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/app_storage.dart';
 
@@ -23,13 +22,9 @@ class GradeSheetService {
 
   final ApiClient _client = ApiClient();
 
-  Stream<GradeSheetFile?> watchGradeSheet() async* {
-    yield await getGradeSheet();
-  }
-
   Future<Uint8List?> fetchGradeSheetBytes() async {
     final profileId = await resolvePortfolioId(
-      prefs: AppPreferencesStore(),
+      prefs: AppStorage.instance,
       refreshProfile: () async {
         await ProfileService().fetchProfile(fromGet: true);
       },
@@ -54,7 +49,7 @@ class GradeSheetService {
 
   Future<GradeSheetFile?> fetchGradeSheet() async {
     final profileId = await resolvePortfolioId(
-      prefs: AppPreferencesStore(),
+      prefs: AppStorage.instance,
       refreshProfile: () async {
         await ProfileService().fetchProfile(fromGet: true);
       },

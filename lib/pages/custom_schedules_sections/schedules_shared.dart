@@ -1,4 +1,3 @@
-import 'package:intl/intl.dart';
 import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ramadan.dart';
@@ -497,28 +496,6 @@ String personalSchedulesComposeTitle({
   return '$code$_myTitleSeparator$section$_myTitleSeparator$extra';
 }
 
-String personalSchedulesInitialSuffix(
-  String rawTitle, {
-  required String courseCode,
-  required String sectionName,
-}) {
-  final parts = _splitCustomSchedulesTitleParts(rawTitle);
-  if (parts.isEmpty) return '';
-  final normalizedCode = courseCode.trim().toUpperCase();
-  final normalizedSection = sectionName.trim();
-  if (parts.length >= 3 &&
-      parts.first.toUpperCase() == normalizedCode &&
-      (parts[1] == normalizedSection ||
-          (!personalSchedulesHasUsableSectionLabel(parts[1]) &&
-              normalizedSection.isNotEmpty))) {
-    return _joinCustomSchedulesTitleParts(parts.sublist(2));
-  }
-  if (parts.length >= 2 && parts.first.toUpperCase() == normalizedCode) {
-    return _joinCustomSchedulesTitleParts(parts.sublist(1));
-  }
-  return rawTitle.trim();
-}
-
 String personalSchedulesKindLabel(String kind) {
   switch (kind) {
     case 'quiz':
@@ -536,10 +513,6 @@ String personalSchedulesKindLabel(String kind) {
 
 String personalSchedulesFormatKind(String kind) {
   return personalSchedulesKindLabel(kind);
-}
-
-String personalSchedulesFormatDueDate(DateTime dueAt) {
-  return DateFormat('dd MMMM, hh:mm a').format(dueAt);
 }
 
 String personalSchedulesCardTitle(String rawTitle) {

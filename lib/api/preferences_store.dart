@@ -97,19 +97,6 @@ class AppPreferencesStore {
   }
 }
 
-Future<String?> readStoredStringWithFallback({
-  required String key,
-  required bool fromFetch,
-  required Future<String?> Function() onCacheMiss,
-}) async {
-  final stored = await AppPreferencesStore().getString(key);
-  if (stored == null || stored.isEmpty) {
-    if (fromFetch) return null;
-    return onCacheMiss();
-  }
-  return stored;
-}
-
 Future<T?> readStoredJsonMapWithFallback<T>({
   required String key,
   required bool fromFetch,

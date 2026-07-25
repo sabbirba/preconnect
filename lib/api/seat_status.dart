@@ -4,6 +4,7 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/model/section_info.dart' show SectionFaculty;
 import 'package:preconnect/pages/seat_status.dart';
 import 'package:flutter/foundation.dart';
+import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 
@@ -49,7 +50,7 @@ class SeatStatusService {
       return _cachedDetails!;
     }
     if (!forceRefresh) {
-      final cachedJson = await AppStorage.instance.getString(
+      final cachedJson = await RepositoryCache.instance.readString(
         PreConnectStorageKeys.seatStatusCacheJson,
       );
       if (cachedJson != null && cachedJson.trim().isNotEmpty) {
@@ -103,7 +104,7 @@ class SeatStatusService {
     try {
       final parsed = await compute(_parseJsonStringInIsolate, response.body);
 
-      await AppStorage.instance.setString(
+      await RepositoryCache.instance.writeString(
         PreConnectStorageKeys.seatStatusCacheJson,
         response.body,
       );
@@ -397,7 +398,7 @@ String _facultyLabel(dynamic value) {
     final shortName = _toString(map['shortName']);
     if (shortName.isNotEmpty) return shortName;
     final staffName = _toString(map['staffName']);
-    if (shortName.isNotEmpty) return staffName;
+    if (staffName.isNotEmpty) return staffName;
     return '';
   }
   return _toString(value);
