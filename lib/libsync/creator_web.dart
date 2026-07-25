@@ -8,7 +8,7 @@ import 'package:chrome_extension/runtime.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 
-import 'package:preconnect/libsync/libsync_api_client.dart';
+import 'package:preconnect/libsync/libsync_client.dart';
 
 class ExtensionHttpClient extends http.BaseClient {
   @override
