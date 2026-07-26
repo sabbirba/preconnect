@@ -23,11 +23,11 @@ dependencies:
   barcode_widget: ^2.0.4
   flutter_flip_card: ^0.0.6
   cached_network_image: ^3.4.1
-  connectivity_plus: ^7.3.0
+  connectivity_plus: ^7.3.1
   url_launcher: ^6.3.2
   app_links: ^7.2.1
   file_selector: ^1.1.0
-  share_plus: ^13.2.1
+  share_plus: ^13.3.0
   open_filex: ^4.7.0
   in_app_update_flutter: ^3.0.0
   in_app_review: ^2.0.12
@@ -39,7 +39,7 @@ dependencies:
   flutter_secure_storage: ^10.3.1
   firebase_core: ^4.12.1
   firebase_messaging: 16.4.3
-  flutter_local_notifications: ^22.1.0
+  flutter_local_notifications: ^22.2.0
   flutter_cache_manager: ^3.4.2
   package_info_plus: ^10.2.0
   device_info_plus: ^13.2.0
