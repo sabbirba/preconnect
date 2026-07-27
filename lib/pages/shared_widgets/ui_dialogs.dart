@@ -162,67 +162,85 @@ Future<T?> showBracuCustomBottomSheet<T>({
     clipBehavior: clipBehavior,
     shape: shape,
     builder: (sheetContext) {
+      final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
+      final overlayStyle = SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor:
+            backgroundColor ?? BracuPalette.card(sheetContext),
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
+      );
+
+      late final Widget sheetBody;
       if (!draggable || !isScrollControlled) {
-        return Builder(builder: (innerContext) => builder(innerContext));
+        sheetBody = Builder(builder: (innerContext) => builder(innerContext));
+      } else {
+        final bottomInset = MediaQuery.viewInsetsOf(sheetContext).bottom;
+        final screenHeight = MediaQuery.sizeOf(sheetContext).height;
+        final minVisibleSheetHeight = switch (defaultTargetPlatform) {
+          TargetPlatform.macOS => 112.0,
+          TargetPlatform.linux => 112.0,
+          TargetPlatform.windows => 112.0,
+          _ => 88.0,
+        };
+        final platformMinSize = (minVisibleSheetHeight / screenHeight).clamp(
+          0.10,
+          0.40,
+        );
+        sheetBody = AnimatedPadding(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          padding: EdgeInsets.only(bottom: bottomInset),
+          child: Builder(
+            builder: (_) {
+              final maxSize = maxChildSize.clamp(0.40, 0.99);
+              final minSize = math
+                  .max(minChildSize, platformMinSize)
+                  .clamp(0.10, maxSize);
+              final initialSize = initialChildSize.clamp(minSize, maxSize);
+              var dismissed = false;
+              return NotificationListener<DraggableScrollableNotification>(
+                onNotification: (notification) {
+                  if (!closeOnMinExtent || dismissed) return false;
+                  if (notification.extent <= minSize + 0.005) {
+                    dismissed = true;
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (context.mounted) {
+                        Navigator.of(context).maybePop();
+                      }
+                    });
+                  }
+                  return false;
+                },
+                child: DraggableScrollableSheet(
+                  initialChildSize: initialSize,
+                  minChildSize: minSize,
+                  maxChildSize: maxSize,
+                  expand: false,
+                  builder: (context, scrollController) {
+                    return _BracuBottomSheetControllerScope(
+                      controller: scrollController,
+                      child: PrimaryScrollController(
+                        controller: scrollController,
+                        child: Builder(
+                          builder: (innerContext) => builder(innerContext),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        );
       }
 
-      final bottomInset = MediaQuery.viewInsetsOf(sheetContext).bottom;
-      final screenHeight = MediaQuery.sizeOf(sheetContext).height;
-      final minVisibleSheetHeight = switch (defaultTargetPlatform) {
-        TargetPlatform.macOS => 112.0,
-        TargetPlatform.linux => 112.0,
-        TargetPlatform.windows => 112.0,
-        _ => 88.0,
-      };
-      final platformMinSize = (minVisibleSheetHeight / screenHeight).clamp(
-        0.10,
-        0.40,
-      );
-      return AnimatedPadding(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        padding: EdgeInsets.only(bottom: bottomInset),
-        child: Builder(
-          builder: (_) {
-            final maxSize = maxChildSize.clamp(0.40, 0.99);
-            final minSize = math
-                .max(minChildSize, platformMinSize)
-                .clamp(0.10, maxSize);
-            final initialSize = initialChildSize.clamp(minSize, maxSize);
-            var dismissed = false;
-            return NotificationListener<DraggableScrollableNotification>(
-              onNotification: (notification) {
-                if (!closeOnMinExtent || dismissed) return false;
-                if (notification.extent <= minSize + 0.005) {
-                  dismissed = true;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (context.mounted) {
-                      Navigator.of(context).maybePop();
-                    }
-                  });
-                }
-                return false;
-              },
-              child: DraggableScrollableSheet(
-                initialChildSize: initialSize,
-                minChildSize: minSize,
-                maxChildSize: maxSize,
-                expand: false,
-                builder: (context, scrollController) {
-                  return _BracuBottomSheetControllerScope(
-                    controller: scrollController,
-                    child: PrimaryScrollController(
-                      controller: scrollController,
-                      child: Builder(
-                        builder: (innerContext) => builder(innerContext),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-        ),
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: overlayStyle,
+        child: sheetBody,
       );
     },
   );

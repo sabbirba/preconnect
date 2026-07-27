@@ -376,17 +376,26 @@ class CaptiveWifiHttp {
   }) async {
     lastError = null;
     lastResponseLog = '';
+    if (AndroidNetworkAssist.isSupported) {
+      await AndroidNetworkAssist.bindToWifiNetwork();
+    }
     final client = await newClient();
     final cookies = sessionCookies;
     cookies.clear();
 
     var targetUrl = captiveWifiUrl;
     if (targetUrl == defaultProbeUri) {
-      final savedUrlStr = await CaptiveLoginStore.instance.readLastPortalUrl();
-      if (savedUrlStr != null && savedUrlStr.isNotEmpty) {
-        final parsed = Uri.tryParse(savedUrlStr);
-        if (parsed != null) {
-          targetUrl = parsed;
+      final detected = await detectCaptivePortal();
+      if (detected != null) {
+        targetUrl = detected;
+      } else {
+        final savedUrlStr = await CaptiveLoginStore.instance
+            .readLastPortalUrl();
+        if (savedUrlStr != null && savedUrlStr.isNotEmpty) {
+          final parsed = Uri.tryParse(savedUrlStr);
+          if (parsed != null) {
+            targetUrl = parsed;
+          }
         }
       }
     }
@@ -399,7 +408,11 @@ class CaptiveWifiHttp {
       );
 
       if (first.statusCode == 204) {
-        return true;
+        final validated = await isValidatedViaProbe(
+          client: client,
+          cookies: cookies,
+        );
+        if (validated) return true;
       }
 
       var loginUri = first.uri;
@@ -732,12 +745,22 @@ class CaptiveWifiHttp {
             return false;
           }
         } else {
+          final probeOk = await isValidatedViaProbe(
+            client: client,
+            cookies: cookies,
+          );
+          if (probeOk) return true;
           lastError =
               'POST syncPortalResult failed with HTTP status ${syncResponse.statusCode}';
 
           return false;
         }
       } catch (e) {
+        final probeOk = await isValidatedViaProbe(
+          client: client,
+          cookies: cookies,
+        );
+        if (probeOk) return true;
         lastError = 'Network error during session sync.';
 
         return false;
@@ -787,6 +810,9 @@ class CaptiveWifiHttp {
       return false;
     } finally {
       client.close(force: true);
+      if (AndroidNetworkAssist.isSupported) {
+        await AndroidNetworkAssist.unbindFromWifiNetwork();
+      }
     }
   }
 
@@ -796,6 +822,9 @@ class CaptiveWifiHttp {
   }) async {
     lastError = null;
     lastResponseLog = '';
+    if (AndroidNetworkAssist.isSupported) {
+      await AndroidNetworkAssist.bindToWifiNetwork();
+    }
     final client = await newClient();
     final cookies = sessionCookies;
 
@@ -913,6 +942,9 @@ class CaptiveWifiHttp {
       return false;
     } finally {
       client.close(force: true);
+      if (AndroidNetworkAssist.isSupported) {
+        await AndroidNetworkAssist.unbindFromWifiNetwork();
+      }
     }
   }
 

@@ -79,6 +79,9 @@ extension _HomeDashboardView on _HomeDashboardState {
                           final profile =
                               data?.profile ?? const <String, String?>{};
                           final photoUrl = data?.photoUrl;
+                          if (photoUrl != null && photoUrl.isNotEmpty) {
+                            CachedImage.precache(context, photoUrl);
+                          }
                           final cardVisibility =
                               data?.cardVisibility ??
                               HomeCardPreferences.defaults;
@@ -130,7 +133,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     : todayEntries);
                           return BracuRefreshScroll(
                             onRefresh: _handleRefresh,
-                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+                            padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [

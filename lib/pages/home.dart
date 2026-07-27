@@ -141,7 +141,6 @@ class _HomePageState extends State<HomePage> {
         Future.wait(<Future<void>>[
           AlarmPage.preload().catchError((_) {}),
           CustomSchedulesPage.preload().catchError((_) {}),
-          CampusPrinterPage.preload().catchError((_) {}),
         ]).then((_) async {
           await QuietModeController.instance.refresh();
           await InAppReviewPrompt.maybePrompt();
@@ -278,6 +277,9 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (photoUrl != null && photoUrl!.isNotEmpty) {
+      CachedImage.precache(context, photoUrl!);
+    }
     final textSecondary = BracuPalette.textSecondary(context);
     final textPrimary = BracuPalette.textPrimary(context);
     return Row(

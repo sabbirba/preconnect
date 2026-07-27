@@ -66,6 +66,8 @@ class ApiConfig {
   }
 
   static const String connectOrigin = 'https://connect.bracu.ac.bd';
+  static String get connectMercureHubUrl =>
+      'https://connect.bracu.ac.bd/.well-known/mercure?topic=${Uri.encodeComponent('http://pr/{group}/{id}')}';
   static const String connectMercureLogoutPath = '/ns/mercure/logout';
   static const String websiteBase = 'https://preconnect.app';
   static const String websiteMueenAvatarUrl =
@@ -77,7 +79,7 @@ class ApiConfig {
       ? '${getWebAppOrigin()}/student/profile/overview'
       : 'https://connect.bracu.ac.bd/student/profile/overview';
 
-  static const String profilePath = '/mds/v1/portfolios';
+  static const String profilePath = '/mds/v1/portfolios?includeInactive=true';
   static const String miscellaneousInfoPath =
       '/adp/v1/students/miscellaneous-info';
   static const String studentPath = '/mds/v1/student/info';
@@ -97,6 +99,9 @@ class ApiConfig {
         : '&semesterSessionId=$semesterSessionId';
     return '/adv/v1/student-courses/schedules?studentPortfolioId=$portfolioId$semesterQuery';
   }
+
+  static String sessionsPath(String portfolioId) =>
+      '/adv/v1/student-courses/sessions?studentPortfolioId=$portfolioId';
 
   static String attendancePath(String portfolioId) =>
       '/exc/v1/student-courses/$portfolioId/current-semester-attendance';
@@ -149,6 +154,14 @@ class ApiConfig {
     final typesQuery = paymentTypes.map((t) => 'paymentTypes=$t').join('&');
     return '$connectApiBase${paymentPath(portfolioId)}?$typesQuery';
   }
+
+  static String payslipDetailUrl(String payslipNo) =>
+      '$connectApiBase/fin/v1/payment/payslip/$payslipNo';
+
+  static String get bankConfigurationsUrl =>
+      '$connectApiBase/fin/v1/configuration/banks/get-bank-configurations?active=true';
+
+  static String get pdfPrintUrl => '$connectApiBase/pdf/v1.0/print';
 
   static const List<String> advisingPhases = [
     'PHASE_ONE',

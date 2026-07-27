@@ -1629,7 +1629,7 @@ class _PrintHistoryRow extends StatelessWidget {
     return _PrinterFileCard(
       title: entry.fileName,
       subtitle:
-          '${failed ? 'Failed' : 'Sent'} • $copiesLabel • ${formatDateTimeLabel(entry.createdAt, includeYear: true)}',
+          '${failed ? 'Failed' : 'Sent'} • $copiesLabel • ${formatDateTimeLabel(entry.createdAt)}',
       isEmpty: false,
     );
   }

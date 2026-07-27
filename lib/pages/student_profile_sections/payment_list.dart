@@ -2,166 +2,202 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/profile.dart';
+import 'package:preconnect/pages/student_profile_sections/payslip_detail.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
-class PaymentList extends StatelessWidget {
+class PaymentList extends StatefulWidget {
   const PaymentList({super.key, required this.payments});
 
   final List<PaymentInfo> payments;
 
   @override
+  State<PaymentList> createState() => _PaymentListState();
+}
+
+class _PaymentListState extends State<PaymentList> {
+  int _visibleCount = 5;
+
+  @override
   Widget build(BuildContext context) {
+    final visiblePayments = widget.payments.take(_visibleCount).toList();
+    final hasMore = widget.payments.length > _visibleCount;
+
     return Column(
-      children: payments.asMap().entries.map((entry) {
-        final payment = entry.value;
-        final textSecondary = BracuPalette.textSecondary(context);
-        final textPrimary = BracuPalette.textPrimary(context);
-        final dueDate = formatDate(payment.dueDate.toIso8601String());
-        final status = payment.paymentStatus;
-        final isPaid = status == 'PAID';
-        final amount = _formatAmount(payment.totalAmount);
-        final statusColor = isPaid
-            ? BracuPalette.accent
-            : const Color(0xFFFF8A34);
-        final statusBg = statusColor.withValues(alpha: 0.14);
-        final semester = formatSemesterFromSessionIdInt(
-          payment.semesterSessionId,
-        );
-        final paymentType = _formatPaymentType(payment.paymentType);
-        final cardTint = Colors.transparent;
-        final cardBorder = isPaid
-            ? BracuPalette.primary.withValues(alpha: 0.08)
-            : statusBg.withValues(alpha: 0.6);
-        final iconColor = isPaid
-            ? BracuPalette.accent
-            : const Color(0xFFFF8A34);
-        final iconBg = Colors.transparent;
-        return Container(
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          padding: EdgeInsets.zero,
-          decoration: const BoxDecoration(),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: cardTint,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: cardBorder),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 26,
-                                height: 26,
-                                decoration: BoxDecoration(
-                                  color: iconBg,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                alignment: Alignment.center,
-                                child: Icon(
-                                  Icons.credit_card_rounded,
-                                  size: 14,
-                                  color: iconColor,
-                                ),
-                              ),
-                              const Gap(12),
-                              Flexible(
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () => copyToClipboard(
-                                        context,
-                                        payment.payslipNumber,
-                                      ),
-                                      child: Text(
-                                        payment.payslipNumber,
-                                        style: TextStyle(
-                                          color: textPrimary,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 15,
-                                          letterSpacing: 0.2,
+      children: [
+        ...visiblePayments.map((payment) {
+          final textSecondary = BracuPalette.textSecondary(context);
+          final textPrimary = BracuPalette.textPrimary(context);
+          final dueDate = formatDate(payment.dueDate.toIso8601String());
+          final status = payment.paymentStatus;
+          final isPaid = status == 'PAID';
+          final amount = _formatAmount(payment.totalAmount);
+          final statusColor = isPaid
+              ? BracuPalette.accent
+              : const Color(0xFFFF8A34);
+          final statusBg = statusColor.withValues(alpha: 0.14);
+          final semester = formatSemesterFromSessionIdInt(
+            payment.semesterSessionId,
+          );
+          final paymentType = _formatPaymentType(payment.paymentType);
+          final cardTint = Colors.transparent;
+          final cardBorder = isPaid
+              ? BracuPalette.primary.withValues(alpha: 0.08)
+              : statusBg.withValues(alpha: 0.6);
+          final iconColor = isPaid
+              ? BracuPalette.accent
+              : const Color(0xFFFF8A34);
+          final iconBg = Colors.transparent;
+          return GestureDetector(
+            onTap: () {
+              if (payment.payslipNumber.isNotEmpty) {
+                PayslipDetailSheet.show(
+                  context,
+                  payslipNumber: payment.payslipNumber,
+                );
+              }
+            },
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              padding: EdgeInsets.zero,
+              decoration: const BoxDecoration(),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cardTint,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: cardBorder),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 26,
+                                    height: 26,
+                                    decoration: BoxDecoration(
+                                      color: iconBg,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Icon(
+                                      Icons.credit_card_rounded,
+                                      size: 14,
+                                      color: iconColor,
+                                    ),
+                                  ),
+                                  const Gap(12),
+                                  Flexible(
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        GestureDetector(
+                                          onTap: () => copyToClipboard(
+                                            context,
+                                            payment.payslipNumber,
+                                          ),
+                                          child: Text(
+                                            payment.payslipNumber,
+                                            style: TextStyle(
+                                              color: textPrimary,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 15,
+                                              letterSpacing: 0.2,
+                                            ),
+                                          ),
                                         ),
-                                      ),
+                                        const Gap(4),
+                                        GestureDetector(
+                                          onTap: () {
+                                            copyToClipboard(
+                                              context,
+                                              payment.payslipNumber,
+                                            );
+                                          },
+                                          child: Icon(
+                                            Icons.copy_rounded,
+                                            size: 15,
+                                            color: textSecondary,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const Gap(4),
-                                    GestureDetector(
-                                      onTap: () {
-                                        copyToClipboard(
-                                          context,
-                                          payment.payslipNumber,
-                                        );
-                                      },
-                                      child: Icon(
-                                        Icons.copy_rounded,
-                                        size: 15,
-                                        color: textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                        const Gap(12),
-                        GestureDetector(
-                          onTap: () => copyToClipboard(context, amount),
-                          child: Text(
-                            amount,
-                            style: TextStyle(
-                              color: textPrimary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
                             ),
-                            textAlign: TextAlign.right,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                            const Gap(12),
+                            GestureDetector(
+                              onTap: () => copyToClipboard(context, amount),
+                              child: Text(
+                                amount,
+                                style: TextStyle(
+                                  color: textPrimary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    const Gap(8),
+                    _InfoLine(
+                      label: paymentType,
+                      value: semester,
+                      isLabelBold: true,
+                      isValueBold: true,
+                    ),
+                    const Gap(8),
+                    _InfoLine(
+                      label: 'Requested',
+                      value: formatDate(payment.requestDate.toIso8601String()),
+                      isLabelBold: false,
+                      isValueBold: false,
+                    ),
+                    const Gap(6),
+                    _InfoLine(
+                      label: 'Due Date',
+                      value: dueDate,
+                      isLabelBold: true,
+                      isValueBold: true,
+                    ),
+                    const Gap(6),
+                    _InfoLine(
+                      label: 'Status',
+                      value: isPaid ? 'Paid' : 'Due',
+                      isLabelBold: true,
+                      isValueBold: true,
+                    ),
+                  ],
                 ),
-                const Gap(8),
-                _InfoLine(
-                  label: paymentType,
-                  value: semester,
-                  isLabelBold: true,
-                  isValueBold: true,
-                ),
-                const Gap(8),
-                _InfoLine(
-                  label: 'Requested',
-                  value: formatDate(payment.requestDate.toIso8601String()),
-                  isLabelBold: false,
-                  isValueBold: false,
-                ),
-                const Gap(6),
-                _InfoLine(
-                  label: 'Due Date',
-                  value: dueDate,
-                  isLabelBold: true,
-                  isValueBold: true,
-                ),
-                const Gap(6),
-                _InfoLine(
-                  label: 'Status',
-                  value: isPaid ? 'Paid' : 'Due',
-                  isLabelBold: true,
-                  isValueBold: true,
-                ),
-              ],
+              ),
+            ),
+          );
+        }),
+        if (hasMore) ...[
+          const Gap(4),
+          Center(
+            child: BracuActionButton(
+              label: 'Load More',
+              onPressed: () {
+                setState(() {
+                  _visibleCount += 5;
+                });
+              },
             ),
           ),
-        );
-      }).toList(),
+          const Gap(8),
+        ],
+      ],
     );
   }
 }

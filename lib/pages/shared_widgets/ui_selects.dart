@@ -94,6 +94,7 @@ class BracuSelectDropdownChip<T> extends StatelessWidget {
     this.compact = false,
     this.borderRadius = 18,
     this.showArrow = true,
+    this.showBorder = true,
   });
 
   final String label;
@@ -107,6 +108,7 @@ class BracuSelectDropdownChip<T> extends StatelessWidget {
   final bool compact;
   final double borderRadius;
   final bool showArrow;
+  final bool showBorder;
 
   @override
   Widget build(BuildContext context) {
@@ -118,6 +120,7 @@ class BracuSelectDropdownChip<T> extends StatelessWidget {
         compact: compact,
         borderRadius: borderRadius,
         showArrow: showArrow,
+        showBorder: showBorder,
         onTap: () async {
           final value = await showBracuSelectDropdown<T>(
             chipContext,

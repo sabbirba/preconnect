@@ -52,4 +52,5 @@ class StorageKeys {
   static const String alarmsSnapshot = 'alarms_snapshot_v1';
   static const String wifiCaptiveLastResponseLog =
       'wifi_captive_last_response_log';
+  static const String portfolios = 'portfolios';
 }

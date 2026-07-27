@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/storage_keys.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
+import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/cache_durations.dart';
 
 class ProfileService {
@@ -174,7 +177,15 @@ class ProfileService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data is List && data.isNotEmpty) {
-          final profile = data[0];
+          await AppStorage.instance.setString(
+            StorageKeys.portfolios,
+            jsonEncode(data),
+          );
+          final activeProfile = data.firstWhere(
+            (p) => p is Map && p['hasCompleted'] == false,
+            orElse: () => data[0],
+          );
+          final profile = activeProfile is Map ? activeProfile : data[0];
           await repo.writeStringMap(<String, String>{
             'id': profile['id']?.toString() ?? '',
             'studentId': profile['studentId']?.toString() ?? '',
@@ -753,25 +764,70 @@ class PaymentService {
     Duration cacheDuration = CacheDurations.short,
   }) async {
     final asyncPrefs = AppStorage.instance;
-    final id = await resolvePortfolioId(
-      prefs: asyncPrefs,
-      refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
-    );
-    if (id == null || id.isEmpty) {
+    final rawPortfolios = await asyncPrefs.getString(StorageKeys.portfolios);
+    final portfolioIds = <String>[];
+
+    if (rawPortfolios != null && rawPortfolios.isNotEmpty) {
+      try {
+        final List decoded = jsonDecode(rawPortfolios);
+        for (final item in decoded) {
+          if (item is Map && item['id'] != null) {
+            portfolioIds.add(item['id'].toString());
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (portfolioIds.isEmpty) {
+      final singleId = await resolvePortfolioId(
+        prefs: asyncPrefs,
+        refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
+      );
+      if (singleId != null && singleId.isNotEmpty) {
+        portfolioIds.add(singleId);
+      }
+    }
+
+    if (portfolioIds.isEmpty) {
       return getPaymentInfo(fromFetch: true);
     }
 
-    final url = ApiConfig.paymentUrl(id);
-
     final repo = RepositoryCache.instance;
+    final allPayslips = <Map<String, dynamic>>[];
+    final seenPayslips = <String>{};
+
     try {
-      final response = await ApiClient().authenticatedGet(
-        url,
-        cacheDuration: cacheDuration,
+      final responses = await Future.wait(
+        portfolioIds.map(
+          (id) => ApiClient().authenticatedGet(
+            ApiConfig.paymentUrl(id),
+            cacheDuration: cacheDuration,
+          ),
+        ),
       );
-      if (response.statusCode == 200) {
-        await repo.writeString(_paymentInfoKey, response.body);
-        return response.body;
+
+      for (final response in responses) {
+        if (response.statusCode == 200) {
+          final List list = jsonDecode(response.body);
+          for (final item in list) {
+            if (item is Map<String, dynamic>) {
+              final payslipNo = item['payslipNumber']?.toString() ?? '';
+              final key = payslipNo.isNotEmpty
+                  ? payslipNo
+                  : '${item['requestId']}_${item['semesterSessionId']}';
+              if (!seenPayslips.contains(key)) {
+                seenPayslips.add(key);
+                allPayslips.add(item);
+              }
+            }
+          }
+        }
+      }
+
+      if (allPayslips.isNotEmpty) {
+        final jsonResult = jsonEncode(allPayslips);
+        await repo.writeString(_paymentInfoKey, jsonResult);
+        return jsonResult;
       }
     } catch (_) {}
 
@@ -785,5 +841,404 @@ class PaymentService {
       decoder: (value) => value,
       onCacheMiss: () => fetchPaymentInfo(fromGet: true),
     );
+  }
+
+  Future<List<PayslipItem>> fetchPayslips({
+    bool fromGet = false,
+    Duration cacheDuration = CacheDurations.short,
+  }) async {
+    final raw = await fetchPaymentInfo(
+      fromGet: fromGet,
+      cacheDuration: cacheDuration,
+    );
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final List data = jsonDecode(raw);
+      return data
+          .whereType<Map<String, dynamic>>()
+          .map(PayslipItem.fromJson)
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<PayslipDetail?> fetchPayslipDetail(
+    String payslipNo, {
+    Duration cacheDuration = Duration.zero,
+  }) async {
+    try {
+      final response = await ApiClient().authenticatedGet(
+        ApiConfig.payslipDetailUrl(payslipNo),
+        cacheDuration: cacheDuration,
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        return PayslipDetail.fromJson(data);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<List<BankConfig>> fetchBankConfigurations() async {
+    try {
+      final response = await ApiClient().authenticatedGet(
+        ApiConfig.bankConfigurationsUrl,
+        cacheDuration: CacheDurations.profileOverview,
+      );
+      if (response.statusCode == 200) {
+        final List list = jsonDecode(response.body);
+        return list
+            .whereType<Map<String, dynamic>>()
+            .map(BankConfig.fromJson)
+            .toList();
+      }
+    } catch (_) {}
+    return const [];
+  }
+
+  Future<List<int>?> generatePayslipPdfBytes({
+    required PayslipDetail detail,
+    required List<BankConfig> banks,
+  }) async {
+    try {
+      final token = await TokenStorage.instance.read(
+        key: PreConnectStorageKeys.accessToken,
+      );
+      if (token == null || token.isEmpty) return null;
+
+      final uri = Uri.parse(ApiConfig.pdfPrintUrl);
+      final request = http.MultipartRequest('POST', uri);
+      request.headers.addAll({
+        'Authorization': 'Bearer $token',
+        'X-REALM': 'bracu',
+        'X-SOURCE': '3',
+        'Accept': 'application/json, text/plain, */*',
+      });
+
+      request.fields['report'] = 'finance/payslip.html';
+      request.fields['template'] = 'finance';
+      request.fields['driver'] = 'weasy';
+
+      String formatPdfAmount(double val) {
+        final s = val.toStringAsFixed(0);
+        final buf = StringBuffer();
+        final len = s.length;
+        for (int i = 0; i < len; i++) {
+          if (i > 0 && (len - i) % 3 == 0) {
+            buf.write(',');
+          }
+          buf.write(s[i]);
+        }
+        return buf.toString();
+      }
+
+      final dataMap = <String, dynamic>{
+        'copyForLabel': 'Student',
+        'title': detail.paySlipTitle,
+        'subTitle': '${detail.semesterSession} Undergraduate Programme',
+        'studentId': detail.studentId,
+        'payslipNo': detail.payslipNumber,
+        'name': detail.studentName,
+        'generationDate': detail.payslipGenerationDate ?? '',
+        'programCourseLabel': 'Programme',
+        'programOrcourse': detail.programOrCourseName,
+        'contactNo': detail.contactNo ?? '',
+        'address': detail.presentAddress ?? '',
+        'registrationSlipColumns': true,
+        'isCourseList': detail.courseList.isNotEmpty,
+        'totalFinancialCredits': detail.totalFinancialCredits.toString(),
+        'totalAcademicCredits': detail.totalAcademicCredits.toString(),
+        'totalCourseAmount': formatPdfAmount(detail.totalCourseAmount),
+        'hasQuantity': false,
+        'payslipCourseList': detail.courseList
+            .map(
+              (c) => <String, dynamic>{
+                'courseId': c.courseCode,
+                'courseTitle': c.courseTitle,
+                'academicCredits': c.academicCredit.toString(),
+                'financialCredits': c.financialCredit.toString(),
+                'regDate': c.registrationDate ?? '',
+                'amount': formatPdfAmount(c.amount),
+                'rpRt': 'N/M',
+              },
+            )
+            .toList(),
+        'particularsList': detail.particulars.map((p) {
+          final m = <String, dynamic>{
+            'className': p.type == 'AGGREGATION' || p.type == 'WORDS'
+                ? 'font-bold'
+                : '',
+            'colspan': p.type == 'WORDS' ? 2 : 1,
+            'title': p.particular,
+          };
+          if (p.amount != null) {
+            m['amount'] = formatPdfAmount(p.amount!);
+          }
+          return m;
+        }).toList(),
+        'bankingInformationHint':
+            'Please deposit the net payable amount to any of the above mentioned banks. Please avoid Cheque, PO, Agent Banking, CDM, BEFTN, RTGS, NPSB.',
+        'bankingInformationList': banks
+            .map(
+              (b) => <String, dynamic>{
+                'bankName': b.bankName,
+                'accName': b.accountName,
+                'accNo': b.accountNumber,
+              },
+            )
+            .toList(),
+        'deadLine': detail.deadlineFormatted,
+        'isPaid': detail.isPaid,
+        'expired': detail.isPaid ? false : detail.isExpired,
+      };
+
+      request.fields['data'] = jsonEncode(dataMap);
+
+      final streamedResponse = await request.send();
+      if (streamedResponse.statusCode == 200) {
+        return await streamedResponse.stream.toBytes();
+      }
+    } catch (_) {}
+    return null;
+  }
+}
+
+class PayslipItem {
+  const PayslipItem({
+    required this.payslipNumber,
+    required this.paymentType,
+    required this.paymentStatus,
+    required this.semesterSessionId,
+    required this.totalAmount,
+    required this.totalPayable,
+    required this.totalReceivable,
+    this.dueDate,
+    this.requestDate,
+    this.requestId,
+  });
+
+  final String payslipNumber;
+  final String paymentType;
+  final String paymentStatus;
+  final int semesterSessionId;
+  final double totalAmount;
+  final double totalPayable;
+  final double totalReceivable;
+  final String? dueDate;
+  final String? requestDate;
+  final String? requestId;
+
+  factory PayslipItem.fromJson(Map<String, dynamic> json) {
+    return PayslipItem(
+      payslipNumber: json['payslipNumber']?.toString() ?? '',
+      paymentType: json['paymentType']?.toString() ?? '',
+      paymentStatus: json['paymentStatus']?.toString() ?? '',
+      semesterSessionId: (json['semesterSessionId'] as num?)?.toInt() ?? 0,
+      totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
+      totalPayable: (json['totalPayable'] as num?)?.toDouble() ?? 0.0,
+      totalReceivable: (json['totalReceivable'] as num?)?.toDouble() ?? 0.0,
+      dueDate: json['dueDate']?.toString(),
+      requestDate: json['requestDate']?.toString(),
+      requestId: json['requestId']?.toString(),
+    );
+  }
+
+  String get formattedType {
+    return paymentType
+        .replaceAll('_', ' ')
+        .toLowerCase()
+        .split(' ')
+        .map(
+          (w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '',
+        )
+        .join(' ');
+  }
+
+  bool get isPaid => paymentStatus.toUpperCase() == 'PAID';
+}
+
+class PayslipCourseItem {
+  const PayslipCourseItem({
+    required this.courseCode,
+    required this.courseTitle,
+    required this.academicCredit,
+    required this.financialCredit,
+    required this.amount,
+    this.registrationDate,
+  });
+
+  final String courseCode;
+  final String courseTitle;
+  final num academicCredit;
+  final num financialCredit;
+  final double amount;
+  final String? registrationDate;
+
+  factory PayslipCourseItem.fromJson(Map<String, dynamic> json) {
+    return PayslipCourseItem(
+      courseCode: json['courseCode']?.toString() ?? '',
+      courseTitle: json['courseTitle']?.toString() ?? '',
+      academicCredit: (json['academicCredit'] as num?) ?? 0,
+      financialCredit: (json['financialCredit'] as num?) ?? 0,
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      registrationDate: json['registrationDate']?.toString(),
+    );
+  }
+}
+
+class PayslipParticular {
+  const PayslipParticular({required this.particular, this.amount, this.type});
+
+  final String particular;
+  final double? amount;
+  final String? type;
+
+  factory PayslipParticular.fromJson(Map<String, dynamic> json) {
+    return PayslipParticular(
+      particular: json['particular']?.toString() ?? '',
+      amount: (json['amount'] as num?)?.toDouble(),
+      type: json['type']?.toString(),
+    );
+  }
+}
+
+class BankConfig {
+  const BankConfig({
+    required this.bankId,
+    required this.bankName,
+    required this.branch,
+    required this.routingNumber,
+    required this.accountName,
+    required this.accountNumber,
+    required this.refName,
+    required this.active,
+  });
+
+  final int bankId;
+  final String bankName;
+  final String branch;
+  final String routingNumber;
+  final String accountName;
+  final String accountNumber;
+  final String refName;
+  final bool active;
+
+  factory BankConfig.fromJson(Map<String, dynamic> json) {
+    return BankConfig(
+      bankId: (json['bankId'] as num?)?.toInt() ?? 0,
+      bankName: json['bankName']?.toString() ?? '',
+      branch: json['branch']?.toString() ?? '',
+      routingNumber: json['routingNumber']?.toString() ?? '',
+      accountName: json['accountName']?.toString() ?? '',
+      accountNumber: json['accountNumber']?.toString() ?? '',
+      refName: json['refName']?.toString() ?? '',
+      active: json['active'] == true,
+    );
+  }
+}
+
+class PayslipDetail {
+  const PayslipDetail({
+    required this.payslipNumber,
+    required this.studentId,
+    required this.studentName,
+    required this.programOrCourseName,
+    required this.semesterSession,
+    required this.paySlipTitle,
+    required this.paymentStatus,
+    required this.isPaid,
+    required this.isExpired,
+    this.deadline,
+    this.contactNo,
+    this.presentAddress,
+    this.payslipGenerationDate,
+    required this.courseList,
+    required this.particulars,
+  });
+
+  final String payslipNumber;
+  final String studentId;
+  final String studentName;
+  final String programOrCourseName;
+  final String semesterSession;
+  final String paySlipTitle;
+  final String paymentStatus;
+  final bool isPaid;
+  final bool isExpired;
+  final String? deadline;
+  final String? contactNo;
+  final String? presentAddress;
+  final String? payslipGenerationDate;
+  final List<PayslipCourseItem> courseList;
+  final List<PayslipParticular> particulars;
+
+  factory PayslipDetail.fromJson(Map<String, dynamic> json) {
+    final coursesRaw = json['courseList'];
+    final particularsRaw = json['particulars'];
+
+    return PayslipDetail(
+      payslipNumber: json['payslipNumber']?.toString() ?? '',
+      studentId: json['studentId']?.toString() ?? '',
+      studentName: json['studentName']?.toString() ?? '',
+      programOrCourseName:
+          json['programOrCourseName']?.toString() ??
+          json['program']?.toString() ??
+          '',
+      semesterSession: json['semesterSession']?.toString() ?? '',
+      paySlipTitle: json['paySlipTitle']?.toString() ?? '',
+      paymentStatus: json['paymentStatus']?.toString() ?? '',
+      isPaid: json['paymentStatus']?.toString().toUpperCase() == 'PAID',
+      isExpired: json['isExpired'] == true,
+      deadline: json['deadline']?.toString(),
+      contactNo: json['contactNo']?.toString(),
+      presentAddress: json['presentAddress']?.toString(),
+      payslipGenerationDate: json['payslipGenerationDate']?.toString(),
+      courseList: coursesRaw is List
+          ? coursesRaw
+                .whereType<Map<String, dynamic>>()
+                .map(PayslipCourseItem.fromJson)
+                .toList()
+          : const [],
+      particulars: particularsRaw is List
+          ? particularsRaw
+                .whereType<Map<String, dynamic>>()
+                .map(PayslipParticular.fromJson)
+                .toList()
+          : const [],
+    );
+  }
+
+  num get totalAcademicCredits =>
+      courseList.fold(0, (sum, item) => sum + item.academicCredit);
+
+  num get totalFinancialCredits =>
+      courseList.fold(0, (sum, item) => sum + item.financialCredit);
+
+  double get totalCourseAmount =>
+      courseList.fold(0.0, (sum, item) => sum + item.amount);
+
+  String get deadlineFormatted {
+    if (deadline == null || deadline!.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(deadline!);
+      final months = [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
+      ];
+      return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+    } catch (_) {
+      return deadline!;
+    }
   }
 }

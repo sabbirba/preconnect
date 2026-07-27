@@ -521,15 +521,13 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
         'With ${widget.friendItem.name.trim().isEmpty ? 'Friend' : widget.friendItem.name}';
 
     if (widget.personalSchedule == null || widget.personalSchedule!.isEmpty) {
-      return Scaffold(
-        body: BracuPageScaffold(
-          title: title,
-          subtitle: subtitle,
-          icon: Icons.compare_arrows_rounded,
-          body: const Center(
-            child: BracuEmptyState(
-              message: 'You need to have your own schedule to compare',
-            ),
+      return BracuPageScaffold(
+        title: title,
+        subtitle: subtitle,
+        icon: Icons.compare_arrows_rounded,
+        body: const Center(
+          child: BracuEmptyState(
+            message: 'You need to have your own schedule to compare',
           ),
         ),
       );
@@ -618,16 +616,14 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
       );
     }
 
-    return Scaffold(
-      body: BracuPageScaffold(
-        title: title,
-        subtitle: subtitle,
-        icon: Icons.compare_arrows_rounded,
-        body: ListView(
-          controller: _scrollController,
-          padding: const EdgeInsets.all(20),
-          children: scheduleWidgets,
-        ),
+    return BracuPageScaffold(
+      title: title,
+      subtitle: subtitle,
+      icon: Icons.compare_arrows_rounded,
+      body: ListView(
+        controller: _scrollController,
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        children: scheduleWidgets,
       ),
     );
   }

@@ -661,17 +661,34 @@ class ProfileImageCache {
   static final instance = ProfileImageCache._();
 
   static const _cacheKey = 'profile_image_cache';
+  static final Map<String, File> _memCache = <String, File>{};
 
   final CacheManager _cacheManager = CacheManager(
     Config(
       _cacheKey,
-      stalePeriod: const Duration(days: 30),
-      maxNrOfCacheObjects: 5,
+      stalePeriod: const Duration(days: 90),
+      maxNrOfCacheObjects: 50,
     ),
   );
 
+  File? getFromMemory(String? photoUrl) {
+    if (photoUrl == null || photoUrl.isEmpty) return null;
+    return _memCache[photoUrl];
+  }
+
   Future<File?> getProfileImage(String? photoUrl) async {
     if (photoUrl == null || photoUrl.isEmpty) return null;
+
+    final mem = _memCache[photoUrl];
+    if (mem != null) return mem;
+
+    try {
+      final cached = await _cacheManager.getFileFromCache(photoUrl);
+      if (cached != null && await looksLikeImageFile(cached.file)) {
+        _memCache[photoUrl] = cached.file;
+        return cached.file;
+      }
+    } catch (_) {}
 
     try {
       final uri = Uri.parse(photoUrl);
@@ -700,24 +717,20 @@ class ProfileImageCache {
         authHeaders: headers,
       );
       if (await looksLikeImageFile(fileInfo.file)) {
+        _memCache[photoUrl] = fileInfo.file;
         return fileInfo.file;
-      }
-      await _cacheManager.removeFile(photoUrl);
-    } catch (_) {}
-
-    try {
-      final cached = await _cacheManager.getFileFromCache(photoUrl);
-      if (cached != null && await looksLikeImageFile(cached.file)) {
-        return cached.file;
       }
     } catch (_) {}
 
     return null;
   }
 
-  void invalidate() {}
+  void invalidate() {
+    _memCache.clear();
+  }
 
   Future<void> clear() async {
+    _memCache.clear();
     await _cacheManager.emptyCache();
   }
 }

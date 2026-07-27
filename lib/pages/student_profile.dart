@@ -15,6 +15,8 @@ import 'package:preconnect/pages/student_profile_sections/payment_graph.dart';
 import 'package:preconnect/pages/student_profile_sections/payment_list.dart';
 import 'package:preconnect/pages/student_profile_sections/personal_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
@@ -33,7 +35,6 @@ class _StudentProfileState extends State<StudentProfile>
     with SingleTickerProviderStateMixin, RefreshBusState {
   static _StudentProfileSnapshot? _cachedSnapshot;
   static Future<_StudentProfileSnapshot>? _preloadFuture;
-  static const Duration _emptyRetryInterval = Duration(seconds: 5);
   Map<String, String?>? _profile;
   String? _photoUrl;
   List<PaymentInfo> _payments = [];
@@ -42,7 +43,6 @@ class _StudentProfileState extends State<StudentProfile>
   ProgressSummary? _progressSummary;
   bool _isRefreshing = false;
   late final AnimationController _refreshController;
-  Timer? _emptyRetryTimer;
 
   @override
   void initState() {
@@ -56,7 +56,6 @@ class _StudentProfileState extends State<StudentProfile>
       _seedCachedSnapshot();
     }
     unawaited(_warmAndBind());
-    _scheduleEmptyRetry();
     bindRefreshBus(_onRefreshSignal);
   }
 
@@ -69,6 +68,7 @@ class _StudentProfileState extends State<StudentProfile>
     _attendances = snapshot.attendances;
     _advising = snapshot.advising;
     _progressSummary = snapshot.progressSummary;
+    _shortCodesDisplay = snapshot.shortCodesDisplay;
   }
 
   static Future<_StudentProfileSnapshot> preloadData({
@@ -99,21 +99,9 @@ class _StudentProfileState extends State<StudentProfile>
 
   @override
   void dispose() {
-    _emptyRetryTimer?.cancel();
     _refreshController.dispose();
     unbindRefreshBus(_onRefreshSignal);
     super.dispose();
-  }
-
-  void _scheduleEmptyRetry() {
-    _emptyRetryTimer?.cancel();
-    if (_profile != null) return;
-    _emptyRetryTimer = Timer(_emptyRetryInterval, () {
-      if (!mounted || _isRefreshing) return;
-      if (_profile != null) return;
-      unawaited(_refreshProfile(notify: false));
-      _scheduleEmptyRetry();
-    });
   }
 
   void _onRefreshSignal() {
@@ -211,6 +199,7 @@ class _StudentProfileState extends State<StudentProfile>
       _attendances = snapshot.attendances;
       _advising = snapshot.advising;
       _progressSummary = snapshot.progressSummary;
+      _shortCodesDisplay = snapshot.shortCodesDisplay;
     });
   }
 
@@ -294,6 +283,27 @@ class _StudentProfileState extends State<StudentProfile>
       unawaited(ProfileImageCache.instance.getProfileImage(photoUrl));
     }
 
+    final rawPortfolios = await AppStorage.instance.getString(
+      StorageKeys.portfolios,
+    );
+    final codes = <String>[];
+    if (rawPortfolios != null && rawPortfolios.isNotEmpty) {
+      try {
+        final List decoded = jsonDecode(rawPortfolios);
+        for (final item in decoded) {
+          if (item is Map && item['shortCode'] != null) {
+            final code = item['shortCode'].toString().trim();
+            if (code.isNotEmpty && !codes.contains(code)) {
+              codes.add(code);
+            }
+          }
+        }
+      } catch (_) {}
+    }
+    final shortCodesDisplay = codes.isNotEmpty
+        ? codes.join(', ')
+        : (profile?['shortCode'] ?? '');
+
     return _StudentProfileSnapshot(
       profile: profile,
       photoUrl: photoUrl,
@@ -301,6 +311,7 @@ class _StudentProfileState extends State<StudentProfile>
       attendances: attendances,
       advising: advising,
       progressSummary: progressSummary,
+      shortCodesDisplay: shortCodesDisplay,
     );
   }
 
@@ -324,8 +335,8 @@ class _StudentProfileState extends State<StudentProfile>
         _attendances = snapshot.attendances;
         _advising = snapshot.advising;
         _progressSummary = snapshot.progressSummary;
+        _shortCodesDisplay = snapshot.shortCodesDisplay;
       });
-      _scheduleEmptyRetry();
       _cachedSnapshot = snapshot;
       RefreshBus.instance.notify(reason: 'student_profile');
     } finally {
@@ -340,9 +351,12 @@ class _StudentProfileState extends State<StudentProfile>
     }
   }
 
+  String? _shortCodesDisplay;
+
   @override
   Widget build(BuildContext context) {
     final isLoading = _profile == null;
+    final shortCode = _shortCodesDisplay ?? _profile?['shortCode'];
     return BracuPageScaffold(
       title: 'Student Profile',
       subtitle: 'Academic & Finance',
@@ -387,7 +401,7 @@ class _StudentProfileState extends State<StudentProfile>
             const Gap(12),
             _payments.isEmpty
                 ? const BracuEmptyState(message: 'No payments found')
-                : PaymentGraph(payments: _payments),
+                : PaymentGraph(payments: _payments, shortCode: shortCode),
             if (_payments.isNotEmpty) const Gap(12),
             if (_payments.isNotEmpty) PaymentList(payments: _payments),
             const Gap(12),
@@ -406,6 +420,7 @@ class _StudentProfileSnapshot {
     required this.attendances,
     required this.advising,
     required this.progressSummary,
+    required this.shortCodesDisplay,
   });
 
   final Map<String, String?>? profile;
@@ -414,4 +429,5 @@ class _StudentProfileSnapshot {
   final List<AttendanceInfo> attendances;
   final Map<String, String?> advising;
   final ProgressSummary? progressSummary;
+  final String shortCodesDisplay;
 }

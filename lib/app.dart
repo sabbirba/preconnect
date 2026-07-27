@@ -6,6 +6,7 @@ import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
@@ -22,6 +23,7 @@ import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/cdn_warmup.dart';
+import 'package:preconnect/api/mercure_service.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/class_schedule.dart';
@@ -31,7 +33,7 @@ import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
-import 'package:preconnect/pages/shared_widgets/session_helper.dart';
+import 'package:preconnect/tools/background_sync.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/quiet_controller.dart';
 import 'package:app_links/app_links.dart';
@@ -199,12 +201,15 @@ class MyApp extends StatefulWidget {
 
   static Future<void> _warmStartupCaches({bool forceRefresh = false}) async {
     try {
-      await Future.wait(
-        _buildWarmupTasks(
-          includeCampusPrinter: false,
-          forceRefresh: forceRefresh,
-        ).map((t) => t.catchError((_) {})),
-      );
+      unawaited(MercureService().connect());
+      if (forceRefresh) {
+        await Future.wait(
+          _buildWarmupTasks(
+            includeCampusPrinter: false,
+            forceRefresh: forceRefresh,
+          ).map((t) => t.catchError((_) {})),
+        );
+      }
     } catch (_) {}
   }
 
@@ -215,15 +220,7 @@ class MyApp extends StatefulWidget {
     final tasks = <Future<void>>[
       preloadHomeDashboardData(forceRefresh: forceRefresh).then((_) {}),
       ProfileService().getProfile(fromFetch: forceRefresh).then((_) {}),
-      () async {
-        final semesterSessionId =
-            await resolveCurrentSessionSemesterIdWithRetry();
-        if (semesterSessionId == null) return;
-        await ScheduleService().getStudentScheduleForSemester(
-          semesterSessionId: semesterSessionId,
-          fromFetch: forceRefresh,
-        );
-      }(),
+      ScheduleService().preloadAllSemesters(forceRefresh: forceRefresh),
       StudentProfile.preload(forceRefresh: forceRefresh),
       ClassSchedulePage.preload(forceRefresh: forceRefresh),
       ExamSchedule.preload(forceRefresh: forceRefresh),
@@ -270,6 +267,23 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp>
     with WidgetsBindingObserver, RefreshBusState {
   late final ValueNotifier<ThemeMode> _themeMode;
+  late final ThemeData _cachedLightTheme = _buildTheme(
+    brightness: Brightness.light,
+    scaffoldBackgroundColor: Colors.white,
+    primary: const Color(0xFF1E6BE3),
+    secondary: const Color(0xFF22B573),
+    foreground: Colors.black87,
+  );
+  late final ThemeData _cachedDarkTheme = _buildTheme(
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: Colors.black,
+    primary: const Color(0xFF1E6BE3),
+    secondary: const Color(0xFF22B573),
+    foreground: Colors.white,
+    surface: Colors.black,
+    onSurface: Colors.white,
+    dialogTheme: const DialogThemeData(backgroundColor: Colors.black),
+  );
   final _RouteTrackingObserver _routeObserver = _RouteTrackingObserver();
   late bool _initialLoggedIn;
   late bool _canOpenOffline;
@@ -339,8 +353,16 @@ class _MyAppState extends State<MyApp>
       );
       if (!kIsWeb) {
         _initDeepLinkListener();
+        BackgroundSyncService.instance.initialize();
       }
     }
+  }
+
+  @override
+  void didHaveMemoryPressure() {
+    super.didHaveMemoryPressure();
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
   }
 
   void _initDeepLinkListener() {
@@ -593,14 +615,35 @@ class _MyAppState extends State<MyApp>
           CdnWarmupService.instance.warmPublicCdnData(forceRefresh: true),
           if (_initialLoggedIn) _warmBackgroundCaches(forceRefresh: true),
         ]);
-        RefreshBus.instance.notify(reason: 'class_schedule');
-        RefreshBus.instance.notify(reason: 'exam_schedule');
-        RefreshBus.instance.notify(reason: 'student_profile');
-        RefreshBus.instance.notify(reason: 'home_dashboard');
-        RefreshBus.instance.notify(reason: 'degree_progress');
-        RefreshBus.instance.notify(reason: 'calendar');
-        RefreshBus.instance.notify(reason: 'notifications');
-        RefreshBus.instance.notify(reason: 'libsync');
+        final activeTab =
+            _resolvedBootstrapState?.initialHomeTab ?? HomeTab.dashboard;
+        final activeReason = switch (activeTab) {
+          HomeTab.studentSchedule => 'class_schedule',
+          HomeTab.examSchedule => 'exam_schedule',
+          HomeTab.profile => 'student_profile',
+          HomeTab.dashboard => 'home_dashboard',
+          HomeTab.degreeProgress => 'degree_progress',
+          HomeTab.notifications => 'notifications',
+          _ => 'home_dashboard',
+        };
+        RefreshBus.instance.notify(reason: activeReason);
+
+        scheduleMicrotask(() {
+          for (final reason in const [
+            'class_schedule',
+            'exam_schedule',
+            'student_profile',
+            'home_dashboard',
+            'degree_progress',
+            'calendar',
+            'notifications',
+            'libsync',
+          ]) {
+            if (reason != activeReason) {
+              RefreshBus.instance.notify(reason: reason);
+            }
+          }
+        });
       }
     } catch (_) {
     } finally {
@@ -955,6 +998,13 @@ class _MyAppState extends State<MyApp>
       scaffoldBackgroundColor: scaffoldBackgroundColor,
       dialogTheme: dialogTheme,
       useMaterial3: true,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+        },
+      ),
       splashFactory: NoSplash.splashFactory,
       splashColor: Colors.transparent,
       highlightColor: Colors.transparent,
@@ -1003,25 +1053,6 @@ class _MyAppState extends State<MyApp>
 
   @override
   Widget build(BuildContext context) {
-    final lightTheme = _buildTheme(
-      brightness: Brightness.light,
-      scaffoldBackgroundColor: Colors.white,
-      primary: const Color(0xFF1E6BE3),
-      secondary: const Color(0xFF22B573),
-      foreground: Colors.black87,
-    );
-
-    final darkTheme = _buildTheme(
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: Colors.black,
-      primary: const Color(0xFF1E6BE3),
-      secondary: const Color(0xFF22B573),
-      foreground: Colors.white,
-      surface: Colors.black,
-      onSurface: Colors.white,
-      dialogTheme: const DialogThemeData(backgroundColor: Colors.black),
-    );
-
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: _themeMode,
       builder: (context, mode, _) {
@@ -1031,9 +1062,12 @@ class _MyAppState extends State<MyApp>
           child: MaterialApp(
             title: 'PreConnect',
             debugShowCheckedModeBanner: false,
-            theme: lightTheme,
-            darkTheme: darkTheme,
+            theme: _cachedLightTheme,
+            darkTheme: _cachedDarkTheme,
             themeMode: mode,
+            themeAnimationDuration: const Duration(milliseconds: 140),
+            themeAnimationCurve: Curves.easeOutCubic,
+            scrollBehavior: const _SmoothScrollBehavior(),
             navigatorKey: widget.isPreBoot ? null : AuthService.navigatorKey,
             navigatorObservers: [_routeObserver],
             builder: (context, child) {
@@ -1221,12 +1255,22 @@ class ThemeController extends InheritedWidget {
   static Future<void> setTheme(BuildContext context, ThemeMode mode) async {
     final ThemeController? controller = context
         .dependOnInheritedWidgetOfExactType<ThemeController>();
-    controller!.notifier.value = mode;
-    await controller.onChanged(mode);
+    if (controller == null) return;
+    controller.notifier.value = mode;
+    unawaited(controller.onChanged(mode));
   }
 
   @override
   bool updateShouldNotify(ThemeController oldWidget) {
     return notifier != oldWidget.notifier;
+  }
+}
+
+class _SmoothScrollBehavior extends ScrollBehavior {
+  const _SmoothScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
   }
 }
