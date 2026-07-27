@@ -181,22 +181,9 @@ class _ClassScheduleState extends State<ClassSchedulePage>
   void _onJumpRequested() {
     _highlightScroll.resetScrollState();
     if (!mounted) return;
-    final hadFilter = _selectedSemesterSessionId != null || _showDoneSections;
     setState(() {
-      _selectedSemesterSessionId = null;
-      _showDoneSections = false;
       _visibleWeekCount = _initialVisibleWeekCount;
-      if (hadFilter) {
-        final syncData = cache.value ?? _loadScheduleDataSync();
-        if (syncData != null) {
-          _latestData = syncData;
-          _future = Future<_ScheduleData>.value(syncData);
-        } else {
-          _future = preloadData();
-        }
-      }
     });
-    unawaited(_updateSemesterName());
   }
 
   void _toggleDoneView() {
@@ -335,10 +322,14 @@ class _ClassScheduleState extends State<ClassSchedulePage>
       return;
     }
     if (!mounted) return;
+    final currentSessionId = await resolveCurrentSessionSemesterId();
+    final targetSemesterId = _selectedSemesterSessionId ?? currentSessionId;
     setState(() {
       _highlightScroll.resetScrollState();
       _visibleWeekCount = _initialVisibleWeekCount;
-      _future = preloadData(forceRefresh: true);
+      _future = targetSemesterId != null
+          ? _loadSemesterSchedule(targetSemesterId, forceRefresh: true)
+          : preloadData(forceRefresh: true);
     });
     await _future;
     if (notify) {
@@ -439,15 +430,20 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     }
   }
 
-  Future<_ScheduleData> _loadSemesterSchedule(int semesterSessionId) async {
+  Future<_ScheduleData> _loadSemesterSchedule(
+    int semesterSessionId, {
+    bool forceRefresh = false,
+  }) async {
     final sections = await ScheduleService().getUnifiedStudentSchedule(
       semesterSessionId: semesterSessionId,
+      forceRefresh: forceRefresh,
     );
     final isRamadan = await RamadanTiming.isRamadan();
     final examOverrides = sections.isEmpty
         ? const <String, ExamScheduleOverride>{}
         : await ExamScheduleService().getOverridesForSections(
             sections,
+            forceRefresh: forceRefresh,
             forcedSemesterSessionId: semesterSessionId,
           );
     final currentSessionId = await resolveCurrentSessionSemesterId();
