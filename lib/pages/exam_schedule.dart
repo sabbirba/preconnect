@@ -11,6 +11,8 @@ import 'package:preconnect/pages/shared_widgets/session_selector.dart';
 import 'package:preconnect/pages/shared_widgets/exam_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/string_utils.dart';
+import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/exam_visibility.dart';
 import 'package:preconnect/tools/snapshot_store.dart';
 import 'package:preconnect/tools/preload_cache.dart';
@@ -267,14 +269,15 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   static _ExamScheduleData? _loadExamScheduleDataSync([
     int? semesterSessionId,
   ]) {
-    final sections = ScheduleService().getStudentSectionsSync(
-      semesterSessionId,
-    );
+    final targetSessionId =
+        semesterSessionId ??
+        AppStorage.instance.getIntSync(StorageKeys.currentSessionSemesterId);
+    final sections = ScheduleService().getStudentSectionsSync(targetSessionId);
     if (sections == null || sections.isEmpty) return null;
-    return _ExamScheduleData(
-      sections: sections,
-      overrides: const <String, ExamScheduleOverride>{},
-    );
+    final overrides = targetSessionId != null
+        ? ExamScheduleService().getOverridesForSemesterSync(targetSessionId)
+        : const <String, ExamScheduleOverride>{};
+    return _ExamScheduleData(sections: sections, overrides: overrides);
   }
 
   String? _selectedSemesterName;

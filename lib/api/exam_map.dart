@@ -3,7 +3,7 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/model/section_info.dart';
-import 'package:preconnect/pages/shared_widgets/session_helper.dart';
+import 'package:preconnect/tools/app_storage.dart';
 
 class ExamMapService {
   static final ExamMapService _instance = ExamMapService._();
@@ -38,11 +38,22 @@ class ExamMapService {
     required int semesterSessionId,
     bool forceRefresh = false,
   }) async {
-    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
-    if (currentSessionSemesterId != null &&
-        semesterSessionId != currentSessionSemesterId) {
-      return const <String, ExamScheduleOverride>{};
+    final parsedKey = 'exammap_parsed_${semesterSessionId}_v1';
+    if (!forceRefresh) {
+      final cachedParsed = await _repo.readJsonMap(parsedKey);
+      if (cachedParsed != null && cachedParsed.isNotEmpty) {
+        final decoded = <String, ExamScheduleOverride>{};
+        for (final entry in cachedParsed.entries) {
+          if (entry.value is Map) {
+            decoded[entry.key] = ExamScheduleOverride.fromJson(
+              (entry.value as Map).cast<String, dynamic>(),
+            );
+          }
+        }
+        if (decoded.isNotEmpty) return decoded;
+      }
     }
+
     final semesterLabel = _semesterLabelFromSessionId(semesterSessionId);
     if (semesterLabel.isEmpty) return const <String, ExamScheduleOverride>{};
 
@@ -100,6 +111,13 @@ class ExamMapService {
         examTypeHint: 'Final',
         pdfUrls: finalPdfUrls,
       );
+    }
+
+    if (merged.isNotEmpty) {
+      final jsonToWrite = merged.map(
+        (key, value) => MapEntry(key, value.toJson()),
+      );
+      await _repo.writeJson(parsedKey, jsonToWrite);
     }
 
     return merged;
@@ -437,18 +455,41 @@ class ExamScheduleService {
     int? forcedSemesterSessionId,
   }) async {
     if (sections.isEmpty) return const <String, ExamScheduleOverride>{};
-    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
     final semesterSessionId =
         forcedSemesterSessionId ?? resolveSemesterSessionId(sections);
-    if (semesterSessionId == null ||
-        (currentSessionSemesterId != null &&
-            semesterSessionId != currentSessionSemesterId)) {
+    if (semesterSessionId == null) {
       return const <String, ExamScheduleOverride>{};
     }
     return ExamMapService().getOverridesForSemester(
       semesterSessionId: semesterSessionId,
       forceRefresh: forceRefresh,
     );
+  }
+
+  Map<String, ExamScheduleOverride> getOverridesForSemesterSync(
+    int semesterSessionId,
+  ) {
+    try {
+      final raw = AppStorage.instance.getStringSync(
+        'exammap_parsed_${semesterSessionId}_v1',
+      );
+      if (raw == null || raw.isEmpty) {
+        return const <String, ExamScheduleOverride>{};
+      }
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        final map = <String, ExamScheduleOverride>{};
+        for (final entry in decoded.entries) {
+          if (entry.value is Map) {
+            map[entry.key.toString()] = ExamScheduleOverride.fromJson(
+              (entry.value as Map).cast<String, dynamic>(),
+            );
+          }
+        }
+        return map;
+      }
+    } catch (_) {}
+    return const <String, ExamScheduleOverride>{};
   }
 
   int? resolveSemesterSessionId(List<Section> sections) {

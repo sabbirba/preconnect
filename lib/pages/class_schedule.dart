@@ -98,11 +98,14 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     final targetSessionId = semesterSessionId ?? currentSessionId;
     final isCurrentSemester =
         targetSessionId == null || targetSessionId == currentSessionId;
+    final overrides = targetSessionId != null
+        ? ExamScheduleService().getOverridesForSemesterSync(targetSessionId)
+        : const <String, ExamScheduleOverride>{};
     return _buildScheduleDataFromSectionsStatic(
       sections,
       shouldHighlightCurrentSemester: isCurrentSemester,
       isRamadan: false,
-      examOverrides: const <String, ExamScheduleOverride>{},
+      examOverrides: overrides,
     );
   }
 
