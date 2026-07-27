@@ -29,13 +29,36 @@ class CachedImage extends StatefulWidget {
   final Widget? placeholder;
   final Widget? error;
 
-  static void clearMemoryCache() {}
+  static void precache(BuildContext context, String url) {
+    final normalized = normalizeImageUrl(url);
+    if (normalized == null || normalized.isEmpty) return;
+    try {
+      precacheImage(
+        CachedNetworkImageProvider(
+          normalized,
+          headers: const <String, String>{
+            'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                '(KHTML, like Gecko) Chrome/125.0 Safari/537.36',
+          },
+        ),
+        context,
+      );
+    } catch (_) {}
+  }
+
+  static void clearMemoryCache() {
+    _CachedImageState._fileMemoryCache.clear();
+    ProfileImageCache.instance.invalidate();
+  }
 
   @override
   State<CachedImage> createState() => _CachedImageState();
 }
 
 class _CachedImageState extends State<CachedImage> {
+  static final Map<String, File> _fileMemoryCache = <String, File>{};
   Map<String, String>? _headers;
   File? _localFile;
   bool _loading = true;
@@ -43,6 +66,15 @@ class _CachedImageState extends State<CachedImage> {
   @override
   void initState() {
     super.initState();
+    final normalized = normalizeImageUrl(widget.url);
+    final memFile = normalized != null
+        ? (_fileMemoryCache[normalized] ??
+              ProfileImageCache.instance.getFromMemory(normalized))
+        : null;
+    if (memFile != null) {
+      _localFile = memFile;
+      _loading = false;
+    }
     _loadHeaders();
   }
 
@@ -50,7 +82,19 @@ class _CachedImageState extends State<CachedImage> {
   void didUpdateWidget(CachedImage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.url != widget.url) {
-      _loadHeaders();
+      final normalized = normalizeImageUrl(widget.url);
+      final memFile = normalized != null
+          ? (_fileMemoryCache[normalized] ??
+                ProfileImageCache.instance.getFromMemory(normalized))
+          : null;
+      if (memFile != null) {
+        setState(() {
+          _localFile = memFile;
+          _loading = false;
+        });
+      } else {
+        _loadHeaders();
+      }
     }
   }
 
@@ -74,6 +118,7 @@ class _CachedImageState extends State<CachedImage> {
       if (localFile != null &&
           await localFile.exists() &&
           await looksLikeImageFile(localFile)) {
+        _fileMemoryCache[normalized] = localFile;
         if (mounted) {
           setState(() {
             _localFile = localFile;
@@ -120,11 +165,11 @@ class _CachedImageState extends State<CachedImage> {
     }
 
     final dpr = MediaQuery.of(context).devicePixelRatio;
-    final cacheWidth = widget.width != null && widget.width! > 0
-        ? (widget.width! * dpr).round()
-        : null;
-    final cacheHeight = widget.height != null && widget.height! > 0
-        ? (widget.height! * dpr).round()
+    final maxDim = (widget.width != null && widget.height != null)
+        ? (widget.width! > widget.height! ? widget.width! : widget.height!)
+        : (widget.width ?? widget.height);
+    final cacheWidth = maxDim != null && maxDim > 0
+        ? (maxDim * dpr).round()
         : null;
 
     if (_localFile != null) {
@@ -136,7 +181,6 @@ class _CachedImageState extends State<CachedImage> {
         alignment: widget.alignment,
         filterQuality: widget.filterQuality,
         cacheWidth: cacheWidth,
-        cacheHeight: cacheHeight,
         errorBuilder: (context, error, stackTrace) =>
             widget.error ?? const SizedBox.shrink(),
       );

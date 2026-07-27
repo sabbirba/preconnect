@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/exam_map.dart';
@@ -9,6 +8,7 @@ import 'package:preconnect/pages/shared_widgets/exam_filter.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
 import 'package:preconnect/pages/shared_widgets/entry_card.dart';
 import 'package:preconnect/pages/shared_widgets/session_helper.dart';
+import 'package:preconnect/pages/shared_widgets/session_selector.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/storage_keys.dart';
@@ -65,17 +65,20 @@ class _ClassScheduleState extends State<ClassSchedulePage>
   @override
   void initState() {
     super.initState();
-    _latestData = cache.value ?? _loadScheduleDataSync();
-    _future = cache.value == null
-        ? preloadData()
-        : Future<_ScheduleData>.value(cache.value!);
+    final initialSyncData = cache.value ?? _loadScheduleDataSync();
+    _latestData = initialSyncData;
+    _future = initialSyncData != null
+        ? Future<_ScheduleData>.value(initialSyncData)
+        : preloadData();
     unawaited(_warmAndBind());
+    unawaited(_updateSemesterName());
     ClassSchedulePage.jumpSignal.addListener(_onJumpRequested);
     cache.addListener(_onCacheUpdated);
     bindRefreshBus(_onRefreshSignal);
   }
 
   Future<void> _warmAndBind() async {
+    if (_latestData != null) return;
     final data = await preloadData();
     if (!mounted) return;
     setState(() {
@@ -84,31 +87,23 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     });
   }
 
-  static _ScheduleData? _loadScheduleDataSync() {
-    try {
-      final raw = AppStorage.instance.getStringSync(StorageKeys.alarmsSnapshot);
-      if (raw == null || raw.trim().isEmpty) return null;
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map<String, dynamic>) return null;
-      final sectionsRaw = decoded['sections'];
-      if (sectionsRaw is! List) return null;
-      final sections = sectionsRaw
-          .whereType<Map>()
-          .map(
-            (entry) => section.Section.fromJson(entry.cast<String, dynamic>()),
-          )
-          .toList(growable: false);
-      if (sections.isEmpty) return null;
-      final isRamadan = decoded['isRamadan'] == true;
-      return _buildScheduleDataFromSectionsStatic(
-        sections,
-        shouldHighlightCurrentSemester: true,
-        isRamadan: isRamadan,
-        examOverrides: const <String, ExamScheduleOverride>{},
-      );
-    } catch (_) {
-      return null;
-    }
+  static _ScheduleData? _loadScheduleDataSync([int? semesterSessionId]) {
+    final sections = ScheduleService().getStudentSectionsSync(
+      semesterSessionId,
+    );
+    if (sections == null || sections.isEmpty) return null;
+    final currentSessionId = AppStorage.instance.getIntSync(
+      StorageKeys.currentSessionSemesterId,
+    );
+    final targetSessionId = semesterSessionId ?? currentSessionId;
+    final isCurrentSemester =
+        targetSessionId == null || targetSessionId == currentSessionId;
+    return _buildScheduleDataFromSectionsStatic(
+      sections,
+      shouldHighlightCurrentSemester: isCurrentSemester,
+      isRamadan: false,
+      examOverrides: const <String, ExamScheduleOverride>{},
+    );
   }
 
   static Future<_ScheduleData> preloadData({bool forceRefresh = false}) async {
@@ -185,11 +180,23 @@ class _ClassScheduleState extends State<ClassSchedulePage>
 
   void _onJumpRequested() {
     _highlightScroll.resetScrollState();
-    if (mounted) {
-      setState(() {
-        _visibleWeekCount = _initialVisibleWeekCount;
-      });
-    }
+    if (!mounted) return;
+    final hadFilter = _selectedSemesterSessionId != null || _showDoneSections;
+    setState(() {
+      _selectedSemesterSessionId = null;
+      _showDoneSections = false;
+      _visibleWeekCount = _initialVisibleWeekCount;
+      if (hadFilter) {
+        final syncData = cache.value ?? _loadScheduleDataSync();
+        if (syncData != null) {
+          _latestData = syncData;
+          _future = Future<_ScheduleData>.value(syncData);
+        } else {
+          _future = preloadData();
+        }
+      }
+    });
+    unawaited(_updateSemesterName());
   }
 
   void _toggleDoneView() {
@@ -339,9 +346,34 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     }
   }
 
+  DateTime? _findMaxFinalExamDate(
+    List<section.Section> studentSections,
+    Map<String, ExamScheduleOverride> overrides,
+  ) {
+    DateTime? maxDate;
+    final examService = ExamScheduleService();
+    for (final s in studentSections) {
+      final resolved = examService.resolveSection(
+        section: s,
+        overrides: overrides,
+      );
+      final dateStr = resolved.finalDate;
+      if (dateStr != null && dateStr.isNotEmpty) {
+        final dt = BracuTime.parseDateTime(dateStr, resolved.finalStartTime);
+        if (dt != null) {
+          if (maxDate == null || dt.isAfter(maxDate)) {
+            maxDate = dt;
+          }
+        }
+      }
+    }
+    return maxDate;
+  }
+
   List<_RenderedScheduleSection> _buildRenderedSections(
     Map<String, List<_ScheduleRow>> grouped, {
     required bool shouldHighlightCurrentSemester,
+    DateTime? maxFinalExamDate,
   }) {
     if (!shouldHighlightCurrentSemester) {
       return _weekdayNames
@@ -358,8 +390,22 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     final totalDays = _visibleWeekCount * 7;
     final sections = <_RenderedScheduleSection>[];
 
+    final cutoffDate = maxFinalExamDate != null
+        ? DateTime(
+            maxFinalExamDate.year,
+            maxFinalExamDate.month,
+            maxFinalExamDate.day,
+            23,
+            59,
+            59,
+          )
+        : null;
+
     for (var dayOffset = 0; dayOffset < totalDays; dayOffset++) {
       final date = today.add(Duration(days: dayOffset));
+      if (cutoffDate != null && date.isAfter(cutoffDate)) {
+        break;
+      }
       final day = _weekdayNames[date.weekday - 1];
       if (!grouped.containsKey(day)) continue;
       sections.add(
@@ -374,20 +420,96 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     return sections;
   }
 
+  String? _selectedSemesterName;
+
+  void _onSemesterSessionChanged(SemesterSessionItem item) {
+    final changed = _selectedSemesterSessionId != item.semesterSessionId;
+    if (_selectedSemesterName != item.description || changed) {
+      final syncData = _loadScheduleDataSync(item.semesterSessionId);
+      setState(() {
+        _selectedSemesterSessionId = item.semesterSessionId;
+        _selectedSemesterName = item.description;
+        if (syncData != null) {
+          _latestData = syncData;
+          _future = Future<_ScheduleData>.value(syncData);
+        } else if (changed) {
+          _future = _loadSemesterSchedule(item.semesterSessionId);
+        }
+      });
+    }
+  }
+
+  Future<_ScheduleData> _loadSemesterSchedule(int semesterSessionId) async {
+    final sections = await ScheduleService().getUnifiedStudentSchedule(
+      semesterSessionId: semesterSessionId,
+    );
+    final isRamadan = await RamadanTiming.isRamadan();
+    final examOverrides = sections.isEmpty
+        ? const <String, ExamScheduleOverride>{}
+        : await ExamScheduleService().getOverridesForSections(
+            sections,
+            forcedSemesterSessionId: semesterSessionId,
+          );
+    final currentSessionId = await resolveCurrentSessionSemesterId();
+    final isCurrentSemester =
+        currentSessionId == null || semesterSessionId == currentSessionId;
+    final data = _buildScheduleDataFromSectionsStatic(
+      sections,
+      shouldHighlightCurrentSemester: isCurrentSemester,
+      isRamadan: isRamadan,
+      examOverrides: examOverrides,
+    );
+    if (mounted) {
+      setState(() {
+        _latestData = data;
+      });
+    }
+    return data;
+  }
+
+  int? _selectedSemesterSessionId;
+
+  Future<void> _updateSemesterName([int? semesterSessionId]) async {
+    final item = await ScheduleService().resolveSemesterSessionItem(
+      semesterSessionId,
+    );
+    if (item != null && mounted) {
+      setState(() {
+        _selectedSemesterName = item.description;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final subtitleText = _selectedSemesterName ?? '';
+
+    final currentSessionId = AppStorage.instance.getIntSync(
+      StorageKeys.currentSessionSemesterId,
+    );
+    final isCurrentSemester =
+        _selectedSemesterSessionId == null ||
+        currentSessionId == null ||
+        _selectedSemesterSessionId == currentSessionId;
+
     return BracuPageScaffold(
       title: 'Schedules',
-      subtitle: 'Class Timing',
+      subtitle: subtitleText,
       icon: Icons.schedule_outlined,
       actions: [
-        BracuSelectChip(
-          icon: Icons.history_rounded,
-          selected: _showDoneSections,
-          compact: true,
-          showArrow: false,
-          showBorder: false,
-          onTap: _toggleDoneView,
+        if (isCurrentSemester)
+          BracuSelectChip(
+            icon: Icons.history_rounded,
+            selected: _showDoneSections,
+            compact: true,
+            showArrow: false,
+            showBorder: false,
+            onTap: _toggleDoneView,
+          ),
+        SemesterSessionSelector(
+          selectedSemesterSessionId: _selectedSemesterSessionId,
+          onSessionChanged: _onSemesterSessionChanged,
+          iconOnly: true,
         ),
       ],
       body: FutureBuilder<_ScheduleData>(
@@ -411,7 +533,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
               data?.examOverrides ?? const <String, ExamScheduleOverride>{};
           final scrollSchedule = data?.scrollSchedule;
           final scrollDateTime = data?.scrollDateTime;
-          const shouldHighlightCurrentSemester = true;
+          final shouldHighlightCurrentSemester = isCurrentSemester;
           final isRamadan = data?.isRamadan ?? false;
           final finishedSectionKeys =
               CourseSectionExamFilter.finishedSectionKeys(
@@ -422,6 +544,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
           for (final entry in grouped.entries) {
             final filteredEntries = entry.value
                 .where((item) {
+                  if (!isCurrentSemester) return true;
                   final key = ExamMapService.sectionKey(
                     courseCode: item.courseCode,
                     sectionName: item.sectionName,
@@ -441,9 +564,14 @@ class _ClassScheduleState extends State<ClassSchedulePage>
             );
           }
 
+          final maxFinalExamDate = _findMaxFinalExamDate(
+            studentSections,
+            overrides,
+          );
           final renderedSections = _buildRenderedSections(
             visibleGrouped,
             shouldHighlightCurrentSemester: shouldHighlightCurrentSemester,
+            maxFinalExamDate: maxFinalExamDate,
           );
 
           if (visibleGrouped.isEmpty) {
@@ -618,7 +746,24 @@ class _ClassScheduleState extends State<ClassSchedulePage>
             );
           }
 
-          if (shouldHighlightCurrentSemester) {
+          final lastRenderedDate = renderedSections.isNotEmpty
+              ? renderedSections.last.date
+              : null;
+          final isPastFinalExamCutoff =
+              maxFinalExamDate != null &&
+              lastRenderedDate != null &&
+              !lastRenderedDate.isBefore(
+                DateTime(
+                  maxFinalExamDate.year,
+                  maxFinalExamDate.month,
+                  maxFinalExamDate.day,
+                ),
+              );
+          final canLoadMoreWeeks =
+              shouldHighlightCurrentSemester &&
+              (maxFinalExamDate == null || !isPastFinalExamCutoff);
+
+          if (canLoadMoreWeeks) {
             children.add(
               Padding(
                 padding: const EdgeInsets.only(top: 2, bottom: 8),
@@ -629,7 +774,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
                         _visibleWeekCount += 1;
                       });
                     },
-                    label: 'Next week',
+                    label: 'Next Week',
                   ),
                 ),
               ),

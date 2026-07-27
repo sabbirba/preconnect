@@ -308,30 +308,13 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         holidayFuture,
       ]);
 
-      var profile = results[0] as Map<String, String?>?;
+      final profile = results[0] as Map<String, String?>?;
       final personalSchedules = results[1] as List<CustomSchedule>;
       final advisingInfo = results[2] as Map<String, String?>?;
-      var sections = results[3] as List<section.Section>;
+      final sections = results[3] as List<section.Section>;
       final ramadan = results[4] as RamadanStatus;
       final isRamadan = ramadan.isRamadan;
       final holidayStatus = results[5] as HolidayStatus;
-
-      if (!forceRefresh &&
-          (profile == null || (needsSchedule && sections.isEmpty))) {
-        final fallbackResults = await Future.wait<dynamic>([
-          profile == null
-              ? ProfileService().fetchProfile()
-              : Future.value(profile),
-          sections.isEmpty && needsSchedule && currentSessionSemesterId != null
-              ? ScheduleService().getUnifiedStudentSchedule(
-                  semesterSessionId: currentSessionSemesterId,
-                  forceRefresh: false,
-                )
-              : Future.value(sections),
-        ]);
-        profile = fallbackResults[0] as Map<String, String?>?;
-        sections = fallbackResults[1] as List<section.Section>;
-      }
 
       final photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
       Map<String, ExamScheduleOverride> examOverrides =
@@ -691,6 +674,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
                 : 'Midterm Exam',
             targetDateTime: mid,
             tab: HomeTab.examSchedule,
+            subtitle: formatDateTimeLabel(mid),
           ),
         );
       }
@@ -707,6 +691,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
                 : 'Final',
             targetDateTime: fin,
             tab: HomeTab.examSchedule,
+            subtitle: formatDateTimeLabel(fin),
           ),
         );
       }
@@ -728,6 +713,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
                 title: personalSchedulesCardTitle(item.title),
                 targetDateTime: item.startTime,
                 tab: HomeTab.personalSchedules,
+                subtitle: formatDateTimeLabel(item.startTime),
               ),
             )
             .toList()
@@ -776,11 +762,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
               title: title,
               targetDateTime: target,
               tab: HomeTab.alarms,
-              subtitle: formatDateTimeRange(
-                startDate,
-                endDate,
-                includeYear: false,
-              ),
+              subtitle: formatDateTimeRange(startDate, endDate),
             );
           }
         }

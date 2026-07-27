@@ -79,63 +79,61 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
         ? route.from
         : '';
 
-    return Scaffold(
-      body: BracuPageScaffold(
-        title: title,
-        subtitle: subtitle,
-        icon: Icons.directions_bus_filled_rounded,
-        actions: [
-          BracuRefreshButton(
-            onPressed: _refreshRouteData,
-            isLoading: _refreshing,
-          ),
-        ],
-        body: BracuRefreshList(
-          onRefresh: _refreshRouteData,
-          children: [
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _error!,
-                      style: TextStyle(
-                        color: BracuPalette.textPrimary(context),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const Gap(12),
-                    BracuActionButton(
-                      onPressed: _refreshRouteData,
-                      isLoading: _refreshing,
-                      icon: Icons.sync_rounded,
-                      label: 'Retry',
-                    ),
-                  ],
-                ),
-              ),
-            if (hasLivePosition && !kIsWeb) ...[
-              _RouteLiveMapCard(route: route, vehicle: vehicle),
-              const Gap(2),
-              if (hasLiveStats) _LiveTrackingCard(route: route),
-              const Gap(2),
-            ],
-            if (hasLivePosition && kIsWeb) ...[
-              _RouteGoogleMapsLink(route: route),
-              const Gap(2),
-            ],
-            _RouteStopsCard(route: route),
-            if (route.attendantPhone.trim().isNotEmpty) ...[
-              const Gap(2),
-              _RouteAttendantFooter(
-                phone: route.attendantPhone,
-                onCallAttendant: _callAttendant,
-              ),
-            ],
-          ],
+    return BracuPageScaffold(
+      title: title,
+      subtitle: subtitle,
+      icon: Icons.directions_bus_filled_rounded,
+      actions: [
+        BracuRefreshButton(
+          onPressed: _refreshRouteData,
+          isLoading: _refreshing,
         ),
+      ],
+      body: BracuRefreshList(
+        onRefresh: _refreshRouteData,
+        children: [
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _error!,
+                    style: TextStyle(
+                      color: BracuPalette.textPrimary(context),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Gap(12),
+                  BracuActionButton(
+                    onPressed: _refreshRouteData,
+                    isLoading: _refreshing,
+                    icon: Icons.sync_rounded,
+                    label: 'Retry',
+                  ),
+                ],
+              ),
+            ),
+          if (hasLivePosition && !kIsWeb) ...[
+            _RouteLiveMapCard(route: route, vehicle: vehicle),
+            const Gap(2),
+            if (hasLiveStats) _LiveTrackingCard(route: route),
+            const Gap(2),
+          ],
+          if (hasLivePosition && kIsWeb) ...[
+            _RouteGoogleMapsLink(route: route),
+            const Gap(2),
+          ],
+          _RouteStopsCard(route: route),
+          if (route.attendantPhone.trim().isNotEmpty) ...[
+            const Gap(2),
+            _RouteAttendantFooter(
+              phone: route.attendantPhone,
+              onCallAttendant: _callAttendant,
+            ),
+          ],
+        ],
       ),
     );
   }

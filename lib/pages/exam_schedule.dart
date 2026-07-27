@@ -7,6 +7,7 @@ import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
 import 'package:preconnect/pages/shared_widgets/session_helper.dart';
+import 'package:preconnect/pages/shared_widgets/session_selector.dart';
 import 'package:preconnect/pages/shared_widgets/exam_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/string_utils.dart';
@@ -49,23 +50,27 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   bool _showDoneExams = false;
   _ExamScheduleData? _resolvedForData;
   bool? _resolvedForShowDone;
+  bool? _resolvedForIsPastSemester;
   _ResolvedExamLists? _resolvedListsCache;
 
   @override
   void initState() {
     super.initState();
-    _latestData = cache.value;
-    _future = cache.value == null
-        ? _initializeExamSchedule()
-        : Future<_ExamScheduleData>.value(cache.value!);
+    final initialSyncData = cache.value ?? _loadExamScheduleDataSync();
+    _latestData = initialSyncData;
+    _future = initialSyncData != null
+        ? Future<_ExamScheduleData>.value(initialSyncData)
+        : _initializeExamSchedule();
     unawaited(_loadCurrentSessionSemesterId());
     unawaited(_warmAndBind());
+    unawaited(_updateSemesterName());
     ExamSchedule.jumpSignal.addListener(_onJumpRequested);
     cache.addListener(_onCacheUpdated);
     bindRefreshBus(_onRefreshSignal);
   }
 
   Future<void> _warmAndBind() async {
+    if (_latestData != null) return;
     final data = await preloadData();
     if (!mounted) return;
     setState(() {
@@ -159,14 +164,30 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   }
 
   void _onJumpRequested() {
-    if (mounted) {
-      setState(() {});
-    }
+    _highlightScroll.resetScrollState();
+    if (!mounted) return;
+    final hadFilter = _selectedSemesterSessionId != null || _showDoneExams;
+    setState(() {
+      _selectedSemesterSessionId = null;
+      _showDoneExams = false;
+      _resolvedListsCache = null;
+      if (hadFilter) {
+        final syncData = cache.value ?? _loadExamScheduleDataSync();
+        if (syncData != null) {
+          _latestData = syncData;
+          _future = Future<_ExamScheduleData>.value(syncData);
+        } else {
+          _future = _initializeExamSchedule();
+        }
+      }
+    });
+    unawaited(_updateSemesterName());
   }
 
   void _toggleExamView() {
     setState(() {
       _showDoneExams = !_showDoneExams;
+      _resolvedListsCache = null;
       _highlightScroll.resetScrollState();
     });
   }
@@ -250,20 +271,101 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
     }
   }
 
+  static _ExamScheduleData? _loadExamScheduleDataSync([
+    int? semesterSessionId,
+  ]) {
+    final sections = ScheduleService().getStudentSectionsSync(
+      semesterSessionId,
+    );
+    if (sections == null || sections.isEmpty) return null;
+    return _ExamScheduleData(
+      sections: sections,
+      overrides: const <String, ExamScheduleOverride>{},
+    );
+  }
+
+  String? _selectedSemesterName;
+
+  void _onSemesterSessionChanged(SemesterSessionItem item) {
+    final changed = _selectedSemesterSessionId != item.semesterSessionId;
+    if (_selectedSemesterName != item.description || changed) {
+      final syncData = _loadExamScheduleDataSync(item.semesterSessionId);
+      setState(() {
+        _selectedSemesterSessionId = item.semesterSessionId;
+        _selectedSemesterName = item.description;
+        _resolvedListsCache = null;
+        if (syncData != null) {
+          _latestData = syncData;
+          _future = Future<_ExamScheduleData>.value(syncData);
+        } else if (changed) {
+          _future = _loadSemesterExamSchedule(item.semesterSessionId);
+        }
+      });
+    }
+  }
+
+  Future<_ExamScheduleData> _loadSemesterExamSchedule(
+    int semesterSessionId,
+  ) async {
+    final sections = await ScheduleService().getUnifiedStudentSchedule(
+      semesterSessionId: semesterSessionId,
+    );
+    final overrides = sections.isEmpty
+        ? const <String, ExamScheduleOverride>{}
+        : await ExamScheduleService().getOverridesForSections(
+            sections,
+            forcedSemesterSessionId: semesterSessionId,
+          );
+    final data = _ExamScheduleData(sections: sections, overrides: overrides);
+    if (mounted) {
+      setState(() {
+        _latestData = data;
+      });
+    }
+    return data;
+  }
+
+  int? _selectedSemesterSessionId;
+
+  Future<void> _updateSemesterName([int? semesterSessionId]) async {
+    final item = await ScheduleService().resolveSemesterSessionItem(
+      semesterSessionId,
+    );
+    if (item != null && mounted) {
+      setState(() {
+        _selectedSemesterName = item.description;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final subtitleText = _selectedSemesterName ?? '';
+
+    final isCurrentSemester =
+        _selectedSemesterSessionId == null ||
+        _currentSessionSemesterId == null ||
+        _selectedSemesterSessionId == _currentSessionSemesterId;
+
     return BracuPageScaffold(
-      title: 'Exams',
-      subtitle: 'Mid & Final',
+      title: 'Schedules',
+      subtitle: subtitleText,
       icon: Icons.event_note_outlined,
       actions: [
-        BracuSelectChip(
-          icon: Icons.history_rounded,
-          selected: _showDoneExams,
-          compact: true,
-          showArrow: false,
-          showBorder: false,
-          onTap: _toggleExamView,
+        if (isCurrentSemester)
+          BracuSelectChip(
+            icon: Icons.history_rounded,
+            selected: _showDoneExams,
+            compact: true,
+            showArrow: false,
+            showBorder: false,
+            onTap: _toggleExamView,
+          ),
+        SemesterSessionSelector(
+          selectedSemesterSessionId:
+              _selectedSemesterSessionId ?? _currentSessionSemesterId,
+          onSessionChanged: _onSemesterSessionChanged,
+          iconOnly: true,
         ),
       ],
       body: FutureBuilder<_ExamScheduleData>(
@@ -297,7 +399,15 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           }
 
           final sections = examData.sections;
-          final resolvedLists = _resolvedExamListsFor(examData, _showDoneExams);
+          final isPastSemester =
+              _selectedSemesterSessionId != null &&
+              _currentSessionSemesterId != null &&
+              _selectedSemesterSessionId != _currentSessionSemesterId;
+          final resolvedLists = _resolvedExamListsFor(
+            examData,
+            _showDoneExams,
+            isPastSemester: isPastSemester,
+          );
           final resolvedBySectionId = resolvedLists.resolvedBySectionId;
           final midExams = resolvedLists.midExams;
           final finalExams = resolvedLists.finalExams;
@@ -628,12 +738,14 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
 
   _ResolvedExamLists _resolvedExamListsFor(
     _ExamScheduleData examData,
-    bool showPast,
-  ) {
+    bool showPast, {
+    bool isPastSemester = false,
+  }) {
     final cached = _resolvedListsCache;
     if (cached != null &&
         identical(_resolvedForData, examData) &&
-        _resolvedForShowDone == showPast) {
+        _resolvedForShowDone == showPast &&
+        _resolvedForIsPastSemester == isPastSemester) {
       return cached;
     }
 
@@ -672,6 +784,13 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           : (finalDate(section) != null || finalStart(section) != null);
     }
 
+    final allMidExams = sections
+        .where((s) => hasExamValue(s, isMid: true))
+        .toList();
+    final allFinalExams = sections
+        .where((s) => hasExamValue(s, isMid: false))
+        .toList();
+
     final upcomingMidExams = sections
         .where(
           (s) => hasExamValue(s, isMid: true) && isUpcoming(s, isMid: true),
@@ -694,8 +813,12 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
         )
         .toList();
 
-    final midExams = showPast ? pastMidExams : upcomingMidExams;
-    final finalExams = showPast ? pastFinalExams : upcomingFinalExams;
+    final midExams = isPastSemester
+        ? allMidExams
+        : (showPast ? pastMidExams : upcomingMidExams);
+    final finalExams = isPastSemester
+        ? allFinalExams
+        : (showPast ? pastFinalExams : upcomingFinalExams);
 
     midExams.sort((a, b) {
       final aTime = BracuTime.parseDateTime(midDate(a), midStart(a));

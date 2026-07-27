@@ -138,8 +138,8 @@ class _BracuPageScaffoldState extends State<BracuPageScaffold> {
                           children: [
                             Padding(
                               padding: widget.showBack
-                                  ? const EdgeInsets.fromLTRB(6, 12, 20, 8)
-                                  : const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                                  ? const EdgeInsets.fromLTRB(6, 2, 20, 2)
+                                  : const EdgeInsets.fromLTRB(20, 2, 20, 2),
                               child: _PageHeader(
                                 title: widget.title,
                                 subtitle: widget.subtitle,
@@ -230,15 +230,15 @@ class _PageHeader extends StatelessWidget {
               Text(
                 subtitle,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11.5,
                   color: subtitleColor ?? BracuPalette.textSecondary(context),
                 ),
               ),
-              const Gap(2),
+              const Gap(1),
               Text(
                 title,
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 17,
                   fontWeight: FontWeight.w600,
                   color: BracuPalette.textPrimary(context),
                 ),

@@ -58,6 +58,6 @@ class ExamCountdownCard extends StatelessWidget {
   }
 
   String _formatSubtitle(DateTime target, DateTime now) {
-    return formatDateTimeLabel(target, includeYear: false);
+    return formatDateTimeLabel(target);
   }
 }

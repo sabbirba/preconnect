@@ -93,23 +93,13 @@ String formatRelativeDayLabel(
   return DateFormat('EEEE').format(date);
 }
 
-String formatDateTimeLabel(
-  DateTime dateTime, {
-  String separator = ' • ',
-  bool includeYear = true,
-}) {
+String formatDateTimeLabel(DateTime dateTime, {String separator = ' • '}) {
   final localDateTime = dateTime.toLocal();
-  final date = includeYear
-      ? formatLongDate(localDateTime)
-      : DateFormat('d MMMM').format(localDateTime);
+  final date = formatLongDate(localDateTime);
   return '$date$separator${BracuTime.formatDateTime(localDateTime)}';
 }
 
-String formatDateTimeRange(
-  DateTime start,
-  DateTime end, {
-  bool includeYear = true,
-}) {
+String formatDateTimeRange(DateTime start, DateTime end) {
   final startLocal = start.toLocal();
   final endLocal = end.toLocal();
   final sameDay =
@@ -117,11 +107,11 @@ String formatDateTimeRange(
       startLocal.month == endLocal.month &&
       startLocal.day == endLocal.day;
 
-  final startLabel = formatDateTimeLabel(start, includeYear: includeYear);
+  final startLabel = formatDateTimeLabel(start);
   if (sameDay) {
     return '$startLabel – ${BracuTime.formatDateTime(endLocal)}';
   } else {
-    return '$startLabel – ${formatDateTimeLabel(end, includeYear: includeYear)}';
+    return '$startLabel – ${formatDateTimeLabel(end)}';
   }
 }
 

@@ -1,5 +1,6 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:preconnect/tools/app_log.dart';
 
 class LoggingClient extends http.BaseClient {
   LoggingClient(this._inner);
@@ -7,20 +8,9 @@ class LoggingClient extends http.BaseClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    final startTime = DateTime.now();
-    AppLog.write('HTTP Request: ${request.method} ${request.url}');
     try {
-      final response = await _inner.send(request);
-      final duration = DateTime.now().difference(startTime).inMilliseconds;
-      AppLog.write(
-        'HTTP Response: ${request.method} ${request.url} -> Status ${response.statusCode} (${duration}ms) Length: ${response.contentLength}',
-      );
-      return response;
-    } catch (e) {
-      final duration = DateTime.now().difference(startTime).inMilliseconds;
-      AppLog.write(
-        'HTTP Error: ${request.method} ${request.url} -> Exception: $e (${duration}ms)',
-      );
+      return await _inner.send(request);
+    } catch (_) {
       rethrow;
     }
   }
@@ -33,4 +23,13 @@ class LoggingClient extends http.BaseClient {
 
 http.Client createHttpClient() {
   return LoggingClient(http.Client());
+}
+
+dynamic _parseJsonWorker(String source) => jsonDecode(source);
+
+Future<dynamic> computeJsonDecode(String source) async {
+  if (source.length > 50000) {
+    return compute(_parseJsonWorker, source);
+  }
+  return jsonDecode(source);
 }

@@ -240,126 +240,122 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
     final headerTitle =
         '$courseCount ${courseCount == 1 ? 'Course' : 'Courses'}';
 
-    return Scaffold(
-      body: BracuPageScaffold(
-        title: headerTitle,
-        subtitle: 'Schedule',
-        icon: Icons.person_rounded,
-        actions: [
-          IconButton(
-            tooltip: _isFavorite ? 'Remove from favorites' : 'Add to favorites',
-            onPressed: () async {
-              setState(() => _isFavorite = !_isFavorite);
-              await widget.onToggleFavorite();
-            },
-            icon: Icon(
-              _isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
-              color: _isFavorite ? BracuPalette.favorite : null,
-            ),
+    return BracuPageScaffold(
+      title: headerTitle,
+      subtitle: 'Schedule',
+      icon: Icons.person_rounded,
+      actions: [
+        IconButton(
+          tooltip: _isFavorite ? 'Remove from favorites' : 'Add to favorites',
+          onPressed: () async {
+            setState(() => _isFavorite = !_isFavorite);
+            await widget.onToggleFavorite();
+          },
+          icon: Icon(
+            _isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+            color: _isFavorite ? BracuPalette.favorite : null,
           ),
-          IconButton(
-            tooltip: 'Edit nickname',
-            onPressed: () async {
-              final updated = await widget.onEditNickname();
-              if (!mounted || updated == null) return;
-              setState(() => _displayName = updated);
-            },
-            icon: const Icon(Icons.edit_outlined),
-          ),
-          IconButton(
-            tooltip: 'Remove schedule',
-            onPressed: () async {
-              final navigator = Navigator.of(context);
-              final deleted = await widget.onDelete();
-              if (!mounted || !deleted) return;
-              navigator.maybePop();
-            },
-            icon: const Icon(Icons.delete_outline_rounded),
-          ),
-        ],
-        body: ListView(
-          controller: _scrollController,
-          padding: const EdgeInsets.all(20),
-          children: [
-            BracuCard(
-              child: Row(
-                children: [
-                  FriendAvatar(
-                    name: widget.friend.name,
-                    photoUrl: widget.friend.photoUrl,
-                  ),
-                  const Gap(12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          nameToShow,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: textPrimary,
-                          ),
+        ),
+        IconButton(
+          tooltip: 'Edit nickname',
+          onPressed: () async {
+            final updated = await widget.onEditNickname();
+            if (!mounted || updated == null) return;
+            setState(() => _displayName = updated);
+          },
+          icon: const Icon(Icons.edit_outlined),
+        ),
+        IconButton(
+          tooltip: 'Remove schedule',
+          onPressed: () async {
+            final navigator = Navigator.of(context);
+            final deleted = await widget.onDelete();
+            if (!mounted || !deleted) return;
+            navigator.maybePop();
+          },
+          icon: const Icon(Icons.delete_outline_rounded),
+        ),
+      ],
+      body: ListView(
+        controller: _scrollController,
+        padding: const EdgeInsets.all(20),
+        children: [
+          BracuCard(
+            child: Row(
+              children: [
+                FriendAvatar(
+                  name: widget.friend.name,
+                  photoUrl: widget.friend.photoUrl,
+                ),
+                const Gap(12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        nameToShow,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: textPrimary,
                         ),
-                        (() {
-                          final semesterName = _getSemesterName(
-                            widget.friend,
-                          ).toUpperCase();
-                          final subtitleText = [
-                            if (widget.friend.id.isNotEmpty) widget.friend.id,
-                            if (semesterName.isNotEmpty) semesterName,
-                          ].join(' · ');
-                          if (subtitleText.isNotEmpty) {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 2),
-                              child: Text(
-                                subtitleText,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: textSecondary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            );
-                          }
-                          return const SizedBox.shrink();
-                        })(),
-                      ],
-                    ),
-                  ),
-                  if (widget.friend.courses.isNotEmpty)
-                    IconButton(
-                      tooltip: 'Compare schedules',
-                      style: bracuCompactIconButtonStyle(
-                        foregroundColor: BracuPalette.primary,
-                        borderColor: BracuPalette.primary.withValues(
-                          alpha: 0.6,
-                        ),
-                        borderRadius: 12,
                       ),
-                      onPressed: _openCompare,
-                      icon: const Icon(Icons.compare_arrows_rounded),
-                    ),
-                ],
-              ),
-            ),
-            const Gap(16),
-            if (widget.friend.courses.isEmpty)
-              BracuCard(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    'No schedule shared.',
-                    style: TextStyle(color: textSecondary),
+                      (() {
+                        final semesterName = _getSemesterName(
+                          widget.friend,
+                        ).toUpperCase();
+                        final subtitleText = [
+                          if (widget.friend.id.isNotEmpty) widget.friend.id,
+                          if (semesterName.isNotEmpty) semesterName,
+                        ].join(' · ');
+                        if (subtitleText.isNotEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              subtitleText,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      })(),
+                    ],
                   ),
                 ),
-              )
-            else ...[
-              ..._buildScheduleByDay(context),
-              ..._buildExamSchedule(context),
-            ],
+                if (widget.friend.courses.isNotEmpty)
+                  IconButton(
+                    tooltip: 'Compare schedules',
+                    style: bracuCompactIconButtonStyle(
+                      foregroundColor: BracuPalette.primary,
+                      borderColor: BracuPalette.primary.withValues(alpha: 0.6),
+                      borderRadius: 12,
+                    ),
+                    onPressed: _openCompare,
+                    icon: const Icon(Icons.compare_arrows_rounded),
+                  ),
+              ],
+            ),
+          ),
+          const Gap(16),
+          if (widget.friend.courses.isEmpty)
+            BracuCard(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'No schedule shared.',
+                  style: TextStyle(color: textSecondary),
+                ),
+              ),
+            )
+          else ...[
+            ..._buildScheduleByDay(context),
+            ..._buildExamSchedule(context),
           ],
-        ),
+        ],
       ),
     );
   }

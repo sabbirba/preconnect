@@ -5,9 +5,10 @@ import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
 class PaymentGraph extends StatelessWidget {
-  const PaymentGraph({super.key, required this.payments});
+  const PaymentGraph({super.key, required this.payments, this.shortCode});
 
   final List<PaymentInfo> payments;
+  final String? shortCode;
 
   @override
   Widget build(BuildContext context) {
@@ -26,14 +27,32 @@ class PaymentGraph extends StatelessWidget {
 
     final textSecondary = BracuPalette.textSecondary(context);
     final textPrimary = BracuPalette.textPrimary(context);
+    final code = (shortCode ?? '').trim();
 
     return BracuCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Paid vs Due',
-            style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Paid vs Due',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: textPrimary,
+                ),
+              ),
+              if (code.isNotEmpty)
+                Text(
+                  code,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: textPrimary,
+                  ),
+                ),
+            ],
           ),
           const Gap(12),
           _BarRow(

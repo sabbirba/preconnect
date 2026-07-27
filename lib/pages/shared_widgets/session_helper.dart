@@ -1,5 +1,5 @@
-import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/repository_cache.dart';
+import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 
 Future<int?> resolveCurrentSessionSemesterId() async {
@@ -7,27 +7,24 @@ Future<int?> resolveCurrentSessionSemesterId() async {
     StorageKeys.currentSessionSemesterId,
   );
   if (parsed != null && parsed > 0) return parsed;
+  final sessions = await ScheduleService().fetchSemesterSessions();
+  if (sessions.isNotEmpty) {
+    return sessions.first.semesterSessionId;
+  }
   return null;
 }
 
 Future<int?> resolveCurrentSessionSemesterIdWithRetry({
-  int attempts = 10,
-  Duration delay = const Duration(milliseconds: 300),
-  bool refreshProfileIfMissing = true,
+  int attempts = 1,
+  Duration delay = Duration.zero,
+  bool refreshProfileIfMissing = false,
 }) async {
-  final totalAttempts = attempts < 1 ? 1 : attempts;
-  for (var i = 0; i < totalAttempts; i++) {
-    final resolved = await resolveCurrentSessionSemesterId();
-    if (resolved != null) return resolved;
-    if (i == totalAttempts - 1) break;
-    await Future<void>.delayed(delay);
-  }
-  if (refreshProfileIfMissing) {
-    try {
-      await ProfileService().fetchProfile(fromGet: true);
-    } catch (_) {}
-    final resolved = await resolveCurrentSessionSemesterId();
-    if (resolved != null) return resolved;
-  }
-  return null;
+  return resolveCurrentSessionSemesterId();
+}
+
+Future<String?> resolveSemesterName([int? semesterSessionId]) async {
+  final item = await ScheduleService().resolveSemesterSessionItem(
+    semesterSessionId,
+  );
+  return item?.description;
 }

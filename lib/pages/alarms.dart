@@ -119,7 +119,6 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   }
 
   static Future<_AlarmData> _loadAlarmData({bool forceRefresh = false}) async {
-    final now = DateTime.now();
     if (!forceRefresh) {
       final cached = await JsonSnapshotStore.read<_AlarmData>(
         key: StorageKeys.alarmsSnapshot,
@@ -156,12 +155,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
               : const <CustomSchedule>[];
           return _AlarmData(
             sections: sections,
-            examEntries: _pruneExpiredExamEntries(examEntries, now: now),
+            examEntries: examEntries,
             isRamadan: isRamadan,
-            customSchedules: _pruneExpiredCustomSchedules(
-              customSchedules,
-              now: now,
-            ),
+            customSchedules: customSchedules,
             advisingInfo: advisingInfo,
           );
         },
@@ -185,10 +181,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         sections: const [],
         examEntries: const <_ExamAlarmEntry>[],
         isRamadan: isRamadan,
-        customSchedules: _pruneExpiredCustomSchedules(
-          customSchedules,
-          now: now,
-        ),
+        customSchedules: customSchedules,
         advisingInfo: advisingInfo,
       );
     }
@@ -205,37 +198,14 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     final advisingInfo = await advisingFuture;
     final data = _AlarmData(
       sections: sections,
-      examEntries: _pruneExpiredExamEntries(examEntries, now: now),
+      examEntries: examEntries,
       isRamadan: isRamadan,
-      customSchedules: _pruneExpiredCustomSchedules(customSchedules, now: now),
+      customSchedules: customSchedules,
       advisingInfo: advisingInfo,
     );
     cache.value = data;
     await _writeSnapshot(data);
     return data;
-  }
-
-  static List<_ExamAlarmEntry> _pruneExpiredExamEntries(
-    List<_ExamAlarmEntry> entries, {
-    required DateTime now,
-  }) {
-    return entries
-        .where(
-          (entry) => ExamVisibility.isUpcomingOrOngoingDateTime(
-            entry.dateTime,
-            now: now,
-          ),
-        )
-        .toList(growable: false);
-  }
-
-  static List<CustomSchedule> _pruneExpiredCustomSchedules(
-    List<CustomSchedule> entries, {
-    required DateTime now,
-  }) {
-    return entries
-        .where((entry) => !entry.isDone && entry.startTime.isAfter(now))
-        .toList(growable: false);
   }
 
   static Future<void> _writeSnapshot(_AlarmData data) {
@@ -262,7 +232,6 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     Map<String, ExamScheduleOverride> overrides,
   ) {
     final service = ExamScheduleService();
-    final now = DateTime.now();
     final items = <_ExamAlarmEntry>[];
     for (final section in sections) {
       final resolved = service.resolveSection(
@@ -273,8 +242,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         resolved.midDate,
         resolved.midStartTime,
       );
-      if (midAt != null &&
-          ExamVisibility.isUpcomingOrOngoingDateTime(midAt, now: now)) {
+      if (midAt != null) {
         items.add(
           _ExamAlarmEntry(
             id: '${section.sectionId}-mid',
@@ -294,8 +262,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         resolved.finalDate,
         resolved.finalStartTime,
       );
-      if (finalAt != null &&
-          ExamVisibility.isUpcomingOrOngoingDateTime(finalAt, now: now)) {
+      if (finalAt != null) {
         items.add(
           _ExamAlarmEntry(
             id: '${section.sectionId}-final',
@@ -847,7 +814,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           final filteredExams = exams.where((exam) {
             final key = 'exam_${exam.id}';
             final isDone =
-                AppStorage.instance.getBoolSync('alarm_done_$key') == true;
+                AppStorage.instance.getBoolSync('alarm_done_$key') == true ||
+                exam.isPassed;
             return _showDoneAlarms ? isDone : !isDone;
           }).toList();
 
@@ -946,11 +914,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                   final title = semester.isEmpty
                       ? phaseLabel
                       : '$phaseLabel - $semester';
-                  final subtitle = formatDateTimeRange(
-                    startDate,
-                    endDate,
-                    includeYear: false,
-                  );
+                  final subtitle = formatDateTimeRange(startDate, endDate);
                   final alarmKey =
                       'advising_${startDate.millisecondsSinceEpoch}';
                   _minutesBefore.putIfAbsent(alarmKey, () => 15);
@@ -1130,10 +1094,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                 final subtitle = endTime == null
                     ? DateFormat('hh:mm a').format(startTime)
                     : '${DateFormat('hh:mm a').format(startTime)} - ${DateFormat('hh:mm a').format(endTime)}';
-                final dateStr = formatDateTimeLabel(
-                  item.startTime,
-                  includeYear: false,
-                );
+                final dateStr = formatDateTimeLabel(item.startTime);
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -1598,9 +1559,10 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             (() {
                               final isDone =
                                   AppStorage.instance.getBoolSync(
-                                    'alarm_done_$alarmKey',
-                                  ) ==
-                                  true;
+                                        'alarm_done_$alarmKey',
+                                      ) ==
+                                      true ||
+                                  exam.isPassed;
                               return SizedBox(
                                 width: double.infinity,
                                 child: BracuActionButton(
@@ -1870,6 +1832,8 @@ class _ExamAlarmEntry {
   final String? startTime;
   final String? endTime;
   final DateTime dateTime;
+
+  bool get isPassed => !ExamVisibility.isUpcomingOrOngoingDateTime(dateTime);
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
