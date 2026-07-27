@@ -2,9 +2,10 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 
-http.Client createLibSyncClient() {
-  final httpClient = HttpClient()
+final http.Client _sharedLibSyncClient = IOClient(
+  HttpClient()
     ..badCertificateCallback = (X509Certificate cert, String host, int port) =>
-        true;
-  return IOClient(httpClient);
-}
+        true,
+);
+
+http.Client createLibSyncClient() => _sharedLibSyncClient;
