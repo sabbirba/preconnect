@@ -55,7 +55,6 @@ import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/time_utils.dart';
-import 'package:preconnect/tools/bg_permission.dart';
 import 'package:preconnect/tools/permission_helper.dart';
 
 part 'home_sections/dashboard_data.dart';
@@ -135,30 +134,17 @@ class _HomePageState extends State<HomePage> {
       _setTab(tab);
     });
     unawaited(_persistSelectedTab(selectedTab));
-    unawaited(_preloadPrimaryHomeTabs());
     if (!kIsWeb) {
       unawaited(
-        Future.wait(<Future<void>>[
-          AlarmPage.preload().catchError((_) {}),
-          CustomSchedulesPage.preload().catchError((_) {}),
-        ]).then((_) async {
+        Future<void>.value().then((_) async {
           await QuietModeController.instance.refresh();
           await InAppReviewPrompt.maybePrompt();
         }),
       );
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         await BracuPermissionHelper.checkAndRequestOnStartup(context);
-        unawaited(BackgroundPermissionHelper.checkAndShowPrompt());
       });
     }
-  }
-
-  Future<void> _preloadPrimaryHomeTabs() async {
-    await Future.wait(<Future<void>>[
-      StudentProfile.preload().catchError((_) {}),
-      ClassSchedulePage.preload().catchError((_) {}),
-      ExamSchedule.preload().catchError((_) {}),
-    ]);
   }
 
   @override

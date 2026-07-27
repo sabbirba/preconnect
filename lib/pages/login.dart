@@ -6,21 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/calendar.dart';
-import 'package:preconnect/api/custom_schedules.dart';
-import 'package:preconnect/api/friend_store.dart';
-import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/progress.dart';
 import 'package:preconnect/api/schedule.dart';
-import 'package:preconnect/pages/alarms.dart';
-import 'package:preconnect/pages/class_schedule.dart';
-import 'package:preconnect/pages/custom_schedules.dart';
-import 'package:preconnect/pages/degree_progress.dart';
-import 'package:preconnect/pages/devs.dart';
-import 'package:preconnect/pages/exam_schedule.dart';
 import 'package:preconnect/pages/shared_widgets/session_helper.dart';
-import 'package:preconnect/pages/student_profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -400,17 +389,6 @@ class _LoginPageState extends State<LoginPage> {
             semesterSessionId: semesterSessionId,
           );
         }(),
-        CustomSchedulesService().getItems(forceRefresh: true).then((_) {}),
-        FriendScheduleStore().loadSnapshot().then((_) {}),
-        CalendarService().getCalendar().then((_) {}),
-        NotificationService().getRecentNotifications().then((_) {}),
-        DegreeProgressPage.preload(),
-        StudentProfile.preload(),
-        DevsPage.preload(),
-        AlarmPage.preload(),
-        ClassSchedulePage.preload(),
-        ExamSchedule.preload(),
-        CustomSchedulesPage.preload(),
       ].map((task) => task.catchError((_) {})),
     );
   }

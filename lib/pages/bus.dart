@@ -134,7 +134,7 @@ class _BusPageState extends State<BusPage> {
           tooltip: 'Open official schedule',
           onPressed: schedulePdfUrl.isEmpty
               ? null
-              : () => openExternalUrl(context, schedulePdfUrl),
+              : () => openPdfUrl(context, schedulePdfUrl),
           icon: const Icon(Icons.picture_as_pdf_outlined),
         ),
       ],

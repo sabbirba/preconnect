@@ -1,5 +1,44 @@
 part of 'package:preconnect/pages/ui_kit.dart';
 
+Future<bool> openPdfUrl(
+  BuildContext context,
+  String rawUrl, {
+  String failureMessage = 'Unable to open PDF link.',
+}) async {
+  final url = rawUrl.trim();
+  if (url.isEmpty) {
+    if (context.mounted) showAppSnackBar(context, failureMessage);
+    return false;
+  }
+  if (kIsWeb) {
+    return openExternalUrl(context, url, failureMessage: failureMessage);
+  }
+  try {
+    final fileName = 'pdf_${url.hashCode.abs()}.pdf';
+    final dir = await AppPaths.temporaryDirectory();
+    final file = File('${dir.path}/$fileName');
+    if (await file.exists() && (await file.length()) > 0) {
+      final opened = await _openPdfNativelyOrFallback(file.path);
+      if (opened) return true;
+    }
+    final client = ApiClient();
+    final response = await client.authenticatedGet(
+      url,
+      additionalHeaders: const <String, String>{
+        'Accept': 'application/pdf, text/plain, */*',
+      },
+    );
+    if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
+      await file.parent.create(recursive: true);
+      await file.writeAsBytes(response.bodyBytes, flush: true);
+      final opened = await _openPdfNativelyOrFallback(file.path);
+      return opened;
+    }
+  } catch (_) {}
+  if (!context.mounted) return false;
+  return openExternalUrl(context, url, failureMessage: failureMessage);
+}
+
 Future<bool> openExternalUrl(
   BuildContext context,
   String rawUrl, {

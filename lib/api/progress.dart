@@ -180,15 +180,6 @@ class ProgressService {
     return jsonDecode(cached);
   }
 
-  Future<void> preloadCoursePrerequisites() async {
-    final repo = RepositoryCache.instance;
-    await _resolvePublicComponent(
-      repo: repo,
-      urls: _coursePrerequisitesUrls,
-      dataKey: _coursePrerequisitesCacheKey,
-    );
-  }
-
   Future<dynamic> _readCachedComponent(
     RepositoryCache repo,
     String dataKey,
