@@ -14,9 +14,9 @@ Future<bool> openPdfUrl(
     return openExternalUrl(context, url, failureMessage: failureMessage);
   }
   try {
-    final fileName = 'pdf_${url.hashCode.abs()}.pdf';
+    final originalFileName = _resolveOriginalFileName(url);
     final dir = await AppPaths.temporaryDirectory();
-    final file = File('${dir.path}/$fileName');
+    final file = File('${dir.path}/$originalFileName');
     if (await file.exists() && (await file.length()) > 0) {
       final opened = await _openPdfNativelyOrFallback(file.path);
       if (opened) return true;
@@ -29,14 +29,56 @@ Future<bool> openPdfUrl(
       },
     );
     if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
-      await file.parent.create(recursive: true);
-      await file.writeAsBytes(response.bodyBytes, flush: true);
-      final opened = await _openPdfNativelyOrFallback(file.path);
+      final headerName = _extractFilenameFromHeaders(response.headers);
+      final finalFileName = headerName != null && headerName.isNotEmpty
+          ? _sanitizeFileName(headerName)
+          : originalFileName;
+      final targetFile = File('${dir.path}/$finalFileName');
+      await targetFile.parent.create(recursive: true);
+      await targetFile.writeAsBytes(response.bodyBytes, flush: true);
+      final opened = await _openPdfNativelyOrFallback(targetFile.path);
       return opened;
     }
   } catch (_) {}
   if (!context.mounted) return false;
   return openExternalUrl(context, url, failureMessage: failureMessage);
+}
+
+String _resolveOriginalFileName(String url) {
+  try {
+    final uri = Uri.parse(url);
+    final segment = uri.pathSegments.lastWhere(
+      (s) => s.trim().isNotEmpty,
+      orElse: () => '',
+    );
+    if (segment.isNotEmpty) {
+      final decoded = Uri.decodeComponent(segment);
+      return _sanitizeFileName(decoded);
+    }
+  } catch (_) {}
+  return 'document_${url.hashCode.abs()}.pdf';
+}
+
+String? _extractFilenameFromHeaders(Map<String, String> headers) {
+  final disposition =
+      headers['content-disposition'] ?? headers['Content-Disposition'];
+  if (disposition == null || disposition.isEmpty) return null;
+  final match = RegExp(
+    'filename\\*?=(?:UTF-8\'\')?["\']?([^"\';]+)["\']?',
+    caseSensitive: false,
+  ).firstMatch(disposition);
+  if (match != null && match.group(1) != null) {
+    return Uri.decodeComponent(match.group(1)!);
+  }
+  return null;
+}
+
+String _sanitizeFileName(String raw) {
+  var name = raw.replaceAll(RegExp(r'[\\/:*?"<>|]+'), '_').trim();
+  if (!name.toLowerCase().endsWith('.pdf')) {
+    name = '$name.pdf';
+  }
+  return name;
 }
 
 Future<bool> openExternalUrl(
