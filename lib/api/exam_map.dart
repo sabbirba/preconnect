@@ -105,17 +105,20 @@ class ExamMapService {
     required Duration ttl,
     required bool forceRefresh,
   }) async {
-    if (!forceRefresh) {
-      final cached = await _repo.readJsonMap(cacheKey);
-      final ts = cached?['ts'];
-      final data = cached?['data'];
-      if (ts is int && data != null) {
-        final age = DateTime.now().difference(
-          DateTime.fromMillisecondsSinceEpoch(ts),
-        );
-        if (age <= ttl) {
-          if (!(data is List && data.isEmpty && cacheKey == _indexCacheKey)) {
-            return data;
+    final cached = await _repo.readJsonMap(cacheKey);
+    final cachedData = cached?['data'];
+
+    if (!forceRefresh && cachedData != null) {
+      if (!(cachedData is List &&
+          cachedData.isEmpty &&
+          cacheKey == _indexCacheKey)) {
+        final ts = cached?['ts'];
+        if (ts is int) {
+          final age = DateTime.now().difference(
+            DateTime.fromMillisecondsSinceEpoch(ts),
+          );
+          if (age <= ttl) {
+            return cachedData;
           }
         }
       }
@@ -132,9 +135,8 @@ class ExamMapService {
         'data': decoded,
       });
       return decoded;
-    } catch (e) {
-      final cached = await _repo.readJsonMap(cacheKey);
-      return cached?['data'];
+    } catch (_) {
+      return cachedData;
     }
   }
 
