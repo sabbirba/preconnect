@@ -40,6 +40,10 @@ post_install do |installer|
     target.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
       config.build_settings['SWIFT_VERSION'] ||= '5.0'
+      if config.name == 'Release' || config.name == 'Profile'
+        config.build_settings['SWIFT_OPTIMIZATION_LEVEL'] = '-O'
+        config.build_settings['GCC_OPTIMIZATION_LEVEL'] = 's'
+      end
       config.build_settings['CLANG_ENABLE_MODULE_VERIFIER'] = 'NO'
       config.build_settings['ENABLE_MODULE_VERIFIER'] = 'NO'
       config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
