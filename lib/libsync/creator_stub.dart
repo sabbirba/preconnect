@@ -1,3 +1,5 @@
 import 'package:http/http.dart' as http;
 
-http.Client createLibSyncClient() => http.Client();
+final http.Client _sharedStubClient = http.Client();
+
+http.Client createLibSyncClient() => _sharedStubClient;

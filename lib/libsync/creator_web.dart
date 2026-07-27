@@ -89,7 +89,7 @@ class ExtensionHttpClient extends http.BaseClient {
       return completer.future;
     }
 
-    return http.Client().send(request);
+    return _webFallbackClient.send(request);
   }
 }
 
@@ -114,4 +114,7 @@ void _safeSendMessage(Map<String, dynamic> message) {
   } catch (_) {}
 }
 
-http.Client createLibSyncClient() => ExtensionHttpClient();
+final http.Client _webFallbackClient = http.Client();
+final ExtensionHttpClient _sharedExtensionClient = ExtensionHttpClient();
+
+http.Client createLibSyncClient() => _sharedExtensionClient;
