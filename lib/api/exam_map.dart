@@ -4,6 +4,7 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 
 class ExamMapService {
   static final ExamMapService _instance = ExamMapService._();
@@ -199,8 +200,12 @@ class ExamMapService {
         'Course Code',
         'courseCode',
         'course_code',
-      ]);
-      final course = _cleanCourseCode(rawCourse);
+      ]).trim().toUpperCase();
+
+      final parts = rawCourse.split(RegExp(r'\s+'));
+      final course = parts.isNotEmpty ? parts.first : '';
+      final studentIdInRow = parts.length > 1 ? parts[1] : '';
+
       final section = _normalizeSection(
         _firstString(row, const <String>[
           'Section',
@@ -211,7 +216,14 @@ class ExamMapService {
         ]),
       );
       if (course.isEmpty || section.isEmpty) continue;
-      final key = '$course|$section';
+
+      final sectionKey = '$course|$section';
+      final studentKey = studentIdInRow.isNotEmpty
+          ? '$course|$studentIdInRow|$section'
+          : '';
+      final altStudentKey = studentIdInRow.isNotEmpty
+          ? '$course|$studentIdInRow'
+          : '';
 
       final date = examType == 'MID'
           ? _firstString(row, const <String>[
@@ -246,26 +258,74 @@ class ExamMapService {
         'room_number',
       ]);
 
-      final existing = out[key] ?? const ExamScheduleOverride();
       final pdfUrl = _findPdfUrl(pdfUrls, course);
 
-      if (examType == 'MID') {
-        out[key] = existing.copyWith(
-          midDate: date.isNotEmpty ? date : existing.midDate,
-          midStartTime: start.isNotEmpty ? start : existing.midStartTime,
-          midEndTime: end.isNotEmpty ? end : existing.midEndTime,
-          midRoomNumber: room.isNotEmpty ? room : existing.midRoomNumber,
-          midPdfUrl: pdfUrl ?? existing.midPdfUrl,
-        );
-      } else {
-        out[key] = existing.copyWith(
-          finalDate: date.isNotEmpty ? date : existing.finalDate,
-          finalStartTime: start.isNotEmpty ? start : existing.finalStartTime,
-          finalEndTime: end.isNotEmpty ? end : existing.finalEndTime,
-          finalRoomNumber: room.isNotEmpty ? room : existing.finalRoomNumber,
-          finalPdfUrl: pdfUrl ?? existing.finalPdfUrl,
+      _applyOverrideEntry(
+        out,
+        key: sectionKey,
+        date: date,
+        start: start,
+        end: end,
+        room: room,
+        pdfUrl: pdfUrl,
+        examType: examType,
+      );
+
+      if (studentKey.isNotEmpty) {
+        _applyOverrideEntry(
+          out,
+          key: studentKey,
+          date: date,
+          start: start,
+          end: end,
+          room: room,
+          pdfUrl: pdfUrl,
+          examType: examType,
         );
       }
+
+      if (altStudentKey.isNotEmpty) {
+        _applyOverrideEntry(
+          out,
+          key: altStudentKey,
+          date: date,
+          start: start,
+          end: end,
+          room: room,
+          pdfUrl: pdfUrl,
+          examType: examType,
+        );
+      }
+    }
+  }
+
+  void _applyOverrideEntry(
+    Map<String, ExamScheduleOverride> out, {
+    required String key,
+    required String date,
+    required String start,
+    required String end,
+    required String room,
+    required String? pdfUrl,
+    required String examType,
+  }) {
+    final existing = out[key] ?? const ExamScheduleOverride();
+    if (examType == 'MID') {
+      out[key] = existing.copyWith(
+        midDate: date.isNotEmpty ? date : existing.midDate,
+        midStartTime: start.isNotEmpty ? start : existing.midStartTime,
+        midEndTime: end.isNotEmpty ? end : existing.midEndTime,
+        midRoomNumber: room.isNotEmpty ? room : existing.midRoomNumber,
+        midPdfUrl: pdfUrl ?? existing.midPdfUrl,
+      );
+    } else {
+      out[key] = existing.copyWith(
+        finalDate: date.isNotEmpty ? date : existing.finalDate,
+        finalStartTime: start.isNotEmpty ? start : existing.finalStartTime,
+        finalEndTime: end.isNotEmpty ? end : existing.finalEndTime,
+        finalRoomNumber: room.isNotEmpty ? room : existing.finalRoomNumber,
+        finalPdfUrl: pdfUrl ?? existing.finalPdfUrl,
+      );
     }
   }
 
@@ -323,13 +383,6 @@ class ExamMapService {
       }
     }
     return _clean(pdfUrls.first);
-  }
-
-  static String _cleanCourseCode(String raw) {
-    final trimmed = raw.trim().toUpperCase();
-    if (trimmed.isEmpty) return '';
-    final parts = trimmed.split(RegExp(r'\s+'));
-    return parts.first;
   }
 
   static String _clean(dynamic value) => value?.toString().trim() ?? '';
@@ -532,8 +585,24 @@ class ExamScheduleService {
   ExamSectionResolved resolveSection({
     required Section section,
     required Map<String, ExamScheduleOverride> overrides,
+    String? studentId,
   }) {
-    final override = overrides[ExamMapService.sectionKeyForSection(section)];
+    final userStudentId =
+        (studentId ??
+                AppStorage.instance.getStringSync(StorageKeys.studentId) ??
+                '')
+            .trim();
+    final course = section.courseCode.trim().toUpperCase();
+    final sec = ExamMapService._normalizeSection(section.sectionName);
+
+    ExamScheduleOverride? override;
+    if (userStudentId.isNotEmpty) {
+      override =
+          overrides['$course|$userStudentId|$sec'] ??
+          overrides['$course|$userStudentId'];
+    }
+    override ??= overrides['$course|$sec'];
+
     final midRoom = _pickRoom(override?.midRoomNumber);
     final finalRoom = _pickRoom(override?.finalRoomNumber) ?? midRoom;
     return ExamSectionResolved(
