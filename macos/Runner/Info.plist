@@ -4,6 +4,15 @@
 <dict>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSAllowsArbitraryLoadsInWebContent</key>
+		<true/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>NSFocusFilterUsageDescription</key>
@@ -37,16 +46,16 @@
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSCameraUsageDescription</key>
-	<string>PreConnect needs camera access to scan QR codes.</string>
+	<string>PreConnect requires camera access to scan QR codes for importing student class schedules and sharing timetables with friends.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>PreConnect needs photo access to scan QR codes from your gallery.</string>
+	<string>PreConnect requires photo library access to select and scan QR code images from your gallery to import student class schedules.</string>
 
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>PreConnect needs local network access for campus printing and services.</string>
+	<string>PreConnect requires local network access to discover and connect to campus printing services and sync devices.</string>
 	<key>NSCalendarsUsageDescription</key>
-	<string>PreConnect needs calendar access to add class alerts and reminders.</string>
+	<string>PreConnect requires calendar access to automatically export your class schedule, exam dates, and academic reminders into your System Calendar.</string>
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
-	<string>PreConnect needs permission to add class events to your calendar.</string>
+	<string>PreConnect requires permission to add class events, exam dates, and academic reminders to your calendar.</string>
 	<key>GIDClientID</key>
 	<string>53508941136-rkgrsch5oa60g4absotjj7lgg7s6e7ji.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>
