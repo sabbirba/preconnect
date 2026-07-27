@@ -21,8 +21,11 @@ class LoggingClient extends http.BaseClient {
   }
 }
 
+final http.Client _sharedHttpClient = http.Client();
+final http.Client _sharedLoggingClient = LoggingClient(_sharedHttpClient);
+
 http.Client createHttpClient() {
-  return LoggingClient(http.Client());
+  return _sharedLoggingClient;
 }
 
 dynamic _parseJsonWorker(String source) => jsonDecode(source);
