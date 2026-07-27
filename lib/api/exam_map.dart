@@ -3,6 +3,7 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/model/section_info.dart';
+import 'package:preconnect/pages/shared_widgets/session_helper.dart';
 
 class ExamMapService {
   static final ExamMapService _instance = ExamMapService._();
@@ -37,6 +38,11 @@ class ExamMapService {
     required int semesterSessionId,
     bool forceRefresh = false,
   }) async {
+    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
+    if (currentSessionSemesterId != null &&
+        semesterSessionId != currentSessionSemesterId) {
+      return const <String, ExamScheduleOverride>{};
+    }
     final semesterLabel = _semesterLabelFromSessionId(semesterSessionId);
     if (semesterLabel.isEmpty) return const <String, ExamScheduleOverride>{};
 
@@ -431,9 +437,12 @@ class ExamScheduleService {
     int? forcedSemesterSessionId,
   }) async {
     if (sections.isEmpty) return const <String, ExamScheduleOverride>{};
+    final currentSessionSemesterId = await resolveCurrentSessionSemesterId();
     final semesterSessionId =
         forcedSemesterSessionId ?? resolveSemesterSessionId(sections);
-    if (semesterSessionId == null) {
+    if (semesterSessionId == null ||
+        (currentSessionSemesterId != null &&
+            semesterSessionId != currentSessionSemesterId)) {
       return const <String, ExamScheduleOverride>{};
     }
     return ExamMapService().getOverridesForSemester(
