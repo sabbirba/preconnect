@@ -112,9 +112,7 @@ class TokenStorage {
   Future<void> deleteAll() async {
     if (!kIsWeb) {
       try {
-        await _secureStorage.delete(key: PreConnectStorageKeys.accessToken);
-        await _secureStorage.delete(key: PreConnectStorageKeys.refreshToken);
-        await _secureStorage.delete(key: 'wifi_captive_password');
+        await _secureStorage.deleteAll();
       } catch (_) {}
     }
     await AppStorage.instance.remove(PreConnectStorageKeys.accessToken);

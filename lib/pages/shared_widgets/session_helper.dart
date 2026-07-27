@@ -2,14 +2,29 @@ import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 
-Future<int?> resolveCurrentSessionSemesterId() async {
+int? _cachedCurrentSessionSemesterId;
+
+Future<int?> resolveCurrentSessionSemesterId({
+  bool forceRefresh = false,
+}) async {
+  if (!forceRefresh &&
+      _cachedCurrentSessionSemesterId != null &&
+      _cachedCurrentSessionSemesterId! > 0) {
+    return _cachedCurrentSessionSemesterId;
+  }
   final parsed = await RepositoryCache.instance.readInt(
     StorageKeys.currentSessionSemesterId,
   );
-  if (parsed != null && parsed > 0) return parsed;
-  final sessions = await ScheduleService().fetchSemesterSessions();
+  if (parsed != null && parsed > 0) {
+    _cachedCurrentSessionSemesterId = parsed;
+    return parsed;
+  }
+  final sessions = await ScheduleService().fetchSemesterSessions(
+    forceRefresh: forceRefresh,
+  );
   if (sessions.isNotEmpty) {
-    return sessions.first.semesterSessionId;
+    _cachedCurrentSessionSemesterId = sessions.first.semesterSessionId;
+    return _cachedCurrentSessionSemesterId;
   }
   return null;
 }

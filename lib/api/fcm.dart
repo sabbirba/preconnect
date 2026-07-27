@@ -15,7 +15,6 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:http/http.dart' as http;
-import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -53,7 +52,6 @@ class FCMService {
   static Future<void> backgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp();
     await AppStorage.initialize();
-    await MyApp.warmStartupCachesAsync(forceRefresh: true);
     _handleIncomingMessage(message);
   }
 

@@ -3,16 +3,15 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/friend_store.dart';
-import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/tools/bracu_logout.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
+import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/token_refresh.dart';
@@ -85,6 +84,9 @@ class AuthService {
       );
       var idToken = await _storage.read(key: PreConnectStorageKeys.idToken);
       if (accessToken == null && refreshToken == null) {
+        await _clearAuthSessionData();
+        await _clearLocalCaches();
+        RefreshBus.instance.notify(reason: 'auth');
         return;
       }
 
@@ -210,14 +212,24 @@ class AuthService {
   }
 
   Future<void> _clearLocalCaches() async {
-    final keepKeys = <String>{CustomSchedulesService.cacheKey};
-    await AppPreferencesStore().clearAllExcept(keepKeys);
-
+    await AppStorage.instance.clear();
     await _clearStoredProfileAndSessionData();
     await FriendScheduleStore().clearAll();
+    await CaptiveLoginStore.instance.clear();
     await ProfileImageCache.instance.clear();
     CachedImage.clearMemoryCache();
     await LibSyncAuthService.instance.logout();
+    try {
+      final tempDir = await AppPaths.temporaryDirectory();
+      if (await tempDir.exists()) {
+        final entities = tempDir.listSync();
+        for (final entity in entities) {
+          try {
+            entity.deleteSync(recursive: true);
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _clearStoredProfileAndSessionData() async {

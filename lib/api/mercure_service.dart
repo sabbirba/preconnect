@@ -84,6 +84,9 @@ class MercureService {
     if (data is Map<String, dynamic>) {
       final type = (data['type'] ?? data['event'] ?? '').toString();
       RefreshBus.instance.notify(reason: 'mercure_$type');
+      if (type.isNotEmpty) {
+        RefreshBus.instance.notify(reason: type);
+      }
     } else {
       RefreshBus.instance.notify(reason: 'mercure_event');
     }

@@ -22,7 +22,15 @@ class GradeSheetService {
 
   final ApiClient _client = ApiClient();
 
-  Future<Uint8List?> fetchGradeSheetBytes() async {
+  Future<Uint8List?> fetchGradeSheetBytes({bool forceRefresh = true}) async {
+    final file = await _gradeSheetTempFile();
+    if (!forceRefresh && await file.exists()) {
+      try {
+        final bytes = await file.readAsBytes();
+        if (_looksLikePdf(bytes)) return bytes;
+      } catch (_) {}
+    }
+
     final profileId = await resolvePortfolioId(
       prefs: AppStorage.instance,
       refreshProfile: () async {
@@ -38,51 +46,23 @@ class GradeSheetService {
         additionalHeaders: const <String, String>{
           'Accept': 'application/pdf, text/plain, */*',
         },
-        cacheDuration: const Duration(seconds: 15),
       );
       final bytes = _extractPdfBytes(response.bodyBytes, response.body);
-      if (bytes != null && bytes.isNotEmpty) return bytes;
+      if (bytes != null && bytes.isNotEmpty) {
+        await file.parent.create(recursive: true);
+        await file.writeAsBytes(bytes, flush: true);
+        return bytes;
+      }
     } catch (_) {}
 
     return null;
   }
 
-  Future<GradeSheetFile?> fetchGradeSheet() async {
-    final profileId = await resolvePortfolioId(
-      prefs: AppStorage.instance,
-      refreshProfile: () async {
-        await ProfileService().fetchProfile(fromGet: true);
-      },
-    );
-
-    if (profileId == null || profileId.isEmpty) {
-      return null;
-    }
-
-    try {
-      final response = await _client.authenticatedGet(
-        '${ApiConfig.connectApiBase}${ApiConfig.gradeSheetPath(profileId)}',
-        additionalHeaders: const <String, String>{
-          'Accept': 'application/pdf, text/plain, */*',
-        },
-        cacheDuration: const Duration(seconds: 15),
-      );
-      final bytes = _extractPdfBytes(response.bodyBytes, response.body);
-      if (bytes == null || bytes.isEmpty) {
-        return null;
-      }
-
-      return GradeSheetFile(file: await _writeTempPdfFile(bytes));
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<File> _writeTempPdfFile(Uint8List bytes) async {
+  Future<GradeSheetFile?> fetchGradeSheet({bool forceRefresh = true}) async {
+    final bytes = await fetchGradeSheetBytes(forceRefresh: forceRefresh);
+    if (bytes == null || bytes.isEmpty) return null;
     final file = await _gradeSheetTempFile();
-    await file.parent.create(recursive: true);
-    await file.writeAsBytes(bytes, flush: true);
-    return file;
+    return GradeSheetFile(file: file);
   }
 
   Future<File> _gradeSheetTempFile() async {

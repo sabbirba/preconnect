@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -391,11 +390,6 @@ class ApiClient {
     String body = '',
     Duration cacheDuration = Duration.zero,
   }) async {
-    final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult.contains(ConnectivityResult.none)) {
-      throw const SocketException('No internet connection');
-    }
-
     final normalizedMethod = method.trim().toUpperCase();
     if (normalizedMethod != 'GET') {
       return _sendRawRequest(
@@ -521,6 +515,7 @@ class ApiClient {
     required Map<String, String> headers,
     required String body,
   }) {
+    if (method == 'GET') return 'GET:$url';
     final headerKey =
         headers.entries
             .map((entry) => MapEntry(entry.key.toLowerCase(), entry.value))
@@ -594,12 +589,20 @@ class MissingDependencyException extends PreConnectException {
 final _portfolioIdResolutionFailures = <DateTime>[];
 const _portfolioIdQuarantinePeriod = Duration(minutes: 5);
 
+String? _cachedPortfolioId;
+
 Future<String?> resolvePortfolioId({
   required dynamic prefs,
   required Future<void> Function() refreshProfile,
   int maxRetries = 2,
   int currentRetry = 0,
+  bool forceRefresh = false,
 }) async {
+  if (!forceRefresh &&
+      _cachedPortfolioId != null &&
+      _cachedPortfolioId!.isNotEmpty) {
+    return _cachedPortfolioId;
+  }
   var id = await prefs.getString('id');
   if (id == null || id.isEmpty) {
     final now = DateTime.now();
@@ -627,5 +630,6 @@ Future<String?> resolvePortfolioId({
   if (id == null || id.isEmpty) {
     return null;
   }
+  _cachedPortfolioId = id;
   return id;
 }

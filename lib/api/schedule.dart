@@ -239,17 +239,6 @@ class ScheduleService {
     );
   }
 
-  Future<void> preloadAllSemesters({bool forceRefresh = false}) async {
-    final sessions = await fetchSemesterSessions(forceRefresh: forceRefresh);
-    for (final s in sessions) {
-      if (s.semesterSessionId <= 0) continue;
-      await getUnifiedStudentSchedule(
-        semesterSessionId: s.semesterSessionId,
-        forceRefresh: forceRefresh,
-      );
-    }
-  }
-
   List<section.Section>? getCachedSectionsSync(int semesterSessionId) {
     final raw = AppStorage.instance.getStringSync(
       _cacheKeyForSemester(semesterSessionId),

@@ -986,10 +986,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   }
 }
 
-Future<void> preloadHomeDashboardData({bool forceRefresh = false}) async {
-  await _preloadHomeDashboardData(forceRefresh: forceRefresh);
-}
-
 Future<_HomeData> _preloadHomeDashboardData({bool forceRefresh = false}) async {
   if (!forceRefresh && _HomeDashboardState._cachedData != null) {
     return _HomeDashboardState._withCurrentVisibilitySync(
