@@ -11,8 +11,10 @@
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
-		<true/>
+		<false/>
 		<key>NSAllowsArbitraryLoadsInWebContent</key>
+		<true/>
+		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
 	<key>CFBundleDevelopmentRegion</key>
@@ -38,27 +40,27 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>PreConnect needs camera access to scan QR codes.</string>
+	<string>PreConnect requires camera access to scan QR codes for importing student class schedules and sharing timetables with friends.</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>PreConnect uses Face ID to unlock the app.</string>
+	<string>PreConnect uses Face ID to securely authenticate you and unlock your saved student profile.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>PreConnect needs access to the local network for AlarmKit and campus printing.</string>
+	<string>PreConnect requires local network access to discover and connect to campus printing services and sync devices.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>PreConnect needs location access to connect and manage campus Wi-Fi.</string>
+	<string>PreConnect requires location access while using the app to detect and connect to campus Wi-Fi networks and display campus maps.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>PreConnect needs location access to connect and manage campus Wi-Fi.</string>
+	<string>PreConnect requires location access while using the app to detect and connect to campus Wi-Fi networks and display campus maps.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>PreConnect needs location access to connect and manage campus Wi-Fi.</string>
+	<string>PreConnect requires location access while using the app to detect and connect to campus Wi-Fi networks and display campus maps.</string>
 	<key>NSCalendarsUsageDescription</key>
-	<string>PreConnect needs calendar access to add class alerts and reminders.</string>
+	<string>PreConnect requires calendar access to automatically export your class schedule, exam dates, and academic reminders into your System Calendar.</string>
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
-	<string>PreConnect needs permission to add class events to your calendar.</string>
+	<string>PreConnect requires permission to add class events, exam dates, and academic reminders to your calendar.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>PreConnect needs calendar access to add class events and reminders to your calendar.</string>
+	<string>PreConnect requires calendar access to automatically export your class schedule, exam dates, and academic reminders into your System Calendar.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>PreConnect needs permission to save QR codes to your gallery.</string>
+	<string>PreConnect requires permission to save your generated student schedule QR code images to your photo gallery.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>PreConnect needs photo access to scan QR codes from your gallery.</string>
+	<string>PreConnect requires photo library access to select and scan QR code images from your gallery to import student class schedules.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
