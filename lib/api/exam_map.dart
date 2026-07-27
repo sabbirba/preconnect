@@ -193,13 +193,14 @@ class ExamMapService {
 
     for (final raw in rowList.whereType<Map>()) {
       final row = raw.cast<String, dynamic>();
-      final course = _firstString(row, const <String>[
+      final rawCourse = _firstString(row, const <String>[
         'Course',
         'course',
         'Course Code',
         'courseCode',
         'course_code',
-      ]).toUpperCase();
+      ]);
+      final course = _cleanCourseCode(rawCourse);
       final section = _normalizeSection(
         _firstString(row, const <String>[
           'Section',
@@ -213,11 +214,19 @@ class ExamMapService {
       final key = '$course|$section';
 
       final date = examType == 'MID'
-          ? _firstString(row, const <String>['Mid Date', 'midDate', 'mid_date'])
+          ? _firstString(row, const <String>[
+              'Mid Date',
+              'midDate',
+              'mid_date',
+              'Date',
+              'date',
+            ])
           : _firstString(row, const <String>[
               'Final Date',
               'finalDate',
               'final_date',
+              'Date',
+              'date',
             ]);
       final start = _firstString(row, const <String>[
         'Start Time',
@@ -242,19 +251,19 @@ class ExamMapService {
 
       if (examType == 'MID') {
         out[key] = existing.copyWith(
-          midDate: date.isEmpty ? existing.midDate : date,
-          midStartTime: start.isEmpty ? existing.midStartTime : start,
-          midEndTime: end.isEmpty ? existing.midEndTime : end,
-          midRoomNumber: room.isEmpty ? existing.midRoomNumber : room,
-          midPdfUrl: pdfUrl,
+          midDate: date.isNotEmpty ? date : existing.midDate,
+          midStartTime: start.isNotEmpty ? start : existing.midStartTime,
+          midEndTime: end.isNotEmpty ? end : existing.midEndTime,
+          midRoomNumber: room.isNotEmpty ? room : existing.midRoomNumber,
+          midPdfUrl: pdfUrl ?? existing.midPdfUrl,
         );
       } else {
         out[key] = existing.copyWith(
-          finalDate: date.isEmpty ? existing.finalDate : date,
-          finalStartTime: start.isEmpty ? existing.finalStartTime : start,
-          finalEndTime: end.isEmpty ? existing.finalEndTime : end,
-          finalRoomNumber: room.isEmpty ? existing.finalRoomNumber : room,
-          finalPdfUrl: pdfUrl,
+          finalDate: date.isNotEmpty ? date : existing.finalDate,
+          finalStartTime: start.isNotEmpty ? start : existing.finalStartTime,
+          finalEndTime: end.isNotEmpty ? end : existing.finalEndTime,
+          finalRoomNumber: room.isNotEmpty ? room : existing.finalRoomNumber,
+          finalPdfUrl: pdfUrl ?? existing.finalPdfUrl,
         );
       }
     }
@@ -314,6 +323,13 @@ class ExamMapService {
       }
     }
     return _clean(pdfUrls.first);
+  }
+
+  static String _cleanCourseCode(String raw) {
+    final trimmed = raw.trim().toUpperCase();
+    if (trimmed.isEmpty) return '';
+    final parts = trimmed.split(RegExp(r'\s+'));
+    return parts.first;
   }
 
   static String _clean(dynamic value) => value?.toString().trim() ?? '';
