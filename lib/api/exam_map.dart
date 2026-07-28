@@ -421,19 +421,53 @@ class ExamMapService {
   static String? _findPdfUrl(List<dynamic>? pdfUrls, String courseCode) {
     if (pdfUrls == null || pdfUrls.isEmpty) return null;
     final code = courseCode.trim().toUpperCase();
+    final isLawCourse = code.startsWith('LAW') || code.startsWith('LLB');
+
+    final cleanedUrls = <String>[];
     for (final item in pdfUrls) {
-      final raw = _clean(item);
-      if (raw.isEmpty) continue;
-      final decodedUrl = Uri.decodeComponent(raw).toUpperCase();
-      final filename = decodedUrl.split('/').last;
-      if (filename.startsWith('$code.') ||
-          filename.startsWith('${code}_') ||
-          filename.startsWith('$code-') ||
-          filename.contains(code)) {
-        return _cleanPdfUrl(raw);
+      final cleaned = _cleanPdfUrl(_clean(item));
+      if (cleaned != null && cleaned.isNotEmpty) {
+        cleanedUrls.add(cleaned);
       }
     }
-    return _cleanPdfUrl(_clean(pdfUrls.first));
+    if (cleanedUrls.isEmpty) return null;
+
+    for (final url in cleanedUrls) {
+      final unescaped = _fullyDecodeUrl(url).toUpperCase();
+      final filename = unescaped.split('/').last;
+      if (filename.contains(code)) {
+        return url;
+      }
+    }
+
+    if (isLawCourse) {
+      for (final url in cleanedUrls) {
+        final unescaped = _fullyDecodeUrl(url).toUpperCase();
+        final filename = unescaped.split('/').last;
+        if (filename.contains('LLB') || filename.contains('LAW')) {
+          return url;
+        }
+      }
+    } else {
+      for (final url in cleanedUrls) {
+        final unescaped = _fullyDecodeUrl(url).toUpperCase();
+        final filename = unescaped.split('/').last;
+        if (!filename.contains('LLB') && !filename.contains('LAW')) {
+          return url;
+        }
+      }
+    }
+
+    return cleanedUrls.first;
+  }
+
+  static String _fullyDecodeUrl(String raw) {
+    var str = raw;
+    try {
+      str = Uri.decodeComponent(str);
+      str = Uri.decodeComponent(str);
+    } catch (_) {}
+    return str;
   }
 
   static String? _cleanPdfUrl(String raw) {
