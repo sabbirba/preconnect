@@ -612,14 +612,6 @@ class CaptiveWifiHttp {
 
       final encoded = Uri(queryParameters: payload).query;
 
-      lastResponseLog =
-          '--- CAPTIVE LOGIN DIAGNOSTICS ---\n'
-          'Target Login URI: $apiLoginUri\n'
-          'Referer URI: $loginUri\n'
-          'Request Body (Encoded): $encoded\n'
-          'Request Body (Decoded): $payload\n'
-          'Initiating POST request...\n';
-
       CaptiveWifiHttpResult? response;
       for (var attempt = 0; attempt < 3; attempt++) {
         if (attempt > 0) {
