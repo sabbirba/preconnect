@@ -138,8 +138,8 @@ class _BracuPageScaffoldState extends State<BracuPageScaffold> {
                           children: [
                             Padding(
                               padding: widget.showBack
-                                  ? const EdgeInsets.fromLTRB(6, 2, 20, 2)
-                                  : const EdgeInsets.fromLTRB(20, 2, 20, 2),
+                                  ? const EdgeInsets.fromLTRB(4, 2, 14, 2)
+                                  : const EdgeInsets.fromLTRB(14, 2, 14, 2),
                               child: _PageHeader(
                                 title: widget.title,
                                 subtitle: widget.subtitle,

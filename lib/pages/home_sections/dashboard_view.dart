@@ -133,7 +133,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     : todayEntries);
                           return BracuRefreshScroll(
                             onRefresh: _handleRefresh,
-                            padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+                            padding: const EdgeInsets.fromLTRB(14, 4, 14, 28),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [

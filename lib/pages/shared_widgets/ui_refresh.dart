@@ -16,7 +16,7 @@ String formatSectionBadge(String? sectionName) {
   return number.toString().padLeft(2, '0');
 }
 
-const EdgeInsets kBracuPageListPadding = EdgeInsets.fromLTRB(20, 8, 20, 28);
+const EdgeInsets kBracuPageListPadding = EdgeInsets.fromLTRB(14, 8, 14, 28);
 
 ({double itemWidth, double spacing}) quickAccessGridLayout(
   double maxWidth, {
