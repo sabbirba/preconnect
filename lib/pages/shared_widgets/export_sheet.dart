@@ -208,60 +208,64 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
         child: Center(child: BracuLoading()),
       );
     } else {
-      bodyContent = Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          BracuQrCard(data: _base64Payload!),
-          const Gap(16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              BracuActionButton(
-                onPressed: _copyToClipboard,
-                label: _copied ? 'Copied' : 'Copy Code',
-                icon: _copied ? Icons.check_circle_rounded : Icons.copy_rounded,
-                outlined: false,
-                backgroundColor: _copied
-                    ? BracuPalette.accent
-                    : BracuPalette.primary,
-                foregroundColor: Colors.white,
-              ),
-              const Gap(16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: BracuPalette.danger.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: BracuPalette.danger.withValues(alpha: 0.16),
-                  ),
+      bodyContent = SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            BracuQrCard(data: _base64Payload!),
+            const Gap(16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                BracuActionButton(
+                  onPressed: _copyToClipboard,
+                  label: _copied ? 'Copied' : 'Copy Code',
+                  icon: _copied
+                      ? Icons.check_circle_rounded
+                      : Icons.copy_rounded,
+                  outlined: false,
+                  backgroundColor: _copied
+                      ? BracuPalette.accent
+                      : BracuPalette.primary,
+                  foregroundColor: Colors.white,
                 ),
-                child: Text(
-                  'Never share this code with anyone.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: BracuPalette.danger,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const Gap(16),
-              Row(
-                children: [
-                  Expanded(
-                    child: BracuActionButton(
-                      onPressed: () => Navigator.pop(context),
-                      label: 'Close',
-                      outlined: true,
+                const Gap(16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: BracuPalette.danger.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: BracuPalette.danger.withValues(alpha: 0.16),
                     ),
                   ),
-                ],
-              ),
-            ],
-          ),
-        ],
+                  child: Text(
+                    'Never share this code with anyone.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: BracuPalette.danger,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const Gap(16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: BracuActionButton(
+                        onPressed: () => Navigator.pop(context),
+                        label: 'Close',
+                        outlined: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
       );
     }
 
