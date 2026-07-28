@@ -13,5 +13,15 @@ class AppLog {
     return _file!;
   }
 
-  static Future<void> write(String message) async {}
+  static Future<void> write(String message) async {
+    try {
+      final f = await getFile();
+      final time = DateTime.now().toIso8601String();
+      await f.writeAsString(
+        '[$time] $message\n',
+        mode: FileMode.append,
+        flush: true,
+      );
+    } catch (_) {}
+  }
 }
