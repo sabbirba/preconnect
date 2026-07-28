@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/repository_cache.dart';
+import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/storage_keys.dart';
@@ -88,7 +89,15 @@ class ExamMapService {
     required bool forceRefresh,
     required String parsedKey,
   }) async {
-    final semesterLabel = _semesterLabelFromSessionId(semesterSessionId);
+    var semesterLabel = _semesterLabelFromSessionId(semesterSessionId);
+    if (semesterLabel.isEmpty) {
+      final sessionItem = await ScheduleService().resolveSemesterSessionItem(
+        semesterSessionId,
+      );
+      if (sessionItem != null && sessionItem.description.isNotEmpty) {
+        semesterLabel = sessionItem.description;
+      }
+    }
     if (semesterLabel.isEmpty) return const <String, ExamScheduleOverride>{};
 
     final indexJson = await _fetchJsonWithCache(
