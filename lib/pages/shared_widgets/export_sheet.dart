@@ -16,7 +16,7 @@ class ExportSessionBottomSheet extends StatefulWidget {
     await showBracuBottomSheet<void>(
       context,
       title: 'Sync Session',
-      initialChildSize: 0.65,
+      initialChildSize: 0.88,
       builder: (sheetContext, textPrimary, textSecondary) {
         return const ExportSessionBottomSheet();
       },
