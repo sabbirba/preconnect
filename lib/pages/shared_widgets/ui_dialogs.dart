@@ -724,7 +724,6 @@ Future<DateTime?> showBracuDatePicker(
     initialChildSize: 0.60,
     builder: (sheetContext, textPrimary, textSecondary) {
       return ListView.builder(
-        physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.only(bottom: 24),
         itemCount: dates.length,
         itemBuilder: (context, index) {
@@ -822,7 +821,6 @@ class _BracuTimePickerSheetState extends State<_BracuTimePickerSheet> {
               child: SizedBox(
                 height: 180,
                 child: ListView.builder(
-                  physics: const BouncingScrollPhysics(),
                   itemCount: 12,
                   itemBuilder: (context, index) {
                     final hour = index + 1;
@@ -869,7 +867,6 @@ class _BracuTimePickerSheetState extends State<_BracuTimePickerSheet> {
               child: SizedBox(
                 height: 180,
                 child: ListView.builder(
-                  physics: const BouncingScrollPhysics(),
                   itemCount: 60,
                   itemBuilder: (context, index) {
                     final minute = index;

@@ -1172,9 +1172,4 @@ class ThemeController extends InheritedWidget {
 
 class _SmoothScrollBehavior extends ScrollBehavior {
   const _SmoothScrollBehavior();
-
-  @override
-  ScrollPhysics getScrollPhysics(BuildContext context) {
-    return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
-  }
 }
