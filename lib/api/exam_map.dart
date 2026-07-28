@@ -381,11 +381,27 @@ class ExamMapService {
     required String examType,
     required String semesterLabel,
   }) {
-    final wanted = '$examType $semesterLabel'.toLowerCase();
+    final parts = semesterLabel.split(' ');
+    final term = parts.isNotEmpty ? parts.first.toLowerCase() : '';
+    final year = parts.length > 1 ? parts.last.toLowerCase() : '';
+    final isMid = examType.toUpperCase() == 'MID';
+
     for (final item in indexRows.whereType<Map>()) {
       final row = item.cast<String, dynamic>();
       final name = _clean(row['exam_name']).toLowerCase();
-      if (name == wanted) return row;
+      final url = _clean(row['url']);
+      if (url.isEmpty) continue;
+
+      final matchesTerm = name.contains(term);
+      final matchesYear = name.contains(year);
+      final hasMid = name.contains('mid');
+      final hasFinal = name.contains('final');
+
+      final matchesType = isMid ? (hasMid && !hasFinal) : (hasFinal || !hasMid);
+
+      if (matchesTerm && matchesYear && matchesType) {
+        return row;
+      }
     }
 
     for (final item in indexRows.whereType<Map>()) {
@@ -393,8 +409,8 @@ class ExamMapService {
       final name = _clean(row['exam_name']).toLowerCase();
       final url = _clean(row['url']);
       if (url.isEmpty) continue;
-      if (name.contains(examType.toLowerCase()) &&
-          name.contains(semesterLabel.toLowerCase())) {
+
+      if (name.contains(term) && name.contains(year)) {
         return row;
       }
     }
@@ -406,17 +422,34 @@ class ExamMapService {
     if (pdfUrls == null || pdfUrls.isEmpty) return null;
     final code = courseCode.trim().toUpperCase();
     for (final item in pdfUrls) {
-      final url = _clean(item);
-      if (url.isEmpty) continue;
-      final decodedUrl = Uri.decodeComponent(url).toUpperCase();
+      final raw = _clean(item);
+      if (raw.isEmpty) continue;
+      final decodedUrl = Uri.decodeComponent(raw).toUpperCase();
       final filename = decodedUrl.split('/').last;
       if (filename.startsWith('$code.') ||
           filename.startsWith('${code}_') ||
-          filename.startsWith('$code-')) {
-        return url;
+          filename.startsWith('$code-') ||
+          filename.contains(code)) {
+        return _cleanPdfUrl(raw);
       }
     }
-    return _clean(pdfUrls.first);
+    return _cleanPdfUrl(_clean(pdfUrls.first));
+  }
+
+  static String? _cleanPdfUrl(String raw) {
+    var url = _clean(raw);
+    if (url.isEmpty) return null;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      final base = Uri.parse(ApiConfig.examMapIndexUrl);
+      if (url.startsWith('/')) {
+        url =
+            '${base.scheme}://${base.host}${base.hasPort ? ':${base.port}' : ''}$url';
+      } else {
+        url =
+            '${base.scheme}://${base.host}${base.hasPort ? ':${base.port}' : ''}/$url';
+      }
+    }
+    return url;
   }
 
   static String _clean(dynamic value) => value?.toString().trim() ?? '';
@@ -637,8 +670,11 @@ class ExamScheduleService {
     }
     override ??= overrides['$course|$sec'];
 
-    final midRoom = _pickRoom(override?.midRoomNumber);
-    final finalRoom = _pickRoom(override?.finalRoomNumber) ?? midRoom;
+    final fallbackRoom =
+        _pickRoom(section.roomName) ?? _pickRoom(section.roomNumber);
+    final midRoom = _pickRoom(override?.midRoomNumber) ?? fallbackRoom;
+    final finalRoom =
+        _pickRoom(override?.finalRoomNumber) ?? midRoom ?? fallbackRoom;
     return ExamSectionResolved(
       midDate: override?.midDate ?? section.sectionSchedule.midExamDate,
       midStartTime:
