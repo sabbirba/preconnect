@@ -539,7 +539,6 @@ class _SponsoredStrip extends StatelessWidget {
       height: 62,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
           for (final sponsor in sponsors)
