@@ -8,6 +8,7 @@ import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/calendar_info.dart';
 import 'package:preconnect/pages/shared_widgets/session_helper.dart';
+import 'package:preconnect/tools/app_storage.dart';
 
 class CalendarService {
   CalendarService._internal();
@@ -34,6 +35,20 @@ class CalendarService {
 
   Future<CalendarFeed?> getCachedCalendar() {
     return _readCache();
+  }
+
+  CalendarFeed? getCachedCalendarSync() {
+    try {
+      final raw =
+          AppStorage.instance.getStringSync('repository_cache_$_cacheKey') ??
+          AppStorage.instance.getStringSync(_cacheKey);
+      if (raw == null || raw.isEmpty) return null;
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) {
+        return CalendarFeed.fromJson(decoded);
+      }
+    } catch (_) {}
+    return null;
   }
 
   Future<CalendarFeed?> fetchCalendar({

@@ -27,8 +27,14 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
   @override
   void initState() {
     super.initState();
+    final syncFeed = CalendarService().getCachedCalendarSync();
+    if (syncFeed != null) {
+      _lastFeed = syncFeed;
+      _future = Future<CalendarFeed?>.value(syncFeed);
+    } else {
+      _future = CalendarService().getCalendar();
+    }
     unawaited(_loadCachedFeed());
-    _future = CalendarService().getCalendar();
     bindRefreshBus(_onRefreshSignal);
   }
 
