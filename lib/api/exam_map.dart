@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
@@ -51,7 +52,10 @@ class ExamMapService {
             );
           }
         }
-        if (decoded.isNotEmpty) return decoded;
+        if (decoded.isNotEmpty) {
+          unawaited(preloadAllSemesters());
+          return decoded;
+        }
       }
     }
 
@@ -119,9 +123,62 @@ class ExamMapService {
         (key, value) => MapEntry(key, value.toJson()),
       );
       await _repo.writeJson(parsedKey, jsonToWrite);
+      await AppStorage.instance.setString(parsedKey, jsonEncode(jsonToWrite));
     }
 
+    unawaited(preloadAllSemesters());
+
     return merged;
+  }
+
+  Future<void> preloadAllSemesters({bool forceRefresh = false}) async {
+    try {
+      final indexJson = await _fetchJsonWithCache(
+        url: ApiConfig.examMapIndexUrl,
+        cacheKey: _indexCacheKey,
+        ttl: _indexCacheTtl,
+        forceRefresh: forceRefresh,
+      );
+      final indexList = indexJson is List ? indexJson : const <dynamic>[];
+      final sessionIds = <int>{};
+      for (final item in indexList.whereType<Map>()) {
+        final name = _clean(item['exam_name']);
+        final id = sessionIdFromExamName(name);
+        if (id != null) {
+          sessionIds.add(id);
+        }
+      }
+      for (final sid in sessionIds) {
+        final parsedKey = 'exammap_parsed_${sid}_v1';
+        final cached = AppStorage.instance.getStringSync(parsedKey);
+        if (forceRefresh || cached == null || cached.isEmpty) {
+          await getOverridesForSemester(
+            semesterSessionId: sid,
+            forceRefresh: forceRefresh,
+          );
+        }
+      }
+    } catch (_) {}
+  }
+
+  static int? sessionIdFromExamName(String examName) {
+    final clean = examName.trim();
+    final yearMatch = RegExp(r'\b(20\d{2})\b').firstMatch(clean);
+    if (yearMatch == null) return null;
+    final year = int.tryParse(yearMatch.group(1)!);
+    if (year == null) return null;
+
+    final lower = clean.toLowerCase();
+    int? termCode;
+    if (lower.contains('spring')) {
+      termCode = 1;
+    } else if (lower.contains('summer')) {
+      termCode = 2;
+    } else if (lower.contains('fall')) {
+      termCode = 3;
+    }
+    if (termCode == null) return null;
+    return year * 10 + termCode;
   }
 
   Future<dynamic> _fetchJsonWithCache({
