@@ -72,6 +72,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   }
 
   Future<void> _warmAndBind() async {
+    if (_latestData != null) return;
     final data = await _fetchExamData(forceRefresh: false);
     if (!mounted) return;
     setState(() {
