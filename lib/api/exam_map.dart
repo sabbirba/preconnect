@@ -16,7 +16,7 @@ class ExamMapService {
   final RepositoryCache _repo = RepositoryCache.instance;
 
   static const Duration _indexCacheTtl = Duration(days: 30);
-  static const Duration _examJsonCacheTtl = Duration(days: 90);
+  static const Duration _examJsonCacheTtl = Duration(days: 3650);
   static const String _indexCacheKey = 'exammap_index_v1';
 
   static String sectionKeyForSection(Section section) {
