@@ -36,29 +36,59 @@ class ExamMapService {
     return '$course|$section';
   }
 
+  final Map<int, Future<Map<String, ExamScheduleOverride>>>
+  _inFlightSemesterFetches = {};
+  Future<void>? _inFlightPreloadAll;
+
   Future<Map<String, ExamScheduleOverride>> getOverridesForSemester({
     required int semesterSessionId,
     bool forceRefresh = false,
   }) async {
     final parsedKey = 'exammap_parsed_${semesterSessionId}_v1';
     if (!forceRefresh) {
-      final cachedParsed = await _repo.readJsonMap(parsedKey);
+      final cachedParsed = AppStorage.instance.getStringSync(parsedKey);
       if (cachedParsed != null && cachedParsed.isNotEmpty) {
-        final decoded = <String, ExamScheduleOverride>{};
-        for (final entry in cachedParsed.entries) {
-          if (entry.value is Map) {
-            decoded[entry.key] = ExamScheduleOverride.fromJson(
-              (entry.value as Map).cast<String, dynamic>(),
-            );
+        try {
+          final decodedJson = jsonDecode(cachedParsed);
+          if (decodedJson is Map) {
+            final decoded = <String, ExamScheduleOverride>{};
+            for (final entry in decodedJson.entries) {
+              if (entry.value is Map) {
+                decoded[entry.key.toString()] = ExamScheduleOverride.fromJson(
+                  (entry.value as Map).cast<String, dynamic>(),
+                );
+              }
+            }
+            if (decoded.isNotEmpty) return decoded;
           }
-        }
-        if (decoded.isNotEmpty) {
-          unawaited(preloadAllSemesters());
-          return decoded;
-        }
+        } catch (_) {}
       }
     }
 
+    if (!forceRefresh &&
+        _inFlightSemesterFetches.containsKey(semesterSessionId)) {
+      return _inFlightSemesterFetches[semesterSessionId]!;
+    }
+
+    final future = _fetchAndMergeOverridesForSemester(
+      semesterSessionId: semesterSessionId,
+      forceRefresh: forceRefresh,
+      parsedKey: parsedKey,
+    );
+
+    _inFlightSemesterFetches[semesterSessionId] = future;
+    try {
+      return await future;
+    } finally {
+      _inFlightSemesterFetches.remove(semesterSessionId);
+    }
+  }
+
+  Future<Map<String, ExamScheduleOverride>> _fetchAndMergeOverridesForSemester({
+    required int semesterSessionId,
+    required bool forceRefresh,
+    required String parsedKey,
+  }) async {
     final semesterLabel = _semesterLabelFromSessionId(semesterSessionId);
     if (semesterLabel.isEmpty) return const <String, ExamScheduleOverride>{};
 
@@ -126,12 +156,25 @@ class ExamMapService {
       await AppStorage.instance.setString(parsedKey, jsonEncode(jsonToWrite));
     }
 
-    unawaited(preloadAllSemesters());
-
     return merged;
   }
 
   Future<void> preloadAllSemesters({bool forceRefresh = false}) async {
+    if (!forceRefresh && _inFlightPreloadAll != null) {
+      return _inFlightPreloadAll!;
+    }
+    final future = _runPreloadAllSemesters(forceRefresh: forceRefresh);
+    _inFlightPreloadAll = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_inFlightPreloadAll, future)) {
+        _inFlightPreloadAll = null;
+      }
+    }
+  }
+
+  Future<void> _runPreloadAllSemesters({required bool forceRefresh}) async {
     try {
       final indexJson = await _fetchJsonWithCache(
         url: ApiConfig.examMapIndexUrl,
