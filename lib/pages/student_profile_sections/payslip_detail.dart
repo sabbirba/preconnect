@@ -271,9 +271,7 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
                     ),
                   const Gap(8),
                   Text(
-                    _isDownloadingPdf
-                        ? 'Downloading...'
-                        : 'Download PDF Payslip',
+                    _isDownloadingPdf ? 'Downloading' : 'Download Payslip',
                     style: TextStyle(
                       color: textPrimary,
                       fontWeight: FontWeight.w700,
