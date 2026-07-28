@@ -425,10 +425,8 @@ class _ClassScheduleState extends State<ClassSchedulePage>
         _selectedSemesterName = item.description;
         if (syncData != null) {
           _latestData = syncData;
-          _future = Future<_ScheduleData>.value(syncData);
-        } else if (changed) {
-          _future = _loadSemesterSchedule(item.semesterSessionId);
         }
+        _future = _loadSemesterSchedule(item.semesterSessionId);
       });
     }
   }
