@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
@@ -934,10 +933,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                       const Gap(12),
                       _buildPortalParamsCard(context),
                     ],
-                    if (_responseLog.isNotEmpty) ...[
-                      const Gap(12),
-                      _buildGatewayResponsesCard(context),
-                    ],
                   ],
                 ),
               ],
@@ -946,39 +941,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
         ),
       ),
     );
-  }
-
-  List<Map<String, String>> _parseResponseLog(String log) {
-    final sections = <Map<String, String>>[];
-    final blocks = log.split('--- ');
-    for (final block in blocks) {
-      if (block.trim().isEmpty) continue;
-      final lines = block.split('\n');
-      final header = lines[0].replaceAll(' ---', '').trim();
-      var status = '';
-      var body = '';
-      for (var i = 1; i < lines.length; i++) {
-        final line = lines[i].trim();
-        if (line.startsWith('Status:')) {
-          status = line.replaceFirst('Status:', '').trim();
-        } else if (line.startsWith('Body:')) {
-          body = lines.sublist(i).join('\n').replaceFirst('Body:', '').trim();
-          break;
-        }
-      }
-      sections.add({'title': header, 'status': status, 'body': body});
-    }
-    return sections;
-  }
-
-  String _tryPrettyPrintJson(String rawBody) {
-    try {
-      final dynamic decoded = jsonDecode(rawBody);
-      final pretty = const JsonEncoder.withIndent('  ').convert(decoded);
-      return pretty;
-    } catch (_) {
-      return rawBody;
-    }
   }
 
   String _toFriendlyError(String? err) {
@@ -1069,19 +1031,13 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.info_outline, size: 18, color: BracuPalette.primary),
-              const Gap(12),
-              Text(
-                'Captured Portal Parameters',
-                style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
+          Text(
+            'Captured Portal Parameters',
+            style: TextStyle(
+              color: BracuPalette.textPrimary(context),
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const Gap(12),
           for (var i = 0; i < rows.length; i++) ...[
@@ -1126,100 +1082,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
           ],
         ],
       ),
-    );
-  }
-
-  Widget _buildGatewayResponsesCard(BuildContext context) {
-    if (_responseLog.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = BracuPalette.textSecondary(
-      context,
-    ).withValues(alpha: isDark ? 0.35 : 0.18);
-    final sections = _parseResponseLog(_responseLog);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: BracuPalette.card(context),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-        boxShadow: isDark
-            ? const []
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (var i = 0; i < sections.length; i++) ...[
-            _buildResponseSection(context, sections[i], isDark),
-            if (i != sections.length - 1) const Gap(12),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResponseSection(
-    BuildContext context,
-    Map<String, String> section,
-    bool isDark,
-  ) {
-    final title = section['title'] ?? '';
-    final status = section['status'] ?? '';
-    final body = section['body'] ?? '';
-    final statusCode = int.tryParse(status) ?? 0;
-    final isError = statusCode == 0 || statusCode >= 400;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                color: BracuPalette.primary,
-              ),
-            ),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: isError
-                    ? Colors.red.withValues(alpha: 0.1)
-                    : Colors.green.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                'Status $status',
-                style: TextStyle(
-                  color: isError ? Colors.redAccent : Colors.green,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
-                ),
-              ),
-            ),
-          ],
-        ),
-        Text(
-          _tryPrettyPrintJson(body),
-          style: TextStyle(
-            fontFamily: 'monospace',
-            fontSize: 11,
-            color: BracuPalette.textSecondary(context),
-          ),
-        ),
-      ],
     );
   }
 
