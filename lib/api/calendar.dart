@@ -361,7 +361,7 @@ class CalendarService {
     final rows = await _scraper.fetchList(
       path: ApiConfig.academicDatesUrl,
       cacheKey: 'scraper_academic_dates_v1',
-      ttl: const Duration(hours: 6),
+      ttl: const Duration(days: 30),
       forceRefresh: forceRefresh,
     );
     return rows
