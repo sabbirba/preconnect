@@ -170,7 +170,7 @@ class _CachedImageState extends State<CachedImage> {
         : (widget.width ?? widget.height);
     final cacheWidth = maxDim != null && maxDim > 0
         ? (maxDim * dpr).round()
-        : null;
+        : (400 * dpr).round();
 
     if (_localFile != null) {
       return Image.file(

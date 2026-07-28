@@ -584,18 +584,20 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                               unawaited(openPdfUrl(context, pdfUrl));
                             }
                           },
-                          child: BracuExamCard(
-                            highlightKey: isHighlighted
-                                ? _highlightScroll.highlightKey
-                                : null,
-                            isHighlighted: isHighlighted,
-                            courseCode: section.courseCode,
-                            sectionName: section.sectionName,
-                            startTime: midStart(section),
-                            endTime: midEnd(section),
-                            roomNumber: midRoom(section),
-                            faculties: section.faculties,
-                            consumedSeat: section.consumedSeat,
+                          child: RepaintBoundary(
+                            child: BracuExamCard(
+                              highlightKey: isHighlighted
+                                  ? _highlightScroll.highlightKey
+                                  : null,
+                              isHighlighted: isHighlighted,
+                              courseCode: section.courseCode,
+                              sectionName: section.sectionName,
+                              startTime: midStart(section),
+                              endTime: midEnd(section),
+                              roomNumber: midRoom(section),
+                              faculties: section.faculties,
+                              consumedSeat: section.consumedSeat,
+                            ),
                           ),
                         ),
                       ),
@@ -653,18 +655,20 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                               unawaited(openPdfUrl(context, pdfUrl));
                             }
                           },
-                          child: BracuExamCard(
-                            highlightKey: isHighlighted
-                                ? _highlightScroll.highlightKey
-                                : null,
-                            isHighlighted: isHighlighted,
-                            courseCode: section.courseCode,
-                            sectionName: section.sectionName,
-                            startTime: finalStart(section),
-                            endTime: finalEnd(section),
-                            roomNumber: finalRoom(section),
-                            faculties: section.faculties,
-                            consumedSeat: section.consumedSeat,
+                          child: RepaintBoundary(
+                            child: BracuExamCard(
+                              highlightKey: isHighlighted
+                                  ? _highlightScroll.highlightKey
+                                  : null,
+                              isHighlighted: isHighlighted,
+                              courseCode: section.courseCode,
+                              sectionName: section.sectionName,
+                              startTime: finalStart(section),
+                              endTime: finalEnd(section),
+                              roomNumber: finalRoom(section),
+                              faculties: section.faculties,
+                              consumedSeat: section.consumedSeat,
+                            ),
                           ),
                         ),
                       ),
