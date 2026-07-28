@@ -196,6 +196,7 @@ class _NotificationsPageState extends State<NotificationsPage>
   }
 
   Future<void> _warmAndBind() async {
+    if (_lastData != null) return;
     final data = await preloadData();
     if (!mounted) return;
     setState(() {
