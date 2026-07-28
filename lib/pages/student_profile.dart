@@ -61,14 +61,31 @@ class _StudentProfileState extends State<StudentProfile>
 
   void _seedCachedSnapshot() {
     final snapshot = _cachedSnapshot;
-    if (snapshot == null) return;
-    _profile = snapshot.profile;
-    _photoUrl = snapshot.photoUrl;
-    _payments = snapshot.payments;
-    _attendances = snapshot.attendances;
-    _advising = snapshot.advising;
-    _progressSummary = snapshot.progressSummary;
-    _shortCodesDisplay = snapshot.shortCodesDisplay;
+    if (snapshot != null) {
+      _profile = snapshot.profile;
+      _photoUrl = snapshot.photoUrl;
+      _payments = snapshot.payments;
+      _attendances = snapshot.attendances;
+      _advising = snapshot.advising;
+      _progressSummary = snapshot.progressSummary;
+      _shortCodesDisplay = snapshot.shortCodesDisplay;
+      return;
+    }
+    final storage = AppStorage.instance;
+    final fullName = storage.getStringSync(StorageKeys.fullName);
+    if (fullName != null && fullName.isNotEmpty) {
+      _profile = {
+        'fullName': fullName,
+        'studentId': storage.getStringSync(StorageKeys.studentId),
+        'studentEmail': storage.getStringSync(StorageKeys.studentEmail),
+        'program': storage.getStringSync(StorageKeys.program),
+        'departmentName': storage.getStringSync(StorageKeys.departmentName),
+        'cgpa': storage.getStringSync(StorageKeys.cgpa),
+        'earnedCredit': storage.getStringSync(StorageKeys.earnedCredit),
+        'mobileNo': storage.getStringSync(StorageKeys.mobileNo),
+      };
+      _photoUrl = storage.getStringSync(StorageKeys.photoFilePath);
+    }
   }
 
   static Future<_StudentProfileSnapshot> preloadData({

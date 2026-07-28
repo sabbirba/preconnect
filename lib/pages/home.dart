@@ -87,29 +87,29 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   HomeTab selectedTab = HomeTab.dashboard;
   StreamSubscription<HomeTab>? _shortcutTabSubscription;
-  late final Map<HomeTab, WidgetBuilder> pages = {
-    HomeTab.settings: (_) => const SettingsPage(),
-    HomeTab.notifications: (_) => const NotificationsPage(),
-    HomeTab.dashboard: (_) => _HomeDashboard(
+  late final Map<HomeTab, Widget> _cachedPages = {
+    HomeTab.settings: const SettingsPage(),
+    HomeTab.notifications: const NotificationsPage(),
+    HomeTab.dashboard: _HomeDashboard(
       onNavigate: _setTab,
       onLogout: () => _confirmLogout(context),
     ),
-    HomeTab.bus: (_) => const BusPage(),
-    HomeTab.freeLabs: (_) => const FreeLabsPage(),
-    HomeTab.calendar: (_) => const CalendarPage(),
-    HomeTab.profile: (_) => const StudentProfile(),
-    HomeTab.studentSchedule: (_) => const ClassSchedulePage(),
-    HomeTab.examSchedule: (_) => const ExamSchedule(),
-    HomeTab.seatStatus: (_) => const SeatStatusPage(),
-    HomeTab.degreeProgress: (_) => const DegreeProgressPage(),
-    HomeTab.alarms: (_) => const AlarmPage(),
-    HomeTab.friendSchedule: (_) => FriendSchedulePage(onNavigate: _setTab),
-    HomeTab.campusPrinter: (_) => const CampusPrinterPage(),
-    HomeTab.devs: (_) => const DevsPage(),
-    HomeTab.personalSchedules: (_) => const CustomSchedulesPage(),
-    HomeTab.libSync: (_) => const LibSyncPage(),
-    HomeTab.dspace: (_) => const DSpaceBrowserPage(),
-    HomeTab.wishlist: (_) => const WishlistPage(),
+    HomeTab.bus: const BusPage(),
+    HomeTab.freeLabs: const FreeLabsPage(),
+    HomeTab.calendar: const CalendarPage(),
+    HomeTab.profile: const StudentProfile(),
+    HomeTab.studentSchedule: const ClassSchedulePage(),
+    HomeTab.examSchedule: const ExamSchedule(),
+    HomeTab.seatStatus: const SeatStatusPage(),
+    HomeTab.degreeProgress: const DegreeProgressPage(),
+    HomeTab.alarms: const AlarmPage(),
+    HomeTab.friendSchedule: FriendSchedulePage(onNavigate: _setTab),
+    HomeTab.campusPrinter: const CampusPrinterPage(),
+    HomeTab.devs: const DevsPage(),
+    HomeTab.personalSchedules: const CustomSchedulesPage(),
+    HomeTab.libSync: const LibSyncPage(),
+    HomeTab.dspace: const DSpaceBrowserPage(),
+    HomeTab.wishlist: const WishlistPage(),
   };
   late final List<HomeTab> _tabOrder = HomeTab.values;
   final Set<HomeTab> _builtTabs = {HomeTab.dashboard};
@@ -234,7 +234,7 @@ class _HomePageState extends State<HomePage> {
                 _builtTabs.add(tab);
                 return TickerMode(
                   enabled: tab == selectedTab,
-                  child: pages[tab]!(context),
+                  child: _cachedPages[tab]!,
                 );
               }
               return const SizedBox.shrink();
