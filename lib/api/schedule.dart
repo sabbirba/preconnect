@@ -249,14 +249,19 @@ class ScheduleService {
 
   List<section.Section>? getStudentSectionsSync([int? semesterSessionId]) {
     try {
-      final targetSessionId =
-          semesterSessionId ??
-          AppStorage.instance.getIntSync(StorageKeys.currentSessionSemesterId);
+      final currentSessionId = AppStorage.instance.getIntSync(
+        StorageKeys.currentSessionSemesterId,
+      );
+      final targetSessionId = semesterSessionId ?? currentSessionId;
       List<section.Section>? sections;
       if (targetSessionId != null && targetSessionId > 0) {
         sections = getCachedSectionsSync(targetSessionId);
       }
-      if (sections == null || sections.isEmpty) {
+      final isCurrentOrUnspecified =
+          semesterSessionId == null ||
+          currentSessionId == null ||
+          semesterSessionId == currentSessionId;
+      if ((sections == null || sections.isEmpty) && isCurrentOrUnspecified) {
         final raw = AppStorage.instance.getStringSync(
           StorageKeys.alarmsSnapshot,
         );

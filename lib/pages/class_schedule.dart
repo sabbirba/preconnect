@@ -423,9 +423,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
       setState(() {
         _selectedSemesterSessionId = item.semesterSessionId;
         _selectedSemesterName = item.description;
-        if (syncData != null) {
-          _latestData = syncData;
-        }
+        _latestData = syncData;
         _future = _loadSemesterSchedule(item.semesterSessionId);
       });
     }
