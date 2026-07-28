@@ -90,20 +90,6 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   static Future<_ExamScheduleData> _loadExamData({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh) {
-      final cachedSections = await JsonSnapshotStore.readSections();
-      if (cachedSections != null && cachedSections.isNotEmpty) {
-        final overrides = await ExamScheduleService().getOverridesForSections(
-          cachedSections,
-          forceRefresh: false,
-        );
-        return _ExamScheduleData(
-          sections: cachedSections,
-          overrides: overrides,
-        );
-      }
-    }
-
     final currentSessionSemesterId =
         await resolveCurrentSessionSemesterIdWithRetry();
 
@@ -182,35 +168,15 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   }
 
   Future<_ExamScheduleData> _fetchExamData({bool forceRefresh = false}) async {
-    if (!forceRefresh) {
-      final cachedSections = await JsonSnapshotStore.readSections();
-      if (cachedSections != null && cachedSections.isNotEmpty) {
-        final overrides = await ExamScheduleService().getOverridesForSections(
-          cachedSections,
-          forceRefresh: false,
-        );
-        final data = _ExamScheduleData(
-          sections: cachedSections,
-          overrides: overrides,
-        );
-        cache.value = data;
-        if (mounted) {
-          setState(() {
-            _latestData = data;
-          });
-        }
-        return data;
-      }
-    }
-
-    final currentSessionSemesterId =
+    final targetSemesterSessionId =
+        _selectedSemesterSessionId ??
         _currentSessionSemesterId ??
         await resolveCurrentSessionSemesterIdWithRetry();
 
     List<Section> sections = const <Section>[];
-    if (currentSessionSemesterId != null) {
+    if (targetSemesterSessionId != null) {
       sections = await ScheduleService().getUnifiedStudentSchedule(
-        semesterSessionId: currentSessionSemesterId,
+        semesterSessionId: targetSemesterSessionId,
         forceRefresh: forceRefresh,
       );
     } else {
@@ -222,7 +188,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
         : await ExamScheduleService().getOverridesForSections(
             sections,
             forceRefresh: forceRefresh,
-            forcedSemesterSessionId: currentSessionSemesterId,
+            forcedSemesterSessionId: targetSemesterSessionId,
           );
 
     final data = _ExamScheduleData(sections: sections, overrides: overrides);
@@ -290,9 +256,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
         _selectedSemesterSessionId = item.semesterSessionId;
         _selectedSemesterName = item.description;
         _resolvedListsCache = null;
-        if (syncData != null) {
-          _latestData = syncData;
-        }
+        _latestData = syncData;
         _future = _loadSemesterExamSchedule(item.semesterSessionId);
       });
     }
