@@ -22,12 +22,24 @@ Future<bool> openPdfUrl(
       if (opened) return true;
     }
     final client = ApiClient();
-    final response = await client.authenticatedGet(
-      url,
-      additionalHeaders: const <String, String>{
-        'Accept': 'application/pdf, text/plain, */*',
-      },
-    );
+    http.Response response;
+    try {
+      response = await client.authenticatedGet(
+        url,
+        additionalHeaders: <String, String>{
+          'Accept': 'application/pdf, text/plain, */*',
+          ...compressionHeaders(),
+        },
+      );
+    } catch (_) {
+      response = await client.publicGet(
+        url,
+        headers: <String, String>{
+          'Accept': 'application/pdf, text/plain, */*',
+          ...compressionHeaders(),
+        },
+      );
+    }
     if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
       final headerName = _extractFilenameFromHeaders(response.headers);
       final finalFileName = headerName != null && headerName.isNotEmpty
