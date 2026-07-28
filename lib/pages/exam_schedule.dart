@@ -292,10 +292,8 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
         _resolvedListsCache = null;
         if (syncData != null) {
           _latestData = syncData;
-          _future = Future<_ExamScheduleData>.value(syncData);
-        } else if (changed) {
-          _future = _loadSemesterExamSchedule(item.semesterSessionId);
         }
+        _future = _loadSemesterExamSchedule(item.semesterSessionId);
       });
     }
   }
