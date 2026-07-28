@@ -315,14 +315,27 @@ class CaptiveWifiHttp {
   }) async {
     final request = await client.postUrl(uri);
     request.followRedirects = false;
-    request.headers.set('content-type', 'application/x-www-form-urlencoded');
+    request.headers.set('User-Agent', kPreConnectUserAgent);
+    request.headers.set(
+      'Accept',
+      'application/json, text/javascript, */*; q=0.01',
+    );
+    request.headers.set('Accept-Language', 'en-US,en;q=0.9');
+    request.headers.set(
+      'Content-Type',
+      'application/x-www-form-urlencoded; charset=UTF-8',
+    );
     request.headers.set('X-Requested-With', 'XMLHttpRequest');
 
     if (referer != null) {
       request.headers.set('Referer', referer.toString());
+      final portStr =
+          (referer.hasPort && referer.port != 80 && referer.port != 443)
+          ? ':${referer.port}'
+          : '';
       request.headers.set(
         'Origin',
-        '${referer.scheme}://${referer.host}:${referer.port}',
+        '${referer.scheme}://${referer.host}$portStr',
       );
     }
 
@@ -335,6 +348,10 @@ class CaptiveWifiHttp {
     }
     if (xsrfToken != null) {
       request.headers.set('X-XSRF-TOKEN', xsrfToken);
+    }
+
+    if (!cookies.containsKey('countdown')) {
+      cookies['countdown'] = Cookie('countdown', '0');
     }
 
     final cookieHeader = _cookieHeader(cookies);
@@ -458,33 +475,10 @@ class CaptiveWifiHttp {
         assert(true);
       }
 
-      String apiBasePath = '/portalauth';
-      final initialPath = loginUri.path;
-      if (initialPath.contains('/')) {
-        apiBasePath = initialPath.substring(0, initialPath.lastIndexOf('/'));
-      }
-
-      Uri apiLoginUri;
-      final formReg = RegExp(
-        r'''<form\b[^>]*\baction\s*=\s*(?:["']([^"']+)["']|([^\s>]+))''',
-        caseSensitive: false,
+      final apiLoginUri = loginUri.replace(
+        path: '/portalauth/login',
+        queryParameters: {},
       );
-      final match = formReg.firstMatch(loginPageBody);
-      final formAction = (match?.group(1) ?? match?.group(2) ?? '').trim();
-      if (formAction.isNotEmpty) {
-        apiLoginUri = Uri.parse(formAction).isAbsolute
-            ? Uri.parse(formAction)
-            : loginUri.resolve(formAction);
-        final path = apiLoginUri.path;
-        if (path.contains('/')) {
-          apiBasePath = path.substring(0, path.lastIndexOf('/'));
-        }
-      } else {
-        apiLoginUri = loginUri.replace(
-          path: '$apiBasePath/login',
-          queryParameters: {},
-        );
-      }
 
       final status = await AndroidNetworkAssist.getNetworkStatus();
       var deviceUmac = status?.clientMac;
@@ -560,37 +554,14 @@ class CaptiveWifiHttp {
         apmac = apmac.replaceAll(':', '').replaceAll('-', '').toLowerCase();
       }
 
-      if (acip.isEmpty || apmac.isEmpty) {
-        lastError =
-            'Missing gateway parameters (acip/apmac) in portal redirect URL.';
-        return false;
-      }
-
       final formInputs = parseFormInputs(loginPageBody);
-      final payload = <String, String>{};
-      for (final entry in formInputs.entries) {
-        payload[entry.key] = entry.value;
-      }
-
-      final userNameKey = payload.keys.firstWhere(
-        (k) => k.toLowerCase() == 'username',
-        orElse: () => 'userName',
-      );
-      payload[userNameKey] = studentId;
-
-      final passwordKey = payload.keys.firstWhere(
-        (k) => k.toLowerCase() == 'userpass' || k.toLowerCase() == 'password',
-        orElse: () => 'userPass',
-      );
-      payload[passwordKey] = password;
-
       final resolvedPushPageId = getParam('pushPageId').isNotEmpty
           ? getParam('pushPageId')
-          : (payload['pushPageId'] ?? '');
+          : (formInputs['pushPageId'] ?? '');
 
       final resolvedBase64Ssid = getParam('ssid').isNotEmpty
           ? getParam('ssid')
-          : (payload['ssid'] ??
+          : (formInputs['ssid'] ??
                 (status?.ssid != null
                     ? base64.encode(utf8.encode(status!.ssid!))
                     : base64.encode(utf8.encode(ssid))));
@@ -600,7 +571,7 @@ class CaptiveWifiHttp {
         resolvedUaddress = status!.ipAddress!;
       }
       if (resolvedUaddress.isEmpty) {
-        resolvedUaddress = payload['uaddress'] ?? '';
+        resolvedUaddress = formInputs['uaddress'] ?? '';
       }
 
       var resolvedUmac = getParam('umac');
@@ -608,7 +579,7 @@ class CaptiveWifiHttp {
         resolvedUmac = deviceUmac ?? '';
       }
       if (resolvedUmac.isEmpty) {
-        resolvedUmac = payload['umac'] ?? '';
+        resolvedUmac = formInputs['umac'] ?? '';
       }
       if (resolvedUmac.isNotEmpty) {
         resolvedUmac = resolvedUmac
@@ -617,35 +588,27 @@ class CaptiveWifiHttp {
             .toLowerCase();
       }
 
-      payload['pushPageId'] = resolvedPushPageId;
-      payload['apmac'] = apmac;
-      payload['ssid'] = resolvedBase64Ssid;
-      payload['uaddress'] = resolvedUaddress;
-      payload['umac'] = resolvedUmac;
-      payload['acip'] = acip;
-
-      if (!payload.containsKey('authType')) {
-        payload['authType'] = getParam('authType', '1');
-      }
-      if (!payload.containsKey('agreed')) {
-        payload['agreed'] = getParam('agreed', '1');
-      }
-
-      for (final key in [
-        'esn',
-        'armac',
-        'accessMac',
-        'businessType',
-        'registerCode',
-        'questions',
-        'dynamicValidCode',
-        'dynamicRSAToken',
-        'validCode',
-      ]) {
-        if (!payload.containsKey(key)) {
-          payload[key] = getParam(key);
-        }
-      }
+      final payload = <String, String>{
+        'pushPageId': resolvedPushPageId,
+        'userPass': password,
+        'esn': getParam('esn'),
+        'apmac': apmac,
+        'armac': getParam('armac'),
+        'authType': getParam('authType', '1'),
+        'ssid': resolvedBase64Ssid,
+        'uaddress': resolvedUaddress,
+        'umac': resolvedUmac,
+        'accessMac': getParam('accessMac'),
+        'businessType': getParam('businessType'),
+        'acip': acip,
+        'agreed': getParam('agreed', '1'),
+        'registerCode': getParam('registerCode'),
+        'questions': getParam('questions'),
+        'dynamicValidCode': getParam('dynamicValidCode'),
+        'dynamicRSAToken': getParam('dynamicRSAToken'),
+        'validCode': getParam('validCode'),
+        'userName': studentId,
+      };
 
       final encoded = Uri(queryParameters: payload).query;
 
@@ -714,7 +677,7 @@ class CaptiveWifiHttp {
 
       try {
         final apiSyncUri = loginUri.replace(
-          path: '$apiBasePath/syncPortalResult',
+          path: '/portalauth/syncPortalResult',
           queryParameters: {},
         );
 
