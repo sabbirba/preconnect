@@ -72,6 +72,7 @@ class _BusPageState extends State<BusPage> {
   }
 
   Future<void> _warmAndBind() async {
+    if (_data != null) return;
     final package = await preloadData();
     if (!mounted) return;
     setState(() {

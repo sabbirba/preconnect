@@ -14,6 +14,7 @@ import 'package:preconnect/pages/shared_widgets/metric_tile.dart';
 import 'package:preconnect/pages/shared_widgets/session_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/api/repository_cache.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/storage_keys.dart';
@@ -57,6 +58,16 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
     final forceRefresh = isRefreshingFrom('auth');
     if (!forceRefresh) {
       _latestInfo = cache.value;
+    }
+    final syncCgpa = (AppStorage.instance.getStringSync(StorageKeys.cgpa) ?? '')
+        .trim();
+    if (syncCgpa.isNotEmpty) {
+      _cgpa = syncCgpa;
+    }
+    final syncProg =
+        (AppStorage.instance.getStringSync(StorageKeys.program) ?? '').trim();
+    if (syncProg.isNotEmpty) {
+      _fullProgramName = syncProg;
     }
     cache.addListener(_onCacheUpdated);
     _future = forceRefresh || cache.value == null
