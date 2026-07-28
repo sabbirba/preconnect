@@ -6,7 +6,9 @@ import 'package:gap/gap.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/network_assist.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 
 class PermissionRequirement {
   final Permission permission;
@@ -103,6 +105,17 @@ class BracuPermissionHelper {
 
   static Future<void> checkAndRequestOnStartup(BuildContext context) async {
     if (!context.mounted) return;
+    final alreadyShown =
+        await AppStorage.instance.getBool(
+          StorageKeys.hasShownPermissionHelperSheet,
+        ) ??
+        false;
+    if (alreadyShown) return;
+    await AppStorage.instance.setBool(
+      StorageKeys.hasShownPermissionHelperSheet,
+      true,
+    );
+
     int androidSdk = 0;
     if (defaultTargetPlatform == TargetPlatform.android) {
       try {

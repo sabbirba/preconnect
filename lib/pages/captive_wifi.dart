@@ -64,7 +64,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       _startIosProbeTimer();
     }
     _loadStoredCredentials();
-    unawaited(_forceRequestPermissions());
   }
 
   void _handlePasswordChanged() {
@@ -95,22 +94,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   void _handleStudentIdChanged() {
     final value = _studentIdController.text.trim();
     AppStorage.instance.setString(StorageKeys.studentId, value);
-  }
-
-  Future<void> _forceRequestPermissions() async {
-    if (kIsWeb) return;
-    var status = await Permission.locationWhenInUse.status;
-    if (status.isGranted) {
-      await _loadStoredCredentials();
-      return;
-    }
-
-    if (status.isPermanentlyDenied) return;
-
-    status = await Permission.locationWhenInUse.request();
-    if (status.isGranted) {
-      await _loadStoredCredentials();
-    }
   }
 
   Future<void> _loadStoredCredentials() async {
@@ -1059,11 +1042,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      unawaited(_forceRequestPermissions());
-    }
-  }
+  void didChangeAppLifecycleState(AppLifecycleState state) {}
 
   @override
   void dispose() {
