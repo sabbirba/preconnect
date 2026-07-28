@@ -140,15 +140,65 @@ jobs:
       - name: Authenticate to Google Cloud
         if: matrix.run_chrome
         id: auth
-        uses: google-github-actions/auth@v3
-        with:
-          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-          token_format: 'access_token'
-          access_token_scopes: 'https://www.googleapis.com/auth/chromewebstore'
-
-      - name: Setup GCloud CLI
-        if: matrix.run_chrome
-        uses: google-github-actions/setup-gcloud@v3
+        shell: bash
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ]; then
+            echo "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON secret is missing"
+            exit 1
+          fi
+          ACCESS_TOKEN="$(node -e '
+            const crypto = require("crypto");
+            const https = require("https");
+            const sa = JSON.parse(process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON);
+            const now = Math.floor(Date.now() / 1000);
+            const b64u = (buf) => buf.toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+            const header = b64u(Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })));
+            const payload = b64u(Buffer.from(JSON.stringify({
+              iss: sa.client_email,
+              scope: "https://www.googleapis.com/auth/chromewebstore",
+              aud: sa.token_uri || "https://oauth2.googleapis.com/token",
+              exp: now + 3600,
+              iat: now
+            })));
+            const unsigned = `${header}.${payload}`;
+            const signer = crypto.createSign("RSA-SHA256");
+            signer.update(unsigned);
+            const sig = b64u(signer.sign(sa.private_key));
+            const jwt = `${unsigned}.${sig}`;
+            const data = new URLSearchParams({
+              grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+              assertion: jwt
+            }).toString();
+            const req = https.request(sa.token_uri || "https://oauth2.googleapis.com/token", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Content-Length": Buffer.byteLength(data)
+              }
+            }, (res) => {
+              let body = "";
+              res.on("data", chunk => body += chunk);
+              res.on("end", () => {
+                if (res.statusCode >= 200 && res.statusCode < 300) {
+                  process.stdout.write(JSON.parse(body).access_token);
+                } else {
+                  console.error(body);
+                  process.exit(1);
+                }
+              });
+            });
+            req.on("error", (err) => { console.error(err); process.exit(1); });
+            req.write(data);
+            req.end();
+          ')"
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "Failed to generate access token"
+            exit 1
+          fi
+          echo "access_token=$ACCESS_TOKEN" >> "$GITHUB_OUTPUT"
+          echo "::add-mask::$ACCESS_TOKEN"
 
       - name: Publish Chrome Extension
         if: matrix.run_chrome
