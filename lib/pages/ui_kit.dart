@@ -22,6 +22,7 @@ import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/web_shared.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/tools/network_assist.dart';
