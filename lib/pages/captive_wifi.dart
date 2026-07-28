@@ -44,7 +44,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   bool _isOnCampusNetwork = false;
   final TextEditingController _studentIdController = TextEditingController();
   Map<String, String>? _extractedParams;
-  String _responseLog = '';
   AndroidNetworkStatus? _currentStatus;
   String _savedLoginSsid = '';
 
@@ -130,18 +129,12 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
         final profile = await ProfileService().getProfile(fromFetch: true);
         studentId = (profile?['studentId'] ?? '').trim();
       }
-      final responseLog =
-          await AppStorage.instance.getString(
-            StorageKeys.wifiCaptiveLastResponseLog,
-          ) ??
-          '';
       final savedSsid = await CaptiveLoginStore.instance.readSsid();
       if (!mounted) return;
       _studentIdController.text = studentId;
       setState(() {
         _savedLoginSsid = savedSsid;
         _autoExtendEnabled = autoExtendEnabled;
-        _responseLog = responseLog;
         if (creds != null) {
           _passwordController.text = creds.password;
         }
@@ -455,17 +448,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       if (mounted) {
         setState(() {
           _isConnecting = false;
-          _responseLog = CaptiveWifiHttp.instance.lastResponseLog;
         });
-        final safeLog = _responseLog.length > 200000
-            ? _responseLog.substring(_responseLog.length - 200000)
-            : _responseLog;
-        unawaited(
-          AppStorage.instance.setString(
-            StorageKeys.wifiCaptiveLastResponseLog,
-            safeLog,
-          ),
-        );
       }
     }
   }
@@ -538,17 +521,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       if (mounted) {
         setState(() {
           _isDisconnecting = false;
-          _responseLog = CaptiveWifiHttp.instance.lastResponseLog;
         });
-        final safeLog = _responseLog.length > 200000
-            ? _responseLog.substring(_responseLog.length - 200000)
-            : _responseLog;
-        unawaited(
-          AppStorage.instance.setString(
-            StorageKeys.wifiCaptiveLastResponseLog,
-            safeLog,
-          ),
-        );
       }
     }
   }
