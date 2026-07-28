@@ -82,13 +82,16 @@ class MercureService {
 
   void _processMercureEvent(dynamic data) {
     if (data is Map<String, dynamic>) {
-      final type = (data['type'] ?? data['event'] ?? '').toString();
+      final type = (data['type'] ?? data['event'] ?? data['topic'] ?? '')
+          .toString();
       RefreshBus.instance.notify(reason: 'mercure_$type');
+      RefreshBus.instance.notify(reason: 'cache_cleared');
       if (type.isNotEmpty) {
         RefreshBus.instance.notify(reason: type);
       }
     } else {
       RefreshBus.instance.notify(reason: 'mercure_event');
+      RefreshBus.instance.notify(reason: 'cache_cleared');
     }
   }
 

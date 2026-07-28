@@ -78,8 +78,13 @@ class _ClassScheduleState extends State<ClassSchedulePage>
   }
 
   Future<void> _warmAndBind() async {
-    if (_latestData != null) return;
-    final data = await preloadData();
+    final currentSessionId = await resolveCurrentSessionSemesterId();
+    final targetSessionId = _selectedSemesterSessionId ?? currentSessionId;
+    if (targetSessionId == null) return;
+    final data = await _loadSemesterSchedule(
+      targetSessionId,
+      forceRefresh: false,
+    );
     if (!mounted) return;
     setState(() {
       _latestData = data;
