@@ -382,17 +382,19 @@ Future<bool> _openPdfNativelyOrFallback(String filePath) async {
       defaultTargetPlatform == TargetPlatform.iOS) {
     try {
       final result = await OpenFilex.open(filePath);
-      return result.type == ResultType.done;
-    } catch (_) {
-      return false;
-    }
+      if (result.type == ResultType.done) return true;
+    } catch (_) {}
   }
 
-  final opened = await launchUrl(
-    Uri.file(filePath),
-    mode: LaunchMode.externalApplication,
-  );
-  return opened;
+  try {
+    final opened = await launchUrl(
+      Uri.file(filePath),
+      mode: LaunchMode.externalApplication,
+    );
+    return opened;
+  } catch (_) {
+    return false;
+  }
 }
 
 class BracuActionBannerCard extends StatelessWidget {

@@ -17,43 +17,88 @@ Future<bool> openPdfUrl(
     final originalFileName = _resolveOriginalFileName(url);
     final dir = await AppPaths.temporaryDirectory();
     final file = File('${dir.path}/$originalFileName');
-    if (await file.exists() && (await file.length()) > 0) {
-      final opened = await _openPdfNativelyOrFallback(file.path);
-      if (opened) return true;
+    if (await file.exists()) {
+      final length = await file.length();
+      if (length > 4) {
+        final header = await file.openRead(0, 4).first;
+        if (_isPdfHeader(header)) {
+          final opened = await _openPdfNativelyOrFallback(file.path);
+          if (opened) return true;
+        } else {
+          await file.delete().catchError((_) => file);
+        }
+      } else {
+        await file.delete().catchError((_) => file);
+      }
     }
-    final client = ApiClient();
-    http.Response response;
-    try {
-      response = await client.authenticatedGet(
-        url,
-        additionalHeaders: <String, String>{
-          'Accept': 'application/pdf, text/plain, */*',
-          ...compressionHeaders(),
-        },
-      );
-    } catch (_) {
-      response = await client.publicGet(
-        url,
-        headers: <String, String>{
-          'Accept': 'application/pdf, text/plain, */*',
-          ...compressionHeaders(),
-        },
-      );
-    }
-    if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
-      final headerName = _extractFilenameFromHeaders(response.headers);
-      final finalFileName = headerName != null && headerName.isNotEmpty
-          ? _sanitizeFileName(headerName)
-          : originalFileName;
-      final targetFile = File('${dir.path}/$finalFileName');
-      await targetFile.parent.create(recursive: true);
-      await targetFile.writeAsBytes(response.bodyBytes, flush: true);
-      final opened = await _openPdfNativelyOrFallback(targetFile.path);
-      return opened;
+
+    final parsedUri = Uri.tryParse(url);
+    if (parsedUri != null) {
+      http.Response? response;
+      try {
+        response = await http
+            .get(
+              parsedUri,
+              headers: const <String, String>{
+                'Accept': 'application/pdf, text/plain, */*',
+              },
+            )
+            .timeout(const Duration(seconds: 15));
+      } catch (_) {}
+
+      if (response == null || response.statusCode != 200) {
+        final client = ApiClient();
+        try {
+          response = await client.authenticatedGet(
+            url,
+            additionalHeaders: const <String, String>{
+              'Accept': 'application/pdf, text/plain, */*',
+            },
+          );
+        } catch (_) {
+          try {
+            response = await client.publicGet(
+              url,
+              headers: const <String, String>{
+                'Accept': 'application/pdf, text/plain, */*',
+              },
+            );
+          } catch (_) {}
+        }
+      }
+
+      if (response != null &&
+          response.statusCode == 200 &&
+          response.bodyBytes.isNotEmpty &&
+          _isPdfHeader(response.bodyBytes)) {
+        final headerName = _extractFilenameFromHeaders(response.headers);
+        final finalFileName = headerName != null && headerName.isNotEmpty
+            ? _sanitizeFileName(headerName)
+            : originalFileName;
+        final targetFile = File('${dir.path}/$finalFileName');
+        await targetFile.parent.create(recursive: true);
+        await targetFile.writeAsBytes(response.bodyBytes, flush: true);
+        final opened = await _openPdfNativelyOrFallback(targetFile.path);
+        if (opened) return true;
+      }
     }
   } catch (_) {}
+
   if (!context.mounted) return false;
-  return openExternalUrl(context, url, failureMessage: failureMessage);
+  return openExternalUrl(
+    context,
+    url,
+    failureMessage: failureMessage,
+    mobilePreferredMode: LaunchMode.externalApplication,
+  );
+}
+
+bool _isPdfHeader(List<int> bytes) {
+  if (bytes.length < 4) return false;
+  return bytes[0] == 0x25 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x44 &&
+      bytes[3] == 0x46;
 }
 
 String _resolveOriginalFileName(String url) {

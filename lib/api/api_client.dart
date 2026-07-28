@@ -541,7 +541,7 @@ class _CachedHttpResponse {
 
 Map<String, String> compressionHeaders() {
   if (kIsWeb) return const <String, String>{};
-  return const <String, String>{'Accept-Encoding': 'gzip, deflate, br, zstd'};
+  return const <String, String>{'Accept-Encoding': 'gzip, deflate'};
 }
 
 Map<String, String> compressionHeadersForUri(Uri? uri) {
