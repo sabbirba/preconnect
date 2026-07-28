@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/app_storage.dart';
 
 class DSpaceCategory {
   const DSpaceCategory({
@@ -174,9 +176,40 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
     return sorted;
   }
 
+  static List<DSpaceCategory>? _cachedCategories;
+
+  void _seedCategoriesSync() {
+    if (_cachedCategories != null && _cachedCategories!.isNotEmpty) {
+      _categories = _cachedCategories;
+      _filteredCategories = List.from(_cachedCategories!);
+      return;
+    }
+    try {
+      final raw = AppStorage.instance.getStringSync('dspace_categories_v1');
+      if (raw == null || raw.isEmpty) return;
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        final parsed = decoded
+            .whereType<Map>()
+            .map(
+              (item) => DSpaceCategory.fromJson(item.cast<String, dynamic>()),
+            )
+            .where((c) => c.category.isNotEmpty)
+            .toList();
+        parsed.sort((a, b) => b.count.compareTo(a.count));
+        if (parsed.isNotEmpty) {
+          _categories = parsed;
+          _filteredCategories = List.from(parsed);
+          _cachedCategories = parsed;
+        }
+      }
+    } catch (_) {}
+  }
+
   @override
   void initState() {
     super.initState();
+    _seedCategoriesSync();
     _searchController.addListener(() {
       final val = _searchController.text;
       setState(() {
@@ -200,7 +233,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
   }
 
   Future<void> _loadCategories() async {
-    if (mounted) {
+    if (_categories == null && mounted) {
       setState(() {
         _isLoadingCategories = true;
         _categoriesError = null;
@@ -224,6 +257,10 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
             .toList();
 
         parsed.sort((a, b) => b.count.compareTo(a.count));
+        _cachedCategories = parsed;
+        unawaited(
+          AppStorage.instance.setString('dspace_categories_v1', response.body),
+        );
 
         if (mounted) {
           setState(() {
@@ -236,9 +273,9 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
         throw const FormatException('Expected JSON list');
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && _categories == null) {
         setState(() {
-          _categoriesError = 'Failed to load categories: $e';
+          _categoriesError = e.toString();
           _isLoadingCategories = false;
         });
       }
