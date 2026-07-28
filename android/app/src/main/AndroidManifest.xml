@@ -128,6 +128,9 @@
         android:enableOnBackInvokedCallback="true"
         android:usesCleartextTraffic="true">
         <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="true" />
+        <meta-data
             android:name="com.google.mlkit.vision.DEPENDENCIES"
             android:value="barcode" />
         <activity

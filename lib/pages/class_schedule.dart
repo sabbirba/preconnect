@@ -721,19 +721,21 @@ class _ClassScheduleState extends State<ClassSchedulePage>
                       scheduleWidgets.add(
                         Padding(
                           padding: const EdgeInsets.only(bottom: 10),
-                          child: ScheduleEntryCard(
-                            key: isHighlighted
-                                ? _highlightScroll.highlightKey
-                                : null,
-                            sectionName: sectionName,
-                            courseCode: code,
-                            schedule: s,
-                            isRamadan: isRamadan,
-                            roomNumber: room,
-                            faculties: faculties,
-                            consumedSeat: consumedSeat,
-                            courseType: courseType,
-                            highlighted: isHighlighted,
+                          child: RepaintBoundary(
+                            child: ScheduleEntryCard(
+                              key: isHighlighted
+                                  ? _highlightScroll.highlightKey
+                                  : null,
+                              sectionName: sectionName,
+                              courseCode: code,
+                              schedule: s,
+                              isRamadan: isRamadan,
+                              roomNumber: room,
+                              faculties: faculties,
+                              consumedSeat: consumedSeat,
+                              courseType: courseType,
+                              highlighted: isHighlighted,
+                            ),
                           ),
                         ),
                       );

@@ -77,6 +77,19 @@ class MainActivity : FlutterFragmentActivity() {
         cacheShortcutAction(intent)
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val modes = window.display?.supportedModes
+            val maxMode = modes?.maxByOrNull { it.refreshRate }
+            if (maxMode != null) {
+                val params = window.attributes
+                params.preferredDisplayModeId = maxMode.modeId
+                window.attributes = params
+            }
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         cacheShortcutAction(intent)
