@@ -79,14 +79,29 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val modes = window.display?.supportedModes
-            val maxMode = modes?.maxByOrNull { it.refreshRate }
-            if (maxMode != null) {
-                val params = window.attributes
-                params.preferredDisplayModeId = maxMode.modeId
-                window.attributes = params
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                @Suppress("DEPRECATION")
+                val d = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    display
+                } else {
+                    windowManager.defaultDisplay
+                }
+                val modes = d?.supportedModes
+                var maxMode: android.view.Display.Mode? = null
+                if (modes != null) {
+                    for (mode in modes) {
+                        if (maxMode == null || mode.refreshRate > maxMode.refreshRate) {
+                            maxMode = mode
+                        }
+                    }
+                }
+                if (maxMode != null) {
+                    val params = window.attributes
+                    params.preferredDisplayModeId = maxMode.modeId
+                    window.attributes = params
+                }
+            } catch (_: Exception) {}
         }
     }
 
