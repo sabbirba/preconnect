@@ -5,11 +5,13 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
-## [2.0.2] — 2026-07-28
-- Reduced unnecessary background network calls on the Home screen, sped up image loading in scrolling lists, and cut down on repeated calculations that could cause stutter on the dashboard.
+## [2.0.3] — 2026-07-28
+Reduced unnecessary background network calls on the Home screen, sped up image loading in scrolling lists, and cut down on repeated calculations that could cause stutter on the dashboard.
+
+## [2.0.2] — 2026-07-23
+- Performance Upgrades: Pipeline compilation optimized with parallel build jobs and dependency caching.
 
 ## [2.0.1] — 2026-07-18
-- Performance Upgrades: Pipeline compilation optimized with parallel build jobs and dependency caching.
 - Apple Silicon Support: Built on modern Apple Silicon virtual machine environments for faster deployment.
 
 ## [2.0.0] — 2026-07-17
