@@ -29,9 +29,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                     top: -80,
                     right: -60,
                     child: DecorBlob(
-                      color: _HomeDashboardState._primary.withValues(
-                        alpha: 0.12,
-                      ),
+                      color: BracuPalette.decorColor(context),
                       size: 200,
                     ),
                   ),
@@ -40,9 +38,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                     bottom: -90,
                     left: -70,
                     child: DecorBlob(
-                      color: _HomeDashboardState._accent.withValues(
-                        alpha: 0.10,
-                      ),
+                      color: BracuPalette.decorColor(context),
                       size: 220,
                     ),
                   ),
