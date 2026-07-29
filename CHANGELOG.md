@@ -6,10 +6,16 @@ Entries are written for students, not developers — plain language, no commit h
 ## [Unreleased]
 
 ## [2.0.4] — 2026-07-29
-We update PreConnect regularly to make your academic experience smoother and faster. This release includes performance improvements, bug fixes, and general stability enhancements.
+- Universal Compatibility: Expanded hardware feature definitions and optimized responsive layouts for all device form factors.
+- Release Automation: Automated cross-platform store deployment and dynamic changelog metadata syncing.
 
 ## [2.0.3] — 2026-07-28
-We update PreConnect regularly to make your academic experience smoother and faster. This release includes performance improvements, bug fixes, and general stability enhancements.
+- Instant 0 ms Loading: Pages across the app (Dashboard, Class Schedule, Exam Schedule, DSpace, Calendar, Notifications, Seat Status, Free Labs) now render instantly from local cache without loading spinners.
+- 120Hz Smooth Scrolling: Enabled high refresh rate hardware rendering and optimized scroll physics for stutter-free navigation.
+- Real-Time Data Sync: Integrated background diff updates via Mercure SSE so your schedules and exam details update silently in the background.
+- Semester Session Isolation: Fixed switching between past and current semesters to accurately preserve course data, exam rooms, and seating details.
+- App-Wide UI Refresh: Compacted page paddings from 20px to 14px for cleaner, roomier card layouts.
+- Campus Wi-Fi & PDF Reliability: Enhanced captive portal login stability, unescaped PDF downloads, and persistent offline exam map caching.
 
 ## [2.0.2] — 2026-07-23
 - Performance Upgrades: Pipeline compilation optimized with parallel build jobs and dependency caching.

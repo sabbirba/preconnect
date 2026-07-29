@@ -1,1 +1,2 @@
-We update PreConnect regularly to make your academic experience smoother and faster. This release includes performance improvements, bug fixes, and general stability enhancements.
+- Universal Compatibility: Expanded hardware feature definitions and optimized responsive layouts for all device form factors.
+- Release Automation: Automated cross-platform store deployment and dynamic changelog metadata syncing.
