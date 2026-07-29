@@ -84,41 +84,28 @@ platform :ios do
       end
     end
 
+    upload_kwargs = {
+      ipa: skip_upload ? nil : options[:ipa],
+      skip_binary_upload: skip_upload,
+      skip_metadata: true,
+      skip_screenshots: true,
+      force: true,
+      reject_if_possible: true,
+      submit_for_review: true,
+      automatic_release: true,
+      phased_release: false,
+      run_precheck_before_submit: false,
+      submission_information: {
+        export_compliance_uses_encryption: false
+      },
+      api_key: api_key
+    }
+    upload_kwargs[:app_version] = version_name if version_name && !version_name.to_s.empty?
+
     begin
-      upload_to_app_store(
-        ipa: skip_upload ? nil : options[:ipa],
-        skip_binary_upload: skip_upload,
-        skip_metadata: true,
-        skip_screenshots: true,
-        force: true,
-        reject_if_possible: true,
-        submit_for_review: true,
-        automatic_release: true,
-        phased_release: false,
-        run_precheck_before_submit: false,
-        submission_information: {
-          export_compliance_uses_encryption: false
-        },
-        api_key: api_key
-      )
+      upload_to_app_store(**upload_kwargs)
     rescue => e
-      UI.message("Upload action encountered an issue: #{e.message}. Retrying with skip_binary_upload = true.")
-      upload_to_app_store(
-        ipa: nil,
-        skip_binary_upload: true,
-        skip_metadata: true,
-        skip_screenshots: true,
-        force: true,
-        reject_if_possible: true,
-        submit_for_review: true,
-        automatic_release: true,
-        phased_release: false,
-        run_precheck_before_submit: false,
-        submission_information: {
-          export_compliance_uses_encryption: false
-        },
-        api_key: api_key
-      )
+      UI.user_error!("Failed to upload/submit to App Store: #{e.message}")
     end
   end
 end
