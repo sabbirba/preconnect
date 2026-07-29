@@ -1,8 +1,8 @@
 part of 'package:preconnect/pages/ui_kit.dart';
 
 class BracuPalette {
-  static const Color bgTopLight = Color(0xFFEAF4FF);
-  static const Color bgBottomLight = Color(0xFFF3FFF4);
+  static const Color bgTopLight = Colors.white;
+  static const Color bgBottomLight = Colors.white;
   static const Color primary = Color(0xFF1E6BE3);
   static const Color accent = Color(0xFF22B573);
   static const Color info = Color(0xFF2C9DFF);
@@ -26,6 +26,12 @@ class BracuPalette {
 
   static Color card(BuildContext context) {
     return _isDark(context) ? cardDark : cardLight;
+  }
+
+  static Color decorColor(BuildContext context) {
+    return _isDark(context)
+        ? const Color(0xFFE2E8F0).withValues(alpha: 0.08)
+        : const Color(0xFF94A3B8).withValues(alpha: 0.14);
   }
 
   static Color textPrimary(BuildContext context) {
@@ -117,9 +123,7 @@ class _BracuPageScaffoldState extends State<BracuPageScaffold> {
                             top: -70,
                             right: -60,
                             child: DecorBlob(
-                              color: BracuPalette.primary.withValues(
-                                alpha: 0.12,
-                              ),
+                              color: BracuPalette.decorColor(context),
                               size: 200,
                             ),
                           ),
@@ -128,9 +132,7 @@ class _BracuPageScaffoldState extends State<BracuPageScaffold> {
                             bottom: -80,
                             left: -70,
                             child: DecorBlob(
-                              color: BracuPalette.accent.withValues(
-                                alpha: 0.10,
-                              ),
+                              color: BracuPalette.decorColor(context),
                               size: 220,
                             ),
                           ),
