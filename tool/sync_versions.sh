@@ -17,14 +17,28 @@ read_version() {
   printf '%s\n%s\n' "${version_name}" "${version_code}"
 }
 
+read_latest_changelog() {
+  local changelog_file="${ROOT_DIR}/CHANGELOG.md"
+  if [[ -f "${changelog_file}" ]]; then
+    local notes
+    notes="$(perl -0777 -ne 'if (/##\s*\[[0-9]+(?:\.[0-9]+)*\][^\n]*\n+([\s\S]*?)(?=\n+##\s*\[|\z)/) { my $t = $1; $t =~ s/^\s+|\s+$//g; print $t if $t; }' "${changelog_file}")"
+    if [[ -n "${notes}" ]]; then
+      printf '%s\n' "${notes}"
+      return 0
+    fi
+  fi
+  printf 'We update PreConnect regularly to make your academic experience smoother and faster. This release includes performance improvements, bug fixes, and general stability enhancements.\n'
+}
+
 sync_store_metadata() {
-  local default_notes="We update PreConnect regularly to make your academic experience smoother and faster. This release includes performance improvements, bug fixes, and general stability enhancements."
+  local notes
+  notes="$(read_latest_changelog)"
 
   mkdir -p "${ROOT_DIR}/ios/fastlane/metadata/en-US"
   mkdir -p "${ROOT_DIR}/android/fastlane/metadata/android/en-US/changelogs"
 
-  printf '%s\n' "${default_notes}" > "${ROOT_DIR}/ios/fastlane/metadata/en-US/release_notes.txt"
-  printf '%s\n' "${default_notes}" > "${ROOT_DIR}/android/fastlane/metadata/android/en-US/changelogs/default.txt"
+  printf '%s\n' "${notes}" > "${ROOT_DIR}/ios/fastlane/metadata/en-US/release_notes.txt"
+  printf '%s\n' "${notes}" > "${ROOT_DIR}/android/fastlane/metadata/android/en-US/changelogs/default.txt"
 }
 
 bump_release_version() {
