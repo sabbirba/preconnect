@@ -17,6 +17,16 @@ read_version() {
   printf '%s\n%s\n' "${version_name}" "${version_code}"
 }
 
+sync_store_metadata() {
+  local default_notes="We update PreConnect regularly to make your academic experience smoother and faster. This release includes performance improvements, bug fixes, and general stability enhancements."
+
+  mkdir -p "${ROOT_DIR}/ios/fastlane/metadata/en-US"
+  mkdir -p "${ROOT_DIR}/android/fastlane/metadata/android/en-US/changelogs"
+
+  printf '%s\n' "${default_notes}" > "${ROOT_DIR}/ios/fastlane/metadata/en-US/release_notes.txt"
+  printf '%s\n' "${default_notes}" > "${ROOT_DIR}/android/fastlane/metadata/android/en-US/changelogs/default.txt"
+}
+
 bump_release_version() {
   local version_name version_code last_tag_code base_code new_version_code new_version
   local version_output
@@ -38,6 +48,8 @@ bump_release_version() {
   perl -i -pe "s/^version:\\s*.*/version: ${new_version}/" "${ROOT_DIR}/pubspec.yaml"
   perl -0pi -e "s/\"version\":\\s*\"[^\"]+\"/\"version\": \"${version_name}\"/" "${ROOT_DIR}/web/manifest.json"
 
+  sync_store_metadata
+
   printf '%s\n%s\n' "${version_name}" "${new_version_code}"
 }
 
@@ -48,8 +60,11 @@ case "${1:-}" in
   bump-release)
     bump_release_version
     ;;
+  sync-metadata)
+    sync_store_metadata
+    ;;
   *)
-    echo "Usage: $0 {read|bump-release}" >&2
+    echo "Usage: $0 {read|bump-release|sync-metadata}" >&2
     exit 1
     ;;
 esac
