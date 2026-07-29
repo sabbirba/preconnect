@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 const crypto = require('crypto');
 
 function generateJWT(issuer, secret) {
@@ -96,6 +97,15 @@ async function main() {
   }
 
   console.log("Creating new version...");
+  let releaseNotes = "We update PreConnect regularly to make your academic experience smoother and faster. This release includes performance improvements, bug fixes, and general stability enhancements.";
+  const notesPath = path.join(__dirname, '..', 'ios', 'fastlane', 'metadata', 'en-US', 'release_notes.txt');
+  if (fs.existsSync(notesPath)) {
+    const rawNotes = fs.readFileSync(notesPath, 'utf8').trim();
+    if (rawNotes.length > 0) {
+      releaseNotes = rawNotes;
+    }
+  }
+
   const versionUrl = `https://addons.mozilla.org/api/v5/addons/addon/${addonId}/versions/`;
   const freshToken = generateJWT(issuer, secret);
   const versionResp = await fetch(versionUrl, {
@@ -104,7 +114,12 @@ async function main() {
       'Authorization': `JWT ${freshToken}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ upload: uploadUuid })
+    body: JSON.stringify({
+      upload: uploadUuid,
+      release_notes: {
+        "en-US": releaseNotes
+      }
+    })
   });
 
   const versionData = await versionResp.json();
