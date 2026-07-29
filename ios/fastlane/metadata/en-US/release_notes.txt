@@ -1,0 +1,1 @@
+Reduced unnecessary background network calls on the Home screen, sped up image loading in scrolling lists, and cut down on repeated calculations that could cause stutter on the dashboard.

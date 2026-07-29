@@ -84,10 +84,19 @@ platform :ios do
       end
     end
 
+    release_notes = nil
+    notes_path = File.join(__dir__, "metadata", "en-US", "release_notes.txt")
+    if File.exist?(notes_path)
+      release_notes = File.read(notes_path).strip
+    end
+    if release_notes.nil? || release_notes.empty?
+      release_notes = "Bug fixes and performance improvements."
+    end
+
     upload_kwargs = {
       ipa: skip_upload ? nil : options[:ipa],
       skip_binary_upload: skip_upload,
-      skip_metadata: true,
+      skip_metadata: false,
       skip_screenshots: true,
       force: true,
       reject_if_possible: true,
@@ -95,6 +104,9 @@ platform :ios do
       automatic_release: true,
       phased_release: false,
       run_precheck_before_submit: false,
+      release_notes: {
+        "en-US" => release_notes
+      },
       submission_information: {
         export_compliance_uses_encryption: false
       },
