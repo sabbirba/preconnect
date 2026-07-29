@@ -6,7 +6,7 @@ Entries are written for students, not developers — plain language, no commit h
 ## [Unreleased]
 
 ## [2.0.3] — 2026-07-28
-Reduced unnecessary background network calls on the Home screen, sped up image loading in scrolling lists, and cut down on repeated calculations that could cause stutter on the dashboard.
+We update PreConnect regularly to make your academic experience smoother and faster. This release includes performance improvements, bug fixes, and general stability enhancements.
 
 ## [2.0.2] — 2026-07-23
 - Performance Upgrades: Pipeline compilation optimized with parallel build jobs and dependency caching.

@@ -1,1 +1,1 @@
-Reduced unnecessary background network calls on the Home screen, sped up image loading in scrolling lists, and cut down on repeated calculations that could cause stutter on the dashboard.
+We update PreConnect regularly to make your academic experience smoother and faster. This release includes performance improvements, bug fixes, and general stability enhancements.
