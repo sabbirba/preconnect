@@ -24,24 +24,33 @@ extension _HomeDashboardView on _HomeDashboardState {
           child: SafeArea(
             child: Stack(
               children: [
-                if (decorationsEnabled)
+                if (decorationsEnabled) ...[
                   Positioned(
-                    top: -80,
-                    right: -60,
+                    top: -90,
+                    right: -70,
                     child: DecorBlob(
                       color: BracuPalette.decorColor(context),
-                      size: 200,
+                      size: 240,
                     ),
                   ),
-                if (decorationsEnabled)
+                  Positioned.fill(
+                    child: Align(
+                      alignment: Alignment.center,
+                      child: DecorLogoEmblem(
+                        size: 280,
+                        color: BracuPalette.decorColor(context),
+                      ),
+                    ),
+                  ),
                   Positioned(
-                    bottom: -90,
-                    left: -70,
+                    bottom: -100,
+                    left: -80,
                     child: DecorBlob(
                       color: BracuPalette.decorColor(context),
-                      size: 220,
+                      size: 260,
                     ),
                   ),
+                ],
                 Column(
                   children: [
                     Expanded(
