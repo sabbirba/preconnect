@@ -118,24 +118,33 @@ class _BracuPageScaffoldState extends State<BracuPageScaffold> {
                   child: SafeArea(
                     child: Stack(
                       children: [
-                        if (enabled)
+                        if (enabled) ...[
                           Positioned(
-                            top: -70,
-                            right: -60,
+                            top: -90,
+                            right: -70,
                             child: DecorBlob(
                               color: BracuPalette.decorColor(context),
-                              size: 200,
+                              size: 240,
                             ),
                           ),
-                        if (enabled)
+                          Positioned.fill(
+                            child: Align(
+                              alignment: Alignment.center,
+                              child: DecorLogoEmblem(
+                                size: 280,
+                                color: BracuPalette.decorColor(context),
+                              ),
+                            ),
+                          ),
                           Positioned(
-                            bottom: -80,
-                            left: -70,
+                            bottom: -100,
+                            left: -80,
                             child: DecorBlob(
                               color: BracuPalette.decorColor(context),
-                              size: 220,
+                              size: 260,
                             ),
                           ),
+                        ],
                         Column(
                           children: [
                             Padding(
@@ -512,6 +521,184 @@ class DecorBlob extends StatelessWidget {
         borderRadius: BorderRadius.circular(size / 2),
       ),
     );
+  }
+}
+
+class DecorLogoEmblem extends StatelessWidget {
+  const DecorLogoEmblem({super.key, required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size * (348.78 / 380.09),
+      child: CustomPaint(painter: _LogoEmblemPainter(color: color)),
+    );
+  }
+}
+
+class _LogoEmblemPainter extends CustomPainter {
+  const _LogoEmblemPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final scale = size.width / 380.09;
+
+    canvas.save();
+    canvas.scale(scale, scale);
+    canvas.translate(-108.09, -247.16);
+
+    final ringPath = Path()
+      ..moveTo(298.14, 247.16)
+      ..cubicTo(377.75, 247.16, 442.67, 312.09, 442.67, 391.69)
+      ..arcToPoint(
+        const Offset(404.83, 489.0),
+        radius: const Radius.circular(143.94),
+        largeArc: false,
+        clockwise: true,
+      )
+      ..lineTo(397.68, 481.85)
+      ..arcToPoint(
+        const Offset(432.56, 391.68),
+        radius: const Radius.circular(133.86),
+        largeArc: false,
+        clockwise: false,
+      )
+      ..cubicTo(432.56, 317.68, 372.18, 257.26, 298.14, 257.26)
+      ..cubicTo(224.1, 257.26, 163.72, 317.66, 163.72, 391.7)
+      ..arcToPoint(
+        const Offset(198.38, 481.63),
+        radius: const Radius.circular(133.86),
+        largeArc: false,
+        clockwise: false,
+      )
+      ..lineTo(191.22, 488.79)
+      ..arcToPoint(
+        const Offset(153.6, 391.7),
+        radius: const Radius.circular(144.0),
+        largeArc: false,
+        clockwise: true,
+      )
+      ..cubicTo(153.6, 312.09, 218.53, 247.16, 298.14, 247.16)
+      ..close();
+
+    canvas.drawPath(ringPath, paint);
+
+    void drawRibbonWave(double startY) {
+      final wavePath = Path()
+        ..moveTo(208.18, startY)
+        ..cubicTo(
+          236.27,
+          startY + 5.29,
+          259.45,
+          startY + 23.29,
+          297.74,
+          startY + 44.86,
+        )
+        ..cubicTo(
+          312.9,
+          startY + 30.62,
+          335.74,
+          startY + 17.92,
+          373.74,
+          startY + 17.92,
+        )
+        ..lineTo(373.74, startY + 29.34)
+        ..cubicTo(
+          354.86,
+          startY + 31.99,
+          330.81,
+          startY + 44.65,
+          307.76,
+          startY + 57.31,
+        )
+        ..lineTo(307.76, startY + 65.31)
+        ..lineTo(307.64, startY + 65.63)
+        ..lineTo(307.49, startY + 65.91)
+        ..lineTo(307.29, startY + 66.2)
+        ..lineTo(307.06, startY + 66.45)
+        ..lineTo(306.78, startY + 66.68)
+        ..lineTo(306.49, startY + 66.87)
+        ..lineTo(306.17, startY + 67.03)
+        ..lineTo(305.87, startY + 67.14)
+        ..lineTo(292.49, startY + 67.14)
+        ..lineTo(292.12, startY + 67.06)
+        ..lineTo(291.78, startY + 66.95)
+        ..lineTo(291.45, startY + 66.81)
+        ..lineTo(291.14, startY + 66.59)
+        ..lineTo(290.84, startY + 66.29)
+        ..lineTo(290.62, startY + 65.97)
+        ..lineTo(290.44, startY + 65.68)
+        ..lineTo(290.34, startY + 65.35)
+        ..lineTo(290.34, startY + 57.74)
+        ..cubicTo(
+          273.28,
+          startY + 42.12,
+          254.72,
+          startY + 32.14,
+          208.18,
+          startY + 17.0,
+        )
+        ..close();
+
+      canvas.drawPath(wavePath, paint);
+    }
+
+    drawRibbonWave(430.1);
+    drawRibbonWave(462.64);
+    drawRibbonWave(494.32);
+
+    canvas.save();
+    canvas.translate(298.14, 368.0);
+    canvas.scale(14.0, 14.0);
+    canvas.translate(-10.6865, -34.515);
+
+    final infinityPath = Path();
+    infinityPath.moveTo(8.903, 35.4);
+    infinityPath.relativeLineTo(2.655, -2.79);
+    infinityPath.relativeCubicTo(0.453, -0.475, 1.13, -0.723, 1.845, -0.723);
+    infinityPath.relativeCubicTo(1.48, 0, 2.68, 1.177, 2.68, 2.629);
+    infinityPath.relativeCubicTo(0, 1.45, -1.2, 2.628, -2.68, 2.628);
+    infinityPath.relativeArcToPoint(
+      const Offset(-1.87, -0.746),
+      radius: const Radius.circular(2.7),
+    );
+
+    infinityPath.moveTo(12.470, 33.632);
+    infinityPath.relativeLineTo(-2.654, 2.789);
+    infinityPath.relativeCubicTo(-0.453, 0.476, -1.13, 0.723, -1.846, 0.723);
+    infinityPath.relativeCubicTo(-1.48, 0, -2.68, -1.177, -2.68, -2.628);
+    infinityPath.relativeCubicTo(0, -1.451, 1.2, -2.629, 2.68, -2.629);
+    infinityPath.relativeArcToPoint(
+      const Offset(1.87, 0.746),
+      radius: const Radius.circular(2.7),
+    );
+
+    final infinityStrokePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    canvas.drawPath(infinityPath, infinityStrokePaint);
+    canvas.restore();
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _LogoEmblemPainter oldDelegate) {
+    return oldDelegate.color != color;
   }
 }
 
