@@ -90,7 +90,7 @@ platform :ios do
       release_notes = File.read(notes_path).strip
     end
     if release_notes.nil? || release_notes.empty?
-      release_notes = "Bug fixes and performance improvements."
+      release_notes = "We update PreConnect regularly to make your academic experience smoother and faster. This release includes performance improvements, bug fixes, and general stability enhancements."
     end
 
     upload_kwargs = {
