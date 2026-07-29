@@ -37,29 +37,52 @@ platform :mac do
       end
     end
 
+    release_notes = nil
+    notes_path = File.expand_path("../../ios/fastlane/metadata/en-US/release_notes.txt", __dir__)
+    if File.exist?(notes_path)
+      release_notes = File.read(notes_path).strip
+    end
+    if release_notes.nil? || release_notes.empty?
+      changelog_path = File.expand_path("../../CHANGELOG.md", __dir__)
+      if File.exist?(changelog_path)
+        content = File.read(changelog_path)
+        match = content.match(/##\s*\[[0-9]+(?:\.[0-9]+)*\][^\n]*\n+([\s\S]*?)(?=\n+##\s*\[|\z)/)
+        release_notes = match[1].strip if match && match[1]
+      end
+    end
+
+    upload_kwargs = {
+      pkg: skip_upload ? nil : options[:pkg],
+      skip_binary_upload: skip_upload,
+      platform: "osx",
+      skip_metadata: false,
+      skip_screenshots: true,
+      force: true,
+      reject_if_possible: true,
+      submit_for_review: true,
+      automatic_release: true,
+      phased_release: false,
+      run_precheck_before_submit: false,
+      release_notes: {
+        "en-US" => release_notes
+      },
+      submission_information: {
+        export_compliance_uses_encryption: false
+      },
+      api_key: api_key
+    }
+    upload_kwargs[:app_version] = version_name if version_name && !version_name.to_s.empty?
+
     begin
-      deliver(
-        pkg: skip_upload ? nil : options[:pkg],
-        skip_binary_upload: skip_upload,
-        platform: "osx",
-        force: true,
-        skip_metadata: true,
-        skip_screenshots: true,
-        run_precheck_before_submit: false,
-        api_key: api_key
-      )
+      deliver(**upload_kwargs)
     rescue => e
-      UI.message("macOS Upload action encountered an issue: #{e.message}. Retrying with skip_binary_upload = true.")
-      deliver(
-        pkg: nil,
-        skip_binary_upload: true,
-        platform: "osx",
-        force: true,
-        skip_metadata: true,
-        skip_screenshots: true,
-        run_precheck_before_submit: false,
-        api_key: api_key
-      )
+      if e.message.include?("not in valid state") || e.message.include?("cannot be reviewed") || e.message.include?("whatsNew")
+        UI.message("macOS Package uploaded successfully to App Store Connect. Retrying submission without blocking: #{e.message}")
+        upload_kwargs[:submit_for_review] = false
+        deliver(**upload_kwargs)
+      else
+        UI.user_error!("Failed to upload/submit macOS app to App Store: #{e.message}")
+      end
     end
   end
 
