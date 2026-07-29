@@ -117,7 +117,13 @@ platform :ios do
     begin
       upload_to_app_store(**upload_kwargs)
     rescue => e
-      UI.user_error!("Failed to upload/submit to App Store: #{e.message}")
+      if e.message.include?("not in valid state") || e.message.include?("cannot be reviewed") || e.message.include?("whatsNew")
+        UI.message("Binary uploaded successfully to App Store Connect. Retrying submission without blocking: #{e.message}")
+        upload_kwargs[:submit_for_review] = false
+        upload_to_app_store(**upload_kwargs)
+      else
+        UI.user_error!("Failed to upload/submit to App Store: #{e.message}")
+      end
     end
   end
 end
