@@ -90,7 +90,12 @@ platform :ios do
       release_notes = File.read(notes_path).strip
     end
     if release_notes.nil? || release_notes.empty?
-      release_notes = "We update PreConnect regularly to make your academic experience smoother and faster. This release includes performance improvements, bug fixes, and general stability enhancements."
+      changelog_path = File.expand_path("../../CHANGELOG.md", __dir__)
+      if File.exist?(changelog_path)
+        content = File.read(changelog_path)
+        match = content.match(/##\s*\[[0-9]+(?:\.[0-9]+)*\][^\n]*\n+([\s\S]*?)(?=\n+##\s*\[|\z)/)
+        release_notes = match[1].strip if match && match[1]
+      end
     end
 
     upload_kwargs = {
