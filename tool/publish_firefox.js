@@ -1,6 +1,6 @@
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
 
 function generateJWT(issuer, secret) {
   const header = { alg: "HS256", typ: "JWT" };
@@ -9,28 +9,30 @@ function generateJWT(issuer, secret) {
     iss: issuer,
     jti: crypto.randomUUID(),
     iat: iat,
-    exp: iat + 300
+    exp: iat + 300,
   };
 
   const base64UrlEncode = (obj) => {
-    return Buffer.from(JSON.stringify(obj)).toString('base64url');
+    return Buffer.from(JSON.stringify(obj)).toString("base64url");
   };
 
   const headerPart = base64UrlEncode(header);
   const payloadPart = base64UrlEncode(payload);
 
   const signature = crypto
-    .createHmac('sha256', secret)
+    .createHmac("sha256", secret)
     .update(`${headerPart}.${payloadPart}`)
-    .digest('base64url');
+    .digest("base64url");
 
   return `${headerPart}.${payloadPart}.${signature}`;
 }
 
 async function main() {
-  const [,, addonId, xpiPath, issuer, secret] = process.argv;
+  const [, , addonId, xpiPath, issuer, secret] = process.argv;
   if (!addonId || !xpiPath || !issuer || !secret) {
-    console.error("Usage: node publish_firefox.js <addon_id> <xpi_path> <jwt_issuer> <jwt_secret>");
+    console.error(
+      "Usage: node publish_firefox.js <addon_id> <xpi_path> <jwt_issuer> <jwt_secret>",
+    );
     process.exit(1);
   }
 
@@ -39,23 +41,29 @@ async function main() {
 
   console.log("Uploading addon package...");
   const formData = new FormData();
-  formData.append('channel', 'listed');
+  formData.append("channel", "listed");
 
   const fileBuffer = fs.readFileSync(xpiPath);
-  const fileBlob = new Blob([fileBuffer], { type: 'application/zip' });
-  formData.append('upload', fileBlob, 'extension.zip');
+  const fileBlob = new Blob([fileBuffer], { type: "application/zip" });
+  formData.append("upload", fileBlob, "extension.zip");
 
-  const uploadResp = await fetch('https://addons.mozilla.org/api/v5/addons/upload/', {
-    method: 'POST',
-    headers: {
-      'Authorization': authHeader
+  const uploadResp = await fetch(
+    "https://addons.mozilla.org/api/v5/addons/upload/",
+    {
+      method: "POST",
+      headers: {
+        Authorization: authHeader,
+      },
+      body: formData,
     },
-    body: formData
-  });
+  );
 
   const uploadData = await uploadResp.json();
   if (!uploadResp.ok) {
-    console.error(`Upload failed (${uploadResp.status}):`, JSON.stringify(uploadData));
+    console.error(
+      `Upload failed (${uploadResp.status}):`,
+      JSON.stringify(uploadData),
+    );
     process.exit(1);
   }
 
@@ -71,7 +79,7 @@ async function main() {
   while (Date.now() - startTime < timeout) {
     const freshToken = generateJWT(issuer, secret);
     const statusResp = await fetch(statusUrl, {
-      headers: { 'Authorization': `JWT ${freshToken}` }
+      headers: { Authorization: `JWT ${freshToken}` },
     });
 
     if (statusResp.ok) {
@@ -81,14 +89,20 @@ async function main() {
           console.log("Validation successful!");
           break;
         } else {
-          console.error("Validation failed:", JSON.stringify(statusData.validation));
+          console.error(
+            "Validation failed:",
+            JSON.stringify(statusData.validation),
+          );
           process.exit(1);
         }
       }
     } else {
-      console.error(`Failed to check status (${statusResp.status}):`, await statusResp.text());
+      console.error(
+        `Failed to check status (${statusResp.status}):`,
+        await statusResp.text(),
+      );
     }
-    await new Promise(resolve => setTimeout(resolve, interval));
+    await new Promise((resolve) => setTimeout(resolve, interval));
   }
 
   if (Date.now() - startTime >= timeout) {
@@ -97,10 +111,19 @@ async function main() {
   }
 
   console.log("Creating new version...");
-  let releaseNotes = "We update PreConnect regularly to make your academic experience smoother and faster. This release includes performance improvements, bug fixes, and general stability enhancements.";
-  const notesPath = path.join(__dirname, '..', 'ios', 'fastlane', 'metadata', 'en-US', 'release_notes.txt');
+  let releaseNotes =
+    "We update PreConnect regularly to make your academic experience smoother and faster. This release includes performance improvements, bug fixes, and general stability enhancements.";
+  const notesPath = path.join(
+    __dirname,
+    "..",
+    "ios",
+    "fastlane",
+    "metadata",
+    "en-US",
+    "release_notes.txt",
+  );
   if (fs.existsSync(notesPath)) {
-    const rawNotes = fs.readFileSync(notesPath, 'utf8').trim();
+    const rawNotes = fs.readFileSync(notesPath, "utf8").trim();
     if (rawNotes.length > 0) {
       releaseNotes = rawNotes;
     }
@@ -109,33 +132,41 @@ async function main() {
   const versionUrl = `https://addons.mozilla.org/api/v5/addons/addon/${addonId}/versions/`;
   const freshToken = generateJWT(issuer, secret);
   const versionResp = await fetch(versionUrl, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Authorization': `JWT ${freshToken}`,
-      'Content-Type': 'application/json'
+      Authorization: `JWT ${freshToken}`,
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       upload: uploadUuid,
       release_notes: {
-        "en-US": releaseNotes
-      }
-    })
+        "en-US": releaseNotes,
+      },
+    }),
   });
 
   const versionData = await versionResp.json();
   if (versionResp.status === 201) {
     console.log("Successfully published Firefox Add-on version!");
     console.log(JSON.stringify(versionData));
-  } else if (versionResp.status === 409 || JSON.stringify(versionData).includes("already exists")) {
-    console.log(`Version already exists on Firefox Add-ons (Status: ${versionResp.status}, Response: ${JSON.stringify(versionData)}). Skipping gracefully.`);
+  } else if (
+    versionResp.status === 409 ||
+    JSON.stringify(versionData).includes("already exists")
+  ) {
+    console.log(
+      `Version already exists on Firefox Add-ons (Status: ${versionResp.status}, Response: ${JSON.stringify(versionData)}). Skipping gracefully.`,
+    );
     process.exit(0);
   } else {
-    console.error(`Failed to create version (${versionResp.status}):`, JSON.stringify(versionData));
+    console.error(
+      `Failed to create version (${versionResp.status}):`,
+      JSON.stringify(versionData),
+    );
     process.exit(1);
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error(err);
   process.exit(1);
 });

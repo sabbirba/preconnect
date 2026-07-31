@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/extension_config.dart';
@@ -16,6 +17,7 @@ Future<TokenRefreshStatus> refreshBracuSessionTokens({
   persistTokens,
   required Future<void> Function() clearTokens,
   Duration timeout = const Duration(seconds: 12),
+  http.Client? client,
 }) async {
   final cleanedRefreshToken = refreshToken.trim();
   if (cleanedRefreshToken.isEmpty) {
@@ -30,7 +32,7 @@ Future<TokenRefreshStatus> refreshBracuSessionTokens({
       'client_id': WebExtensionApiConfig.clientId,
       'scope': 'openid offline_access',
     });
-    final response = await HttpUtils.client
+    final response = await (client ?? HttpUtils.client)
         .post(
           uri,
           headers: <String, String>{

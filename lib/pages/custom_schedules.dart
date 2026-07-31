@@ -4,8 +4,7 @@ import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:flutter/services.dart';
-import 'package:add_2_calendar/add_2_calendar.dart';
+import 'package:preconnect/tools/calendar_event.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/api/custom_schedules.dart';
@@ -14,9 +13,10 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/custom_schedules_sections/editor_sheet.dart'
     show showCustomSchedulesEditorSheet;
 import 'package:preconnect/pages/custom_schedules_sections/schedules_shared.dart';
-import 'package:preconnect/pages/shared_widgets/session_helper.dart';
+import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/android_alarm.dart';
 
 class CustomSchedulesPage extends StatefulWidget {
   const CustomSchedulesPage({super.key});
@@ -31,10 +31,6 @@ class CustomSchedulesPage extends StatefulWidget {
 
 class _CustomSchedulesPageState extends State<CustomSchedulesPage>
     with RefreshBusState, WidgetsBindingObserver {
-  static const MethodChannel _androidAlarmChannel = MethodChannel(
-    'preconnect/android_alarm',
-  );
-
   static final CachedPageController<List<CustomSchedule>> itemsCache =
       CachedPageController<List<CustomSchedule>>(({
         bool forceRefresh = false,
@@ -557,11 +553,11 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
     }
 
     try {
-      final opened = await _androidAlarmChannel.invokeMethod<bool>('setAlarm', {
-        'hour': reminderAt.hour,
-        'minute': reminderAt.minute,
-        'message': message,
-      });
+      final opened = await AndroidAlarm.set(
+        hour: reminderAt.hour,
+        minute: reminderAt.minute,
+        message: message,
+      );
       if (opened != true) {
         throw Exception('Unable to open alarm on Android.');
       }

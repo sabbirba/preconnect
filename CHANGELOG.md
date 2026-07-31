@@ -6,10 +6,11 @@ Entries are written for students, not developers — plain language, no commit h
 ## [Unreleased]
 
 ## [2.0.4] — 2026-07-29
-- Universal Compatibility: Expanded hardware feature definitions and optimized responsive layouts for all device form factors.
-- Release Automation: Automated cross-platform store deployment and dynamic changelog metadata syncing.
+
+Universal Compatibility: Expanded hardware feature definitions and optimized responsive layouts for all device form factors.
 
 ## [2.0.3] — 2026-07-28
+
 - Instant 0 ms Loading: Pages across the app (Dashboard, Class Schedule, Exam Schedule, DSpace, Calendar, Notifications, Seat Status, Free Labs) now render instantly from local cache without loading spinners.
 - 120Hz Smooth Scrolling: Enabled high refresh rate hardware rendering and optimized scroll physics for stutter-free navigation.
 - Real-Time Data Sync: Integrated background diff updates via Mercure SSE so your schedules and exam details update silently in the background.
@@ -18,17 +19,21 @@ Entries are written for students, not developers — plain language, no commit h
 - Campus Wi-Fi & PDF Reliability: Enhanced captive portal login stability, unescaped PDF downloads, and persistent offline exam map caching.
 
 ## [2.0.2] — 2026-07-23
+
 - Performance Upgrades: Pipeline compilation optimized with parallel build jobs and dependency caching.
 
 ## [2.0.1] — 2026-07-18
+
 - Apple Silicon Support: Built on modern Apple Silicon virtual machine environments for faster deployment.
 
 ## [2.0.0] — 2026-07-17
+
 - Smoother Onboarding: Notification requests are now optional and won't interrupt your first startup.
 - Reliable Wi-Fi: Improved campus Wi-Fi login reliability with smart retry loops and delays.
 - Under the Hood: Cleaned up background notifications and fully optimized app stability.
 
 ## [1.6.9] — 2026-07-14
+
 - Instant 0 ms startup loading: Optimized initial frame settling delay to 0 ms.
 - Real-time silent UI updates: Connected Class Schedule, Exam Schedule, Bus, Alarms, and Degree Progress to background cache update listeners, refreshing the UI instantly without showing visual loading indicators or spinners.
 - Background sync integration: Wired the FCM background handler to silently fetch and update the local database cache when the server broadcasts silent data sync updates.
@@ -61,7 +66,6 @@ Entries are written for students, not developers — plain language, no commit h
 - Massive reduced download and install size by over 58% (saving ~14 MB of space) through optimized native library packaging and aggressive R8 code shrinking
 - Optimized memory and launch footprint by implemented lazy-loading for the PDF module
 - CI and build pipeline improvements (faster releases for you)
-
 
 ## [1.6.5] — 2026-05
 

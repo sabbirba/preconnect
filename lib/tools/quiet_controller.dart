@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/services.dart' show MethodChannel;
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/platform_channels.dart';
 import 'package:preconnect/tools/schedule_planner.dart';
 
 class QuietModeResult {
@@ -24,7 +25,9 @@ class QuietModeController {
   static final QuietModeController instance = QuietModeController._();
 
   static const String _prefsKey = 'quiet_mode_during_class';
-  static const MethodChannel _channel = MethodChannel('preconnect/quiet_mode');
+  static const MethodChannel _channel = MethodChannel(
+    PlatformChannels.quietMode,
+  );
 
   bool _loaded = false;
   bool _enabled = false;

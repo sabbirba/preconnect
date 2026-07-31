@@ -16,12 +16,12 @@ import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/cdn_cache.dart';
+import 'package:preconnect/tools/file_open.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/web_shared.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:open_filex/open_filex.dart';
 import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -37,31 +37,7 @@ part 'shared_widgets/ui_chrome.dart';
 part 'shared_widgets/ui_launchers.dart';
 
 String formatDate(String? input) {
-  if (input == null || input.trim().isEmpty) return '';
-  final raw = input.trim();
-  final candidates = <DateFormat>[
-    DateFormat('yyyy-MM-dd'),
-    DateFormat('yyyy/MM/dd'),
-    DateFormat('yyyy.MM.dd'),
-    DateFormat('dd-MM-yyyy'),
-    DateFormat('dd/MM/yyyy'),
-    DateFormat('d/M/yyyy'),
-    DateFormat('d MMM yyyy'),
-    DateFormat('d MMM, yyyy'),
-    DateFormat('d-MMM-yyyy'),
-    DateFormat('MMM d, yyyy'),
-  ];
-
-  DateTime? dt;
-  for (final f in candidates) {
-    try {
-      dt = f.parseStrict(raw);
-      break;
-    } catch (_) {}
-  }
-  dt ??= DateTime.tryParse(raw);
-  if (dt == null) return raw;
-  return DateFormat('d MMMM, y').format(dt);
+  return BracuTime.formatDate(input);
 }
 
 String formatTime(String? input) {
@@ -381,8 +357,7 @@ Future<bool> _openPdfNativelyOrFallback(String filePath) async {
   if (defaultTargetPlatform == TargetPlatform.android ||
       defaultTargetPlatform == TargetPlatform.iOS) {
     try {
-      final result = await OpenFilex.open(filePath);
-      if (result.type == ResultType.done) return true;
+      if (await NativeFile.open(filePath)) return true;
     } catch (_) {}
   }
 
@@ -689,8 +664,8 @@ class PreConnectDiscordIcon extends StatelessWidget {
   }
 }
 
-class PreConnectGithubIcon extends StatelessWidget {
-  const PreConnectGithubIcon({super.key, this.size = 24.0, this.color});
+class PreConnectGitHubIcon extends StatelessWidget {
+  const PreConnectGitHubIcon({super.key, this.size = 24.0, this.color});
   final double size;
   final Color? color;
 
@@ -698,13 +673,13 @@ class PreConnectGithubIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomPaint(
       size: Size(size, size),
-      painter: _GithubLogoPainter(color: color ?? BracuPalette.primary),
+      painter: _GitHubLogoPainter(color: color ?? BracuPalette.primary),
     );
   }
 }
 
-class _GithubLogoPainter extends CustomPainter {
-  _GithubLogoPainter({required this.color});
+class _GitHubLogoPainter extends CustomPainter {
+  _GitHubLogoPainter({required this.color});
   final Color color;
 
   @override
@@ -749,7 +724,7 @@ class _GithubLogoPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _GithubLogoPainter oldDelegate) {
+  bool shouldRepaint(covariant _GitHubLogoPainter oldDelegate) {
     return oldDelegate.color != color;
   }
 }
@@ -1201,7 +1176,7 @@ class BracuFundingSupportContent extends StatelessWidget {
                 ),
               ),
               _BracuSponsorActionChip(
-                iconWidget: const PreConnectGithubIcon(
+                iconWidget: const PreConnectGitHubIcon(
                   size: 18,
                   color: BracuPalette.primary,
                 ),

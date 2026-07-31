@@ -31,7 +31,7 @@ The following behaviors are not acceptable:
 - Sexualized comments, coercion, or unwanted attention
 - Misrepresenting another contributor’s work or identity
 
-## Maintaining A Healthy Project
+## Maintaining a Healthy Project
 
 Maintainers may:
 

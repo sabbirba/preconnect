@@ -1,25 +1,20 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:gap/gap.dart';
-import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/progress.dart';
 import 'package:preconnect/api/schedule.dart';
-import 'package:preconnect/pages/shared_widgets/session_helper.dart';
+import 'package:preconnect/features/auth/data/oauth_exchange.dart';
+import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/home.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/bracu_logout.dart';
 import 'package:preconnect/tools/pkce.dart';
-import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
-import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/tools/token_storage.dart';
+import 'package:preconnect/pages/onboarding.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:preconnect/pages/shared_widgets/preconnect_webview.dart';
 
@@ -34,97 +29,10 @@ class LoginPage extends StatefulWidget {
 
   final String? customAuthUrl;
 
-  static WebViewController? _preloadedWebViewController;
-  static bool _isPreloadingWebView = false;
   static String? pkceVerifier;
 
-  static WebViewController? _preloadedGoogleWebViewController;
-  static bool _isPreloadingGoogleWebView = false;
-  static String? pkceVerifierGoogle;
-
-  static Future<void> preloadNextPage() async {
-    if (kIsWeb) return;
-    if (_preloadedWebViewController != null || _isPreloadingWebView) return;
-    _isPreloadingWebView = true;
-    try {
-      pkceVerifier = generatePkceVerifier();
-      final codeChallenge = codeChallengeS256(pkceVerifier!);
-      final controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..enableZoom(true);
-      try {
-        controller.setBackgroundColor(Colors.transparent);
-      } catch (_) {}
-      if (_shouldUseMobileUserAgent) {
-        controller.setUserAgent(kPreConnectUserAgent);
-      }
-      controller.loadRequest(
-        Uri.parse(ApiConfig.authUrlWithPkce(codeChallenge)),
-      );
-      _preloadedWebViewController = controller;
-    } catch (_) {
-      _preloadedWebViewController = null;
-    } finally {
-      _isPreloadingWebView = false;
-    }
-  }
-
-  static Future<void> preloadGoogleLogin() async {
-    if (kIsWeb) return;
-    if (_preloadedGoogleWebViewController != null ||
-        _isPreloadingGoogleWebView) {
-      return;
-    }
-    _isPreloadingGoogleWebView = true;
-    try {
-      pkceVerifierGoogle = generatePkceVerifier();
-      final codeChallenge = codeChallengeS256(pkceVerifierGoogle!);
-      final googleSsoUri = Uri.parse(ApiConfig.authUrlWithPkce(codeChallenge))
-          .replace(
-            queryParameters: {
-              ...Uri.parse(
-                ApiConfig.authUrlWithPkce(codeChallenge),
-              ).queryParameters,
-              'kc_idp_hint': 'google',
-            },
-          );
-      final controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..enableZoom(true);
-      try {
-        controller.setBackgroundColor(Colors.transparent);
-      } catch (_) {}
-      if (_shouldUseMobileUserAgent) {
-        controller.setUserAgent(kPreConnectUserAgent);
-      }
-      controller.loadRequest(googleSsoUri);
-      _preloadedGoogleWebViewController = controller;
-    } catch (_) {
-      _preloadedGoogleWebViewController = null;
-    } finally {
-      _isPreloadingGoogleWebView = false;
-    }
-  }
-
-  static WebViewController? takePreloadedWebView() {
-    final controller = _preloadedWebViewController;
-    _preloadedWebViewController = null;
-    return controller;
-  }
-
-  static WebViewController? takePreloadedGoogleWebView() {
-    final controller = _preloadedGoogleWebViewController;
-    _preloadedGoogleWebViewController = null;
-    return controller;
-  }
-
   static Future<void> clearSessionArtifacts() async {
-    _preloadedWebViewController = null;
-    _isPreloadingWebView = false;
     pkceVerifier = null;
-    _preloadedGoogleWebViewController = null;
-    _isPreloadingGoogleWebView = false;
-    pkceVerifierGoogle = null;
     if (kIsWeb) return;
     try {
       final manager = WebViewCookieManager();
@@ -220,17 +128,7 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     if (kIsWeb) return;
-    final isGoogle =
-        widget.customAuthUrl != null &&
-        widget.customAuthUrl!.contains('kc_idp_hint=google');
-    if (isGoogle && LoginPage._preloadedGoogleWebViewController != null) {
-      LoginPage.pkceVerifier = LoginPage.pkceVerifierGoogle;
-    }
-    final controller = isGoogle
-        ? (LoginPage.takePreloadedGoogleWebView() ?? _buildMobileWebView())
-        : (widget.customAuthUrl != null
-              ? _buildMobileWebView()
-              : (LoginPage.takePreloadedWebView() ?? _buildMobileWebView()));
+    final controller = _buildMobileWebView();
     _attachNavigationDelegate(controller);
     _webViewController = controller;
   }
@@ -304,58 +202,14 @@ class _LoginPageState extends State<LoginPage> {
         return false;
       }
 
-      final uri = Uri.parse(ApiConfig.tokenEndpoint);
-      final body = HttpUtils.formBody(<String, String>{
-        'grant_type': 'authorization_code',
-        'client_id': ApiConfig.clientId,
-        'code': code,
-        'redirect_uri': ApiConfig.redirectUri,
-        'code_verifier': verifier,
-      });
-      final response = await HttpUtils.client
-          .post(
-            uri,
-            headers: <String, String>{
-              'Content-Type': 'application/x-www-form-urlencoded',
-              ...compressionHeadersForUri(uri),
-            },
-            body: body,
-          )
-          .timeout(_loginRequestTimeout);
-
-      if (response.statusCode != 200) {
-        return false;
-      }
-
-      final data = json.decode(response.body);
-      if (data is! Map<String, dynamic>) return false;
-
-      final accessToken = data['access_token'] as String?;
-      final refreshToken = data['refresh_token'] as String?;
-      final idToken = data['id_token'] as String?;
-      if (accessToken == null ||
-          accessToken.isEmpty ||
-          refreshToken == null ||
-          refreshToken.isEmpty) {
-        return false;
-      }
-
       try {
-        await Future.wait([
-          TokenStorage.instance.write(
-            key: PreConnectStorageKeys.accessToken,
-            value: accessToken,
-          ),
-          TokenStorage.instance.write(
-            key: PreConnectStorageKeys.refreshToken,
-            value: refreshToken,
-          ),
-          if (idToken != null && idToken.isNotEmpty)
-            TokenStorage.instance.write(
-              key: PreConnectStorageKeys.idToken,
-              value: idToken,
-            ),
-        ]);
+        await OAuthCodeExchange().exchangeAndPersist(
+          code: code,
+          verifier: verifier,
+          timeout: _loginRequestTimeout,
+        );
+      } on OAuthCodeExchangeException {
+        return false;
       } on TokenPersistenceException {
         return false;
       }
@@ -396,7 +250,9 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     if (kIsWeb) {
-      return _WebLoginPage(onOpenLogin: _launchWebLogin);
+      throw UnsupportedError(
+        'LoginPage is available only on native platforms.',
+      );
     }
 
     return PreConnectWebViewPage(
@@ -420,74 +276,5 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _webViewController = null;
     super.dispose();
-  }
-
-  Future<void> _launchWebLogin() async {
-    final verifier = generatePkceVerifier();
-    final challenge = codeChallengeS256(verifier);
-    await TokenStorage.instance.write(
-      key: PreConnectStorageKeys.pkceVerifier,
-      value: verifier,
-    );
-    final uri = Uri.parse(ApiConfig.authUrlWithPkce(challenge));
-    await launchUrl(
-      uri,
-      mode: LaunchMode.inAppBrowserView,
-      webOnlyWindowName: '_self',
-    );
-  }
-}
-
-class _WebLoginPage extends StatelessWidget {
-  const _WebLoginPage({required this.onOpenLogin});
-
-  final Future<void> Function() onOpenLogin;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Gap(40),
-                  const Icon(
-                    Icons.school_rounded,
-                    size: 52,
-                    color: Color(0xFF1E6BE3),
-                  ),
-                  const Gap(16),
-                  const Text(
-                    'PreConnect',
-                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
-                    textAlign: TextAlign.center,
-                  ),
-                  const Gap(40),
-                  FilledButton.icon(
-                    onPressed: () => unawaited(onOpenLogin()),
-                    icon: const Icon(Icons.login_rounded),
-                    label: const Text('Sign in with BRACU'),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      textStyle: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  const Gap(40),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

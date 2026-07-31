@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Private security report
+    url: https://github.com/sabbirba/preconnect/security/advisories/new
+    about: Report vulnerabilities and sensitive account or data exposure privately
+  - name: Contribution guide
+    url: https://github.com/sabbirba/preconnect/blob/main/CONTRIBUTING.md
+    about: Read setup, testing, build, and pull-request guidance

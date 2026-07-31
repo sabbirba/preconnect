@@ -37,8 +37,8 @@ sync_store_metadata() {
   mkdir -p "${ROOT_DIR}/ios/fastlane/metadata/en-US"
   mkdir -p "${ROOT_DIR}/android/fastlane/metadata/android/en-US/changelogs"
 
-  printf '%s\n' "${notes}" > "${ROOT_DIR}/ios/fastlane/metadata/en-US/release_notes.txt"
-  printf '%s\n' "${notes}" > "${ROOT_DIR}/android/fastlane/metadata/android/en-US/changelogs/default.txt"
+  printf '%s\n' "${notes}" >"${ROOT_DIR}/ios/fastlane/metadata/en-US/release_notes.txt"
+  printf '%s\n' "${notes}" >"${ROOT_DIR}/android/fastlane/metadata/android/en-US/changelogs/default.txt"
 }
 
 bump_release_version() {

@@ -38,24 +38,26 @@ android {
         keystoreProperties.load(FileInputStream(keystorePropertiesFile))
     }
 
-    fun keystoreValue(key: String): String? =
-        keystoreProperties.getProperty(key) ?: envOrProp(key)
+    fun keystoreValue(key: String): String? = keystoreProperties.getProperty(key) ?: envOrProp(key)
 
     val releaseKeystorePath = keystoreValue("storeFile")?.trim().orEmpty()
-    val releaseKeystoreFile = if (releaseKeystorePath.isNotEmpty()) {
-        rootProject.file(releaseKeystorePath)
-    } else {
-        null
-    }
-    val hasReleaseSigningConfig = listOf(
-        "storeFile",
-        "storePassword",
-        "keyAlias",
-        "keyPassword",
-    ).all { !keystoreValue(it).isNullOrBlank() } && releaseKeystoreFile?.exists() == true
+    val releaseKeystoreFile =
+        if (releaseKeystorePath.isNotEmpty()) {
+            rootProject.file(releaseKeystorePath)
+        } else {
+            null
+        }
+    val hasReleaseSigningConfig =
+        listOf(
+            "storeFile",
+            "storePassword",
+            "keyAlias",
+            "keyPassword",
+        ).all { !keystoreValue(it).isNullOrBlank() } && releaseKeystoreFile?.exists() == true
 
     namespace = "com.sabbirba.preconnect"
-    compileSdk = 36
+    compileSdk = 37
+    compileSdkMinor = 0
     ndkVersion = projectNdkVersion
 
     compileOptions {
@@ -69,9 +71,16 @@ android {
     }
 
     lint {
-        checkReleaseBuilds = false
-        abortOnError = false
-        disable += setOf("EasterEgg", "StopShip")
+        checkReleaseBuilds = true
+        abortOnError = true
+        disable +=
+            setOf(
+                "EasterEgg",
+                "GradleDependency",
+                "IconLauncherShape",
+                "OldTargetApi",
+                "StopShip",
+            )
     }
 
     kotlin {
@@ -81,18 +90,13 @@ android {
     }
 
     defaultConfig {
-
         applicationId = "com.sabbirba.preconnect"
-
-
         minSdk = 24
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         resConfigs("en")
-
     }
-
 
     signingConfigs {
         if (hasReleaseSigningConfig) {
@@ -132,18 +136,20 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = false
+            excludes += setOf("lib/x86_64/**")
         }
     }
-
 }
 
 flutter {
     source = "../.."
 }
-
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    implementation("androidx.core:core-ktx:1.19.0")
     implementation("com.google.android.gms:play-services-location:21.4.0")
+    implementation("com.google.android.play:app-update:2.1.0")
+    implementation("com.google.android.play:review:2.0.2")
 }
 
 configurations.all {
@@ -152,5 +158,3 @@ configurations.all {
         force("com.google.firebase:firebase-messaging:25.1.1")
     }
 }
-
-

@@ -93,7 +93,15 @@ class _SettingsPageState extends State<SettingsPage>
     setState(() {
       applyLocal();
     });
-    await persist(value);
+    try {
+      await persist(value);
+    } catch (_) {
+      await _loadSettings();
+      if (mounted) {
+        showAppSnackBar(context, 'Could not save $label setting.');
+      }
+      return;
+    }
     RefreshBus.instance.notify(reason: 'home_card_settings_changed');
     if (mounted) {
       showAppSnackBar(context, '$label ${value ? 'enabled' : 'disabled'}');

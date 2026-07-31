@@ -7,6 +7,7 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'auth_service.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'error_reporter.dart';
 
 class SpaceAvailabilityPage extends StatefulWidget {
   const SpaceAvailabilityPage({super.key});
@@ -176,7 +177,13 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
             continue;
           }
         }
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        reportLibSyncError(
+          'Reading cached LibSync space availability',
+          error,
+          stackTrace,
+        );
+      }
 
       try {
         final data = await LibSyncAuthService.instance.fetchCheckAvailability(
@@ -201,7 +208,13 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
           };
           await AppStorage.instance.setString(key, jsonEncode(cacheObj));
         }
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        reportLibSyncError(
+          'Refreshing LibSync space availability',
+          error,
+          stackTrace,
+        );
+      }
     }
   }
 

@@ -2,7 +2,7 @@ name: preconnect
 description: "Fast, Calm Academic Companion App. An initiative run by BRAC University students."
 publish_to: "none"
 
-version: 2.0.4+202608039
+version: 2.0.4+202608040
 
 environment:
   sdk: ^3.8.1
@@ -28,12 +28,8 @@ dependencies:
   app_links: ^7.2.1
   file_selector: ^1.1.0
   share_plus: ^13.3.0
-  open_filex: ^4.7.0
-  in_app_update_flutter: ^3.0.0
-  in_app_review: ^2.0.12
   local_auth: ^3.0.2
   chrome_extension: ^0.4.0
-  cupertino_icons: ^1.0.9
   web: ^1.1.1
   http: ^1.6.0
   flutter_secure_storage: ^10.3.1
@@ -44,7 +40,7 @@ dependencies:
   package_info_plus: ^10.2.0
   device_info_plus: ^13.2.0
   gap: ^3.0.1
-  add_2_calendar: ^3.0.1
+  cupertino_icons: ^1.0.9
 
 dev_dependencies:
   flutter_test:
@@ -53,7 +49,7 @@ dev_dependencies:
 
 flutter:
   config:
-    enable-swift-package-manager: false
+    enable-swift-package-manager: true
   uses-material-design: true
   assets:
     - assets/icon.png

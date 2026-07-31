@@ -587,7 +587,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       final bound = await AndroidNetworkAssist.bindToWifiNetwork();
       if (!bound) {
         CaptiveWifiHttp.instance.lastError =
-            'Could not bind to the WiFi network. If you also have mobile '
+            'Could not bind to the Wi-Fi network. If you also have mobile '
             'data on, the login request may go out over data instead.';
       }
     }
@@ -1103,7 +1103,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
               _buildStepItem(
                 context,
                 stepNumber: '5',
-                title: 'Disconnect/Logout',
+                title: 'Disconnect or Log Out',
                 body:
                     'Tap Disconnect to log out of the active captive portal network session immediately.',
               ),

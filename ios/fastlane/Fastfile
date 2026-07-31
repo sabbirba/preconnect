@@ -51,7 +51,7 @@ platform :ios do
     end
   end
 
-  desc "Upload iOS build to App Store Connect and Submit for Review"
+  desc "Upload an iOS build to App Store Connect and submit it for review"
   lane :release_to_app_store do |options|
     key_content = options[:api_key_content] || ENV["APP_STORE_CONNECT_API_KEY"]
     key_content = key_content.gsub("\\n", "\n") if key_content

@@ -2,9 +2,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:open_filex/open_filex.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/file_open.dart';
 
 class PayslipDetailSheet extends StatefulWidget {
   const PayslipDetailSheet({
@@ -104,8 +104,8 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
           '${tempDir.path}/Payslip_${detail.payslipNumber}.pdf',
         );
         await file.writeAsBytes(bytes);
-        final result = await OpenFilex.open(file.path);
-        if (result.type != ResultType.done && mounted) {
+        final opened = await NativeFile.open(file.path);
+        if (!opened && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Saved payslip PDF to ${file.path}')),
           );

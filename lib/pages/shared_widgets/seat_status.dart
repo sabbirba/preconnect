@@ -1,31 +1,5 @@
 part of 'package:preconnect/pages/seat_status.dart';
 
-class SeatTimetable {
-  final String startTime;
-  final String endTime;
-
-  const SeatTimetable({required this.startTime, required this.endTime});
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is SeatTimetable &&
-          startTime == other.startTime &&
-          endTime == other.endTime;
-
-  @override
-  int get hashCode => Object.hash(startTime, endTime);
-
-  String get repr => "${formatTime(startTime)} - ${formatTime(endTime)}";
-  bool get isNotEmpty => startTime.isNotEmpty && endTime.isNotEmpty;
-  bool get isEmpty => startTime.isEmpty && endTime.isEmpty;
-
-  @override
-  String toString() {
-    return repr;
-  }
-}
-
 extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   _SeatStatusCardData _buildCardFromDetails({
     required int sectionId,
@@ -378,9 +352,9 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         ...assortedTimes.map(
           (data) => BracuSelectOption<SeatTimetable>(
             value: data,
-            label: data.repr,
+            label: data.label,
             icon: Icons.lock_clock,
-            subtitle: 'Only ${data.repr}',
+            subtitle: 'Only ${data.label}',
           ),
         ),
       ],

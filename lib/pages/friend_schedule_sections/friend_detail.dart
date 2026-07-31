@@ -10,7 +10,7 @@ import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/friend_schedule_sections/compare_schedules.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
-import 'package:preconnect/pages/shared_widgets/session_helper.dart';
+import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/pages/shared_widgets/exam_card.dart';
 import 'package:preconnect/pages/shared_widgets/entry_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';

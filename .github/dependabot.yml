@@ -19,6 +19,14 @@ updates:
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
+    cooldown:
+      default-days: 0
+    versioning-strategy: "increase"
+    groups:
+      security-updates:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
     labels:
       - "dependencies"
       - "dart"
@@ -28,15 +36,29 @@ updates:
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
+    cooldown:
+      default-days: 0
+    groups:
+      security-updates:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
     labels:
       - "dependencies"
-      - "github-actions"
 
   - package-ecosystem: "bundler"
     directory: "/"
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
+    cooldown:
+      default-days: 0
+    versioning-strategy: "increase"
+    groups:
+      security-updates:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
     labels:
       - "dependencies"
       - "ruby"
@@ -46,6 +68,12 @@ updates:
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
+    cooldown:
+      default-days: 0
+    groups:
+      security-updates:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
     labels:
       - "dependencies"
-      - "android"

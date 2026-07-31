@@ -16,15 +16,6 @@ class BuildInfo {
     return 'v$cleanVersion ($cleanBuild)';
   }
 
-  static Future<String> fullVersion() async {
-    final info = await _info();
-    final cleanVersion = info.version.trim();
-    final cleanBuild = info.buildNumber.trim();
-    if (cleanVersion.isEmpty) return cleanBuild;
-    if (cleanBuild.isEmpty) return cleanVersion;
-    return '$cleanVersion+$cleanBuild';
-  }
-
   static Future<_BuildInfoData> _info() async {
     final definedVersion = version.trim();
     final definedBuildNumber = buildNumber.trim();

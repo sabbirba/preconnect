@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_client.dart';
+import 'package:preconnect/tools/http/http_headers.dart';
 import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/pages/api_test.dart';
 import 'package:preconnect/pages/settings.dart';
@@ -483,7 +484,7 @@ class _RepoButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BracuActionBannerCard(
-      iconWidget: const PreConnectGithubIcon(size: 24),
+      iconWidget: const PreConnectGitHubIcon(size: 24),
       title: 'View Repository',
       subtitle: 'Explore the source code and contribute',
       onTap: () => openExternalUrl(context, kPreConnectRepositoryUrl),

@@ -10,14 +10,24 @@ Future<String?> webExtensionStorageGet(String key) async {
     if (value == null) return null;
     return '$value';
   }
+  Object? localError;
   try {
     final local = web.window.localStorage.getItem(key);
     if (local != null && local.isNotEmpty) return local;
-  } catch (_) {}
+  } catch (error) {
+    localError = error;
+  }
   try {
     final session = web.window.sessionStorage.getItem(key);
     if (session != null && session.isNotEmpty) return session;
-  } catch (_) {}
+  } catch (error) {
+    if (localError != null) {
+      throw StateError(
+        'Browser storage read failed for "$key" '
+        '(${localError.runtimeType}, ${error.runtimeType}).',
+      );
+    }
+  }
   return null;
 }
 
@@ -44,7 +54,11 @@ Future<void> webExtensionStorageSet(String key, String? value) async {
     } else {
       web.window.sessionStorage.setItem(key, value);
     }
-  } catch (_) {}
+  } catch (error) {
+    throw StateError(
+      'Browser storage write failed for "$key" (${error.runtimeType}).',
+    );
+  }
 }
 
 Future<void> webExtensionStorageRemoveKeys(Iterable<String> keys) async {
@@ -55,28 +69,37 @@ Future<void> webExtensionStorageRemoveKeys(Iterable<String> keys) async {
     return;
   }
   for (final key in keyList) {
+    Object? removalError;
     try {
       web.window.localStorage.removeItem(key);
-    } catch (_) {}
+    } catch (error) {
+      removalError = error;
+    }
     try {
       web.window.sessionStorage.removeItem(key);
-    } catch (_) {}
+    } catch (error) {
+      removalError ??= error;
+    }
+    if (removalError != null) {
+      throw StateError(
+        'Browser storage deletion failed for "$key" '
+        '(${removalError.runtimeType}).',
+      );
+    }
   }
 }
 
 Future<Map<String, String>> webExtensionStorageGetAll() async {
   final map = <String, String>{};
   if (_isChromeStorageAvailable()) {
-    try {
-      final Map<dynamic, dynamic> valuesObj = await chrome.storage.local.get(
-        null,
-      );
-      valuesObj.forEach((k, v) {
-        if (v != null) {
-          map[k.toString()] = v.toString();
-        }
-      });
-    } catch (_) {}
+    final Map<dynamic, dynamic> valuesObj = await chrome.storage.local.get(
+      null,
+    );
+    valuesObj.forEach((k, v) {
+      if (v != null) {
+        map[k.toString()] = v.toString();
+      }
+    });
     return map;
   }
   try {
@@ -87,6 +110,10 @@ Future<Map<String, String>> webExtensionStorageGetAll() async {
         if (val != null) map[key] = val;
       }
     }
-  } catch (_) {}
+  } catch (error) {
+    throw StateError(
+      'Browser storage enumeration failed (${error.runtimeType}).',
+    );
+  }
   return map;
 }

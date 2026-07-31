@@ -1,2 +1,1 @@
-- Universal Compatibility: Expanded hardware feature definitions and optimized responsive layouts for all device form factors.
-- Release Automation: Automated cross-platform store deployment and dynamic changelog metadata syncing.
+Universal Compatibility: Expanded hardware feature definitions and optimized responsive layouts for all device form factors.

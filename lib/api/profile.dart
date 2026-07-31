@@ -9,6 +9,13 @@ import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/cache_durations.dart';
+import 'package:preconnect/tools/app_log.dart';
+
+part 'profile_sections/profile_models.dart';
+
+void _recordProfileError(String operation, Object error) {
+  unawaited(AppLog.write('$operation failed: $error'));
+}
 
 class ProfileService {
   static final ProfileService _instance = ProfileService._();
@@ -277,7 +284,9 @@ class ProfileService {
           }
         }
       }
-    } catch (_) {}
+    } catch (error) {
+      _recordProfileError('Profile fetch', error);
+    }
 
     final profile = await getProfile(fromFetch: true);
 
@@ -417,7 +426,9 @@ class ProfileService {
             miscData['disabilityDetails']?.toString() ?? '',
           );
         }
-      } catch (_) {}
+      } catch (error) {
+        _recordProfileError('Profile miscellaneous data fetch', error);
+      }
 
       try {
         final studentUrl =
@@ -468,7 +479,9 @@ class ProfileService {
             studentData['emergencyContactName']?.toString() ?? '',
           );
         }
-      } catch (_) {}
+      } catch (error) {
+        _recordProfileError('Student identity fetch', error);
+      }
     }
 
     return profile;
@@ -504,98 +517,6 @@ class ProfileService {
       }
     }
     return profileData;
-  }
-}
-
-class AttendanceInfo {
-  final int courseSectionId;
-  final int studentPortfolioId;
-  final String courseName;
-  final String courseCode;
-  final int attend;
-  final int missed;
-  final int remaining;
-  final int totalClasses;
-
-  AttendanceInfo({
-    required this.courseSectionId,
-    required this.studentPortfolioId,
-    required this.courseName,
-    required this.courseCode,
-    required this.attend,
-    required this.missed,
-    required this.remaining,
-    required this.totalClasses,
-  });
-
-  factory AttendanceInfo.fromJson(Map<String, dynamic> json) {
-    return AttendanceInfo(
-      courseSectionId: json['courseSectionId'] as int? ?? 0,
-      studentPortfolioId: json['studentPortfolioId'] as int? ?? 0,
-      courseName: json['courseName'] as String? ?? '',
-      courseCode: json['courseCode'] as String? ?? '',
-      attend: json['attend'] as int? ?? 0,
-      missed: json['missed'] as int? ?? 0,
-      remaining: json['remaining'] as int? ?? 0,
-      totalClasses: json['totalClasses'] as int? ?? 0,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'courseSectionId': courseSectionId,
-      'studentPortfolioId': studentPortfolioId,
-      'courseName': courseName,
-      'courseCode': courseCode,
-      'attend': attend,
-      'missed': missed,
-      'remaining': remaining,
-      'totalClasses': totalClasses,
-    };
-  }
-}
-
-class PaymentInfo {
-  final String paymentStatus;
-  final String payslipNumber;
-  final String paymentType;
-  final DateTime requestDate;
-  final DateTime dueDate;
-  final double totalAmount;
-  final int semesterSessionId;
-
-  PaymentInfo({
-    required this.paymentStatus,
-    required this.payslipNumber,
-    required this.paymentType,
-    required this.requestDate,
-    required this.dueDate,
-    required this.totalAmount,
-    required this.semesterSessionId,
-  });
-
-  factory PaymentInfo.fromJson(Map<String, dynamic> json) {
-    return PaymentInfo(
-      paymentStatus: json['paymentStatus'] as String? ?? '',
-      payslipNumber: json['payslipNumber'] as String? ?? '',
-      paymentType: json['paymentType'] as String? ?? '',
-      requestDate: DateTime.parse(json['requestDate'] as String),
-      dueDate: DateTime.parse(json['dueDate'] as String),
-      totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
-      semesterSessionId: json['semesterSessionId'] as int? ?? 0,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'paymentStatus': paymentStatus,
-      'payslipNumber': payslipNumber,
-      'paymentType': paymentType,
-      'requestDate': requestDate.toIso8601String(),
-      'dueDate': dueDate.toIso8601String(),
-      'totalAmount': totalAmount,
-      'semesterSessionId': semesterSessionId,
-    };
   }
 }
 
@@ -676,7 +597,9 @@ class AdvisingService {
         await repo.writeStringMap(mapData);
         return mapData;
       }
-    } catch (_) {}
+    } catch (error) {
+      _recordProfileError('Advising fetch', error);
+    }
 
     return getAdvisingInfo(fromFetch: true);
   }
@@ -737,7 +660,9 @@ class AttendanceService {
         await repo.writeString(_attendanceKey, response.body);
         return response.body;
       }
-    } catch (_) {}
+    } catch (error) {
+      _recordProfileError('Attendance fetch', error);
+    }
 
     return getAttendanceInfo(fromFetch: true);
   }
@@ -775,7 +700,9 @@ class PaymentService {
             portfolioIds.add(item['id'].toString());
           }
         }
-      } catch (_) {}
+      } catch (error) {
+        _recordProfileError('Portfolio cache decode', error);
+      }
     }
 
     if (portfolioIds.isEmpty) {
@@ -829,7 +756,9 @@ class PaymentService {
         await repo.writeString(_paymentInfoKey, jsonResult);
         return jsonResult;
       }
-    } catch (_) {}
+    } catch (error) {
+      _recordProfileError('Payment information fetch', error);
+    }
 
     return getPaymentInfo(fromFetch: true);
   }
@@ -841,26 +770,6 @@ class PaymentService {
       decoder: (value) => value,
       onCacheMiss: () => fetchPaymentInfo(fromGet: true),
     );
-  }
-
-  Future<List<PayslipItem>> fetchPayslips({
-    bool fromGet = false,
-    Duration cacheDuration = CacheDurations.short,
-  }) async {
-    final raw = await fetchPaymentInfo(
-      fromGet: fromGet,
-      cacheDuration: cacheDuration,
-    );
-    if (raw == null || raw.isEmpty) return const [];
-    try {
-      final List data = jsonDecode(raw);
-      return data
-          .whereType<Map<String, dynamic>>()
-          .map(PayslipItem.fromJson)
-          .toList();
-    } catch (_) {
-      return const [];
-    }
   }
 
   Future<PayslipDetail?> fetchPayslipDetail(
@@ -876,7 +785,9 @@ class PaymentService {
         final Map<String, dynamic> data = jsonDecode(response.body);
         return PayslipDetail.fromJson(data);
       }
-    } catch (_) {}
+    } catch (error) {
+      _recordProfileError('Payslip detail fetch', error);
+    }
     return null;
   }
 
@@ -893,7 +804,9 @@ class PaymentService {
             .map(BankConfig.fromJson)
             .toList();
       }
-    } catch (_) {}
+    } catch (error) {
+      _recordProfileError('Bank configuration fetch', error);
+    }
     return const [];
   }
 
@@ -999,7 +912,9 @@ class PaymentService {
       if (streamedResponse.statusCode == 200) {
         return await streamedResponse.stream.toBytes();
       }
-    } catch (_) {}
+    } catch (error) {
+      _recordProfileError('Payslip PDF generation', error);
+    }
     return null;
   }
 }

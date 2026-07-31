@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:preconnect/tools/platform_channels.dart';
 
 class AndroidNetworkStatus {
   const AndroidNetworkStatus({
@@ -70,10 +71,10 @@ class AndroidNetworkAssist {
   AndroidNetworkAssist._();
 
   static const MethodChannel _channel = MethodChannel(
-    'preconnect/network_assist',
+    PlatformChannels.androidNetworkAssist,
   );
   static const EventChannel _events = EventChannel(
-    'preconnect/network_assist_events',
+    PlatformChannels.androidNetworkAssistEvents,
   );
 
   static bool get isSupported =>
@@ -242,7 +243,7 @@ class IosNetworkAssist {
   IosNetworkAssist._();
 
   static const MethodChannel _channel = MethodChannel(
-    'preconnect/ios_network_assist',
+    PlatformChannels.iosNetworkAssist,
   );
 
   static bool get isSupported =>

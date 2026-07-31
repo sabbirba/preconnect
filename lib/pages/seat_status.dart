@@ -8,6 +8,7 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/model/section_info.dart' as section;
+import 'package:preconnect/model/seat_timetable.dart';
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
 import 'package:preconnect/pages/ui_kit.dart';

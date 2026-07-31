@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="shortcut_profile_bg">#E8F1FF</color>
-    <color name="shortcut_classes_bg">#E8FAF2</color>
-    <color name="shortcut_exams_bg">#EFE9FF</color>
-    <color name="shortcut_friends_bg">#EAF4FF</color>
     <color name="notification_icon_color">#1E6BE3</color>
-	<color name="ic_launcher_background">#FFFFFF</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
 </resources>

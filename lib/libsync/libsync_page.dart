@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:intl/intl.dart' show DateFormat;
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/api/preferences_store.dart';
@@ -23,6 +22,9 @@ import 'auth_service.dart';
 import 'libsync_config.dart';
 import 'library_card.dart';
 import 'space_availability.dart';
+import 'error_reporter.dart';
+
+part 'widgets/reservation_chart.dart';
 
 class LibSyncPage extends StatefulWidget {
   const LibSyncPage({super.key});
@@ -88,7 +90,13 @@ class _LibSyncPageState extends State<LibSyncPage>
       if (_reservationByYear != null) {
         _setDefaultChartIndex();
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      reportLibSyncError(
+        'Restoring cached LibSync page data',
+        error,
+        stackTrace,
+      );
+    }
 
     LibSyncAuthService.instance.state.addListener(_onAuthStateChanged);
     _onAuthStateChanged();
@@ -1162,26 +1170,7 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
   }
 
   DateTime? _parseReservationDate(String? raw) {
-    if (raw == null || raw.trim().isEmpty) return null;
-    final cleaned = raw.trim();
-    final candidates = <DateFormat>[
-      DateFormat('yyyy-MM-dd'),
-      DateFormat('yyyy/MM/dd'),
-      DateFormat('yyyy.MM.dd'),
-      DateFormat('dd-MM-yyyy'),
-      DateFormat('dd/MM/yyyy'),
-      DateFormat('d/M/yyyy'),
-      DateFormat('d MMM yyyy'),
-      DateFormat('d MMM, yyyy'),
-      DateFormat('d-MMM-yyyy'),
-      DateFormat('MMM d, yyyy'),
-    ];
-    for (final f in candidates) {
-      try {
-        return f.parseStrict(cleaned);
-      } catch (_) {}
-    }
-    return DateTime.tryParse(cleaned);
+    return BracuTime.parseDate(raw);
   }
 
   CheckInAvailability _getCheckInAvailability(dynamic res) {
@@ -1285,193 +1274,4 @@ class _InfoLine extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ChartPainter extends CustomPainter {
-  _ChartPainter({
-    required this.chartData,
-    required this.selectedIndex,
-    required this.isDark,
-  });
-
-  final List<_MonthChartData> chartData;
-  final int? selectedIndex;
-  final bool isDark;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final axisPaint = Paint()
-      ..color = isDark ? Colors.white30 : Colors.black87
-      ..strokeWidth = 1.0
-      ..style = PaintingStyle.stroke;
-
-    final barPaint = Paint()
-      ..color = const Color(0xFFF05A28)
-      ..strokeWidth = 3.0
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final highlightPaint = Paint()
-      ..color = const Color(0xFFF05A28)
-      ..strokeWidth = 5.0
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    const double sideMargin = 16.0;
-    const double bottomMargin = 20.0;
-
-    final double chartWidth = size.width - 2 * sideMargin;
-    final double chartHeight = size.height - bottomMargin - 15.0;
-
-    final double maxVal = chartData.isEmpty
-        ? 0.0
-        : chartData
-              .map((e) => e.count.toDouble())
-              .reduce((a, b) => a > b ? a : b);
-
-    canvas.drawLine(
-      const Offset(sideMargin, 10.0),
-      Offset(sideMargin, size.height - bottomMargin),
-      axisPaint,
-    );
-
-    canvas.drawLine(
-      Offset(sideMargin, size.height - bottomMargin),
-      Offset(size.width - sideMargin, size.height - bottomMargin),
-      axisPaint,
-    );
-
-    final yTicks = [0.0, 1.0];
-    for (final tick in yTicks) {
-      final double y = size.height - bottomMargin - (tick * chartHeight);
-      canvas.drawLine(
-        Offset(sideMargin - 4.0, y),
-        Offset(sideMargin, y),
-        axisPaint,
-      );
-      final labelText = tick == 0.0
-          ? '0'
-          : (maxVal > 0 ? maxVal.toInt().toString() : '1');
-      final tp = TextPainter(
-        text: TextSpan(
-          text: labelText,
-          style: TextStyle(
-            color: isDark ? Colors.white70 : Colors.black87,
-            fontSize: 9,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      );
-      tp.layout();
-      tp.paint(canvas, Offset(sideMargin - tp.width - 4.0, y - tp.height / 2));
-    }
-
-    if (chartData.isEmpty) return;
-
-    final double stepX = chartData.length > 1
-        ? chartWidth / (chartData.length - 1)
-        : chartWidth;
-
-    for (int i = 0; i < chartData.length; i++) {
-      final double x = chartData.length > 1
-          ? sideMargin + (i * stepX)
-          : sideMargin + chartWidth / 2;
-      final double y = size.height - bottomMargin;
-
-      canvas.drawLine(Offset(x, y), Offset(x, y + 4.0), axisPaint);
-
-      final tp = TextPainter(
-        text: TextSpan(
-          text: chartData[i].name,
-          style: TextStyle(
-            color: isDark ? Colors.white70 : Colors.black87,
-            fontSize: 8.5,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      );
-      tp.layout();
-      tp.paint(canvas, Offset(x - tp.width / 2, y + 6.0));
-
-      final double val = maxVal == 0.0 ? 0.0 : chartData[i].count / maxVal;
-      if (val > 0) {
-        final double barY = y - (val * chartHeight);
-        final isSelected = selectedIndex == i;
-        canvas.drawLine(
-          Offset(x, y),
-          Offset(x, barY),
-          isSelected ? highlightPaint : barPaint,
-        );
-      }
-    }
-
-    if (selectedIndex != null &&
-        selectedIndex! >= 0 &&
-        selectedIndex! < chartData.length) {
-      final int i = selectedIndex!;
-      final double x = chartData.length > 1
-          ? sideMargin + (i * stepX)
-          : sideMargin + chartWidth / 2;
-      final double val = maxVal == 0.0 ? 0.0 : chartData[i].count / maxVal;
-      final double barY = size.height - bottomMargin - (val * chartHeight);
-
-      final tooltipText = '${chartData[i].name}: ${chartData[i].count}';
-      final tp = TextPainter(
-        text: const TextSpan(text: ''),
-        textDirection: TextDirection.ltr,
-      );
-      final span = TextSpan(
-        text: tooltipText,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-        ),
-      );
-      tp.text = span;
-      tp.layout();
-
-      final double tooltipWidth = tp.width + 12;
-      final double tooltipHeight = tp.height + 8;
-
-      double tooltipX = x - tooltipWidth / 2;
-      if (tooltipX < sideMargin) tooltipX = sideMargin;
-      if (tooltipX + tooltipWidth > size.width) {
-        tooltipX = size.width - tooltipWidth;
-      }
-      final double tooltipY = (barY - tooltipHeight - 6).clamp(
-        4.0,
-        size.height,
-      );
-
-      final rrect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(tooltipX, tooltipY, tooltipWidth, tooltipHeight),
-        const Radius.circular(6),
-      );
-
-      final tooltipBgPaint = Paint()..color = const Color(0xFFF05A28);
-      canvas.drawRRect(rrect, tooltipBgPaint);
-      tp.paint(canvas, Offset(tooltipX + 6, tooltipY + 4));
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _ChartPainter oldDelegate) {
-    return oldDelegate.chartData != chartData ||
-        oldDelegate.selectedIndex != selectedIndex ||
-        oldDelegate.isDark != isDark;
-  }
-}
-
-class _MonthChartData {
-  final String name;
-  final int count;
-  final int chronologicalIndex;
-
-  _MonthChartData({
-    required this.name,
-    required this.count,
-    required this.chronologicalIndex,
-  });
 }

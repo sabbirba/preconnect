@@ -19,6 +19,7 @@ import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/pages/shared_widgets/online_guard.dart';
 
 class StudentProfile extends StatefulWidget {
   const StudentProfile({super.key});

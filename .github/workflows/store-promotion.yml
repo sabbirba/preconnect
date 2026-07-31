@@ -57,7 +57,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
@@ -75,14 +75,14 @@ jobs:
             echo "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not provided."
           fi
 
-      - name: Setup Ruby
+      - name: Set Up Ruby
         if: (matrix.run_play && steps.play_auth.outputs.enabled == 'true') || matrix.run_apple
         uses: ruby/setup-ruby@v1.321.0
         with:
           ruby-version: "3.3"
           bundler-cache: true
 
-      - name: Promote Play Store Track
+      - name: Promote Google Play Track
         if: matrix.run_play && steps.play_auth.outputs.enabled == 'true'
         shell: bash
         env:
@@ -93,51 +93,47 @@ jobs:
         run: |
           cd android && bundle exec fastlane promote_beta_to_production
 
-      - name: Setup Flutter
+      - name: Set Up Flutter
         if: matrix.run_chrome
         uses: subosito/flutter-action@v2.23.0
         with:
           channel: "stable"
           cache: true
 
-      - name: Cache Pub Packages
+      - name: Cache Dart Packages
         if: matrix.run_chrome
-        uses: actions/cache@v6
+        uses: actions/cache@v6.1.0
         with:
           path: ~/.pub-cache
           key: ${{ runner.os }}-pub-cache-${{ hashFiles('pubspec.lock') }}
           restore-keys: |
             ${{ runner.os }}-pub-cache-
 
-      - name: Flutter Pub Get
+      - name: Get Flutter Packages
         if: matrix.run_chrome
         shell: bash
         run: flutter pub get
 
-      - name: Extension Env
+      - name: Extension Environment
         if: matrix.run_chrome
         shell: bash
         run: |
           echo "GITHUB_TOKEN=${{ secrets.GH_TOKEN }}" > .env
-          echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env
-          echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env
-          echo "GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}" >> .env
-          echo "GOOGLE_SCOPES=${{ secrets.GOOGLE_SCOPES }}" >> .env
 
       - name: Build Extensions
         if: matrix.run_chrome
         shell: bash
         run: ./tool/build_extension.sh
 
-      - name: Chrome Artifact
+      - name: Upload Chrome Artifact
         if: matrix.run_chrome
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: store-promotion-chrome-extension
           path: build/chrome-extension.zip
           if-no-files-found: error
 
-      - name: Authenticate to Google Cloud
+      - name: Authenticate with Google Cloud
         if: matrix.run_chrome
         id: auth
         shell: bash
@@ -244,7 +240,7 @@ jobs:
             -X POST \
             "https://chromewebstore.googleapis.com/v2/${ITEM_NAME}:publish"
 
-      - name: Download Apple Deliverables from Release
+      - name: Download Apple Deliverables from GitHub Release
         if: matrix.run_apple
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
@@ -294,7 +290,7 @@ jobs:
             echo "macos_ready=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Upload and Release iOS to App Store
+      - name: Release iOS on the App Store
         if: matrix.run_apple && steps.resolve_apple.outputs.ios_ready == 'true' && env.APP_STORE_CONNECT_API_KEY != ''
         env:
           BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
@@ -316,7 +312,7 @@ jobs:
           cd macos && bundle exec fastlane upload_mac_to_app_store \
             pkg:"$GITHUB_WORKSPACE/${{ steps.resolve_apple.outputs.macos_path }}"
 
-      - name: Download Firefox Extension from Release
+      - name: Download Firefox Extension from GitHub Release
         if: matrix.run_firefox
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}

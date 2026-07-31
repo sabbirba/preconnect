@@ -19,17 +19,17 @@ env:
 
 jobs:
   auto-merge:
-    name: Approve and Auto Merge
+    name: Approve and Enable Auto-Merge
     runs-on: ubuntu-latest
     if: github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.base.ref == 'main' && github.repository == 'sabbirba/preconnect'
     env:
       GITHUB_TOKEN: ${{ github.token }}
       PR_URL: ${{ github.event.pull_request.html_url }}
     steps:
-      - name: Approve Dependabot PR
+      - name: Approve Dependabot Pull Request
         shell: bash
         run: gh pr review "$PR_URL" --approve
 
-      - name: Enable auto merge
+      - name: Enable Auto-Merge
         shell: bash
         run: gh pr merge "$PR_URL" --auto --squash

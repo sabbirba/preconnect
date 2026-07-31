@@ -1,0 +1,5 @@
+[mcp_servers.dart]
+command = "dart"
+args = ["mcp-server", "--force-roots-fallback"]
+startup_timeout_sec = 30
+tool_timeout_sec = 120

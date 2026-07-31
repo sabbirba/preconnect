@@ -9,10 +9,16 @@ allprojects {
     }
 }
 
-val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
+val newBuildDir: Directory =
+    rootProject.layout.buildDirectory
+        .dir("../../build")
+        .get()
 rootProject.layout.buildDirectory.value(newBuildDir)
 subprojects {
-    val newSubprojectBuildDir: Directory = rootProject.layout.buildDirectory.dir(project.name).get()
+    val newSubprojectBuildDir: Directory =
+        rootProject.layout.buildDirectory
+            .dir(project.name)
+            .get()
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
 
@@ -22,16 +28,10 @@ subprojects {
 
 subprojects {
     plugins.withId("com.android.library") {
-        if (project.name == "in_app_update" || project.name == "mobile_scanner") {
-            project.plugins.apply("kotlin-android")
-        }
         extensions.configure<LibraryExtension> {
             lint {
                 checkReleaseBuilds = false
                 disable += setOf("EasterEgg", "StopShip")
-            }
-            if (project.name == "in_app_update") {
-                namespace = "de.ffuf.in_app_update"
             }
             compileOptions {
                 sourceCompatibility = JavaVersion.VERSION_17
@@ -40,11 +40,9 @@ subprojects {
         }
         project.afterEvaluate {
             extensions.configure<LibraryExtension> {
-                if (project.name != "in_app_update") {
-                    val hasNamespace = namespace?.isNotEmpty() == true
-                    if (!hasNamespace) {
-                        namespace = "com.preconnect.${project.name.replace('-', '_')}"
-                    }
+                val hasNamespace = namespace?.isNotEmpty() == true
+                if (!hasNamespace) {
+                    namespace = "com.preconnect.${project.name.replace('-', '_')}"
                 }
             }
         }

@@ -27,7 +27,7 @@ An initiative run by [BRAC University](https://bracu.ac.bd) students.
 
 A Flutter app for BRAC University students with SSO login and Connect API integration.
 
-### Key features
+### Key Features
 
 - Simple, predictable navigation
 - Dashboard with today, schedule, and exam snapshots
@@ -53,11 +53,13 @@ Installation is available for multiple platforms through:
   brew trust hitblast/tap
   brew install preconnect
   ```
+
   Or, use GitHub Releases as mentioned before.
 
 ## Documentation
 
 - Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Agent Guide: [AGENTS.md](AGENTS.md)
 - Code of Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - Security: [SECURITY.md](SECURITY.md)
 - Trademark Guidelines: [TRADEMARKS.md](TRADEMARKS.md)
@@ -66,9 +68,9 @@ Installation is available for multiple platforms through:
 ## Screenshots
 
 <div>
-<img src="screenshots/Apple iPhone 16 Pro Max Screenshot 1.png" alt="Apple iPhone 16 Pro Max Screenshot 1" width="240" />
-<img src="screenshots/Apple iPhone 16 Pro Max Screenshot 2.png" alt="Apple iPhone 16 Pro Max Screenshot 2" width="240" />
-<img src="screenshots/Apple iPhone 16 Pro Max Screenshot 3.png" alt="Apple iPhone 16 Pro Max Screenshot 3" width="240" />
+<img src="screenshots/screen_1.png" alt="PreConnect home screen" width="240" />
+<img src="screenshots/screen_2.png" alt="PreConnect schedule screen" width="240" />
+<img src="screenshots/screen_3.png" alt="PreConnect profile screen" width="240" />
 </div>
 
 ## Design System
@@ -91,7 +93,6 @@ Installation is available for multiple platforms through:
 - Padding: 14–16 px
 - Radius: 18–22 px
 
-
 ## Getting Started
 
 Want to build, test, or contribute locally? Follow the full setup guide in [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -104,6 +105,7 @@ Want to build, test, or contribute locally? Follow the full setup guide in [CONT
 git clone https://github.com/sabbirba/preconnect.git
 cd preconnect
 flutter pub get
+cp .env.example .env
 ```
 
 2. Run the app:
@@ -124,15 +126,31 @@ flutter test
 New students and first-time contributors are welcome to ask questions in [Issues](https://github.com/sabbirba/preconnect/issues).
 Please also review the community and safety guidance in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and the private reporting process in [SECURITY.md](SECURITY.md).
 
+- [Report a bug](https://github.com/sabbirba/preconnect/issues/new?template=bug.yml)
+- [Propose an idea](https://github.com/sabbirba/preconnect/issues/new?template=idea.yml)
+- [Ask for contributor help](https://github.com/sabbirba/preconnect/issues/new?template=help.yml)
+- [Report a vulnerability privately](https://github.com/sabbirba/preconnect/security/advisories/new)
+
 ## Platform Support
 
-| Platform         | Status  | Notes                                                                                   |
-| ---------------- | ------- | --------------------------------------------------------------------------------------- |
-| Android          | Stable  | Signed APK/AAB are generated in release workflow when signing secrets are configured.   |
-| Chrome Extension | Stable  | Distributed through release assets and store promotion automation.                      |
-| Web              | Beta    | Flutter web app built in CI and packaged as a release artifact.                        |
-| iOS              | Beta    | CI builds are enabled, but signing/export depends on Apple certificates/profiles.       |
-| macOS            | Beta    | CI builds and packages a DMG artifact from release workflow.                            |
+| Platform          | Status | Notes                                                                                 |
+| ----------------- | ------ | ------------------------------------------------------------------------------------- |
+| Android           | Stable | Signed APK/AAB are generated in release workflow when signing secrets are configured. |
+| Chrome Extension  | Stable | Distributed through release assets and store promotion automation.                    |
+| Firefox Extension | Stable | Built with the Chrome extension and published through store promotion automation.     |
+| Web               | Beta   | Flutter web app built in CI and packaged as a release artifact.                       |
+| iOS               | Beta   | CI builds are enabled, but signing/export depends on Apple certificates/profiles.     |
+| macOS             | Beta   | CI builds and packages a DMG artifact from release workflow.                          |
+
+### Contributor Systems
+
+| System  | Contribution support                                                                                         |
+| ------- | ------------------------------------------------------------------------------------------------------------ |
+| macOS   | Dart, tests, Android, iOS, macOS, web, Chrome, and Firefox                                                   |
+| Linux   | Dart, tests, Android, web, Chrome, Firefox, documentation, and shared application code                       |
+| Windows | Dart, tests, Android, web, documentation, and shared application code; use WSL or Git Bash for shell scripts |
+
+Linux and Windows desktop applications are not release targets, but Linux and Windows users can contribute normally.
 
 ## CI/CD
 
@@ -144,7 +162,7 @@ Main flow on push to `main`:
 2. Syncs `web/manifest.json` to the same `x.y.z` version
 3. Creates/updates a GitHub release tag like `vX.Y.Z+NNN`
 4. Builds and uploads platform artifacts (Android, iOS, macOS)
-5. Builds and uploads the Chrome extension artifact for deployment
+5. Builds and uploads Chrome and Firefox extension artifacts for deployment
 6. Builds the Flutter web app and packages it as a release artifact
 7. Publishes Android AAB to Google Play Internal and Beta testing tracks when required secrets are available
 
@@ -154,7 +172,7 @@ High-level request/data flow:
 
 ```mermaid
 flowchart LR
-  A[PreConnect Client\nAndroid/iOS/macOS/Chrome Extension] --> B[PreConnect Hosted API\napi.preconnect.app]
+  A[PreConnect Client\nAndroid/iOS/macOS/Web/Browser Extensions] --> B[PreConnect Hosted API\napi.preconnect.app]
   B --> C[BRACU Connect APIs]
   B --> D[Seat Status Cache + Stream]
   B --> E[Alert Queue]
@@ -172,17 +190,18 @@ Why this architecture:
 
 Key packages related to user data safety/privacy are listed below.
 
-| Package                    | What it does for privacy/safety                                                                                                     |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `shared_preferences`       | Backing store for `AppStorage`, used for non-sensitive app settings, JSON blobs, and lightweight caches. Not used for secrets.     |
-| `flutter_secure_storage`   | Stores sensitive tokens (session, auth) in the platform keychain/secure enclave. Falls back to `AppStorage` if unavailable.        |
-| `local_auth`               | Enables optional biometric/PIN app lock so only the device owner can open protected screens.                                        |
-| `permission_handler`       | Ensures runtime permissions such as camera and notifications are requested explicitly and can be denied by the user.                 |
-| `crypto`                   | Used for hashing in PKCE, cached image keys, and other local request helpers.                                                        |
+| Package                  | What it does for privacy/safety                                                                                                        |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `shared_preferences`     | Backing store for `AppStorage`, used for non-sensitive app settings, JSON blobs, and lightweight caches. Not used for secrets.         |
+| `flutter_secure_storage` | Stores auth tokens and the captive Wi-Fi password in the platform keychain/secure storage. Persistence errors are surfaced explicitly. |
+| `local_auth`             | Enables optional biometric/PIN app lock so only the device owner can open protected screens.                                           |
+| `permission_handler`     | Ensures runtime permissions such as camera and notifications are requested explicitly and can be denied by the user.                   |
+| `crypto`                 | Used for hashing in PKCE, cached image keys, and other local request helpers.                                                          |
 
 Privacy notes:
 
-- Sensitive tokens are stored in the platform keychain via `flutter_secure_storage`, with a fallback to standard local storage.
+- Auth tokens and the captive Wi-Fi password are stored only through `flutter_secure_storage` on native platforms.
+- Logout removes all sensitive values, including the saved captive Wi-Fi password.
 - Users can control OS-level permissions such as camera and notifications at any time.
 - Local caches are used to improve offline and performance behavior.
 - Push notifications are delivered via Firebase Cloud Messaging (FCM) — no polling required.
@@ -215,7 +234,7 @@ Why this reduces Connect API calls:
 - No repeated per-device direct Connect seat-status polling
 - Seat alerts are wired through the hosted seat-status server API and the push provider configured there.
 
-## Documentation & Policies
+## Documentation and Policies
 
 - Status Page: [status.preconnect.app](https://status.preconnect.app)
 - The full repo policy links are listed in the [Documentation](#documentation) section above.
@@ -247,7 +266,7 @@ No. Normal contributor builds can run with missing or blank optional env values.
 
 ### Does PreConnect store sensitive login data insecurely?
 
-Sensitive tokens are stored in local app storage and web extension storage, not in plain shared preferences.
+On native platforms, sensitive values are stored in platform secure storage, never in plain shared preferences. Browser-extension builds use extension storage because platform keychain APIs are unavailable there.
 
 ### Does the app work with poor internet?
 
@@ -255,7 +274,7 @@ Yes. Several flows use cache-first behavior so students can still access key inf
 
 ### How do I use the browser version?
 
-Use the Chrome extension from the latest release assets. Contributor build instructions live in [CONTRIBUTING.md](CONTRIBUTING.md).
+Use the Chrome or Firefox extension from the latest release assets. Contributor build instructions live in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Where do seat-status updates come from?
 
@@ -301,114 +320,23 @@ Please see our [trademark guidelines](https://github.com/sabbirba/preconnect/blo
  </picture>
 </a>
 
-## Project Map
+## Repository Map
 
-A detailed visual directory structure of the repository, including core files, models, APIs, and cross-platform configurations:
-
-```bash
-preconnect/
-├── 📂 .github/workflows/          # CI/CD pipelines
-│   ├── 📄 release.yml             # Handles auto-bumps, builds APK/AAB/Extension/Web
-│   └── 📄 store-promotion.yml     # Weekly scheduled production deployment track
-├── 📂 android/                    # Android native project configuration and Kotlin settings
-├── 📂 ios/                        # iOS native project runner configs and Swift setups
-├── 📂 macos/                      # macOS desktop application runner configs
-├── 📂 web/                        # Chrome Extension & Web app build shell
-│   ├── 📄 manifest.json           # Extension configuration (permissions, scripts, icons, keys)
-│   └── 📄 background.dart.js      # Compiled service worker executing in the extension background
-├── 📂 assets/                     # App-wide visual elements, vector SVGs, and launcher icons
-└── 📂 lib/                        # Core Flutter codebase
-    ├── 📄 main.dart               # App entry point (initializes storage, firebase, routing)
-    ├── 📄 app.dart                # Top-level shell widget (hosts router, themes, status page observer)
-    ├── 📄 firebase_options.dart   # Firebase app configurations (generated)
-    │
-    ├── 📂 api/                    # HTTP clients and remote server controllers
-    │   ├── 📄 api_client.dart     # HTTP client wrapper (handles SSO tokens, headers, and errors)
-    │   ├── 📄 api_config.dart     # Backend base URL and API endpoints mapping
-    │   ├── 📄 auth.dart           # Connection SSO authorization logic and login status checker
-    │   ├── 📄 calendar.dart       # Fetches university academic calendar milestones
-    │   ├── 📄 cdn_warmup.dart     # Service to pre-ping and warm up CDNs on launch
-    │   ├── 📄 custom_schedules.dart # Sync utility for custom/personal student routines
-    │   ├── 📄 exam_map.dart       # API queries to fetch campus building/exam hall map URLs
-    │   ├── 📄 fcm.dart            # Firebase Cloud Messaging device registration & token updates
-    │   ├── 📄 friend_store.dart   # Dynamic peer schedule sync & storage manager
-    │   ├── 📄 grade_sheet.dart    # Academic grades, credits, and CGPA retrieval connectors
-    │   ├── 📄 notification.dart   # In-app notifications fetcher and target action parsing
-    │   ├── 📄 preferences_store.dart # Remote configuration sync for user-specific choices
-    │   ├── 📄 profile.dart        # Connect Profile, photos, and ID-based details retrieval
-    │   ├── 📄 progress.dart       # Degree audit tracker backend helper
-    │   ├── 📄 repository_cache.dart # Cache wrapper for database resources (offline-first behavior)
-    │   ├── 📄 schedule.dart       # API handlers to pull academic routines and timings
-    │   └── 📄 seat_status.dart    # WebSocket connector & HTTP client for real-time section seat tracking
-    │
-    ├── 📂 model/                  # Data serialization models and JSON converters
-    │   ├── 📄 calendar_info.dart  # Calendar event entities and lists
-    │   ├── 📄 custom_schedule.dart # Custom routines, class slots, and times parsing
-    │   ├── 📄 friend_schedule.dart # Peer routine formats, QR compression structure
-    │   ├── 📄 progress_info.dart  # Grades, GPA sheets, and course credentials representation
-    │   └── 📄 section_info.dart   # Course sections details (seats, timings, faculty)
-    │
-    ├── 📂 tools/                  # Shared utilities, cache managers, and system bridges
-    │   ├── 📂 http/               # HTTP client variants for mobile, web, and sandbox environments
-    │   ├── 📄 app_paths.dart      # Resolves platform-specific file directories
-    │   ├── 📄 app_storage.dart    # Persistent storage engine utilizing SharedPreferences
-    │   ├── 📄 storage_keys.dart   # Unique constants representing keys in SharedPreferences
-    │   ├── 📄 client_bridge.dart  # Native JS bridge execution helper (Chrome Extension API)
-    │   ├── 📄 token_storage.dart  # Vault for storing SSO access keys securely (Keychain/KeyStore)
-    │   ├── 📄 time_utils.dart     # Routine conflict detection, timings, and Ramadan offset helpers
-    │   └── 📄 cached_image.dart   # Network image optimizer utilizing storage cache
-    │
-    ├── 📂 widgets/                # Shared global UI elements
-    │   └── 📄 image_web.dart      # Platform-specific image asset handling for web extension
-    │
-    └── 📂 pages/                  # Application screens and main sub-modules
-        ├── 📄 login.dart          # Connection SSO login screen (OAuth2 WebView / Auth Flow)
-        ├── 📄 onboarding.dart     # Welcome onboarding slider and first-time setup UI
-        ├── 📄 home.dart           # Hub container managing layout navigation tabs
-        ├── 📄 home_tab.dart       # Tab state wrapper controls
-        │
-        ├── 📂 home_sections/      # UI components under the dashboard tab
-        │   ├── 📄 dashboard_view.dart    # Daily class schedules, quick actions grid
-        │   ├── 📄 student_overview.dart  # Academic status summaries card (GPA, credits)
-        │   └── 📄 exam_countdown.dart    # Upcoming exam reminder cards
-        │
-        ├── 📄 class_schedule.dart # Student routine view, class details, classroom finder
-        ├── 📄 exam_schedule.dart  # Dynamic midterm and final exam schedules viewer
-        ├── 📄 seat_status.dart    # Section seats tracker with filters, real-time sync
-        ├── 📄 alarms.dart         # Class and exam alarms scheduling dashboard
-        ├── 📄 notifications.dart  # Feed list of system alerts, news, and seat-alert triggers
-        │
-        ├── 📂 shared_widgets/     # Reusable modals, filters, and cards
-        │   ├── 📄 seat_status.dart       # Card for checking seats capacity metrics
-        │   ├── 📄 ui_core.dart           # Standard wrappers, buttons, alerts, and texts
-        │   └── 📄 grade_card.dart        # Cards representing GPA scores, letter grades
-        │
-        ├── 📂 friend_schedule_sections/  # Peer routines management and comparative tools
-        │   ├── 📄 friend_detail.dart     # Synced details of individual peer schedules
-        │   └── 📄 compare_schedules.dart  # Matrix comparing availability overlaps between friends
-        │
-        ├── 📂 custom_schedules_sections/ # Draft routines planner tools
-        │
-        ├── 📂 student_profile_sections/  # Full academic profile view tabs
-        │   ├── 📄 academic_summary.dart  # Semester-wise transcript details
-        │   ├── 📄 payment_list.dart      # Student invoice logs, tuition payments, and balances
-        │   └── 📄 attendance_summary.dart # Course-wise recorded attendance analysis
-        │
-        ├── 📄 degree_progress.dart  # Graduation checklist, program outline audit
-        ├── 📄 cgpa_calculator.dart  # Cumulative GPA simulator, goal trackers
-        ├── 📄 calendar.dart         # University academic calendar event lists
-        ├── 📂 bus/                  # Shuttle routes, departure lists, bus tracking pages
-        ├── 📄 free_labs.dart        # Real-time computer lab slots status
-        ├── 📄 wifi_printer.dart     # Local printing services connection guidelines
-        ├── 📄 captive_wifi.dart     # Auto-configuration helper for campus captive portal Wi-Fi
-        ├── 📄 share_schedule.dart   # QR compression and schedule exporting page
-        ├── 📄 scan_schedule.dart    # QR camera scanner for peer schedules
-        ├── 📄 custom_schedules.dart # Custom ROUTINE creator and editor dashboard
-        ├── 📄 all_courses.dart      # Course catalogue and database searcher
-        ├── 📄 requirement_courses.dart # Departmental course requirements details
-        ├── 📄 api_test.dart         # Diagnostic tool for testing Connect APIs
-        ├── 📄 devs.dart             # Developer team details and donor funding methods
-        ├── 📄 ui_kit.dart           # Custom styling guidelines and component sandbox
-        └── 📄 settings.dart         # App language, cache, theme, and notification configs
-```
-
+| Path             | Responsibility                                                                               |
+| ---------------- | -------------------------------------------------------------------------------------------- |
+| `.agents/skills` | Shared contribution workflows for coding agents                                              |
+| `.github`        | Issue intake, review ownership, CI, releases, dependency updates, and store promotion        |
+| `android`        | Android application, Gradle configuration, native channels, resources, and Fastlane          |
+| `ios`            | iOS application, Xcode configuration, native channels, entitlements, and Fastlane            |
+| `macos`          | macOS application, Xcode configuration, native integrations, entitlements, and Fastlane      |
+| `assets`         | Flutter-bundled application assets                                                           |
+| `lib/api`        | Remote services, repositories, caches, and API contracts                                     |
+| `lib/features`   | Feature-owned application and data workflows                                                 |
+| `lib/libsync`    | Library authentication, reservation, and availability features                               |
+| `lib/model`      | Shared domain models and serialization                                                       |
+| `lib/pages`      | Screens, feature sections, and shared presentation widgets                                   |
+| `lib/tools`      | Storage, HTTP, authentication, platform bridges, and common utilities                        |
+| `lib/widgets`    | Shared cross-feature widgets                                                                 |
+| `test`           | Authentication, logout, refresh, storage, schedules, devices, and platform-channel tests     |
+| `tool`           | Extension builds, version synchronization, and publishing utilities                          |
+| `web`            | Web shell, extension entry points, background worker, manifests, and local runtime resources |

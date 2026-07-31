@@ -89,6 +89,13 @@ class BracuTime {
     return null;
   }
 
+  static String formatDate(String? raw, {String pattern = 'd MMMM, y'}) {
+    if (raw == null || raw.trim().isEmpty) return '';
+    final cleaned = raw.trim();
+    final parsed = parseDate(cleaned);
+    return parsed == null ? cleaned : DateFormat(pattern).format(parsed);
+  }
+
   static DateTime? parseDateTime(String? date, String? time) {
     final datePart = parseDate(date);
     if (datePart == null) return null;
@@ -128,6 +135,14 @@ class BracuTime {
       default:
         return null;
     }
+  }
+
+  static int shiftWeekday(int weekday, int offset) {
+    if (weekday < DateTime.monday || weekday > DateTime.sunday) {
+      return weekday;
+    }
+    final zeroBased = weekday - DateTime.monday;
+    return ((zeroBased + offset) % DateTime.daysPerWeek) + DateTime.monday;
   }
 
   static (int hour, int minute)? parseHourMinute(String? raw) {

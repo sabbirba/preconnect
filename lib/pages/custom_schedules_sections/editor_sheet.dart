@@ -659,16 +659,3 @@ IconData personalSchedulesKindIcon(String kind) {
       return Icons.event_available_outlined;
   }
 }
-
-Color personalSchedulesKindColor(String kind) {
-  switch (kind) {
-    case 'quiz':
-      return const Color(0xFF7C56FF);
-    case 'assignment':
-      return const Color(0xFF1E6BE3);
-    case 'reminder':
-      return const Color(0xFF22B573);
-    default:
-      return const Color(0xFF5B8DEF);
-  }
-}

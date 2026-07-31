@@ -11,13 +11,14 @@ import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:archive/archive.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/pages/shared_widgets/session_helper.dart';
+import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/pages/shared_widgets/qr_card.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/pages/shared_widgets/online_guard.dart';
 
 class ShareSchedulePage extends StatefulWidget {
   const ShareSchedulePage({super.key});

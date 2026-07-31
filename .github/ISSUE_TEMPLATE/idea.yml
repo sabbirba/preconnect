@@ -1,0 +1,81 @@
+name: Feature Idea
+description: Propose an improvement for students or contributors
+title: "[Idea] "
+labels:
+  - enhancement
+body:
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before Submitting
+      options:
+        - label: I searched existing issues and the roadmap for this idea.
+          required: true
+        - label: This idea does not require publishing private student data or credentials.
+          required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Authentication and Onboarding
+        - Home and Navigation
+        - Classes and Schedules
+        - Exams and Alarms
+        - Seat Status
+        - Profile and Degree Progress
+        - Friends and Sharing
+        - Campus Tools
+        - Notifications
+        - Offline and Caching
+        - Accessibility and Design
+        - Android
+        - iOS or macOS
+        - Web or Browser Extensions
+        - Contributor Experience
+        - CI or Release Automation
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to Solve
+      description: Describe the student or contributor need before proposing implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Experience
+      description: Describe the smallest useful version and how a user would interact with it.
+    validations:
+      required: true
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Acceptance Criteria
+      description: List observable outcomes that would make the idea complete.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+  - type: textarea
+    id: impact
+    attributes:
+      label: Privacy, Offline, and Platform Impact
+      description: Explain permissions, stored data, network behavior, caching, and affected platforms.
+    validations:
+      required: true
+  - type: dropdown
+    id: contribution
+    attributes:
+      label: Would you like to contribute it?
+      options:
+        - Yes
+        - Yes, with guidance
+        - I can test it
+        - Not currently
+    validations:
+      required: true

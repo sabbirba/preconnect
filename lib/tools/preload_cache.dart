@@ -49,10 +49,6 @@ class PreloadCache<T> {
       }
     }
   }
-
-  Future<void> seed(Future<T> Function() fetch) async {
-    value = await fetch();
-  }
 }
 
 class CachedPageController<T> extends ChangeNotifier {

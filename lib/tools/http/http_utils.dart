@@ -26,26 +26,6 @@ class HttpUtils {
         .join('; ');
   }
 
-  static String sanitizeLprToken(String value, {int maxLength = 31}) {
-    final buffer = StringBuffer();
-    var previousUnderscore = false;
-    for (final rune in value.trim().runes) {
-      final ch = String.fromCharCode(rune);
-      final valid = RegExp(r'[A-Za-z0-9._-]').hasMatch(ch);
-      final next = valid ? ch : '_';
-      if (next == '_') {
-        if (previousUnderscore) continue;
-        previousUnderscore = true;
-      } else {
-        previousUnderscore = false;
-      }
-      buffer.write(next);
-    }
-    final token = buffer.toString().replaceAll(RegExp(r'^_+|_+$'), '');
-    final limit = maxLength < 31 ? maxLength : 31;
-    return token.length > limit ? token.substring(0, limit) : token;
-  }
-
   static String lprJobFileName(
     String client, {
     String prefix = 'cf',

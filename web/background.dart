@@ -15,7 +15,7 @@ import 'package:chrome_extension/tabs.dart';
 import 'package:chrome_extension/src/js/tabs.dart' as $js;
 import 'package:chrome_extension/side_panel.dart';
 import 'package:chrome_extension/gcm.dart';
-import 'package:web/web.dart' show Headers, RequestInit, Response;
+import 'package:web/web.dart' show Headers, RequestInit, Response, console;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/bracu_logout.dart';
 import 'package:preconnect/tools/extension_config.dart';
@@ -23,8 +23,14 @@ import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/session_sync.dart';
 import 'package:preconnect/tools/pkce.dart';
 
+part 'background_models.dart';
+
 const String _pendingLoginKey = 'preconnect.pendingLogin';
 const String _pendingLogoutKey = 'preconnect.pendingLogout';
+
+void _reportBackgroundError(Object error, StackTrace stackTrace) {
+  console.warn('PreConnect background error: $error\n$stackTrace'.toJS);
+}
 
 int? _pendingLibsyncOauthTabId;
 String? _pendingLibsyncOauthRequestId;
@@ -234,7 +240,9 @@ Future<void> main() async {
 Future<void> _guarded(Future<void> Function() task) async {
   try {
     await task();
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
 }
 
 void _handleRuntimeMessage(dynamic event) {
@@ -247,7 +255,9 @@ void _handleRuntimeMessage(dynamic event) {
       if (decoded is Map) {
         message = Map<String, dynamic>.from(decoded);
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      _reportBackgroundError(error, stackTrace);
+    }
   } else if (dartified is Map) {
     message = Map<String, dynamic>.from(dartified);
   }
@@ -353,7 +363,9 @@ void _safeContextMenuCreate(cm.CreateProperties properties) {
       final createMethod = createMethodVal as JSFunction;
       createMethod.callAsFunction(contextMenusObj, properties.toJS);
     }
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
 }
 
 Future<void> _configureBrowserSurfaces() async {
@@ -595,11 +607,13 @@ Future<void> _autoClickLogoutIfNeeded(int? tabId, {String? url}) async {
     await chrome.scripting.executeScript(
       scripting.ScriptInjection(
         target: scripting.InjectionTarget(tabId: tabId),
-        files: const ['auto_click_logout.js'],
+        files: const ['auto_logout.js'],
         injectImmediately: _isFirefox() ? null : true,
       ),
     );
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
 }
 
 Future<void> _configureAlarms() async {
@@ -637,7 +651,9 @@ Future<void> _refreshBadge() async {
       await chrome.action.setBadgeText(action.SetBadgeTextDetails(text: ''));
       await chrome.action.setTitle(action.SetTitleDetails(title: 'PreConnect'));
     }
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
 }
 
 Future<void> _maybeNotifyUnreadChange() async {
@@ -662,7 +678,9 @@ Future<void> _maybeNotifyUnreadChange() async {
       requireInteraction: false,
       payload: const <String, String>{'route': 'notifications'},
     );
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
 }
 
 Future<int> _fetchUnreadCount() async {
@@ -682,7 +700,9 @@ Future<int> _fetchUnreadCount() async {
       final newCount = decoded['new'];
       if (newCount is num) return newCount.toInt();
     }
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
   return 0;
 }
 
@@ -706,39 +726,6 @@ Future<bool> _hasStoredAuthSession() async {
   return accessToken.isNotEmpty && refreshToken.isNotEmpty;
 }
 
-class _PendingLogin {
-  const _PendingLogin({
-    required this.tabId,
-    required this.verifier,
-    required this.startedAtMillis,
-  });
-
-  final int tabId;
-  final String verifier;
-  final int startedAtMillis;
-
-  Map<String, Object> toJson() => {
-    'tabId': tabId,
-    'verifier': verifier,
-    'startedAtMillis': startedAtMillis,
-  };
-
-  static _PendingLogin? fromJson(Object? value) {
-    if (value is! Map) return null;
-    final tabId = int.tryParse('${value['tabId'] ?? ''}');
-    final verifier = '${value['verifier'] ?? ''}';
-    final startedAtMillis = int.tryParse('${value['startedAtMillis'] ?? ''}');
-    if (tabId == null || verifier.isEmpty || startedAtMillis == null) {
-      return null;
-    }
-    return _PendingLogin(
-      tabId: tabId,
-      verifier: verifier,
-      startedAtMillis: startedAtMillis,
-    );
-  }
-}
-
 Future<void> _startLogin({String? idp}) async {
   if (!chrome.tabs.isAvailable) {
     await _broadcastFailure('Tabs API is not available.');
@@ -753,7 +740,9 @@ Future<void> _startLogin({String? idp}) async {
         if (tab.id != null) {
           tabExists = true;
         }
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        _reportBackgroundError(error, stackTrace);
+      }
     }
     if (tabExists) {
       await _broadcastFailure('A login flow is already running.');
@@ -774,7 +763,9 @@ Future<void> _startLogin({String? idp}) async {
             queryParameters: {...parsed.queryParameters, 'kc_idp_hint': idp},
           )
           .toString();
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      _reportBackgroundError(error, stackTrace);
+    }
   }
 
   try {
@@ -869,7 +860,9 @@ Future<void> _revokeMercureSession() async {
       uri.toString(),
       RequestInit(method: 'DELETE', credentials: 'include', headers: headers),
     ).toDart;
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
 }
 
 Future<void> _completeMercureLogout(int? appTabId) async {
@@ -897,7 +890,9 @@ Future<void> _completeMercureLogout(int? appTabId) async {
   if (appTabId != null) {
     try {
       await chrome.tabs.update(appTabId, UpdateProperties(active: true));
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      _reportBackgroundError(error, stackTrace);
+    }
   }
   unawaited(_broadcastRuntimeMessage({'type': _logoutCompleteType}));
 }
@@ -960,7 +955,9 @@ void _registerWebNavigationListeners() {
         );
       }
     }
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
 }
 
 void _registerTabUpdatedListener() {
@@ -1005,7 +1002,9 @@ void _registerTabUpdatedListener() {
         }
       }).toJS,
     );
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
 }
 
 Future<void> _processNavigation(int tabId, String url) async {
@@ -1022,7 +1021,9 @@ Future<void> _processNavigation(int tabId, String url) async {
         _pendingLibsyncOauthRequestId =
             values['libsync.pendingRequestId'] as String?;
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      _reportBackgroundError(error, stackTrace);
+    }
   }
 
   if (_pendingLibsyncOauthTabId != null && tabId == _pendingLibsyncOauthTabId) {
@@ -1054,12 +1055,16 @@ Future<void> _processNavigation(int tabId, String url) async {
           'libsync.pendingRedirectUri',
           'libsync.pendingRequestId',
         ]);
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        _reportBackgroundError(error, stackTrace);
+      }
 
       if (tabToRemove != null) {
         try {
           await chrome.tabs.remove(tabToRemove);
-        } catch (_) {}
+        } catch (error, stackTrace) {
+          _reportBackgroundError(error, stackTrace);
+        }
       }
 
       if (googleAccessToken != null && googleAccessToken.isNotEmpty) {
@@ -1116,7 +1121,9 @@ Future<void> _processNavigation(int tabId, String url) async {
 
     try {
       await chrome.tabs.remove(tabId);
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      _reportBackgroundError(error, stackTrace);
+    }
 
     try {
       final tokens = await _exchangeCodeForTokens(
@@ -1149,42 +1156,6 @@ Future<void> _processNavigation(int tabId, String url) async {
   }
 }
 
-class _PendingLogout {
-  const _PendingLogout({
-    required this.appTabId,
-    required this.logoutTabId,
-    required this.startedAtMillis,
-  });
-
-  final int? appTabId;
-  final int logoutTabId;
-  final int startedAtMillis;
-
-  Map<String, Object?> toJson() => {
-    'appTabId': appTabId,
-    'logoutTabId': logoutTabId,
-    'startedAtMillis': startedAtMillis,
-  };
-
-  static _PendingLogout? fromJson(Object? value) {
-    if (value is! Map) return null;
-    final logoutTabId = int.tryParse('${value['logoutTabId'] ?? ''}');
-    final startedAtMillis = int.tryParse('${value['startedAtMillis'] ?? ''}');
-    final appTabIdValue = value['appTabId'];
-    final appTabId = appTabIdValue == null
-        ? null
-        : int.tryParse('$appTabIdValue');
-    if (logoutTabId == null || startedAtMillis == null) {
-      return null;
-    }
-    return _PendingLogout(
-      appTabId: appTabId,
-      logoutTabId: logoutTabId,
-      startedAtMillis: startedAtMillis,
-    );
-  }
-}
-
 Future<bool> _handleLogoutNavigation(int tabId, String url) async {
   final pending = await _loadPendingLogout();
   if (pending == null || pending.logoutTabId != tabId) return false;
@@ -1214,14 +1185,18 @@ Future<bool> _handleLogoutNavigation(int tabId, String url) async {
   }
   try {
     await chrome.tabs.remove(tabId);
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
   if (pending.appTabId != null) {
     try {
       await chrome.tabs.update(
         pending.appTabId!,
         UpdateProperties(active: true),
       );
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      _reportBackgroundError(error, stackTrace);
+    }
   }
   unawaited(_broadcastRuntimeMessage({'type': _logoutCompleteType}));
   return true;
@@ -1296,18 +1271,6 @@ Future<void> _clearPendingLogout() async {
   await chrome.storage.session.remove(_pendingLogoutKey);
 }
 
-class _TokenResponse {
-  const _TokenResponse({
-    required this.accessToken,
-    required this.refreshToken,
-    required this.idToken,
-  });
-
-  final String accessToken;
-  final String refreshToken;
-  final String idToken;
-}
-
 Future<_TokenResponse> _exchangeCodeForTokens({
   required String code,
   required String verifier,
@@ -1370,7 +1333,9 @@ Future<void> _registerGcmAndSyncToken() async {
       await _registerFcmTokenWithBackend(token);
       await _syncPushTopics(token);
     }
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
 }
 
 Future<void> _registerFcmTokenWithBackend(String token) async {
@@ -1449,7 +1414,9 @@ Future<void> _postPushJson(
         body: jsonEncode(body).toJS,
       ),
     ).toDart;
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
 }
 
 Future<void> _unregisterGcmToken() async {
@@ -1477,13 +1444,19 @@ Future<void> _unregisterGcmToken() async {
         );
       }
     }
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
   try {
     await chrome.gcm.unregister();
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
   try {
     await chrome.storage.local.remove(PreConnectPushConfig.gcmTokenKey);
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
 }
 
 Future<void> _handleGcmMessage(OnMessageMessage event) async {
@@ -1572,7 +1545,9 @@ Future<void> _createChromeNotification(
   try {
     final permission = await chrome.notifications.getPermissionLevel();
     if (permission != notifications.PermissionLevel.granted) return;
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
   if (payload.isNotEmpty) {
     await _saveNotificationPayload(notificationId, payload);
   }
@@ -1589,7 +1564,9 @@ Future<void> _createChromeNotification(
         requireInteraction: isFirefox ? null : requireInteraction,
       ),
     );
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
 }
 
 Future<void> _saveNotificationPayload(
@@ -1607,7 +1584,9 @@ Future<void> _saveNotificationPayload(
     }
     payloads[notificationId] = payload;
     await _writeNotificationPayloads(payloads);
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
 }
 
 Future<Map<String, String>> _takeNotificationPayload(
@@ -1645,7 +1624,9 @@ Future<void> _clearNotificationPayload(String notificationId) async {
     }
     payloads.remove(notificationId);
     await _writeNotificationPayloads(payloads);
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
 }
 
 Future<void> _writeNotificationPayloads(Map<String, Object?> payloads) async {
@@ -1693,7 +1674,9 @@ Future<bool> _openNotificationUrl(String url) async {
 Future<void> _handleNotificationClick(String notificationId) async {
   try {
     await chrome.notifications.clear(notificationId);
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
   final payload = await _takeNotificationPayload(notificationId);
   final url = _notificationUrlForPayload(payload);
   if (url.isNotEmpty && await _openNotificationUrl(url)) return;
@@ -1773,7 +1756,9 @@ Future<void> _handleLibsyncRequest(Map message) async {
           }).toJS,
         );
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      _reportBackgroundError(error, stackTrace);
+    }
 
     Map<String, String>? currentCookies;
     if (chrome.cookies.isAvailable) {
@@ -1817,7 +1802,9 @@ Future<void> _startLibsyncOauth(Map message) async {
         'libsync.pendingRequestId': requestId,
       });
     }
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
 }
 
 Future<void> _startCaptivePortalFlow(Map message) async {
@@ -1843,7 +1830,9 @@ Future<void> _startCaptivePortalFlow(Map message) async {
           timer.cancel();
           try {
             await chrome.tabs.remove(_pendingCaptivePortalTabId!);
-          } catch (_) {}
+          } catch (error, stackTrace) {
+            _reportBackgroundError(error, stackTrace);
+          }
           _pendingCaptivePortalTabId = null;
 
           unawaited(
@@ -1854,7 +1843,9 @@ Future<void> _startCaptivePortalFlow(Map message) async {
         }
       });
     }
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
 }
 
 Future<bool> _checkInternetConnection() async {
@@ -1864,7 +1855,9 @@ Future<bool> _checkInternetConnection() async {
       RequestInit(method: 'GET', cache: 'no-cache'),
     ).toDart;
     return response.status == 204;
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
   return false;
 }
 
@@ -1882,7 +1875,9 @@ void _safeSendMessage(Map<String, dynamic> message) {
     final sendMessageFunc = sendMessageVal as JSFunction;
 
     sendMessageFunc.callAsFunction(runtimeObj, jsonEncode(message).toJS);
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
 }
 
 JSObject? _getExtensionApi() {
