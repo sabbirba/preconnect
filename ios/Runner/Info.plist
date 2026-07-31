@@ -51,12 +51,10 @@
 	<string>PreConnect requires location access while using the app to detect and connect to campus Wi-Fi networks and display campus maps.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>PreConnect requires location access while using the app to detect and connect to campus Wi-Fi networks and display campus maps.</string>
-	<key>NSCalendarsUsageDescription</key>
-	<string>PreConnect requires calendar access to automatically export your class schedule, exam dates, and academic reminders into your System Calendar.</string>
-	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
-	<string>PreConnect requires permission to add class events, exam dates, and academic reminders to your calendar.</string>
-	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>PreConnect requires calendar access to automatically export your class schedule, exam dates, and academic reminders into your System Calendar.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>PreConnect requires permission to set academic reminders, exam alerts, and class schedules in Apple Reminders.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>PreConnect requires permission to set academic reminders, exam alerts, and class schedules in Apple Reminders.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>PreConnect requires permission to save your generated student schedule QR code images to your photo gallery.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
@@ -97,8 +95,8 @@
 			<string>quick.profile</string>
 		</dict>
 		<dict>
-			<key>UIApplicationShortcutItemIconFile</key>
-			<string>ShortcutClasses</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeTime</string>
 			<key>UIApplicationShortcutItemSubtitle</key>
 			<string>Open Classes</string>
 			<key>UIApplicationShortcutItemTitle</key>
@@ -107,8 +105,8 @@
 			<string>quick.classes</string>
 		</dict>
 		<dict>
-			<key>UIApplicationShortcutItemIconFile</key>
-			<string>ShortcutExams</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeDate</string>
 			<key>UIApplicationShortcutItemSubtitle</key>
 			<string>Open Exams</string>
 			<key>UIApplicationShortcutItemTitle</key>

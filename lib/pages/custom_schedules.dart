@@ -537,17 +537,20 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
           startDate: reminderAt,
           endDate: reminderAt.add(const Duration(hours: 1)),
         );
-        final success = await Add2Calendar.addEvent2Cal(event);
+        final success = await Add2Reminder.addReminder(event);
         if (success) {
           if (!context.mounted) return;
-          showAppSnackBar(context, 'Alarm added to system Calendar.');
+          showAppSnackBar(context, 'Reminder added to Apple Reminders.');
         } else {
           if (!context.mounted) return;
-          showAppSnackBar(context, 'Unable to add event to system Calendar.');
+          showAppSnackBar(
+            context,
+            'Unable to add reminder to Apple Reminders.',
+          );
         }
       } catch (_) {
         if (!context.mounted) return;
-        showAppSnackBar(context, 'Unable to add event to system Calendar.');
+        showAppSnackBar(context, 'Unable to add reminder to Apple Reminders.');
       }
       return;
     }

@@ -1,5 +1,4 @@
 import EventKit
-import EventKitUI
 import Flutter
 import StoreKit
 import UIKit
@@ -9,11 +8,9 @@ let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
 @main
 @objc
 class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate,
-  UIDocumentInteractionControllerDelegate, EKEventEditViewDelegate
+  UIDocumentInteractionControllerDelegate
 {
   private var documentController: UIDocumentInteractionController?
-  private var calendarResult: FlutterResult?
-  private var calendarStore: EKEventStore?
 
   private func cacheShortcutAction(_ type: String) {
     UserDefaults.standard.set(type, forKey: preconnectPendingShortcutActionKey)
@@ -128,92 +125,98 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate,
         result(FlutterMethodNotImplemented)
         return
       }
-      self?.presentCalendar(call: call, result: result)
+      self?.saveReminder(call: call, result: result)
     }
   }
 
-  private func presentCalendar(
+  private func saveReminder(
     call: FlutterMethodCall,
     result: @escaping FlutterResult
   ) {
-    guard calendarResult == nil,
-      let arguments = call.arguments as? [String: Any],
+    guard let arguments = call.arguments as? [String: Any],
       let title = arguments["title"] as? String,
-      let start = arguments["start"] as? NSNumber,
-      let end = arguments["end"] as? NSNumber
+      let start = arguments["start"] as? NSNumber
     else {
       result(false)
       return
     }
     let store = EKEventStore()
-    let event = EKEvent(eventStore: store)
-    event.title = title
-    event.notes = arguments["description"] as? String
-    event.location = arguments["location"] as? String
-    event.startDate = Date(timeIntervalSince1970: start.doubleValue / 1000)
-    event.endDate = Date(timeIntervalSince1970: end.doubleValue / 1000)
-    if let frequencyValue = arguments["frequency"] as? NSNumber,
-      let frequency = EKRecurrenceFrequency(rawValue: frequencyValue.intValue)
-    {
-      let interval = (arguments["interval"] as? NSNumber)?.intValue ?? 1
-      event.recurrenceRules = [
-        EKRecurrenceRule(
-          recurrenceWith: frequency,
-          interval: interval,
-          end: nil
-        )
-      ]
+    let saveReminderBlock = {
+      let reminderCalendar = store.defaultCalendarForNewReminders()
+        ?? store.calendars(for: .reminder).first(where: { $0.allowsContentModifications })
+      guard let calendar = reminderCalendar else {
+        result(false)
+        return
+      }
+      let reminder = EKReminder(eventStore: store)
+      reminder.title = title
+      if let notes = arguments["description"] as? String, !notes.isEmpty {
+        reminder.notes = notes
+      }
+      if let location = arguments["location"] as? String, !location.isEmpty {
+        reminder.location = location
+      }
+      reminder.calendar = calendar
+      let alarmDate = Date(timeIntervalSince1970: start.doubleValue / 1000)
+      reminder.dueDateComponents = Calendar.current.dateComponents(
+        [.year, .month, .day, .hour, .minute],
+        from: alarmDate
+      )
+      reminder.addAlarm(EKAlarm(absoluteDate: alarmDate))
+
+      if let frequencyValue = arguments["frequency"] as? NSNumber,
+        let frequency = EKRecurrenceFrequency(rawValue: frequencyValue.intValue)
+      {
+        let interval = (arguments["interval"] as? NSNumber)?.intValue ?? 1
+        reminder.recurrenceRules = [
+          EKRecurrenceRule(
+            recurrenceWith: frequency,
+            interval: interval,
+            end: nil
+          )
+        ]
+      }
+
+      do {
+        try store.save(reminder, commit: true)
+        result(true)
+      } catch {
+        result(false)
+      }
     }
-    calendarResult = result
-    calendarStore = store
+
     if #available(iOS 17.0, *) {
-      showCalendarEditor(event: event, store: store)
-      return
-    }
-    switch EKEventStore.authorizationStatus(for: .event) {
-    case .authorized:
-      showCalendarEditor(event: event, store: store)
-    case .notDetermined:
-      store.requestAccess(to: .event) { [weak self] granted, _ in
-        DispatchQueue.main.async {
-          if granted {
-            self?.showCalendarEditor(event: event, store: store)
-          } else {
-            self?.completeCalendar(false)
+      let status = EKEventStore.authorizationStatus(for: .reminder)
+      if status == .fullAccess || status == .authorized {
+        saveReminderBlock()
+      } else {
+        store.requestFullAccessToReminders { granted, _ in
+          DispatchQueue.main.async {
+            if granted {
+              saveReminderBlock()
+            } else {
+              result(false)
+            }
           }
         }
       }
-    default:
-      completeCalendar(false)
-    }
-  }
-
-  private func showCalendarEditor(event: EKEvent, store: EKEventStore) {
-    guard let presenter = UIApplication.preconnectTopViewController() else {
-      completeCalendar(false)
-      return
-    }
-    let controller = EKEventEditViewController()
-    controller.event = event
-    controller.eventStore = store
-    controller.editViewDelegate = self
-    controller.modalPresentationStyle = .fullScreen
-    presenter.present(controller, animated: true)
-  }
-
-  private func completeCalendar(_ success: Bool) {
-    calendarResult?(success)
-    calendarResult = nil
-    calendarStore = nil
-  }
-
-  func eventEditViewController(
-    _ controller: EKEventEditViewController,
-    didCompleteWith action: EKEventEditViewAction
-  ) {
-    let saved = action == .saved
-    controller.dismiss(animated: true) { [weak self] in
-      self?.completeCalendar(saved)
+    } else {
+      switch EKEventStore.authorizationStatus(for: .reminder) {
+      case .authorized:
+        saveReminderBlock()
+      case .notDetermined:
+        store.requestAccess(to: .reminder) { granted, _ in
+          DispatchQueue.main.async {
+            if granted {
+              saveReminderBlock()
+            } else {
+              result(false)
+            }
+          }
+        }
+      default:
+        result(false)
+      }
     }
   }
 

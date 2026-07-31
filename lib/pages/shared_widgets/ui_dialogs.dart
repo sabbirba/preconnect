@@ -159,8 +159,12 @@ Future<T?> showBracuCustomBottomSheet<T>({
     isScrollControlled: isScrollControlled,
     useSafeArea: useSafeArea,
     useRootNavigator: useRootNavigator,
-    clipBehavior: clipBehavior,
-    shape: shape,
+    clipBehavior: clipBehavior ?? Clip.antiAlias,
+    shape:
+        shape ??
+        const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
     builder: (sheetContext) {
       final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
       final overlayStyle = SystemUiOverlayStyle(

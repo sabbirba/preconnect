@@ -34,9 +34,6 @@ class _CampusPrinterBootstrap {
     required this.studentName,
     required this.studentShortCode,
     required this.currentSemester,
-    required this.guestName,
-    required this.guestId,
-    required this.clientName,
     required this.pagesPerSheet,
     required this.fittingMode,
     required this.staple,
@@ -52,9 +49,6 @@ class _CampusPrinterBootstrap {
   final String studentName;
   final String studentShortCode;
   final String currentSemester;
-  final String guestName;
-  final int? guestId;
-  final String clientName;
   final String pagesPerSheet;
   final String fittingMode;
   final String staple;

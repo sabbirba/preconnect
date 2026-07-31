@@ -579,13 +579,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                 title: item.title,
                 subtitle: item.subtitle,
                 color: item.color,
-                onTap: () {
-                  if (item.onTap != null) {
-                    item.onTap!(context);
-                  } else if (item.tab != null) {
-                    widget.onNavigate(item.tab!);
-                  }
-                },
+                onTap: () => widget.onNavigate(item.tab),
               );
             }).toList(),
           ),
@@ -613,13 +607,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                               title: item.title,
                               subtitle: item.subtitle,
                               color: item.color,
-                              onTap: () {
-                                if (item.onTap != null) {
-                                  item.onTap!(context);
-                                } else if (item.tab != null) {
-                                  widget.onNavigate(item.tab!);
-                                }
-                              },
+                              onTap: () => widget.onNavigate(item.tab),
                             );
                           }).toList(),
                         ),
@@ -862,7 +850,6 @@ extension _HomeDashboardView on _HomeDashboardState {
       title: 'Printer',
       subtitle: 'Campus',
       color: const Color(0xFF22B573),
-      onTap: null,
     ),
     _DashboardQuickAccess(
       tab: HomeTab.dspace,
@@ -875,7 +862,7 @@ extension _HomeDashboardView on _HomeDashboardState {
       tab: HomeTab.calendar,
       icon: Icons.calendar_today_outlined,
       title: 'Events',
-      subtitle: 'Calendar',
+      subtitle: 'Academic',
       color: const Color(0xFF00A86B),
     ),
   ];
@@ -883,21 +870,18 @@ extension _HomeDashboardView on _HomeDashboardState {
 
 class _DashboardQuickAccess {
   const _DashboardQuickAccess({
-    this.tab,
+    required this.tab,
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.color,
-
-    this.onTap,
   });
 
-  final HomeTab? tab;
+  final HomeTab tab;
   final IconData icon;
   final String title;
   final String subtitle;
   final Color color;
-  final void Function(BuildContext context)? onTap;
 }
 
 class _HomeDashboardLoadingShell extends StatelessWidget {
