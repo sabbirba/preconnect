@@ -1057,7 +1057,10 @@ class _MyAppState extends State<MyApp>
                                 clipBehavior: Clip.antiAlias,
                                 child: MediaQuery(
                                   data: shellMediaQuery,
-                                  child: content,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(top: 6),
+                                    child: content,
+                                  ),
                                 ),
                               ),
                             ),
