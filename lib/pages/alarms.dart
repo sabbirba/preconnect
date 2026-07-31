@@ -380,20 +380,23 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           endDate: nextDate.add(const Duration(hours: 1)),
           recurrence: Recurrence(frequency: Frequency.weekly),
         );
-        final success = await Add2Calendar.addEvent2Cal(event);
+        final success = await Add2Reminder.addReminder(event);
         if (success) {
           if (!context.mounted) return;
-          showAppSnackBar(context, 'Alarm added to system Calendar.');
+          showAppSnackBar(context, 'Reminder added to Apple Reminders.');
           await AppStorage.instance.setBool('alarm_done_$courseCode', true);
           if (mounted) setState(() {});
           RefreshBus.instance.notify(reason: 'alarms');
         } else {
           if (!context.mounted) return;
-          showAppSnackBar(context, 'Unable to add event to system Calendar.');
+          showAppSnackBar(
+            context,
+            'Unable to add reminder to Apple Reminders.',
+          );
         }
       } catch (_) {
         if (!context.mounted) return;
-        showAppSnackBar(context, 'Unable to add event to system Calendar.');
+        showAppSnackBar(context, 'Unable to add reminder to Apple Reminders.');
       }
       return;
     }
@@ -470,20 +473,23 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           startDate: fireAt,
           endDate: fireAt.add(const Duration(hours: 1)),
         );
-        final success = await Add2Calendar.addEvent2Cal(event);
+        final success = await Add2Reminder.addReminder(event);
         if (success) {
           if (!context.mounted) return;
-          showAppSnackBar(context, 'Alarm added to system Calendar.');
+          showAppSnackBar(context, 'Reminder added to Apple Reminders.');
           await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
           if (mounted) setState(() {});
           RefreshBus.instance.notify(reason: 'alarms');
         } else {
           if (!context.mounted) return;
-          showAppSnackBar(context, 'Unable to add event to system Calendar.');
+          showAppSnackBar(
+            context,
+            'Unable to add reminder to Apple Reminders.',
+          );
         }
       } catch (_) {
         if (!context.mounted) return;
-        showAppSnackBar(context, 'Unable to add event to system Calendar.');
+        showAppSnackBar(context, 'Unable to add reminder to Apple Reminders.');
       }
       return;
     }
@@ -541,20 +547,23 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           startDate: fireAt,
           endDate: fireAt.add(const Duration(hours: 1)),
         );
-        final success = await Add2Calendar.addEvent2Cal(event);
+        final success = await Add2Reminder.addReminder(event);
         if (success) {
           if (!context.mounted) return;
-          showAppSnackBar(context, 'Alarm added to system Calendar.');
+          showAppSnackBar(context, 'Reminder added to Apple Reminders.');
           await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
           if (mounted) setState(() {});
           RefreshBus.instance.notify(reason: 'alarms');
         } else {
           if (!context.mounted) return;
-          showAppSnackBar(context, 'Unable to add event to system Calendar.');
+          showAppSnackBar(
+            context,
+            'Unable to add reminder to Apple Reminders.',
+          );
         }
       } catch (_) {
         if (!context.mounted) return;
-        showAppSnackBar(context, 'Unable to add event to system Calendar.');
+        showAppSnackBar(context, 'Unable to add reminder to Apple Reminders.');
       }
       return;
     }
@@ -655,20 +664,23 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           startDate: fireAt,
           endDate: fireAt.add(const Duration(hours: 1)),
         );
-        final success = await Add2Calendar.addEvent2Cal(event);
+        final success = await Add2Reminder.addReminder(event);
         if (success) {
           if (!context.mounted) return;
-          showAppSnackBar(context, 'Alarm added to system Calendar.');
+          showAppSnackBar(context, 'Reminder added to Apple Reminders.');
           await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
           if (mounted) setState(() {});
           RefreshBus.instance.notify(reason: 'alarms');
         } else {
           if (!context.mounted) return;
-          showAppSnackBar(context, 'Unable to add event to system Calendar.');
+          showAppSnackBar(
+            context,
+            'Unable to add reminder to Apple Reminders.',
+          );
         }
       } catch (_) {
         if (!context.mounted) return;
-        showAppSnackBar(context, 'Unable to add event to system Calendar.');
+        showAppSnackBar(context, 'Unable to add reminder to Apple Reminders.');
       }
       return;
     }

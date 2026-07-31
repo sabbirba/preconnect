@@ -134,9 +134,6 @@ class CampusPrinterPage extends StatefulWidget {
                 ''))
             .trim();
     final hasProfile = isLoggedIn && fullName.isNotEmpty;
-    final guestName = hasProfile ? '' : 'Guest';
-    int? guestIdNumber;
-    final clientName = hasProfile ? fullName : guestName;
     if (hasProfile) {
       await AppStorage.instance.setString(StorageKeys.studentId, studentId);
       await AppStorage.instance.setString(StorageKeys.fullName, fullName);
@@ -175,9 +172,6 @@ class CampusPrinterPage extends StatefulWidget {
       studentName: fullName,
       studentShortCode: shortCode,
       currentSemester: currentSemester,
-      guestName: guestName,
-      guestId: guestIdNumber,
-      clientName: clientName,
       pagesPerSheet: pagesPerSheet,
       fittingMode: fittingMode,
       staple: staple,
@@ -231,9 +225,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _studentName = '';
   String _studentShortCode = '';
   String _currentSemester = '';
-  String _guestName = '';
-  int? _guestId;
-  String _clientName = '';
   String _wifiName = '';
   String _duplexMode = 'OFF';
   String _collateMode = 'OFF';
@@ -333,9 +324,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _studentName = bootstrap.studentName;
       _studentShortCode = bootstrap.studentShortCode;
       _currentSemester = bootstrap.currentSemester;
-      _guestName = bootstrap.guestName;
-      _guestId = bootstrap.guestId;
-      _clientName = bootstrap.clientName;
       _pagesPerSheet = bootstrap.pagesPerSheet;
       _fittingMode = bootstrap.fittingMode;
       _staple = bootstrap.staple;
@@ -360,9 +348,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _studentName = bootstrap.studentName;
       _studentShortCode = bootstrap.studentShortCode;
       _currentSemester = bootstrap.currentSemester;
-      _guestName = bootstrap.guestName;
-      _guestId = bootstrap.guestId;
-      _clientName = bootstrap.clientName;
       _pagesPerSheet = bootstrap.pagesPerSheet;
       _fittingMode = bootstrap.fittingMode;
       _staple = bootstrap.staple;
@@ -720,15 +705,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   Future<void> _sendToPrinter() async {
     if (_busy) return;
     final host = _printerHost.trim();
-    final studentId = _studentId.trim().isNotEmpty
-        ? _studentId.trim()
-        : (_guestId != null ? _guestId.toString() : '');
-    final user = studentId.isEmpty ? 'guest' : studentId;
-    final clientName = _clientName.trim().isNotEmpty
-        ? _clientName.trim()
-        : (_studentName.trim().isNotEmpty
-              ? _studentName.trim()
-              : (_guestName.trim().isNotEmpty ? _guestName.trim() : studentId));
+    final studentId = _studentId.trim();
+    final user = studentId;
+    final clientName = _studentName.trim().isNotEmpty
+        ? _studentName.trim()
+        : studentId;
 
     if (host.isEmpty) {
       showAppSnackBar(context, _snackNoPrinter);
@@ -898,8 +879,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         !_discovering &&
         _printerHost.isNotEmpty &&
         _selectedFiles.isNotEmpty &&
-        (_studentId.isNotEmpty || _guestId != null) &&
-        (_studentName.isNotEmpty || _guestName.isNotEmpty);
+        _studentId.isNotEmpty &&
+        _studentName.isNotEmpty;
     final printerSubtitle = _discovering
         ? 'Scanning..'
         : _printerHost.isNotEmpty
@@ -960,179 +941,164 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   ),
                 ],
                 if (_studentName.trim().isEmpty && _studentId.trim().isEmpty)
-                  _PrinterIdentityPanel(
-                    guestName: _guestName,
-                    guestId: _guestId,
-                    onGuestNameChanged: (value) {
-                      setState(() {
-                        _guestName = value;
-                        _clientName = value.trim().isEmpty ? 'Guest' : value;
-                      });
-                    },
-                    onGuestIdChanged: (value) {
-                      setState(() => _guestId = value);
-                    },
-                  ),
+                  const _PrinterLoginPrompt(),
               ],
             ),
           ),
           const Gap(12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_selectedFiles.isEmpty) ...[
-                  _PrinterFileCard(
-                    title: 'Choose Files',
-                    subtitle: '0 MB • Files',
-                    isEmpty: true,
-                    onTap: !_busy ? _pickPrintFile : null,
-                    borderRadius: 8,
-                    emptyAction: Align(
-                      alignment: Alignment.centerRight,
-                      child: SizedBox(
-                        width: 168,
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerRight,
-                          child: BracuActionButton(
-                            onPressed: (_busy || _loadingPreset)
-                                ? null
-                                : _loadBlankPage,
-                            label: 'Blank Page',
-                            icon: Icons.download_rounded,
-                            isLoading: _loadingPreset,
-                            iconGap: 0,
-                            foregroundColor: BracuPalette.textPrimary(context),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
-                            ),
-                            borderRadius: 12,
-                            iconSize: 22,
-                            fontSize: 16,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_selectedFiles.isEmpty) ...[
+                _PrinterFileCard(
+                  title: 'Choose Files',
+                  subtitle: '0 MB • Files',
+                  isEmpty: true,
+                  onTap: !_busy ? _pickPrintFile : null,
+                  borderRadius: 8,
+                  emptyAction: Align(
+                    alignment: Alignment.centerRight,
+                    child: SizedBox(
+                      width: 168,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: BracuActionButton(
+                          onPressed: (_busy || _loadingPreset)
+                              ? null
+                              : _loadBlankPage,
+                          label: 'Blank Page',
+                          icon: Icons.download_rounded,
+                          isLoading: _loadingPreset,
+                          iconGap: 0,
+                          foregroundColor: BracuPalette.textPrimary(context),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
                           ),
+                          borderRadius: 12,
+                          iconSize: 22,
+                          fontSize: 16,
                         ),
                       ),
                     ),
                   ),
-                ] else ...[
-                  for (int i = 0; i < _selectedFiles.length; i++) ...[
-                    _PrinterFileCard(
-                      title: _selectedFiles[i].name,
-                      subtitle:
-                          '${_formatFileSizeMb(_selectedFiles[i].bytes)} • ${_fileKindLabelFor(_selectedFiles[i])}',
-                      isEmpty: false,
-                      onTap: null,
-                      onClear: !_busy ? () => _clearFileAt(i) : null,
-                      borderRadius: 8,
-                    ),
-                    if (i < _selectedFiles.length - 1) const Gap(12),
-                  ],
+                ),
+              ] else ...[
+                for (int i = 0; i < _selectedFiles.length; i++) ...[
+                  _PrinterFileCard(
+                    title: _selectedFiles[i].name,
+                    subtitle:
+                        '${_formatFileSizeMb(_selectedFiles[i].bytes)} • ${_fileKindLabelFor(_selectedFiles[i])}',
+                    isEmpty: false,
+                    onTap: null,
+                    onClear: !_busy ? () => _clearFileAt(i) : null,
+                    borderRadius: 8,
+                  ),
+                  if (i < _selectedFiles.length - 1) const Gap(12),
                 ],
-                const Gap(12),
-                _PrinterPreferencesPanel(
-                  copiesController: _copiesController,
-                  copies: _copies,
-                  mode: _duplexMode,
-                  collateMode: _collateMode,
-                  onCopiesStep: _adjustCopies,
-                  onDuplexChanged: (mode) {
-                    setState(() => _duplexMode = mode);
-                  },
-                  onCollateChanged: (mode) {
-                    setState(() => _collateMode = mode);
-                  },
-                ),
-                const Gap(12),
-                _PrinterLayoutPreferencesPanel(
-                  pagesPerSheet: _pagesPerSheet,
-                  fittingMode: _fittingMode,
-                  staple: _staple,
-                  punch: _punch,
-                  jobOffset: _jobOffset,
-                  slipSheet: _slipSheet,
-                  booklet: _booklet,
-                  onPagesPerSheetChanged: (value) {
-                    setState(() {
-                      _pagesPerSheet = value;
-                    });
-                    unawaited(_savePrinterPreferences());
-                  },
-                  onFittingModeChanged: (value) {
-                    setState(() {
-                      _fittingMode = value;
-                    });
-                    unawaited(_savePrinterPreferences());
-                  },
-                  onStapleChanged: (value) {
-                    setState(() {
-                      _staple = value;
-                    });
-                    unawaited(_savePrinterPreferences());
-                  },
-                  onPunchChanged: (value) {
-                    setState(() {
-                      _punch = value;
-                    });
-                    unawaited(_savePrinterPreferences());
-                  },
-                  onJobOffsetChanged: (value) {
-                    setState(() {
-                      _jobOffset = value;
-                    });
-                    unawaited(_savePrinterPreferences());
-                  },
-                  onSlipSheetChanged: (value) {
-                    setState(() {
-                      _slipSheet = value;
-                    });
-                    unawaited(_savePrinterPreferences());
-                  },
-                  onBookletChanged: (value) {
-                    setState(() {
-                      _booklet = value;
-                    });
-                    unawaited(_savePrinterPreferences());
-                  },
-                ),
-                const Gap(12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: BracuActionButton(
-                        onPressed: _busy ? null : _pickPrintFile,
-                        icon: Icons.picture_as_pdf_outlined,
-                        label: 'Choose',
-                      ),
-                    ),
-                    const Gap(12),
-                    Expanded(
-                      child: BracuActionButton(
-                        onPressed: canPrint ? _sendToPrinter : null,
-                        icon: Icons.print_rounded,
-                        label: 'Print',
-                        isLoading: _busy,
-                      ),
-                    ),
-                  ],
-                ),
-                if (_history.isNotEmpty) ...[
-                  const Gap(12),
-                  SizedBox(
-                    width: double.infinity,
+              ],
+              const Gap(12),
+              _PrinterPreferencesPanel(
+                copiesController: _copiesController,
+                copies: _copies,
+                mode: _duplexMode,
+                collateMode: _collateMode,
+                onCopiesStep: _adjustCopies,
+                onDuplexChanged: (mode) {
+                  setState(() => _duplexMode = mode);
+                },
+                onCollateChanged: (mode) {
+                  setState(() => _collateMode = mode);
+                },
+              ),
+              const Gap(12),
+              _PrinterLayoutPreferencesPanel(
+                pagesPerSheet: _pagesPerSheet,
+                fittingMode: _fittingMode,
+                staple: _staple,
+                punch: _punch,
+                jobOffset: _jobOffset,
+                slipSheet: _slipSheet,
+                booklet: _booklet,
+                onPagesPerSheetChanged: (value) {
+                  setState(() {
+                    _pagesPerSheet = value;
+                  });
+                  unawaited(_savePrinterPreferences());
+                },
+                onFittingModeChanged: (value) {
+                  setState(() {
+                    _fittingMode = value;
+                  });
+                  unawaited(_savePrinterPreferences());
+                },
+                onStapleChanged: (value) {
+                  setState(() {
+                    _staple = value;
+                  });
+                  unawaited(_savePrinterPreferences());
+                },
+                onPunchChanged: (value) {
+                  setState(() {
+                    _punch = value;
+                  });
+                  unawaited(_savePrinterPreferences());
+                },
+                onJobOffsetChanged: (value) {
+                  setState(() {
+                    _jobOffset = value;
+                  });
+                  unawaited(_savePrinterPreferences());
+                },
+                onSlipSheetChanged: (value) {
+                  setState(() {
+                    _slipSheet = value;
+                  });
+                  unawaited(_savePrinterPreferences());
+                },
+                onBookletChanged: (value) {
+                  setState(() {
+                    _booklet = value;
+                  });
+                  unawaited(_savePrinterPreferences());
+                },
+              ),
+              const Gap(12),
+              Row(
+                children: [
+                  Expanded(
                     child: BracuActionButton(
-                      onPressed: _busy ? null : _clearHistory,
-                      outlined: true,
-                      backgroundColor: Colors.transparent,
-                      foregroundColor: BracuPalette.textSecondary(context),
-                      label: 'Clear History',
+                      onPressed: _busy ? null : _pickPrintFile,
+                      icon: Icons.picture_as_pdf_outlined,
+                      label: 'Choose',
+                    ),
+                  ),
+                  const Gap(12),
+                  Expanded(
+                    child: BracuActionButton(
+                      onPressed: canPrint ? _sendToPrinter : null,
+                      icon: Icons.print_rounded,
+                      label: 'Print',
+                      isLoading: _busy,
                     ),
                   ),
                 ],
+              ),
+              if (_history.isNotEmpty) ...[
+                const Gap(12),
+                SizedBox(
+                  width: double.infinity,
+                  child: BracuActionButton(
+                    onPressed: _busy ? null : _clearHistory,
+                    outlined: true,
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: BracuPalette.textSecondary(context),
+                    label: 'Clear History',
+                  ),
+                ),
               ],
-            ),
+            ],
           ),
           const Gap(12),
           _PrintHistoryCard(history: _history),
@@ -1468,61 +1434,54 @@ class _StudentPrintDetails extends StatelessWidget {
   }
 }
 
-class _PrinterIdentityPanel extends StatelessWidget {
-  const _PrinterIdentityPanel({
-    required this.guestName,
-    required this.guestId,
-    required this.onGuestNameChanged,
-    required this.onGuestIdChanged,
-  });
-
-  final String guestName;
-  final int? guestId;
-  final ValueChanged<String> onGuestNameChanged;
-  final ValueChanged<int?> onGuestIdChanged;
+class _PrinterLoginPrompt extends StatelessWidget {
+  const _PrinterLoginPrompt();
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          initialValue: guestName,
-          style: TextStyle(
-            color: BracuPalette.textPrimary(context),
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-          decoration: bracuInputDecoration(context, labelText: 'Name'),
-          onChanged: onGuestNameChanged,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: BracuPalette.card(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: BracuPalette.textSecondary(context).withValues(alpha: 0.12),
         ),
-        const Gap(12),
-        TextFormField(
-          initialValue: guestId?.toString() ?? '',
-          style: TextStyle(
-            color: BracuPalette.textPrimary(context),
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.account_circle_outlined,
+                color: BracuPalette.primary,
+                size: 24,
+              ),
+              const Gap(10),
+              Expanded(
+                child: Text(
+                  'Student Profile Required',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: BracuPalette.textPrimary(context),
+                  ),
+                ),
+              ),
+            ],
           ),
-          decoration: bracuInputDecoration(
-            context,
-            labelText: 'Student ID / PIN',
+          const Gap(8),
+          Text(
+            'Sign in with your student account to print documents on campus printers.',
+            style: TextStyle(
+              fontSize: 13,
+              color: BracuPalette.textSecondary(context),
+            ),
           ),
-          keyboardType: TextInputType.number,
-          inputFormatters: <TextInputFormatter>[
-            FilteringTextInputFormatter.digitsOnly,
-          ],
-          onChanged: (value) {
-            final trimmed = value.trim();
-            if (trimmed.isEmpty) {
-              onGuestIdChanged(null);
-              return;
-            }
-            final parsed = int.tryParse(trimmed);
-            onGuestIdChanged(parsed);
-          },
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -1593,16 +1552,9 @@ class _PrinterFileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = Container(
-      width: double.infinity,
+    final content = BracuGlassCard(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(
-          color: BracuPalette.textSecondary(context).withValues(alpha: 0.20),
-        ),
-      ),
+      borderRadius: BorderRadius.circular(16),
       child: Row(
         children: [
           Expanded(
@@ -1918,116 +1870,124 @@ class _PrinterPreferencesPanel extends StatelessWidget {
           vertical: compact ? 8 : 9,
         );
 
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              flex: 32,
-              child: Container(
-                height: controlHeight,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4),
+        return BracuGlassCard(
+          padding: const EdgeInsets.all(12),
+          borderRadius: BorderRadius.circular(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                flex: 32,
+                child: Container(
+                  height: controlHeight,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        flex: 42,
+                        child: BracuActionButton(
+                          onPressed: copies <= 0
+                              ? null
+                              : () => onCopiesStep(-1),
+                          outlined: false,
+                          borderRadius: 4,
+                          padding: EdgeInsets.zero,
+                          label: '−',
+                          fontSize: controlFont,
+                        ),
+                      ),
+                      Expanded(
+                        flex: 52,
+                        child: TextField(
+                          controller: copiesController,
+                          keyboardType: TextInputType.number,
+                          textInputAction: TextInputAction.done,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(3),
+                          ],
+                          textAlign: TextAlign.center,
+                          textAlignVertical: TextAlignVertical.center,
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontSize: compact ? 16 : 18,
+                            fontWeight: FontWeight.w700,
+                            color: BracuPalette.textPrimary(context),
+                          ),
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 42,
+                        child: BracuActionButton(
+                          onPressed: copies >= 999
+                              ? null
+                              : () => onCopiesStep(1),
+                          outlined: false,
+                          borderRadius: 4,
+                          padding: EdgeInsets.zero,
+                          label: '+',
+                          fontSize: controlFont,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+              ),
+              Gap(compact ? 8 : 10),
+              Expanded(
+                flex: 68,
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
-                      flex: 42,
                       child: BracuActionButton(
-                        onPressed: copies <= 0 ? null : () => onCopiesStep(-1),
-                        outlined: false,
+                        onPressed: () {
+                          onDuplexChanged(duplexEnabled ? 'OFF' : 'LEFT');
+                        },
+                        outlined: true,
+                        backgroundColor: duplexEnabled
+                            ? BracuPalette.primary.withValues(alpha: 0.12)
+                            : Colors.transparent,
+                        foregroundColor: duplexEnabled
+                            ? BracuPalette.primary
+                            : BracuPalette.textPrimary(context),
                         borderRadius: 4,
-                        padding: EdgeInsets.zero,
-                        label: '−',
-                        fontSize: controlFont,
+                        padding: togglePadding,
+                        label: duplexEnabled ? 'Both Side' : 'One Side',
+                        fontSize: toggleFont,
                       ),
                     ),
+                    Gap(gap),
                     Expanded(
-                      flex: 52,
-                      child: TextField(
-                        controller: copiesController,
-                        keyboardType: TextInputType.number,
-                        textInputAction: TextInputAction.done,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(3),
-                        ],
-                        textAlign: TextAlign.center,
-                        textAlignVertical: TextAlignVertical.center,
-                        maxLines: 1,
-                        style: TextStyle(
-                          fontSize: compact ? 16 : 18,
-                          fontWeight: FontWeight.w700,
-                          color: BracuPalette.textPrimary(context),
-                        ),
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 42,
                       child: BracuActionButton(
-                        onPressed: copies >= 999 ? null : () => onCopiesStep(1),
-                        outlined: false,
+                        onPressed: () {
+                          onCollateChanged(collateEnabled ? 'OFF' : 'ON');
+                        },
+                        outlined: true,
+                        backgroundColor: collateEnabled
+                            ? BracuPalette.primary.withValues(alpha: 0.12)
+                            : Colors.transparent,
+                        foregroundColor: collateEnabled
+                            ? BracuPalette.primary
+                            : BracuPalette.textPrimary(context),
                         borderRadius: 4,
-                        padding: EdgeInsets.zero,
-                        label: '+',
-                        fontSize: controlFont,
+                        padding: togglePadding,
+                        label: 'Collate',
+                        fontSize: toggleFont,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-            Gap(compact ? 8 : 10),
-            Expanded(
-              flex: 68,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: BracuActionButton(
-                      onPressed: () {
-                        onDuplexChanged(duplexEnabled ? 'OFF' : 'LEFT');
-                      },
-                      outlined: true,
-                      backgroundColor: duplexEnabled
-                          ? BracuPalette.primary.withValues(alpha: 0.12)
-                          : Colors.transparent,
-                      foregroundColor: duplexEnabled
-                          ? BracuPalette.primary
-                          : BracuPalette.textPrimary(context),
-                      borderRadius: 4,
-                      padding: togglePadding,
-                      label: duplexEnabled ? 'Both Side' : 'One Side',
-                      fontSize: toggleFont,
-                    ),
-                  ),
-                  Gap(gap),
-                  Expanded(
-                    child: BracuActionButton(
-                      onPressed: () {
-                        onCollateChanged(collateEnabled ? 'OFF' : 'ON');
-                      },
-                      outlined: true,
-                      backgroundColor: collateEnabled
-                          ? BracuPalette.primary.withValues(alpha: 0.12)
-                          : Colors.transparent,
-                      foregroundColor: collateEnabled
-                          ? BracuPalette.primary
-                          : BracuPalette.textPrimary(context),
-                      borderRadius: 4,
-                      padding: togglePadding,
-                      label: 'Collate',
-                      fontSize: toggleFont,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -2079,17 +2039,9 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
           vertical: compact ? 8 : 9,
         );
 
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: BracuPalette.textSecondary(
-                context,
-              ).withValues(alpha: 0.20),
-            ),
-          ),
+        return BracuGlassCard(
+          padding: const EdgeInsets.all(12),
+          borderRadius: BorderRadius.circular(16),
           child: Column(
             children: [
               Row(

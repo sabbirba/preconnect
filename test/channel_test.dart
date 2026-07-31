@@ -55,7 +55,7 @@ void main() {
     expect(PlatformChannels.appUpdateEvents, 'preconnect/app_update_events');
   });
 
-  test('calendar events preserve their native payload', () async {
+  test('calendar reminders preserve their native payload', () async {
     const channel = MethodChannel(PlatformChannels.calendar);
     MethodCall? captured;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -64,7 +64,7 @@ void main() {
           return true;
         });
     final start = DateTime(2026, 8, 1, 9);
-    final result = await Add2Calendar.addEvent2Cal(
+    final result = await Add2Reminder.addReminder(
       Event(
         title: 'Class',
         description: 'Lecture',

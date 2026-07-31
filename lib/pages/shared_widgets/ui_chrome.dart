@@ -269,6 +269,119 @@ class _PageHeader extends StatelessWidget {
   }
 }
 
+class BracuGlassContainer extends StatelessWidget {
+  const BracuGlassContainer({
+    super.key,
+    required this.child,
+    this.padding,
+    this.margin,
+    this.borderRadius,
+    this.blurSigma = 16.0,
+    this.backgroundColor,
+    this.borderColor,
+    this.isHighlighted = false,
+    this.highlightColor,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+  final EdgeInsetsGeometry? margin;
+  final BorderRadiusGeometry? borderRadius;
+  final double blurSigma;
+  final Color? backgroundColor;
+  final Color? borderColor;
+  final bool isHighlighted;
+  final Color? highlightColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveRadius = borderRadius ?? BorderRadius.circular(20);
+    final effectiveBg =
+        backgroundColor ??
+        (isDark
+            ? Colors.black.withValues(alpha: 0.20)
+            : Colors.white.withValues(alpha: 0.25));
+    final highlight = highlightColor ?? BracuPalette.primary;
+    final effectiveBorderColor =
+        borderColor ??
+        (isHighlighted
+            ? highlight.withValues(alpha: isDark ? 0.7 : 0.9)
+            : (isDark
+                  ? Colors.white.withValues(alpha: 0.12)
+                  : Colors.black.withValues(alpha: 0.08)));
+
+    Widget content = Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: effectiveBg,
+        borderRadius: effectiveRadius,
+        border: Border.all(
+          color: effectiveBorderColor,
+          width: isHighlighted ? 1.6 : 1,
+        ),
+      ),
+      child: child,
+    );
+
+    if (blurSigma > 0) {
+      content = ClipRRect(
+        borderRadius: effectiveRadius,
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+          child: content,
+        ),
+      );
+    }
+
+    if (margin != null) {
+      content = Padding(padding: margin!, child: content);
+    }
+
+    return content;
+  }
+}
+
+class BracuGlassCard extends StatelessWidget {
+  const BracuGlassCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(14),
+    this.margin,
+    this.borderRadius,
+    this.blurSigma = 16.0,
+    this.backgroundColor,
+    this.borderColor,
+    this.isHighlighted = false,
+    this.highlightColor,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry? margin;
+  final BorderRadiusGeometry? borderRadius;
+  final double blurSigma;
+  final Color? backgroundColor;
+  final Color? borderColor;
+  final bool isHighlighted;
+  final Color? highlightColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return BracuGlassContainer(
+      padding: padding,
+      margin: margin,
+      borderRadius: borderRadius ?? BorderRadius.circular(18),
+      blurSigma: blurSigma,
+      backgroundColor: backgroundColor,
+      borderColor: borderColor,
+      isHighlighted: isHighlighted,
+      highlightColor: highlightColor,
+      child: child,
+    );
+  }
+}
+
 class BracuCard extends StatelessWidget {
   const BracuCard({
     super.key,
@@ -295,7 +408,7 @@ class BracuCard extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: backgroundColor ?? Colors.transparent,
+        color: backgroundColor ?? BracuPalette.card(context),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isHighlighted
@@ -847,18 +960,18 @@ class QuickAccessCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         width: width,
-        padding: const EdgeInsets.all(9),
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(4),
               decoration: const BoxDecoration(color: Colors.transparent),
               child: isLoading
                   ? BracuSpinner(size: 22, color: color, strokeWidth: 2.2)
                   : Icon(icon, color: color, size: 22),
             ),
-            const Gap(12),
+            const Gap(4),
             SizedBox(
               width: double.infinity,
               child: FittedBox(

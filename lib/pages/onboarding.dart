@@ -9,9 +9,7 @@ import 'package:preconnect/features/auth/application/browser_login.dart';
 import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/free_labs.dart';
 import 'package:preconnect/pages/friend_schedule.dart';
-import 'package:preconnect/pages/seat_status.dart';
 import 'package:preconnect/pages/shared_widgets/map_shared.dart';
-import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/pages/dspace_browser.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
@@ -275,209 +273,223 @@ class _OnboardingPageState extends State<OnboardingPage> {
             ),
           ),
           child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          const Gap(12),
-                          _HeroCard(isDark: isDark),
-                          const Gap(28),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 155),
+                    child: Column(
+                      children: [
+                        const Gap(12),
+                        _HeroCard(isDark: isDark),
+                        const Gap(28),
+                        Text(
+                          'Welcome to PreConnect',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 31,
+                            height: 1.1,
+                            fontWeight: FontWeight.w800,
+                            color: titleColor,
+                            letterSpacing: -0.6,
+                          ),
+                        ),
+                        const Gap(12),
+                        Text(
+                          'Academic Companion for BRACU\n'
+                          'Open Source Built by BRACU Students',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            height: 1.55,
+                            color: bodyColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (_appVersion.isNotEmpty) ...[
+                          const Gap(6),
                           Text(
-                            'Welcome to PreConnect',
+                            _appVersion,
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 31,
-                              height: 1.1,
-                              fontWeight: FontWeight.w800,
-                              color: titleColor,
-                              letterSpacing: -0.6,
+                              fontSize: 12,
+                              color: bodyColor.withValues(alpha: 0.65),
+                              fontWeight: FontWeight.w600,
                             ),
-                          ),
-                          const Gap(12),
-                          Text(
-                            'Academic Companion for BRACU\n'
-                            'Open Source Built by BRACU Students',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 14,
-                              height: 1.55,
-                              color: bodyColor,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          if (_appVersion.isNotEmpty) ...[
-                            const Gap(6),
-                            Text(
-                              _appVersion,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: bodyColor.withValues(alpha: 0.65),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                          const Gap(16),
-                          _InfoCard(
-                            icon: Icons.info_outline_rounded,
-                            title: 'About the App',
-                            body:
-                                'Track classes, exams, and reminders in one place with your BRACU SSO account.',
-                            color: BracuPalette.primary,
-                          ),
-                          const Gap(12),
-                          _InfoCard(
-                            icon: Icons.privacy_tip_outlined,
-                            title: 'Privacy First',
-                            body:
-                                'PreConnect is not an official BRAC University app. It is an initiative run by BRAC University students. Your data stays on your device with sign-in tokens kept locally.',
-                            color: BracuPalette.accent,
-                          ),
-                          const Gap(12),
-                          const Gap(12),
-                          _InfoCard(
-                            icon: Icons.groups_rounded,
-                            title: 'Student Maintained',
-                            body:
-                                'PreConnect is actively improved by students with open-source contributions, feedback, and community support.',
-                            color: const Color(0xFF0EA5A4),
-                          ),
-                          const Gap(12),
-                          BracuActionBannerCard(
-                            iconWidget: const PreConnectGitHubIcon(size: 24),
-                            title: 'Open GitHub Repository',
-                            subtitle: 'Explore the source code and contribute',
-                            onTap: () => _openLink(
-                              context,
-                              'https://github.com/sabbirba/preconnect',
-                            ),
-                          ),
-                          const Gap(12),
-                          BracuActionBannerCard(
-                            icon: Icons.public_rounded,
-                            iconColor: BracuPalette.accent,
-                            title: 'Open PreConnect Website',
-                            subtitle:
-                                'Visit our official website for more things.',
-                            onTap: () =>
-                                _openLink(context, ApiConfig.websiteBase),
                           ),
                         ],
-                      ),
-                    ),
-                  ),
-                  const Gap(8),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _CompactQuickAccessCard(
-                          icon: Icons.people_outline_rounded,
-                          color: const Color(0xFF5B8DEF),
-                          onTap: () => _openOnboardingQuickPage(
-                            FriendSchedulePage(onNavigate: (_) {}),
+                        const Gap(16),
+                        _InfoCard(
+                          icon: Icons.info_outline_rounded,
+                          title: 'About the App',
+                          body:
+                              'Track classes, exams, and reminders in one place with your BRACU SSO account.',
+                          color: BracuPalette.primary,
+                        ),
+                        const Gap(12),
+                        _InfoCard(
+                          icon: Icons.privacy_tip_outlined,
+                          title: 'Privacy First',
+                          body:
+                              'PreConnect is not an official BRAC University app. It is an initiative run by BRAC University students. Your data stays on your device with sign-in tokens kept locally.',
+                          color: BracuPalette.accent,
+                        ),
+                        const Gap(12),
+                        _InfoCard(
+                          icon: Icons.groups_rounded,
+                          title: 'Student Maintained',
+                          body:
+                              'PreConnect is actively improved by students with open-source contributions, feedback, and community support.',
+                          color: const Color(0xFF0EA5A4),
+                        ),
+                        const Gap(12),
+                        BracuActionBannerCard(
+                          iconWidget: const PreConnectGitHubIcon(size: 24),
+                          title: 'Open GitHub Repository',
+                          subtitle: 'Explore the source code and contribute',
+                          onTap: () => _openLink(
+                            context,
+                            'https://github.com/sabbirba/preconnect',
                           ),
                         ),
-                        _CompactQuickAccessCard(
-                          icon: Icons.science_outlined,
-                          color: const Color(0xFF22B573),
+                        const Gap(12),
+                        BracuActionBannerCard(
+                          icon: Icons.public_rounded,
+                          iconColor: BracuPalette.accent,
+                          title: 'Open PreConnect Website',
+                          subtitle:
+                              'Visit our official website for more things.',
                           onTap: () =>
-                              _openOnboardingQuickPage(const FreeLabsPage()),
-                        ),
-                        _CompactQuickAccessCard(
-                          icon: Icons.event_seat_outlined,
-                          color: const Color(0xFF2C9DFF),
-                          onTap: () =>
-                              _openOnboardingQuickPage(const SeatStatusPage()),
-                        ),
-                        _CompactQuickAccessCard(
-                          icon: Icons.local_library_outlined,
-                          color: const Color(0xFF1B8EFF),
-                          onTap: () =>
-                              _openOnboardingQuickPage(const LibSyncPage()),
-                        ),
-                        _CompactQuickAccessCard(
-                          icon: Icons.local_printshop_outlined,
-                          color: const Color(0xFF22B573),
-                          onTap: () => _openOnboardingQuickPage(
-                            const CampusPrinterPage(),
-                          ),
-                        ),
-                        _CompactQuickAccessCard(
-                          icon: Icons.library_books_outlined,
-                          color: const Color(0xFF3CA947),
-                          onTap: () => _openOnboardingQuickPage(
-                            const DSpaceBrowserPage(),
-                          ),
-                        ),
-                        _CompactQuickAccessCard(
-                          icon: Icons.developer_mode_outlined,
-                          color: const Color(0xFF5B8DEF),
-                          onTap: () =>
-                              _openOnboardingQuickPage(const DevsPage()),
+                              _openLink(context, ApiConfig.websiteBase),
                         ),
                       ],
                     ),
                   ),
-                  const Gap(12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: BracuActionButton(
-                      onPressed: _openCampusMapBottomSheet,
-                      label: 'Campus Map',
-                      borderRadius: 12,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
+                ),
+                Positioned(
+                  left: 10,
+                  right: 10,
+                  bottom: 10,
+                  child: BracuGlassContainer(
+                    borderRadius: BorderRadius.circular(20),
+                    blurSigma: 18,
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+                    backgroundColor: isDark
+                        ? Colors.black.withValues(alpha: 0.15)
+                        : Colors.white.withValues(alpha: 0.20),
+                    borderColor: isDark
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : Colors.black.withValues(alpha: 0.08),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _CompactQuickAccessCard(
+                                icon: Icons.people_outline_rounded,
+                                color: const Color(0xFF5B8DEF),
+                                onTap: () => _openOnboardingQuickPage(
+                                  FriendSchedulePage(onNavigate: (_) {}),
+                                ),
+                              ),
+                              _CompactQuickAccessCard(
+                                icon: Icons.science_outlined,
+                                color: const Color(0xFF22B573),
+                                onTap: () => _openOnboardingQuickPage(
+                                  const FreeLabsPage(),
+                                ),
+                              ),
+                              _CompactQuickAccessCard(
+                                icon: Icons.local_library_outlined,
+                                color: const Color(0xFF1B8EFF),
+                                onTap: () => _openOnboardingQuickPage(
+                                  const LibSyncPage(),
+                                ),
+                              ),
+                              _CompactQuickAccessCard(
+                                icon: Icons.library_books_outlined,
+                                color: const Color(0xFF3CA947),
+                                onTap: () => _openOnboardingQuickPage(
+                                  const DSpaceBrowserPage(),
+                                ),
+                              ),
+                              _CompactQuickAccessCard(
+                                icon: Icons.developer_mode_outlined,
+                                color: const Color(0xFF5B8DEF),
+                                onTap: () =>
+                                    _openOnboardingQuickPage(const DevsPage()),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Gap(6),
+                        SizedBox(
+                          width: double.infinity,
+                          child: BracuActionButton(
+                            onPressed: _openCampusMapBottomSheet,
+                            label: 'Campus Map',
+                            backgroundColor: isDark
+                                ? Colors.white.withValues(alpha: 0.05)
+                                : Colors.black.withValues(alpha: 0.03),
+                            borderRadius: 10,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                          ),
+                        ),
+                        const Gap(6),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: BracuActionButton(
+                                onPressed: _isGoogleLoggingIn
+                                    ? null
+                                    : _handleGoogleSignIn,
+                                label: 'Google SSO',
+                                backgroundColor: isDark
+                                    ? Colors.white.withValues(alpha: 0.05)
+                                    : Colors.black.withValues(alpha: 0.03),
+                                borderRadius: 10,
+                                isLoading: _isGoogleLoggingIn,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 12,
+                                ),
+                                fontSize: 14,
+                              ),
+                            ),
+                            const Gap(6),
+                            Expanded(
+                              child: BracuActionButton(
+                                onPressed: _isStartingWebLogin
+                                    ? null
+                                    : () => _completeOnboarding(context),
+                                outlined: false,
+                                isLoading: _isStartingWebLogin,
+                                label: 'Continue SSO',
+                                backgroundColor: const Color(
+                                  0xFF1E5BFF,
+                                ).withValues(alpha: 0.85),
+                                foregroundColor: Colors.white,
+                                borderRadius: 10,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 12,
+                                ),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  const Gap(8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: BracuActionButton(
-                          onPressed: _isGoogleLoggingIn
-                              ? null
-                              : _handleGoogleSignIn,
-                          label: 'Google SSO',
-                          borderRadius: 12,
-                          isLoading: _isGoogleLoggingIn,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 16,
-                          ),
-                          fontSize: 15,
-                        ),
-                      ),
-                      const Gap(8),
-                      Expanded(
-                        child: BracuActionButton(
-                          onPressed: _isStartingWebLogin
-                              ? null
-                              : () => _completeOnboarding(context),
-                          outlined: false,
-                          isLoading: _isStartingWebLogin,
-                          label: 'Continue SSO',
-                          backgroundColor: const Color(0xFF1E5BFF),
-                          foregroundColor: Colors.white,
-                          borderRadius: 12,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 16,
-                          ),
-                          fontSize: 15,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -536,24 +548,10 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      width: double.infinity,
+    return BracuGlassCard(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: BracuPalette.card(context),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.12)),
-        boxShadow: isDark
-            ? const []
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 12,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-      ),
+      borderRadius: BorderRadius.circular(16),
+      borderColor: color.withValues(alpha: 0.22),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -615,7 +613,7 @@ class _CompactQuickAccessCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12.0),
+          padding: const EdgeInsets.symmetric(vertical: 6.0),
           child: Icon(icon, color: color, size: 24),
         ),
       ),

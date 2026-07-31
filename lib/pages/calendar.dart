@@ -83,7 +83,7 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
   @override
   Widget build(BuildContext context) {
     return BracuPageScaffold(
-      title: 'Calendar',
+      title: 'Academic Events',
       subtitle: 'Events',
       icon: Icons.calendar_today_outlined,
       actions: [

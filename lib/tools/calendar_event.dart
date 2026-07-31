@@ -31,11 +31,19 @@ class Event {
 class Add2Calendar {
   Add2Calendar._();
 
+  static Future<bool> addEvent2Cal(Event event) async {
+    return Add2Reminder.addReminder(event);
+  }
+}
+
+class Add2Reminder {
+  Add2Reminder._();
+
   static const MethodChannel _channel = MethodChannel(
     PlatformChannels.calendar,
   );
 
-  static Future<bool> addEvent2Cal(Event event) async {
+  static Future<bool> addReminder(Event event) async {
     return await _channel.invokeMethod<bool>('add', <String, Object?>{
           'title': event.title,
           'description': event.description,

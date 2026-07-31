@@ -94,10 +94,10 @@ class BracuPermissionHelper {
       isOptional: true,
     ),
     PermissionRequirement(
-      permission: Permission.calendarFullAccess,
-      title: 'Calendar Access',
-      reason: 'Add Class Events and Reminders.',
-      icon: Icons.calendar_month_rounded,
+      permission: Permission.reminders,
+      title: 'Reminders Access',
+      reason: 'Add Reminders to Apple Reminders.',
+      icon: Icons.notifications_active_rounded,
       iosOnly: true,
       isOptional: true,
     ),
@@ -207,9 +207,9 @@ class BracuPermissionHelper {
       await Permission.camera.request();
     }
 
-    final calendarStatus = await Permission.calendarFullAccess.status;
-    if (!calendarStatus.isGranted && !calendarStatus.isPermanentlyDenied) {
-      await Permission.calendarFullAccess.request();
+    final remindersStatus = await Permission.reminders.status;
+    if (!remindersStatus.isGranted && !remindersStatus.isPermanentlyDenied) {
+      await Permission.reminders.request();
     }
   }
 }
