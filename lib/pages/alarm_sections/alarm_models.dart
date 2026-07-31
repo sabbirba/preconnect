@@ -7,6 +7,7 @@ class _AlarmData {
     required this.isRamadan,
     required this.customSchedules,
     required this.advisingInfo,
+    this.examOverrides = const <String, ExamScheduleOverride>{},
   });
 
   final List<Section> sections;
@@ -14,6 +15,7 @@ class _AlarmData {
   final bool isRamadan;
   final List<CustomSchedule> customSchedules;
   final Map<String, String?>? advisingInfo;
+  final Map<String, ExamScheduleOverride> examOverrides;
 }
 
 class _ExamAlarmEntry {

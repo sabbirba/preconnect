@@ -12,6 +12,7 @@ import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
+import 'package:preconnect/pages/shared_widgets/exam_filter.dart';
 import 'package:preconnect/pages/shared_widgets/entry_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/custom_schedules_sections/schedules_shared.dart';
@@ -202,6 +203,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       isRamadan: isRamadan,
       customSchedules: customSchedules,
       advisingInfo: advisingInfo,
+      examOverrides: overrides,
     );
     cache.value = data;
     await _writeSnapshot(data);
@@ -764,43 +766,33 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           final advisingInfo = data?.advisingInfo;
           final advisingActive = _isAdvisingActive(advisingInfo);
 
-          final advisingAlarmKey = advisingInfo != null
-              ? () {
-                  final startDate = DateTime.tryParse(
-                    advisingInfo['advisingStartDate'] ?? '',
-                  );
-                  return startDate != null
-                      ? 'advising_${startDate.millisecondsSinceEpoch}'
-                      : null;
-                }()
+          final advisingEndDate = advisingInfo != null
+              ? DateTime.tryParse(advisingInfo['advisingEndDate'] ?? '')
               : null;
-          final advisingIsDone =
-              advisingAlarmKey != null &&
-              AppStorage.instance.getBoolSync('alarm_done_$advisingAlarmKey') ==
-                  true;
+          final advisingIsPassed =
+              advisingEndDate != null &&
+              advisingEndDate.isBefore(DateTime.now());
           final showAdvisingSingle =
               advisingActive &&
-              (_showDoneAlarms ? advisingIsDone : !advisingIsDone);
+              (_showDoneAlarms ? advisingIsPassed : !advisingIsPassed);
 
+          final now = DateTime.now();
           final filteredCustom = custom.where((item) {
-            final key = 'custom_${item.itemId}';
-            final isDone =
-                AppStorage.instance.getBoolSync('alarm_done_$key') == true;
-            return _showDoneAlarms ? isDone : !isDone;
+            final isPassed = item.endTime != null
+                ? item.endTime!.isBefore(now)
+                : item.startTime.isBefore(now);
+            return _showDoneAlarms ? isPassed : !isPassed;
           }).toList();
 
           final filteredExams = exams.where((exam) {
-            final key = 'exam_${exam.id}';
-            final isDone =
-                AppStorage.instance.getBoolSync('alarm_done_$key') == true ||
-                exam.isPassed;
-            return _showDoneAlarms ? isDone : !isDone;
+            return _showDoneAlarms ? exam.isPassed : !exam.isPassed;
           }).toList();
 
-          final filteredSections = sections.where((s) {
-            final isDone =
-                AppStorage.instance.getBoolSync('alarm_done_${s.courseCode}') ==
-                true;
+          final filteredSections = sections.where((section) {
+            final isDone = CourseSectionExamFilter.isFinishedAfterFinalExam(
+              section: section,
+              overrides: data?.examOverrides ?? const {},
+            );
             return _showDoneAlarms ? isDone : !isDone;
           }).toList();
 
@@ -820,13 +812,13 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
             }
             return buildRefreshEmptyState(
               onRefresh: _handleRefresh,
-              message: _showDoneAlarms ? 'No done alarm' : 'No pending alarm',
+              message: _showDoneAlarms
+                  ? 'No completed alarm'
+                  : 'No active alarm',
             );
           }
 
-          final highlightedExamKey = _showDoneAlarms
-              ? null
-              : _resolveHighlightedExamKey(filteredExams);
+          final highlightedExamKey = _resolveHighlightedExamKey(filteredExams);
           _highlightScroll.clearHighlightKey();
 
           final highlightedIndex = highlightedExamKey == null
@@ -1028,9 +1020,23 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                               child: BracuActionButton(
                                 onPressed: () async {
                                   if (isDone) {
-                                    await AppStorage.instance.remove(
-                                      'alarm_done_$alarmKey',
-                                    );
+                                    final confirmed =
+                                        await showBracuConfirmationWithActionDialog(
+                                          context,
+                                          icon: Icons.delete_outline_rounded,
+                                          title: 'Remove Alarm?',
+                                          message:
+                                              'This will remove the set alarm for $title.',
+                                          confirmLabel: 'Remove',
+                                          confirmColor: BracuPalette.danger,
+                                          onConfirm: () async {
+                                            await AppStorage.instance.remove(
+                                              'alarm_done_$alarmKey',
+                                            );
+                                          },
+                                        );
+                                    if (!confirmed || !context.mounted) return;
+                                    showAppSnackBar(context, 'Alarm removed.');
                                     setState(() {});
                                   } else {
                                     await _setAdvisingAlarm(
@@ -1042,9 +1048,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                   }
                                 },
                                 icon: isDone
-                                    ? Icons.check_circle_outlined
+                                    ? Icons.delete_outline_rounded
                                     : Icons.notifications_active,
-                                label: isDone ? 'Done' : 'Set Alarm',
+                                label: isDone ? 'Remove' : 'Set Alarm',
                               ),
                             );
                           })(),
@@ -1243,8 +1249,25 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             child: BracuActionButton(
                               onPressed: () async {
                                 if (isDone) {
-                                  await AppStorage.instance.remove(
-                                    'alarm_done_$alarmKey',
+                                  final confirmed =
+                                      await showBracuConfirmationWithActionDialog(
+                                        context,
+                                        icon: Icons.delete_outline_rounded,
+                                        title: 'Remove Alarm?',
+                                        message:
+                                            'This will remove the set alarm for ${item.title}.',
+                                        confirmLabel: 'Remove',
+                                        confirmColor: BracuPalette.danger,
+                                        onConfirm: () async {
+                                          await AppStorage.instance.remove(
+                                            'alarm_done_$alarmKey',
+                                          );
+                                        },
+                                      );
+                                  if (!confirmed || !context.mounted) return;
+                                  showAppSnackBar(
+                                    context,
+                                    'Alarm removed for ${item.title}.',
                                   );
                                   setState(() {});
                                 } else {
@@ -1256,9 +1279,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                 }
                               },
                               icon: isDone
-                                  ? Icons.check_circle_outlined
+                                  ? Icons.delete_outline_rounded
                                   : Icons.notifications_active,
-                              label: isDone ? 'Done' : 'Set Alarm',
+                              label: isDone ? 'Remove' : 'Set Alarm',
                             ),
                           );
                         })(),
@@ -1546,8 +1569,27 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                 child: BracuActionButton(
                                   onPressed: () async {
                                     if (isDone) {
-                                      await AppStorage.instance.remove(
-                                        'alarm_done_$alarmKey',
+                                      final confirmed =
+                                          await showBracuConfirmationWithActionDialog(
+                                            context,
+                                            icon: Icons.delete_outline_rounded,
+                                            title: 'Remove Alarm?',
+                                            message:
+                                                'This will remove the set alarm for ${exam.courseCode} ${exam.type}.',
+                                            confirmLabel: 'Remove',
+                                            confirmColor: BracuPalette.danger,
+                                            onConfirm: () async {
+                                              await AppStorage.instance.remove(
+                                                'alarm_done_$alarmKey',
+                                              );
+                                            },
+                                          );
+                                      if (!confirmed || !context.mounted) {
+                                        return;
+                                      }
+                                      showAppSnackBar(
+                                        context,
+                                        'Alarm removed for ${exam.courseCode} ${exam.type}.',
                                       );
                                       setState(() {});
                                     } else {
@@ -1559,9 +1601,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                     }
                                   },
                                   icon: isDone
-                                      ? Icons.check_circle_outlined
+                                      ? Icons.delete_outline_rounded
                                       : Icons.notifications_active,
-                                  label: isDone ? 'Done' : 'Set Alarm',
+                                  label: isDone ? 'Remove' : 'Set Alarm',
                                 ),
                               );
                             })(),
@@ -1715,47 +1757,60 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                               'alarm_done_$courseCode',
                             ) ==
                             true;
-                        return Row(
-                          children: [
-                            Expanded(
-                              child: BracuActionButton(
-                                onPressed: () async {
-                                  if (isDone) {
-                                    await AppStorage.instance.remove(
-                                      'alarm_done_$courseCode',
+                        return SizedBox(
+                          width: double.infinity,
+                          child: BracuActionButton(
+                            onPressed: () async {
+                              if (isDone) {
+                                final confirmed =
+                                    await showBracuConfirmationWithActionDialog(
+                                      context,
+                                      icon: Icons.delete_outline_rounded,
+                                      title: 'Remove Alarm?',
+                                      message:
+                                          'This will remove the set alarm for $courseCode.',
+                                      confirmLabel: 'Remove',
+                                      confirmColor: BracuPalette.danger,
+                                      onConfirm: () async {
+                                        await AppStorage.instance.remove(
+                                          'alarm_done_$courseCode',
+                                        );
+                                      },
                                     );
-                                    setState(() {});
-                                  } else {
-                                    final days = schedules
-                                        .map((s) => s.day)
-                                        .toList();
-                                    final startTime = schedules.isNotEmpty
-                                        ? RamadanTiming.adjustRange(
-                                            schedules.first.startTime,
-                                            schedules.first.endTime,
-                                            isRamadan: isRamadan,
-                                          ).startTime
-                                        : '';
+                                if (!confirmed || !context.mounted) return;
+                                showAppSnackBar(
+                                  context,
+                                  'Alarm removed for $courseCode.',
+                                );
+                                setState(() {});
+                              } else {
+                                final days = schedules
+                                    .map((s) => s.day)
+                                    .toList();
+                                final startTime = schedules.isNotEmpty
+                                    ? RamadanTiming.adjustRange(
+                                        schedules.first.startTime,
+                                        schedules.first.endTime,
+                                        isRamadan: isRamadan,
+                                      ).startTime
+                                    : '';
 
-                                    if (startTime.isNotEmpty &&
-                                        days.isNotEmpty) {
-                                      await _setAlarm(
-                                        context,
-                                        days,
-                                        startTime,
-                                        courseCode,
-                                        _minutesBefore[courseCode]!,
-                                      );
-                                    }
-                                  }
-                                },
-                                icon: isDone
-                                    ? Icons.check_circle_outlined
-                                    : Icons.notifications_active,
-                                label: isDone ? 'Done' : 'Set Alarm',
-                              ),
-                            ),
-                          ],
+                                if (startTime.isNotEmpty && days.isNotEmpty) {
+                                  await _setAlarm(
+                                    context,
+                                    days,
+                                    startTime,
+                                    courseCode,
+                                    _minutesBefore[courseCode]!,
+                                  );
+                                }
+                              }
+                            },
+                            icon: isDone
+                                ? Icons.delete_outline_rounded
+                                : Icons.notifications_active,
+                            label: isDone ? 'Remove' : 'Set Alarm',
+                          ),
                         );
                       })(),
                     ],
