@@ -85,7 +85,9 @@ class _StudentProfileState extends State<StudentProfile>
         'earnedCredit': storage.getStringSync(StorageKeys.earnedCredit),
         'mobileNo': storage.getStringSync(StorageKeys.mobileNo),
       };
-      _photoUrl = storage.getStringSync(StorageKeys.photoFilePath);
+      _photoUrl = ApiConfig.photoUrl(
+        storage.getStringSync(StorageKeys.photoFilePath),
+      );
     }
   }
 

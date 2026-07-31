@@ -381,7 +381,17 @@ class CalendarService {
     );
     return rows
         .map((row) {
-          final eventName = '${row['event_name'] ?? ''}'.trim();
+          var eventName = '${row['event_name'] ?? ''}'.trim();
+          if (eventName.startsWith('<![CDATA[')) {
+            eventName = eventName.substring(9);
+          }
+          if (eventName.endsWith(']]>')) {
+            eventName = eventName.substring(0, eventName.length - 3);
+          }
+          eventName = eventName
+              .replaceAll('<![CDATA[', '')
+              .replaceAll(']]>', '')
+              .trim();
           final startDate = '${row['start_date'] ?? ''}'.trim();
           final endDate = '${row['end_date'] ?? ''}'.trim();
           if (eventName.isEmpty || startDate.isEmpty || endDate.isEmpty) {
