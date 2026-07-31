@@ -169,6 +169,10 @@
 	<array>
 		<string>https</string>
 		<string>http</string>
+		<string>x-apple-reminderkit</string>
+		<string>x-apple-reminder</string>
+		<string>x-apple-reminders</string>
+		<string>calshow</string>
 	</array>
 </dict>
 </plist>

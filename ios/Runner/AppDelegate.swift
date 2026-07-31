@@ -140,14 +140,47 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate,
       result(false)
       return
     }
-    let store = EKEventStore()
+
     let saveReminderBlock = {
-      let reminderCalendar = store.defaultCalendarForNewReminders()
+      let store = EKEventStore()
+      var targetCalendar = store.defaultCalendarForNewReminders()
         ?? store.calendars(for: .reminder).first(where: { $0.allowsContentModifications })
-      guard let calendar = reminderCalendar else {
+
+      if targetCalendar == nil {
+        let sources = store.sources
+        var selectedSource: EKSource? = nil
+        for src in sources {
+          if src.sourceType == .local {
+            selectedSource = src
+            break
+          }
+        }
+        if selectedSource == nil {
+          for src in sources {
+            if src.sourceType == .calDAV {
+              selectedSource = src
+              break
+            }
+          }
+        }
+        if selectedSource == nil {
+          selectedSource = sources.first
+        }
+
+        if let source = selectedSource {
+          let newCalendar = EKCalendar(for: .reminder, eventStore: store)
+          newCalendar.title = "PreConnect"
+          newCalendar.source = source
+          try? store.saveCalendar(newCalendar, commit: true)
+          targetCalendar = newCalendar
+        }
+      }
+
+      guard let calendar = targetCalendar else {
         result(false)
         return
       }
+
       let reminder = EKReminder(eventStore: store)
       reminder.title = title
       if let notes = arguments["description"] as? String, !notes.isEmpty {
@@ -179,18 +212,38 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate,
 
       do {
         try store.save(reminder, commit: true)
+        let calendarId = calendar.calendarIdentifier
+        let reminderId = reminder.calendarItemIdentifier
+        DispatchQueue.main.async {
+          let urlsToTry = [
+            "x-apple-reminderkit://REMCDReminder/\(reminderId)",
+            "x-apple-reminderkit://REMCDList/\(calendarId)",
+            "x-apple-reminderkit://"
+          ]
+          for urlStr in urlsToTry {
+            if let url = URL(string: urlStr) {
+              if UIApplication.shared.canOpenURL(url) {
+                UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                break
+              } else if urlStr == "x-apple-reminderkit://" {
+                UIApplication.shared.open(url, options: [:], completionHandler: nil)
+              }
+            }
+          }
+        }
         result(true)
       } catch {
         result(false)
       }
     }
 
+    let initialStore = EKEventStore()
     if #available(iOS 17.0, *) {
       let status = EKEventStore.authorizationStatus(for: .reminder)
       if status == .fullAccess || status == .authorized {
         saveReminderBlock()
       } else {
-        store.requestFullAccessToReminders { granted, _ in
+        initialStore.requestFullAccessToReminders { granted, _ in
           DispatchQueue.main.async {
             if granted {
               saveReminderBlock()
@@ -205,7 +258,7 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate,
       case .authorized:
         saveReminderBlock()
       case .notDetermined:
-        store.requestAccess(to: .reminder) { granted, _ in
+        initialStore.requestAccess(to: .reminder) { granted, _ in
           DispatchQueue.main.async {
             if granted {
               saveReminderBlock()
