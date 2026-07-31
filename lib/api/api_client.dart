@@ -422,7 +422,10 @@ class ApiClient {
     String? cachedEtag;
     String? cachedBody;
 
-    if (isPreconnectUrl) {
+    final usePersistentValidation =
+        isPreconnectUrl && cacheDuration > Duration.zero;
+
+    if (usePersistentValidation) {
       cachedEtag = AppStorage.instance.getStringSync('etag_$url');
       cachedBody = AppStorage.instance.getStringSync('etag_resp_$url');
       if (cachedEtag != null &&
@@ -457,7 +460,7 @@ class ApiClient {
 
     try {
       var response = await request;
-      if (isPreconnectUrl) {
+      if (usePersistentValidation) {
         if (response.statusCode == 304 && cachedBody != null) {
           response = http.Response(
             cachedBody,

@@ -25,6 +25,9 @@ class AppPaths {
   }
 
   static Directory _platformDataRoot(String bucket) {
+    if (Platform.isAndroid || Platform.isIOS) {
+      return Directory('${Directory.systemTemp.path}/PreConnectData/$bucket');
+    }
     final home = _homeDirectoryPath();
     if (Platform.isMacOS) {
       final base = Directory('$home/Library/Application Support/PreConnect');

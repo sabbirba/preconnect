@@ -98,8 +98,7 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate,
       guard let self,
         let arguments = call.arguments as? [String: Any],
         let path = arguments["path"] as? String,
-        FileManager.default.fileExists(atPath: path),
-        let view = self.window?.rootViewController?.view
+        FileManager.default.fileExists(atPath: path)
       else {
         result(false)
         return
@@ -109,13 +108,7 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate,
       )
       controller.delegate = self
       self.documentController = controller
-      result(
-        controller.presentOptionsMenu(
-          from: view.bounds,
-          in: view,
-          animated: true
-        )
-      )
+      result(controller.presentPreview(animated: true))
     }
   }
 
@@ -196,7 +189,7 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate,
   }
 
   private func showCalendarEditor(event: EKEvent, store: EKEventStore) {
-    guard let presenter = window?.rootViewController else {
+    guard let presenter = UIApplication.preconnectTopViewController() else {
       completeCalendar(false)
       return
     }

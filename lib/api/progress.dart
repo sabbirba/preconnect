@@ -21,7 +21,7 @@ class ProgressService {
   static const String _coursePrerequisitesCacheKey =
       'student_progress_course_prerequisites_v1';
   static const List<String> _coursePrerequisitesUrls = <String>[
-    '${ApiConfig.publicJsonBase}/data/course-prerequisites.json',
+    ApiConfig.coursePrerequisitesUrl,
   ];
   final ApiClient _client = ApiClient();
   final Map<String, Future<ProgressInfo?>> _fetchInFlight =

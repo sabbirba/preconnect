@@ -153,9 +153,7 @@ class HolidayStatus {
 class HolidayTiming {
   HolidayTiming._();
 
-  static List<String> get _statusUrls => <String>[
-    '${ApiConfig.publicJsonBase}/holiday.json',
-  ];
+  static const List<String> _statusUrls = <String>[ApiConfig.holidayStatusUrl];
 
   static Future<HolidayStatus>? _inflight;
 
@@ -164,13 +162,15 @@ class HolidayTiming {
   }) async {
     if (_inflight != null) return _inflight!;
 
-    _inflight = _refreshStatus();
+    _inflight = _refreshStatus(forceRefresh: forceRefresh);
     return _inflight!;
   }
 
-  static Future<HolidayStatus> _refreshStatus() async {
+  static Future<HolidayStatus> _refreshStatus({
+    required bool forceRefresh,
+  }) async {
     try {
-      final result = await _fetchTodayStatus();
+      final result = await _fetchTodayStatus(forceRefresh: forceRefresh);
       return result.fromNetwork
           ? result.value
           : _fallbackOfflineStatus(DateTime.now());
@@ -179,14 +179,17 @@ class HolidayTiming {
     }
   }
 
-  static Future<({HolidayStatus value, bool fromNetwork})>
-  _fetchTodayStatus() async {
+  static Future<({HolidayStatus value, bool fromNetwork})> _fetchTodayStatus({
+    required bool forceRefresh,
+  }) async {
     for (final url in _statusUrls) {
       try {
         final response = await ApiClient().publicGet(
           url,
           acceptedStatusCodes: const <int>{200},
-          cacheDuration: const Duration(minutes: 5),
+          cacheDuration: forceRefresh
+              ? Duration.zero
+              : const Duration(minutes: 5),
         );
 
         if (response.statusCode != 200 || response.body.trim().isEmpty) {

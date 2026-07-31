@@ -24,11 +24,6 @@ class FreeLabsPage extends StatefulWidget {
   static Future<void> preload() async {
     final cache = AppPreferencesStore();
     try {
-      final cachedRaw = await cache.getString(
-        _FreeLabsPageState._freeLabsCacheKey,
-      );
-      if (cachedRaw != null && cachedRaw.trim().isNotEmpty) return;
-
       final response = await ApiClient().publicGet(
         _FreeLabsPageState._freeLabsUrl,
         cacheDuration: const Duration(minutes: 5),
@@ -583,20 +578,13 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     required bool forceRefresh,
   }) async {
     final cache = AppPreferencesStore();
-    if (!forceRefresh) {
-      final cachedRaw = await cache.getString(_freeLabsCacheKey);
-      if (cachedRaw != null && cachedRaw.trim().isNotEmpty) {
-        final cached = _decodeFreeLabsDetails(cachedRaw);
-        if (cached.isNotEmpty) {
-          return cached;
-        }
-      }
-    }
 
     try {
       final response = await ApiClient().publicGet(
         _freeLabsUrl,
-        cacheDuration: const Duration(minutes: 5),
+        cacheDuration: forceRefresh
+            ? Duration.zero
+            : const Duration(minutes: 5),
       );
       if (response.statusCode != 200) {
         return await _readCachedFreeLabsDetails(cache);

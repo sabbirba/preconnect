@@ -188,7 +188,9 @@ class ExamMapService {
     try {
       final response = await _client.publicGet(
         url,
-        cacheDuration: const Duration(seconds: 30),
+        cacheDuration: forceRefresh
+            ? Duration.zero
+            : const Duration(seconds: 30),
       );
       final decoded = jsonDecode(response.body);
       await _repo.writeJson(cacheKey, <String, dynamic>{

@@ -74,6 +74,7 @@ void main() {
     (tester) async {
       final cleanup = Completer<void>();
       bool? confirmed;
+      var navigationCompleted = false;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -89,6 +90,9 @@ void main() {
                     confirmLabel: 'Sign Out',
                     onConfirm: () => cleanup.future,
                   );
+                  if (confirmed == true) {
+                    navigationCompleted = true;
+                  }
                 },
                 child: const Text('Open'),
               );
@@ -112,6 +116,7 @@ void main() {
             .onPressed,
         isNull,
       );
+      expect(navigationCompleted, isFalse);
 
       cleanup.complete();
       await tester.pump(const Duration(milliseconds: 301));
@@ -119,6 +124,7 @@ void main() {
 
       expect(find.byType(Dialog), findsNothing);
       expect(confirmed, isTrue);
+      expect(navigationCompleted, isTrue);
     },
   );
 }

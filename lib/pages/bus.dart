@@ -32,7 +32,8 @@ class BusPage extends StatefulWidget {
 class _BusPageState extends State<BusPage> {
   static final CachedPageController<_BusDataPackage> controller =
       CachedPageController<_BusDataPackage>(
-        ({bool forceRefresh = false}) => _fetchBusDataPackage(),
+        ({bool forceRefresh = false}) =>
+            _fetchBusDataPackage(forceRefresh: forceRefresh),
       );
 
   String? _error;
@@ -209,11 +210,14 @@ class _BusPageState extends State<BusPage> {
   }
 }
 
-Future<_BusDataPackage> _fetchBusDataPackage() async {
+Future<_BusDataPackage> _fetchBusDataPackage({
+  bool forceRefresh = false,
+}) async {
   Future<_BusDataPackage> parseUrl(String url) async {
     final response = await ApiClient().publicGet(
       url,
       acceptedStatusCodes: <int>{200},
+      cacheDuration: forceRefresh ? Duration.zero : const Duration(hours: 6),
     );
     final decoded = jsonDecode(response.body);
     if (decoded is Map<String, dynamic>) {

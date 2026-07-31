@@ -85,7 +85,9 @@ class AppStorage {
 
   static Future<void> _writeToFile(String key, String value) async {
     try {
-      if (_cacheDir == null) await _initCacheDir();
+      if (_cacheDir == null || !_cacheDir!.existsSync()) {
+        await _initCacheDir();
+      }
       final file = _fileForKey(key);
       if (file == null) {
         throw StateError('File cache directory is unavailable');
@@ -256,7 +258,13 @@ class AppStorage {
       );
     }
     try {
-      _cacheDir?.listSync().forEach((f) => f.deleteSync());
+      final cacheDir = _cacheDir;
+      if (cacheDir != null && cacheDir.existsSync()) {
+        for (final entity in cacheDir.listSync()) {
+          entity.deleteSync(recursive: true);
+        }
+      }
+      await _initCacheDir();
     } catch (error) {
       throw AppStorageException('Clear file cache', error);
     }

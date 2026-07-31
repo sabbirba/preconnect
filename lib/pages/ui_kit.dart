@@ -354,22 +354,7 @@ void _showPdfSnackBar(
 }
 
 Future<bool> _openPdfNativelyOrFallback(String filePath) async {
-  if (defaultTargetPlatform == TargetPlatform.android ||
-      defaultTargetPlatform == TargetPlatform.iOS) {
-    try {
-      if (await NativeFile.open(filePath)) return true;
-    } catch (_) {}
-  }
-
-  try {
-    final opened = await launchUrl(
-      Uri.file(filePath),
-      mode: LaunchMode.externalApplication,
-    );
-    return opened;
-  } catch (_) {
-    return false;
-  }
+  return NativeFile.open(filePath);
 }
 
 class BracuActionBannerCard extends StatelessWidget {

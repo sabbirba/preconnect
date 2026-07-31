@@ -129,7 +129,7 @@ class ScraperDataService {
     try {
       final response = await _client.publicGet(
         url,
-        cacheDuration: _requestCacheTtl,
+        cacheDuration: forceRefresh ? Duration.zero : _requestCacheTtl,
       );
       final decoded = jsonDecode(response.body);
       await _repo.writeJson(cacheKey, <String, dynamic>{
