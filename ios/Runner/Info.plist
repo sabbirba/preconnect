@@ -87,8 +87,8 @@
 	<key>UIApplicationShortcutItems</key>
 	<array>
 		<dict>
-			<key>UIApplicationShortcutItemIconFile</key>
-			<string>ShortcutProfile</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeContact</string>
 			<key>UIApplicationShortcutItemSubtitle</key>
 			<string>Open Profile</string>
 			<key>UIApplicationShortcutItemTitle</key>
@@ -117,8 +117,8 @@
 			<string>quick.exams</string>
 		</dict>
 		<dict>
-			<key>UIApplicationShortcutItemIconFile</key>
-			<string>ShortcutFriends</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeLove</string>
 			<key>UIApplicationShortcutItemSubtitle</key>
 			<string>Open Friends</string>
 			<key>UIApplicationShortcutItemTitle</key>

@@ -115,7 +115,7 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate,
   func documentInteractionControllerViewControllerForPreview(
     _ controller: UIDocumentInteractionController
   ) -> UIViewController {
-    return window?.rootViewController ?? UIViewController()
+    return UIApplication.preconnectTopViewController() ?? window?.rootViewController ?? UIViewController()
   }
 
   private func registerCalendarChannel(binaryMessenger: FlutterBinaryMessenger) {
