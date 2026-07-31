@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:preconnect/tools/platform_channels.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class NativeFile {
   NativeFile._();
@@ -7,9 +8,25 @@ class NativeFile {
   static const MethodChannel _channel = MethodChannel(PlatformChannels.file);
 
   static Future<bool> open(String path) async {
-    return await _channel.invokeMethod<bool>('open', <String, String>{
-          'path': path,
-        }) ??
-        false;
+    try {
+      final opened = await _channel.invokeMethod<bool>('open', <String, String>{
+        'path': path,
+      });
+      if (opened == true) return true;
+    } on PlatformException {
+      return _openFileUri(path);
+    } on MissingPluginException {
+      return _openFileUri(path);
+    }
+
+    return _openFileUri(path);
+  }
+
+  static Future<bool> _openFileUri(String path) async {
+    try {
+      return launchUrl(Uri.file(path), mode: LaunchMode.externalApplication);
+    } catch (_) {
+      return false;
+    }
   }
 }

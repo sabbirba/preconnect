@@ -39,7 +39,12 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
   static const int _coursesChunkSize = 7;
   static final CachedPageController<ProgressInfo?> cache =
       CachedPageController<ProgressInfo?>(
-        ({bool forceRefresh = false}) => ProgressService().getProgress(),
+        ({bool forceRefresh = false}) => forceRefresh
+            ? ProgressService().fetchProgress(
+                fromGet: true,
+                cacheDuration: Duration.zero,
+              )
+            : ProgressService().getProgress(),
       );
 
   late Future<ProgressInfo?> _future;

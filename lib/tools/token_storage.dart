@@ -4,7 +4,12 @@ import 'dart:io';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 import 'package:flutter/foundation.dart'
-    show ValueNotifier, defaultTargetPlatform, kIsWeb, TargetPlatform;
+    show
+        ValueNotifier,
+        defaultTargetPlatform,
+        kIsWeb,
+        kReleaseMode,
+        TargetPlatform;
 
 import 'package:local_auth/local_auth.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -40,7 +45,7 @@ class TokenStorage {
   };
 
   static const _secureStorage = FlutterSecureStorage(
-    mOptions: MacOsOptions(usesDataProtectionKeychain: true),
+    mOptions: MacOsOptions(usesDataProtectionKeychain: kReleaseMode),
   );
 
   Future<void>? _legacyMigration;

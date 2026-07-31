@@ -201,7 +201,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _confirmLogout(BuildContext context) async {
     if (!context.mounted) return;
-    await showBracuConfirmationWithActionDialog(
+    final confirmed = await showBracuConfirmationWithActionDialog(
       context,
       icon: Icons.logout,
       title: 'Confirm Sign Out?',
@@ -211,9 +211,11 @@ class _HomePageState extends State<HomePage> {
       confirmColor: BracuPalette.danger,
       onConfirm: () async {
         await AuthService().logout(force: true, notify: false);
-        await AuthUiBridge.completeLogout();
       },
     );
+    if (confirmed) {
+      await AuthUiBridge.completeLogout();
+    }
   }
 
   @override

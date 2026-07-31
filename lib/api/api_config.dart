@@ -50,6 +50,10 @@ class ApiConfig {
       '$realtimeApiBase/data/academic-dates.json';
   static const String campusMapUrl = '$realtimeApiBase/data/map.json';
   static const String transportUrl = '$realtimeApiBase/data/transport.json';
+  static const String holidayStatusUrl = '$realtimeApiBase/holiday';
+  static const String ramadanStatusUrl = '$realtimeApiBase/ramadan';
+  static const String coursePrerequisitesUrl =
+      '$realtimeApiBase/course-prerequisites';
 
   static String get connectApiBase {
     if (_kIsWeb && !isChromeRuntimeAvailable()) {

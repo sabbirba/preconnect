@@ -16,7 +16,7 @@ class LibSyncApiClient extends http.BaseClient {
   final http.Client _inner;
   static String? _sessionIp;
   static const _secureStorage = FlutterSecureStorage(
-    mOptions: MacOsOptions(usesDataProtectionKeychain: true),
+    mOptions: MacOsOptions(usesDataProtectionKeychain: kReleaseMode),
   );
   static const String _cookiesStorageKey = 'libsync_cookies';
   static const String _googleRefreshTokenKey = 'libsync_google_refresh_token';

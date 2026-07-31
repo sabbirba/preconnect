@@ -39,9 +39,7 @@ class RamadanStatus {
 class RamadanTiming {
   RamadanTiming._();
 
-  static List<String> get _statusUrls => <String>[
-    '${ApiConfig.publicJsonBase}/ramadan.json',
-  ];
+  static const List<String> _statusUrls = <String>[ApiConfig.ramadanStatusUrl];
   static final ({DateTime start, DateTime end}) _knownRamadanWindow2026 = (
     start: DateTime(2026, 2, 18),
     end: DateTime(2026, 3, 19),
@@ -79,22 +77,25 @@ class RamadanTiming {
       return _inflight!;
     }
 
-    _inflight = _refreshRamadanStatus();
+    _inflight = _refreshRamadanStatus(forceRefresh: forceRefresh);
     return _inflight!;
   }
 
-  static Future<RamadanStatus> _refreshRamadanStatus() async {
+  static Future<RamadanStatus> _refreshRamadanStatus({
+    required bool forceRefresh,
+  }) async {
     try {
-      final result = await _fetchRamadanStatus();
+      final result = await _fetchRamadanStatus(forceRefresh: forceRefresh);
       return result.fromNetwork ? result.value : _fallbackOfflineStatus();
     } finally {
       _inflight = null;
     }
   }
 
-  static Future<({RamadanStatus value, bool fromNetwork})>
-  _fetchRamadanStatus() async {
-    final fallbackPayload = await _fetchPayload();
+  static Future<({RamadanStatus value, bool fromNetwork})> _fetchRamadanStatus({
+    required bool forceRefresh,
+  }) async {
+    final fallbackPayload = await _fetchPayload(forceRefresh: forceRefresh);
     final parsedFallback = _parseStatus(fallbackPayload);
     if (parsedFallback != null) {
       return (value: parsedFallback, fromNetwork: true);
@@ -118,13 +119,17 @@ class RamadanTiming {
     return const RamadanStatus(isRamadan: false);
   }
 
-  static Future<Map<String, dynamic>?> _fetchPayload() async {
+  static Future<Map<String, dynamic>?> _fetchPayload({
+    required bool forceRefresh,
+  }) async {
     for (final url in _statusUrls) {
       try {
         final response = await ApiClient().publicGet(
           url,
           acceptedStatusCodes: const <int>{200},
-          cacheDuration: const Duration(minutes: 5),
+          cacheDuration: forceRefresh
+              ? Duration.zero
+              : const Duration(minutes: 5),
         );
 
         if (response.statusCode != 200 || response.body.trim().isEmpty) {
