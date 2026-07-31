@@ -122,11 +122,17 @@ class GradeSheetService {
   }
 
   bool _looksLikePdf(List<int> bytes) {
-    return bytes.length >= 4 &&
-        bytes[0] == 0x25 &&
-        bytes[1] == 0x50 &&
-        bytes[2] == 0x44 &&
-        bytes[3] == 0x46;
+    if (bytes.length < 4) return false;
+    final limit = bytes.length < 1024 ? bytes.length - 3 : 1021;
+    for (var i = 0; i < limit; i++) {
+      if (bytes[i] == 0x25 &&
+          bytes[i + 1] == 0x50 &&
+          bytes[i + 2] == 0x44 &&
+          bytes[i + 3] == 0x46) {
+        return true;
+      }
+    }
+    return false;
   }
 
   String _normalizeBase64Payload(String value) {

@@ -20,7 +20,7 @@ Future<bool> openPdfUrl(
     if (await file.exists()) {
       final length = await file.length();
       if (length > 4) {
-        final header = await file.openRead(0, 4).first;
+        final header = await file.openRead(0, 1024).first;
         if (_isPdfHeader(header)) {
           final opened = await _openPdfNativelyOrFallback(file.path);
           if (opened) return true;
@@ -89,16 +89,22 @@ Future<bool> openPdfUrl(
     context,
     url,
     failureMessage: failureMessage,
-    mobilePreferredMode: LaunchMode.externalApplication,
+    mobilePreferredMode: LaunchMode.inAppBrowserView,
   );
 }
 
 bool _isPdfHeader(List<int> bytes) {
   if (bytes.length < 4) return false;
-  return bytes[0] == 0x25 &&
-      bytes[1] == 0x50 &&
-      bytes[2] == 0x44 &&
-      bytes[3] == 0x46;
+  final limit = bytes.length < 1024 ? bytes.length - 3 : 1021;
+  for (var i = 0; i < limit; i++) {
+    if (bytes[i] == 0x25 &&
+        bytes[i + 1] == 0x50 &&
+        bytes[i + 2] == 0x44 &&
+        bytes[i + 3] == 0x46) {
+      return true;
+    }
+  }
+  return false;
 }
 
 String _resolveOriginalFileName(String url) {
@@ -166,9 +172,21 @@ Future<bool> openExternalUrl(
   final mode = isMobilePlatform
       ? mobilePreferredMode
       : LaunchMode.platformDefault;
-  var launched = await launchUrl(uri, mode: mode);
+  var launched = false;
+  try {
+    launched = await launchUrl(uri, mode: mode);
+  } catch (_) {}
   if (!launched && isMobilePlatform) {
-    launched = await launchUrl(uri, mode: mobileFallbackMode);
+    try {
+      launched = await launchUrl(uri, mode: mobileFallbackMode);
+    } catch (_) {}
+  }
+  if (!launched &&
+      isMobilePlatform &&
+      mobileFallbackMode != LaunchMode.platformDefault) {
+    try {
+      launched = await launchUrl(uri, mode: LaunchMode.platformDefault);
+    } catch (_) {}
   }
   if (!launched && context.mounted) {
     showAppSnackBar(context, failureMessage);
