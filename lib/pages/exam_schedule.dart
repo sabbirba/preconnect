@@ -779,21 +779,12 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
         )
         .toList();
 
-    var midExams = isPastSemester
+    final midExams = isPastSemester
         ? allMidExams
         : (showPast ? pastMidExams : upcomingMidExams);
-    var finalExams = isPastSemester
+    final finalExams = isPastSemester
         ? allFinalExams
         : (showPast ? pastFinalExams : upcomingFinalExams);
-
-    if (!isPastSemester &&
-        !showPast &&
-        midExams.isEmpty &&
-        finalExams.isEmpty &&
-        (allMidExams.isNotEmpty || allFinalExams.isNotEmpty)) {
-      midExams = allMidExams;
-      finalExams = allFinalExams;
-    }
 
     midExams.sort((a, b) {
       final aTime = BracuTime.parseDateTime(midDate(a), midStart(a));
