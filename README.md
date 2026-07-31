@@ -45,8 +45,11 @@ A Flutter app for BRAC University students with SSO login and Connect API integr
 Installation is available for multiple platforms through:
 
 - Latest release assets (APK / AAB / Chrome extension / iOS / macOS): [GitHub Releases](https://github.com/sabbirba/preconnect/releases/latest)
+- iOS: [Apple App Store](https://apps.apple.com/app/id6791423431)
 - Android: [Google Play Store](https://play.google.com/store/apps/details?id=com.sabbirba.preconnect)
-- macOS: Using [Homebrew](https://brew.sh):
+- Chrome: [Chrome Web Store](https://chromewebstore.google.com/detail/preconnect/fcfkbdogaciifaihbfhnaijfhdcjokca)
+- Firefox: [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/preconnect/)
+- macOS: [Apple App Store](https://apps.apple.com/app/id6791423431) or [Homebrew](https://github.com/hitblast/homebrew-tap):
 
   ```bash
   brew tap hitblast/tap
@@ -54,7 +57,7 @@ Installation is available for multiple platforms through:
   brew install preconnect
   ```
 
-  Or, use GitHub Releases as mentioned before.
+  Or, use the macOS package from [GitHub Releases](https://github.com/sabbirba/preconnect/releases/latest).
 
 ## Documentation
 
