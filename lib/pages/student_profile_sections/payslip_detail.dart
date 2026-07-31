@@ -85,11 +85,9 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
       if (!mounted) return;
 
       if (bytes == null || bytes.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not generate PDF payslip')),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not generate PDF payslip')),
+        );
         return;
       }
 

@@ -409,7 +409,7 @@ class _DevsPageState extends State<DevsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const BracuSectionTitle(title: 'People Behind It'),
-        const Gap(12),
+        const Gap(8),
         if (_contributors.isEmpty && _contributorsLoading)
           const BracuLoading()
         else
@@ -513,9 +513,9 @@ class _ContributorsGrid extends StatelessWidget {
         return GridView.builder(
           gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
             maxCrossAxisExtent: maxExtent,
-            mainAxisExtent: 160,
-            mainAxisSpacing: 14,
-            crossAxisSpacing: 14,
+            mainAxisExtent: 126,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 0,
           ),
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -687,14 +687,14 @@ class _DevGridTile extends StatelessWidget {
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         final compact = width < 165;
-        final avatarSize = (width * 0.54).clamp(68.0, 96.0);
-        final nameSize = compact ? 13.4 : 15.2;
-        final roleSize = compact ? 11.4 : 12.6;
+        final avatarSize = (width * 0.46).clamp(58.0, 78.0);
+        final nameSize = compact ? 12.8 : 14.2;
+        final roleSize = compact ? 10.8 : 11.6;
         return InkWell(
           onTap: () => openExternalUrl(context, contributor.url),
           borderRadius: BorderRadius.circular(12),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _ContributorAvatar(
@@ -702,7 +702,7 @@ class _DevGridTile extends StatelessWidget {
                 url: contributor.avatarUrl,
                 size: avatarSize,
               ),
-              const Gap(12),
+              const Gap(7),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.center,
@@ -717,7 +717,7 @@ class _DevGridTile extends StatelessWidget {
                   ),
                 ),
               ),
-              const Gap(6),
+              const Gap(5),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.center,

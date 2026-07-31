@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile.dart';
@@ -23,8 +24,8 @@ class GradeSheetService {
   final ApiClient _client = ApiClient();
 
   Future<Uint8List?> fetchGradeSheetBytes({bool forceRefresh = true}) async {
-    final file = await _gradeSheetTempFile();
-    if (!forceRefresh && await file.exists()) {
+    final file = kIsWeb ? null : await _gradeSheetTempFile();
+    if (!forceRefresh && file != null && await file.exists()) {
       try {
         final bytes = await file.readAsBytes();
         if (_looksLikePdf(bytes)) return bytes;
@@ -49,8 +50,10 @@ class GradeSheetService {
       );
       final bytes = _extractPdfBytes(response.bodyBytes, response.body);
       if (bytes != null && bytes.isNotEmpty) {
-        await file.parent.create(recursive: true);
-        await file.writeAsBytes(bytes, flush: true);
+        if (file != null) {
+          await file.parent.create(recursive: true);
+          await file.writeAsBytes(bytes, flush: true);
+        }
         return bytes;
       }
     } catch (_) {}
