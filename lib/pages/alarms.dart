@@ -359,31 +359,34 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       final weekdays = _mapWeekdays(days, shift: dayShift);
       if (weekdays.isEmpty) return;
       try {
-        final weekdaysList = weekdays.toList();
         final now = DateTime.now();
-        DateTime nextDate = DateTime(
-          now.year,
-          now.month,
-          now.day,
-          hour,
-          minute,
-        );
-        while (true) {
-          if (weekdaysList.contains(nextDate.weekday)) break;
-          nextDate = nextDate.add(const Duration(days: 1));
+        var addedAny = false;
+        for (final targetWeekday in weekdays) {
+          DateTime nextDate = DateTime(
+            now.year,
+            now.month,
+            now.day,
+            hour,
+            minute,
+          );
+          while (nextDate.weekday != targetWeekday || nextDate.isBefore(now)) {
+            nextDate = nextDate.add(const Duration(days: 1));
+          }
+          final event = Event(
+            title: '$courseCode Class Reminder',
+            description:
+                '$courseCode Class Reminder ($minutesBefore min before)',
+            location: 'BRACU Campus',
+            startDate: nextDate,
+            endDate: nextDate.add(const Duration(hours: 1)),
+            recurrence: Recurrence(frequency: Frequency.weekly),
+          );
+          final success = await Add2Reminder.addReminder(event);
+          if (success) addedAny = true;
         }
-        final event = Event(
-          title: '$courseCode Class Reminder',
-          description: '$courseCode Class Reminder ($minutesBefore min before)',
-          location: 'BRACU Campus',
-          startDate: nextDate,
-          endDate: nextDate.add(const Duration(hours: 1)),
-          recurrence: Recurrence(frequency: Frequency.weekly),
-        );
-        final success = await Add2Reminder.addReminder(event);
-        if (success) {
+        if (addedAny) {
           if (!context.mounted) return;
-          showAppSnackBar(context, 'Reminder added to Apple Reminders.');
+          showAppSnackBar(context, 'Reminders added to Apple Reminders.');
           await AppStorage.instance.setBool('alarm_done_$courseCode', true);
           if (mounted) setState(() {});
           RefreshBus.instance.notify(reason: 'alarms');
@@ -391,12 +394,12 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           if (!context.mounted) return;
           showAppSnackBar(
             context,
-            'Unable to add reminder to Apple Reminders.',
+            'Unable to add reminders to Apple Reminders.',
           );
         }
       } catch (_) {
         if (!context.mounted) return;
-        showAppSnackBar(context, 'Unable to add reminder to Apple Reminders.');
+        showAppSnackBar(context, 'Unable to add reminders to Apple Reminders.');
       }
       return;
     }
