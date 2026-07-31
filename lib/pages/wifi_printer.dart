@@ -1552,9 +1552,8 @@ class _PrinterFileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = BracuGlassCard(
+    final content = BracuCard(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      borderRadius: BorderRadius.circular(16),
       child: Row(
         children: [
           Expanded(
@@ -1870,9 +1869,8 @@ class _PrinterPreferencesPanel extends StatelessWidget {
           vertical: compact ? 8 : 9,
         );
 
-        return BracuGlassCard(
+        return BracuCard(
           padding: const EdgeInsets.all(12),
-          borderRadius: BorderRadius.circular(16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -2039,9 +2037,8 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
           vertical: compact ? 8 : 9,
         );
 
-        return BracuGlassCard(
+        return BracuCard(
           padding: const EdgeInsets.all(12),
-          borderRadius: BorderRadius.circular(16),
           child: Column(
             children: [
               Row(

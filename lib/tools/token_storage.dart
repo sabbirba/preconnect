@@ -20,6 +20,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:preconnect/tools/platform_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/storage_web.dart';
 import 'package:preconnect/tools/http/http_headers.dart';
+import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:preconnect/tools/store_actions.dart';
 
 class TokenPersistenceException implements Exception {
@@ -582,15 +584,63 @@ class InAppReviewPrompt {
         return await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
 
-      if (Platform.isIOS) {
-        final appStoreId = (iosAppStoreId ?? '').trim();
-        if (appStoreId.isEmpty) return false;
-        return launchUrl(
-          Uri.parse('https://apps.apple.com/app/id$appStoreId'),
+      try {
+        final reviewAvailable = await StoreActions.isReviewAvailable();
+        if (reviewAvailable) {
+          await StoreActions.requestReview();
+          return true;
+        }
+      } catch (_) {}
+
+      final isApple =
+          !kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.iOS ||
+              defaultTargetPlatform == TargetPlatform.macOS);
+
+      if (isApple) {
+        var appStoreId = (iosAppStoreId ?? '').trim();
+        if (appStoreId.isEmpty) {
+          try {
+            final packageInfo = await PackageInfo.fromPlatform();
+            final bundleId = packageInfo.packageName;
+            final response = await http
+                .get(
+                  Uri.parse(
+                    'https://itunes.apple.com/lookup?bundleId=$bundleId',
+                  ),
+                )
+                .timeout(const Duration(seconds: 3));
+            if (response.statusCode == 200) {
+              final data = jsonDecode(response.body);
+              if (data != null &&
+                  data['resultCount'] != null &&
+                  data['resultCount'] > 0) {
+                final results = data['results'] as List<dynamic>;
+                if (results.isNotEmpty && results[0]['trackId'] != null) {
+                  appStoreId = results[0]['trackId'].toString();
+                }
+              }
+            }
+          } catch (_) {}
+        }
+
+        if (appStoreId.isNotEmpty) {
+          final launched = await launchUrl(
+            Uri.parse('https://apps.apple.com/app/id$appStoreId'),
+            mode: LaunchMode.externalApplication,
+          );
+          if (launched) return true;
+        }
+
+        return await launchUrl(
+          Uri.parse(
+            'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
+          ),
           mode: LaunchMode.externalApplication,
         );
       }
-      return launchUrl(
+
+      return await launchUrl(
         Uri.parse(
           'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
         ),
