@@ -8,6 +8,7 @@ import 'libsync_config.dart';
 import 'client_creator.dart';
 import 'google_auth.dart';
 import 'package:preconnect/api/preferences_store.dart';
+import 'error_reporter.dart';
 
 class LibSyncApiClient extends http.BaseClient {
   LibSyncApiClient() : _inner = createLibSyncClient();
@@ -51,7 +52,9 @@ class LibSyncApiClient extends http.BaseClient {
         );
       }
       unawaited(_processOfflineQueue());
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      reportLibSyncError('Initializing the LibSync cache', error, stackTrace);
+    }
     _cacheInitialized = true;
   }
 
@@ -261,7 +264,9 @@ class LibSyncApiClient extends http.BaseClient {
     if (kIsWeb) return;
     try {
       await _secureStorage.write(key: key, value: value);
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      reportLibSyncError('Writing LibSync secure storage', error, stackTrace);
+    }
   }
 
   Future<String?> _safeRead(String key) async {
@@ -282,7 +287,13 @@ class LibSyncApiClient extends http.BaseClient {
     if (!kIsWeb) {
       try {
         await _secureStorage.delete(key: key);
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        reportLibSyncError(
+          'Deleting LibSync secure storage',
+          error,
+          stackTrace,
+        );
+      }
     }
     final store = AppPreferencesStore();
     await store.remove(key);
@@ -444,7 +455,13 @@ class LibSyncApiClient extends http.BaseClient {
             if (refreshVal != null) {
               cookiesToSave['refresh'] = refreshVal.toString();
             }
-          } catch (_) {}
+          } catch (error, stackTrace) {
+            reportLibSyncError(
+              'Refreshing a LibSync request',
+              error,
+              stackTrace,
+            );
+          }
 
           if (cookiesToSave.isNotEmpty) {
             await saveCookies(cookiesToSave);
@@ -488,7 +505,9 @@ class LibSyncApiClient extends http.BaseClient {
             if (refreshVal != null) {
               cookiesToSave['refresh'] = refreshVal.toString();
             }
-          } catch (_) {}
+          } catch (error, stackTrace) {
+            reportLibSyncError('Retrying a LibSync request', error, stackTrace);
+          }
 
           if (cookiesToSave.isNotEmpty) {
             await saveCookies(cookiesToSave);
@@ -496,7 +515,9 @@ class LibSyncApiClient extends http.BaseClient {
           }
         }
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      reportLibSyncError('Persisting the LibSync cache', error, stackTrace);
+    }
 
     return false;
   }
@@ -535,7 +556,9 @@ class LibSyncApiClient extends http.BaseClient {
 
       await store.setString('libsync_offline_actions', jsonEncode(queue));
       unawaited(_processOfflineQueue());
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      reportLibSyncError('Queuing a LibSync request', error, stackTrace);
+    }
   }
 
   Future<void> _processOfflineQueue() async {
@@ -562,7 +585,9 @@ class LibSyncApiClient extends http.BaseClient {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             continue;
           }
-        } catch (_) {}
+        } catch (error, stackTrace) {
+          reportLibSyncError('Replaying a LibSync request', error, stackTrace);
+        }
         remaining.add(item);
       }
 
@@ -571,6 +596,12 @@ class LibSyncApiClient extends http.BaseClient {
       } else {
         await store.setString('libsync_offline_actions', jsonEncode(remaining));
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      reportLibSyncError(
+        'Processing the LibSync offline queue',
+        error,
+        stackTrace,
+      );
+    }
   }
 }

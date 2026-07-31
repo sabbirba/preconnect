@@ -21,14 +21,14 @@ if [[ ! "${APP_BUILD_NUMBER}" =~ ^[0-9]+$ ]]; then
 fi
 
 CHROME_BUILD_NUMBER=${APP_BUILD_NUMBER}
-IFS='.' read -r APP_MAJOR APP_MINOR APP_PATCH <<< "${APP_VERSION}"
+IFS='.' read -r APP_MAJOR APP_MINOR APP_PATCH <<<"${APP_VERSION}"
 if [[ -z "${APP_MAJOR}" || -z "${APP_MINOR}" || -z "${APP_PATCH}" ]]; then
   echo "Unable to parse app version for Chrome manifest versioning" >&2
   exit 1
 fi
 CHROME_BUILD_NUMBER_SUFFIX=$((CHROME_BUILD_NUMBER % 10000))
 CHROME_VERSION_SUFFIX=$((10000 + CHROME_BUILD_NUMBER_SUFFIX))
-if (( CHROME_VERSION_SUFFIX > 65535 )); then
+if ((CHROME_VERSION_SUFFIX > 65535)); then
   echo "Chrome version suffix ${CHROME_VERSION_SUFFIX} exceeds the manifest limit of 65535" >&2
   exit 1
 fi
@@ -78,10 +78,8 @@ for f in \
   manifest.json \
   favicon.ico \
   favicon.png \
-  apple-touch-icon.png \
-  extension_bootstrap.js \
-  flutter_config.js \
-  auto_click_logout.js \
+  touch_icon.png \
+  auto_logout.js \
   remove_hash.js \
   remove_loader.js \
   index.html; do
@@ -98,27 +96,88 @@ rm -f "${COMMON_DIR}/_headers"
 
 perl -0pi -e 's/serviceWorkerSettings:\s*\{\s*serviceWorkerVersion:\s*"[^"]+"[^}]*\}/serviceWorkerSettings: null/s' \
   "${COMMON_DIR}/flutter_bootstrap.js"
-perl -0pi -e 's/"renderer":"canvaskit"/"renderer":"html"/g' \
-  "${COMMON_DIR}/flutter_bootstrap.js"
-perl -pi -e 's/_flutter\.loader\.load\(\)/_flutter.loader.load({config:{renderer:"html"}})/g' \
+perl -0pi -e 's#_flutter\.loader\.load\(\{\s*serviceWorkerSettings:\s*null\s*\}\);#_flutter.loader.load({serviceWorkerSettings:null,config:{renderer:"canvaskit",canvasKitBaseUrl:"canvaskit/",canvasKitVariant:"auto"}});#s' \
   "${COMMON_DIR}/flutter_bootstrap.js"
 rm -f "${COMMON_DIR}/flutter_service_worker.js"
 
 perl -0pi -e 's#https://www\.gstatic\.com/flutter-canvaskit#canvaskit#g' \
   "${COMMON_DIR}"/*.js
 
-perl -pi -e 's/new Function\(s\)\(\)/throw new Error("Deferred loading not supported")/g' \
-  "${COMMON_DIR}"/*.js
-
-if rg -n "unpkg\.com|gstatic\.com/flutter-canvaskit|eval\\(|new Function" "${COMMON_DIR}"/*.js >/dev/null 2>&1; then
-  echo "Unexpected remote code reference found in Chrome extension JS output" >&2
+FIREBASE_CORE_WEB_DIR="$(python3 -c "
+import json
+from pathlib import Path
+config = json.loads(Path('${ROOT_DIR}/.dart_tool/package_config.json').read_text())
+package = next(item for item in config['packages'] if item['name'] == 'firebase_core_web')
+uri = package['rootUri']
+print(Path(uri.removeprefix('file://')).resolve())
+")"
+FIREBASE_JS_VERSION="$(sed -n \
+  "s/const String supportedFirebaseJsSdkVersion = '\\([^']*\\)';/\\1/p" \
+  "${FIREBASE_CORE_WEB_DIR}/lib/src/firebase_sdk_version.dart")"
+if [[ -z "${FIREBASE_JS_VERSION}" ]]; then
+  echo "Unable to determine the Firebase web SDK version" >&2
   exit 1
 fi
+FIREBASE_DIR="${COMMON_DIR}/firebase/${FIREBASE_JS_VERSION}"
+mkdir -p "${FIREBASE_DIR}"
+for firebase_module in app messaging; do
+  curl \
+    --fail \
+    --silent \
+    --show-error \
+    --location \
+    --retry 3 \
+    --output "${FIREBASE_DIR}/firebase-${firebase_module}.js" \
+    "https://www.gstatic.com/firebasejs/${FIREBASE_JS_VERSION}/firebase-${firebase_module}.js"
+done
+perl -0pi -e \
+  's#https://www\.gstatic\.com/firebasejs/[^/]+/firebase-app\.js#./firebase-app.js#g' \
+  "${FIREBASE_DIR}/firebase-app.js" \
+  "${FIREBASE_DIR}/firebase-messaging.js"
+perl -0pi -e 's#https://www\.gstatic\.com/firebasejs/#firebase/#g' \
+  "${COMMON_DIR}"/*.js
 
 dart compile js \
   "${ROOT_DIR}/web/background.dart" \
   -O2 \
   -o "${COMMON_DIR}/background.dart.js"
+
+if remote_code_match="$(rg -n \
+  --glob '*.js' \
+  "unpkg\.com|gstatic\.com/flutter-canvaskit|gstatic\.com/firebasejs|eval\\(|new Function" \
+  "${COMMON_DIR}" 2>/dev/null)"; then
+  echo "Unexpected remote code reference found in extension JS output" >&2
+  printf '%s\n' "${remote_code_match}" >&2
+  exit 1
+fi
+
+find "${COMMON_DIR}" -type f \( \
+  -name '*.map' -o \
+  -name '*.symbols' -o \
+  -name '*.deps' \
+  \) -delete
+find "${COMMON_DIR}" -type f -name '*.dart' -delete
+find "${COMMON_DIR}/canvaskit" -maxdepth 1 -type f \
+  ! -name 'canvaskit.js' \
+  ! -name 'canvaskit.wasm' \
+  -delete
+rm -rf "${COMMON_DIR}/canvaskit/experimental_webparagraph"
+
+for required_file in \
+  canvaskit/canvaskit.js \
+  canvaskit/canvaskit.wasm \
+  canvaskit/chromium/canvaskit.js \
+  canvaskit/chromium/canvaskit.wasm; do
+  if [[ ! -f "${COMMON_DIR}/${required_file}" ]]; then
+    echo "Missing local CanvasKit resource: ${required_file}" >&2
+    exit 1
+  fi
+done
+
+if ! rg -q 'renderer:"canvaskit"' "${COMMON_DIR}/flutter_bootstrap.js"; then
+  echo "Flutter extension bootstrap is not configured for CanvasKit" >&2
+  exit 1
+fi
 
 mkdir -p "${OUT_DIR}"
 mkdir -p "${FIREFOX_DIR}"
@@ -134,6 +193,9 @@ d['version'] = '${CHROME_VERSION}'
 d['version_name'] = '${CHROME_VERSION_NAME}'
 d.pop('sidebar_action', None)
 d.pop('browser_specific_settings', None)
+csp = d.get('content_security_policy', {}).get('extension_pages', '')
+if \"'self'\" not in csp or \"'wasm-unsafe-eval'\" not in csp:
+    raise SystemExit('Chrome extension CSP does not permit local CanvasKit WASM')
 with open(manifest_path, 'w') as f:
     json.dump(d, f, indent=2)
 "
@@ -150,6 +212,9 @@ if 'permissions' in d:
     d['permissions'] = [p for p in d['permissions'] if p not in ('sidePanel', 'gcm', 'commands')]
 if 'background' in d and 'service_worker' in d['background']:
     d['background']['scripts'] = [d['background'].pop('service_worker')]
+csp = d.get('content_security_policy', {}).get('extension_pages', '')
+if \"'self'\" not in csp or \"'wasm-unsafe-eval'\" not in csp:
+    raise SystemExit('Firefox extension CSP does not permit local CanvasKit WASM')
 with open(manifest_path, 'w') as f:
     json.dump(d, f, indent=2)
 "

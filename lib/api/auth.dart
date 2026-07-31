@@ -1,19 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
+import 'package:preconnect/tools/http/http_headers.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
-import 'package:preconnect/api/friend_store.dart';
-import 'package:preconnect/pages/login.dart';
-import 'package:preconnect/pages/wifi_printer.dart';
+import 'package:preconnect/features/auth/application/auth_bridge.dart';
+import 'package:preconnect/features/auth/application/session_cleanup.dart';
 import 'package:preconnect/tools/bracu_logout.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/storage_keys.dart';
+import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/token_refresh.dart';
 import 'package:preconnect/tools/web_shared.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -22,9 +21,6 @@ import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/api/fcm.dart';
 
 class AuthService {
-  static final GlobalKey<NavigatorState> navigatorKey =
-      GlobalKey<NavigatorState>();
-
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal() {
@@ -45,17 +41,10 @@ class AuthService {
   static bool _isLoggingOut = false;
   static bool get isLoggingOut => _isLoggingOut;
 
-  Future<void> login(BuildContext context) async {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginPage()),
-    );
-  }
-
   Future<void> logout({
-    BuildContext? context,
     bool instant = false,
     bool force = false,
+    bool notify = true,
   }) async {
     if (_isLoggingOut) {
       return;
@@ -63,10 +52,6 @@ class AuthService {
     _isLoggingOut = true;
 
     try {
-      try {
-        await FCMService.instance.unregisterDevice();
-      } catch (_) {}
-
       if (!force && !instant && _bootstrapStartTime != null) {
         final timeSinceBootstrap = DateTime.now().difference(
           _bootstrapStartTime!,
@@ -74,6 +59,12 @@ class AuthService {
         if (timeSinceBootstrap < _bootstrapGracePeriod) {
           return;
         }
+      }
+
+      try {
+        await FCMService.instance.unregisterDevice();
+      } catch (error) {
+        unawaited(AppLog.write('Push device unregistration failed: $error'));
       }
 
       var refreshToken = await _storage.read(
@@ -86,14 +77,13 @@ class AuthService {
       if (accessToken == null && refreshToken == null) {
         await _clearAuthSessionData();
         await _clearLocalCaches();
-        RefreshBus.instance.notify(reason: 'auth');
+        if (notify) {
+          RefreshBus.instance.notify(reason: 'auth');
+        }
         return;
       }
 
-      final logoutContext = context;
       if (!kIsWeb &&
-          logoutContext != null &&
-          logoutContext.mounted &&
           refreshToken != null &&
           refreshToken.isNotEmpty &&
           (idToken == null || idToken.isEmpty)) {
@@ -108,20 +98,18 @@ class AuthService {
       }
 
       final canShowMobileLogoutWebView =
-          !kIsWeb &&
-          logoutContext != null &&
-          logoutContext.mounted &&
-          idToken != null &&
-          idToken.isNotEmpty;
+          !kIsWeb && idToken != null && idToken.isNotEmpty;
       if (canShowMobileLogoutWebView) {
         await _revokeMercureSession(accessToken);
-        if (logoutContext.mounted) {
-          await LoginPage.openLogoutWebView(logoutContext, idToken: idToken);
+        final opened = await AuthUiBridge.openLogoutView(idToken);
+        if (opened) {
+          await _clearAuthSessionData();
+          await _clearLocalCaches();
+          if (notify) {
+            RefreshBus.instance.notify(reason: 'auth');
+          }
+          return;
         }
-        await _clearAuthSessionData();
-        await _clearLocalCaches();
-        RefreshBus.instance.notify(reason: 'auth');
-        return;
       }
 
       if (kIsWeb) {
@@ -135,11 +123,15 @@ class AuthService {
       await _clearAuthSessionData();
       if (instant) {
         unawaited(_finishLogout(refreshToken, accessToken: accessToken));
-        RefreshBus.instance.notify(reason: 'auth');
+        if (notify) {
+          RefreshBus.instance.notify(reason: 'auth');
+        }
         return;
       }
       await _finishLogout(refreshToken, accessToken: accessToken);
-      RefreshBus.instance.notify(reason: 'auth');
+      if (notify) {
+        RefreshBus.instance.notify(reason: 'auth');
+      }
     } finally {
       _isLoggingOut = false;
     }
@@ -185,7 +177,9 @@ class AuthService {
             )
             .timeout(_authRequestTimeout);
       }
-    } catch (_) {}
+    } catch (error) {
+      unawaited(AppLog.write('Server logout revocation failed: $error'));
+    }
   }
 
   Future<void> _revokeMercureSession(String? accessToken) async {
@@ -201,21 +195,21 @@ class AuthService {
             },
           )
           .timeout(_authRequestTimeout);
-    } catch (_) {}
+    } catch (error) {
+      unawaited(AppLog.write('Mercure logout revocation failed: $error'));
+    }
   }
 
   Future<void> _clearAuthSessionData() async {
-    await _storage.deleteAll();
-    ApiClient().clearTransientCaches();
-    await LoginPage.clearSessionArtifacts();
-    await CampusPrinterPage.clearStoredState();
+    await clearAuthenticationState(
+      storage: _storage,
+      clearTransientCaches: ApiClient().clearTransientCaches,
+      clearUiArtifacts: AuthUiBridge.clearSessionArtifacts,
+    );
   }
 
   Future<void> _clearLocalCaches() async {
     await AppStorage.instance.clear();
-    await _clearStoredProfileAndSessionData();
-    await FriendScheduleStore().clearAll();
-    await CaptiveLoginStore.instance.clear();
     await ProfileImageCache.instance.clear();
     CachedImage.clearMemoryCache();
     await LibSyncAuthService.instance.logout();
@@ -226,67 +220,15 @@ class AuthService {
         for (final entity in entities) {
           try {
             entity.deleteSync(recursive: true);
-          } catch (_) {}
+          } catch (error) {
+            unawaited(
+              AppLog.write('Temporary logout file cleanup failed: $error'),
+            );
+          }
         }
       }
-    } catch (_) {}
-  }
-
-  Future<void> _clearStoredProfileAndSessionData() async {
-    final storage = AppStorage.instance;
-    final keysToRemove = <String>{
-      StorageKeys.currentSessionSemesterId,
-      StorageKeys.studentId,
-      StorageKeys.fullName,
-      StorageKeys.studentEmail,
-      StorageKeys.shortCode,
-      StorageKeys.program,
-      StorageKeys.departmentName,
-      StorageKeys.currentSemester,
-      StorageKeys.cgpa,
-      StorageKeys.earnedCredit,
-      StorageKeys.attemptedCredit,
-      StorageKeys.photoFilePath,
-      StorageKeys.mobileNo,
-      StorageKeys.bloodGroup,
-      StorageKeys.permanentAddress,
-      StorageKeys.presentAddress,
-      StorageKeys.isBothAddressSame,
-      StorageKeys.permanentUpazilaName,
-      StorageKeys.presentUpazilaName,
-      StorageKeys.fatherName,
-      StorageKeys.fatherMobileNo,
-      StorageKeys.fatherEmail,
-      StorageKeys.motherName,
-      StorageKeys.motherMobileNo,
-      StorageKeys.motherEmail,
-      StorageKeys.localGuardianName,
-      StorageKeys.localGuardianMobileNo,
-      StorageKeys.localGuardianEmail,
-      StorageKeys.sponsoredBy,
-      StorageKeys.countryName,
-      StorageKeys.hobbies,
-      StorageKeys.awards,
-      StorageKeys.hasDisability,
-      StorageKeys.disabilityDetails,
-      StorageKeys.dateOfBirth,
-      StorageKeys.nationalIdNo,
-      StorageKeys.passportNo,
-      StorageKeys.birthCertificateNo,
-      StorageKeys.emergencyContactNo,
-      StorageKeys.emergencyContactName,
-      StorageKeys.qrBase64,
-      StorageKeys.qrHash,
-      StorageKeys.qrPayloadVersion,
-      StorageKeys.cachedHasAuthSession,
-      StorageKeys.homeTab,
-      StorageKeys.studentSchedule,
-      StorageKeys.examScheduleSnapshot,
-      StorageKeys.alarmsSnapshot,
-      StorageKeys.themeMode,
-    };
-    for (final key in keysToRemove) {
-      await storage.remove(key);
+    } catch (error) {
+      unawaited(AppLog.write('Temporary logout cleanup failed: $error'));
     }
   }
 

@@ -1,0 +1,90 @@
+name: Bug Report
+description: Report a reproducible problem in PreConnect
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before Submitting
+      options:
+        - label: I searched existing issues for the same problem.
+          required: true
+        - label: I tested the latest release or current main branch.
+          required: true
+        - label: This report contains no credentials, tokens, private student data, or security vulnerability details.
+          required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Affected Platform
+      options:
+        - Android
+        - iOS
+        - macOS
+        - Web
+        - Chrome Extension
+        - Firefox Extension
+        - Shared Code
+        - CI or Release Automation
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App Version or Commit
+      placeholder: 2.0.4+202608039 or commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Explain what failed and when it started.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction Steps
+      placeholder: |
+        1. Open...
+        2. Select...
+        3. Observe...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs or Screenshots
+      description: Remove student data, account identifiers, tokens, cookies, QR codes, and private URLs.
+  - type: dropdown
+    id: network
+    attributes:
+      label: Network State
+      options:
+        - Online
+        - Offline
+        - Unstable Connection
+        - Campus Wi-Fi
+        - Not Relevant
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Include device, OS version, browser version, or recent related changes when relevant.

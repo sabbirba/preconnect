@@ -4,7 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:dart_pdf_reader/dart_pdf_reader.dart' deferred as pdf_reader;
+import 'package:dart_pdf_reader/dart_pdf_reader.dart' as pdf_reader;
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
@@ -19,6 +19,8 @@ import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/snmp_client.dart';
+
+part 'wifi_printer_sections/printer_models.dart';
 
 class CampusPrinterPage extends StatefulWidget {
   const CampusPrinterPage({super.key});
@@ -207,14 +209,6 @@ class CampusPrinterPage extends StatefulWidget {
 
   @override
   State<CampusPrinterPage> createState() => _CampusPrinterPageState();
-}
-
-class _SelectedFile {
-  _SelectedFile({required this.name, required this.bytes, this.pageCount});
-
-  final String name;
-  final Uint8List bytes;
-  int? pageCount;
 }
 
 class _CampusPrinterPageState extends State<CampusPrinterPage> {
@@ -704,7 +698,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   Future<({int? pageCount})> _readPdfInfo(Uint8List bytes) async {
     try {
-      await pdf_reader.loadLibrary();
       final stream = pdf_reader.ByteStream(bytes);
       final document = await pdf_reader.PDFParser(stream).parse();
       final catalog = await document.catalog;
@@ -1367,62 +1360,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   }
 }
 
-class _CampusPrinterConfig {
-  const _CampusPrinterConfig({
-    required this.hosts,
-    required this.port,
-    required this.queue,
-  });
-
-  final List<String> hosts;
-  final int port;
-  final String queue;
-
-  static const _CampusPrinterConfig current = _CampusPrinterConfig(
-    hosts: <String>['172.16.0.111'],
-    port: 515,
-    queue: 'secure',
-  );
-}
-
-class _CampusPrinterBootstrap {
-  const _CampusPrinterBootstrap({
-    required this.copies,
-    required this.history,
-    required this.studentId,
-    required this.studentName,
-    required this.studentShortCode,
-    required this.currentSemester,
-    required this.guestName,
-    required this.guestId,
-    required this.clientName,
-    required this.pagesPerSheet,
-    required this.fittingMode,
-    required this.staple,
-    required this.punch,
-    required this.jobOffset,
-    required this.slipSheet,
-    required this.booklet,
-  });
-
-  final int copies;
-  final List<_PrintHistoryEntry> history;
-  final String studentId;
-  final String studentName;
-  final String studentShortCode;
-  final String currentSemester;
-  final String guestName;
-  final int? guestId;
-  final String clientName;
-  final String pagesPerSheet;
-  final String fittingMode;
-  final String staple;
-  final String punch;
-  final String jobOffset;
-  final String slipSheet;
-  final String booklet;
-}
-
 class _StudentPrintDetails extends StatelessWidget {
   const _StudentPrintDetails({
     required this.name,
@@ -1724,48 +1661,6 @@ class _PrinterFileCard extends StatelessWidget {
         child: content,
       ),
     );
-  }
-}
-
-class _PrintHistoryEntry {
-  const _PrintHistoryEntry({
-    required this.fileName,
-    required this.printerHost,
-    required this.copies,
-    required this.status,
-    required this.message,
-    required this.createdAt,
-  });
-
-  final String fileName;
-  final String printerHost;
-  final int copies;
-  final String status;
-  final String message;
-  final DateTime createdAt;
-
-  factory _PrintHistoryEntry.fromJson(Map<String, dynamic> json) {
-    return _PrintHistoryEntry(
-      fileName: (json['fileName'] ?? '').toString(),
-      printerHost: (json['printerHost'] ?? '').toString(),
-      copies: int.tryParse((json['copies'] ?? '').toString()) ?? 1,
-      status: (json['status'] ?? '').toString(),
-      message: (json['message'] ?? '').toString(),
-      createdAt:
-          DateTime.tryParse((json['createdAt'] ?? '').toString()) ??
-          DateTime.fromMillisecondsSinceEpoch(0),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'fileName': fileName,
-      'printerHost': printerHost,
-      'copies': copies,
-      'status': status,
-      'message': message,
-      'createdAt': createdAt.toIso8601String(),
-    };
   }
 }
 

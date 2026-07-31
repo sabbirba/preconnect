@@ -9,6 +9,16 @@ import 'package:preconnect/tools/platform_stub.dart'
 const int _kLargeValueThreshold = 256 * 1024;
 const String _kFileCacheMarker = '__fscache__:';
 
+class AppStorageException implements Exception {
+  const AppStorageException(this.operation, this.cause);
+
+  final String operation;
+  final Object cause;
+
+  @override
+  String toString() => 'AppStorageException: $operation failed ($cause)';
+}
+
 class AppStorage {
   AppStorage._();
 
@@ -36,24 +46,29 @@ class AppStorage {
       if (!_cacheDir!.existsSync()) {
         _cacheDir!.createSync(recursive: true);
       }
-    } catch (_) {}
+    } catch (error) {
+      throw AppStorageException('Initialize file cache', error);
+    }
   }
 
   static Future<void> _migrateLargeEntries() async {
     final prefs = _prefs;
     if (prefs == null) return;
-    try {
-      final keys = prefs.getKeys().toList();
-      for (final key in keys) {
-        final val = prefs.getString(key);
-        if (val == null) continue;
-        if (val.startsWith(_kFileCacheMarker)) continue;
-        if (val.length > _kLargeValueThreshold) {
-          await _writeToFile(key, val);
-          await prefs.setString(key, '$_kFileCacheMarker$key');
+    final keys = prefs.getKeys().toList();
+    for (final key in keys) {
+      final val = prefs.getString(key);
+      if (val == null || val.startsWith(_kFileCacheMarker)) continue;
+      if (val.length > _kLargeValueThreshold) {
+        await _writeToFile(key, val);
+        final persisted = await prefs.setString(key, '$_kFileCacheMarker$key');
+        if (!persisted) {
+          throw AppStorageException(
+            'Migrate "$key" to the file cache',
+            StateError('SharedPreferences rejected the marker write'),
+          );
         }
       }
-    } catch (_) {}
+    }
   }
 
   static Future<SharedPreferences> _getInstance() async {
@@ -72,11 +87,17 @@ class AppStorage {
     try {
       if (_cacheDir == null) await _initCacheDir();
       final file = _fileForKey(key);
-      if (file == null) return;
+      if (file == null) {
+        throw StateError('File cache directory is unavailable');
+      }
       final bytes = utf8.encode(value);
       final compressed = gzip.encode(bytes);
       await file.writeAsBytes(compressed, flush: true);
-    } catch (_) {}
+    } on AppStorageException {
+      rethrow;
+    } catch (error) {
+      throw AppStorageException('Write "$key" to the file cache', error);
+    }
   }
 
   static Future<String?> _readFromFile(String key) async {
@@ -89,8 +110,8 @@ class AppStorage {
         return utf8.decode(decompressed);
       }
       return utf8.decode(bytes);
-    } catch (_) {
-      return null;
+    } catch (error) {
+      throw AppStorageException('Read "$key" from the file cache', error);
     }
   }
 
@@ -104,8 +125,8 @@ class AppStorage {
         return utf8.decode(decompressed);
       }
       return utf8.decode(bytes);
-    } catch (_) {
-      return null;
+    } catch (error) {
+      throw AppStorageException('Read "$key" from the file cache', error);
     }
   }
 
@@ -115,7 +136,9 @@ class AppStorage {
       if (file != null && file.existsSync()) {
         await file.delete();
       }
-    } catch (_) {}
+    } catch (error) {
+      throw AppStorageException('Delete "$key" from the file cache', error);
+    }
   }
 
   Future<String?> getString(String key) async {
@@ -138,10 +161,22 @@ class AppStorage {
     final prefs = await _getInstance();
     if (value.length > _kLargeValueThreshold) {
       await _writeToFile(key, value);
-      await prefs.setString(key, '$_kFileCacheMarker$key');
+      final persisted = await prefs.setString(key, '$_kFileCacheMarker$key');
+      if (!persisted) {
+        throw AppStorageException(
+          'Persist marker for "$key"',
+          StateError('SharedPreferences rejected the write'),
+        );
+      }
     } else {
       await _deleteFile(key);
-      await prefs.setString(key, value);
+      final persisted = await prefs.setString(key, value);
+      if (!persisted) {
+        throw AppStorageException(
+          'Persist "$key"',
+          StateError('SharedPreferences rejected the write'),
+        );
+      }
     }
   }
 
@@ -194,7 +229,12 @@ class AppStorage {
     }
     final prefs = await _getInstance();
     await _deleteFile(key);
-    await prefs.remove(key);
+    if (!await prefs.remove(key)) {
+      throw AppStorageException(
+        'Remove "$key"',
+        StateError('SharedPreferences rejected the removal'),
+      );
+    }
   }
 
   Future<void> clear() async {
@@ -209,29 +249,16 @@ class AppStorage {
     for (final key in keys) {
       await _deleteFile(key);
     }
-    await prefs.clear();
+    if (!await prefs.clear()) {
+      throw AppStorageException(
+        'Clear preferences',
+        StateError('SharedPreferences rejected the clear'),
+      );
+    }
     try {
       _cacheDir?.listSync().forEach((f) => f.deleteSync());
-    } catch (_) {}
-  }
-
-  Future<void> clearExcept(Set<String> keepKeys) async {
-    if (kIsWeb) {
-      final keysToRemove = _webCache.keys
-          .where((k) => !keepKeys.contains(k))
-          .toList();
-      for (final key in keysToRemove) {
-        _webCache.remove(key);
-      }
-      await webExtensionStorageRemoveKeys(keysToRemove);
-      return;
-    }
-    final prefs = await _getInstance();
-    final keys = prefs.getKeys();
-    for (final key in keys) {
-      if (keepKeys.contains(key)) continue;
-      await _deleteFile(key);
-      await prefs.remove(key);
+    } catch (error) {
+      throw AppStorageException('Clear file cache', error);
     }
   }
 
@@ -254,17 +281,5 @@ class AppStorage {
   int? getIntSync(String key) {
     final raw = getStringSync(key);
     return raw == null ? null : int.tryParse(raw);
-  }
-
-  List<String>? getStringListSync(String key) {
-    final raw = getStringSync(key);
-    if (raw == null || raw.isEmpty) return null;
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! List) return null;
-      return decoded.map((e) => '$e').toList();
-    } catch (_) {
-      return null;
-    }
   }
 }

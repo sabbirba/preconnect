@@ -168,13 +168,6 @@ class HolidayTiming {
     return _inflight!;
   }
 
-  static Future<List<HolidayItem>> getNextHolidaysThisYear({
-    bool forceRefresh = false,
-  }) async {
-    final status = await getTodayStatus(forceRefresh: forceRefresh);
-    return status.nextHolidaysThisYear;
-  }
-
   static Future<HolidayStatus> _refreshStatus() async {
     try {
       final result = await _fetchTodayStatus();

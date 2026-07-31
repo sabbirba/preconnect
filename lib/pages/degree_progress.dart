@@ -11,12 +11,13 @@ import 'package:preconnect/pages/cgpa_calculator.dart';
 import 'package:preconnect/pages/requirement_courses.dart';
 import 'package:preconnect/pages/shared_widgets/grade_card.dart';
 import 'package:preconnect/pages/shared_widgets/metric_tile.dart';
-import 'package:preconnect/pages/shared_widgets/session_helper.dart';
+import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/pages/shared_widgets/online_guard.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/string_utils.dart';
 

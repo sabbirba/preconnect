@@ -5,6 +5,7 @@ import 'libsync_config.dart';
 import 'google_auth.dart';
 import 'libsync_client.dart';
 import 'package:preconnect/libsync/libsync_page.dart';
+import 'error_reporter.dart';
 
 enum LibSyncAuthStatus { authenticated, unauthenticated, loading, error }
 
@@ -52,9 +53,17 @@ class LibSyncAuthService extends ChangeNotifier {
             await authenticateWithAccessToken(googleAccessToken);
             return true;
           }
-        } catch (_) {}
+        } catch (error, stackTrace) {
+          reportLibSyncError(
+            'Validating cached LibSync auth',
+            error,
+            stackTrace,
+          );
+        }
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      reportLibSyncError('Checking LibSync authentication', error, stackTrace);
+    }
     return false;
   }
 
@@ -194,7 +203,9 @@ class LibSyncAuthService extends ChangeNotifier {
       if (refreshVal != null) {
         cookiesToSave['refresh'] = refreshVal.toString();
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      reportLibSyncError('Loading the LibSync profile', error, stackTrace);
+    }
 
     final parsedCookies = _apiClient.parseResponseCookies(
       libsyncAuthResponse.headers,
@@ -239,7 +250,9 @@ class LibSyncAuthService extends ChangeNotifier {
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      reportLibSyncError('Loading LibSync quota', error, stackTrace);
+    }
     return null;
   }
 
@@ -253,7 +266,9 @@ class LibSyncAuthService extends ChangeNotifier {
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as List<dynamic>;
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      reportLibSyncError('Loading LibSync reservations', error, stackTrace);
+    }
     return null;
   }
 
@@ -265,7 +280,9 @@ class LibSyncAuthService extends ChangeNotifier {
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      reportLibSyncError('Loading LibSync room data', error, stackTrace);
+    }
     return null;
   }
 
@@ -279,7 +296,9 @@ class LibSyncAuthService extends ChangeNotifier {
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as List<dynamic>;
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      reportLibSyncError('Loading LibSync statistics', error, stackTrace);
+    }
     return null;
   }
 
@@ -293,7 +312,13 @@ class LibSyncAuthService extends ChangeNotifier {
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      reportLibSyncError(
+        'Loading the total LibSync reservation count',
+        error,
+        stackTrace,
+      );
+    }
     return null;
   }
 
@@ -369,7 +394,9 @@ class LibSyncAuthService extends ChangeNotifier {
         if (decoded is Map<String, dynamic>) {
           return decoded;
         }
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        reportLibSyncError('Refreshing the LibSync session', error, stackTrace);
+      }
       return null;
     }
     final decoded = jsonDecode(response.body);

@@ -3,15 +3,14 @@ import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:add_2_calendar/add_2_calendar.dart';
-import 'package:flutter/services.dart';
+import 'package:preconnect/tools/calendar_event.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/exam_map.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/model/custom_schedule.dart';
-import 'package:preconnect/pages/shared_widgets/session_helper.dart';
+import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
 import 'package:preconnect/pages/shared_widgets/entry_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -21,11 +20,15 @@ import 'package:preconnect/tools/snapshot_store.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/pages/shared_widgets/online_guard.dart';
 import 'package:preconnect/tools/string_utils.dart';
 import 'package:preconnect/tools/exam_visibility.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/android_alarm.dart';
+
+part 'alarm_sections/alarm_models.dart';
 
 class AlarmPage extends StatefulWidget {
   const AlarmPage({super.key});
@@ -39,9 +42,6 @@ class AlarmPage extends StatefulWidget {
 }
 
 class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
-  static const MethodChannel _androidAlarmChannel = MethodChannel(
-    'preconnect/android_alarm',
-  );
   static final CachedPageController<_AlarmData> cache =
       CachedPageController<_AlarmData>(
         ({bool forceRefresh = false}) =>
@@ -414,12 +414,12 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         .toList();
 
     try {
-      final opened = await _androidAlarmChannel.invokeMethod<bool>('setAlarm', {
-        'hour': hour,
-        'minute': minute,
-        'message': '$courseCode Class Reminder ($minutesBefore min before)',
-        'days': alarmDays,
-      });
+      final opened = await AndroidAlarm.set(
+        hour: hour,
+        minute: minute,
+        message: '$courseCode Class Reminder ($minutesBefore min before)',
+        days: alarmDays,
+      );
       if (opened != true) {
         throw Exception('Unable to open alarm on Android.');
       }
@@ -435,46 +435,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   }
 
   Set<int> _mapWeekdays(List<String> days, {int shift = 0}) {
-    int? toWeekday(String day) {
-      switch (day.toUpperCase()) {
-        case 'MONDAY':
-          return DateTime.monday;
-        case 'TUESDAY':
-          return DateTime.tuesday;
-        case 'WEDNESDAY':
-          return DateTime.wednesday;
-        case 'THURSDAY':
-          return DateTime.thursday;
-        case 'FRIDAY':
-          return DateTime.friday;
-        case 'SATURDAY':
-          return DateTime.saturday;
-        case 'SUNDAY':
-          return DateTime.sunday;
-        default:
-          return null;
-      }
-    }
-
-    int shiftWeekday(int day, int shiftBy) {
-      final order = [
-        DateTime.monday,
-        DateTime.tuesday,
-        DateTime.wednesday,
-        DateTime.thursday,
-        DateTime.friday,
-        DateTime.saturday,
-        DateTime.sunday,
-      ];
-      final index = order.indexOf(day);
-      if (index < 0) return day;
-      final next = (index + shiftBy) % order.length;
-      return order[(next + order.length) % order.length];
-    }
-
-    final mapped = days.map(toWeekday).whereType<int>().toSet();
+    final mapped = days.map(BracuTime.weekdayFromName).whereType<int>().toSet();
     if (shift == 0) return mapped;
-    return mapped.map((d) => shiftWeekday(d, shift)).toSet();
+    return mapped.map((day) => BracuTime.shiftWeekday(day, shift)).toSet();
   }
 
   Future<void> _setExamAlarm(
@@ -526,12 +489,12 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     }
 
     try {
-      final opened = await _androidAlarmChannel.invokeMethod<bool>('setAlarm', {
-        'hour': fireAt.hour,
-        'minute': fireAt.minute,
-        'message':
+      final opened = await AndroidAlarm.set(
+        hour: fireAt.hour,
+        minute: fireAt.minute,
+        message:
             '${entry.courseCode} ${entry.type} Reminder ($minutesBefore min before)',
-      });
+      );
       if (opened != true) {
         throw Exception('Unable to open alarm on Android.');
       }
@@ -597,12 +560,12 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     }
 
     try {
-      final opened = await _androidAlarmChannel.invokeMethod<bool>('setAlarm', {
-        'hour': fireAt.hour,
-        'minute': fireAt.minute,
-        'message': '${item.title} Reminder ($minutesBefore min before)',
-        'days': const <int>[],
-      });
+      final opened = await AndroidAlarm.set(
+        hour: fireAt.hour,
+        minute: fireAt.minute,
+        message: '${item.title} Reminder ($minutesBefore min before)',
+        days: const <int>[],
+      );
       if (opened != true) {
         throw Exception('Unable to open alarm on Android.');
       }
@@ -711,12 +674,12 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     }
 
     try {
-      final opened = await _androidAlarmChannel.invokeMethod<bool>('setAlarm', {
-        'hour': fireAt.hour,
-        'minute': fireAt.minute,
-        'message': '$title Reminder ($minutesBefore min before)',
-        'days': const <int>[],
-      });
+      final opened = await AndroidAlarm.set(
+        hour: fireAt.hour,
+        minute: fireAt.minute,
+        message: '$title Reminder ($minutesBefore min before)',
+        days: const <int>[],
+      );
       if (opened != true) {
         throw Exception('Unable to open alarm on Android.');
       }
@@ -1787,82 +1750,6 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
             },
           );
         },
-      ),
-    );
-  }
-}
-
-class _AlarmData {
-  const _AlarmData({
-    required this.sections,
-    required this.examEntries,
-    required this.isRamadan,
-    required this.customSchedules,
-    required this.advisingInfo,
-  });
-
-  final List<Section> sections;
-  final List<_ExamAlarmEntry> examEntries;
-  final bool isRamadan;
-  final List<CustomSchedule> customSchedules;
-  final Map<String, String?>? advisingInfo;
-}
-
-class _ExamAlarmEntry {
-  const _ExamAlarmEntry({
-    required this.id,
-    required this.type,
-    required this.courseCode,
-    required this.sectionName,
-    required this.roomNumber,
-    required this.faculties,
-    required this.consumedSeat,
-    required this.startTime,
-    required this.endTime,
-    required this.dateTime,
-  });
-
-  final String id;
-  final String type;
-  final String courseCode;
-  final String sectionName;
-  final String roomNumber;
-  final String faculties;
-  final int consumedSeat;
-  final String? startTime;
-  final String? endTime;
-  final DateTime dateTime;
-
-  bool get isPassed => !ExamVisibility.isUpcomingOrOngoingDateTime(dateTime);
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'id': id,
-      'type': type,
-      'courseCode': courseCode,
-      'sectionName': sectionName,
-      'roomNumber': roomNumber,
-      'faculties': faculties,
-      'consumedSeat': consumedSeat,
-      'startTime': startTime,
-      'endTime': endTime,
-      'dateTime': dateTime.millisecondsSinceEpoch,
-    };
-  }
-
-  factory _ExamAlarmEntry.fromJson(Map<String, dynamic> json) {
-    return _ExamAlarmEntry(
-      id: json['id']?.toString() ?? '',
-      type: json['type']?.toString() ?? '',
-      courseCode: json['courseCode']?.toString() ?? '',
-      sectionName: json['sectionName']?.toString() ?? '',
-      roomNumber: json['roomNumber']?.toString() ?? '',
-      faculties: json['faculties']?.toString() ?? '',
-      consumedSeat: (json['consumedSeat'] as num?)?.toInt() ?? 0,
-      startTime: json['startTime']?.toString(),
-      endTime: json['endTime']?.toString(),
-      dateTime: DateTime.fromMillisecondsSinceEpoch(
-        (json['dateTime'] as num?)?.toInt() ?? 0,
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/app.dart';
+import 'package:preconnect/features/auth/application/browser_login.dart';
 import 'package:preconnect/pages/devs.dart';
 import 'package:preconnect/pages/free_labs.dart';
 import 'package:preconnect/pages/friend_schedule.dart';
@@ -14,7 +15,6 @@ import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/pages/dspace_browser.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
-import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/home.dart';
@@ -25,7 +25,6 @@ import 'package:preconnect/pages/ui_kit.dart';
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key, this.isLoggedIn = false});
 
-  static const String seenKey = 'hasSeenOnboarding';
   final bool isLoggedIn;
 
   @override
@@ -46,12 +45,15 @@ class _OnboardingPageState extends State<OnboardingPage> {
       await _startWebExtensionLogin(idp: 'google');
       return;
     }
+    if (kIsWeb) {
+      await _startBrowserLogin(idp: 'google');
+      return;
+    }
     if (_isGoogleLoggingIn) return;
     setState(() {
       _isGoogleLoggingIn = true;
     });
     try {
-      LoginPage.takePreloadedWebView();
       LoginPage.pkceVerifier = generatePkceVerifier();
       final challenge = codeChallengeS256(LoginPage.pkceVerifier!);
 
@@ -76,7 +78,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
       if (mounted) {
         showAppSnackBar(
           context,
-          'Google Sign In failed: ${e.toString().replaceAll('Exception: ', '')}',
+          'Google sign-in failed: ${e.toString().replaceAll('Exception: ', '')}',
         );
       }
     } finally {
@@ -115,8 +117,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 
   Future<void> _completeOnboarding(BuildContext context) async {
-    final prefs = AppStorage.instance;
-    await prefs.setBool(OnboardingPage.seenKey, true);
     if (!context.mounted) return;
     if (kIsWeb && !widget.isLoggedIn && isChromeRuntimeAvailable()) {
       await _startWebExtensionLogin();
@@ -130,6 +130,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
       );
       return;
     }
+    if (kIsWeb) {
+      await _startBrowserLogin();
+      return;
+    }
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: Duration.zero,
@@ -138,6 +142,34 @@ class _OnboardingPageState extends State<OnboardingPage> {
             const LoginPage(),
       ),
     );
+  }
+
+  Future<void> _startBrowserLogin({String? idp}) async {
+    if (_isStartingWebLogin || _isGoogleLoggingIn) return;
+    setState(() {
+      if (idp == 'google') {
+        _isGoogleLoggingIn = true;
+      } else {
+        _isStartingWebLogin = true;
+      }
+    });
+    try {
+      MyApp.warmStartupCaches();
+      await BrowserLogin.start(idp: idp);
+    } catch (error) {
+      if (!mounted) return;
+      showAppSnackBar(
+        context,
+        'Sign in failed: ${error.toString().replaceAll('Bad state: ', '')}',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isStartingWebLogin = false;
+          _isGoogleLoggingIn = false;
+        });
+      }
+    }
   }
 
   Future<void> _openLink(BuildContext context, String url) async {
@@ -316,7 +348,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           ),
                           const Gap(12),
                           BracuActionBannerCard(
-                            iconWidget: const PreConnectGithubIcon(size: 24),
+                            iconWidget: const PreConnectGitHubIcon(size: 24),
                             title: 'Open GitHub Repository',
                             subtitle: 'Explore the source code and contribute',
                             onTap: () => _openLink(

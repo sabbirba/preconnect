@@ -7,60 +7,40 @@ class RepositoryCache {
 
   final AppPreferencesStore _store = AppPreferencesStore();
 
-  Future<String?> readString(String key) async {
+  Future<String?> readString(String key) {
     return _store.getString(key);
   }
 
-  Future<bool?> readBool(String key) async {
-    return _store.getBool(key);
-  }
-
-  Future<int?> readInt(String key) async {
+  Future<int?> readInt(String key) {
     return _store.getInt(key);
   }
 
-  Future<List<String>?> readStringList(String key) async {
-    return _store.getStringList(key);
-  }
-
-  Future<Map<String, String?>> readStringMap(Set<String> keys) async {
+  Future<Map<String, String?>> readStringMap(Set<String> keys) {
     return _store.getStringMap(keys);
   }
 
-  Future<void> writeString(String key, String value) async {
-    await _store.setString(key, value);
+  Future<void> writeString(String key, String value) {
+    return _store.setString(key, value);
   }
 
-  Future<void> writeBool(String key, bool value) async {
-    await _store.setBool(key, value);
+  Future<void> writeStringMap(Map<String, String> values) {
+    return _store.setStringMap(values);
   }
 
-  Future<void> writeInt(String key, int value) async {
-    await _store.setInt(key, value);
+  Future<void> writeJson(String key, dynamic value) {
+    return _store.setJson(key, value);
   }
 
-  Future<void> writeStringList(String key, List<String> values) async {
-    await _store.setStringList(key, values);
+  Future<void> writeJsonIfChanged(String key, dynamic value) {
+    return _store.setJsonIfChanged(key, value);
   }
 
-  Future<void> writeStringMap(Map<String, String> values) async {
-    await _store.setStringMap(values);
-  }
-
-  Future<void> writeJson(String key, dynamic value) async {
-    await _store.setJson(key, value);
-  }
-
-  Future<void> writeJsonIfChanged(String key, dynamic value) async {
-    await _store.setJsonIfChanged(key, value);
-  }
-
-  Future<Map<String, dynamic>?> readJsonMap(String key) async {
+  Future<Map<String, dynamic>?> readJsonMap(String key) {
     return _store.getJsonMap(key);
   }
 
-  Future<void> remove(String key) async {
-    await _store.remove(key);
+  Future<void> remove(String key) {
+    return _store.remove(key);
   }
 
   Future<T?> readStringWithFallback<T>({

@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:targetApi="25">
     <shortcut
         android:shortcutId="profile"
         android:enabled="true"
-        android:icon="@drawable/shortcut_profile_fg"
+        android:icon="@drawable/profile_shortcut"
         android:shortcutShortLabel="@string/shortcut_profile_short"
         android:shortcutLongLabel="@string/shortcut_profile_long">
         <intent
@@ -14,7 +16,7 @@
     <shortcut
         android:shortcutId="classes"
         android:enabled="true"
-        android:icon="@drawable/shortcut_classes_fg"
+        android:icon="@drawable/class_shortcut"
         android:shortcutShortLabel="@string/shortcut_classes_short"
         android:shortcutLongLabel="@string/shortcut_classes_long">
         <intent
@@ -25,7 +27,7 @@
     <shortcut
         android:shortcutId="exams"
         android:enabled="true"
-        android:icon="@drawable/shortcut_exams_fg"
+        android:icon="@drawable/exam_shortcut"
         android:shortcutShortLabel="@string/shortcut_exams_short"
         android:shortcutLongLabel="@string/shortcut_exams_long">
         <intent
@@ -36,7 +38,7 @@
     <shortcut
         android:shortcutId="friends"
         android:enabled="true"
-        android:icon="@drawable/shortcut_friends_fg"
+        android:icon="@drawable/friend_shortcut"
         android:shortcutShortLabel="@string/shortcut_friends_short"
         android:shortcutLongLabel="@string/shortcut_friends_long">
         <intent

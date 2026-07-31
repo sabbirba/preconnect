@@ -903,36 +903,6 @@ class CaptiveWifiHttp {
     }
   }
 
-  Future<CaptiveWifiHttpResult> getOnce({
-    required HttpClient client,
-    required Uri uri,
-    required Map<String, Cookie> cookies,
-    Uri? referer,
-  }) async {
-    final request = await client.getUrl(uri);
-    request.followRedirects = false;
-    if (referer != null) {
-      request.headers.set('Referer', referer.toString());
-    }
-    final cookieHeader = _cookieHeader(cookies);
-    if (cookieHeader != null) {
-      request.headers.set('Cookie', cookieHeader);
-    }
-    final response = await request.close();
-    _captureCookies(response, cookies);
-    final location =
-        response.headers.value('location') ??
-        response.headers.value('Location');
-    final text = await response.transform(utf8.decoder).join();
-
-    return CaptiveWifiHttpResult(
-      statusCode: response.statusCode,
-      uri: uri,
-      body: text,
-      location: location == null ? null : Uri.parse(location),
-    );
-  }
-
   String _mapPortalErrorCode(String errorCode) {
     switch (errorCode) {
       case '10503':

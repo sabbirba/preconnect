@@ -3,20 +3,30 @@
 *.log
 *.pyc
 *.swp
-.DS_Store
 **/.DS_Store
 .AppleDouble
 .LSOverride
 *.tmp
 *.temp
-test
 
 # Environment and secrets
 .env
 android/key.properties
 *.jks
 *.keystore
+*.p8
+*.p12
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.provisionprofile
+*.base64
 service-account.json
+
+# Local signing and design exports
+test/IconKitchen-Output/
+test/icon.icon/
+test/*.svg
 
 # Local env helpers
 .env.local.sh
@@ -29,10 +39,7 @@ android/local.properties.bak
 *.iml
 *.ipr
 *.iws
-.idea/
-
-# Visual Studio Code
-.vscode/
+**/.idea/
 
 # Flutter, Dart, Pub, and Node
 **/node_modules/
@@ -43,7 +50,6 @@ android/local.properties.bak
 .packages
 .pub-cache/
 .pub/
-/build/
 **/build/
 .firebase/
 android/.kotlin/*
@@ -62,9 +68,8 @@ app.*.map.json
 coverage/
 
 # Android and Gradle
-.gradle/
-**/android/.gradle
-**/android/.cxx/
+**/.gradle/
+**/.cxx/
 **/android/captures/
 **/android/GeneratedPluginRegistrant.java
 android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
@@ -89,7 +94,6 @@ android/app/profile/
 **/ios/**/.symlinks/
 **/ios/**/profile
 **/ios/**/xcuserdata
-**/ios/**/Flutter/ephemeral/
 **/ios/**/Flutter/App.framework
 **/ios/**/Flutter/Flutter.framework
 **/ios/**/Flutter/Flutter.podspec
@@ -105,7 +109,6 @@ chruby-0.3.9
 
 # macOS and Xcode
 **/macos/**/Flutter/GeneratedPluginRegistrant.swift
-**/macos/**/Flutter/ephemeral/
 **/macos/**/Pods/
 **/macos/**/Flutter/Generated.xcconfig
 **/macos/**/*.xcresult
@@ -118,9 +121,6 @@ chruby-0.3.9
 **/swiftpm/
 **/Package.resolved
 **/.build/
-
-
-
 # Crashlytics
 crashlytics-build.properties
 
@@ -131,18 +131,11 @@ crashlytics-build.properties
 !.env.example
 
 # Ephemeral
-**/flutter/ephemeral/
 **/ephemeral/
-
-**/.cxx/
-**/.gradle/
-**/android/app/.cxx/
-**/android/app/build/
 **/*.apk
 **/*.aab
 **/*.ap_
 **/*.dex
 **/.history/
-**/.idea/
-**/.vscode/
-**/.DS_Store
+**/.vscode/*
+!/.vscode/settings.json

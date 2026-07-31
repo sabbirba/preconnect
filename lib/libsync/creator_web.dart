@@ -1,12 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:js_interop';
-import 'dart:js_interop_unsafe';
 import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:chrome_extension/runtime.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
+import 'package:preconnect/tools/extension_bridge.dart';
 
 import 'package:preconnect/libsync/libsync_client.dart';
 
@@ -27,21 +26,14 @@ class ExtensionHttpClient extends http.BaseClient {
       }
 
       StreamSubscription? subscription;
+      Timer? timeoutTimer;
       subscription = chrome.runtime.onMessage.listen((event) {
-        Map<String, dynamic>? resp;
-        final dartified = (event.message as JSAny?)?.dartify();
-        if (dartified is String) {
-          try {
-            final decoded = jsonDecode(dartified);
-            if (decoded is Map) resp = Map<String, dynamic>.from(decoded);
-          } catch (_) {}
-        } else if (dartified is Map) {
-          resp = Map<String, dynamic>.from(dartified);
-        }
+        final resp = decodeExtensionMessage(event.message);
         if (resp == null) return;
         if (resp['type'] != 'preconnect.libsyncResponse') return;
         if ('${resp['requestId']}' != requestId) return;
         subscription?.cancel();
+        timeoutTimer?.cancel();
         if (resp.containsKey('error')) {
           completer.completeError(Exception(resp['error']));
         } else {
@@ -76,8 +68,16 @@ class ExtensionHttpClient extends http.BaseClient {
           );
         }
       });
+      timeoutTimer = Timer(const Duration(seconds: 30), () {
+        subscription?.cancel();
+        if (!completer.isCompleted) {
+          completer.completeError(
+            TimeoutException('Browser extension request timed out.'),
+          );
+        }
+      });
 
-      _safeSendMessage(<String, dynamic>{
+      final sent = sendExtensionRuntimeMessage(<String, dynamic>{
         'type': 'preconnect.libsyncRequest',
         'requestId': requestId,
         'method': request.method,
@@ -85,33 +85,17 @@ class ExtensionHttpClient extends http.BaseClient {
         'headers': jsonEncode(request.headers),
         'body': base64Encode(bodyBytes),
       });
+      if (!sent) {
+        timeoutTimer.cancel();
+        await subscription.cancel();
+        throw StateError('Browser extension messaging is unavailable.');
+      }
 
       return completer.future;
     }
 
     return _webFallbackClient.send(request);
   }
-}
-
-void _safeSendMessage(Map<String, dynamic> message) {
-  try {
-    var extensionObj = globalContext.getProperty('chrome'.toJS);
-    if (extensionObj.isUndefinedOrNull) {
-      extensionObj = globalContext.getProperty('browser'.toJS);
-    }
-    if (extensionObj.isUndefinedOrNull) return;
-    final extJSObj = extensionObj as JSObject;
-
-    final runtimeVal = extJSObj.getProperty('runtime'.toJS);
-    if (runtimeVal.isUndefinedOrNull) return;
-    final runtimeObj = runtimeVal as JSObject;
-
-    final sendMessageVal = runtimeObj.getProperty('sendMessage'.toJS);
-    if (sendMessageVal.isUndefinedOrNull) return;
-    final sendMessageFunc = sendMessageVal as JSFunction;
-
-    sendMessageFunc.callAsFunction(runtimeObj, jsonEncode(message).toJS);
-  } catch (_) {}
 }
 
 final http.Client _webFallbackClient = http.Client();

@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/firebase_options.dart';
 import 'app.dart';
+import 'tools/app_log.dart';
 import 'tools/app_storage.dart';
 
 import 'package:preconnect/tools/runtime_stub.dart'
@@ -26,12 +27,18 @@ Future<void> main() async {
       WidgetsFlutterBinding.ensureInitialized();
 
       FlutterError.onError = (details) {
+        unawaited(
+          AppLog.write(
+            'Flutter error: ${details.exceptionAsString()}\n${details.stack}',
+          ),
+        );
         if (!kReleaseMode) {
           FlutterError.presentError(details);
         }
       };
       PlatformDispatcher.instance.onError = (error, stackTrace) {
-        return false;
+        unawaited(AppLog.write('Platform error: $error\n$stackTrace'));
+        return true;
       };
 
       Future<FirebaseApp>? firebaseInit;
@@ -56,9 +63,15 @@ Future<void> main() async {
           await firebaseInit;
           FirebaseMessaging.onBackgroundMessage(FCMService.backgroundHandler);
         }
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        unawaited(
+          AppLog.write('Firebase initialization failed: $error\n$stackTrace'),
+        );
+      }
     },
-    (error, stackTrace) {},
+    (error, stackTrace) {
+      unawaited(AppLog.write('Uncaught zone error: $error\n$stackTrace'));
+    },
     zoneSpecification: ZoneSpecification(
       print: (Zone self, ZoneDelegate parent, Zone zone, String line) {
         if (!kReleaseMode) {

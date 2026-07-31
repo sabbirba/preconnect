@@ -552,7 +552,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     unawaited(
       FCMService.instance.showNotification(
         id: 9987,
-        title: 'Sign in to Wi-Fi network',
+        title: 'Sign In to Wi-Fi Network',
         body:
             'Tap to sign in to ${status.ssid ?? 'Student-WiFi'} via PreConnect.',
         payload: 'captive_wifi',

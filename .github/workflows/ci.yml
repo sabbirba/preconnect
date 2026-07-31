@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter:
+    name: Flutter Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set Up Flutter
+        uses: subosito/flutter-action@v2.23.0
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Verify Formatting
+        run: dart format --output=none --set-exit-if-changed lib web test
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test

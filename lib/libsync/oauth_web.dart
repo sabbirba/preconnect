@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:web/web.dart' as web;
 import 'package:preconnect/tools/polling_timer.dart';
 import 'dart:js_interop';
+import 'error_reporter.dart';
 
 extension type OAuthMessageData._(JSObject _) implements JSObject {
   external String? get type;
@@ -39,7 +40,13 @@ Future<String?> openWebOAuthFlow(String oauthUrl, String redirectUri) async {
             completer.complete(codeVal);
           }
         }
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        reportLibSyncError(
+          'Reading the LibSync OAuth response',
+          error,
+          stackTrace,
+        );
+      }
     }
   };
 

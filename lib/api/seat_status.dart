@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/model/section_info.dart' show SectionFaculty;
-import 'package:preconnect/pages/seat_status.dart';
+import 'package:preconnect/model/seat_timetable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/app_storage.dart';

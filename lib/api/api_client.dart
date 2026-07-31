@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
+import 'package:preconnect/tools/http/http_headers.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_refresh.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -38,6 +39,26 @@ class ApiClient {
     _cachedHasConnection = null;
     _cachedHasConnectionAt = null;
   }
+
+  @visibleForTesting
+  void seedTransientCachesForTesting() {
+    _cachedResponses['test'] = _CachedHttpResponse(
+      response: http.Response('{}', 200),
+      expiresAt: DateTime.now().add(const Duration(minutes: 1)),
+    );
+    _cachedAccessToken = 'test';
+    _cachedAccessTokenAt = DateTime.now();
+    _cachedHasConnection = true;
+    _cachedHasConnectionAt = DateTime.now();
+  }
+
+  @visibleForTesting
+  bool get hasTransientCachesForTesting =>
+      _cachedResponses.isNotEmpty ||
+      _cachedAccessToken != null ||
+      _cachedAccessTokenAt != null ||
+      _cachedHasConnection != null ||
+      _cachedHasConnectionAt != null;
 
   void _purgeExpiredResponseCache() {
     _cachedResponses.removeWhere(
@@ -99,16 +120,12 @@ class ApiClient {
     }
 
     for (int i = 0; i < retries; i++) {
-      try {
-        final token = await _storage.read(
-          key: PreConnectStorageKeys.accessToken,
-        );
-        if (token != null && token.isNotEmpty) {
-          _cachedAccessToken = token;
-          _cachedAccessTokenAt = DateTime.now();
-          return token;
-        }
-      } catch (_) {}
+      final token = await _storage.read(key: PreConnectStorageKeys.accessToken);
+      if (token != null && token.isNotEmpty) {
+        _cachedAccessToken = token;
+        _cachedAccessTokenAt = DateTime.now();
+        return token;
+      }
 
       if (i < retries - 1) {
         continue;
@@ -539,25 +556,12 @@ class _CachedHttpResponse {
   bool get isExpired => DateTime.now().isAfter(expiresAt);
 }
 
-Map<String, String> compressionHeaders() {
-  if (kIsWeb) return const <String, String>{};
-  return const <String, String>{'Accept-Encoding': 'gzip, deflate'};
-}
-
-Map<String, String> compressionHeadersForUri(Uri? uri) {
-  return compressionHeaders();
-}
-
 sealed class PreConnectException implements Exception {
   const PreConnectException([this.message]);
   final String? message;
 
   @override
   String toString() => message ?? runtimeType.toString();
-}
-
-class OfflineException extends PreConnectException {
-  const OfflineException() : super('No network connection');
 }
 
 class UnauthenticatedException extends PreConnectException {
@@ -575,15 +579,6 @@ class ApiException extends PreConnectException {
   @override
   String toString() =>
       'ApiException($statusCode${message != null ? ': $message' : ''})';
-}
-
-class CacheEmptyException extends PreConnectException {
-  const CacheEmptyException([super.message]);
-}
-
-class MissingDependencyException extends PreConnectException {
-  const MissingDependencyException(String field)
-    : super('Missing required field: $field');
 }
 
 final _portfolioIdResolutionFailures = <DateTime>[];

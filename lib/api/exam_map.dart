@@ -20,13 +20,6 @@ class ExamMapService {
   static const Duration _examJsonCacheTtl = Duration(days: 3650);
   static const String _indexCacheKey = 'exammap_index_v1';
 
-  static String sectionKeyForSection(Section section) {
-    return sectionKey(
-      courseCode: section.courseCode,
-      sectionName: section.sectionName,
-    );
-  }
-
   static String sectionKey({
     required String courseCode,
     required String sectionName,

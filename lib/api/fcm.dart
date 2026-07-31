@@ -4,20 +4,18 @@ import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/tools/app_paths.dart';
+import 'package:preconnect/tools/app_log.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:preconnect/firebase_options.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/profile.dart';
+import 'package:preconnect/features/notifications/data/device_registry.dart';
 import 'package:http/http.dart' as http;
-import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -38,6 +36,16 @@ class FCMService {
 
   static String? _cachedToken;
   static bool _apnsAvailable = true;
+  void Function()? _openCaptiveWifi;
+  Future<void> Function(String url)? _openUrl;
+
+  void configureNavigation({
+    required void Function() openCaptiveWifi,
+    required Future<void> Function(String url) openUrl,
+  }) {
+    _openCaptiveWifi = openCaptiveWifi;
+    _openUrl = openUrl;
+  }
 
   bool get isSupported {
     if (kIsWeb) {
@@ -78,7 +86,11 @@ class FCMService {
               return null;
             }
           }
-        } catch (_) {}
+        } catch (error) {
+          unawaited(
+            AppLog.write('Notification permission lookup failed: $error'),
+          );
+        }
       }
     }
     if (kIsWeb) {
@@ -151,24 +163,41 @@ class FCMService {
     try {
       final client = ApiClient();
       if (!await client.hasAccessToken()) return;
-      final url =
-          '${ApiConfig.realtimeApiBase}${PreConnectPushConfig.registerDevicePath}';
-      await client.authenticatedRequest(
-        'POST',
-        url,
-        body: jsonEncode(<String, dynamic>{
-          'token': token,
-          'platform': kIsWeb
-              ? (isChromeRuntimeAvailable()
-                    ? PreConnectPushConfig.chromeExtensionPlatform
-                    : 'web')
-              : defaultTargetPlatform.name.toLowerCase(),
-        }),
-        additionalHeaders: const <String, String>{
-          'Content-Type': 'application/json',
-        },
+      final registry = _deviceRegistry(client);
+      await registry.register(
+        token: token,
+        platform: kIsWeb
+            ? (isChromeRuntimeAvailable()
+                  ? PreConnectPushConfig.chromeExtensionPlatform
+                  : 'web')
+            : defaultTargetPlatform.name.toLowerCase(),
       );
-    } catch (_) {}
+    } catch (error) {
+      unawaited(AppLog.write('FCM device registration failed: $error'));
+    }
+  }
+
+  PushDeviceRegistry _deviceRegistry(ApiClient client) {
+    return PushDeviceRegistry(
+      registerUrl:
+          '${ApiConfig.realtimeApiBase}${PreConnectPushConfig.registerDevicePath}',
+      unregisterUrl:
+          '${ApiConfig.realtimeApiBase}${PreConnectPushConfig.unregisterDevicePath}',
+      send:
+          (
+            method,
+            url, {
+            body = '',
+            additionalHeaders = const <String, String>{},
+          }) async {
+            await client.authenticatedRequest(
+              method,
+              url,
+              body: body,
+              additionalHeaders: additionalHeaders,
+            );
+          },
+    );
   }
 
   Future<void> _syncToken() async {
@@ -193,7 +222,9 @@ class FCMService {
           'Content-Type': 'application/json',
         },
       );
-    } catch (_) {}
+    } catch (error) {
+      unawaited(AppLog.write('FCM topic subscription failed: $error'));
+    }
   }
 
   Future<void> _unsubscribeFromTopicWeb(String token, String topic) async {
@@ -210,7 +241,9 @@ class FCMService {
           'Content-Type': 'application/json',
         },
       );
-    } catch (_) {}
+    } catch (error) {
+      unawaited(AppLog.write('FCM topic unsubscription failed: $error'));
+    }
   }
 
   Future<bool> syncSeatEmailAlert(
@@ -368,7 +401,9 @@ class FCMService {
 
     try {
       await FirebaseMessaging.instance.subscribeToTopic(topic);
-    } catch (_) {}
+    } catch (error) {
+      unawaited(AppLog.write('Native FCM topic subscription failed: $error'));
+    }
     return true;
   }
 
@@ -402,7 +437,9 @@ class FCMService {
     }
     try {
       await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
-    } catch (_) {}
+    } catch (error) {
+      unawaited(AppLog.write('Native FCM topic unsubscription failed: $error'));
+    }
     return true;
   }
 
@@ -413,17 +450,10 @@ class FCMService {
       if (token == null) return;
       final client = ApiClient();
       if (!await client.hasAccessToken()) return;
-      final url =
-          '${ApiConfig.realtimeApiBase}${PreConnectPushConfig.unregisterDevicePath}';
-      await client.authenticatedRequest(
-        'POST',
-        url,
-        body: jsonEncode(<String, dynamic>{'token': token}),
-        additionalHeaders: const <String, String>{
-          'Content-Type': 'application/json',
-        },
-      );
-    } catch (_) {}
+      await _deviceRegistry(client).unregister(token);
+    } catch (error) {
+      unawaited(AppLog.write('FCM device unregistration failed: $error'));
+    }
   }
 
   Future<bool> requestNotificationPermission() async {
@@ -494,7 +524,9 @@ class FCMService {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-    } catch (_) {}
+    } catch (error) {
+      unawaited(AppLog.write('Firebase initialization failed: $error'));
+    }
     if (!kIsWeb) {
       await _setupLocalNotifications();
     }
@@ -532,14 +564,18 @@ class FCMService {
       for (String seat in pinnedSeats) {
         await _subscribeToTopicWeb(token, PreConnectPushConfig.seatTopic(seat));
       }
-    } catch (_) {}
+    } catch (error) {
+      unawaited(AppLog.write('FCM topic restore failed: $error'));
+    }
 
     if (!isChromeRuntimeAvailable()) {
       try {
         FirebaseMessaging.onMessage.listen((RemoteMessage message) {
           _handleIncomingMessage(message);
         });
-      } catch (_) {}
+      } catch (error) {
+        unawaited(AppLog.write('FCM foreground listener setup failed: $error'));
+      }
     }
   }
 
@@ -559,7 +595,9 @@ class FCMService {
           cachedToken: token,
         );
       }
-    } catch (_) {}
+    } catch (error) {
+      unawaited(AppLog.write('Default FCM topic subscription failed: $error'));
+    }
   }
 
   Future<void> _initNative() async {
@@ -592,7 +630,7 @@ class FCMService {
 
   Future<void> _setupLocalNotifications() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('ic_stat_preconnect');
+        AndroidInitializationSettings('status_icon');
 
     const DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(
@@ -618,16 +656,18 @@ class FCMService {
         final payload = response.payload;
         if (payload != null && payload.isNotEmpty) {
           if (payload == 'captive_wifi') {
-            AuthService.navigatorKey.currentState?.push(
-              MaterialPageRoute(builder: (context) => const CaptiveWifiPage()),
-            );
+            _openCaptiveWifi?.call();
             return;
           }
           try {
             final Map<String, dynamic> data =
                 jsonDecode(payload) as Map<String, dynamic>;
             _handleNotificationTapAction(data);
-          } catch (_) {}
+          } catch (error) {
+            unawaited(
+              AppLog.write('Notification payload decode failed: $error'),
+            );
+          }
         }
       },
     );
@@ -681,7 +721,7 @@ class FCMService {
             'High Importance Notifications',
             importance: Importance.max,
             priority: Priority.high,
-            icon: 'ic_stat_preconnect',
+            icon: 'status_icon',
           ),
           iOS: DarwinNotificationDetails(
             presentAlert: true,
@@ -726,7 +766,9 @@ class FCMService {
             darwinAttachments = [DarwinNotificationAttachment(tempFile.path)];
           }
         }
-      } catch (_) {}
+      } catch (error) {
+        unawaited(AppLog.write('Notification image attachment failed: $error'));
+      }
     }
     await _localNotifications.show(
       id: (title.hashCode ^ body.hashCode) & 0x7FFFFFFF,
@@ -739,7 +781,7 @@ class FCMService {
           'High Importance Notifications',
           importance: Importance.max,
           priority: Priority.high,
-          icon: 'ic_stat_preconnect',
+          icon: 'status_icon',
           styleInformation: styleInformation,
         ),
         iOS: DarwinNotificationDetails(
@@ -765,9 +807,7 @@ class FCMService {
   void _handleNotificationTapAction(Map<String, dynamic> data) {
     final action = data['payload'] ?? data['action'];
     if (action == 'captive_wifi') {
-      AuthService.navigatorKey.currentState?.push(
-        MaterialPageRoute(builder: (context) => const CaptiveWifiPage()),
-      );
+      _openCaptiveWifi?.call();
       return;
     }
     var url = data['url'] as String?;
@@ -791,14 +831,16 @@ class FCMService {
     }
     if (url != null && url.isNotEmpty) {
       try {
-        final context = AuthService.navigatorKey.currentContext;
-        if (context != null && context.mounted) {
-          unawaited(openExternalUrl(context, url));
+        final handler = _openUrl;
+        if (handler != null) {
+          unawaited(handler(url));
         } else {
           final uri = Uri.parse(url);
           unawaited(launchUrl(uri, mode: LaunchMode.inAppBrowserView));
         }
-      } catch (_) {}
+      } catch (error) {
+        unawaited(AppLog.write('Notification action failed: $error'));
+      }
     }
   }
 
@@ -830,7 +872,9 @@ class FCMService {
           },
         ),
       );
-    } catch (_) {}
+    } catch (error) {
+      unawaited(AppLog.write('Confirmation notification send failed: $error'));
+    }
   }
 
   Future<void> showNotification({
@@ -851,7 +895,7 @@ class FCMService {
           'High Importance Notifications',
           importance: Importance.max,
           priority: Priority.high,
-          icon: 'ic_stat_preconnect',
+          icon: 'status_icon',
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,

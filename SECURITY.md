@@ -22,7 +22,7 @@ When possible, include:
 - Whether the issue affects login, stored tokens, cached data, network requests, or release assets
 - Any screenshots or logs that help explain the problem without exposing secrets
 
-## What To Avoid Sharing Publicly
+## What to Avoid Sharing Publicly
 
 Until a fix is available, please do not post:
 
@@ -49,4 +49,4 @@ Security concerns in scope include:
 
 ## Hardening Notes
 
-The app is designed to keep sensitive tokens in local app storage or extension storage rather than plain shared preferences. If you notice a path that weakens that guarantee, please report it privately.
+The app stores sensitive native values through `FlutterSecureStorage`, never plain shared preferences. Browser extensions use extension storage because native keychain APIs are unavailable. If you notice a path that weakens that guarantee, please report it privately.

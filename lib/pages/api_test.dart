@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:http/http.dart' as http;
-import 'package:preconnect/api/api_client.dart';
+import 'package:preconnect/tools/http/http_headers.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/pages/ui_kit.dart';

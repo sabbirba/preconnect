@@ -1,103 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.READ_MEDIA_IMAGES"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.READ_MEDIA_VIDEO"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.READ_MEDIA_AUDIO"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.ACCESS_MEDIA_LOCATION"
-        tools:node="remove" />
-    <uses-permission
-        android:name="com.google.android.gms.permission.AD_ID"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.RECORD_AUDIO"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.READ_CONTACTS"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.WRITE_CONTACTS"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.GET_ACCOUNTS"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.READ_CALENDAR"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.WRITE_CALENDAR"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.READ_PHONE_STATE"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.READ_PHONE_NUMBERS"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.CALL_PHONE"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.READ_CALL_LOG"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.WRITE_CALL_LOG"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.SEND_SMS"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.RECEIVE_SMS"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.READ_SMS"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.RECEIVE_MMS"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.BLUETOOTH"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.BLUETOOTH_ADMIN"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.BLUETOOTH_SCAN"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.BLUETOOTH_CONNECT"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.BLUETOOTH_ADVERTISE"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.ACTIVITY_RECOGNITION"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.BODY_SENSORS"
-        tools:node="remove" />
-
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -121,14 +24,13 @@
     <uses-feature android:name="android.hardware.biometrics" android:required="false" />
     <uses-feature android:name="android.hardware.wifi" android:required="false" />
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-
     <application
         android:label="PreConnect"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@mipmap/launcher_round"
         android:enableOnBackInvokedCallback="true"
+        tools:targetApi="33"
         android:usesCleartextTraffic="true">
         <meta-data
             android:name="io.flutter.embedding.android.EnableImpeller"
@@ -194,7 +96,7 @@
 
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@drawable/ic_stat_preconnect" />
+            android:resource="@drawable/status_icon" />
 
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_color"
@@ -205,7 +107,7 @@
             android:value="high_importance_channel" />
 
         <receiver
-            android:name=".WifiSuggestionPostConnectionReceiver"
+            android:name=".WifiReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.net.wifi.action.WIFI_NETWORK_SUGGESTION_POST_CONNECTION" />

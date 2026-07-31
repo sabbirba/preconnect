@@ -6,9 +6,7 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter/foundation.dart'
     show ValueNotifier, defaultTargetPlatform, kIsWeb, TargetPlatform;
 
-import 'package:in_app_review/in_app_review.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:preconnect/api/api_client.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:preconnect/tools/app_storage.dart';
@@ -16,6 +14,8 @@ import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:preconnect/tools/platform_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/storage_web.dart';
+import 'package:preconnect/tools/http/http_headers.dart';
+import 'package:preconnect/tools/store_actions.dart';
 
 class TokenPersistenceException implements Exception {
   TokenPersistenceException(this.message);
@@ -35,6 +35,7 @@ class TokenStorage {
   static const Set<String> _sensitiveKeys = {
     PreConnectStorageKeys.accessToken,
     PreConnectStorageKeys.refreshToken,
+    PreConnectStorageKeys.idToken,
     'wifi_captive_password',
   };
 
@@ -42,19 +43,23 @@ class TokenStorage {
     mOptions: MacOsOptions(usesDataProtectionKeychain: true),
   );
 
+  Future<void>? _legacyMigration;
+
   Future<String?> read({required String key}) async {
     if (kIsWeb) {
-      return await webExtensionStorageGet(key);
+      try {
+        return await webExtensionStorageGet(key);
+      } catch (error) {
+        throw TokenPersistenceException(
+          'Failed to read browser storage for "$key" '
+          '(${error.runtimeType}).',
+        );
+      }
     }
 
     if (_sensitiveKeys.contains(key)) {
-      final localVal = await AppStorage.instance.getString(key);
-      if (localVal != null && localVal.isNotEmpty) return localVal;
-      try {
-        final val = await _secureStorage.read(key: key);
-        if (val != null) return val;
-      } catch (_) {}
-      return null;
+      await _ensureLegacySensitiveValuesMigrated();
+      return _readSecureValue(key);
     }
 
     final value = await AppStorage.instance.getString(key);
@@ -67,37 +72,24 @@ class TokenStorage {
     return value != null && value.isNotEmpty;
   }
 
-  Future<bool?> readCachedHasSession() {
-    if (kIsWeb) {
-      return webExtensionStorageGet(_cachedHasSessionKey).then((value) {
-        final raw = value?.trim().toLowerCase();
-        if (raw == null || raw.isEmpty) return null;
-        return raw == 'true';
-      });
-    }
-    return AppStorage.instance.getBool(_cachedHasSessionKey);
-  }
-
   Future<void> write({required String key, String? value}) async {
     if (kIsWeb) {
-      await webExtensionStorageSet(key, value);
+      try {
+        await webExtensionStorageSet(key, value);
+      } catch (error) {
+        throw TokenPersistenceException(
+          'Failed to write browser storage for "$key" '
+          '(${error.runtimeType}).',
+        );
+      }
       await _updateCachedSessionFlagForKey(key, value);
       return;
     }
 
     if (_sensitiveKeys.contains(key)) {
-      if (value == null || value.isEmpty) {
-        await AppStorage.instance.remove(key);
-      } else {
-        await AppStorage.instance.setString(key, value);
-      }
-      try {
-        if (value == null || value.isEmpty) {
-          await _secureStorage.delete(key: key);
-        } else {
-          await _secureStorage.write(key: key, value: value);
-        }
-      } catch (_) {}
+      await _ensureLegacySensitiveValuesMigrated();
+      await _writeSecureValue(key, value);
+      await _removeLegacyValue(key);
     } else {
       if (value == null || value.isEmpty) {
         await AppStorage.instance.remove(key);
@@ -111,23 +103,32 @@ class TokenStorage {
 
   Future<void> deleteAll() async {
     if (!kIsWeb) {
-      try {
-        await _secureStorage.deleteAll();
-      } catch (_) {}
+      await _ensureLegacySensitiveValuesMigrated();
+      for (final key in _sensitiveKeys) {
+        await _writeSecureValue(key, null);
+        await _removeLegacyValue(key);
+      }
+    } else {
+      for (final key in _sensitiveKeys) {
+        await AppStorage.instance.remove(key);
+      }
     }
-    await AppStorage.instance.remove(PreConnectStorageKeys.accessToken);
-    await AppStorage.instance.remove(PreConnectStorageKeys.refreshToken);
-    await AppStorage.instance.remove(PreConnectStorageKeys.idToken);
-    await AppStorage.instance.setBool(_cachedHasSessionKey, false);
-    ApiClient().clearTransientCaches();
 
+    await AppStorage.instance.setBool(_cachedHasSessionKey, false);
     if (kIsWeb) {
-      await webExtensionStorageRemoveKeys(const [
-        PreConnectStorageKeys.accessToken,
-        PreConnectStorageKeys.refreshToken,
-        PreConnectStorageKeys.idToken,
-        _cachedHasSessionKey,
-      ]);
+      try {
+        await webExtensionStorageRemoveKeys(const [
+          PreConnectStorageKeys.accessToken,
+          PreConnectStorageKeys.refreshToken,
+          PreConnectStorageKeys.idToken,
+          'wifi_captive_password',
+          _cachedHasSessionKey,
+        ]);
+      } catch (error) {
+        throw TokenPersistenceException(
+          'Failed to delete browser storage (${error.runtimeType}).',
+        );
+      }
     }
   }
 
@@ -135,6 +136,92 @@ class TokenStorage {
     if (key != PreConnectStorageKeys.accessToken) return;
     final hasValue = value != null && value.isNotEmpty;
     await AppStorage.instance.setBool(_cachedHasSessionKey, hasValue);
+  }
+
+  Future<void> _ensureLegacySensitiveValuesMigrated() async {
+    final inFlight = _legacyMigration;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    final migration = _migrateLegacySensitiveValues();
+    _legacyMigration = migration;
+    try {
+      await migration;
+    } catch (_) {
+      if (identical(_legacyMigration, migration)) {
+        _legacyMigration = null;
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> _migrateLegacySensitiveValues() async {
+    for (final key in _sensitiveKeys) {
+      final String? legacyValue;
+      try {
+        legacyValue = await AppStorage.instance.getString(key);
+      } catch (error) {
+        throw TokenPersistenceException(
+          'Failed to read legacy storage for "$key" '
+          '(${error.runtimeType}).',
+        );
+      }
+
+      if (legacyValue == null) {
+        continue;
+      }
+
+      final secureValue = await _readSecureValue(key);
+      if ((secureValue == null || secureValue.isEmpty) &&
+          legacyValue.isNotEmpty) {
+        await _writeSecureValue(key, legacyValue);
+      }
+      await _removeLegacyValue(key);
+    }
+  }
+
+  Future<String?> _readSecureValue(String key) async {
+    try {
+      final value = await _secureStorage.read(key: key);
+      if (value == null || value.isEmpty) return null;
+      return value;
+    } catch (error) {
+      throw TokenPersistenceException(
+        'Failed to read secure storage for "$key" '
+        '(${error.runtimeType}).',
+      );
+    }
+  }
+
+  Future<void> _writeSecureValue(String key, String? value) async {
+    try {
+      if (value == null || value.isEmpty) {
+        await _secureStorage.delete(key: key);
+      } else {
+        await _secureStorage.write(key: key, value: value);
+      }
+    } catch (error) {
+      final operation = value == null || value.isEmpty ? 'delete' : 'write';
+      throw TokenPersistenceException(
+        'Failed to $operation secure storage for "$key" '
+        '(${error.runtimeType}).',
+      );
+    }
+  }
+
+  Future<void> _removeLegacyValue(String key) async {
+    try {
+      await AppStorage.instance.remove(key);
+      if (await AppStorage.instance.containsKey(key)) {
+        throw StateError('Legacy value still exists after removal.');
+      }
+    } catch (error) {
+      throw TokenPersistenceException(
+        'Failed to remove legacy storage for "$key" '
+        '(${error.runtimeType}).',
+      );
+    }
   }
 }
 
@@ -196,16 +283,16 @@ class CaptiveLoginStore {
   static const String _successUrlKey = 'wifi_captive_success_url';
   static const String _lastLoginAtKey = 'wifi_captive_last_login_at';
 
-  Future<String?> readLastPortalUrl() async {
-    return await _storage.read(key: _lastPortalUrlKey);
+  Future<String?> readLastPortalUrl() {
+    return _storage.read(key: _lastPortalUrlKey);
   }
 
   Future<void> saveLastPortalUrl(String url) async {
     await _storage.write(key: _lastPortalUrlKey, value: url);
   }
 
-  Future<String?> readSuccessUrl() async {
-    return await _storage.read(key: _successUrlKey);
+  Future<String?> readSuccessUrl() {
+    return _storage.read(key: _successUrlKey);
   }
 
   Future<void> saveSuccessUrl(String url) async {
@@ -362,53 +449,37 @@ class HomeCardPreferences {
     }
   }
 
-  static Future<void> setShowRamadanCard(bool value) async {
-    try {
-      await AppStorage.instance.setBool(showRamadanCardKey, value);
-    } catch (_) {}
+  static Future<void> setShowRamadanCard(bool value) {
+    return AppStorage.instance.setBool(showRamadanCardKey, value);
   }
 
   static Future<void> setShowDecorations(bool value) async {
-    try {
-      decorationNotifier.value = value;
-      await AppStorage.instance.setBool(showDecorationsKey, value);
-    } catch (_) {}
+    decorationNotifier.value = value;
+    await AppStorage.instance.setBool(showDecorationsKey, value);
   }
 
-  static Future<void> setShowExamCountdownCard(bool value) async {
-    try {
-      await AppStorage.instance.setBool(showExamCountdownCardKey, value);
-    } catch (_) {}
+  static Future<void> setShowExamCountdownCard(bool value) {
+    return AppStorage.instance.setBool(showExamCountdownCardKey, value);
   }
 
-  static Future<void> setShowQuickAccessSection(bool value) async {
-    try {
-      await AppStorage.instance.setBool(showQuickAccessSectionKey, value);
-    } catch (_) {}
+  static Future<void> setShowQuickAccessSection(bool value) {
+    return AppStorage.instance.setBool(showQuickAccessSectionKey, value);
   }
 
-  static Future<void> setShowTodaySchedule(bool value) async {
-    try {
-      await AppStorage.instance.setBool(showTodayScheduleKey, value);
-    } catch (_) {}
+  static Future<void> setShowTodaySchedule(bool value) {
+    return AppStorage.instance.setBool(showTodayScheduleKey, value);
   }
 
-  static Future<void> setShowCampusMapContacts(bool value) async {
-    try {
-      await AppStorage.instance.setBool(showCampusMapContactsKey, value);
-    } catch (_) {}
+  static Future<void> setShowCampusMapContacts(bool value) {
+    return AppStorage.instance.setBool(showCampusMapContactsKey, value);
   }
 
-  static Future<void> setShowNotificationsIcon(bool value) async {
-    try {
-      await AppStorage.instance.setBool(showNotificationsIconKey, value);
-    } catch (_) {}
+  static Future<void> setShowNotificationsIcon(bool value) {
+    return AppStorage.instance.setBool(showNotificationsIconKey, value);
   }
 
-  static Future<void> setShowFundingSection(bool value) async {
-    try {
-      await AppStorage.instance.setBool(showFundingSectionKey, value);
-    } catch (_) {}
+  static Future<void> setShowFundingSection(bool value) {
+    return AppStorage.instance.setBool(showFundingSectionKey, value);
   }
 }
 
@@ -490,10 +561,9 @@ class InAppReviewPrompt {
       }
       await prefs.setInt(_lastAttemptKey, now.millisecondsSinceEpoch);
 
-      final inAppReview = InAppReview.instance;
-      final available = await inAppReview.isAvailable();
+      final available = await StoreActions.isReviewAvailable();
       if (!available) return;
-      await inAppReview.requestReview();
+      await StoreActions.requestReview();
       await prefs.setInt(_lastPromptKey, now.millisecondsSinceEpoch);
     } catch (_) {}
   }
@@ -507,15 +577,20 @@ class InAppReviewPrompt {
         return await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
 
-      final inAppReview = InAppReview.instance;
       if (Platform.isIOS) {
         final appStoreId = (iosAppStoreId ?? '').trim();
         if (appStoreId.isEmpty) return false;
-        await inAppReview.openStoreListing(appStoreId: appStoreId);
-        return true;
+        return launchUrl(
+          Uri.parse('https://apps.apple.com/app/id$appStoreId'),
+          mode: LaunchMode.externalApplication,
+        );
       }
-      await inAppReview.openStoreListing();
-      return true;
+      return launchUrl(
+        Uri.parse(
+          'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
+        ),
+        mode: LaunchMode.externalApplication,
+      );
     } catch (_) {
       return false;
     }
@@ -534,22 +609,6 @@ class PlatformPermissions {
         ? status
         : await Permission.camera.request();
     return requested.isGranted;
-  }
-
-  static Future<bool> requestGalleryImagePermission() async {
-    if (kIsWeb) return true;
-    if (defaultTargetPlatform == TargetPlatform.macOS) return true;
-
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
-      final photos = await Permission.photos.request();
-      return photos.isGranted || photos.isLimited;
-    }
-
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return true;
-    }
-
-    return true;
   }
 }
 

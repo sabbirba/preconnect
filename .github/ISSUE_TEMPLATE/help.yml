@@ -1,0 +1,61 @@
+name: Contributor Help
+description: Ask for help with setup, tests, builds, or a first contribution
+title: "[Help] "
+labels:
+  - question
+body:
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before Submitting
+      options:
+        - label: I followed CONTRIBUTING.md and ran flutter doctor -v.
+          required: true
+        - label: I removed credentials, tokens, private paths, and student data from the output.
+          required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: Contributor System
+      options:
+        - macOS
+        - Linux
+        - Windows
+    validations:
+      required: true
+  - type: dropdown
+    id: task
+    attributes:
+      label: Task
+      options:
+        - First-Time Setup
+        - Find a First Issue
+        - Run Tests or Analysis
+        - Android
+        - iOS
+        - macOS
+        - Web
+        - Chrome or Firefox Extension
+        - Agent or MCP Setup
+        - Pull Request
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to do?
+    validations:
+      required: true
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What have you tried?
+      description: Include the exact command and sanitized output.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Relevant Flutter Doctor Output
+      description: Include only the platform sections related to the task.

@@ -34,7 +34,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/home_sections/exam_countdown.dart';
 import 'package:preconnect/pages/home_sections/student_overview.dart';
-import 'package:preconnect/pages/shared_widgets/session_helper.dart';
+import 'package:preconnect/features/schedule/application/session_resolver.dart';
+import 'package:preconnect/features/auth/application/auth_bridge.dart';
 import 'package:preconnect/pages/shared_widgets/map_shared.dart';
 import 'package:preconnect/pages/shared_widgets/exam_filter.dart';
 import 'package:preconnect/model/section_info.dart' as section;
@@ -53,9 +54,10 @@ import 'package:preconnect/tools/holiday.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/pages/shared_widgets/online_guard.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/time_utils.dart';
-import 'package:preconnect/tools/permission_helper.dart';
+import 'package:preconnect/pages/shared_widgets/permission_helper.dart';
 
 part 'home_sections/dashboard_data.dart';
 part 'home_sections/dashboard_view.dart';
@@ -198,8 +200,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _confirmLogout(BuildContext context) async {
-    final logoutContext = context;
-    if (!logoutContext.mounted) return;
+    if (!context.mounted) return;
     await showBracuConfirmationWithActionDialog(
       context,
       icon: Icons.logout,
@@ -209,7 +210,8 @@ class _HomePageState extends State<HomePage> {
       confirmLabel: 'Sign Out',
       confirmColor: BracuPalette.danger,
       onConfirm: () async {
-        await AuthService().logout(context: logoutContext, force: true);
+        await AuthService().logout(force: true, notify: false);
+        await AuthUiBridge.completeLogout();
       },
     );
   }

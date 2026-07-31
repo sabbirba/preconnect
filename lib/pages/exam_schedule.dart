@@ -6,7 +6,7 @@ import 'package:preconnect/api/exam_map.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
-import 'package:preconnect/pages/shared_widgets/session_helper.dart';
+import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/pages/shared_widgets/session_selector.dart';
 import 'package:preconnect/pages/shared_widgets/exam_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -17,6 +17,7 @@ import 'package:preconnect/tools/exam_visibility.dart';
 import 'package:preconnect/tools/snapshot_store.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/pages/shared_widgets/online_guard.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 class ExamSchedule extends StatefulWidget {

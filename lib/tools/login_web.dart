@@ -5,6 +5,7 @@ import 'dart:js_interop';
 import 'package:chrome_extension/runtime.dart';
 import 'package:chrome_extension/src/js/tabs.dart' as $js;
 import 'package:preconnect/tools/extension_config.dart';
+import 'package:preconnect/tools/extension_bridge.dart';
 import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/tools/runtime_web.dart';
 
@@ -20,16 +21,7 @@ class WebExtensionLoginFlow {
   Stream<WebExtensionLoginState> get events => _events.stream;
 
   void _handleMessage(OnMessageEvent event) {
-    Map<String, dynamic>? resp;
-    final dartified = (event.message as JSAny?)?.dartify();
-    if (dartified is String) {
-      try {
-        final decoded = jsonDecode(dartified);
-        if (decoded is Map) resp = Map<String, dynamic>.from(decoded);
-      } catch (_) {}
-    } else if (dartified is Map) {
-      resp = Map<String, dynamic>.from(dartified);
-    }
+    final resp = decodeExtensionMessage(event.message as JSAny?);
     if (resp == null) return;
     final type = '${resp['type'] ?? ''}';
     if (type == 'preconnect.loginStarted') {
@@ -49,9 +41,7 @@ class WebExtensionLoginFlow {
   }
 
   void _ack(OnMessageEvent event) {
-    try {
-      event.sendResponse.callAsFunction(null, {'ok': true}.jsify());
-    } catch (_) {}
+    acknowledgeExtensionMessage(event);
   }
 
   Future<void> start({String? idp}) async {

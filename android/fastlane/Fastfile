@@ -3,7 +3,7 @@ opt_out_usage
 default_platform(:android)
 
 platform :android do
-  desc "Submit a new Beta Build to Google Play Track"
+  desc "Upload a new beta build to the Google Play internal track"
   lane :play_store_upload do
     aab_path = ENV["AAB_PATH"]
     version_code = ENV["VERSION_CODE"] ? ENV["VERSION_CODE"].to_i : nil

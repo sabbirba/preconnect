@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 
@@ -11,30 +10,34 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
-import 'package:in_app_update_flutter/in_app_update_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:http/http.dart' as http;
-import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/fcm.dart';
+import 'package:preconnect/features/auth/data/oauth_exchange.dart';
+import 'package:preconnect/features/auth/application/auth_bridge.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/libsync/auth_service.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/mercure_service.dart';
 import 'package:preconnect/pages/home.dart';
+import 'package:preconnect/pages/login.dart';
+import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/background_sync.dart';
+import 'package:preconnect/tools/app_navigator.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/quiet_controller.dart';
 import 'package:app_links/app_links.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/storage_keys.dart';
+import 'package:preconnect/tools/store_actions.dart';
 import 'package:preconnect/tools/shortcut_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/shortcut_web.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AppBootstrapState {
   const AppBootstrapState({
@@ -51,10 +54,9 @@ class AppBootstrapState {
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key, this.bootstrapState, this.isPreBoot = false});
+  const MyApp({super.key, required this.bootstrapState});
 
-  final AppBootstrapState? bootstrapState;
-  final bool isPreBoot;
+  final AppBootstrapState bootstrapState;
 
   static Future<AppBootstrapState> bootstrap() async {
     if (kIsWeb && !isChromeRuntimeAvailable()) {
@@ -68,53 +70,10 @@ class MyApp extends StatefulWidget {
             key: PreConnectStorageKeys.pkceVerifier,
             value: null,
           );
-          final uri = Uri.parse(ApiConfig.tokenEndpoint);
-          final body = HttpUtils.formBody(<String, String>{
-            'grant_type': 'authorization_code',
-            'client_id': ApiConfig.clientId,
-            'code': code.trim(),
-            'redirect_uri': ApiConfig.redirectUri,
-            if (storedVerifier != null && storedVerifier.isNotEmpty)
-              'code_verifier': storedVerifier,
-          });
-          final response = await HttpUtils.client
-              .post(
-                uri,
-                headers: <String, String>{
-                  'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: body,
-              )
-              .timeout(const Duration(seconds: 10));
-
-          if (response.statusCode == 200) {
-            final data = json.decode(response.body);
-            if (data is Map<String, dynamic>) {
-              final accessToken = data['access_token'] as String?;
-              final refreshToken = data['refresh_token'] as String?;
-              final idToken = data['id_token'] as String?;
-              if (accessToken != null &&
-                  accessToken.isNotEmpty &&
-                  refreshToken != null &&
-                  refreshToken.isNotEmpty) {
-                await Future.wait([
-                  TokenStorage.instance.write(
-                    key: PreConnectStorageKeys.accessToken,
-                    value: accessToken,
-                  ),
-                  TokenStorage.instance.write(
-                    key: PreConnectStorageKeys.refreshToken,
-                    value: refreshToken,
-                  ),
-                  if (idToken != null && idToken.isNotEmpty)
-                    TokenStorage.instance.write(
-                      key: PreConnectStorageKeys.idToken,
-                      value: idToken,
-                    ),
-                ]);
-              }
-            }
-          }
+          await OAuthCodeExchange().exchangeAndPersist(
+            code: code,
+            verifier: storedVerifier,
+          );
         } catch (_) {
         } finally {
           cleanUrlCodeParameter();
@@ -254,7 +213,7 @@ class _MyAppState extends State<MyApp>
   final _RouteTrackingObserver _routeObserver = _RouteTrackingObserver();
   late bool _initialLoggedIn;
   late bool _canOpenOffline;
-  AppBootstrapState? _resolvedBootstrapState;
+  late AppBootstrapState _resolvedBootstrapState;
   bool _appLockEnabled = false;
   bool _isUnlocked = true;
   bool _isUnlocking = false;
@@ -265,61 +224,83 @@ class _MyAppState extends State<MyApp>
   StreamSubscription<Uri?>? _deepLinkSub;
   DateTime? _lastAppRefreshAt;
   bool _appRefreshInFlight = false;
+  bool _logoutNavigationInFlight = false;
 
   @override
   void initState() {
     super.initState();
+    _configurePresentationBridges();
     _resolvedBootstrapState = widget.bootstrapState;
-    _initialLoggedIn = widget.bootstrapState?.isLoggedIn ?? false;
-    _canOpenOffline = widget.bootstrapState?.canOpenOffline ?? false;
-    _themeMode = ValueNotifier<ThemeMode>(
-      widget.bootstrapState?.themeMode ?? ThemeMode.system,
-    );
+    _initialLoggedIn = widget.bootstrapState.isLoggedIn;
+    _canOpenOffline = widget.bootstrapState.canOpenOffline;
+    _themeMode = ValueNotifier<ThemeMode>(widget.bootstrapState.themeMode);
     WidgetsBinding.instance.addObserver(this);
-    if (!widget.isPreBoot) {
-      if (!_initialLoggedIn) {
-        unawaited(_bootstrapInBackground());
-      } else {
-        _resolvedBootstrapState ??= widget.bootstrapState;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          unawaited(triggerAppRefresh());
-        });
-      }
-      if (kIsWeb) {
-        _webExtensionSessionFlow = WebExtensionSessionFlow();
-        _webSessionSub = _webExtensionSessionFlow!.events.listen(
-          _handleWebExtensionSessionEvent,
-        );
-        _webShortcutBridge = WebExtensionShortcutBridge(
-          onShortcut: _handleShortcutAction,
-        );
-      }
-      if (!kIsWeb) {
-        unawaited(_initializeAppLock());
-      }
-      if (!kIsWeb) {
-        bindRefreshBus(_onRefreshSignal);
-      }
+    if (!_initialLoggedIn) {
+      unawaited(_bootstrapInBackground());
+    } else {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        unawaited(_warmPublicCdnCaches());
-        if (_supportsInAppUpdates) {
-          unawaited(_maybeCheckForUpdates());
-        }
-        unawaited(_runDeferredStartupWork());
+        unawaited(triggerAppRefresh());
       });
-      Permission.notification.status.then((status) {
-        if (status.isGranted || status.isLimited) {
-          unawaited(FCMService.instance.init());
-        }
-      });
-      _connectivitySub = Connectivity().onConnectivityChanged.listen(
-        _onConnectivityChanged,
-      );
-      if (!kIsWeb) {
-        _initDeepLinkListener();
-        BackgroundSyncService.instance.initialize();
-      }
     }
+    if (kIsWeb) {
+      _webExtensionSessionFlow = WebExtensionSessionFlow();
+      _webSessionSub = _webExtensionSessionFlow!.events.listen(
+        _handleWebExtensionSessionEvent,
+      );
+      _webShortcutBridge = WebExtensionShortcutBridge(
+        onShortcut: _handleShortcutAction,
+      );
+    } else {
+      unawaited(_initializeAppLock());
+      bindRefreshBus(_onRefreshSignal);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_warmPublicCdnCaches());
+      if (_supportsInAppUpdates) {
+        unawaited(_maybeCheckForUpdates());
+      }
+      unawaited(_runDeferredStartupWork());
+    });
+    Permission.notification.status.then((status) {
+      if (status.isGranted || status.isLimited) {
+        unawaited(FCMService.instance.init());
+      }
+    });
+    _connectivitySub = Connectivity().onConnectivityChanged.listen(
+      _onConnectivityChanged,
+    );
+    if (!kIsWeb) {
+      _initDeepLinkListener();
+    }
+  }
+
+  void _configurePresentationBridges() {
+    AuthUiBridge.configure(
+      openLogoutView: (idToken) async {
+        final context = AppNavigator.key.currentContext;
+        if (context == null || !context.mounted) return false;
+        await LoginPage.openLogoutWebView(context, idToken: idToken);
+        return true;
+      },
+      clearLoginArtifacts: LoginPage.clearSessionArtifacts,
+      clearPrinterArtifacts: CampusPrinterPage.clearStoredState,
+      completeLogout: _completeLogoutNavigation,
+    );
+    FCMService.instance.configureNavigation(
+      openCaptiveWifi: () {
+        AppNavigator.key.currentState?.push(
+          MaterialPageRoute(builder: (_) => const CaptiveWifiPage()),
+        );
+      },
+      openUrl: (url) async {
+        final context = AppNavigator.key.currentContext;
+        if (context != null && context.mounted) {
+          await openExternalUrl(context, url);
+          return;
+        }
+        await launchUrl(Uri.parse(url), mode: LaunchMode.inAppBrowserView);
+      },
+    );
   }
 
   @override
@@ -475,8 +456,9 @@ class _MyAppState extends State<MyApp>
               final appStoreId = results[0]['trackId'].toString();
 
               if (storeVersion.compareTo(localVersion) > 0) {
-                await InAppUpdateFlutter().showUpdateForIos(
-                  appStoreId: appStoreId,
+                await launchUrl(
+                  Uri.parse('https://apps.apple.com/app/id$appStoreId'),
+                  mode: LaunchMode.externalApplication,
                 );
                 return true;
               }
@@ -486,32 +468,30 @@ class _MyAppState extends State<MyApp>
         return false;
       }
 
-      final plugin = InAppUpdateFlutter();
-      final info = await plugin.checkUpdateAndroid();
-      final availability = info.updateAvailability;
-      final installStatus = info.installStatus;
+      final info = await StoreActions.checkForUpdate();
+      final availability = info['updateAvailability'] as int?;
+      final installStatus = info['installStatus'] as int?;
 
-      if (installStatus == InstallStatusAndroid.downloaded ||
-          availability ==
-              UpdateAvailabilityAndroid.developerTriggeredUpdateInProgress) {
-        await plugin.completeUpdateAndroid();
+      if (installStatus == StoreUpdateStatus.downloaded ||
+          availability == StoreUpdateStatus.inProgress) {
+        await StoreActions.completeUpdate();
         return true;
       }
 
-      if (availability == UpdateAvailabilityAndroid.updateAvailable) {
-        if (info.isFlexibleUpdateAllowed) {
-          await plugin.startFlexibleUpdateAndroid();
-          plugin.installStateStreamAndroid.listen((state) {
-            if (state.status == InstallStatusAndroid.downloaded) {
-              unawaited(plugin.completeUpdateAndroid());
+      if (availability == StoreUpdateStatus.available) {
+        if (info['isFlexibleUpdateAllowed'] == true) {
+          await StoreActions.startUpdate(immediate: false);
+          StoreActions.updateEvents.listen((state) {
+            if (state['status'] == StoreUpdateStatus.downloaded) {
+              unawaited(StoreActions.completeUpdate());
             }
           });
           return true;
         }
 
-        if (info.isImmediateUpdateAllowed) {
-          final result = await plugin.startImmediateUpdateAndroid();
-          return result == UpdateResultAndroid.success;
+        if (info['isImmediateUpdateAllowed'] == true) {
+          final result = await StoreActions.startUpdate(immediate: true);
+          return result == StoreUpdateStatus.success;
         }
       }
       return false;
@@ -557,8 +537,7 @@ class _MyAppState extends State<MyApp>
           connectivity.every((r) => r == ConnectivityResult.none);
       if (!isOffline) {
         ApiClient().clearTransientCaches();
-        final activeTab =
-            _resolvedBootstrapState?.initialHomeTab ?? HomeTab.dashboard;
+        final activeTab = _resolvedBootstrapState.initialHomeTab;
         final activeReason = switch (activeTab) {
           HomeTab.studentSchedule => 'class_schedule',
           HomeTab.examSchedule => 'exam_schedule',
@@ -580,13 +559,11 @@ class _MyAppState extends State<MyApp>
   void dispose() {
     _connectivitySub?.cancel();
     _deepLinkSub?.cancel();
-    if (!widget.isPreBoot) {
-      _webSessionSub?.cancel();
-      _webExtensionSessionFlow?.dispose();
-      unawaited(_webShortcutBridge?.dispose());
-      if (!kIsWeb) {
-        unbindRefreshBus(_onRefreshSignal);
-      }
+    _webSessionSub?.cancel();
+    _webExtensionSessionFlow?.dispose();
+    unawaited(_webShortcutBridge?.dispose());
+    if (!kIsWeb) {
+      unbindRefreshBus(_onRefreshSignal);
     }
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -595,14 +572,49 @@ class _MyAppState extends State<MyApp>
   void _handleWebExtensionSessionEvent(WebExtensionSessionEvent event) {
     if (!mounted) return;
     if (event.type != WebExtensionSessionEventKind.logoutComplete) return;
-    setState(() {
-      _initialLoggedIn = false;
-      _canOpenOffline = false;
-    });
-    AuthService.navigatorKey.currentState?.pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const OnboardingPage()),
-      (route) => false,
+    unawaited(_completeLogoutNavigation());
+  }
+
+  Future<void> _completeLogoutNavigation() async {
+    if (!mounted || _logoutNavigationInFlight) return;
+    _logoutNavigationInFlight = true;
+    _initialLoggedIn = false;
+    _canOpenOffline = false;
+    _resolvedBootstrapState = const AppBootstrapState(
+      themeMode: ThemeMode.system,
+      isLoggedIn: false,
+      canOpenOffline: false,
+      initialHomeTab: HomeTab.dashboard,
     );
+
+    final navigator = AppNavigator.key.currentState;
+    if (navigator != null) {
+      navigator.pushAndRemoveUntil(
+        PageRouteBuilder<void>(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const OnboardingPage(),
+          transitionDuration: const Duration(milliseconds: 220),
+          reverseTransitionDuration: const Duration(milliseconds: 160),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+              ),
+              child: child,
+            );
+          },
+        ),
+        (route) => false,
+      );
+    }
+
+    await Future<void>.delayed(const Duration(milliseconds: 240));
+    if (mounted) {
+      _themeMode.value = ThemeMode.system;
+      setState(() {});
+    }
+    _logoutNavigationInFlight = false;
   }
 
   void _onRefreshSignal() {
@@ -613,18 +625,14 @@ class _MyAppState extends State<MyApp>
     if (isRefreshingFrom('auth')) {
       unawaited(() async {
         final loggedIn = await AuthService().isLoggedIn();
-        if (mounted) {
+        if (!mounted) return;
+        if (!loggedIn) {
+          await _completeLogoutNavigation();
+        } else {
           setState(() {
-            _initialLoggedIn = loggedIn;
-            _canOpenOffline = loggedIn;
+            _initialLoggedIn = true;
+            _canOpenOffline = true;
           });
-          if (!loggedIn) {
-            _themeMode.value = ThemeMode.system;
-            AuthService.navigatorKey.currentState?.pushAndRemoveUntil(
-              MaterialPageRoute(builder: (context) => const OnboardingPage()),
-              (route) => false,
-            );
-          }
         }
       }());
     }
@@ -653,14 +661,14 @@ class _MyAppState extends State<MyApp>
   }
 
   void _openCaptiveWifi() {
-    final navigator = AuthService.navigatorKey.currentState;
+    final navigator = AppNavigator.key.currentState;
     if (navigator != null) {
       navigator.push(
         MaterialPageRoute(builder: (context) => const CaptiveWifiPage()),
       );
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        AuthService.navigatorKey.currentState?.push(
+        AppNavigator.key.currentState?.push(
           MaterialPageRoute(builder: (context) => const CaptiveWifiPage()),
         );
       });
@@ -684,7 +692,7 @@ class _MyAppState extends State<MyApp>
   void _openHomeTab(HomeTab tab) {
     if (!_initialLoggedIn && !_canOpenOffline) return;
     HomePage.requestShortcutTab(tab);
-    final navigator = AuthService.navigatorKey.currentState;
+    final navigator = AppNavigator.key.currentState;
     if (navigator != null) {
       navigator.pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => HomePage(initialTab: tab)),
@@ -693,7 +701,7 @@ class _MyAppState extends State<MyApp>
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      AuthService.navigatorKey.currentState?.pushAndRemoveUntil(
+      AppNavigator.key.currentState?.pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => HomePage(initialTab: tab)),
         (route) => false,
       );
@@ -870,7 +878,7 @@ class _MyAppState extends State<MyApp>
       );
       if (!signedIn && mounted) {
         _themeMode.value = ThemeMode.system;
-        AuthService.navigatorKey.currentState?.pushAndRemoveUntil(
+        AppNavigator.key.currentState?.pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const OnboardingPage()),
           (route) => false,
         );
@@ -972,7 +980,7 @@ class _MyAppState extends State<MyApp>
             themeAnimationDuration: const Duration(milliseconds: 140),
             themeAnimationCurve: Curves.easeOutCubic,
             scrollBehavior: const _SmoothScrollBehavior(),
-            navigatorKey: widget.isPreBoot ? null : AuthService.navigatorKey,
+            navigatorKey: AppNavigator.key,
             navigatorObservers: [_routeObserver],
             builder: (context, child) {
               final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1062,14 +1070,8 @@ class _MyAppState extends State<MyApp>
               );
             },
 
-            home: _resolvedBootstrapState == null
-                ? const StartupFrame()
-                : (_initialLoggedIn || _canOpenOffline)
-                ? HomePage(
-                    initialTab:
-                        _resolvedBootstrapState?.initialHomeTab ??
-                        HomeTab.dashboard,
-                  )
+            home: (_initialLoggedIn || _canOpenOffline)
+                ? HomePage(initialTab: _resolvedBootstrapState.initialHomeTab)
                 : const OnboardingPage(),
           ),
         );
@@ -1113,29 +1115,6 @@ class _RouteTrackingObserver extends NavigatorObserver {
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _update(previousRoute);
     super.didRemove(route, previousRoute);
-  }
-}
-
-class StartupFrame extends StatelessWidget {
-  const StartupFrame({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              BracuPalette.bgTop(context),
-              BracuPalette.bgBottom(context),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 
