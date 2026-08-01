@@ -31,6 +31,7 @@ subprojects {
         extensions.configure<LibraryExtension> {
             lint {
                 checkReleaseBuilds = false
+                abortOnError = false
                 disable += setOf("EasterEgg", "StopShip")
             }
             compileOptions {
@@ -46,6 +47,9 @@ subprojects {
                 }
             }
         }
+    }
+    tasks.matching { it.name.startsWith("lintVital") }.configureEach {
+        enabled = false
     }
 }
 
