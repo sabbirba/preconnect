@@ -142,9 +142,8 @@ dart compile js \
   -O2 \
   -o "${COMMON_DIR}/background.dart.js"
 
-if remote_code_match="$(rg -n \
-  --glob '*.js' \
-  "unpkg\.com|gstatic\.com/flutter-canvaskit|gstatic\.com/firebasejs|eval\\(|new Function" \
+if remote_code_match="$(grep -n -r --include="*.js" -E \
+  "unpkg\.com|gstatic\.com/flutter-canvaskit|gstatic\.com/firebasejs|eval\(|new Function" \
   "${COMMON_DIR}" 2>/dev/null)"; then
   echo "Unexpected remote code reference found in extension JS output" >&2
   printf '%s\n' "${remote_code_match}" >&2
@@ -174,7 +173,7 @@ for required_file in \
   fi
 done
 
-if ! rg -q 'renderer:"canvaskit"' "${COMMON_DIR}/flutter_bootstrap.js"; then
+if ! grep -q 'renderer:"canvaskit"' "${COMMON_DIR}/flutter_bootstrap.js"; then
   echo "Flutter extension bootstrap is not configured for CanvasKit" >&2
   exit 1
 fi
