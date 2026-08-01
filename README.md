@@ -55,13 +55,13 @@ A Flutter app for BRAC University students with SSO login and Connect API integr
 
 ### Key Features
 
-- 📅 **Academic & Schedule Management**: Class schedules, exam tracking, custom planner, CGPA calculator, and degree completion progress.
-- 🪑 **Real-time Course Registration & Seat Tracking**: Live seat status proxy, section details, exam maps, and prerequisite viewer.
-- 📚 **Library & DSpace Companion**: LibSync study space availability & room reservation, plus DSpace academic repository browser.
-- 📶 **Campus Utilities & Automation**: Automated Captive Wi-Fi login, campus wireless printing support, free computer lab status, and shuttle bus routes.
-- 🤝 **Social & Friend Sync**: QR-based friend schedule sharing & comparison.
-- 🔔 **Smart Notifications**: Push seat-status alerts via FCM, class alarms, and exam reminders.
-- ⚡ **Offline-First & Fast**: Cache-first architecture ensuring seamless offline access.
+- **Academic & Schedule Management**: Class schedules, exam tracking, custom planner, CGPA calculator, and degree completion progress.
+- **Real-time Course Registration & Seat Tracking**: Live seat status proxy, section details, exam maps, and prerequisite viewer.
+- **Library & DSpace Companion**: LibSync study space availability & room reservation, plus DSpace academic repository browser.
+- **Campus Utilities & Automation**: Automated Captive Wi-Fi login, campus wireless printing support, free computer lab status, and shuttle bus routes.
+- **Social & Friend Sync**: QR-based friend schedule sharing & comparison.
+- **Smart Notifications**: Push seat-status alerts via FCM, class alarms, and exam reminders.
+- **Offline-First & Fast**: Cache-first architecture ensuring seamless offline access.
 
 ## Installation
 
