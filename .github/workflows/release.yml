@@ -13,7 +13,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   FASTLANE_VERBOSE: "true"
   FASTLANE_OPT_OUT_USAGE: "1"
 
@@ -63,7 +62,7 @@ jobs:
           fi
 
   prepare-version:
-    name: Prepare Version
+    name: Prepare Version & Release
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
     needs: detect-pending
     runs-on: ubuntu-latest
@@ -72,6 +71,7 @@ jobs:
     outputs:
       version_name: ${{ steps.version.outputs.version_name }}
       version_code: ${{ steps.version.outputs.version_code }}
+      release_tag: ${{ steps.meta.outputs.release_tag }}
       release_sha: ${{ github.sha }}
     steps:
       - name: Checkout
@@ -93,27 +93,11 @@ jobs:
           echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
-  create-release:
-    name: Create Release
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
-    runs-on: ubuntu-latest
-    needs: [detect-pending, prepare-version]
-    permissions:
-      contents: write
-    outputs:
-      release_tag: ${{ steps.meta.outputs.release_tag }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7.0.1
-        with:
-          ref: ${{ needs.prepare-version.outputs.release_sha }}
-          fetch-depth: 0
-
       - name: Release Metadata
         id: meta
         shell: bash
         run: |
-          RELEASE_TAG="v${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}"
+          RELEASE_TAG="v${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}"
           echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
           LAST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n1 || true)
@@ -128,14 +112,14 @@ jobs:
             echo "# PreConnect Release Notes"
             echo
             echo "## Version"
-            echo "- Version: ${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}"
-            echo "- Commit: ${{ needs.prepare-version.outputs.release_sha }}"
+            echo "- Version: ${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}"
+            echo "- Commit: ${{ github.sha }}"
             echo
             echo "## Changes"
             if [ "$RANGE" = "HEAD" ]; then
-              git log --max-count=100 --pretty=format:'- %s (%h)'
+              git log --max-count=10 --pretty=format:'- %s (%h)'
             else
-              git log "$RANGE" --pretty=format:'- %s (%h)'
+              git log "$RANGE" --max-count=10 --pretty=format:'- %s (%h)'
             fi
             echo
           } > "$NOTES_FILE"
@@ -148,11 +132,11 @@ jobs:
           gh release create "${{ steps.meta.outputs.release_tag }}" \
             --title "PreConnect ${{ steps.meta.outputs.release_tag }}" \
             --notes-file release-notes.md \
-            --target "${{ needs.prepare-version.outputs.release_sha }}" || \
+            --target "${{ github.sha }}" || \
           gh release edit "${{ steps.meta.outputs.release_tag }}" \
             --title "PreConnect ${{ steps.meta.outputs.release_tag }}" \
             --notes-file release-notes.md \
-            --target "${{ needs.prepare-version.outputs.release_sha }}"
+            --target "${{ github.sha }}"
 
   static-checks:
     name: Static Analysis
@@ -191,7 +175,7 @@ jobs:
   build:
     name: Build ${{ matrix.name }}
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
-    needs: [detect-pending, prepare-version, create-release]
+    needs: [detect-pending, prepare-version]
     runs-on: ${{ matrix.os }}
     timeout-minutes: ${{ matrix.timeout || 90 }}
     permissions:
@@ -207,26 +191,15 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            platform: chrome_extension
-            name: Extension
-            artifact_name: chrome_extension-artifacts
-            timeout: 30
-          - os: ubuntu-latest
-            platform: web
-            name: Web
-            artifact_name: web-artifacts
+            platform: web_and_extension
+            name: Web & Extension
+            artifact_name: web_extension-artifacts
             timeout: 30
           - os: ubuntu-latest
             platform: android
-            build_type: apk
-            name: Android APK
-            artifact_name: android_apk-artifacts
-            timeout: 50
-          - os: ubuntu-latest
-            platform: android
-            build_type: aab
-            name: Android AAB
-            artifact_name: android_aab-artifacts
+            build_type: both
+            name: Android
+            artifact_name: android-artifacts
             timeout: 50
           - os: macos-latest
             platform: ios
@@ -257,15 +230,19 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      - name: Set Up Gradle Caching
-        if: matrix.platform == 'android'
-        uses: gradle/actions/setup-gradle@v4
-
       - name: Set Up Flutter
         uses: subosito/flutter-action@v2.23.0
         with:
           channel: "stable"
           cache: true
+
+      - name: Cache Dart Packages
+        uses: actions/cache@v6.1.0
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-cache-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-cache-
 
       - name: Configure Xcode Parallel Builds
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
@@ -316,12 +293,12 @@ jobs:
           echo "GITHUB_TOKEN=${{ secrets.GH_TOKEN }}" > .env
 
       - name: Build Browser Extension
-        if: matrix.platform == 'chrome_extension'
+        if: matrix.platform == 'chrome_extension' || matrix.platform == 'web_and_extension'
         shell: bash
         run: ./tool/build_extension.sh
 
       - name: Package Chrome Extension
-        if: matrix.platform == 'chrome_extension'
+        if: matrix.platform == 'chrome_extension' || matrix.platform == 'web_and_extension'
         shell: bash
         run: |
           mkdir -p artifacts
@@ -329,7 +306,7 @@ jobs:
           zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-chrome-extension-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
 
       - name: Package Firefox Extension
-        if: matrix.platform == 'chrome_extension'
+        if: matrix.platform == 'chrome_extension' || matrix.platform == 'web_and_extension'
         shell: bash
         run: |
           mkdir -p artifacts
@@ -337,13 +314,13 @@ jobs:
           zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-firefox-extension-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
 
       - name: Build Web
-        if: matrix.platform == 'web'
+        if: matrix.platform == 'web' || matrix.platform == 'web_and_extension'
         shell: bash
         run: |
           flutter build web --release --tree-shake-icons --csp --no-wasm-dry-run --no-web-resources-cdn --dart-define-from-file=.env
 
       - name: Package Web
-        if: matrix.platform == 'web'
+        if: matrix.platform == 'web' || matrix.platform == 'web_and_extension'
         shell: bash
         run: |
           mkdir -p artifacts
@@ -818,7 +795,7 @@ jobs:
         shell: bash
         run: |
           if [ -d artifacts ] && find artifacts -type f -print -quit | grep -q .; then
-            gh release upload "${{ needs.create-release.outputs.release_tag }}" artifacts/* --clobber
+            gh release upload "${{ needs.prepare-version.outputs.release_tag }}" artifacts/* --clobber
           else
             echo "No packaged artifacts for ${{ matrix.name }}."
           fi
