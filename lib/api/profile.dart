@@ -691,19 +691,44 @@ class PaymentService {
     Duration cacheDuration = CacheDurations.short,
   }) async {
     final asyncPrefs = AppStorage.instance;
-    final rawPortfolios = await asyncPrefs.getString(StorageKeys.portfolios);
     final portfolioIds = <String>[];
 
-    if (rawPortfolios != null && rawPortfolios.isNotEmpty) {
-      try {
-        final List decoded = jsonDecode(rawPortfolios);
-        for (final item in decoded) {
+    try {
+      final response = await ApiClient().authenticatedGet(
+        '${ApiConfig.connectApiBase}${ApiConfig.allPortfoliosPath}',
+        cacheDuration: cacheDuration,
+      );
+      if (response.statusCode == 200) {
+        final List data = jsonDecode(response.body);
+        if (data.isNotEmpty) {
+          await asyncPrefs.setString(
+            StorageKeys.paymentPortfolios,
+            response.body,
+          );
+        }
+        for (final item in data) {
           if (item is Map && item['id'] != null) {
             portfolioIds.add(item['id'].toString());
           }
         }
-      } catch (error) {
-        _recordProfileError('Portfolio cache decode', error);
+      }
+    } catch (error) {
+      _recordProfileError('Payment portfolios fetch', error);
+    }
+
+    if (portfolioIds.isEmpty) {
+      final rawPortfolios = await asyncPrefs.getString(StorageKeys.portfolios);
+      if (rawPortfolios != null && rawPortfolios.isNotEmpty) {
+        try {
+          final List decoded = jsonDecode(rawPortfolios);
+          for (final item in decoded) {
+            if (item is Map && item['id'] != null) {
+              portfolioIds.add(item['id'].toString());
+            }
+          }
+        } catch (error) {
+          _recordProfileError('Portfolio cache decode', error);
+        }
       }
     }
 
