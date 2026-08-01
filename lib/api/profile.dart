@@ -190,8 +190,11 @@ class ProfileService {
             jsonEncode(data),
           );
           final activeProfile = data.firstWhere(
-            (p) => p is Map && p['hasCompleted'] == false,
-            orElse: () => data[0],
+            (p) =>
+                p is Map &&
+                (p['hasCompleted'] == false || p['isCurrent'] == true),
+            orElse: () =>
+                data.lastWhere((p) => p is Map, orElse: () => data[0]),
           );
           final profile = activeProfile is Map ? activeProfile : data[0];
           await repo.writeStringMap(<String, String>{
