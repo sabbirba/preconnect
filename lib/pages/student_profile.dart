@@ -303,18 +303,26 @@ class _StudentProfileState extends State<StudentProfile>
       unawaited(ProfileImageCache.instance.getProfileImage(photoUrl));
     }
 
-    final rawPortfolios = await AppStorage.instance.getString(
-      StorageKeys.portfolios,
-    );
+    final rawPortfolios =
+        (await AppStorage.instance.getString(StorageKeys.paymentPortfolios)) ??
+        (await AppStorage.instance.getString(StorageKeys.portfolios));
     final codes = <String>[];
     if (rawPortfolios != null && rawPortfolios.isNotEmpty) {
       try {
         final List decoded = jsonDecode(rawPortfolios);
         for (final item in decoded) {
-          if (item is Map && item['shortCode'] != null) {
-            final code = item['shortCode'].toString().trim();
-            if (code.isNotEmpty && !codes.contains(code)) {
-              codes.add(code);
+          if (item is Map) {
+            final rawCode =
+                (item['shortCode'] ??
+                        item['departmentShortCode'] ??
+                        item['programShortCode'] ??
+                        item['shortName'])
+                    ?.toString()
+                    .trim();
+            if (rawCode != null &&
+                rawCode.isNotEmpty &&
+                !codes.contains(rawCode)) {
+              codes.add(rawCode);
             }
           }
         }
