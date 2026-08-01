@@ -191,7 +191,7 @@ jobs:
   build:
     name: Build ${{ matrix.name }}
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
-    needs: [detect-pending, prepare-version, create-release, static-checks]
+    needs: [detect-pending, prepare-version, create-release]
     runs-on: ${{ matrix.os }}
     timeout-minutes: ${{ matrix.timeout || 90 }}
     permissions:
@@ -216,24 +216,24 @@ jobs:
             name: Web
             artifact_name: web-artifacts
             timeout: 30
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             platform: android
             build_type: apk
             name: Android APK
             artifact_name: android_apk-artifacts
             timeout: 50
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             platform: android
             build_type: aab
             name: Android AAB
             artifact_name: android_aab-artifacts
             timeout: 50
-          - os: macos-15
+          - os: macos-latest
             platform: ios
             name: iOS
             artifact_name: ios-artifacts
             timeout: 90
-          - os: macos-15
+          - os: macos-latest
             platform: macos
             name: macOS
             artifact_name: macos-artifacts
@@ -257,17 +257,15 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
+      - name: Set Up Gradle Caching
+        if: matrix.platform == 'android'
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Set Up Flutter
         uses: subosito/flutter-action@v2.23.0
         with:
           channel: "stable"
           cache: true
-
-      - name: Set Up Xcode
-        if: matrix.platform == 'ios' || matrix.platform == 'macos'
-        uses: maxim-lobanov/setup-xcode@v1.7.0
-        with:
-          xcode-version: "latest"
 
       - name: Configure Xcode Parallel Builds
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
