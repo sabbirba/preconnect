@@ -8,8 +8,13 @@ Fast, Calm Academic Companion App.
 An initiative run by [BRAC University](https://bracu.ac.bd) students.
 
 [![GitHub Release](https://img.shields.io/github/v/release/sabbirba/preconnect?label=latest%20version&color=dark-green&style=flat-square&logo=github)](https://github.com/sabbirba/preconnect/releases/latest)
-![License](https://img.shields.io/badge/license-GPL3.0-blue?style=flat-square)
+[![Status](https://img.shields.io/badge/Status-Operational-brightgreen?style=flat-square&logo=cloudflare)](https://status.preconnect.app)
+[![Dart SDK](https://img.shields.io/badge/Dart-%3E%3D3.8.1-0175C2?style=flat-square&logo=dart)](https://dart.dev)
+[![Flutter](https://img.shields.io/badge/Flutter-Stable-02569B?style=flat-square&logo=flutter)](https://flutter.dev)
+[![License](https://img.shields.io/badge/license-GPL3.0-blue?style=flat-square)](LICENSE)
 [![Contributors](https://img.shields.io/github/contributors/sabbirba/preconnect?color=red&style=flat-square&logo=github)](https://github.com/sabbirba/preconnect/blob/main/CONTRIBUTING.md)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/sabbirba/preconnect/blob/main/CONTRIBUTING.md)
+[![Last Commit](https://img.shields.io/github/last-commit/sabbirba/preconnect?style=flat-square&logo=github)](https://github.com/sabbirba/preconnect/commits/main)
 [![Stars](https://img.shields.io/github/stars/sabbirba/preconnect?style=flat-square&logo=github)](https://github.com/sabbirba/preconnect/stargazers)
 [![Discord Chat](https://img.shields.io/discord/1506919568499539968?label=chat&logo=discord&logoColor=7289DA&style=flat-square)](https://discord.gg/HwrgeFrvaz)
 
@@ -19,9 +24,30 @@ An initiative run by [BRAC University](https://bracu.ac.bd) students.
 <a href="https://apps.apple.com/app/id6791423431"><img alt="App Store" src="https://img.shields.io/badge/App_Store-000000?style=for-the-badge&logo=apple&logoColor=white" /></a>&nbsp;&nbsp;
 <a href="https://play.google.com/store/apps/details?id=com.sabbirba.preconnect"><img alt="Google Play" src="https://img.shields.io/badge/Google_Play-414141?style=for-the-badge&logo=googleplay&logoColor=white" /></a>&nbsp;&nbsp;
 <a href="https://chromewebstore.google.com/detail/preconnect/fcfkbdogaciifaihbfhnaijfhdcjokca"><img alt="Chrome Extension" src="https://img.shields.io/badge/Chrome_Extension-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" /></a>&nbsp;&nbsp;
+<a href="https://addons.mozilla.org/firefox/addon/preconnect/"><img alt="Firefox Add-on" src="https://img.shields.io/badge/Firefox_Add--on-FF7139?style=for-the-badge&logo=firefox-browser&logoColor=white" /></a>&nbsp;&nbsp;
+<a href="https://web.preconnect.app"><img alt="Web App" src="https://img.shields.io/badge/Web_App-02569B?style=for-the-badge&logo=flutter&logoColor=white" /></a>&nbsp;&nbsp;
 <a href="https://github.com/sabbirba/preconnect/releases/latest"><img alt="GitHub Releases" src="https://img.shields.io/badge/GitHub_Releases-181717?style=for-the-badge&logo=github&logoColor=white" /></a>&nbsp;&nbsp;
-<a href="https://preconnect.app/funding"><img alt="Funding" src="https://img.shields.io/badge/Funding-E11D48?style=for-the-badge&logo=heart&logoColor=white" /></a>
+<a href="https://preconnect.app/funding"><img alt="Funding" src="https://img.shields.io/badge/Funding-E11D48?style=for-the-badge&logo=githubsponsors&logoColor=white" /></a>
 </div>
+
+## Table of Contents
+
+- [Overview](#overview)
+  - [Key Features](#key-features)
+- [Installation](#installation)
+- [Documentation](#documentation)
+- [Screenshots](#screenshots)
+- [Design System](#design-system)
+- [Getting Started](#getting-started)
+- [Community](#community)
+- [Platform Support](#platform-support)
+- [CI/CD](#cicd)
+- [Architecture](#architecture)
+- [Data Safety and Privacy](#data-safety-and-privacy-critical-dependencies)
+- [Seat Status Proxy](#seat-status-proxy)
+- [Roadmap](#roadmap)
+- [FAQ](#faq)
+- [Licenses & Trademarks](#licenses)
 
 ## Overview
 
@@ -29,22 +55,20 @@ A Flutter app for BRAC University students with SSO login and Connect API integr
 
 ### Key Features
 
-- Simple, predictable navigation
-- Dashboard with today, schedule, and exam snapshots
-- Class schedules and exam tracking
-- Seat status, section details, and exam maps
-- Smart alarms and reminders
-- QR-based friend sharing
-- Custom schedules and personal planning
-- Campus tools like bus routes, free labs, printer support, and map/contact access
-- Notifications, profile, degree progress, and student helpers
-- Offline-friendly, cache-first experience
+- 📅 **Academic & Schedule Management**: Class schedules, exam tracking, custom planner, CGPA calculator, and degree completion progress.
+- 🪑 **Real-time Course Registration & Seat Tracking**: Live seat status proxy, section details, exam maps, and prerequisite viewer.
+- 📚 **Library & DSpace Companion**: LibSync study space availability & room reservation, plus DSpace academic repository browser.
+- 📶 **Campus Utilities & Automation**: Automated Captive Wi-Fi login, campus wireless printing support, free computer lab status, and shuttle bus routes.
+- 🤝 **Social & Friend Sync**: QR-based friend schedule sharing & comparison.
+- 🔔 **Smart Notifications**: Push seat-status alerts via FCM, class alarms, and exam reminders.
+- ⚡ **Offline-First & Fast**: Cache-first architecture ensuring seamless offline access.
 
 ## Installation
 
 Installation is available for multiple platforms through:
 
 - Latest release assets (APK / AAB / Chrome extension / iOS / macOS): [GitHub Releases](https://github.com/sabbirba/preconnect/releases/latest)
+- Web App: [web.preconnect.app](https://web.preconnect.app)
 - iOS: [Apple App Store](https://apps.apple.com/app/id6791423431)
 - Android: [Google Play Store](https://play.google.com/store/apps/details?id=com.sabbirba.preconnect)
 - Chrome: [Chrome Web Store](https://chromewebstore.google.com/detail/preconnect/fcfkbdogaciifaihbfhnaijfhdcjokca)
@@ -63,6 +87,7 @@ Installation is available for multiple platforms through:
 
 - Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Agent Guide: [AGENTS.md](AGENTS.md)
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
 - Code of Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - Security: [SECURITY.md](SECURITY.md)
 - Trademark Guidelines: [TRADEMARKS.md](TRADEMARKS.md)
