@@ -5,6 +5,10 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
+## [2.0.5] — 2026-08-02
+
+Semester Session Isolation: Fixed switching between past and current semesters to accurately preserve course schedules, exam rooms, seating details, and grade sheets.
+
 ## [2.0.4] — 2026-07-29
 
 Universal Compatibility: Expanded hardware feature definitions and optimized responsive layouts for all device form factors.
