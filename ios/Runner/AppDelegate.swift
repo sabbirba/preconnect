@@ -299,7 +299,7 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate,
       case "requestReview":
         if #available(iOS 18.0, *) {
           Task { @MainActor in
-            await AppStore.requestReview(in: scene)
+            AppStore.requestReview(in: scene)
             result(nil)
           }
         } else {

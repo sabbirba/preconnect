@@ -72,6 +72,7 @@ class ApiConfig {
   static const String connectOrigin = 'https://connect.bracu.ac.bd';
   static String get connectMercureHubUrl =>
       'https://connect.bracu.ac.bd/.well-known/mercure?topic=${Uri.encodeComponent('http://pr/{group}/{id}')}';
+  static const String connectMercureLoginPath = '/ns/mercure/login';
   static const String connectMercureLogoutPath = '/ns/mercure/logout';
   static const String websiteBase = 'https://preconnect.app';
   static const String websiteMueenAvatarUrl =
