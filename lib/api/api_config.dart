@@ -83,7 +83,9 @@ class ApiConfig {
       ? '${getWebAppOrigin()}/student/profile/overview'
       : 'https://connect.bracu.ac.bd/student/profile/overview';
 
-  static const String profilePath = '/mds/v1/portfolios?includeInactive=true';
+  static const String profilePath = '/mds/v1/portfolios';
+  static const String allPortfoliosPath =
+      '/mds/v1/portfolios?includeInactive=true';
   static const String miscellaneousInfoPath =
       '/adp/v1/students/miscellaneous-info';
   static const String studentPath = '/mds/v1/student/info';
