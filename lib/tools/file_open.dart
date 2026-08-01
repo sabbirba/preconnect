@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:preconnect/tools/platform_channels.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -23,6 +24,7 @@ class NativeFile {
   }
 
   static Future<bool> _openFileUri(String path) async {
+    if (Platform.isAndroid) return false;
     try {
       return launchUrl(Uri.file(path), mode: LaunchMode.externalApplication);
     } catch (_) {

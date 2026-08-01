@@ -7,8 +7,6 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/storage_keys.dart';
-import 'package:preconnect/tools/preconnect_constants.dart';
-import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/cache_durations.dart';
 import 'package:preconnect/tools/app_log.dart';
 
@@ -819,100 +817,108 @@ class PaymentService {
     required List<BankConfig> banks,
   }) async {
     try {
-      final token = await TokenStorage.instance.read(
-        key: PreConnectStorageKeys.accessToken,
-      );
+      var token = await ApiClient().getAccessToken();
       if (token == null || token.isEmpty) return null;
 
-      final uri = Uri.parse(ApiConfig.pdfPrintUrl);
-      final request = http.MultipartRequest('POST', uri);
-      request.headers.addAll({
-        'Authorization': 'Bearer $token',
-        'X-REALM': 'bracu',
-        'X-SOURCE': '3',
-        'Accept': 'application/json, text/plain, */*',
-      });
+      Future<http.StreamedResponse> sendRequest(String authToken) async {
+        final uri = Uri.parse(ApiConfig.pdfPrintUrl);
+        final request = http.MultipartRequest('POST', uri);
+        request.headers.addAll({
+          'Authorization': 'Bearer $authToken',
+          'X-REALM': 'bracu',
+          'X-SOURCE': '3',
+          'Accept': 'application/json, text/plain, */*',
+        });
 
-      request.fields['report'] = 'finance/payslip.html';
-      request.fields['template'] = 'finance';
-      request.fields['driver'] = 'weasy';
+        request.fields['report'] = 'finance/payslip.html';
+        request.fields['template'] = 'finance';
+        request.fields['driver'] = 'weasy';
 
-      String formatPdfAmount(double val) {
-        final s = val.toStringAsFixed(0);
-        final buf = StringBuffer();
-        final len = s.length;
-        for (int i = 0; i < len; i++) {
-          if (i > 0 && (len - i) % 3 == 0) {
-            buf.write(',');
+        String formatPdfAmount(double val) {
+          final s = val.toStringAsFixed(0);
+          final buf = StringBuffer();
+          final len = s.length;
+          for (int i = 0; i < len; i++) {
+            if (i > 0 && (len - i) % 3 == 0) {
+              buf.write(',');
+            }
+            buf.write(s[i]);
           }
-          buf.write(s[i]);
+          return buf.toString();
         }
-        return buf.toString();
+
+        final dataMap = <String, dynamic>{
+          'copyForLabel': 'Student',
+          'title': detail.paySlipTitle,
+          'subTitle': '${detail.semesterSession} Undergraduate Programme',
+          'studentId': detail.studentId,
+          'payslipNo': detail.payslipNumber,
+          'name': detail.studentName,
+          'generationDate': detail.payslipGenerationDate ?? '',
+          'programCourseLabel': 'Programme',
+          'programOrcourse': detail.programOrCourseName,
+          'contactNo': detail.contactNo ?? '',
+          'address': detail.presentAddress ?? '',
+          'registrationSlipColumns': true,
+          'isCourseList': detail.courseList.isNotEmpty,
+          'totalFinancialCredits': detail.totalFinancialCredits.toString(),
+          'totalAcademicCredits': detail.totalAcademicCredits.toString(),
+          'totalCourseAmount': formatPdfAmount(detail.totalCourseAmount),
+          'hasQuantity': false,
+          'payslipCourseList': detail.courseList
+              .map(
+                (c) => <String, dynamic>{
+                  'courseId': c.courseCode,
+                  'courseTitle': c.courseTitle,
+                  'academicCredits': c.academicCredit.toString(),
+                  'financialCredits': c.financialCredit.toString(),
+                  'regDate': c.registrationDate ?? '',
+                  'amount': formatPdfAmount(c.amount),
+                  'rpRt': 'N/M',
+                },
+              )
+              .toList(),
+          'particularsList': detail.particulars.map((p) {
+            final m = <String, dynamic>{
+              'className': p.type == 'AGGREGATION' || p.type == 'WORDS'
+                  ? 'font-bold'
+                  : '',
+              'colspan': p.type == 'WORDS' ? 2 : 1,
+              'title': p.particular,
+            };
+            if (p.amount != null) {
+              m['amount'] = formatPdfAmount(p.amount!);
+            }
+            return m;
+          }).toList(),
+          'bankingInformationHint':
+              'Please deposit the net payable amount to any of the above mentioned banks. Please avoid Cheque, PO, Agent Banking, CDM, BEFTN, RTGS, NPSB.',
+          'bankingInformationList': banks
+              .map(
+                (b) => <String, dynamic>{
+                  'bankName': b.bankName,
+                  'accName': b.accountName,
+                  'accNo': b.accountNumber,
+                },
+              )
+              .toList(),
+          'deadLine': detail.deadlineFormatted,
+          'isPaid': detail.isPaid,
+          'expired': detail.isPaid ? false : detail.isExpired,
+        };
+
+        request.fields['data'] = jsonEncode(dataMap);
+        return request.send();
       }
 
-      final dataMap = <String, dynamic>{
-        'copyForLabel': 'Student',
-        'title': detail.paySlipTitle,
-        'subTitle': '${detail.semesterSession} Undergraduate Programme',
-        'studentId': detail.studentId,
-        'payslipNo': detail.payslipNumber,
-        'name': detail.studentName,
-        'generationDate': detail.payslipGenerationDate ?? '',
-        'programCourseLabel': 'Programme',
-        'programOrcourse': detail.programOrCourseName,
-        'contactNo': detail.contactNo ?? '',
-        'address': detail.presentAddress ?? '',
-        'registrationSlipColumns': true,
-        'isCourseList': detail.courseList.isNotEmpty,
-        'totalFinancialCredits': detail.totalFinancialCredits.toString(),
-        'totalAcademicCredits': detail.totalAcademicCredits.toString(),
-        'totalCourseAmount': formatPdfAmount(detail.totalCourseAmount),
-        'hasQuantity': false,
-        'payslipCourseList': detail.courseList
-            .map(
-              (c) => <String, dynamic>{
-                'courseId': c.courseCode,
-                'courseTitle': c.courseTitle,
-                'academicCredits': c.academicCredit.toString(),
-                'financialCredits': c.financialCredit.toString(),
-                'regDate': c.registrationDate ?? '',
-                'amount': formatPdfAmount(c.amount),
-                'rpRt': 'N/M',
-              },
-            )
-            .toList(),
-        'particularsList': detail.particulars.map((p) {
-          final m = <String, dynamic>{
-            'className': p.type == 'AGGREGATION' || p.type == 'WORDS'
-                ? 'font-bold'
-                : '',
-            'colspan': p.type == 'WORDS' ? 2 : 1,
-            'title': p.particular,
-          };
-          if (p.amount != null) {
-            m['amount'] = formatPdfAmount(p.amount!);
-          }
-          return m;
-        }).toList(),
-        'bankingInformationHint':
-            'Please deposit the net payable amount to any of the above mentioned banks. Please avoid Cheque, PO, Agent Banking, CDM, BEFTN, RTGS, NPSB.',
-        'bankingInformationList': banks
-            .map(
-              (b) => <String, dynamic>{
-                'bankName': b.bankName,
-                'accName': b.accountName,
-                'accNo': b.accountNumber,
-              },
-            )
-            .toList(),
-        'deadLine': detail.deadlineFormatted,
-        'isPaid': detail.isPaid,
-        'expired': detail.isPaid ? false : detail.isExpired,
-      };
+      var streamedResponse = await sendRequest(token);
+      if (streamedResponse.statusCode == 401) {
+        token = await ApiClient().getAccessToken(retries: 3);
+        if (token != null && token.isNotEmpty) {
+          streamedResponse = await sendRequest(token);
+        }
+      }
 
-      request.fields['data'] = jsonEncode(dataMap);
-
-      final streamedResponse = await request.send();
       if (streamedResponse.statusCode == 200) {
         return await streamedResponse.stream.toBytes();
       }

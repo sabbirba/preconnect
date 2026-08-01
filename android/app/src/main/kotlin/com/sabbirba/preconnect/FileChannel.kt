@@ -39,6 +39,7 @@ class FileChannel(
                             activity.contentResolver.getType(uri) ?: "application/pdf",
                         )
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                     }
                 activity.startActivity(Intent.createChooser(intent, null))
                 result.success(true)
