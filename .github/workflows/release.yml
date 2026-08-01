@@ -117,9 +117,9 @@ jobs:
             echo
             echo "## Changes"
             if [ "$RANGE" = "HEAD" ]; then
-              git log --max-count=10 --pretty=format:'- %s (%h)'
+              git log --max-count=1000 --pretty=format:'- %s (%h)'
             else
-              git log "$RANGE" --max-count=10 --pretty=format:'- %s (%h)'
+              git log "$RANGE" --max-count=1000 --pretty=format:'- %s (%h)'
             fi
             echo
           } > "$NOTES_FILE"
@@ -172,45 +172,14 @@ jobs:
       - name: Analyze Flutter Code
         run: flutter analyze
 
-  build:
-    name: Build ${{ matrix.name }}
+  build-web-extension:
+    name: Build Web & Extension
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
     needs: [detect-pending, prepare-version]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: ${{ matrix.timeout || 90 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
-    env:
-      DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
-      storeFile: preconnect-release-key.jks
-      storePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-      keyAlias: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
-      keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            platform: web_and_extension
-            name: Web & Extension
-            artifact_name: web_extension-artifacts
-            timeout: 30
-          - os: ubuntu-latest
-            platform: android
-            build_type: both
-            name: Android
-            artifact_name: android-artifacts
-            timeout: 50
-          - os: macos-latest
-            platform: ios
-            name: iOS
-            artifact_name: ios-artifacts
-            timeout: 90
-          - os: macos-latest
-            platform: macos
-            name: macOS
-            artifact_name: macos-artifacts
-            timeout: 90
 
     steps:
       - name: Checkout
@@ -222,13 +191,6 @@ jobs:
       - name: Bump Version
         shell: bash
         run: ./tool/sync_versions.sh bump-release
-
-      - name: Set Up Java
-        if: matrix.platform == 'android'
-        uses: actions/setup-java@v5.6.0
-        with:
-          distribution: "temurin"
-          java-version: "17"
 
       - name: Set Up Flutter
         uses: subosito/flutter-action@v2.23.0
@@ -244,21 +206,109 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pub-cache-
 
-      - name: Configure Xcode Parallel Builds
-        if: matrix.platform == 'ios' || matrix.platform == 'macos'
-        run: |
-          defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileJobs 4
-          defaults write com.apple.dt.Xcode-CLT IDEBuildOperationMaxNumberOfConcurrentCompileJobs 4
+      - name: Get Flutter Packages
+        shell: bash
+        run: flutter pub get
 
-      - name: Set Up Ruby
-        if: matrix.platform == 'ios' || matrix.platform == 'macos'
-        uses: ruby/setup-ruby@v1.321.0
+      - name: Release Environment
+        shell: bash
+        run: |
+          echo "GITHUB_TOKEN=${{ secrets.GH_TOKEN }}" > .env
+
+      - name: Build Browser Extension
+        shell: bash
+        run: ./tool/build_extension.sh
+
+      - name: Package Chrome Extension
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          cd build/chrome-extension
+          zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-chrome-extension-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
+
+      - name: Package Firefox Extension
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          cd build/firefox-extension
+          zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-firefox-extension-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
+
+      - name: Build Web
+        shell: bash
+        run: |
+          flutter build web --release --tree-shake-icons --csp --no-wasm-dry-run --no-web-resources-cdn --no-pub --dart-define-from-file=.env
+
+      - name: Package Web
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          cd build/web
+          zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-web-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v7.0.1
         with:
-          ruby-version: "3.3"
-          bundler-cache: true
+          name: web_extension-artifacts
+          path: artifacts/*
+          if-no-files-found: ignore
+
+      - name: Upload Release Assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          if [ -d artifacts ] && find artifacts -type f -print -quit | grep -q .; then
+            gh release upload "${{ needs.prepare-version.outputs.release_tag }}" artifacts/* --clobber
+          fi
+
+  build-android:
+    name: Build Android
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
+    needs: [detect-pending, prepare-version]
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    permissions:
+      contents: write
+    env:
+      storeFile: preconnect-release-key.jks
+      storePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      keyAlias: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+      keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.prepare-version.outputs.release_sha }}
+          fetch-depth: 1
+
+      - name: Bump Version
+        shell: bash
+        run: ./tool/sync_versions.sh bump-release
+
+      - name: Set Up Java
+        uses: actions/setup-java@v5.6.0
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Cache Gradle Caches
+        uses: actions/cache@v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Set Up Flutter
+        uses: subosito/flutter-action@v2.23.0
+        with:
+          channel: "stable"
+          cache: true
 
       - name: Write Android Local Properties
-        if: matrix.platform == 'android'
         shell: bash
         run: |
           {
@@ -292,52 +342,7 @@ jobs:
         run: |
           echo "GITHUB_TOKEN=${{ secrets.GH_TOKEN }}" > .env
 
-      - name: Build Browser Extension
-        if: matrix.platform == 'chrome_extension' || matrix.platform == 'web_and_extension'
-        shell: bash
-        run: ./tool/build_extension.sh
-
-      - name: Package Chrome Extension
-        if: matrix.platform == 'chrome_extension' || matrix.platform == 'web_and_extension'
-        shell: bash
-        run: |
-          mkdir -p artifacts
-          cd build/chrome-extension
-          zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-chrome-extension-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
-
-      - name: Package Firefox Extension
-        if: matrix.platform == 'chrome_extension' || matrix.platform == 'web_and_extension'
-        shell: bash
-        run: |
-          mkdir -p artifacts
-          cd build/firefox-extension
-          zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-firefox-extension-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
-
-      - name: Build Web
-        if: matrix.platform == 'web' || matrix.platform == 'web_and_extension'
-        shell: bash
-        run: |
-          flutter build web --release --tree-shake-icons --csp --no-wasm-dry-run --no-web-resources-cdn --dart-define-from-file=.env
-
-      - name: Package Web
-        if: matrix.platform == 'web' || matrix.platform == 'web_and_extension'
-        shell: bash
-        run: |
-          mkdir -p artifacts
-          cd build/web
-          zip -r "$GITHUB_WORKSPACE/artifacts/PreConnect-web-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.zip" .
-
-      - name: Cache Xcode DerivedData
-        if: matrix.platform == 'ios' || matrix.platform == 'macos'
-        uses: actions/cache@v6.1.0
-        with:
-          path: ~/Library/Developer/Xcode/DerivedData
-          key: ${{ runner.os }}-xcode-deriveddata-${{ matrix.platform }}-${{ hashFiles('ios/**/Package.resolved', 'macos/**/Package.resolved', 'pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-xcode-deriveddata-${{ matrix.platform }}-
-
       - name: Restore Keystore
-        if: matrix.platform == 'android'
         shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -360,19 +365,122 @@ jobs:
           } > android/key.properties
 
       - name: Build APK
-        if: matrix.platform == 'android' && (matrix.build_type == 'apk' || matrix.build_type == 'both')
         shell: bash
         run: |
-          flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
+          flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64 --tree-shake-icons --obfuscate --no-pub --split-debug-info=build/symbols/android --extra-gen-snapshot-options=--strip --dart-define-from-file=.env --build-name ${{ needs.prepare-version.outputs.version_name }} --build-number ${{ needs.prepare-version.outputs.version_code }}
 
       - name: Build AAB
-        if: matrix.platform == 'android' && (matrix.build_type == 'aab' || matrix.build_type == 'both')
         shell: bash
         run: ./tool/build_aab.sh
 
+      - name: Package APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          shopt -s nullglob
+          apk_paths=(build/app/outputs/flutter-apk/app-*-release.apk)
+          shopt -u nullglob
+          if [ "${#apk_paths[@]}" -eq 0 ]; then
+             echo "No ABI split APKs found." >&2
+             exit 1
+          fi
+          for apk_path in "${apk_paths[@]}"; do
+             abi="$(basename "$apk_path" | sed -E 's/^app-(.*)-release\.apk$/\1/')"
+             cp "$apk_path" \
+               "artifacts/PreConnect-android-${abi}-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.apk"
+          done
+
+      - name: Package AAB
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          cp build/app/outputs/bundle/release/app-release.aab \
+             artifacts/PreConnect-android-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.aab
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: android-artifacts
+          path: artifacts/*
+          if-no-files-found: ignore
+
+      - name: Upload Release Assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          if [ -d artifacts ] && find artifacts -type f -print -quit | grep -q .; then
+            gh release upload "${{ needs.prepare-version.outputs.release_tag }}" artifacts/* --clobber
+          fi
+
+  build-ios:
+    name: Build iOS
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
+    needs: [detect-pending, prepare-version]
+    runs-on: macos-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    env:
+      DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.prepare-version.outputs.release_sha }}
+          fetch-depth: 1
+
+      - name: Bump Version
+        shell: bash
+        run: ./tool/sync_versions.sh bump-release
+
+      - name: Set Up Flutter
+        uses: subosito/flutter-action@v2.23.0
+        with:
+          channel: "stable"
+          cache: true
+
+      - name: Cache Dart Packages
+        uses: actions/cache@v6.1.0
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-cache-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-cache-
+
+      - name: Configure Xcode Parallel Builds
+        run: |
+          defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileJobs 4
+          defaults write com.apple.dt.Xcode-CLT IDEBuildOperationMaxNumberOfConcurrentCompileJobs 4
+
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@v1.321.0
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      - name: Get Flutter Packages
+        shell: bash
+        run: flutter pub get
+
+      - name: Release Environment
+        shell: bash
+        run: |
+          echo "GITHUB_TOKEN=${{ secrets.GH_TOKEN }}" > .env
+
+      - name: Cache Xcode DerivedData
+        uses: actions/cache@v6.1.0
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-xcode-deriveddata-ios-${{ hashFiles('ios/**/Package.resolved', 'pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-xcode-deriveddata-ios-
+
       - name: Detect iOS Signing
         id: ios_signing
-        if: matrix.platform == 'ios'
         shell: bash
         env:
           DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
@@ -388,7 +496,7 @@ jobs:
           fi
 
       - name: Set Up iOS Keychain
-        if: matrix.platform == 'ios' && steps.ios_signing.outputs.enabled == 'true'
+        if: steps.ios_signing.outputs.enabled == 'true'
         uses: apple-actions/import-codesign-certs@v7.0.0
         with:
           p12-file-base64: ${{ secrets.IOS_P12_BASE64 }}
@@ -396,7 +504,7 @@ jobs:
           keychain-password: "PreConnect"
 
       - name: Install iOS Provisioning Profile
-        if: matrix.platform == 'ios' && steps.ios_signing.outputs.enabled == 'true'
+        if: steps.ios_signing.outputs.enabled == 'true'
         shell: bash
         env:
           IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
@@ -416,10 +524,10 @@ jobs:
           cp "$PROFILE_PATH" "$PROFILE_DIR/${UUID}.mobileprovision"
 
       - name: Build iOS Unsigned
-        if: matrix.platform == 'ios' && steps.ios_signing.outputs.enabled != 'true'
+        if: steps.ios_signing.outputs.enabled != 'true'
         shell: bash
         run: |
-          flutter build ios --release --no-codesign --tree-shake-icons --obfuscate \
+          flutter build ios --release --no-codesign --tree-shake-icons --obfuscate --no-pub \
             --split-debug-info=build/symbols/ios --extra-gen-snapshot-options=--strip \
             --dart-define-from-file=.env \
             --build-name "${{ needs.prepare-version.outputs.version_name }}" \
@@ -431,19 +539,130 @@ jobs:
           fi
 
       - name: Build iOS IPA
-        if: matrix.platform == 'ios' && steps.ios_signing.outputs.enabled == 'true'
+        if: steps.ios_signing.outputs.enabled == 'true'
         shell: bash
         run: |
-          flutter build ipa --release --tree-shake-icons --obfuscate \
+          flutter build ipa --release --tree-shake-icons --obfuscate --no-pub \
             --split-debug-info=build/symbols/ios --extra-gen-snapshot-options=--strip \
             --dart-define-from-file=.env \
             --export-options-plist=ios/ExportOptions.plist \
             --build-name "${{ needs.prepare-version.outputs.version_name }}" \
             --build-number "${{ needs.prepare-version.outputs.version_code }}"
 
+      - name: Package iOS
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          VERSION="${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}"
+          shopt -s nullglob
+          ipa_paths=(build/ios/ipa/*.ipa)
+          shopt -u nullglob
+          if [ "${#ipa_paths[@]}" -gt 0 ]; then
+            cp "${ipa_paths[0]}" "artifacts/PreConnect-ios-release-${VERSION}.ipa"
+            exit 0
+          fi
+          if [ ! -d build/ios/iphoneos ]; then
+            echo "No iOS build output directory found." >&2
+            exit 1
+          fi
+          shopt -s nullglob
+          app_paths=(build/ios/iphoneos/*.app)
+          shopt -u nullglob
+          if [ "${#app_paths[@]}" -eq 0 ]; then
+            echo "No iOS .ipa or .app found." >&2
+            exit 1
+          fi
+          PAYLOAD_ROOT="$(mktemp -d "$RUNNER_TEMP/ios_payload_XXXXXX")"
+          mkdir -p "$PAYLOAD_ROOT/Payload"
+          ditto "${app_paths[0]}" "$PAYLOAD_ROOT/Payload/$(basename "${app_paths[0]}")"
+          (
+            cd "$PAYLOAD_ROOT"
+            zip -r -9 -y "$GITHUB_WORKSPACE/artifacts/PreConnect-ios-release-${VERSION}-unsigned.ipa" Payload
+          )
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: ios-artifacts
+          path: artifacts/*
+          if-no-files-found: ignore
+
+      - name: Upload Release Assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          if [ -d artifacts ] && find artifacts -type f -print -quit | grep -q .; then
+            gh release upload "${{ needs.prepare-version.outputs.release_tag }}" artifacts/* --clobber
+          fi
+
+  build-macos:
+    name: Build macOS
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
+    needs: [detect-pending, prepare-version]
+    runs-on: macos-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    env:
+      DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.prepare-version.outputs.release_sha }}
+          fetch-depth: 1
+
+      - name: Bump Version
+        shell: bash
+        run: ./tool/sync_versions.sh bump-release
+
+      - name: Set Up Flutter
+        uses: subosito/flutter-action@v2.23.0
+        with:
+          channel: "stable"
+          cache: true
+
+      - name: Cache Dart Packages
+        uses: actions/cache@v6.1.0
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-cache-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-cache-
+
+      - name: Configure Xcode Parallel Builds
+        run: |
+          defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileJobs 4
+          defaults write com.apple.dt.Xcode-CLT IDEBuildOperationMaxNumberOfConcurrentCompileJobs 4
+
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@v1.321.0
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      - name: Get Flutter Packages
+        shell: bash
+        run: flutter pub get
+
+      - name: Release Environment
+        shell: bash
+        run: |
+          echo "GITHUB_TOKEN=${{ secrets.GH_TOKEN }}" > .env
+
+      - name: Cache Xcode DerivedData
+        uses: actions/cache@v6.1.0
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-xcode-deriveddata-macos-${{ hashFiles('macos/**/Package.resolved', 'pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-xcode-deriveddata-macos-
+
       - name: Detect macOS Signing
         id: macos_signing
-        if: matrix.platform == 'macos'
         shell: bash
         env:
           DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
@@ -465,7 +684,7 @@ jobs:
           fi
 
       - name: Set Up macOS Keychain
-        if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true'
+        if: steps.macos_signing.outputs.enabled == 'true'
         uses: apple-actions/import-codesign-certs@v7.0.0
         with:
           p12-file-base64: ${{ secrets.MACOS_P12_BASE64 || secrets.IOS_P12_BASE64 }}
@@ -473,7 +692,7 @@ jobs:
           keychain-password: "PreConnect"
 
       - name: Set Up macOS Installer Certificate
-        if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true' && steps.macos_signing.outputs.installer_enabled == 'true'
+        if: steps.macos_signing.outputs.enabled == 'true' && steps.macos_signing.outputs.installer_enabled == 'true'
         uses: apple-actions/import-codesign-certs@v7.0.0
         with:
           p12-file-base64: ${{ secrets.MACOS_INSTALLER_P12_BASE64 }}
@@ -483,7 +702,7 @@ jobs:
           keychain-password: "PreConnect"
 
       - name: Install macOS Provisioning Profile
-        if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true'
+        if: steps.macos_signing.outputs.enabled == 'true'
         shell: bash
         env:
           MACOS_PROFILE_BASE64: ${{ secrets.MACOS_PROFILE_BASE64 }}
@@ -509,8 +728,7 @@ jobs:
           install_profile "$HOME/Library/MobileDevice/Provisioning Profiles"
           install_profile "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
 
-      - name: Build macOS
-        if: matrix.platform == 'macos'
+      - name: Build macOS Application
         shell: bash
         env:
           DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
@@ -645,69 +863,8 @@ jobs:
             fi
           fi
 
-      - name: Package APK
-        if: matrix.platform == 'android' && (matrix.build_type == 'apk' || matrix.build_type == 'both')
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts
-          shopt -s nullglob
-          apk_paths=(build/app/outputs/flutter-apk/app-*-release.apk)
-          shopt -u nullglob
-          if [ "${#apk_paths[@]}" -eq 0 ]; then
-             echo "No ABI split APKs found." >&2
-             exit 1
-          fi
-          for apk_path in "${apk_paths[@]}"; do
-             abi="$(basename "$apk_path" | sed -E 's/^app-(.*)-release\.apk$/\1/')"
-             cp "$apk_path" \
-               "artifacts/PreConnect-android-${abi}-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.apk"
-          done
-
-      - name: Package AAB
-        if: matrix.platform == 'android' && (matrix.build_type == 'aab' || matrix.build_type == 'both')
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts
-          cp build/app/outputs/bundle/release/app-release.aab \
-             artifacts/PreConnect-android-release-${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}.aab
-
-      - name: Package iOS
-        if: matrix.platform == 'ios'
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts
-          VERSION="${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}"
-          shopt -s nullglob
-          ipa_paths=(build/ios/ipa/*.ipa)
-          shopt -u nullglob
-          if [ "${#ipa_paths[@]}" -gt 0 ]; then
-            cp "${ipa_paths[0]}" "artifacts/PreConnect-ios-release-${VERSION}.ipa"
-            exit 0
-          fi
-          if [ ! -d build/ios/iphoneos ]; then
-            echo "No iOS build output directory found." >&2
-            exit 1
-          fi
-          shopt -s nullglob
-          app_paths=(build/ios/iphoneos/*.app)
-          shopt -u nullglob
-          if [ "${#app_paths[@]}" -eq 0 ]; then
-            echo "No iOS .ipa or .app found." >&2
-            exit 1
-          fi
-          PAYLOAD_ROOT="$(mktemp -d "$RUNNER_TEMP/ios_payload_XXXXXX")"
-          mkdir -p "$PAYLOAD_ROOT/Payload"
-          ditto "${app_paths[0]}" "$PAYLOAD_ROOT/Payload/$(basename "${app_paths[0]}")"
-          (
-            cd "$PAYLOAD_ROOT"
-            zip -r -9 -y "$GITHUB_WORKSPACE/artifacts/PreConnect-ios-release-${VERSION}-unsigned.ipa" Payload
-          )
-
       - name: Notarize macOS
-        if: matrix.platform == 'macos' && steps.macos_signing.outputs.enabled == 'true' && env.DEVID_BUILD == 'true'
+        if: steps.macos_signing.outputs.enabled == 'true' && env.DEVID_BUILD == 'true'
         env:
           APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
@@ -737,8 +894,7 @@ jobs:
             echo "NOTARIZED_APP=$APP_PATH" >> "$GITHUB_ENV"
           fi
 
-      - name: Package macOS
-        if: matrix.platform == 'macos'
+      - name: Package macOS DMG & PKG
         shell: bash
         run: |
           set -euo pipefail
@@ -785,7 +941,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: ${{ matrix.artifact_name }}
+          name: macos-artifacts
           path: artifacts/*
           if-no-files-found: ignore
 
@@ -796,15 +952,13 @@ jobs:
         run: |
           if [ -d artifacts ] && find artifacts -type f -print -quit | grep -q .; then
             gh release upload "${{ needs.prepare-version.outputs.release_tag }}" artifacts/* --clobber
-          else
-            echo "No packaged artifacts for ${{ matrix.name }}."
           fi
 
   publish-google-play:
     name: Publish Google Play
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
     runs-on: ubuntu-latest
-    needs: [detect-pending, prepare-version, build]
+    needs: [detect-pending, prepare-version, build-android]
     timeout-minutes: 20
     permissions:
       contents: read
@@ -819,7 +973,7 @@ jobs:
       - name: Download Android AAB Artifacts
         uses: actions/download-artifact@v8.0.1
         with:
-          name: android_aab-artifacts
+          name: android-artifacts
           path: artifacts/android
 
       - name: Resolve AAB
