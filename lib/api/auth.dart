@@ -200,6 +200,25 @@ class AuthService {
     }
   }
 
+  Future<void> _loginMercureSession(String? accessToken) async {
+    if (accessToken == null || accessToken.isEmpty) return;
+    try {
+      final uri = BracuLogout.mercureLoginUri;
+      await HttpUtils.client
+          .post(
+            uri,
+            headers: <String, String>{
+              ...BracuLogout.mercureLoginHeaders(accessToken: accessToken),
+              ...compressionHeadersForUri(uri),
+            },
+            body: '{}',
+          )
+          .timeout(_authRequestTimeout);
+    } catch (error) {
+      unawaited(AppLog.write('Mercure session login failed: $error'));
+    }
+  }
+
   Future<void> _clearAuthSessionData() async {
     await clearAuthenticationState(
       storage: _storage,
@@ -285,6 +304,7 @@ class AuthService {
             );
           }
           ApiClient().clearTransientCaches();
+          unawaited(_loginMercureSession(accessToken));
         },
         clearTokens: () async {
           await _storage.deleteAll();

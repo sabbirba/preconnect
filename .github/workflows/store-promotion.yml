@@ -1,8 +1,6 @@
 name: Store Promotion
 
 on:
-  schedule:
-    - cron: "00 18 * * 3"
   workflow_dispatch:
 
 permissions:
@@ -91,7 +89,7 @@ jobs:
           FASTLANE_OPT_OUT_USAGE: "1"
           BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
         run: |
-          cd android && bundle exec fastlane promote_beta_to_production
+          cd android && bundle exec fastlane promote_internal_to_production
 
       - name: Set Up Flutter
         if: matrix.run_chrome

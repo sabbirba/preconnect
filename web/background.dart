@@ -589,6 +589,7 @@ Future<void> _bootstrapSessionSync() async {
 
 Future<void> _syncLatestSession() async {
   await ensureFreshWebExtensionSession();
+  await _loginMercureSession();
 }
 
 bool _isLogoutUrl(String? url) {
@@ -843,6 +844,32 @@ Future<void> _startLogout() async {
   });
 
   await _autoClickLogoutIfNeeded(logoutTabId, url: logoutUrl.toString());
+}
+
+Future<void> _loginMercureSession() async {
+  try {
+    final values = await chrome.storage.local.get(
+      PreConnectStorageKeys.accessToken,
+    );
+    final accessToken = '${values[PreConnectStorageKeys.accessToken] ?? ''}'
+        .trim();
+    if (accessToken.isEmpty) return;
+    final uri = BracuLogout.mercureLoginUri;
+    final headers = _headersFromMap(
+      BracuLogout.mercureLoginHeaders(accessToken: accessToken),
+    );
+    await _fetch(
+      uri.toString(),
+      RequestInit(
+        method: 'POST',
+        credentials: 'include',
+        headers: headers,
+        body: '{}'.toJS,
+      ),
+    ).toDart;
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
 }
 
 Future<void> _revokeMercureSession() async {

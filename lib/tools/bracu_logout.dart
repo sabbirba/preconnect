@@ -16,6 +16,21 @@ class BracuLogout {
     );
   }
 
+  static Uri get mercureLoginUri => Uri.parse(
+    '${ApiConfig.connectApiBase}${ApiConfig.connectMercureLoginPath}',
+  );
+
+  static Map<String, String> mercureLoginHeaders({String? accessToken}) {
+    final cleanedAccessToken = accessToken?.trim() ?? '';
+    return <String, String>{
+      ...ApiConfig.apiHeaders,
+      'Content-Type': 'application/json',
+      'Origin': ApiConfig.connectOrigin,
+      if (cleanedAccessToken.isNotEmpty)
+        'Authorization': 'Bearer $cleanedAccessToken',
+    };
+  }
+
   static Uri get mercureLogoutUri => Uri.parse(
     '${ApiConfig.connectApiBase}${ApiConfig.connectMercureLogoutPath}',
   );

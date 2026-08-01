@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/tools/bracu_logout.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
@@ -31,6 +32,15 @@ class MercureService {
         return;
       }
 
+      _client = HttpUtils.client;
+      try {
+        await _client!.post(
+          BracuLogout.mercureLoginUri,
+          headers: BracuLogout.mercureLoginHeaders(accessToken: token),
+          body: '{}',
+        );
+      } catch (_) {}
+
       final url = Uri.parse(ApiConfig.connectMercureHubUrl);
       final request = http.Request('GET', url);
       request.headers['accept'] = 'text/event-stream';
@@ -39,7 +49,6 @@ class MercureService {
       request.headers['x-source'] = '3';
       request.headers['cache-control'] = 'no-cache';
 
-      _client = HttpUtils.client;
       final response = await _client!.send(request);
 
       if (response.statusCode == 200) {
