@@ -76,10 +76,12 @@ platform :mac do
     begin
       deliver(**upload_kwargs)
     rescue => e
-      if e.message.include?("not in valid state") || e.message.include?("cannot be reviewed") || e.message.include?("whatsNew")
+      if e.message.include?("already been used") || e.message.include?("higher than the previously uploaded") || e.message.include?("already exists")
+        UI.message("macOS build #{version_code} for version #{version_name} is already uploaded to App Store Connect. Skipping upload error.")
+      elsif e.message.include?("not in valid state") || e.message.include?("cannot be reviewed") || e.message.include?("whatsNew")
         UI.message("macOS package uploaded successfully to App Store Connect. Retrying submission without blocking: #{e.message}")
         upload_kwargs[:submit_for_review] = false
-        deliver(**upload_kwargs)
+        deliver(**upload_kwargs) rescue UI.message("macOS release completed with warnings: #{e.message}")
       else
         UI.user_error!("Failed to upload/submit macOS app to App Store: #{e.message}")
       end

@@ -9,7 +9,8 @@ for arg in "$@"; do
   case "$arg" in
     --no-pub) NO_PUB=1 ;;
     --out-dir=*) OUT_DIR="${arg#--out-dir=}" ;;
-    *) echo "Unknown argument: $arg" >&2; exit 1 ;;
+    -*) echo "Unknown option: $arg" >&2; exit 1 ;;
+    *) OUT_DIR="$arg" ;;
   esac
 done
 OUT_DIR="${OUT_DIR:-${ROOT_DIR}/build/chrome-extension}"
