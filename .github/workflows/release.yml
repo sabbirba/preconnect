@@ -788,11 +788,14 @@ jobs:
                 -scheme Runner \
                 -configuration Release \
                 -archivePath "$RUNNER_TEMP/PreConnect_Store.xcarchive" \
+                -target Runner \
                 CODE_SIGN_STYLE=Manual \
                 CODE_SIGN_IDENTITY="Apple Distribution" \
                 DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
                 PROVISIONING_PROFILE_SPECIFIER="" \
-                PROVISIONING_PROFILE="${{ env.MACOS_PROFILE_UUID }}"; then
+                PROVISIONING_PROFILE="$MACOS_PROFILE_UUID" \
+                CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES=YES \
+                "PROVISIONING_PROFILE[sdk=macosx*]=$MACOS_PROFILE_UUID"; then
 
                  printf '%s\n' \
                   '<?xml version="1.0" encoding="UTF-8"?>' \
@@ -804,7 +807,7 @@ jobs:
                   '  <key>signingCertificate</key><string>Apple Distribution</string>' \
                   '  <key>installerSigningCertificate</key><string>3rd Party Mac Developer Installer</string>' \
                   '  <key>provisioningProfiles</key><dict>' \
-                  "    <key>com.sabbirba.preconnect</key><string>${{ env.MACOS_PROFILE_UUID }}</string>" \
+                  "    <key>com.sabbirba.preconnect</key><string>$MACOS_PROFILE_UUID</string>" \
                   '  </dict>' \
                   '  <key>uploadBitcode</key><false/>' \
                   '  <key>uploadSymbols</key><true/>' \
