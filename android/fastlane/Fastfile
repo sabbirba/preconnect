@@ -17,11 +17,10 @@ platform :android do
         skip_upload_metadata: true,
         skip_upload_images: true,
         skip_upload_screenshots: true,
-        skip_upload_changelogs: false,
-        version_code_changes_only: true
+        skip_upload_changelogs: false
       )
     rescue => e
-      if e.message.include?("has already been used")
+      if e.message.include?("has already been used") || e.message.include?("already exists") || e.message.include?("higher than")
         UI.important("Version code #{version_code} already exists on Play Store. Skipping upload.")
       else
         raise e
