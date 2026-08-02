@@ -46,6 +46,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   Map<String, String>? _extractedParams;
   AndroidNetworkStatus? _currentStatus;
   String _savedLoginSsid = '';
+  String? _rawResponseLog;
 
   @override
   void initState() {
@@ -54,6 +55,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       assert(true);
     }
     WidgetsBinding.instance.addObserver(this);
+    _ssidController.text = CaptiveLoginStore.defaultCampusSsid;
     _studentIdController.addListener(_handleStudentIdChanged);
     _passwordController.addListener(_handlePasswordChanged);
     if (AndroidNetworkAssist.isSupported) {
@@ -122,7 +124,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
           _passwordController.text = creds.password;
         }
       });
-      await _autofillSsidFromSystem(force: false);
       unawaited(_checkPostConnectionEvent());
 
       if (IosNetworkAssist.isSupported) {
@@ -195,88 +196,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
     }
   }
 
-  Future<void> _autofillSsidFromSystem({bool force = false}) async {
-    if (kIsWeb) {
-      if (_ssidController.text.trim().isEmpty || force) {
-        setState(() {
-          _ssidController.text = 'Student-WiFi';
-        });
-      }
-      return;
-    }
-
-    if (IosNetworkAssist.isSupported) {
-      for (var i = 0; i < 3; i++) {
-        if (i > 0) {
-          await Future<void>.delayed(const Duration(milliseconds: 800));
-        }
-        final ssid = await IosNetworkAssist.getCurrentSsid();
-        if (!mounted) return;
-        if (ssid != null && ssid.isNotEmpty) {
-          final current = _ssidController.text.trim();
-          if (current != ssid && (force || current.isEmpty)) {
-            setState(() {
-              _ssidController.text = ssid;
-            });
-          }
-          return;
-        }
-      }
-      return;
-    }
-
-    if (!AndroidNetworkAssist.isSupported) return;
-    for (var i = 0; i < 5; i++) {
-      if (i > 0) {
-        await Future<void>.delayed(const Duration(milliseconds: 600));
-      }
-      final status = await AndroidNetworkAssist.getNetworkStatus();
-      if (!mounted) return;
-      if (status == null ||
-          status.transport.trim().toLowerCase() != 'wifi' ||
-          !status.connected) {
-        if (i == 4) {
-          setState(() {
-            _ssidController.text = '';
-          });
-        }
-        continue;
-      }
-      bool hasPermission = await Permission.locationWhenInUse.status.isGranted;
-      if (!hasPermission && force) {
-        final ok = await _requestPermissionWithUx(
-          permission: Permission.locationWhenInUse,
-        );
-        if (!ok) return;
-        hasPermission = true;
-      }
-      if (!hasPermission) {
-        break;
-      }
-      final isGpsEnabled =
-          await AndroidNetworkAssist.isLocationServiceEnabled();
-      if (!isGpsEnabled) {
-        if (force) {
-          final resolved = await AndroidNetworkAssist.openLocationSettings();
-          if (!resolved) return;
-        } else {
-          continue;
-        }
-      }
-      final statusWithSsid = await AndroidNetworkAssist.getNetworkStatus();
-      if (!mounted) return;
-      final ssid = (statusWithSsid?.ssid ?? '').trim();
-      if (ssid.isEmpty) continue;
-      final current = _ssidController.text.trim();
-      if (current == ssid) return;
-      if (!force && current.isNotEmpty) return;
-      setState(() {
-        _ssidController.text = ssid;
-      });
-      break;
-    }
-  }
-
   bool _validateRequiredInputs() {
     return _ssidController.text.trim().isNotEmpty &&
         _studentIdController.text.trim().isNotEmpty &&
@@ -286,28 +205,11 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   Future<String> _registerWifiSuggestion() async {
     final hasPerm = await _ensureWifiSuggestionPermissions();
     if (!hasPerm) return 'permission-required';
-    final ssid = _ssidController.text.trim();
-    if (ssid.isEmpty) return 'invalid';
-    final securityType = _inferSecurityType(ssid);
-    final suggestionPassword = securityType == 'wpa2'
-        ? _passwordController.text
-        : '';
     return AndroidNetworkAssist.addWifiSuggestion(
-      ssid: ssid,
-      password: suggestionPassword,
-      securityType: securityType,
+      ssid: CaptiveLoginStore.defaultCampusSsid,
+      password: '',
+      securityType: 'owe',
     );
-  }
-
-  String _inferSecurityType(String ssid) {
-    final lowered = ssid.trim().toLowerCase();
-    if (lowered == 'student-wifi') {
-      return 'owe';
-    }
-    if (lowered.contains('wpa') || lowered.contains('secure')) {
-      return 'wpa2';
-    }
-    return 'open';
   }
 
   Future<void> _waitForTargetWifiAssociation() async {
@@ -408,8 +310,12 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
           );
 
       if (!mounted) return;
+      setState(() {
+        _rawResponseLog = CaptiveWifiHttp.instance.lastResponseLog.isNotEmpty
+            ? CaptiveWifiHttp.instance.lastResponseLog
+            : (CaptiveWifiHttp.instance.lastError ?? 'No response received.');
+      });
       if (loggedIn) {
-        _showLocalSnackBar('Login success. Internet validated.');
         final currentSsid = _ssidController.text.trim();
         await CaptiveLoginStore.instance.saveSsid(currentSsid);
         if (mounted) {
@@ -420,13 +326,13 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
           });
         }
         unawaited(AndroidNetworkAssist.reportCaptivePortalDismissed());
-      } else {
-        final err = CaptiveWifiHttp.instance.lastError;
-
-        _showLocalSnackBar(_toFriendlyError(err));
       }
     } catch (e) {
-      _showLocalSnackBar('Exception: $e');
+      if (mounted) {
+        setState(() {
+          _rawResponseLog = 'Exception: $e';
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -474,15 +380,18 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       try {
         loggedOut = await CaptiveWifiHttp.instance.logoutViaCaptiveApi(
           captiveWifiUrl: captiveWifiUrl,
-          ssid: _ssidController.text.trim(),
         );
       } finally {
         await AndroidNetworkAssist.unbindFromWifiNetwork();
       }
 
       if (!mounted) return;
+      setState(() {
+        _rawResponseLog = CaptiveWifiHttp.instance.lastResponseLog.isNotEmpty
+            ? CaptiveWifiHttp.instance.lastResponseLog
+            : (CaptiveWifiHttp.instance.lastError ?? 'No response received.');
+      });
       if (loggedOut) {
-        _showLocalSnackBar('Disconnected from portal successfully.');
         await CaptiveLoginStore.instance.saveSsid('');
         if (mounted) {
           setState(() {
@@ -491,14 +400,12 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
           });
         }
         unawaited(_loadStoredCredentials());
-      } else {
-        final err = CaptiveWifiHttp.instance.lastError;
-
-        _showLocalSnackBar(_toFriendlyDisconnectError(err));
       }
     } catch (e) {
       if (mounted) {
-        _showLocalSnackBar(_toFriendlyDisconnectError(e.toString()));
+        setState(() {
+          _rawResponseLog = 'Exception: $e';
+        });
       }
     } finally {
       if (mounted) {
@@ -518,7 +425,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
         _extractedParams = null;
       }
     });
-    _setSsidFromStatus(status);
     final transport = status.transport.trim().toLowerCase();
     if (transport != 'wifi' || !status.connected) {
       return;
@@ -542,21 +448,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
     }
   }
 
-  void _setSsidFromStatus(AndroidNetworkStatus status) {
-    final ssid = (status.ssid ?? '').trim();
-    if (status.transport.trim().toLowerCase() != 'wifi' || !status.connected) {
-      _ssidController.text = '';
-      return;
-    }
-    if (ssid.isEmpty) return;
-    final current = _ssidController.text.trim();
-    if (current == ssid) return;
-    final hasCustomValue =
-        current.isNotEmpty && current != CaptiveLoginStore.defaultCampusSsid;
-    if (hasCustomValue) return;
-    _ssidController.text = ssid;
-  }
-
   Future<void> _setAutoExtendEnabled(bool value) async {
     await CaptiveLoginStore.instance.saveAutoExtendEnabled(value);
     if (!mounted) return;
@@ -575,8 +466,14 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
     var captiveWifiUrl = CaptiveWifiHttp.resolvePortalUri(status);
     if (captiveWifiUrl == null ||
         captiveWifiUrl == CaptiveWifiHttp.defaultProbeUri) {
-      if (_detectedPortalUri != null) {
-        captiveWifiUrl = _detectedPortalUri!;
+      final freshlyDetected = await CaptiveWifiHttp.detectCaptivePortal();
+      if (freshlyDetected != null) {
+        captiveWifiUrl = freshlyDetected;
+        if (mounted) {
+          setState(() {
+            _detectedPortalUri = freshlyDetected;
+          });
+        }
       }
     }
     if (captiveWifiUrl == null) {
@@ -596,7 +493,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
         studentId: studentId,
         password: password,
         captiveWifiUrl: captiveWifiUrl,
-        ssid: _ssidController.text.trim(),
       );
     } finally {
       if (AndroidNetworkAssist.isSupported) {
@@ -693,7 +589,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                         children: [
                           TextField(
                             controller: _ssidController,
-                            readOnly: AndroidNetworkAssist.isSupported,
+                            readOnly: true,
                             style: TextStyle(
                               color: BracuPalette.textPrimary(context),
                               fontFamily: 'Outfit',
@@ -702,15 +598,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                               context,
                               labelText: 'SSID',
                               borderRadius: 14,
-                              suffixIcon: IosNetworkAssist.isSupported
-                                  ? IconButton(
-                                      icon: const Icon(Icons.refresh_rounded),
-                                      tooltip: 'Detect Wi-Fi',
-                                      onPressed: () => unawaited(
-                                        _autofillSsidFromSystem(force: true),
-                                      ),
-                                    )
-                                  : null,
                             ),
                           ),
                           const Gap(12),
@@ -890,6 +777,10 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                       const Gap(12),
                       _buildPortalParamsCard(context),
                     ],
+                    if (_rawResponseLog != null) ...[
+                      const Gap(12),
+                      _buildRawResponseCard(context),
+                    ],
                   ],
                 ),
               ],
@@ -900,50 +791,44 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
     );
   }
 
-  String _toFriendlyError(String? err) {
-    if (err == null || err.isEmpty) return 'An unknown error occurred.';
-    final lower = err.toLowerCase();
-    if (lower.contains('incorrect student id') || lower.contains('password')) {
-      return 'Incorrect Student ID or password.';
-    }
-    if (lower.contains('locked')) {
-      return 'Account is locked. Please try again later.';
-    }
-    if (lower.contains('expired')) {
-      return 'Your password has expired.';
-    }
-    if (lower.contains('exceeded the limit') ||
-        lower.contains('limit reached')) {
-      return 'Terminal limit reached. Disconnect another device.';
-    }
-    if (lower.contains('socketexception') ||
-        lower.contains('connection refused') ||
-        lower.contains('unreachable')) {
-      return 'Cannot reach the campus network. Make sure you are connected to Student-WiFi.';
-    }
-    if (lower.contains('time out') || lower.contains('timeout')) {
-      return 'The connection request timed out. Please try again.';
-    }
-    if (lower.contains('probe to generate_204 failed') ||
-        lower.contains('still captive')) {
-      return 'Logged in, but no internet access detected.';
-    }
-    if (lower.contains('http status')) {
-      return 'Portal server returned an error. Please try again.';
-    }
-    return 'Unable to connect to Wi-Fi portal.';
-  }
+  Widget _buildRawResponseCard(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = BracuPalette.textSecondary(
+      context,
+    ).withValues(alpha: isDark ? 0.35 : 0.18);
 
-  String _toFriendlyDisconnectError(String? err) {
-    if (err == null || err.isEmpty) return 'An unknown error occurred.';
-    final lower = err.toLowerCase();
-    if (lower.contains('socketexception') || lower.contains('unreachable')) {
-      return 'Cannot reach the campus network.';
-    }
-    if (lower.contains('time out') || lower.contains('timeout')) {
-      return 'The request timed out.';
-    }
-    return 'Failed to disconnect from Wi-Fi portal.';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: BracuPalette.card(context),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Raw Response',
+            style: TextStyle(
+              color: BracuPalette.textPrimary(context),
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const Gap(12),
+          SelectableText(
+            _rawResponseLog ?? '',
+            style: TextStyle(
+              color: BracuPalette.textPrimary(context),
+              fontSize: 12,
+              fontFamily: 'monospace',
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildPortalParamsCard(BuildContext context) {
@@ -964,10 +849,17 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       'authType': 'Authentication Type',
     };
 
-    final rows = _extractedParams!.entries.map((entry) {
-      final label = parameterLabels[entry.key] ?? entry.key;
-      return (label: label, value: entry.value);
-    }).toList();
+    final rows = _extractedParams!.entries
+        .where((entry) => entry.key != 'redirect-url')
+        .map((entry) {
+          final label = parameterLabels[entry.key] ?? entry.key;
+          return (label: label, value: entry.value);
+        })
+        .toList();
+    rows.add((
+      label: 'Final Request URL',
+      value: CaptiveWifiHttp.instance.lastRequestUrl ?? 'Pending connect...',
+    ));
 
     return Container(
       padding: const EdgeInsets.all(16),
