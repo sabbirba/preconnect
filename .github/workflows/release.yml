@@ -904,6 +904,7 @@ jobs:
                 codesign --force --options runtime --timestamp --sign "Developer ID Application" "$file" || true
               done
               codesign --force --options runtime --timestamp --sign "Developer ID Application" "$RUNNER_TEMP/macos_export/PreConnect.app"
+              DEVID_BUILD=true
               echo "DEVID_BUILD=true" >> "$GITHUB_ENV"
             fi
 
@@ -950,6 +951,7 @@ jobs:
                    -archivePath "$RUNNER_TEMP/PreConnect_Store.xcarchive" \
                    -exportPath "$RUNNER_TEMP/macos_store_export" \
                    -exportOptionsPlist "$RUNNER_TEMP/ExportOptionsMacOS_Store.plist"
+                 STORE_BUILD=true
                  echo "STORE_BUILD=true" >> "$GITHUB_ENV"
               else
                  cp "$RUNNER_TEMP/Release.xcconfig.bak" macos/Runner/Configs/Release.xcconfig || true
