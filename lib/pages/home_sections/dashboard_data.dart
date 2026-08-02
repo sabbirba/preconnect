@@ -495,7 +495,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
             studentId: studentId,
             password: creds.password,
             captiveWifiUrl: captiveWifiUri,
-            ssid: status.ssid ?? '',
           )
           .timeout(_silentLoginTimeout, onTimeout: () => false);
       if (success && mounted) {
@@ -504,17 +503,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
             id: 9987,
             title: 'Wi-Fi Auto-Login Successful',
             body:
-                'Automatically connected to ${status.ssid ?? 'Student-WiFi'}.',
-          ),
-        );
-      } else {
-        unawaited(
-          FCMService.instance.showNotification(
-            id: 9987,
-            title: 'Wi-Fi Auto-Login Failed',
-            body:
-                'Unable to log in to ${status.ssid ?? 'Student-WiFi'}. Tap to fix.',
-            payload: 'captive_wifi',
+                'Automatically connected to ${CaptiveLoginStore.defaultCampusSsid}.',
           ),
         );
       }
@@ -554,7 +543,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         id: 9987,
         title: 'Sign In to Wi-Fi Network',
         body:
-            'Tap to sign in to ${status.ssid ?? 'Student-WiFi'} via PreConnect.',
+            'Tap to sign in to ${CaptiveLoginStore.defaultCampusSsid} via PreConnect.',
         payload: 'captive_wifi',
       ),
     );

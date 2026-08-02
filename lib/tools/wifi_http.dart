@@ -26,6 +26,7 @@ class CaptiveWifiHttp {
 
   String? lastError;
   String lastResponseLog = '';
+  String? lastRequestUrl;
   static final Uri defaultProbeUri = Uri.parse(
     'http://connectivitycheck.gstatic.com/generate_204',
   );
@@ -389,7 +390,6 @@ class CaptiveWifiHttp {
     required String studentId,
     required String password,
     required Uri captiveWifiUrl,
-    required String ssid,
   }) async {
     lastError = null;
     lastResponseLog = '';
@@ -475,6 +475,8 @@ class CaptiveWifiHttp {
         assert(true);
       }
 
+      await Future<void>.delayed(const Duration(seconds: 3));
+
       final apiLoginUri = loginUri.replace(
         path: '/portalauth/login',
         queryParameters: {},
@@ -490,51 +492,24 @@ class CaptiveWifiHttp {
       }
 
       final params = loginUri.queryParameters;
-      final originalParams = captiveWifiUrl.queryParameters;
 
       String getParam(String key, [String defaultValue = '']) {
-        var val = params[key] ?? originalParams[key];
+        var val = params[key];
         if (val == null || val.isEmpty) {
           if (key == 'acip') {
-            val =
-                params['wlanacip'] ??
-                originalParams['wlanacip'] ??
-                params['ac-ip'] ??
-                originalParams['ac-ip'] ??
-                params['ac_ip'] ??
-                originalParams['ac_ip'];
+            val = params['wlanacip'] ?? params['ac-ip'] ?? params['ac_ip'];
           } else if (key == 'apmac') {
-            val =
-                params['wlanapmac'] ??
-                originalParams['wlanapmac'] ??
-                params['ap-mac'] ??
-                originalParams['ap-mac'] ??
-                params['ap_mac'] ??
-                originalParams['ap_mac'];
+            val = params['wlanapmac'] ?? params['ap-mac'] ?? params['ap_mac'];
           } else if (key == 'uaddress') {
             val =
-                params['wlanuserip'] ??
-                originalParams['wlanuserip'] ??
-                params['user-ip'] ??
-                originalParams['user-ip'] ??
-                params['user_ip'] ??
-                originalParams['user_ip'];
+                params['wlanuserip'] ?? params['user-ip'] ?? params['user_ip'];
           } else if (key == 'umac') {
             val =
                 params['wlanusermac'] ??
-                originalParams['wlanusermac'] ??
                 params['user-mac'] ??
-                originalParams['user-mac'] ??
-                params['user_mac'] ??
-                originalParams['user_mac'];
+                params['user_mac'];
           } else if (key == 'accessMac') {
-            val =
-                params['wlanacmac'] ??
-                originalParams['wlanacmac'] ??
-                params['ac-mac'] ??
-                originalParams['ac-mac'] ??
-                params['ac_mac'] ??
-                originalParams['ac_mac'];
+            val = params['wlanacmac'] ?? params['ac-mac'] ?? params['ac_mac'];
           }
         }
         return (val != null && val.isNotEmpty) ? val : defaultValue;
@@ -562,9 +537,11 @@ class CaptiveWifiHttp {
       final resolvedBase64Ssid = getParam('ssid').isNotEmpty
           ? getParam('ssid')
           : (formInputs['ssid'] ??
-                (status?.ssid != null
-                    ? base64.encode(utf8.encode(status!.ssid!))
-                    : base64.encode(utf8.encode(ssid))));
+                base64.encode(
+                  utf8.encode(
+                    status?.ssid ?? CaptiveLoginStore.defaultCampusSsid,
+                  ),
+                ));
 
       var resolvedUaddress = getParam('uaddress');
       if (resolvedUaddress.isEmpty && status?.ipAddress != null) {
@@ -611,41 +588,26 @@ class CaptiveWifiHttp {
       };
 
       final encoded = Uri(queryParameters: payload).query;
+      lastRequestUrl = _buildDisplayUrl(apiLoginUri, payload);
 
-      CaptiveWifiHttpResult? response;
-      for (var attempt = 0; attempt < 3; attempt++) {
-        if (attempt > 0) {
-          await Future<void>.delayed(Duration(seconds: attempt));
-        }
-        try {
-          response = await postOnce(
-            client: client,
-            uri: apiLoginUri,
-            body: encoded,
-            cookies: cookies,
-            referer: loginUri,
-          );
-          if (response.statusCode < 400) {
-            final decoded = jsonDecode(response.body);
-            if (decoded is Map && decoded['success'] != false) {
-              break;
-            }
-          }
-        } catch (_) {}
-      }
-
-      if (response == null || response.statusCode >= 400) {
-        lastError = response == null
-            ? 'POST login connection failed.'
-            : 'POST login failed with HTTP status ${response.statusCode}';
-
-        return false;
-      }
+      final response = await postOnce(
+        client: client,
+        uri: apiLoginUri,
+        body: encoded,
+        cookies: cookies,
+        referer: loginUri,
+      );
 
       lastResponseLog =
           '--- LOGIN RESPONSE ---\n'
           'Status: ${response.statusCode}\n'
           'Body: ${response.body}\n';
+
+      if (response.statusCode >= 400) {
+        lastError = 'POST login failed with HTTP status ${response.statusCode}';
+
+        return false;
+      }
 
       String? successUrl;
       try {
@@ -760,7 +722,8 @@ class CaptiveWifiHttp {
       }
       return probeSuccess;
     } catch (e) {
-      lastError = 'Connection error. Make sure you are on $ssid.';
+      lastError =
+          'Connection error. Make sure you are on ${CaptiveLoginStore.defaultCampusSsid}.';
 
       return false;
     } finally {
@@ -771,10 +734,7 @@ class CaptiveWifiHttp {
     }
   }
 
-  Future<bool> logoutViaCaptiveApi({
-    required Uri captiveWifiUrl,
-    required String ssid,
-  }) async {
+  Future<bool> logoutViaCaptiveApi({required Uri captiveWifiUrl}) async {
     lastError = null;
     lastResponseLog = '';
     if (AndroidNetworkAssist.isSupported) {
@@ -892,7 +852,8 @@ class CaptiveWifiHttp {
 
       return true;
     } catch (e) {
-      lastError = 'Connection error. Make sure you are on $ssid.';
+      lastError =
+          'Connection error. Make sure you are on ${CaptiveLoginStore.defaultCampusSsid}.';
 
       return false;
     } finally {
@@ -901,6 +862,15 @@ class CaptiveWifiHttp {
         await AndroidNetworkAssist.unbindFromWifiNetwork();
       }
     }
+  }
+
+  String _buildDisplayUrl(Uri baseUri, Map<String, String> payload) {
+    final masked = Map<String, String>.from(payload);
+    if (masked.containsKey('userPass')) {
+      masked['userPass'] = '••••••••';
+    }
+    final query = Uri(queryParameters: masked).query;
+    return '$baseUri?$query';
   }
 
   String _mapPortalErrorCode(String errorCode) {
