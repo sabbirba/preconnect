@@ -836,13 +836,19 @@ jobs:
             security cms -D -i "$profile_path" > "$tmpxml" 2>/dev/null
             local uuid
             uuid="$(/usr/libexec/PlistBuddy -c "Print :UUID" "$tmpxml" 2>/dev/null)"
+            local profile_name
+            profile_name="$(/usr/libexec/PlistBuddy -c "Print :Name" "$tmpxml" 2>/dev/null)"
             rm -f "$tmpxml"
             if [ -z "$uuid" ]; then
               echo "Unable to read macOS provisioning profile UUID." >&2
               return 1
             fi
             cp "$profile_path" "$dest_dir/${uuid}.provisionprofile"
+            cp "$profile_path" "$dest_dir/${uuid}.mobileprovision"
             echo "MACOS_PROFILE_UUID=${uuid}" >> "$GITHUB_ENV"
+            if [ -n "$profile_name" ]; then
+              echo "MACOS_PROFILE_NAME=${profile_name}" >> "$GITHUB_ENV"
+            fi
           }
           install_profile "$HOME/Library/MobileDevice/Provisioning Profiles"
           install_profile "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
@@ -908,7 +914,7 @@ jobs:
                 "CODE_SIGN_IDENTITY = Apple Distribution" \
                 "DEVELOPMENT_TEAM = ${DEVELOPMENT_TEAM}" \
                 "PROVISIONING_PROFILE = ${MACOS_PROFILE_UUID}" \
-                "PROVISIONING_PROFILE_SPECIFIER = " \
+                "PROVISIONING_PROFILE_SPECIFIER = ${MACOS_PROFILE_NAME:-${MACOS_PROFILE_UUID}}" \
                 >> macos/Runner/Configs/Release.xcconfig
 
               if xcodebuild archive \
@@ -929,7 +935,7 @@ jobs:
                   '  <key>signingCertificate</key><string>Apple Distribution</string>' \
                   '  <key>installerSigningCertificate</key><string>3rd Party Mac Developer Installer</string>' \
                   '  <key>provisioningProfiles</key><dict>' \
-                  "    <key>com.sabbirba.preconnect</key><string>$MACOS_PROFILE_UUID</string>" \
+                  "    <key>com.sabbirba.preconnect</key><string>${MACOS_PROFILE_NAME:-$MACOS_PROFILE_UUID}</string>" \
                   '  </dict>' \
                   '  <key>uploadBitcode</key><false/>' \
                   '  <key>uploadSymbols</key><true/>' \

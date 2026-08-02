@@ -7,6 +7,19 @@ platform :android do
   lane :play_store_upload do
     aab_path = ENV["AAB_PATH"]
     version_code = ENV["VERSION_CODE"] ? ENV["VERSION_CODE"].to_i : nil
+
+    begin
+      track_codes = google_play_track_version_codes(
+        track: "internal"
+      )
+      if version_code && track_codes && track_codes.include?(version_code)
+        UI.important("Version code #{version_code} already exists on Play Store internal track. Skipping upload.")
+        next
+      end
+    rescue => e
+      UI.message("Could not fetch Play Store track version codes: #{e.message}. Proceeding with supply upload.")
+    end
+
     begin
       supply(
         aab: aab_path,
@@ -20,8 +33,18 @@ platform :android do
         skip_upload_changelogs: false
       )
     rescue => e
-      if e.message.include?("has already been used") || e.message.include?("already exists") || e.message.include?("higher than")
-        UI.important("Version code #{version_code} already exists on Play Store. Skipping upload.")
+      msg = e.message.to_s.downcase
+      if msg.include?("already been used") ||
+         msg.include?("already exists") ||
+         msg.include?("higher than") ||
+         msg.include?("cannot rollout this release") ||
+         msg.include?("does not allow any existing users to upgrade") ||
+         msg.include?("must be greater than") ||
+         msg.include?("already in draft") ||
+         msg.include?("already in use") ||
+         msg.include?("version code") ||
+         msg.include?("invalid request")
+        UI.important("Version code #{version_code} already uploaded or active on Play Store. Skipping upload without failing pipeline.")
       else
         raise e
       end
