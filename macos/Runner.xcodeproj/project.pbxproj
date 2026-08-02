@@ -551,7 +551,7 @@
 				);
 				OTHER_LDFLAGS = "$(inherited)";
 				OTHER_SWIFT_FLAGS = "$(inherited) -Xcc -w";
-				PROVISIONING_PROFILE_SPECIFIER = "";
+				PROVISIONING_PROFILE_SPECIFIER = "$(MACOS_PROFILE_SPECIFIER)";
 				SWIFT_VERSION = 5.0;
 				WARNING_CFLAGS = (
 					"$(inherited)",
