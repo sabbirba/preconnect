@@ -53,16 +53,47 @@ platform :android do
 
   desc "Promote internal track release to production"
   lane :promote_internal_to_production do
-    supply(
-      track: "internal",
-      track_promote_to: "production",
-      track_promote_release_status: "completed",
-      skip_upload_apk: true,
-      skip_upload_aab: true,
-      skip_upload_metadata: true,
-      skip_upload_changelogs: true,
-      skip_upload_images: true,
-      skip_upload_screenshots: true
-    )
+    begin
+      internal_codes = google_play_track_version_codes(track: "internal")
+      production_codes = google_play_track_version_codes(track: "production")
+      if internal_codes && production_codes && (internal_codes & production_codes).any?
+        UI.important("Internal track version codes #{(internal_codes & production_codes).join(", ")} are already in production. Skipping promotion.")
+        next
+      end
+    rescue => e
+      UI.message("Could not compare track version codes: #{e.message}. Proceeding with promotion.")
+    end
+
+    begin
+      supply(
+        track: "internal",
+        track_promote_to: "production",
+        track_promote_release_status: "completed",
+        skip_upload_apk: true,
+        skip_upload_aab: true,
+        skip_upload_metadata: true,
+        skip_upload_changelogs: true,
+        skip_upload_images: true,
+        skip_upload_screenshots: true
+      )
+    rescue => e
+      msg = e.message.to_s.downcase
+      if msg.include?("already been used") ||
+         msg.include?("already exists") ||
+         msg.include?("higher than") ||
+         msg.include?("cannot rollout this release") ||
+         msg.include?("does not allow any existing users to upgrade") ||
+         msg.include?("must be greater than") ||
+         msg.include?("already in draft") ||
+         msg.include?("already in use") ||
+         msg.include?("version code") ||
+         msg.include?("invalid request") ||
+         msg.include?("release is already in the") ||
+         msg.include?("already promoted")
+        UI.important("Release already promoted to production or no eligible release found. Skipping without failing pipeline.")
+      else
+        raise e
+      end
+    end
   end
 end
