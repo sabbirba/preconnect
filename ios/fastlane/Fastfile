@@ -122,9 +122,10 @@ platform :ios do
     begin
       upload_to_app_store(**upload_kwargs)
     rescue => e
-      if e.message.include?("already been used") || e.message.include?("higher than the previously uploaded") || e.message.include?("already exists")
+      msg = e.message.to_s.downcase
+      if msg.include?("already been used") || msg.include?("higher than") || msg.include?("already exists") || msg.include?("previously uploaded")
         UI.message("iOS build #{version_code} for version #{version_name} is already uploaded to App Store Connect. Skipping upload error.")
-      elsif e.message.include?("not in valid state") || e.message.include?("cannot be reviewed") || e.message.include?("whatsNew")
+      elsif msg.include?("not in valid state") || msg.include?("cannot be reviewed") || msg.include?("whatsnew")
         UI.message("Binary uploaded successfully to App Store Connect. Retrying submission without blocking: #{e.message}")
         upload_kwargs[:submit_for_review] = false
         upload_to_app_store(**upload_kwargs) rescue UI.message("iOS release completed with warnings: #{e.message}")
