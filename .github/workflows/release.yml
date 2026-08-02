@@ -217,7 +217,7 @@ jobs:
 
       - name: Build Browser Extension
         shell: bash
-        run: ./tool/build_extension.sh
+        run: ./tool/build_extension.sh --no-pub
 
       - name: Package Chrome Extension
         shell: bash

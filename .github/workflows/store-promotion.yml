@@ -16,51 +16,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  promote:
-    name: Promote ${{ matrix.target }}
-    runs-on: ${{ matrix.os || 'ubuntu-latest' }}
+  promote-google-play:
+    name: Promote Google Play
+    runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
-      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: Google Play
-            run_play: true
-            run_chrome: false
-            run_firefox: false
-            run_apple: false
-            os: ubuntu-latest
-          - target: Chrome Extension
-            run_play: false
-            run_chrome: true
-            run_firefox: false
-            run_apple: false
-            os: ubuntu-latest
-          - target: Firefox Add-on
-            run_play: false
-            run_chrome: false
-            run_firefox: true
-            run_apple: false
-            os: ubuntu-latest
-          - target: Apple App Store
-            run_play: false
-            run_chrome: false
-            run_firefox: false
-            run_apple: true
-            os: macos-15
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Check Credentials
-        if: matrix.run_play
         id: play_auth
         shell: bash
         env:
@@ -74,14 +41,14 @@ jobs:
           fi
 
       - name: Set Up Ruby
-        if: (matrix.run_play && steps.play_auth.outputs.enabled == 'true') || matrix.run_apple
+        if: steps.play_auth.outputs.enabled == 'true'
         uses: ruby/setup-ruby@v1.321.0
         with:
           ruby-version: "3.3"
           bundler-cache: true
 
       - name: Promote Google Play Track
-        if: matrix.run_play && steps.play_auth.outputs.enabled == 'true'
+        if: steps.play_auth.outputs.enabled == 'true'
         shell: bash
         env:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
@@ -91,15 +58,24 @@ jobs:
         run: |
           cd android && bundle exec fastlane promote_internal_to_production
 
+  promote-chrome-extension:
+    name: Promote Chrome Extension
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 1
+
       - name: Set Up Flutter
-        if: matrix.run_chrome
         uses: subosito/flutter-action@v2.23.0
         with:
           channel: "stable"
           cache: true
 
       - name: Cache Dart Packages
-        if: matrix.run_chrome
         uses: actions/cache@v6.1.0
         with:
           path: ~/.pub-cache
@@ -108,23 +84,19 @@ jobs:
             ${{ runner.os }}-pub-cache-
 
       - name: Get Flutter Packages
-        if: matrix.run_chrome
         shell: bash
         run: flutter pub get
 
       - name: Extension Environment
-        if: matrix.run_chrome
         shell: bash
         run: |
           echo "GITHUB_TOKEN=${{ secrets.GH_TOKEN }}" > .env
 
       - name: Build Extensions
-        if: matrix.run_chrome
         shell: bash
-        run: ./tool/build_extension.sh
+        run: ./tool/build_extension.sh --no-pub
 
       - name: Upload Chrome Artifact
-        if: matrix.run_chrome
         uses: actions/upload-artifact@v7.0.1
         with:
           name: store-promotion-chrome-extension
@@ -132,7 +104,6 @@ jobs:
           if-no-files-found: error
 
       - name: Authenticate with Google Cloud
-        if: matrix.run_chrome
         id: auth
         shell: bash
         env:
@@ -195,7 +166,6 @@ jobs:
           echo "::add-mask::$ACCESS_TOKEN"
 
       - name: Publish Chrome Extension
-        if: matrix.run_chrome
         env:
           ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
           CHROME_WEBSTORE_PUBLISHER_ID: ${{ secrets.CHROME_WEBSTORE_PUBLISHER_ID }}
@@ -238,8 +208,18 @@ jobs:
             -X POST \
             "https://chromewebstore.googleapis.com/v2/${ITEM_NAME}:publish"
 
-      - name: Download Apple Deliverables from GitHub Release
-        if: matrix.run_apple
+  promote-firefox-addon:
+    name: Promote Firefox Add-on
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 1
+
+      - name: Download Firefox Extension from GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
         shell: bash
@@ -247,15 +227,90 @@ jobs:
           mkdir -p deliverables
           RUN_ID=$(gh run list --workflow release.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId' || true)
           if [ -n "$RUN_ID" ]; then
-            gh run download "$RUN_ID" --dir deliverables || true
+            gh run download "$RUN_ID" --name web_extension-artifacts --dir deliverables || true
+          fi
+          if ! find deliverables -type f -name "PreConnect-firefox-extension-release-*.zip" | grep -q .; then
+            gh release download --dir deliverables --pattern "PreConnect-firefox-extension-release-*.zip" --clobber || true
+          fi
+          ls -la deliverables/
+
+      - name: Resolve Firefox Extension
+        id: resolve_firefox
+        shell: bash
+        run: |
+          XPI=$(find deliverables -type f -name "PreConnect-firefox-extension-release-*.zip" | head -n1 || true)
+          if [ -f "$XPI" ]; then
+            echo "firefox_ready=true" >> "$GITHUB_OUTPUT"
+            echo "firefox_path=$XPI" >> "$GITHUB_OUTPUT"
           else
+            echo "firefox_ready=false" >> "$GITHUB_OUTPUT"
+            echo "No Firefox extension found in the latest release."
+          fi
+
+      - name: Check AMO Credentials
+        id: amo_auth
+        shell: bash
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          if [ -n "$AMO_JWT_ISSUER" ] && [ -n "$AMO_JWT_SECRET" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "AMO credentials are not provided."
+          fi
+
+      - name: Publish Firefox Extension
+        if: steps.resolve_firefox.outputs.firefox_ready == 'true' && steps.amo_auth.outputs.enabled == 'true'
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        shell: bash
+        run: |
+          node tool/publish_firefox.js "preconnect@sabbirba.com" \
+            "$GITHUB_WORKSPACE/${{ steps.resolve_firefox.outputs.firefox_path }}" \
+            "$AMO_JWT_ISSUER" "$AMO_JWT_SECRET"
+
+  promote-apple:
+    name: Promote Apple App Store
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 1
+
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@v1.321.0
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      - name: Download Apple Deliverables from GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          mkdir -p deliverables
+          RUN_ID=$(gh run list --workflow release.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId' || true)
+          if [ -n "$RUN_ID" ]; then
+            gh run download "$RUN_ID" --name ios-artifacts --dir deliverables || true
+            gh run download "$RUN_ID" --name macos-artifacts --dir deliverables || true
+          fi
+          if ! find deliverables -type f \( -name "*.ipa" -o -name "*.pkg" \) | grep -q .; then
             gh release download --dir deliverables --pattern "PreConnect-ios-release-*.ipa" --clobber || true
             gh release download --dir deliverables --pattern "PreConnect-macos-release-*.pkg" --clobber || true
           fi
           ls -la deliverables/
 
       - name: Resolve Apple Deliverables
-        if: matrix.run_apple
         id: resolve_apple
         shell: bash
         run: |
@@ -289,7 +344,7 @@ jobs:
           fi
 
       - name: Release iOS on the App Store
-        if: matrix.run_apple && steps.resolve_apple.outputs.ios_ready == 'true' && env.APP_STORE_CONNECT_API_KEY != ''
+        if: steps.resolve_apple.outputs.ios_ready == 'true' && env.APP_STORE_CONNECT_API_KEY != ''
         env:
           BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
           IOS_VERSION_NAME: ${{ steps.resolve_apple.outputs.ios_version_name }}
@@ -300,7 +355,7 @@ jobs:
             ipa:"$GITHUB_WORKSPACE/${{ steps.resolve_apple.outputs.ios_path }}"
 
       - name: Upload macOS to App Store Connect
-        if: matrix.run_apple && steps.resolve_apple.outputs.macos_ready == 'true' && env.APP_STORE_CONNECT_API_KEY != ''
+        if: steps.resolve_apple.outputs.macos_ready == 'true' && env.APP_STORE_CONNECT_API_KEY != ''
         env:
           BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
           MACOS_VERSION_NAME: ${{ steps.resolve_apple.outputs.macos_version_name }}
@@ -309,44 +364,3 @@ jobs:
         run: |
           cd macos && bundle exec fastlane upload_mac_to_app_store \
             pkg:"$GITHUB_WORKSPACE/${{ steps.resolve_apple.outputs.macos_path }}"
-
-      - name: Download Firefox Extension from GitHub Release
-        if: matrix.run_firefox
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          mkdir -p deliverables
-          RUN_ID=$(gh run list --workflow release.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId' || true)
-          if [ -n "$RUN_ID" ]; then
-            gh run download "$RUN_ID" --dir deliverables || true
-          fi
-          if ! find deliverables -type f -name "PreConnect-firefox-extension-release-*.zip" | grep -q .; then
-            gh release download --dir deliverables --pattern "PreConnect-firefox-extension-release-*.zip" --clobber || true
-          fi
-          ls -la deliverables/
-
-      - name: Resolve Firefox Extension
-        if: matrix.run_firefox
-        id: resolve_firefox
-        shell: bash
-        run: |
-          XPI=$(find deliverables -type f -name "PreConnect-firefox-extension-release-*.zip" | head -n1 || true)
-          if [ -f "$XPI" ]; then
-            echo "firefox_ready=true" >> "$GITHUB_OUTPUT"
-            echo "firefox_path=$XPI" >> "$GITHUB_OUTPUT"
-          else
-            echo "firefox_ready=false" >> "$GITHUB_OUTPUT"
-            echo "No Firefox extension found in the latest release."
-          fi
-
-      - name: Publish Firefox Extension
-        if: matrix.run_firefox && steps.resolve_firefox.outputs.firefox_ready == 'true' && env.AMO_JWT_ISSUER != '' && env.AMO_JWT_SECRET != ''
-        env:
-          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
-          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
-        shell: bash
-        run: |
-          node tool/publish_firefox.js "preconnect@sabbirba.com" \
-            "$GITHUB_WORKSPACE/${{ steps.resolve_firefox.outputs.firefox_path }}" \
-            "$AMO_JWT_ISSUER" "$AMO_JWT_SECRET"
