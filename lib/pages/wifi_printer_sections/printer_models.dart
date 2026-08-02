@@ -41,6 +41,8 @@ class _CampusPrinterBootstrap {
     required this.jobOffset,
     required this.slipSheet,
     required this.booklet,
+    this.profile,
+    this.photoUrl,
   });
 
   final int copies;
@@ -56,6 +58,8 @@ class _CampusPrinterBootstrap {
   final String jobOffset;
   final String slipSheet;
   final String booklet;
+  final Map<String, String?>? profile;
+  final String? photoUrl;
 }
 
 class _PrintHistoryEntry {

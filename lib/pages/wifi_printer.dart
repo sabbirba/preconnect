@@ -12,13 +12,13 @@ import 'package:flutter/services.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/profile.dart';
+import 'package:preconnect/pages/card_section.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/network_assist.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/app_log.dart';
-import 'package:preconnect/tools/snmp_client.dart';
 
 part 'wifi_printer_sections/printer_models.dart';
 
@@ -165,6 +165,7 @@ class CampusPrinterPage extends StatefulWidget {
         'Off';
     final booklet =
         await AppStorage.instance.getString('campus_printer_booklet') ?? 'Off';
+    final photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
     return _CampusPrinterBootstrap(
       copies: copiesValue,
       history: history,
@@ -179,6 +180,8 @@ class CampusPrinterPage extends StatefulWidget {
       jobOffset: jobOffset,
       slipSheet: slipSheet,
       booklet: booklet,
+      profile: profile,
+      photoUrl: photoUrl,
     );
   }
 
@@ -221,10 +224,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       'Printer connection failed';
 
   List<_SelectedFile> _selectedFiles = const <_SelectedFile>[];
+  Map<String, String?>? _profile;
+  String? _photoUrl;
   String _studentId = '';
   String _studentName = '';
-  String _studentShortCode = '';
-  String _currentSemester = '';
   String _wifiName = '';
   String _duplexMode = 'OFF';
   String _collateMode = 'OFF';
@@ -236,8 +239,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _slipSheet = 'Off';
   String _booklet = 'Off';
   String _printerHost = '';
-  SnmpPrinterStatus? _printerHealth;
-  int _healthCheckToken = 0;
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
   int _copies = 1;
   bool _busy = false;
@@ -317,13 +318,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     final bootstrap = await CampusPrinterPage._preloadBootstrap();
     if (!mounted) return;
     setState(() {
+      _profile = bootstrap.profile;
+      _photoUrl = bootstrap.photoUrl;
       _copies = bootstrap.copies;
       _history = bootstrap.history;
       _studentId = bootstrap.studentId;
       _studentIdController.text = bootstrap.studentId;
       _studentName = bootstrap.studentName;
-      _studentShortCode = bootstrap.studentShortCode;
-      _currentSemester = bootstrap.currentSemester;
       _pagesPerSheet = bootstrap.pagesPerSheet;
       _fittingMode = bootstrap.fittingMode;
       _staple = bootstrap.staple;
@@ -341,13 +342,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     final bootstrap = await CampusPrinterPage._loadBootstrap();
     if (!mounted) return;
     setState(() {
+      _profile = bootstrap.profile;
+      _photoUrl = bootstrap.photoUrl;
       _copies = bootstrap.copies;
       _history = bootstrap.history;
       _studentId = bootstrap.studentId;
       _studentIdController.text = bootstrap.studentId;
       _studentName = bootstrap.studentName;
-      _studentShortCode = bootstrap.studentShortCode;
-      _currentSemester = bootstrap.currentSemester;
       _pagesPerSheet = bootstrap.pagesPerSheet;
       _fittingMode = bootstrap.fittingMode;
       _staple = bootstrap.staple;
@@ -433,7 +434,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       if (printers.isEmpty) {
         setState(() {
           _printerHost = '';
-          _printerHealth = null;
         });
         return;
       }
@@ -441,7 +441,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       setState(() {
         _printerHost = printer.address;
       });
-      unawaited(_refreshPrinterHealth(printer.address));
     } catch (e) {
       await AppLog.write('Printer discovery failed: $e');
     } finally {
@@ -451,24 +450,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         });
       }
     }
-  }
-
-  Future<void> _refreshPrinterHealth(String host) async {
-    final token = ++_healthCheckToken;
-    final status = await SnmpClient.queryPrinterStatus(host);
-    if (!mounted || token != _healthCheckToken || _printerHost != host) return;
-    setState(() {
-      _printerHealth = status;
-    });
-  }
-
-  String? _printerHealthSummary() {
-    final health = _printerHealth;
-    if (health == null) return null;
-    if (health.hasErrors) {
-      return '${health.printerStatusLabel} • ${health.errorFlags.join(', ')}';
-    }
-    return health.printerStatusLabel;
   }
 
   Future<String> _currentNetworkFingerprint() async {
@@ -917,12 +898,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         onRefresh: _refreshPrinterInfo,
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
         children: [
-          BracuLocationPermissionBanner(
-            onFixed: () {
-              unawaited(_discoverPrinter());
-            },
-          ),
-          const Gap(12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
             child: Column(
@@ -930,14 +905,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               children: [
                 if (_studentName.trim().isNotEmpty ||
                     _studentId.trim().isNotEmpty) ...[
-                  _StudentPrintDetails(
-                    name: _studentName,
-                    shortCode: _studentShortCode,
-                    semester: _currentSemester,
+                  CardSection(
+                    profile: _profile,
+                    photoUrl: _photoUrl,
                     studentIdController: _studentIdController,
-                    wifiName: _wifiName,
-                    printerHost: _printerHost,
-                    printerHealth: _printerHealthSummary(),
                   ),
                 ],
                 if (_studentName.trim().isEmpty && _studentId.trim().isEmpty)
@@ -945,7 +916,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               ],
             ),
           ),
-          const Gap(12),
+          const Gap(8),
+          BracuLocationPermissionBanner(
+            onFixed: () {
+              unawaited(_discoverPrinter());
+            },
+          ),
+          const Gap(8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -955,7 +932,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   subtitle: '0 MB • Files',
                   isEmpty: true,
                   onTap: !_busy ? _pickPrintFile : null,
-                  borderRadius: 8,
+                  borderRadius: 16,
                   emptyAction: Align(
                     alignment: Alignment.centerRight,
                     child: SizedBox(
@@ -993,12 +970,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                     isEmpty: false,
                     onTap: null,
                     onClear: !_busy ? () => _clearFileAt(i) : null,
-                    borderRadius: 8,
+                    borderRadius: 16,
                   ),
                   if (i < _selectedFiles.length - 1) const Gap(12),
                 ],
               ],
-              const Gap(12),
+              const Gap(8),
               _PrinterPreferencesPanel(
                 copiesController: _copiesController,
                 copies: _copies,
@@ -1012,7 +989,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   setState(() => _collateMode = mode);
                 },
               ),
-              const Gap(12),
+              const Gap(8),
               _PrinterLayoutPreferencesPanel(
                 pagesPerSheet: _pagesPerSheet,
                 fittingMode: _fittingMode,
@@ -1319,114 +1296,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                     ),
                   ),
             ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StudentPrintDetails extends StatelessWidget {
-  const _StudentPrintDetails({
-    required this.name,
-    required this.shortCode,
-    required this.semester,
-    required this.studentIdController,
-    required this.wifiName,
-    required this.printerHost,
-    this.printerHealth,
-  });
-
-  final String name;
-  final String shortCode;
-  final String semester;
-  final TextEditingController studentIdController;
-  final String wifiName;
-  final String printerHost;
-  final String? printerHealth;
-
-  @override
-  Widget build(BuildContext context) {
-    return Table(
-      columnWidths: const <int, TableColumnWidth>{
-        0: FixedColumnWidth(84),
-        1: FlexColumnWidth(),
-      },
-      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-      children: [
-        if (name.trim().isNotEmpty) _buildRow(context, 'Name', name.trim()),
-        if (shortCode.trim().isNotEmpty)
-          _buildRow(context, 'Program', shortCode.trim()),
-        if (semester.trim().isNotEmpty)
-          _buildRow(context, 'Semester', semester.trim()),
-        TableRow(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(right: 10, bottom: 4),
-              child: Text(
-                'Student ID',
-                style: TextStyle(
-                  color: BracuPalette.textSecondary(context),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: TextField(
-                controller: studentIdController,
-                style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-                decoration: const InputDecoration(
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(vertical: 4),
-                  border: InputBorder.none,
-                ),
-              ),
-            ),
-          ],
-        ),
-        if (wifiName.trim().isNotEmpty)
-          _buildRow(context, 'Network', wifiName.trim()),
-        if (printerHost.trim().isNotEmpty)
-          _buildRow(
-            context,
-            'Printer',
-            (printerHealth ?? '').trim().isNotEmpty
-                ? '${printerHost.trim()} • ${printerHealth!.trim()}'
-                : printerHost.trim(),
-          ),
-      ],
-    );
-  }
-
-  TableRow _buildRow(BuildContext context, String label, String value) {
-    return TableRow(
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(right: 10, bottom: 4),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: BracuPalette.textSecondary(context),
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: Text(
-            value,
-            style: TextStyle(
-              color: BracuPalette.textPrimary(context),
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
           ),
         ),
       ],
@@ -1869,123 +1738,116 @@ class _PrinterPreferencesPanel extends StatelessWidget {
           vertical: compact ? 8 : 9,
         );
 
-        return BracuCard(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                flex: 32,
-                child: Container(
-                  height: controlHeight,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        flex: 42,
-                        child: BracuActionButton(
-                          onPressed: copies <= 0
-                              ? null
-                              : () => onCopiesStep(-1),
-                          outlined: false,
-                          borderRadius: 4,
-                          padding: EdgeInsets.zero,
-                          label: '−',
-                          fontSize: controlFont,
-                        ),
-                      ),
-                      Expanded(
-                        flex: 52,
-                        child: TextField(
-                          controller: copiesController,
-                          keyboardType: TextInputType.number,
-                          textInputAction: TextInputAction.done,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(3),
-                          ],
-                          textAlign: TextAlign.center,
-                          textAlignVertical: TextAlignVertical.center,
-                          maxLines: 1,
-                          style: TextStyle(
-                            fontSize: compact ? 16 : 18,
-                            fontWeight: FontWeight.w700,
-                            color: BracuPalette.textPrimary(context),
-                          ),
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 42,
-                        child: BracuActionButton(
-                          onPressed: copies >= 999
-                              ? null
-                              : () => onCopiesStep(1),
-                          outlined: false,
-                          borderRadius: 4,
-                          padding: EdgeInsets.zero,
-                          label: '+',
-                          fontSize: controlFont,
-                        ),
-                      ),
-                    ],
-                  ),
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              flex: 32,
+              child: Container(
+                height: controlHeight,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
                 ),
-              ),
-              Gap(compact ? 8 : 10),
-              Expanded(
-                flex: 68,
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
+                      flex: 42,
                       child: BracuActionButton(
-                        onPressed: () {
-                          onDuplexChanged(duplexEnabled ? 'OFF' : 'LEFT');
-                        },
-                        outlined: true,
-                        backgroundColor: duplexEnabled
-                            ? BracuPalette.primary.withValues(alpha: 0.12)
-                            : Colors.transparent,
-                        foregroundColor: duplexEnabled
-                            ? BracuPalette.primary
-                            : BracuPalette.textPrimary(context),
-                        borderRadius: 4,
-                        padding: togglePadding,
-                        label: duplexEnabled ? 'Both Side' : 'One Side',
-                        fontSize: toggleFont,
+                        onPressed: copies <= 0 ? null : () => onCopiesStep(-1),
+                        outlined: false,
+                        borderRadius: 12,
+                        padding: EdgeInsets.zero,
+                        label: '−',
+                        fontSize: controlFont,
                       ),
                     ),
-                    Gap(gap),
                     Expanded(
+                      flex: 52,
+                      child: TextField(
+                        controller: copiesController,
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.done,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(3),
+                        ],
+                        textAlign: TextAlign.center,
+                        textAlignVertical: TextAlignVertical.center,
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: compact ? 16 : 18,
+                          fontWeight: FontWeight.w700,
+                          color: BracuPalette.textPrimary(context),
+                        ),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 42,
                       child: BracuActionButton(
-                        onPressed: () {
-                          onCollateChanged(collateEnabled ? 'OFF' : 'ON');
-                        },
-                        outlined: true,
-                        backgroundColor: collateEnabled
-                            ? BracuPalette.primary.withValues(alpha: 0.12)
-                            : Colors.transparent,
-                        foregroundColor: collateEnabled
-                            ? BracuPalette.primary
-                            : BracuPalette.textPrimary(context),
-                        borderRadius: 4,
-                        padding: togglePadding,
-                        label: 'Collate',
-                        fontSize: toggleFont,
+                        onPressed: copies >= 999 ? null : () => onCopiesStep(1),
+                        outlined: false,
+                        borderRadius: 12,
+                        padding: EdgeInsets.zero,
+                        label: '+',
+                        fontSize: controlFont,
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+            Gap(compact ? 8 : 10),
+            Expanded(
+              flex: 68,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: BracuActionButton(
+                      onPressed: () {
+                        onDuplexChanged(duplexEnabled ? 'OFF' : 'LEFT');
+                      },
+                      outlined: true,
+                      backgroundColor: duplexEnabled
+                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          : Colors.transparent,
+                      foregroundColor: duplexEnabled
+                          ? BracuPalette.primary
+                          : BracuPalette.textPrimary(context),
+                      borderRadius: 12,
+                      padding: togglePadding,
+                      label: duplexEnabled ? 'Both Side' : 'One Side',
+                      fontSize: toggleFont,
+                    ),
+                  ),
+                  Gap(gap),
+                  Expanded(
+                    child: BracuActionButton(
+                      onPressed: () {
+                        onCollateChanged(collateEnabled ? 'OFF' : 'ON');
+                      },
+                      outlined: true,
+                      backgroundColor: collateEnabled
+                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          : Colors.transparent,
+                      foregroundColor: collateEnabled
+                          ? BracuPalette.primary
+                          : BracuPalette.textPrimary(context),
+                      borderRadius: 12,
+                      padding: togglePadding,
+                      label: 'Collate',
+                      fontSize: toggleFont,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         );
       },
     );
@@ -2037,203 +1899,198 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
           vertical: compact ? 8 : 9,
         );
 
-        return BracuCard(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                      child: BracuActionButton(
-                        onPressed: () {
-                          final nextVal = pagesPerSheet == '1-in-1'
-                              ? '2-in-1'
-                              : (pagesPerSheet == '2-in-1'
-                                    ? '4-in-1'
-                                    : '1-in-1');
-                          onPagesPerSheetChanged(nextVal);
-                        },
-                        outlined: true,
-                        backgroundColor: pagesPerSheet != '1-in-1'
-                            ? BracuPalette.primary.withValues(alpha: 0.12)
-                            : Colors.transparent,
-                        foregroundColor: pagesPerSheet != '1-in-1'
-                            ? BracuPalette.primary
-                            : BracuPalette.textPrimary(context),
-                        borderRadius: 4,
-                        padding: buttonPadding,
-                        label: pagesPerSheet,
-                        fontSize: toggleFont,
-                      ),
+        return Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: gap / 2),
+                    child: BracuActionButton(
+                      onPressed: () {
+                        final nextVal = pagesPerSheet == '1-in-1'
+                            ? '2-in-1'
+                            : (pagesPerSheet == '2-in-1' ? '4-in-1' : '1-in-1');
+                        onPagesPerSheetChanged(nextVal);
+                      },
+                      outlined: true,
+                      backgroundColor: pagesPerSheet != '1-in-1'
+                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          : Colors.transparent,
+                      foregroundColor: pagesPerSheet != '1-in-1'
+                          ? BracuPalette.primary
+                          : BracuPalette.textPrimary(context),
+                      borderRadius: 12,
+                      padding: buttonPadding,
+                      label: pagesPerSheet,
+                      fontSize: toggleFont,
                     ),
                   ),
-                  Gap(gap),
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                      child: BracuActionButton(
-                        onPressed: () {
-                          final nextVal = fittingMode == 'Fit on Paper'
-                              ? 'Fit on Printable Area'
-                              : (fittingMode == 'Fit on Printable Area'
-                                    ? 'Edge-to-Edge'
-                                    : 'Fit on Paper');
-                          onFittingModeChanged(nextVal);
-                        },
-                        outlined: true,
-                        backgroundColor: fittingMode != 'Fit on Paper'
-                            ? BracuPalette.primary.withValues(alpha: 0.12)
-                            : Colors.transparent,
-                        foregroundColor: fittingMode != 'Fit on Paper'
-                            ? BracuPalette.primary
-                            : BracuPalette.textPrimary(context),
-                        borderRadius: 4,
-                        padding: buttonPadding,
-                        label: fittingMode == 'Fit on Paper'
-                            ? 'Fit Paper'
+                ),
+                Gap(gap),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: gap / 2),
+                    child: BracuActionButton(
+                      onPressed: () {
+                        final nextVal = fittingMode == 'Fit on Paper'
+                            ? 'Fit on Printable Area'
                             : (fittingMode == 'Fit on Printable Area'
-                                  ? 'Fit Printable'
-                                  : 'Edge-to-Edge'),
-                        fontSize: toggleFont,
-                      ),
+                                  ? 'Edge-to-Edge'
+                                  : 'Fit on Paper');
+                        onFittingModeChanged(nextVal);
+                      },
+                      outlined: true,
+                      backgroundColor: fittingMode != 'Fit on Paper'
+                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          : Colors.transparent,
+                      foregroundColor: fittingMode != 'Fit on Paper'
+                          ? BracuPalette.primary
+                          : BracuPalette.textPrimary(context),
+                      borderRadius: 12,
+                      padding: buttonPadding,
+                      label: fittingMode == 'Fit on Paper'
+                          ? 'Fit Paper'
+                          : (fittingMode == 'Fit on Printable Area'
+                                ? 'Fit Printable'
+                                : 'Edge-to-Edge'),
+                      fontSize: toggleFont,
                     ),
                   ),
-                ],
-              ),
-              Gap(gap),
-              Row(
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                      child: BracuActionButton(
-                        onPressed: () {
-                          final nextVal = staple == 'Off'
-                              ? 'Left Corner'
-                              : (staple == 'Left Corner'
-                                    ? 'Right Corner'
-                                    : 'Off');
-                          onStapleChanged(nextVal);
-                        },
-                        outlined: true,
-                        backgroundColor: staple != 'Off'
-                            ? BracuPalette.primary.withValues(alpha: 0.12)
-                            : Colors.transparent,
-                        foregroundColor: staple != 'Off'
-                            ? BracuPalette.primary
-                            : BracuPalette.textPrimary(context),
-                        borderRadius: 4,
-                        padding: buttonPadding,
-                        label: staple == 'Off'
-                            ? 'Staple Off'
+                ),
+              ],
+            ),
+            Gap(gap),
+            Row(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: gap / 2),
+                    child: BracuActionButton(
+                      onPressed: () {
+                        final nextVal = staple == 'Off'
+                            ? 'Left Corner'
                             : (staple == 'Left Corner'
-                                  ? 'Staple Left'
-                                  : 'Staple Right'),
-                        fontSize: toggleFont,
-                      ),
+                                  ? 'Right Corner'
+                                  : 'Off');
+                        onStapleChanged(nextVal);
+                      },
+                      outlined: true,
+                      backgroundColor: staple != 'Off'
+                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          : Colors.transparent,
+                      foregroundColor: staple != 'Off'
+                          ? BracuPalette.primary
+                          : BracuPalette.textPrimary(context),
+                      borderRadius: 12,
+                      padding: buttonPadding,
+                      label: staple == 'Off'
+                          ? 'Staple Off'
+                          : (staple == 'Left Corner'
+                                ? 'Staple Left'
+                                : 'Staple Right'),
+                      fontSize: toggleFont,
                     ),
                   ),
-                  Gap(gap),
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                      child: BracuActionButton(
-                        onPressed: () {
-                          final nextVal = punch == 'Off'
-                              ? '2 Holes'
-                              : (punch == '2 Holes' ? '3 Holes' : 'Off');
-                          onPunchChanged(nextVal);
-                        },
-                        outlined: true,
-                        backgroundColor: punch != 'Off'
-                            ? BracuPalette.primary.withValues(alpha: 0.12)
-                            : Colors.transparent,
-                        foregroundColor: punch != 'Off'
-                            ? BracuPalette.primary
-                            : BracuPalette.textPrimary(context),
-                        borderRadius: 4,
-                        padding: buttonPadding,
-                        label: punch == 'Off' ? 'Punch Off' : punch,
-                        fontSize: toggleFont,
-                      ),
+                ),
+                Gap(gap),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: gap / 2),
+                    child: BracuActionButton(
+                      onPressed: () {
+                        final nextVal = punch == 'Off'
+                            ? '2 Holes'
+                            : (punch == '2 Holes' ? '3 Holes' : 'Off');
+                        onPunchChanged(nextVal);
+                      },
+                      outlined: true,
+                      backgroundColor: punch != 'Off'
+                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          : Colors.transparent,
+                      foregroundColor: punch != 'Off'
+                          ? BracuPalette.primary
+                          : BracuPalette.textPrimary(context),
+                      borderRadius: 12,
+                      padding: buttonPadding,
+                      label: punch == 'Off' ? 'Punch Off' : punch,
+                      fontSize: toggleFont,
                     ),
                   ),
-                ],
-              ),
-              Gap(gap),
-              Row(
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                      child: BracuActionButton(
-                        onPressed: () {
-                          onJobOffsetChanged(jobOffset == 'On' ? 'Off' : 'On');
-                        },
-                        outlined: true,
-                        backgroundColor: jobOffset == 'On'
-                            ? BracuPalette.primary.withValues(alpha: 0.12)
-                            : Colors.transparent,
-                        foregroundColor: jobOffset == 'On'
-                            ? BracuPalette.primary
-                            : BracuPalette.textPrimary(context),
-                        borderRadius: 4,
-                        padding: buttonPadding,
-                        label: 'Offset',
-                        fontSize: toggleFont,
-                      ),
+                ),
+              ],
+            ),
+            Gap(gap),
+            Row(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: gap / 2),
+                    child: BracuActionButton(
+                      onPressed: () {
+                        onJobOffsetChanged(jobOffset == 'On' ? 'Off' : 'On');
+                      },
+                      outlined: true,
+                      backgroundColor: jobOffset == 'On'
+                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          : Colors.transparent,
+                      foregroundColor: jobOffset == 'On'
+                          ? BracuPalette.primary
+                          : BracuPalette.textPrimary(context),
+                      borderRadius: 12,
+                      padding: buttonPadding,
+                      label: 'Offset',
+                      fontSize: toggleFont,
                     ),
                   ),
-                  Gap(gap),
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                      child: BracuActionButton(
-                        onPressed: () {
-                          onSlipSheetChanged(slipSheet == 'On' ? 'Off' : 'On');
-                        },
-                        outlined: true,
-                        backgroundColor: slipSheet == 'On'
-                            ? BracuPalette.primary.withValues(alpha: 0.12)
-                            : Colors.transparent,
-                        foregroundColor: slipSheet == 'On'
-                            ? BracuPalette.primary
-                            : BracuPalette.textPrimary(context),
-                        borderRadius: 4,
-                        padding: buttonPadding,
-                        label: 'Slip Sheet',
-                        fontSize: toggleFont,
-                      ),
+                ),
+                Gap(gap),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: gap / 2),
+                    child: BracuActionButton(
+                      onPressed: () {
+                        onSlipSheetChanged(slipSheet == 'On' ? 'Off' : 'On');
+                      },
+                      outlined: true,
+                      backgroundColor: slipSheet == 'On'
+                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          : Colors.transparent,
+                      foregroundColor: slipSheet == 'On'
+                          ? BracuPalette.primary
+                          : BracuPalette.textPrimary(context),
+                      borderRadius: 12,
+                      padding: buttonPadding,
+                      label: 'Slip Sheet',
+                      fontSize: toggleFont,
                     ),
                   ),
-                  Gap(gap),
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                      child: BracuActionButton(
-                        onPressed: () {
-                          onBookletChanged(booklet == 'On' ? 'Off' : 'On');
-                        },
-                        outlined: true,
-                        backgroundColor: booklet == 'On'
-                            ? BracuPalette.primary.withValues(alpha: 0.12)
-                            : Colors.transparent,
-                        foregroundColor: booklet == 'On'
-                            ? BracuPalette.primary
-                            : BracuPalette.textPrimary(context),
-                        borderRadius: 4,
-                        padding: buttonPadding,
-                        label: 'Booklet',
-                        fontSize: toggleFont,
-                      ),
+                ),
+                Gap(gap),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: gap / 2),
+                    child: BracuActionButton(
+                      onPressed: () {
+                        onBookletChanged(booklet == 'On' ? 'Off' : 'On');
+                      },
+                      outlined: true,
+                      backgroundColor: booklet == 'On'
+                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          : Colors.transparent,
+                      foregroundColor: booklet == 'On'
+                          ? BracuPalette.primary
+                          : BracuPalette.textPrimary(context),
+                      borderRadius: 12,
+                      padding: buttonPadding,
+                      label: 'Booklet',
+                      fontSize: toggleFont,
                     ),
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         );
       },
     );
