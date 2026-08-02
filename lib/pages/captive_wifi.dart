@@ -765,6 +765,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                         unawaited(_loadStoredCredentials());
                       },
                     ),
+                    const Gap(8),
                     Row(
                       children: [
                         Expanded(

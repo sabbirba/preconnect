@@ -359,7 +359,6 @@ class _BracuLocationPermissionBannerState
     if (!_needsSetup) return const SizedBox.shrink();
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: BracuPalette.primary.withValues(alpha: 0.08),

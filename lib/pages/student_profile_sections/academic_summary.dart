@@ -46,7 +46,7 @@ class AcademicSummaryCard extends StatelessWidget {
   }
 }
 
-class _AcademicSummary extends StatelessWidget {
+class _AcademicSummary extends StatefulWidget {
   const _AcademicSummary({
     required this.profile,
     required this.advising,
@@ -58,27 +58,36 @@ class _AcademicSummary extends StatelessWidget {
   final ProgressSummary? progressSummary;
 
   @override
+  State<_AcademicSummary> createState() => _AcademicSummaryState();
+}
+
+class _AcademicSummaryState extends State<_AcademicSummary> {
+  bool _isCgpaRevealed = false;
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textPrimary = BracuPalette.textPrimary(context);
     final textSecondary = BracuPalette.textSecondary(context);
-    final totalNum = _parseDouble(advising['totalCredit']) > 0
-        ? _parseDouble(advising['totalCredit'])
-        : (progressSummary?.totalCredit ?? 0);
-    final earnedNum = _parseDouble(advising['earnedCredit']) > 0
-        ? _parseDouble(advising['earnedCredit'])
-        : (progressSummary?.completedCredit ?? 0);
+    final totalNum = _parseDouble(widget.advising['totalCredit']) > 0
+        ? _parseDouble(widget.advising['totalCredit'])
+        : (widget.progressSummary?.totalCredit ?? 0);
+    final earnedNum = _parseDouble(widget.advising['earnedCredit']) > 0
+        ? _parseDouble(widget.advising['earnedCredit'])
+        : (widget.progressSummary?.completedCredit ?? 0);
     final completionRatio = totalNum == 0
         ? 0.0
         : (earnedNum / totalNum).clamp(0.0, 1.0);
-    final cgpa = _displayOrNA(profile['cgpa']);
-    final semesterCount = int.tryParse((advising['noOfSemester'] ?? '').trim());
+    final cgpa = _displayOrNA(widget.profile['cgpa']);
+    final semesterCount = int.tryParse(
+      (widget.advising['noOfSemester'] ?? '').trim(),
+    );
     final semesterCountDisplay = semesterCount == null
         ? ''
         : _ordinal(semesterCount);
     final enrolledSemester = _semesterTitle(
-      profile['enrolledSemester'],
-      profile['enrolledSessionSemesterId'],
+      widget.profile['enrolledSemester'],
+      widget.profile['enrolledSessionSemesterId'],
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,14 +158,31 @@ class _AcademicSummary extends StatelessWidget {
                   ),
                   const Gap(6),
                   GestureDetector(
-                    onTap: () => copyToClipboard(context, cgpa),
-                    child: Text(
-                      cgpa,
-                      style: TextStyle(
-                        color: textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    onTap: () {
+                      setState(() {
+                        _isCgpaRevealed = !_isCgpaRevealed;
+                      });
+                    },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _isCgpaRevealed ? cgpa : '***',
+                          style: TextStyle(
+                            color: textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const Gap(4),
+                        Icon(
+                          _isCgpaRevealed
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          size: 16,
+                          color: textSecondary,
+                        ),
+                      ],
                     ),
                   ),
                 ],

@@ -577,20 +577,35 @@ class InAppReviewPrompt {
 
   static Future<bool> openStoreListing({String? iosAppStoreId}) async {
     try {
-      if (kIsWeb) {
-        final uri = Uri.parse(
-          'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
-        );
-        return await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!kIsWeb) {
+        try {
+          final reviewAvailable = await StoreActions.isReviewAvailable();
+          if (reviewAvailable) {
+            unawaited(StoreActions.requestReview());
+          }
+        } catch (_) {}
       }
 
-      try {
-        final reviewAvailable = await StoreActions.isReviewAvailable();
-        if (reviewAvailable) {
-          await StoreActions.requestReview();
-          return true;
+      if (kIsWeb) {
+        final playStoreUri = Uri.parse(
+          'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
+        );
+        try {
+          final launched = await launchUrl(
+            playStoreUri,
+            mode: LaunchMode.externalApplication,
+          );
+          if (launched) return true;
+        } catch (_) {}
+        try {
+          return await launchUrl(
+            playStoreUri,
+            mode: LaunchMode.platformDefault,
+          );
+        } catch (_) {
+          return false;
         }
-      } catch (_) {}
+      }
 
       final isApple =
           !kIsWeb &&
@@ -625,27 +640,79 @@ class InAppReviewPrompt {
         }
 
         if (appStoreId.isNotEmpty) {
+          final nativeItmsUri = Uri.parse(
+            'itms-apps://itunes.apple.com/app/id$appStoreId?action=write-review',
+          );
+          try {
+            final launched = await launchUrl(
+              nativeItmsUri,
+              mode: LaunchMode.externalApplication,
+            );
+            if (launched) return true;
+          } catch (_) {}
+
+          final httpsAppStoreUri = Uri.parse(
+            'https://apps.apple.com/app/id$appStoreId?action=write-review',
+          );
+          try {
+            final launched = await launchUrl(
+              httpsAppStoreUri,
+              mode: LaunchMode.externalApplication,
+            );
+            if (launched) return true;
+          } catch (_) {}
+        }
+
+        final fallbackAppStoreUri = Uri.parse(
+          'https://apps.apple.com/app/id6503926521',
+        );
+        try {
           final launched = await launchUrl(
-            Uri.parse('https://apps.apple.com/app/id$appStoreId'),
+            fallbackAppStoreUri,
             mode: LaunchMode.externalApplication,
           );
           if (launched) return true;
-        }
+        } catch (_) {}
 
         return await launchUrl(
-          Uri.parse(
-            'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
-          ),
-          mode: LaunchMode.externalApplication,
+          fallbackAppStoreUri,
+          mode: LaunchMode.platformDefault,
         );
       }
 
-      return await launchUrl(
-        Uri.parse(
-          'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
-        ),
-        mode: LaunchMode.externalApplication,
+      var packageName = 'com.sabbirba.preconnect';
+      try {
+        final packageInfo = await PackageInfo.fromPlatform();
+        if (packageInfo.packageName.isNotEmpty) {
+          packageName = packageInfo.packageName;
+        }
+      } catch (_) {}
+
+      final marketUri = Uri.parse('market://details?id=$packageName');
+      try {
+        final launched = await launchUrl(
+          marketUri,
+          mode: LaunchMode.externalApplication,
+        );
+        if (launched) return true;
+      } catch (_) {}
+
+      final playStoreUri = Uri.parse(
+        'https://play.google.com/store/apps/details?id=$packageName',
       );
+      try {
+        final launched = await launchUrl(
+          playStoreUri,
+          mode: LaunchMode.externalApplication,
+        );
+        if (launched) return true;
+      } catch (_) {}
+
+      try {
+        return await launchUrl(playStoreUri, mode: LaunchMode.platformDefault);
+      } catch (_) {}
+
+      return false;
     } catch (_) {
       return false;
     }
